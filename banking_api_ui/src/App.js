@@ -166,10 +166,7 @@ function App() {
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="*" element={
               !user ? (
-                <>
-                  <LandingPage />
-                  <BankingAgent user={null} />
-                </>
+                <LandingPage />
               ) : (
                 <main className="main-content">
                   <EducationBar />
@@ -193,6 +190,7 @@ function App() {
               )
             } />
           </Routes>
+          <BankingAgent user={user} />
           <EducationPanelsHost />
           <CIBAPanel />
         </div>
