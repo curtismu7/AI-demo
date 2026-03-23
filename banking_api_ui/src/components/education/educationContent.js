@@ -82,40 +82,7 @@ HTTP/1.1 200 OK
 HTTP/1.1 400 Bad Request
 { "error": "access_denied" | "expired_token" }`;
 
-const MCP_FLOW = `
-Without CIBA (current):
-  Chat UI → MCP server needs tokens
-  → Server returns a URL in chat text
-  → User must manually open URL in browser
-  → User authenticates, returns to chat
-  ⚠  Breaks chat flow, awkward redirect
 
-With CIBA:
-  Chat UI → MCP server needs tokens
-  → Server sends bc-authorize to PingOne
-  → PingOne delivers approval (email link or push — your DaVinci config)
-  → User approves out-of-band — never leaves chat
-  → Tokens arrive at server silently
-  ✅  Fluid, in-context, no redirect needed
-`;
-
-const STEP_UP_FLOW = `
-High-value transaction (amount > threshold):
-
-Without CIBA:
-  User clicks Transfer $500
-  → Server redirects browser to PingOne
-  → User authenticates, gets redirected back
-  → Page reload, context lost
-
-With CIBA:
-  User clicks Transfer $500
-  → UI shows "Check your email or device" overlay (wording depends on PingOne)
-  → PingOne sends approval (email or push per your setup)
-  → User approves out-of-band
-  → Transfer executes immediately
-  ✅  No redirect, no page reload
-`;
 
 const FULL_STACK_DIAGRAM = `
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -355,10 +322,8 @@ export function CibaVsLoginContent() {
 4. PingOne → 302 to redirect_uri?code=ABC&state=XYZ
 5. BFF validates state, POST /as/token with code + code_verifier
 6. Tokens → BFF session; browser gets httpOnly cookie
-7. Page loads at /admin or /dashboard
-
-Key property: the user MUST be at a browser to click through the redirect.
-Interrupt: YES — page navigates away and back.`}</pre>
+7. Page loads at /admin or /dashboard`}</pre>
+      <p><strong>Key property:</strong> the user <em>must</em> be at a browser to click through the redirect. The page navigates away and back — disruptive in agent/chat contexts.</p>
 
       <h3>CIBA (backchannel)</h3>
       <pre className="edu-code">{`1. BFF → POST /as/bc-authorize (login_hint, binding_message)
@@ -368,10 +333,8 @@ Interrupt: YES — page navigates away and back.`}</pre>
    → authorization_pending until user acts
 4. User approves in email inbox OR on registered device
 5. Next poll returns tokens; BFF stores them server-side
-6. Chat / agent / dashboard continues with no page load
-
-Key property: the user does NOT navigate away. No redirect_uri needed for the approval.
-Interrupt: NONE — user stays on the same page/chat.`}</pre>
+6. Chat / agent / dashboard continues with no page load`}</pre>
+      <p><strong>Key property:</strong> the user does <em>not</em> navigate away. No <code>redirect_uri</code> is needed for the approval step — user stays on the same page or chat the whole time.</p>
 
       <h3>Side-by-side comparison</h3>
       <pre className="edu-code">{`Feature                  Auth Code + PKCE          CIBA
@@ -427,14 +390,44 @@ export function CibaMcpFlowContent() {
       </p>
 
       <h3>MCP agent flow comparison</h3>
-      <pre className="edu-code">{MCP_FLOW}</pre>
+      <p><strong>Without CIBA</strong> (no auth configured, current dev default):</p>
+      <ul>
+        <li>Chat UI → MCP server needs tokens</li>
+        <li>Server returns a login URL in chat text</li>
+        <li>User must open URL in browser, authenticate, then return to chat</li>
+        <li>⚠ Breaks conversational flow — awkward redirect</li>
+      </ul>
+      <p><strong>With CIBA:</strong></p>
+      <ul>
+        <li>Chat UI → MCP server needs tokens</li>
+        <li>Server sends <code>bc-authorize</code> to PingOne</li>
+        <li>PingOne delivers approval out-of-band (email link or push — your DaVinci config)</li>
+        <li>User approves — never leaves the chat</li>
+        <li>Tokens arrive at server silently; tool call continues</li>
+        <li>✅ Fluid, in-context, no redirect needed</li>
+      </ul>
 
       <h3>Step-up auth for high-value transactions</h3>
       <p>
         Transactions above <strong>STEP_UP_AMOUNT_THRESHOLD</strong> (default $250) require
         additional authentication. CIBA makes this seamless — no page reload.
       </p>
-      <pre className="edu-code">{STEP_UP_FLOW}</pre>
+      <p><strong>Without CIBA:</strong></p>
+      <ul>
+        <li>User clicks Transfer $500</li>
+        <li>Server redirects browser to PingOne for re-authentication</li>
+        <li>User authenticates, PingOne redirects back</li>
+        <li>⚠ Page reload — in-progress context lost</li>
+      </ul>
+      <p><strong>With CIBA:</strong></p>
+      <ul>
+        <li>User clicks Transfer $500</li>
+        <li>UI shows a non-blocking overlay: "Check your email or device"</li>
+        <li>PingOne sends approval notification (email or push per your DaVinci setup)</li>
+        <li>User approves out-of-band</li>
+        <li>Transfer executes immediately on next poll</li>
+        <li>✅ No redirect, no page reload, no context loss</li>
+      </ul>
 
       <h3>CIBA + token exchange together</h3>
       <pre className="edu-code">{`Agent needs to call Banking API:
