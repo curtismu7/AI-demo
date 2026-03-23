@@ -368,6 +368,13 @@ export default function CIBAPanel() {
   const [open, setOpen]           = useState(false);
   const [activeTab, setActiveTab] = useState('what');
   const [cibaStatus, setCibaStatus] = useState(null);
+  // Resizable drawer width — persisted in localStorage
+  const [drawerWidth, setDrawerWidth] = useState(() => {
+    const saved = parseInt(localStorage.getItem('cibaDrawerWidth'), 10);
+    return saved > 300 ? saved : 720;
+  });
+  const isResizingRef = useRef(false);
+  const resizeStartRef = useRef({ x: 0, startWidth: 0 });
 
   // Fetch CIBA enabled status once
   useEffect(() => {
@@ -398,6 +405,36 @@ export default function CIBAPanel() {
     return () => window.removeEventListener('education-open-ciba', onEdu);
   }, []);
 
+  // ── Resize drag (left edge handle) ────────────────────────────────────────
+  const handleResizeMouseDown = useCallback((e) => {
+    isResizingRef.current = true;
+    resizeStartRef.current = { x: e.clientX, startWidth: drawerWidth };
+    e.preventDefault();
+  }, [drawerWidth]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isResizingRef.current) return;
+      // Dragging left = larger, dragging right = smaller
+      const delta = resizeStartRef.current.x - e.clientX;
+      const newWidth = Math.max(380, Math.min(window.innerWidth * 0.9, resizeStartRef.current.startWidth + delta));
+      setDrawerWidth(newWidth);
+    };
+    const onUp = () => {
+      if (isResizingRef.current) {
+        isResizingRef.current = false;
+        // Persist across page loads
+        localStorage.setItem('cibaDrawerWidth', String(Math.round(drawerWidth)));
+      }
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    };
+  }, [drawerWidth]);
+
   return (
     <>
       {/* Floating trigger button */}
@@ -418,7 +455,19 @@ export default function CIBAPanel() {
       )}
 
       {/* Drawer */}
-      <div className={`ciba-drawer${open ? ' ciba-drawer--open' : ''}`} role="dialog" aria-modal="true" aria-label="CIBA Panel">
+      <div
+        className={`ciba-drawer${open ? ' ciba-drawer--open' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="CIBA Panel"
+        style={{ width: `min(${drawerWidth}px, 96vw)` }}
+      >
+        {/* Left-edge resize handle */}
+        <div
+          className="ciba-resize-handle"
+          onMouseDown={handleResizeMouseDown}
+          title="Drag to resize"
+        />
         {/* Header */}
         <div className="ciba-header">
           <div>

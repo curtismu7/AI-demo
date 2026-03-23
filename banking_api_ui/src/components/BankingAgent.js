@@ -452,7 +452,17 @@ export default function BankingAgent({ user }) {
       const { source, result } = await parseNaturalLanguage(text);
       if (result.kind === 'education' && result.ciba) {
         openEducationCommand({ ciba: true, tab: result.tab });
-        addMessage('assistant', `Opened CIBA guide (${source}).`);
+        // Close agent panel so the CIBA guide (lower z-index) is fully visible
+        setIsOpen(false);
+        addMessage('assistant',
+          `📲 CIBA Guide opened — see the sliding panel on the right.\n\n` +
+          `CIBA (Client-Initiated Backchannel Authentication) lets the server request user approval out-of-band:\n` +
+          `• Server calls POST /bc-authorize → PingOne sends email or push to user\n` +
+          `• User approves from their inbox or device — no browser redirect needed\n` +
+          `• Server polls POST /token until approved, then stores tokens server-side\n\n` +
+          `Great for chat agents (redirect would break the flow) and high-value step-up transactions.\n` +
+          `The guide has 8 tabs: What is CIBA · Sign-in & roles · Full stack · Token exchange · vs Login · Try It (live demo) · App Flows · PingOne Setup`
+        );
         return;
       }
       if (result.kind === 'education' && result.education?.panel) {
