@@ -259,7 +259,7 @@ function TryItTab({ cibaStatus }) {
       <p className="ciba-section-desc">
         <strong>What you are exercising:</strong> <code>POST /api/auth/ciba/initiate</code> starts a CIBA request at PingOne
         (backchannel). The server returns an <code>auth_req_id</code>. This UI then calls{' '}
-        <code>GET /api/auth/ciba/poll/:id</code> until PingOne issues tokens (approved) or returns denied / expired.
+        <code>GET /api/auth/ciba/poll/:authReqId</code> until PingOne issues tokens (approved) or returns denied / expired.
         Tokens are written to the <strong>BFF session</strong> — they are not returned to the browser.
       </p>
       <p className="ciba-section-desc">
@@ -618,7 +618,7 @@ export default function CIBAPanel() {
                 </div>
                 <div className="ciba-endpoint-row">
                   <span className="ciba-method ciba-method--get">GET</span>
-                  <code>/api/auth/ciba/poll/:id</code>
+                  <code>/api/auth/ciba/poll/:authReqId</code>
                   <span className="ciba-endpoint-desc">Check approval status — returns pending / approved / denied</span>
                 </div>
                 <div className="ciba-endpoint-row">

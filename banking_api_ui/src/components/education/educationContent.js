@@ -164,8 +164,11 @@ Agent identity (optional "on behalf of"):
   GET  /api/agent/identity/status         Actor bootstrap / mapping status
   POST /api/agent/identity/bootstrap      Optional ROPC + PingOne user for agent client
 CIBA (when enabled):
+  GET  /api/auth/ciba/status              CIBA enabled flag + delivery mode
   POST /api/auth/ciba/initiate            Start backchannel auth
   GET  /api/auth/ciba/poll/:authReqId     Poll until approved or denied
+  POST /api/auth/ciba/cancel/:authReqId   Cancel pending CIBA request
+  POST /api/auth/ciba/notify             Ping-mode callback from PingOne
 `;
 
 // ---------------------------------------------------------------------------
@@ -409,8 +412,10 @@ export function CibaMcpFlowContent() {
 
       <h3>Step-up auth for high-value transactions</h3>
       <p>
-        Transactions above <strong>STEP_UP_AMOUNT_THRESHOLD</strong> (default $250) require
-        additional authentication. CIBA makes this seamless — no page reload.
+        When a high-risk action requires re-authentication, the BFF triggers step-up by calling{' '}
+        <code>POST /api/auth/oauth/user/stepup</code> with <code>acr_values=<strong>STEP_UP_ACR_VALUE</strong></code>{' '}
+        (env var, default <code>Multi_factor</code> — must match a PingOne Sign-On Policy name).
+        CIBA makes this seamless — no page reload required.
       </p>
       <p><strong>Without CIBA:</strong></p>
       <ul>
