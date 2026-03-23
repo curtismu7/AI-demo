@@ -160,6 +160,7 @@ router.get('/callback', async (req, res) => {
       req.session.oauthTokens = oauthTokens;
       req.session.user = authedUser;
       req.session.clientType = clientType;
+      req.session.oauthType = 'admin';
 
       // Save session before redirect to prevent race condition where status
       // endpoint runs before session is persisted to the store
@@ -212,8 +213,15 @@ router.get('/logout', (req, res) => {
  * Get current OAuth session status
  */
 router.get('/status', (req, res) => {
-  const isAuthenticated = !!(req.session.user && req.session.oauthTokens?.accessToken);
-  
+  // End-user OAuth (customer app) uses oauthType === 'user'. Do not treat that
+  // session as "admin SPA" — otherwise App.js checks this first and shows the admin dashboard.
+  const isEndUserSession = req.session.oauthType === 'user';
+  const isAuthenticated = !!(
+    req.session.user &&
+    req.session.oauthTokens?.accessToken &&
+    !isEndUserSession
+  );
+
   res.json({
     authenticated: isAuthenticated,
     user: isAuthenticated ? {

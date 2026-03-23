@@ -136,7 +136,11 @@ const SecuritySettings = ({ user }) => {
       setHistory(res.data.history || []);
       setDirty(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load settings.');
+      setError(
+        err.response?.data?.error_description ||
+          err.response?.data?.error ||
+          'Failed to load settings.'
+      );
     } finally {
       setLoading(false);
     }
@@ -164,7 +168,11 @@ const SecuritySettings = ({ user }) => {
       const full = await apiClient.get('/api/admin/settings');
       setHistory(full.data.history || []);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save settings.');
+      setError(
+        err.response?.data?.error_description ||
+          err.response?.data?.error ||
+          'Failed to save settings.'
+      );
     } finally {
       setSaving(false);
     }

@@ -115,12 +115,16 @@ test.describe('Security Settings page — /settings', () => {
     await mockAuthAndSettings(page, ADMIN_USER);
     await page.goto('/settings');
 
-    await expect(page.getByText('Step-up MFA Enabled')).toBeVisible();
-    await expect(page.getByText('Step-up Threshold ($)')).toBeVisible();
-    await expect(page.getByText('Required ACR Value')).toBeVisible();
-    await expect(page.getByText('Transaction Types Requiring Step-up')).toBeVisible();
-    await expect(page.getByText('PingOne Authorize Integration')).toBeVisible();
-    await expect(page.getByText('Authorize Policy ID')).toBeVisible();
+    const main = page
+      .locator('[style*="1200px"]')
+      .filter({ has: page.getByRole('heading', { name: /security settings/i }) })
+      .first();
+    await expect(main.getByText('Step-up MFA Enabled', { exact: true })).toBeVisible();
+    await expect(main.getByText('Step-up Threshold ($)', { exact: true })).toBeVisible();
+    await expect(main.getByText('Required ACR Value', { exact: true })).toBeVisible();
+    await expect(main.getByText('Transaction Types Requiring Step-up', { exact: true })).toBeVisible();
+    await expect(main.getByText('PingOne Authorize Integration', { exact: true })).toBeVisible();
+    await expect(main.getByText('Authorize Policy ID', { exact: true })).toBeVisible();
   });
 
   test('shows Change History sidebar', async ({ page }) => {
@@ -206,7 +210,9 @@ test.describe('Security Settings page — /settings', () => {
 
     await page.getByRole('button', { name: /save changes/i }).click();
 
-    await expect(page.getByText(/failed to save|something went wrong/i)).toBeVisible();
+    await expect(
+      page.getByText(/failed to save|something went wrong|internal_server_error/i)
+    ).toBeVisible();
   });
 
   test('"Discard" button reverts changes', async ({ page }) => {

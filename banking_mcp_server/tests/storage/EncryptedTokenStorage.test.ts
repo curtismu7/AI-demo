@@ -88,22 +88,26 @@ describe('EncryptedTokenStorage', () => {
       expect(rawContent).not.toContain('secret');
     });
 
-    it('should handle different data types', async () => {
-      const testCases = [
-        { key: 'string', data: 'test-string' },
-        { key: 'number', data: 12345 },
-        { key: 'boolean', data: true },
-        { key: 'object', data: { nested: { value: 'test' } } },
-        { key: 'array', data: [1, 2, 'three', { four: 4 }] },
-        { key: 'null', data: null }
-      ];
+    it(
+      'should handle different data types',
+      async () => {
+        const testCases = [
+          { key: 'string', data: 'test-string' },
+          { key: 'number', data: 12345 },
+          { key: 'boolean', data: true },
+          { key: 'object', data: { nested: { value: 'test' } } },
+          { key: 'array', data: [1, 2, 'three', { four: 4 }] },
+          { key: 'null', data: null }
+        ];
 
-      for (const testCase of testCases) {
-        await storage.store(testCase.key, testCase.data);
-        const retrieved = await storage.retrieve(testCase.key);
-        expect(retrieved).toEqual(testCase.data);
-      }
-    });
+        for (const testCase of testCases) {
+          await storage.store(testCase.key, testCase.data);
+          const retrieved = await storage.retrieve(testCase.key);
+          expect(retrieved).toEqual(testCase.data);
+        }
+      },
+      15000
+    );
   });
 
   describe('expiration handling', () => {

@@ -183,6 +183,16 @@ async function openAgentPanelWhenConfigured(page) {
   });
 }
 
+/**
+ * Clicks a BankingAgent MCP action button. Scoped to `.banking-agent-panel` so names like
+ * "Deposit" / "Withdraw" / "Transfer" do not match UserDashboard account card buttons.
+ * @param {import('@playwright/test').Page} page
+ * @param {RegExp|string} namePattern
+ */
+function agentPanelButton(page, namePattern) {
+  return page.locator('.banking-agent-panel').getByRole('button', { name: namePattern });
+}
+
 // ─── LOGIN PAGE tests ──────────────────────────────────────────────────────────
 
 test.describe('BankingAgent — Login page (unauthenticated)', () => {
@@ -346,7 +356,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
-      page.getByRole('button', { name: /Recent Transactions/i }).click(),
+      agentPanelButton(page, /Recent Transactions/i).click(),
     ]);
 
     const body = JSON.parse(req.postData() || '{}');
@@ -361,7 +371,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /Check Balance/i }).click();
+    await agentPanelButton(page, /Check Balance/i).click();
     await expect(page.locator('.banking-agent-form')).toBeVisible();
     await expect(page.locator('label', { hasText: 'Account ID' })).toBeVisible();
   });
@@ -371,7 +381,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockMcpTool(page, SAMPLE_BALANCE);
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /Check Balance/i }).click();
+    await agentPanelButton(page, /Check Balance/i).click();
 
     await page.locator('input[placeholder*="acc_"]').first().fill('acc_001');
 
@@ -391,12 +401,12 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /Deposit/i }).click();
+    await agentPanelButton(page, /Deposit/i).click();
 
     const form = page.locator('.banking-agent-form');
     await expect(form).toBeVisible();
-    await expect(page.locator('label', { hasText: 'Account ID' })).toBeVisible();
-    await expect(page.locator('label', { hasText: 'Amount' })).toBeVisible();
+    await expect(form.locator('label', { hasText: 'Account ID' })).toBeVisible();
+    await expect(form.locator('label', { hasText: 'Amount' })).toBeVisible();
   });
 
   test('"Deposit" submits create_deposit with correct params', async ({ page }) => {
@@ -404,7 +414,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'deposit', amount: 250 });
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /Deposit/i }).click();
+    await agentPanelButton(page, /Deposit/i).click();
 
     const inputs = page.locator('.banking-agent-field input');
     await inputs.nth(0).fill('acc_001');          // Account ID
@@ -429,7 +439,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'withdrawal', amount: 100 });
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /Withdraw/i }).click();
+    await agentPanelButton(page, /Withdraw/i).click();
 
     const inputs = page.locator('.banking-agent-field input');
     await inputs.nth(0).fill('acc_001');
@@ -453,13 +463,13 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /Transfer/i }).click();
+    await agentPanelButton(page, /Transfer/i).click();
 
     const form = page.locator('.banking-agent-form');
     await expect(form).toBeVisible();
-    await expect(page.locator('label', { hasText: 'From Account ID' })).toBeVisible();
-    await expect(page.locator('label', { hasText: 'To Account ID' })).toBeVisible();
-    await expect(page.locator('label', { hasText: 'Amount' })).toBeVisible();
+    await expect(form.locator('label', { hasText: 'From Account ID' })).toBeVisible();
+    await expect(form.locator('label', { hasText: 'To Account ID' })).toBeVisible();
+    await expect(form.locator('label', { hasText: 'Amount' })).toBeVisible();
   });
 
   test('"Transfer" submits create_transfer with correct params', async ({ page }) => {
@@ -467,7 +477,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'transfer', amount: 500 });
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /Transfer/i }).click();
+    await agentPanelButton(page, /Transfer/i).click();
 
     const inputs = page.locator('.banking-agent-field input');
     await inputs.nth(0).fill('acc_001');    // from
@@ -505,11 +515,11 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /Withdraw/i }).click();
+    await agentPanelButton(page, /Withdraw/i).click();
     await expect(page.locator('.banking-agent-form')).toBeVisible();
 
     await page.locator('.banking-agent-btn-ghost').click();  // Cancel
-    await expect(page.locator('.banking-agent-form')).not.toBeVisible();
+    await expect(page.locator('.banking-agent-form')).toHaveCount(0);
     expect(mcpCalled).toBe(false);
   });
 
@@ -520,7 +530,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockMcpToolError(page);
     await page.goto('/dashboard');
     await page.locator('.banking-agent-fab').click();
-    await page.getByRole('button', { name: /My Accounts/i }).click();
+    await agentPanelButton(page, /My Accounts/i).click();
 
     const messages = page.locator('.banking-agent-messages');
     await expect(messages).toContainText(/unavailable|not reachable|mcp/i);

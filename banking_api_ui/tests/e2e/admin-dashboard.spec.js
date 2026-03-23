@@ -214,6 +214,23 @@ test.describe('Admin Dashboard', () => {
     const auth = h.authorization ?? h.Authorization;
     expect(auth).toBeUndefined();
   });
+
+  test('Learn → Login flow drawer: tabs switch content (tutorial buttons)', async ({ page }) => {
+    await mockAdminSession(page);
+    await page.goto('/');
+
+    await page.getByRole('button', { name: /oauth flows/i }).click();
+    await page.getByRole('menuitem', { name: /authorization code \+ pkce/i }).click();
+
+    await expect(page.getByRole('dialog', { name: /login flow \(authorization code \+ pkce\)/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /ten-step login walkthrough/i })).toBeVisible();
+
+    await page.getByRole('tab', { name: /pkce deep dive/i }).click();
+    await expect(page.getByRole('heading', { name: /why pkce\?/i })).toBeVisible();
+
+    await page.locator('.edu-drawer .edu-drawer-close').click();
+    await expect(page.getByRole('dialog', { name: /login flow/i })).toHaveCount(0);
+  });
 });
 
 // ─── User Dashboard (non-admin) ───────────────────────────────────────────────

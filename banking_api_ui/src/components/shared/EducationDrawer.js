@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/shared/EducationDrawer.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './EducationDrawer.css';
 
 /**
@@ -14,9 +14,18 @@ export default function EducationDrawer({
   width = 'min(520px, 100vw)',
 }) {
   const [activeId, setActiveId] = useState(tabs[0]?.id);
+  /** Only apply initialTabId when the drawer opens — not on every render (tabs[] is often a new array reference per parent render). */
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
+    }
+    const justOpened = !wasOpenRef.current;
+    wasOpenRef.current = true;
+    if (!justOpened) return;
+
     if (initialTabId && tabs.some((t) => t.id === initialTabId)) {
       setActiveId(initialTabId);
     } else {

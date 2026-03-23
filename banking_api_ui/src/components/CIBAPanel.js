@@ -636,8 +636,8 @@ export default function CIBAPanel() {
           )}
 
           {/* ── Token exchange (RFC 8693) — before/after token, HTTP, responses ── */}
-          {activeTab === ‘tokenx’ && (
-            <div className=”ciba-tab-content”>
+          {activeTab === 'tokenx' && (
+            <div className="ciba-tab-content">
               <TokenExchangeContent />
             </div>
           )}
@@ -688,7 +688,7 @@ export default function CIBAPanel() {
                   <div className="ciba-card-icon">👤</div>
                   <div>
                     <strong>Customer sign-in</strong> — <code>GET /api/auth/oauth/user/login</code><br />
-                    Uses the <strong>end-user</strong> PingOne application (customer redirect URI). After callback, customers go to <strong>Personal Account Dashboard</strong> at <code>/dashboard</code>. New users get the <strong>customer</strong> role and sample accounts. If the same person already exists as <strong>admin</strong> in the demo store, their admin role is preserved.
+                    Uses the <strong>end-user</strong> PingOne application (customer redirect URI). After callback, customers go to <strong>Personal Account Dashboard</strong> at <code>/dashboard</code>. New users get the <strong>customer</strong> role and sample accounts. The demo store may still list you as <strong>admin</strong> if you also use Admin sign-in, but the <strong>customer</strong> app session always uses the end-user role for the SPA (not the admin dashboard).
                   </div>
                 </div>
               </div>
@@ -699,7 +699,7 @@ export default function CIBAPanel() {
                 <li><strong>Customer</strong> (<code>role === &apos;customer&apos;</code>): Personal dashboard only — own accounts, deposits, transfers, withdrawals within normal policy; MCP Inspector in read-oriented use; no tenant-wide admin screens.</li>
               </ul>
               <p className="ciba-section-desc" style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                The UI chooses the dashboard from <code>GET /api/auth/oauth/status</code> and <code>GET /api/auth/oauth/user/status</code> (admin session is checked first). Your <strong>role</strong> comes from the demo user record after OAuth, not from a separate “role picker.”
+                The UI loads the signed-in user from <code>GET /api/auth/oauth/status</code> (admin PingOne app only) and <code>GET /api/auth/oauth/user/status</code> (end-user app). End-user sessions are not treated as admin SPA sessions, so customer sign-in does not open the admin dashboard.
               </p>
 
               <h3 className="ciba-section-title">Banking Agent (robot button) vs signing in</h3>

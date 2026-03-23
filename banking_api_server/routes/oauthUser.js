@@ -6,6 +6,7 @@ const dataStore = require('../data/store');
 const { determineClientType } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 const { getFrontendOrigin, getUserRedirectUri } = require('../services/oauthRedirectUris');
+const oauthUserConfig = require('../config/oauthUser');
 
 /**
  * Create sample accounts and transactions for new customers
@@ -117,6 +118,20 @@ router.get('/login', (req, res) => {
       return res.redirect(`${getFrontendOrigin(req)}/config?error=not_configured`);
     }
 
+    // Drop a prior *admin* OAuth session so Customer sign-in does not reuse admin tokens/role.
+    // Do not clear oauthType === 'user' (already signed in as customer, or re-initiating flow).
+    const isEndUserSession = req.session?.oauthType === 'user';
+    const looksLikeAdminSession =
+      req.session?.oauthTokens?.accessToken &&
+      !isEndUserSession &&
+      (req.session.oauthType === 'admin' || req.session?.user?.role === 'admin');
+    if (looksLikeAdminSession) {
+      delete req.session.oauthTokens;
+      delete req.session.user;
+      delete req.session.clientType;
+      delete req.session.oauthType;
+    }
+
     const state = oauthService.generateState();
     const codeVerifier = oauthService.generateCodeVerifier();
     const redirectUri = getUserRedirectUri(req);
@@ -190,12 +205,9 @@ router.get('/callback', async (req, res) => {
       oauthUser.role = 'customer'; // Ensure customer role
     } else {
       console.log('Found existing user:', user.username, 'with role:', user.role);
-      // Preserve existing role (don't downgrade admin users)
-      if (user.role === 'admin') {
-        oauthUser.role = 'admin';
-      } else {
-        oauthUser.role = 'customer';
-      }
+      // DB may still list this identity as admin (admin-app sign-in). End-user OAuth
+      // must not promote that into the customer session — session role is set below.
+      oauthUser.role = user.role;
     }
     
     if (!user) {
@@ -260,7 +272,8 @@ router.get('/callback', async (req, res) => {
 
     // Determine client type from the original OAuth token
     const clientType = determineClientType(tokenData.access_token);
-    const authedUser = user;
+    // Customer app session always uses the configured end-user role (never admin UI).
+    const authedUser = { ...user, role: oauthUserConfig.userRole };
     const origin = getFrontendOrigin(req);
     // Preserve step-up return destination across session regeneration
     const stepUpReturnTo = req.session.stepUpReturnTo || null;

@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/shared/EducationModal.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './EducationDrawer.css';
 
 /**
@@ -13,15 +13,23 @@ export default function EducationModal({
   initialTabId,
 }) {
   const [activeId, setActiveId] = useState(tabs[0]?.id);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
+    }
+    const justOpened = !wasOpenRef.current;
+    wasOpenRef.current = true;
+    if (!justOpened) return;
+
     if (initialTabId && tabs.some((t) => t.id === initialTabId)) {
       setActiveId(initialTabId);
-    } else if (!tabs.find((t) => t.id === activeId)) {
+    } else {
       setActiveId(tabs[0]?.id);
     }
-  }, [isOpen, initialTabId, tabs, activeId]);
+  }, [isOpen, initialTabId, tabs]);
 
   if (!isOpen) return null;
 

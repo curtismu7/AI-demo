@@ -1,9 +1,10 @@
 /* ─── Floating Action Button (stacked below CIBA guide — App.css --fab-bottom / --float-edge) ─── */
+/* Above #banking-chat-widget (z-index ~10000) so FAB/panel stay clickable */
 .banking-agent-fab {
   position: fixed;
   bottom: var(--fab-bottom, 28px);
   right: var(--float-edge, 28px);
-  z-index: 1000;
+  z-index: 10060;
   width: var(--fab-size, 56px);
   height: var(--fab-size, 56px);
   border-radius: 50%;
@@ -34,7 +35,7 @@
   position: fixed;
   bottom: var(--agent-panel-bottom, 96px);
   right: var(--float-edge, 28px);
-  z-index: 999;
+  z-index: 10059;
   width: 400px;
   max-height: 760px;
   display: flex;
