@@ -2,10 +2,10 @@
    CIBAPanel.css — styles for the floating CIBA drawer
    ========================================================= */
 
-/* ---------- CIBA guide trigger — regular button, stacked above agent FAB (see App.css vars) ---------- */
+/* ---------- CIBA guide trigger — top-right corner of page ---------- */
 .ciba-fab {
   position: fixed;
-  bottom: var(--ciba-bottom, calc(28px + 56px + 12px));
+  top: 16px;
   right: var(--float-edge, 28px);
   z-index: 1001;
   display: inline-flex;
