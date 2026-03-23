@@ -211,7 +211,8 @@ export default function BankingAgent({ user }) {
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   const [isOpen, setIsOpen] = useState(false);
-  const [showLearn, setShowLearn] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const [showCommands, setShowCommands] = useState(false);
   const [nlInput, setNlInput] = useState('');
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
@@ -518,6 +519,7 @@ export default function BankingAgent({ user }) {
     setNlInput('');
     try {
       const { source, result } = await parseNaturalLanguage(text);
+      setShowCommands(false);
       if (result.kind === 'education' && result.ciba) {
         openEducationCommand({ ciba: true, tab: result.tab });
         // Close agent panel so the CIBA guide (lower z-index) is fully visible
@@ -586,59 +588,50 @@ export default function BankingAgent({ user }) {
       {/* Panel */}
       {isOpen && (
         <div
-          className="banking-agent-panel"
+          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}`}
           role="dialog"
-          aria-label="Banking MCP Agent"
+          aria-label="Banking AI Agent"
           ref={panelRef}
           style={panelStyle}
         >
-          {/* Header — drag handle */}
-          <div
-            className="banking-agent-header banking-agent-drag-handle"
-            onMouseDown={handleDragStart}
-          >
-            <div className="banking-agent-header-info">
-              <span className="banking-agent-avatar">🏦</span>
+          {/* Header */}
+          <div className="ba-header banking-agent-drag-handle" onMouseDown={handleDragStart}>
+            <div className="ba-header-left">
+              <span className="ba-status-dot" />
               <div>
-                <div className="banking-agent-title">PingOne AI IAM Core</div>
-                <div className="banking-agent-subtitle">
-                  {isLoggedIn ? `Powered by MCP · ${effectiveUser.name?.split(' ')[0] || effectiveUser.firstName || 'Secure'}` : 'How can I help you today?'}
+                <div className="ba-title">BX Finance AI Agent</div>
+                <div className="ba-subtitle">
+                  {isLoggedIn
+                    ? `${effectiveUser.name?.split(' ')[0] || effectiveUser.firstName || 'Signed in'} · Powered by MCP`
+                    : 'Sign in to get started'}
                 </div>
               </div>
             </div>
-            <button className="banking-agent-close-btn" onClick={() => setIsOpen(false)} aria-label="Close">✕</button>
+            <div className="ba-header-tools">
+              <button
+                className="ba-icon-btn"
+                onClick={() => setIsDark(d => !d)}
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDark ? '☀️' : '🌙'}
+              </button>
+              <button className="ba-icon-btn" onClick={() => setIsOpen(false)} aria-label="Close">✕</button>
+            </div>
           </div>
 
           {/* Messages */}
           <div className="banking-agent-messages">
             {messages.length === 0 && (
-              <div className="banking-agent-welcome">
+              <div className="ba-welcome">
                 <p>
                   {isLoggedIn
-                    ? 'Use **Learn topics** or **Ask in plain language**, or pick a banking action. Calls go through the Banking API; the MCP server runs tools with scoped tokens.'
+                    ? 'Tap ⚡ for commands, or just type what you need.'
                     : oauthConfig === null
-                      ? 'Welcome to PingOne AI IAM Core. Checking configuration…'
+                      ? 'Checking configuration…'
                       : isConfigured
-                        ? 'PingOne AI IAM Core is configured. Sign in to get started.'
+                        ? 'PingOne is configured — sign in below to get started.'
                         : 'Set up your PingOne credentials to get started.'}
                 </p>
-                <div className="banking-agent-learn">
-                  <button
-                    type="button"
-                    className="banking-agent-learn-btn"
-                    onClick={() => edu?.open(EDU.MCP_PROTOCOL, 'auth')}
-                  >
-                    How OAuth + MCP work together
-                  </button>
-                  <button
-                    type="button"
-                    className="banking-agent-learn-btn"
-                    onClick={() => edu?.open(EDU.TOKEN_EXCHANGE, 'why')}
-                  >
-                    Token exchange explained
-                  </button>
-                  <p className="banking-agent-learn-hint">After sign-in, use the top <strong>Learn</strong> bar for more topics. CIBA guide (floating) has Sign-in &amp; roles.</p>
-                </div>
               </div>
             )}
             {messages.map(msg => (
@@ -663,61 +656,38 @@ export default function BankingAgent({ user }) {
 
           {/* Learn topic chips + plain-language (signed-in only) */}
           {isLoggedIn && !activeAction && (
-            <div className="banking-agent-ctrl">
-              <button
-                type="button"
-                className="banking-agent-learn-toggle"
-                onClick={() => setShowLearn((s) => !s)}
-                aria-expanded={showLearn}
-              >
-                {showLearn ? '▼' : '▶'} Learn topics ({EDUCATION_COMMANDS.length})
-              </button>
-              {showLearn && (
-                <div className="banking-agent-learn-grid" role="group" aria-label="Learn topics">
-                  {EDUCATION_COMMANDS.map((cmd) => (
-                    <button
-                      key={cmd.id}
-                      type="button"
-                      className="banking-agent-learn-chip"
-                      onClick={() => openEducationCommand(cmd)}
-                    >
-                      {cmd.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="banking-agent-nl">
-                <label className="banking-agent-nl-label" htmlFor="banking-agent-nl-input">
-                  Ask in plain language
-                </label>
-                <textarea
-                  id="banking-agent-nl-input"
-                  className="banking-agent-nl-input"
-                  rows={2}
-                  value={nlInput}
-                  onChange={(e) => setNlInput(e.target.value)}
-                  placeholder="Examples: show my accounts · what is token exchange · explain CIBA"
-                  disabled={nlLoading}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleNaturalLanguage();
-                    }
-                  }}
-                />
-                <div className="banking-agent-nl-row">
+            <div className="ba-commands-popup">
+              <div className="ba-commands-section">Banking Actions</div>
+              <div className="ba-chips">
+                {ACTIONS.map(a => (
                   <button
-                    type="button"
-                    className="banking-agent-nl-send"
-                    onClick={handleNaturalLanguage}
-                    disabled={nlLoading || !nlInput.trim()}
+                    key={a.id}
+                    className="ba-chip"
+                    onClick={() => { handleActionClick(a.id); setShowCommands(false); }}
+                    disabled={loading}
+                    title={a.desc}
                   >
-                    {nlLoading ? '…' : 'Send'}
+                    {a.label}
                   </button>
-                  <span className="banking-agent-nl-meta" title="Heuristic is always free. Gemini uses GOOGLE_AI_API_KEY or GEMINI_API_KEY on the API server.">
-                    {nlMeta?.geminiConfigured ? 'NL: Gemini (server)' : 'NL: heuristic (free, offline)'}
-                  </span>
-                </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Commands popup (⚡ button) — shown when showCommands is true */}
+          {showCommands && isLoggedIn && !activeAction && (
+            <div className="ba-commands-popup" style={{ borderTop: 'none', borderBottom: `1px solid var(--ba-border)` }}>
+              <div className="ba-commands-section">Learn &amp; Explore</div>
+              <div className="ba-chips">
+                {EDUCATION_COMMANDS.map(cmd => (
+                  <button
+                    key={cmd.id}
+                    className="ba-chip ba-chip--learn"
+                    onClick={() => { openEducationCommand(cmd); setShowCommands(false); }}
+                  >
+                    {cmd.label}
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -732,77 +702,67 @@ export default function BankingAgent({ user }) {
             />
           )}
 
-          {/* Action buttons */}
-          {!activeAction && (
-            <div className="banking-agent-actions">
-              {isLoggedIn
-                ? ACTIONS.map(a => (
-                    <button
-                      key={a.id}
-                      className="banking-agent-action-btn"
-                      onClick={() => handleActionClick(a.id)}
-                      disabled={loading}
-                      title={a.desc}
-                    >
-                      {a.label}
-                    </button>
-                  ))
-                : (
-                    <>
-                      {/* Configure step */}
-                      <button
-                        className={`banking-agent-action-btn banking-agent-config-btn${isConfigured ? ' banking-agent-config-done' : ''}`}
-                        onClick={() => { setIsOpen(false); navigate('/config'); }}
-                        title="Open PingOne configuration settings"
-                      >
-                        {isConfigured ? '✅ Configured' : '⚙️ Configure PingOne'}
-                      </button>
-
-                      {/* Next-step hint + login buttons */}
-                      {isConfigured && (
-                        <div className="banking-agent-next-step">
-                          <span className="banking-agent-next-label">Next → Sign in</span>
-                        </div>
-                      )}
-                      {LOGIN_ACTIONS.map(a => {
-                        const canAdmin = oauthConfig?.admin;
-                        const canUser = oauthConfig?.user;
-                        const canUse =
-                          a.id === 'login_admin' ? canAdmin : canUser;
-                        return (
-                          <button
-                            key={a.id}
-                            className={`banking-agent-action-btn banking-agent-login-btn${isConfigured ? ' banking-agent-login-ready' : ''}`}
-                            onClick={() => handleLoginAction(a.id)}
-                            title={
-                              oauthConfig === null
-                                ? a.desc
-                                : canUse
-                                  ? a.desc
-                                  : a.id === 'login_admin'
-                                    ? 'Configure admin client ID in Settings'
-                                    : 'Configure end-user client ID in Settings'
-                            }
-                            disabled={oauthConfig === null || !canUse}
-                          >
-                            {a.label}
-                          </button>
-                        );
-                      })}
-                    </>
-                  )
-              }
-              {isLoggedIn && (
+          {/* Bottom bar */}
+          <div className="ba-bottom">
+            {isLoggedIn ? (
+              <div className="ba-input-row">
                 <button
-                  className="banking-agent-action-btn banking-agent-config-btn"
+                  className={`ba-cmd-btn${showCommands ? ' active' : ''}`}
+                  onClick={() => setShowCommands(s => !s)}
+                  title="Learn &amp; Explore topics"
+                  aria-expanded={showCommands}
+                >
+                  ⚡
+                </button>
+                <input
+                  className="ba-input"
+                  value={nlInput}
+                  onChange={e => setNlInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleNaturalLanguage();
+                      setShowCommands(false);
+                    }
+                  }}
+                  placeholder={nlMeta?.groqConfigured ? 'Ask anything… (Groq AI)' : 'Ask anything…'}
+                  disabled={nlLoading}
+                />
+                <button
+                  className="ba-send-btn"
+                  onClick={() => { handleNaturalLanguage(); setShowCommands(false); }}
+                  disabled={nlLoading || !nlInput.trim()}
+                  aria-label="Send"
+                >
+                  {nlLoading ? '…' : '↑'}
+                </button>
+              </div>
+            ) : (
+              <div className="ba-auth-row">
+                <button
+                  className={`ba-auth-btn${isConfigured ? ' done' : ''}`}
                   onClick={() => { setIsOpen(false); navigate('/config'); }}
                   title="Open PingOne configuration settings"
                 >
-                  ⚙️ Configure
+                  {isConfigured ? '✅ Configured' : '⚙️ Configure'}
                 </button>
-              )}
-            </div>
-          )}
+                {LOGIN_ACTIONS.map(a => {
+                  const canUse = a.id === 'login_admin' ? oauthConfig?.admin : oauthConfig?.user;
+                  return (
+                    <button
+                      key={a.id}
+                      className="ba-auth-btn"
+                      onClick={() => handleLoginAction(a.id)}
+                      disabled={oauthConfig === null || !canUse}
+                      title={canUse ? a.desc : 'Configure credentials first'}
+                    >
+                      {a.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>
