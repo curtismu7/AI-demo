@@ -10,6 +10,9 @@ const {
   validateRedirectUriOrigin,
   getExpectedFrontendOrigin,
 } = require('../services/oauthRedirectUris');
+const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
+
+const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
 /**
  * GET /api/auth/oauth/redirect-info — implemented on app in server.js (before /api/auth mount).
@@ -60,6 +63,10 @@ router.get('/login', (req, res) => {
       : '';
     const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri) + resourceParam;
 
+    // Vercel / serverless: also store PKCE data in a signed cookie so the
+    // callback can recover it if the in-memory session is on a different instance.
+    setPkceCookie(res, { state, codeVerifier, redirectUri }, _isProd());
+
     // Explicitly save before redirecting — required with async stores (Redis/Upstash)
     // so the state/verifier are persisted before PingOne sends the callback.
     req.session.save((err) => {
@@ -101,18 +108,24 @@ router.get('/callback', async (req, res) => {
       return res.redirect(`${getFrontendOrigin(req)}/login?error=oauth_error`);
     }
 
-    // Validate state parameter
-    if (!state || state !== req.session.oauthState) {
-      console.error('Invalid state parameter');
+    // Validate state — prefer session, fall back to PKCE cookie (Vercel serverless)
+    const pkceCookie = readPkceCookie(req);
+    const sessionState = req.session.oauthState;
+    const resolvedState = sessionState || pkceCookie?.state;
+
+    if (!state || state !== resolvedState) {
+      console.error('[oauth/callback] Invalid state parameter. session:', sessionState, 'cookie:', pkceCookie?.state, 'received:', state);
+      clearPkceCookie(res, _isProd());
       return res.redirect(`${getFrontendOrigin(req)}/login?error=invalid_state`);
     }
 
-    // Clear state, code_verifier and redirect URI from session
-    const codeVerifier = req.session.oauthCodeVerifier;
-    const redirectUri = req.session.oauthRedirectUri;
+    // Clear state, code_verifier and redirect URI from session and cookie
+    const codeVerifier = req.session.oauthCodeVerifier || pkceCookie?.codeVerifier;
+    const redirectUri   = req.session.oauthRedirectUri  || pkceCookie?.redirectUri;
     delete req.session.oauthState;
     delete req.session.oauthCodeVerifier;
     delete req.session.oauthRedirectUri;
+    clearPkceCookie(res, _isProd());
 
     // Exchange authorization code for access token (with PKCE verifier)
     const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri);
