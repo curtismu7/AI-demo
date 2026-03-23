@@ -139,8 +139,16 @@ router.get('/login', (req, res) => {
     req.session.oauthRedirectUri = redirectUri;
     req.session.oauthType = 'user'; // Distinguish from admin OAuth
 
-    console.log('Redirecting end user to PingOne Core:', url);
-    res.redirect(url);
+    // Explicitly save before redirecting — required with async stores (Redis/Upstash)
+    // so the state/verifier are persisted before PingOne sends the callback.
+    req.session.save((err) => {
+      if (err) {
+        console.error('[oauth/user] Session save error before redirect:', err);
+        return res.redirect(`${getFrontendOrigin(req)}/login?error=session_error`);
+      }
+      console.log('Redirecting end user to PingOne Core:', url);
+      res.redirect(url);
+    });
   } catch (error) {
     console.error('OAuth login error:', error);
     res.redirect(`${getFrontendOrigin(req)}/login?error=oauth_init_failed`);

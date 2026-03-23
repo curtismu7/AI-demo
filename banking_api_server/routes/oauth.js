@@ -60,8 +60,15 @@ router.get('/login', (req, res) => {
       : '';
     const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri) + resourceParam;
 
-    // Redirect to PingOne
-    res.redirect(authUrl);
+    // Explicitly save before redirecting — required with async stores (Redis/Upstash)
+    // so the state/verifier are persisted before PingOne sends the callback.
+    req.session.save((err) => {
+      if (err) {
+        console.error('[oauth] Session save error before redirect:', err);
+        return res.status(500).json({ error: 'Failed to initiate OAuth login' });
+      }
+      res.redirect(authUrl);
+    });
   } catch (error) {
     console.error('OAuth login error:', error);
     res.status(500).json({ error: 'Failed to initiate OAuth login' });
