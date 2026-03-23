@@ -8,12 +8,11 @@ import { BankingAPIClient } from '../../src/banking/BankingAPIClient';
 import { BankingToolProvider } from '../../src/tools/BankingToolProvider';
 import { BankingAuthenticationManager } from '../../src/auth/BankingAuthenticationManager';
 import { BankingSessionManager } from '../../src/storage/BankingSessionManager';
-import { 
-  Account, 
-  Transaction, 
-  TransactionResponse, 
+import {
+  Account,
+  Transaction,
+  TransactionResponse,
   AccountBalanceResponse,
-  BankingAPIError 
 } from '../../src/interfaces/banking';
 import { PingOneConfig, UserTokens } from '../../src/interfaces/auth';
 import { Session } from '../../src/interfaces/auth';
@@ -706,7 +705,6 @@ describe('Banking Operations Integration Tests', () => {
     it('should handle authorization code exchange successfully', async () => {
       // Arrange
       const authCode = 'test-auth-code-123';
-      const state = 'test-state-456';
 
       // Mock successful token exchange
       const mockTokenExchangeResponse = {

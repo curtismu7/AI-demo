@@ -6,9 +6,8 @@
 
 import { BankingAuthenticationManager } from '../../src/auth/BankingAuthenticationManager';
 import { BankingSessionManager } from '../../src/storage/BankingSessionManager';
-import { PingOneConfig, UserTokens, AuthorizationRequest } from '../../src/interfaces/auth';
+import { PingOneConfig, UserTokens } from '../../src/interfaces/auth';
 import axios from 'axios';
-import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
@@ -640,7 +639,7 @@ describe('Authentication Flows Integration Tests', () => {
 
       // Assert
       expect(sessions).toHaveLength(concurrentSessions);
-      sessions.forEach((session, index) => {
+      sessions.forEach((session) => {
         expect(session.sessionId).toMatch(/^banking_session_/);
         expect(session.agentTokenHash).toBeDefined();
       });

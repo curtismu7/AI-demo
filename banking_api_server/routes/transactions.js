@@ -103,9 +103,21 @@ router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read'
 router.post('/', authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
   try {
     const { fromAccountId, toAccountId, amount, type, description, userId } = req.body;
+
+    // Validate amount
+    const parsedAmount = parseFloat(req.body.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: 'invalid_amount', message: 'Amount must be a positive number.' });
+    }
+    if (parsedAmount > 1_000_000) {
+      return res.status(400).json({ error: 'amount_exceeds_limit', message: 'Transaction amount cannot exceed $1,000,000.' });
+    }
+    // Round to 2 decimal places to prevent floating-point manipulation
+    req.body.amount = Math.round(parsedAmount * 100) / 100;
+
     const performingUser = dataStore.getUserById(req.user.id);
     const performedByName = performingUser ? `${performingUser.firstName} ${performingUser.lastName}` : req.user.username;
-    
+
     // Validate required fields
     if (!amount || !type) {
       return res.status(400).json({ error: 'Missing required fields: amount and type' });

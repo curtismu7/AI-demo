@@ -2,7 +2,7 @@
  * Tests for MCP type definitions
  */
 
-import { MCPRequest, MCPResponse, MCPError, MCPTool } from '../../src/types/mcp';
+import { MCPRequest, MCPResponse, MCPTool } from '../../src/types/mcp';
 
 describe('MCP Types', () => {
   describe('MCPRequest', () => {

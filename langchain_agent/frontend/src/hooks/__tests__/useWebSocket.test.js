@@ -1,3 +1,4 @@
+/* eslint-disable import/first */
 import { renderHook, act } from '@testing-library/react';
 import { useWebSocket } from '../useWebSocket';
 

@@ -1,18 +1,16 @@
 /**
  * Banking Authentication Manager
- * Main authentication manager that combines all PingOne Advanced Identity Cloud components
+ * Main authentication manager that combines all PingOne AI Core components
  */
 
 import { TokenIntrospector } from './TokenIntrospector';
 import { AuthorizationManager } from './AuthorizationManager';
 import { AuthorizationRequestGenerator, AuthorizationRequestOptions } from './AuthorizationRequestGenerator';
-import { 
-  PingOneConfig, 
-  AgentTokenInfo, 
-  UserTokens, 
+import {
+  PingOneConfig,
+  AgentTokenInfo,
+  UserTokens,
   AuthorizationRequest,
-  AuthenticationError,
-  AuthErrorCodes 
 } from '../interfaces/auth';
 
 export class BankingAuthenticationManager {
@@ -29,7 +27,7 @@ export class BankingAuthenticationManager {
   }
 
   /**
-   * Validate AI agent token with PingOne Advanced Identity Cloud
+   * Validate AI agent token with PingOne AI Core
    */
   async validateAgentToken(token: string): Promise<AgentTokenInfo> {
     return this.tokenIntrospector.validateAgentToken(token);

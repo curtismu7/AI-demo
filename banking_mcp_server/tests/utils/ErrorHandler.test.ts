@@ -2,23 +2,20 @@
  * Unit tests for ErrorHandler utility
  */
 
-import { 
-  ErrorHandler, 
-  BankingMCPError, 
-  AuthenticationError, 
-  AuthorizationError, 
-  BankingAPIError, 
-  ValidationError, 
-  NetworkError, 
-  SystemError, 
-  MCPProtocolError, 
-  SessionError, 
+import {
+  ErrorHandler,
+  BankingMCPError,
+  AuthenticationError,
+  AuthorizationError,
+  BankingAPIError,
+  ValidationError,
+  NetworkError,
   SecurityError,
-  ErrorCategory, 
+  ErrorCategory,
   ErrorSeverity,
-  type ErrorContext 
+  type ErrorContext
 } from '../../src/utils/ErrorHandler';
-import { Logger, LogLevel, type LoggerConfig } from '../../src/utils/Logger';
+import { Logger } from '../../src/utils/Logger';
 
 describe('ErrorHandler', () => {
   let errorHandler: ErrorHandler;

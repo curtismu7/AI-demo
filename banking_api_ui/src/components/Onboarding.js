@@ -57,14 +57,14 @@ export default function Onboarding() {
         <div style={{ ...cardStyle, background: '#eff6ff', borderColor: '#bfdbfe' }}>
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: '#1e3a8a' }}>What you need</h2>
           <p style={{ margin: 0, color: '#1e40af', fontSize: '0.9375rem', lineHeight: 1.6 }}>
-            This demo uses <strong>PingOne Advanced Identity Cloud</strong>. On the <strong>Vercel</strong> deployment, OAuth client IDs and secrets (including worker tokens) are <strong>pre-configured on the server</strong> — visitors do not enter PingOne credentials in the app. You still get <strong>both</strong> <em>Admin</em> and <em>Customer</em> sign-in on the login page. On <strong>localhost</strong>, you can configure PingOne apps yourself in Application Configuration (SQLite). Until the API is configured, sign-in may redirect to the configuration page.
+            This demo uses <strong>PingOne AI Core</strong> with <strong>two separate OAuth clients</strong> everywhere: one PingOne application for <em>Admin</em> sign-in and one for <em>Customer</em> (end-user) sign-in — same on Vercel, Replit, and localhost. On <strong>hosted</strong> deployments, those client IDs and secrets (and worker tokens) may be <strong>pre-configured on the server</strong> — visitors do not type them in the UI. On <strong>localhost</strong>, you enter both apps in Application Configuration (SQLite). Until the API is configured, sign-in may redirect to the configuration page.
           </p>
         </div>
 
         <div style={cardStyle}>
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0' }}>Admin vs customer — where you land</h2>
           <p style={{ margin: '0 0 0.75rem 0', color: '#4b5563', fontSize: '0.9375rem', lineHeight: 1.6 }}>
-            The two buttons on the login page are <strong>not</strong> the same. Each starts a different OAuth flow (admin app vs end-user app). On Vercel those clients are configured in the deployment; locally you map them in Application Configuration.
+            The two buttons on the login page are <strong>not</strong> the same. Each starts a different OAuth flow against a <strong>different PingOne client</strong> (admin OIDC app vs end-user OIDC app). On every platform you must register the matching redirect URI in each PingOne app. Hosted: credentials live in env/KV/secrets; local: you set both apps in Application Configuration.
           </p>
           <ul style={{ ...olStyle, listStyle: 'disc' }}>
             <li><strong>Admin sign-in</strong> — Opens the <em>admin</em> OAuth client. After success you are sent to the <strong>Admin Dashboard</strong> (<code>/admin</code>): activity logs, all users and accounts, security settings, app configuration, MCP Inspector. New demo users from this flow are stored with an <strong>admin</strong> role unless they already existed.</li>
@@ -74,20 +74,51 @@ export default function Onboarding() {
         </div>
 
         <div style={{ ...cardStyle, borderColor: '#a7f3d0', background: '#f0fdf4' }}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#166534' }}>Vercel (hosted demo)</h2>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#166534' }}>Hosted demo (Vercel, Replit, …)</h2>
           <ol style={olStyle}>
-            <li>PingOne OAuth settings (admin client, customer client, Authorize worker, environment ID, etc.) are <strong>stored on the backend</strong> by the deployment — not typed in by visitors.</li>
-            <li>The <strong>login page</strong> still offers <strong>Admin sign-in</strong> and <strong>Customer sign-in</strong> — two separate flows using that server-side configuration.</li>
+            <li>
+              <strong>Always two PingOne applications</strong> — admin staff app and end-user app — each with its own client ID (and secret if confidential). Deployment env vars supply both (e.g. <code>PINGONE_ADMIN_*</code> and <code>PINGONE_USER_*</code>); Authorize worker, environment ID, etc. are <strong>stored on the backend</strong> — not typed in by visitors.
+            </li>
+            <li>The <strong>login page</strong> offers <strong>Admin sign-in</strong> and <strong>Customer sign-in</strong> — two separate OAuth flows backed by those two clients.</li>
             <li><Link to="/config">Application Configuration</Link> shows <strong>reference</strong> redirect URIs and explains what is deployment-managed; it does not ask for client secrets.</li>
-            <li>Operators change credentials via Vercel project environment variables / KV, not through the public UI.</li>
+            <li>Operators change credentials via the host&apos;s environment variables / KV (or secrets), not through the public UI.</li>
+          </ol>
+        </div>
+
+        <div style={{ ...cardStyle, borderColor: '#fed7aa', background: '#fffbeb' }}>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#9a3412' }}>Replit</h2>
+          <p style={{ margin: '0 0 0.75rem 0', color: '#78350f', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+            If you deploy this repo on <strong>Replit</strong>, use <strong>Secrets</strong> (lock icon in the sidebar) for sensitive values. Put PingOne redirect URIs in PingOne exactly as they appear on{' '}
+            <Link to="/config">Application Configuration</Link> for your public origin.
+          </p>
+          <ol style={olStyle}>
+            <li>
+              Set <code>PUBLIC_APP_URL</code> to your stable HTTPS URL (no trailing slash), e.g. your published Repl or{' '}
+              <code>*.replit.dev</code> host. Replit may also expose <code>REPLIT_DEV_DOMAIN</code>; the API uses these for OAuth callback URLs.
+            </li>
+            <li>
+              Optional: <code>REPLIT_MANAGED_OAUTH=true</code> when OAuth credentials should be <strong>deployment-managed only</strong> (Config page shows reference text, like this public demo). You still need <strong>both</strong> admin and user clients in Secrets — see <code>banking_api_server/.env.example</code>.
+            </li>
+            <li>
+              Optional: <code>REPLIT_CONFIG_PASSWORD_MODE=true</code> plus <code>ADMIN_CONFIG_PASSWORD</code> in Secrets if you need the config password gate when sessions are flaky.
+            </li>
+            <li>
+              For multi-instance or long-lived sessions: <code>REDIS_URL</code> and/or Upstash (<code>KV_REST_API_URL</code> / <code>KV_REST_API_TOKEN</code>) as in the server <code>.env.example</code>.
+            </li>
+            <li>
+              If the browser and API run on different origins, set <code>CORS_ORIGIN</code> to your UI origin.
+            </li>
+            <li>
+              The embedded Replit preview can show extra CSP or console noise — test in a normal browser tab on your <code>*.replit.dev</code> URL when debugging OAuth.
+            </li>
           </ol>
         </div>
 
         <div style={{ ...cardStyle, borderColor: '#e9d5ff', background: '#faf5ff' }}>
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#5b21b6' }}>Localhost (development)</h2>
           <ol style={olStyle}>
-            <li>You may create <strong>two</strong> PingOne OIDC apps: one for admin sign-in and one for customers — or mirror the Vercel one-app model if you prefer.</li>
-            <li>The configuration page shows <strong>Admin OAuth App</strong> and <strong>End-User OAuth App</strong> separately so you can set different client IDs and secrets for each.</li>
+            <li>Create <strong>two</strong> PingOne OIDC web apps — one for admin sign-in and one for customers — the same two-client model as hosted deployments.</li>
+            <li>The configuration page shows <strong>Admin OAuth App</strong> and <strong>End-User OAuth App</strong> separately so each client ID, secret, and redirect URI maps to the correct PingOne app.</li>
             <li>Each redirect URI must match its PingOne app exactly.</li>
             <li>Settings are stored in SQLite on the machine running the API server.</li>
           </ol>
@@ -99,7 +130,7 @@ export default function Onboarding() {
             <strong>Localhost:</strong> Open <Link to="/config">Application Configuration</Link> and complete PingOne Environment, Admin + End-User OAuth apps, Session &amp; Roles, optional Authorize, Advanced. Use <strong>Test PingOne Connection</strong>, then <strong>Save</strong>.
           </p>
           <p style={{ margin: '0.75rem 0 0 0', color: '#4b5563', fontSize: '0.9375rem' }}>
-            <strong>Vercel:</strong> The same page is mostly <strong>reference</strong> — OAuth clients and secrets are pre-deployed. You may still see optional settings depending on KV vs read-only mode.
+            <strong>Hosted:</strong> The same page is mostly <strong>reference</strong> — <strong>both</strong> admin and customer OAuth clients are pre-deployed on the server. You may still see optional settings depending on KV vs read-only mode.
           </p>
           <p style={{ margin: '0.75rem 0 0 0', color: '#4b5563', fontSize: '0.9375rem' }}>
             On that page, expand <strong>MCP Inspector setup</strong> to generate env snippets and commands. For how token exchange works (PingOne <code>/token</code>, HTTP status, responses), open the floating <strong>CIBA guide</strong> → <strong>Token exchange</strong>.
@@ -107,10 +138,10 @@ export default function Onboarding() {
         </div>
 
         <div style={cardStyle}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0' }}>Deployments (Vercel / read-only)</h2>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0' }}>Deployments (hosted / read-only)</h2>
           <ul style={{ ...olStyle, listStyle: 'disc' }}>
             <li>If the server shows <strong>read-only mode</strong>, settings must be supplied via environment variables or cloud KV — follow the banner on the configuration page.</li>
-            <li>On Vercel, after the first save, updates may require <code>ADMIN_CONFIG_PASSWORD</code> as described on the configuration page.</li>
+            <li>On some hosts, after the first save, updates may require <code>ADMIN_CONFIG_PASSWORD</code> as described on the configuration page.</li>
           </ul>
         </div>
 

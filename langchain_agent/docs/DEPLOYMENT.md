@@ -24,7 +24,7 @@ This guide covers deploying the LangChain MCP OAuth Agent in different environme
 
 ### External Services
 
-- **PingOne Advanced Identity Cloud (ForgeRock)**: OAuth provider
+- **PingOne AI Core (ForgeRock)**: OAuth provider
 - **OpenAI API**: For LangChain integration
 - **MCP Servers**: Target servers for agent interactions
 

@@ -92,6 +92,18 @@ router.post('/initiate', authenticateToken, async (req, res) => {
 
   const { scope, binding_message, acr_values } = req.body;
 
+  // Validate binding_message length and content (prevents log injection / oversized payloads)
+  if (binding_message !== undefined) {
+    if (typeof binding_message !== 'string') {
+      return res.status(400).json({ error: 'invalid_binding_message', message: 'binding_message must be a string.' });
+    }
+    if (binding_message.length > 256) {
+      return res.status(400).json({ error: 'invalid_binding_message', message: 'binding_message must not exceed 256 characters.' });
+    }
+    // Strip control characters (log injection prevention)
+    req.body.binding_message = binding_message.replace(/[\x00-\x1f\x7f]/g, '');
+  }
+
   try {
     const result = await cibaService.initiateBackchannelAuth(
       loginHint,

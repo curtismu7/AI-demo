@@ -7,7 +7,7 @@ import WebSocket from 'ws';
 import { createServer, Server as HttpServer } from 'http';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import { MCPMessage, MCPResponse, MCPError } from '../interfaces/mcp';
+import { MCPMessage, MCPResponse } from '../interfaces/mcp';
 import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
 import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { BankingToolProvider } from '../tools/BankingToolProvider';
@@ -134,7 +134,7 @@ export class BankingMCPServer extends EventEmitter {
 
     try {
       // Close all active connections
-      for (const [connectionId, connection] of this.connections.entries()) {
+      for (const [connectionId] of this.connections.entries()) {
         await this.closeConnection(connectionId, 1001, 'Server shutting down');
       }
 

@@ -4,7 +4,7 @@ import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 
 const Login = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
   const edu = useEducationUIOptional();
@@ -147,7 +147,7 @@ const Login = () => {
           <div className="login-footer">
             <p>
               <strong>PingOne AI Core</strong><br />
-              Secure authentication powered by PingOne Advanced Identity Cloud
+              Secure authentication powered by PingOne AI Core
             </p>
           </div>
         </div>

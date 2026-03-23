@@ -1,6 +1,7 @@
 /**
  * Focused apiClient tests (session token path; getTokenFromSession uses axios.get, not client.get).
  */
+/* eslint-disable import/first -- jest.mock must run before axios import */
 
 jest.mock('axios', () => {
   const sharedGet = jest.fn();

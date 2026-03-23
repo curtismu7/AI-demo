@@ -489,6 +489,18 @@ const validatePingOneCoreToken = async (token, requestContext = {}) => {
       issuer: oauthConfig.issuer,
     });
 
+    // Audience validation: if the deployment has configured known audiences,
+    // reject tokens whose aud does not include at least one of them.
+    // This prevents tokens issued for other resources from being replayed here.
+    const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE].filter(Boolean);
+    if (knownAudiences.length > 0 && payload.aud) {
+      const tokenAuds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+      const hasMatch = knownAudiences.some((a) => tokenAuds.includes(a));
+      if (!hasMatch) {
+        throw new Error(`Token audience [${tokenAuds.join(', ')}] does not match any known audience for this service.`);
+      }
+    }
+
     logger.info(LOG_CATEGORIES.OAUTH_VALIDATION, 'PingOne JWKS token validation successful', {
       method,
       path,

@@ -120,7 +120,7 @@ export class MCPMessageHandler {
         
         // Validate agent token and create session
         try {
-          const agentTokenInfo = await this.authManager.validateAgentToken(agentToken);
+          await this.authManager.validateAgentToken(agentToken);
           const session = await this.sessionManager.createSession(agentToken);
           context.session = session;
           
@@ -150,7 +150,7 @@ export class MCPMessageHandler {
   /**
    * Handle tools/list message
    */
-  async handleListTools(message: ListToolsMessage, context: MessageHandlerContext): Promise<ListToolsResponse> {
+  async handleListTools(message: ListToolsMessage, _context: MessageHandlerContext): Promise<ListToolsResponse> {
     try {
       // Get available banking tools
       const bankingTools = this.toolProvider.getAvailableTools();
@@ -205,7 +205,7 @@ export class MCPMessageHandler {
         try {
           let session = await this.sessionManager.getSessionByAgentToken(agentTokenFromCall);
           if (!session) {
-            const agentTokenInfo = await this.authManager.validateAgentToken(agentTokenFromCall);
+            await this.authManager.validateAgentToken(agentTokenFromCall);
             session = await this.sessionManager.createSession(agentTokenFromCall);
             console.log(`[MCPMessageHandler] Created session ${session.sessionId} for agent token from tool call`);
           }
@@ -431,9 +431,8 @@ export class MCPMessageHandler {
    */
   async associateSession(context: MessageHandlerContext, agentToken: string): Promise<void> {
     try {
-      // Validate agent token
-      const agentTokenInfo = await this.authManager.validateAgentToken(agentToken);
-      
+      await this.authManager.validateAgentToken(agentToken);
+
       // Get or create session
       let session = await this.sessionManager.getSessionByAgentToken(agentToken);
       if (!session) {

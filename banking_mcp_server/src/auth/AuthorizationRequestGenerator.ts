@@ -1,5 +1,5 @@
 /**
- * Authorization Request Generator for PingOne Advanced Identity Cloud
+ * Authorization Request Generator for PingOne AI Core
  * Handles authorization URL generation with CSRF protection
  */
 

@@ -387,6 +387,27 @@ class ConfigStore {
     return !!(envId && userId);
   }
 
+  /**
+   * Remove a persisted OAuth client secret so PKCE-only (public) apps do not retain an old confidential secret.
+   * Does not unset environment variables — remove those in your deployment settings separately.
+   */
+  async clearOAuthClientSecret(key) {
+    if (key !== 'admin_client_secret' && key !== 'user_client_secret') {
+      throw new Error('clearOAuthClientSecret: invalid key');
+    }
+    if (process.env.VERCEL && !USE_KV) return;
+    await this.ensureInitialized();
+    delete this._cache[key];
+    if (USE_KV) {
+      const { createClient } = require('@vercel/kv');
+      const kv = createClient({ url: KV_URL, token: KV_TOKEN });
+      await kv.hdel(KV_HASH_KEY, key);
+    } else {
+      const db = _getSQLite();
+      db.prepare('DELETE FROM config WHERE key = ?').run(key);
+    }
+  }
+
   /** Wipe stored config (KV or SQLite). No-op on Vercel without KV. */
   async resetConfig() {
     if (process.env.VERCEL && !USE_KV) return;

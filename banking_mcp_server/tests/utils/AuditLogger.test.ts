@@ -3,7 +3,7 @@
  */
 
 import { AuditLogger } from '../../src/utils/AuditLogger';
-import { Logger, LogLevel, type LoggerConfig } from '../../src/utils/Logger';
+import { Logger } from '../../src/utils/Logger';
 
 // Helper function to safely get audit event from mock call
 const getAuditEvent = (mockCall: any[]) => {
@@ -16,12 +16,6 @@ describe('AuditLogger', () => {
   let consoleSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    const mockConfig: LoggerConfig = {
-      level: LogLevel.DEBUG,
-      enableConsole: true,
-      enableFile: false
-    };
-
     mockLogger = {
       info: jest.fn(),
       warn: jest.fn(),

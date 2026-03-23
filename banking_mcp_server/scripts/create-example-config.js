@@ -17,7 +17,7 @@ const ENVIRONMENTS = {
       MAX_CONNECTIONS: '10',
       SESSION_TIMEOUT: '1800',
 
-      // PingOne Advanced Identity Cloud configuration (required - replace with your values)
+      // PingOne AI Core configuration (required - replace with your values)
       PINGONE_BASE_URL: 'https://your-environment-id.forgeblocks.com:443',
       PINGONE_CLIENT_ID: 'your-client-id-here',
       PINGONE_CLIENT_SECRET: 'your-client-secret-here',
@@ -53,7 +53,7 @@ const ENVIRONMENTS = {
       MAX_CONNECTIONS: '50',
       SESSION_TIMEOUT: '3600',
 
-      // PingOne Advanced Identity Cloud configuration (required - replace with your values)
+      // PingOne AI Core configuration (required - replace with your values)
       PINGONE_BASE_URL: 'https://your-staging-environment-id.forgeblocks.com:443',
       PINGONE_CLIENT_ID: 'your-staging-client-id-here',
       PINGONE_CLIENT_SECRET: 'your-staging-client-secret-here',
@@ -89,7 +89,7 @@ const ENVIRONMENTS = {
       MAX_CONNECTIONS: '200',
       SESSION_TIMEOUT: '3600',
 
-      // PingOne Advanced Identity Cloud configuration (required - replace with your values)
+      // PingOne AI Core configuration (required - replace with your values)
       PINGONE_BASE_URL: 'https://your-production-environment-id.forgeblocks.com:443',
       PINGONE_CLIENT_ID: 'your-production-client-id-here',
       PINGONE_CLIENT_SECRET: 'your-production-client-secret-here',

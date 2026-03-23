@@ -13,8 +13,11 @@
 #   mkcert -install   # install local CA (once per machine)
 #
 # Usage:
-#   ./run-bank.sh           # start all services
-#   ./run-bank.sh stop      # stop all services started by this script
+#   ./run-bank.sh              # start all services (optional: tail prompt at end if TTY)
+#   ./run-bank.sh stop       # stop all services (process trees + listeners on :3002 :4000 :8080 :8888)
+#   ./run-bank.sh tail       # pick 1–4 (one log) or 5 / all (all logs at once)
+#   ./run-bank.sh tail 2     # tail UI log directly (no prompt)
+#   ./run-bank.sh tail all   # tail -f all log files together (interleaved)
 
 set -e
 
@@ -62,19 +65,145 @@ PID_MCP=/tmp/bank-mcp-server.pid
 PID_AGENT=/tmp/bank-langchain-agent.pid
 PID_UI=/tmp/bank-ui.pid
 
+LOG_API=/tmp/bank-api-server.log
+LOG_UI=/tmp/bank-ui.log
+LOG_MCP=/tmp/bank-mcp-server.log
+LOG_AGENT=/tmp/bank-langchain-agent.log
+
+# Used by tail_bank_logs before the main banner runs (e.g. ./run-bank.sh tail)
+CYAN='\033[1;36m'
+RESET='\033[0m'
+
+# ── Tail logs (one log 1–4, or all at once: 5 / all) ─────────────────────────
+tail_bank_logs() {
+  local pre="${1:-}"
+  [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
+  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent")
+  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}")
+  local choice=""
+
+  echo ""
+  echo -e "${CYAN}Pick a log to follow (tail -f). Ctrl+C stops tail only.${RESET}"
+  for i in 0 1 2 3; do
+    echo "  $((i + 1))) ${names[i]}"
+    echo "      ${logs[i]}"
+  done
+  echo "  5) All of the above (same terminal, interleaved with file headers)"
+  if [[ -n "${pre}" ]]; then
+    choice="${pre}"
+  else
+    read -r -p "Number [1-5] or 'all': " choice
+  fi
+  [[ "${choice}" == "ALL" || "${choice}" == "All" ]] && choice="all"
+
+  case "${choice}" in
+    1|2|3|4)
+      local idx=$((choice - 1))
+      local f="${logs[$idx]}"
+      if [[ ! -f "${f}" ]]; then
+        echo "⚠️  Log file does not exist yet: ${f}"
+        echo "   (Start services first, or pick another number.)"
+        exit 1
+      fi
+      echo "📜 Tailing ${names[$idx]} ..."
+      tail -f "${f}"
+      ;;
+    5|all)
+      local existing=()
+      local f
+      for f in "${logs[@]}"; do
+        if [[ -f "${f}" ]]; then
+          existing+=("${f}")
+        else
+          echo "⚠️  Skipping (not yet created): ${f}"
+        fi
+      done
+      if [[ ${#existing[@]} -eq 0 ]]; then
+        echo "⚠️  No log files found yet. Start services with ./run-bank.sh first."
+        exit 1
+      fi
+      echo "📜 Tailing ${#existing[@]} log file(s) together (interleaved). Ctrl+C stops."
+      tail -f "${existing[@]}"
+      ;;
+    *)
+      echo "Invalid choice (use 1–5, or 'all')."
+      exit 1
+      ;;
+  esac
+}
+
+# Kill a PID and every descendant (npm/node/uvicorn survive a plain kill on the subshell).
+kill_process_tree() {
+  local pid="$1"
+  [[ -z "$pid" ]] && return 0
+  case "$pid" in
+    ''|*[!0-9]*) return 0 ;;
+  esac
+  [[ "$pid" -le 1 ]] && return 0
+  local c
+  # Children first (depth-first) so nothing is reparented under init still listening
+  for c in $(pgrep -P "$pid" 2>/dev/null); do
+    kill_process_tree "$c"
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid" 2>/dev/null || true
+  fi
+}
+
+# Stop anything still listening on Banking ports (orphaned node/python after PID file lost).
+stop_listeners_on_banking_ports() {
+  local port pid pids
+  for port in 3002 4000 8080 8888; do
+    pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
+    for pid in $pids; do
+      [[ -z "$pid" ]] && continue
+      echo "   Stopping listener on :${port} (PID ${pid})"
+      kill_process_tree "$pid"
+    done
+  done
+}
+
+force_kill_listeners_on_banking_ports() {
+  local port pid pids
+  for port in 3002 4000 8080 8888; do
+    pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
+    for pid in $pids; do
+      [[ -z "$pid" ]] && continue
+      if kill -KILL "$pid" 2>/dev/null; then
+        echo "   Force-killed PID ${pid} still on :${port}"
+      fi
+    done
+  done
+}
+
 # ── Stop mode ───────────────────────────────────────────────────────────────
 if [[ "${1}" == "stop" ]]; then
   echo "🛑 Stopping Banking services (run-bank.sh)..."
+  set +e
   for pid_file in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
-      PID=$(cat "$pid_file")
-      if kill -0 "$PID" 2>/dev/null; then
-        kill "$PID" && echo "   Stopped PID $PID ($(basename "$pid_file" .pid))"
-      fi
+      PID=$(cat "$pid_file" 2>/dev/null || true)
       rm -f "$pid_file"
+      if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
+        kill_process_tree "$PID"
+        echo "   Stopped process tree from PID ${PID} ($(basename "$pid_file" .pid))"
+      fi
     fi
   done
-  echo "✅ Done."
+  sleep 1
+  echo "   Sweeping ports (API :3002, UI :4000, MCP :8080, Agent :8888)…"
+  stop_listeners_on_banking_ports
+  sleep 1
+  force_kill_listeners_on_banking_ports
+  set -e
+  echo "✅ All Banking listeners stopped (or none were running)."
+  exit 0
+fi
+
+# ── Tail-only mode ──────────────────────────────────────────────────────────
+if [[ "${1}" == "tail" ]]; then
+  shift
+  tail_bank_logs "${1:-}"
   exit 0
 fi
 
@@ -201,12 +330,25 @@ echo -e "${MAGENTA}${BOLD}  │${RESET}     • Ask: balance, accounts, transact
 echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
 echo -e "${WHITE}${BOLD}  ┌─ LOGS / DEBUG ──────────────────────────────────────────────┐${RESET}"
-echo -e "${WHITE}${BOLD}  │${RESET}  tail -f /tmp/bank-api-server.log"
-echo -e "${WHITE}${BOLD}  │${RESET}  tail -f /tmp/bank-ui.log"
-echo -e "${WHITE}${BOLD}  │${RESET}  tail -f /tmp/bank-mcp-server.log"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh tail${RESET}     — pick 1–4, ${BOLD}5/all${RESET} for every log (or: ${DIM}./run-bank.sh tail all${RESET})"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_API}${RESET}"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_UI}${RESET}"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_MCP}${RESET}"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_AGENT}${RESET}"
 echo -e "${WHITE}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
 echo -e "${YELLOW}  ℹ️  UI takes ~20s to compile.  To stop: ${BOLD}bash run-bank.sh stop${RESET}"
 echo ""
 echo -e "${CYAN}${BOLD}*******************************************************************${RESET}"
+echo ""
+
+# Optional: offer to tail a log when run interactively (stdin is a TTY)
+if [[ -t 0 ]]; then
+  read -r -p "Tail a log now? Enter 1–5, all, or Enter to skip: " _tail_choice || true
+  case "${_tail_choice}" in
+    1|2|3|4|5|all|ALL|All) tail_bank_logs "${_tail_choice}" ;;
+    "") ;;
+    *) echo "Skipped (use: ./run-bank.sh tail)" ;;
+  esac
+fi
 echo ""

@@ -7,11 +7,10 @@ import { MCPMessageHandler, MessageHandlerContext } from '../../src/server/MCPMe
 import { BankingAuthenticationManager } from '../../src/auth/BankingAuthenticationManager';
 import { BankingSessionManager, BankingSession } from '../../src/storage/BankingSessionManager';
 import { BankingToolProvider } from '../../src/tools/BankingToolProvider';
-import { 
-  HandshakeMessage, 
-  ListToolsMessage, 
+import {
+  HandshakeMessage,
+  ListToolsMessage,
   ToolCallMessage,
-  ToolDefinition 
 } from '../../src/interfaces/mcp';
 import { PingOneConfig, AgentTokenInfo } from '../../src/interfaces/auth';
 import { BankingToolDefinition } from '../../src/tools/BankingToolRegistry';

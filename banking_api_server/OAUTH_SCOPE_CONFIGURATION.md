@@ -153,7 +153,7 @@ TOKEN_CACHE_TTL=600
 
 ## OAuth Provider Configuration
 
-### PingOne Core (PingOne Advanced Identity Cloud) Setup
+### PingOne AI Core setup
 
 #### Admin Client Configuration
 1. **Client Type**: Confidential

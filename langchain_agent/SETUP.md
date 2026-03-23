@@ -11,7 +11,7 @@ This guide will walk you through setting up and running the LangChain MCP OAuth 
 - **Docker & Docker Compose** (optional, for containerized deployment)
 
 ### External Services
-- **PingOne Advanced Identity Cloud (ForgeRock)** account
+- **PingOne AI Core (ForgeRock)** account
 - **OpenAI API** key
 - **MCP Servers** (optional, for testing with real MCP servers)
 

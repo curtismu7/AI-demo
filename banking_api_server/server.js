@@ -12,7 +12,39 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 
-const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
+const isVercel  = !!process.env.VERCEL;
+const isReplit  = !!process.env.REPL_ID || !!process.env.REPLIT_DEPLOYMENT;
+const isProduction = process.env.NODE_ENV === 'production' || isVercel || isReplit;
+
+// Log deployment context on startup
+if (isVercel)  console.log('[platform] Vercel deployment detected');
+if (isReplit)  console.log('[platform] Replit deployment detected');
+if (!isVercel && !isReplit && isProduction) console.log('[platform] Generic production deployment');
+
+// ── Optional persistent session store (required for Vercel / multi-instance deployments) ──
+let sessionStore;
+if (process.env.REDIS_URL) {
+  try {
+    const RedisStore = require('connect-redis').default || require('connect-redis');
+    const { createClient } = require('redis');
+    const redisClient = createClient({ url: process.env.REDIS_URL, socket: { tls: process.env.REDIS_URL.startsWith('rediss://') } });
+    redisClient.connect().catch((err) => console.error('[session-store] Redis connect error:', err.message));
+    redisClient.on('error', (err) => console.error('[session-store] Redis error:', err.message));
+    sessionStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
+    console.log('[session-store] Using Redis store (REDIS_URL)');
+  } catch (err) {
+    console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
+  }
+}
+
+if (!sessionStore && (process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT)) {
+  const platform = process.env.VERCEL ? 'Vercel' : 'Replit';
+  console.warn(
+    `[session-store] WARNING: Running on ${platform} without REDIS_URL. ` +
+    'Sessions use in-memory store — they will be lost on process restart. ' +
+    'Set REDIS_URL (Upstash Redis: https://upstash.com) for persistent sessions.',
+  );
+}
 
 // Import routes
 const authRoutes        = require('./routes/auth');
@@ -37,7 +69,50 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  // Content-Security-Policy
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:     ["'self'"],
+      scriptSrc:      ["'self'", "'unsafe-inline'"],   // CRA requires unsafe-inline in prod build
+      styleSrc:       ["'self'", "'unsafe-inline'"],
+      imgSrc:         ["'self'", 'data:', 'https:'],
+      connectSrc:     ["'self'", 'https://*.pingone.com', 'https://*.pingidentity.com', 'wss:'],
+      fontSrc:        ["'self'", 'data:'],
+      frameAncestors: ["'none'"],
+    },
+  },
+  // HSTS — 2 years, include subdomains
+  strictTransportSecurity: {
+    maxAge:            63072000,
+    includeSubDomains: true,
+    preload:           true,
+  },
+  // X-Frame-Options: DENY
+  frameguard: { action: 'deny' },
+  // Referrer-Policy
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  // X-Content-Type-Options: nosniff (helmet default)
+  noSniff: true,
+  // Permissions-Policy (helmet calls this permittedCrossDomainPolicies, but we set it manually below)
+  permittedCrossDomainPolicies: false,
+  // Disable X-Powered-By
+  hidePoweredBy: true,
+  // X-XSS-Protection (legacy browsers)
+  xssFilter: true,
+}));
+
+// Permissions-Policy header (not in helmet's built-in options)
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
+// Cache-Control: no-store for all API routes
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 // Allow credentials (session cookies) from the configured origin.
 // In development the React CRA proxy makes requests same-origin, so CORS is
 // essentially unused. On Vercel, React and API share the same domain.
@@ -71,9 +146,20 @@ app.use(morgan('combined'));
 
 // Session middleware
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-session-secret-change-in-production',
+  secret: (() => {
+    const s = process.env.SESSION_SECRET;
+    if (!s || s === 'dev-session-secret-change-in-production') {
+      if (process.env.NODE_ENV === 'production' || process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT) {
+        console.error('[FATAL] SESSION_SECRET env var is not set or is using the insecure default. Set a random 32+ character string in your deployment environment.');
+        process.exit(1);
+      }
+      console.warn('[security] SESSION_SECRET not set — using insecure default (dev only).');
+    }
+    return s || 'dev-session-secret-change-in-production';
+  })(),
   resave: false,
   saveUninitialized: false,
+  ...(sessionStore ? { store: sessionStore } : {}),
   cookie: {
     // On Vercel / production HTTPS, secure:true is required.
     // SameSite:none is required on Vercel because the OAuth signoff redirect
@@ -301,6 +387,35 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   }
 });
 
+// ── Static file serving (Replit, localhost, and any non-Vercel host) ──────────
+// On Vercel, static files are served by the CDN (vercel.json outputDirectory).
+// On Replit and localhost, Express serves the React build directly.
+if (!process.env.VERCEL) {
+  const buildPath = path.join(__dirname, '..', 'banking_api_ui', 'build');
+  const fs = require('fs');
+  if (fs.existsSync(buildPath)) {
+    app.use(express.static(buildPath));
+    // SPA fallback — serve index.html for all non-API routes
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(buildPath, 'index.html'));
+    });
+    console.log('[static] Serving React build from', buildPath);
+  } else {
+    console.warn('[static] React build not found at', buildPath, '— run: cd banking_api_ui && npm run build');
+    // Friendly message for unbuilt frontend
+    app.get('*', (req, res) => {
+      if (req.path.startsWith('/api')) return res.status(404).json({ error: 'not_found' });
+      res.status(503).send(`
+        <html><body style="font-family:sans-serif;padding:2rem">
+          <h2>Frontend not built</h2>
+          <p>Run <code>cd banking_api_ui && npm run build</code> then restart the server.</p>
+          <p>Or run the dev server: <code>cd banking_api_ui && npm start</code> (port 3000)</p>
+        </body></html>
+      `);
+    });
+  }
+}
+
 // OAuth error handling middleware (should be before general error handler)
 app.use(oauthErrorHandler);
 
@@ -308,8 +423,10 @@ app.use(oauthErrorHandler);
 app.use((err, req, res, next) => {
   console.error('Error occurred for path:', req.path);
   console.error('Error details:', err.message);
-  console.error('Full stack:', err.stack);
-  res.status(500).json({ 
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('Full stack:', err.stack);
+  }
+  res.status(500).json({
     error: 'internal_server_error',
     error_description: 'An internal server error occurred',
     timestamp: new Date().toISOString(),
@@ -341,4 +458,10 @@ if (require.main === module) {
   }
 }
 
+// Export app as the default (for supertest / existing requires) and attach
+// named flags so other modules can do: require('./server').isReplit etc.
 module.exports = app;
+module.exports.app         = app;
+module.exports.isProduction = isProduction;
+module.exports.isVercel    = isVercel;
+module.exports.isReplit    = isReplit;

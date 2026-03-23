@@ -47,7 +47,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   }, [success]);
 
   // Initialize chat widget (configuration is handled in index.html)
-  const chatWidget = useChatWidget();
+  useChatWidget();
 
   // Function to decode JWT token
   const decodeToken = (token) => {
@@ -210,7 +210,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     }
 
     try {
-      const response = await apiClient.post('/api/transactions', {
+      await apiClient.post('/api/transactions', {
         fromAccountId: selectedAccount.id,
         toAccountId: transferForm.toAccountId,
         amount: parseFloat(transferForm.amount),
@@ -246,7 +246,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     }
 
     try {
-      const response = await apiClient.post('/api/transactions', {
+      await apiClient.post('/api/transactions', {
         fromAccountId: null,
         toAccountId: depositAccount.id,
         amount: parseFloat(depositForm.amount),
@@ -282,7 +282,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     }
 
     try {
-      const response = await apiClient.post('/api/transactions', {
+      await apiClient.post('/api/transactions', {
         fromAccountId: withdrawAccount.id,
         toAccountId: null,
         amount: parseFloat(withdrawForm.amount),
@@ -307,11 +307,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setError(error.response?.data?.error || 'Withdrawal failed');
       }
     }
-  };
-
-  const getAccountBalance = (accountId) => {
-    const account = accounts.find(acc => acc.id === accountId);
-    return account ? account.balance : 0;
   };
 
   // Function to determine if a transaction represents money going out (negative) or coming in (positive)

@@ -199,7 +199,7 @@ describe('BankingMCPServer', () => {
     });
 
     it('should handle connection errors gracefully', async () => {
-      const errorPromise = new Promise((resolve) => {
+      void new Promise((resolve) => {
         server.once('messageError', resolve);
       });
 

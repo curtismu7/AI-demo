@@ -1,8 +1,9 @@
 /**
- * Token Introspector for PingOne Advanced Identity Cloud
+ * Token Introspector for PingOne AI Core
  * Handles token validation and introspection with PingOne endpoints
  */
 
+import { createHash } from 'crypto';
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { PingOneConfig, TokenInfo, AgentTokenInfo, AuthenticationError, AuthErrorCodes } from '../interfaces/auth';
 
@@ -23,7 +24,7 @@ export class TokenIntrospector {
   }
 
   /**
-   * Introspect a token using PingOne Advanced Identity Cloud introspection endpoint
+   * Introspect a token using PingOne AI Core introspection endpoint
    */
   async introspectToken(token: string): Promise<TokenInfo> {
     try {
@@ -155,8 +156,7 @@ export class TokenIntrospector {
    * Hash token for secure storage (using first 8 chars of SHA-256)
    */
   private hashToken(token: string): string {
-    const crypto = require('crypto');
-    return crypto.createHash('sha256').update(token).digest('hex').substring(0, 16);
+    return createHash('sha256').update(token).digest('hex').substring(0, 16);
   }
 
   /**

@@ -66,7 +66,7 @@ export default function McpInspectorSetupWizard({ appBaseUrl, mcpAgentUrl, stora
   }, [appBaseUrl]);
 
   const builtinUrl = `${(baseUrl || '').replace(/\/$/, '')}/mcp-inspector`;
-  const isVercel = storageType === 'vercel-kv' || deploy === 'vercel';
+  const isHostedCloud = storageType === 'vercel-kv' || deploy === 'vercel' || deploy === 'replit';
 
   const envSnippet = `# Paste into .env for local full stack (adjust names to match your repo).
 # Banking UI + API origin (same host as the React app in this demo)
@@ -132,9 +132,10 @@ npx ${INSPECTOR_NPM}@latest
               <select className="form-input" value={deploy} onChange={(e) => setDeploy(e.target.value)}>
                 <option value="local">Local dev (API + UI + optional MCP on this machine)</option>
                 <option value="vercel">Hosted on Vercel (browser only — MCP agent runs locally)</option>
+                <option value="replit">Hosted on Replit (browser only — MCP agent runs locally)</option>
               </select>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
-                Vercel deployments use deployment-managed OAuth; LangChain/MCP agent URLs are still local-only.
+                Cloud deployments often use deployment-managed OAuth; LangChain/MCP agent URLs are still local-only.
               </p>
               <div style={{ marginTop: '1rem' }}>
                 <button type="button" className="btn btn-primary" onClick={() => setStep(2)}>Next</button>
@@ -209,9 +210,9 @@ npx ${INSPECTOR_NPM}@latest
                   >
                     {builtinUrl}
                   </pre>
-                  {isVercel && (
+                  {isHostedCloud && (
                     <p style={{ fontSize: '0.75rem', color: '#92400e', marginBottom: '0.75rem' }}>
-                      On Vercel you must be logged in on the same domain; the BFF forwards MCP calls with token exchange.
+                      On a hosted deployment you must be logged in on the same domain; the BFF forwards MCP calls with token exchange.
                     </p>
                   )}
                   <p style={{ fontSize: '0.85rem', marginBottom: '0.35rem' }}>

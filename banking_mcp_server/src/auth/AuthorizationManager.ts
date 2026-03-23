@@ -1,5 +1,5 @@
 /**
- * Authorization Manager for PingOne Advanced Identity Cloud
+ * Authorization Manager for PingOne AI Core
  * Handles user authorization code exchange and token refresh flows
  */
 

@@ -1,6 +1,6 @@
 # OAuth Authentication Manager
 
-This module provides OAuth authentication capabilities for the LangChain MCP OAuth Agent, specifically designed to work with PingOne Advanced Identity Cloud (ForgeRock).
+This module provides OAuth authentication capabilities for the LangChain MCP OAuth Agent, specifically designed to work with PingOne AI Core (ForgeRock).
 
 ## Architecture Overview
 
@@ -62,7 +62,7 @@ This approach:
 
 ### ForgeRock Integration
 
-The system is specifically designed for PingOne Advanced Identity Cloud (ForgeRock):
+The system is specifically designed for PingOne AI Core (ForgeRock):
 - Uses ForgeRock-specific endpoint patterns (`/am/oauth2/realms/{realm}/...`)
 - Supports realm-based configuration
 - Handles ForgeRock-specific response formats

@@ -1,5 +1,5 @@
 """
-OAuth authentication manager implementation for PingOne Advanced Identity Cloud (ForgeRock).
+OAuth authentication manager implementation for PingOne AI Core (ForgeRock).
 """
 import asyncio
 import json
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class DynamicClientRegistration:
-    """Handles dynamic client registration with PingOne Advanced Identity Cloud (ForgeRock)."""
+    """Handles dynamic client registration with PingOne AI Core (ForgeRock)."""
     
     def __init__(self, config=None):
         self.config = config or get_config()
@@ -39,7 +39,7 @@ class DynamicClientRegistration:
     
     async def register_client(self, additional_scopes: Optional[List[str]] = None) -> ClientCredentials:
         """
-        Register a new OAuth client with PingOne Advanced Identity Cloud (ForgeRock).
+        Register a new OAuth client with PingOne AI Core (ForgeRock).
         
         Args:
             additional_scopes: Optional list of additional scopes to request beyond default

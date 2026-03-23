@@ -30,54 +30,55 @@ export default function EducationBar() {
   return (
     <div className="edu-bar" role="navigation" aria-label="Learn topics">
       <div className="edu-bar-inner">
-        <div className="edu-bar-group" ref={menuRef}>
+        <div className="dropdown edu-bar-group" ref={menuRef}>
           <button
             type="button"
-            className="edu-bar-button dropdown"
+            className="btn btn-sm btn-outline-primary edu-bar-btn"
             onClick={() => setMenuOpen((o) => !o)}
             aria-expanded={menuOpen}
+            aria-haspopup="menu"
           >
-            OAuth Flows ▾
+            OAuth Flows
           </button>
           {menuOpen && (
-            <div className="edu-bar-dropdown" role="menu">
-              <button type="button" role="menuitem" onClick={() => { open(EDU.LOGIN_FLOW, 'what'); setMenuOpen(false); }}>
+            <div className="dropdown-menu show edu-bar-dropdown" role="menu">
+              <button type="button" className="dropdown-item" role="menuitem" onClick={() => { open(EDU.LOGIN_FLOW, 'what'); setMenuOpen(false); }}>
                 Authorization Code + PKCE
               </button>
-              <button type="button" role="menuitem" onClick={() => { open(EDU.LOGIN_FLOW, 'ciba'); setMenuOpen(false); }}>
+              <button type="button" className="dropdown-item" role="menuitem" onClick={() => { open(EDU.LOGIN_FLOW, 'ciba'); setMenuOpen(false); }}>
                 CIBA (OOB) — short (drawer)
               </button>
-              <button type="button" role="menuitem" onClick={() => { openCiba(); }}>
+              <button type="button" className="dropdown-item" role="menuitem" onClick={() => { openCiba(); }}>
                 CIBA — full guide (floating)
               </button>
-              <button type="button" role="menuitem" onClick={() => { open(EDU.TOKEN_EXCHANGE, 'why'); setMenuOpen(false); }}>
+              <button type="button" className="dropdown-item" role="menuitem" onClick={() => { open(EDU.TOKEN_EXCHANGE, 'why'); setMenuOpen(false); }}>
                 Token Exchange (RFC 8693)
               </button>
             </div>
           )}
         </div>
-        <button type="button" className="edu-bar-button" onClick={() => open(EDU.TOKEN_EXCHANGE, 'why')}>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.TOKEN_EXCHANGE, 'why')}>
           Token Exchange
         </button>
-        <button type="button" className="edu-bar-button" onClick={() => open(EDU.MAY_ACT, 'what')}>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.MAY_ACT, 'what')}>
           may_act / act
         </button>
-        <button type="button" className="edu-bar-button" onClick={() => open(EDU.LOGIN_FLOW, 'pkce')}>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.LOGIN_FLOW, 'pkce')}>
           PKCE
         </button>
-        <button type="button" className="edu-bar-button" onClick={openCiba}>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openCiba}>
           CIBA
         </button>
-        <button type="button" className="edu-bar-button" onClick={() => open(EDU.MCP_PROTOCOL, 'what')}>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.MCP_PROTOCOL, 'what')}>
           MCP Protocol
         </button>
-        <button type="button" className="edu-bar-button" onClick={() => open(EDU.INTROSPECTION, 'why')}>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.INTROSPECTION, 'why')}>
           Introspection
         </button>
-        <button type="button" className="edu-bar-button" onClick={() => open(EDU.AGENT_GATEWAY, 'overview')}>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.AGENT_GATEWAY, 'overview')}>
           Agent Gateway
         </button>
-        <button type="button" className="edu-bar-button" onClick={() => open(EDU.RFC_INDEX, 'index')}>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.RFC_INDEX, 'index')}>
           RFC Index
         </button>
       </div>

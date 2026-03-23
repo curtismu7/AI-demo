@@ -17,8 +17,7 @@ import {
   ListToolsMessage, 
   ToolCallMessage 
 } from '../../src/interfaces/mcp';
-import { PingOneConfig, UserTokens } from '../../src/interfaces/auth';
-import { Account, Transaction } from '../../src/interfaces/banking';
+import { PingOneConfig } from '../../src/interfaces/auth';
 import axios from 'axios';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -390,7 +389,6 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
 
   describe('Tool Execution with Authentication', () => {
     let authenticatedWs: WebSocket;
-    let sessionId: string;
 
     beforeEach(async () => {
       // Setup authenticated WebSocket connection

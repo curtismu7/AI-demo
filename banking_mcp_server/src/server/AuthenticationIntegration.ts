@@ -7,7 +7,7 @@ import axios, { AxiosError } from 'axios';
 import { MCPResponse, ToolCallResponse, AuthorizationRequest } from '../interfaces/mcp';
 import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
 import { BankingSessionManager, BankingSession, UserTokens, CIBAPendingRequest } from '../storage/BankingSessionManager';
-import { AuthenticationError, AuthErrorCodes, AgentTokenInfo } from '../interfaces/auth';
+import { AuthenticationError } from '../interfaces/auth';
 
 export interface AuthenticationResult {
   success: boolean;

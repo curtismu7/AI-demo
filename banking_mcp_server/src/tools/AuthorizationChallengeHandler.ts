@@ -5,8 +5,7 @@
 
 import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
 import { BankingSessionManager } from '../storage/BankingSessionManager';
-import { AuthorizationRequest, Session, UserTokens, AuthErrorCodes, AuthenticationError } from '../interfaces/auth';
-import { BankingToolValidator } from './BankingToolValidator';
+import { AuthorizationRequest, Session, UserTokens, AuthenticationError } from '../interfaces/auth';
 
 export interface AuthorizationChallenge {
   type: 'oauth_authorization_required';

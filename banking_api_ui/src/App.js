@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
@@ -17,6 +17,7 @@ import Config from './components/Config';
 import Onboarding from './components/Onboarding';
 import CIBAPanel from './components/CIBAPanel';
 import McpInspector from './components/McpInspector';
+import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import { EducationUIProvider } from './context/EducationUIContext';
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
@@ -47,28 +48,7 @@ function App() {
     };
   };
 
-  useEffect(() => {
-    console.log('🔍 App useEffect - Starting authentication check...');
-    
-    // Check if user explicitly logged out
-    const userLoggedOut = localStorage.getItem('userLoggedOut');
-    if (userLoggedOut === 'true') {
-      console.log('🚪 User explicitly logged out, skipping authentication check');
-      localStorage.removeItem('userLoggedOut'); // Clear the flag
-      setLoading(false);
-      return;
-    }
-    
-    // Add a small delay to ensure session destruction is complete
-    setTimeout(() => {
-      console.log('🔄 Checking for OAuth session...');
-      checkOAuthSession();
-    }, 200);
-  }, []);
-
-
-
-  const checkOAuthSession = async () => {
+  const checkOAuthSession = useCallback(async () => {
     console.log('🔍 checkOAuthSession - Checking for active OAuth sessions...');
     try {
       // Check admin OAuth session
@@ -119,9 +99,25 @@ function App() {
       console.log('❌ Error checking OAuth sessions:', error.message);
       setLoading(false);
     }
-  };
+  }, []);
 
+  useEffect(() => {
+    console.log('🔍 App useEffect - Starting authentication check...');
 
+    const userLoggedOut = localStorage.getItem('userLoggedOut');
+    if (userLoggedOut === 'true') {
+      console.log('🚪 User explicitly logged out, skipping authentication check');
+      localStorage.removeItem('userLoggedOut');
+      setLoading(false);
+      return;
+    }
+
+    const t = setTimeout(() => {
+      console.log('🔄 Checking for OAuth session...');
+      checkOAuthSession();
+    }, 200);
+    return () => clearTimeout(t);
+  }, [checkOAuthSession]);
 
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
@@ -157,9 +153,9 @@ function App() {
   }
 
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <EducationUIProvider>
-        <div className="App">
+        <div className="App end-user-nano">
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {/* Config page is always accessible, regardless of auth state */}
           <Routes>
@@ -184,6 +180,10 @@ function App() {
                     <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
+                    <Route
+                      path="/oauth-debug-logs"
+                      element={user?.role === 'admin' ? <OAuthDebugLogViewer /> : <Navigate to="/" replace />}
+                    />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </main>

@@ -1,6 +1,6 @@
 # LangChain MCP OAuth Agent
 
-A sophisticated AI agent system that integrates LangChain with MCP (Model Context Protocol) servers through secure OAuth authentication flows using PingOne Advanced Identity Cloud.
+A sophisticated AI agent system that integrates LangChain with MCP (Model Context Protocol) servers through secure OAuth authentication flows using PingOne AI Core.
 
 ## 🚀 Features
 
@@ -33,7 +33,7 @@ A sophisticated AI agent system that integrates LangChain with MCP (Model Contex
 - **Python 3.11+**
 - **Node.js 18+** (for frontend)
 - **Docker & Docker Compose** (for containerized deployment)
-- **PingOne Advanced Identity Cloud** account
+- **PingOne AI Core** account
 - **OpenAI API** key
 
 ## 🚀 Quick Start
@@ -307,7 +307,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [LangChain](https://langchain.com/) for the AI agent framework
 - [Model Context Protocol](https://modelcontextprotocol.io/) for the server integration standard
-- [PingOne Advanced Identity Cloud](https://www.pingidentity.com/) for OAuth services
+- [PingOne AI Core](https://www.pingidentity.com/) for OAuth services
 - [OpenAI](https://openai.com/) for the language model API
 
 ## 📞 Support
@@ -348,7 +348,7 @@ src/
 
 Copy `.env.example` to `.env` and configure your environment variables:
 
-- **PingOne Configuration**: Set up your PingOne Advanced Identity Cloud endpoints
+- **PingOne Configuration**: Set up your PingOne AI Core endpoints
 - **Security Settings**: Configure encryption keys and security parameters
 - **MCP Servers**: Define your MCP server endpoints and capabilities
 - **Chat Interface**: Configure WebSocket and chat settings

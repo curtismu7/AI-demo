@@ -1,5 +1,6 @@
+/* eslint-disable import/first, testing-library/no-node-access */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ChatInterface from '../ChatInterface';
 

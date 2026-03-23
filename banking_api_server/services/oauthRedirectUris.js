@@ -49,7 +49,10 @@ function getAdminRedirectUri(req, opts = {}) {
     const proto = req.protocol === 'http' ? 'http' : 'https';
     return `${proto}://${getPublicHost(req)}/api/auth/oauth/callback`;
   }
-  return 'http://localhost:3001/api/auth/oauth/callback';
+  // Local dev or Replit — derive from request
+  const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+  const host  = getPublicHost(req);
+  return `${proto}://${host}/api/auth/oauth/callback`;
 }
 
 /**
@@ -70,7 +73,10 @@ function getUserRedirectUri(req, opts = {}) {
     const proto = req.protocol === 'http' ? 'http' : 'https';
     return `${proto}://${getPublicHost(req)}/api/auth/oauth/user/callback`;
   }
-  return 'http://localhost:3001/api/auth/oauth/user/callback';
+  // Local dev or Replit — derive from request
+  const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+  const host  = getPublicHost(req);
+  return `${proto}://${host}/api/auth/oauth/user/callback`;
 }
 
 /**
@@ -107,10 +113,59 @@ function getOAuthRedirectDebugInfo(req) {
   };
 }
 
+/**
+ * Validates that a computed redirect URI's origin matches the deployment origin.
+ * Prevents session-hijacking attacks from forcing a mismatched redirect_uri
+ * into the token exchange.
+ *
+ * Returns true when the URI is safe to use. On Vercel, we also enforce
+ * that the URI does not point to localhost.
+ */
+function validateRedirectUriOrigin(redirectUri) {
+  try {
+    const { hostname, protocol } = new URL(redirectUri);
+    const isProd = process.env.NODE_ENV === 'production'
+      || !!process.env.VERCEL
+      || !!process.env.REPL_ID
+      || !!process.env.REPLIT_DEPLOYMENT;
+    if (isProd) {
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+        return { ok: false, reason: `Redirect URI hostname "${hostname}" is not allowed on this deployment.` };
+      }
+      if (protocol === 'http:') {
+        return { ok: false, reason: 'Redirect URI must use HTTPS on this deployment.' };
+      }
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: 'Invalid redirect URI format.' };
+  }
+}
+
+/**
+ * Returns the expected frontend origin for this deployment.
+ * Used to validate Origin/Referer headers on sensitive endpoints.
+ */
+function getExpectedFrontendOrigin(req) {
+  // Explicit override
+  if (process.env.PUBLIC_APP_URL) return process.env.PUBLIC_APP_URL.replace(/\/$/, '');
+  if (process.env.REACT_APP_CLIENT_URL) return process.env.REACT_APP_CLIENT_URL.replace(/\/$/, '');
+  // Vercel system URL
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  // Fall back to request origin
+  const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+  const host = getPublicHost(req);  // use existing helper
+  return `${proto}://${host}`;
+}
+
 module.exports = {
   getPublicHost,
   getFrontendOrigin,
   getAdminRedirectUri,
   getUserRedirectUri,
   getOAuthRedirectDebugInfo,
+  validateRedirectUriOrigin,
+  getExpectedFrontendOrigin,
 };

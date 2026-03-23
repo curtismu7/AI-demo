@@ -26,26 +26,6 @@ import {
 // Static content
 // ---------------------------------------------------------------------------
 
-const SEQUENCE_DIAGRAM = `
-1. App (server) ──POST /bc-authorize──▶ PingOne
-   { login_hint: "user@bank.com", scope: "openid banking:write",
-     binding_message: "Approve $500 transfer" }
-
-2. PingOne ◀─────────────────────────── auth_req_id returned
-
-3. PingOne ──out-of-band approval────▶ User (channel is your PingOne / DaVinci setup)
-   • Email: approval link in inbox  — OR —  • Push: notification on registered device
-
-4. User approves (link in email or tap Approve on device)
-
-5. App polls POST /token (grant=ciba, auth_req_id=...)
-   → authorization_pending (repeat every 5s)
-   → tokens returned ✓
-
-6. Tokens stored server-side (never sent to browser)
-   Tool call / transaction executes with user context
-`;
-
 const MCP_FLOW = `
 Without CIBA (current):
   Chat UI → MCP server needs tokens
@@ -81,169 +61,6 @@ With CIBA:
   ✅  No redirect, no page reload
 `;
 
-/**
- * Same swimlane pattern + RFC callouts as Agent Gateway demo architecture.vsdx:
- * Web Browser SPA → Agent (security strip) → MCP ingress / egress gateway behavior
- * → MCP Server / Tool → Resource Server; 401 → OAuth flows → Bearer retry;
- * OAuth phased with resource indicator (RFC 8707).
- */
-const FULL_STACK_DIAGRAM = `
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ Pattern source: Agent Gateway demo architecture.vsdx (swimlanes + RFC strips) │
-└──────────────────────────────────────────────────────────────────────────────┘
-
-  Web Browser SPA
-       │
-       │  HTTPS (session cookie). No raw OAuth tokens in browser JS.
-       ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ Agent — security strip: OAuth 2.1 · RFC 8707 · RFC 9728 · RFC 7523 · RFC 8693│
-│   ┌─────┐    ┌────────┐    ┌────────────────┐                                 │
-│   │ LLM │    │ memory │    │ business logic │   (+ Sidecar / SDK where used)  │
-│   └─────┘    └────────┘    └────────────────┘                                 │
-└──────────────────────────────────────────────────────────────────────────────┘
-       │ REST / WebSocket to BFF                         │
-       │                                                 │
-       ▼                                                 ▼
-┌──────────────────────────────┐            ┌──────────────────────────────────┐
-│ MCP ingress (gateway role)   │            │ IDP / AS — PingOne              │
-│ • Introspection + scope       │            │ /authorize · /token ·           │
-│   enforcement for tools       │            │ introspect (RFC 7662) · JWKS    │
-│ • MCP authZ RFC 9728          │◀───────────│ Resource indicators RFC 8707   │
-│   (client ↔ authorization)    │            │ in authorize + token requests  │
-└──────────────┬───────────────┘            └──────────────────────────────────┘
-               │
-               │ MCP egress (outbound to MCP server / token actuation)
-               │ • Full RFC 9728 + RFC 8707 sequence with MCP peer
-               │ • Token exchange RFC 8693 with secure binding:
-               │   JWT client auth RFC 7523 or DPoP RFC 9449 (best practice)
-               ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ MCP Server                              Tool                                  │
-│   tools/list · tools/call               API Key / Bearer to downstream       │
-└──────────────────────────────┬───────────────────────────────────────────────┘
-                               │
-                               │  Bearer access token (audience = Resource Server)
-                               ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ Resource Server (RS) — Banking API HTTPS                                      │
-│ RS validates token + audience (https://…/api) + scopes                        │
-└──────────────────────────────────────────────────────────────────────────────┘
-
-  Tool call without acceptable token:
-       HTTP/1.1 401 Unauthorized  →  "attempt run tool"
-       → OAuth flows (PKCE in browser, or CIBA, or token exchange on BFF)
-       → "attempt again with bearer token"
-
-  MCP spec: clients MUST support Resource Indicators (RFC 8707) for OAuth —
-  https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
-
-── Phased OAuth with resource indicator (RFC 8707) — same structure as ref diagram ──
-  Phase 1  Authorization request  GET /authorize?…&resource=<RS URL>
-  Phase 2  Token request          POST /token  grant=authorization_code &resource=<RS>
-           AS limits audience to the requested resource
-  Phase 3  Resource access       GET …  Authorization: Bearer <AT for RS>
-
-── Optional: ID-JAG / XAA (draft) — identity assertion authorization grant ──
-  https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/
-
-── This banking demo maps: Web SPA → Banking BFF → PingOne AS → MCP server → Banking RS ──
-   CIBA: POST /bc-authorize + poll /token  (parallel track; email or push per PingOne)
-`;
-
-const OAUTH_API_CHEATSHEET = `
-Browser-visible (same origin as app):
-  GET  /api/auth/oauth/login              Start admin OAuth (redirect to PingOne)
-  GET  /api/auth/oauth/user/login         Start end-user OAuth
-  GET  /api/auth/oauth/redirect-info      JSON: exact redirect_uri values for PingOne
-Server-only (after login):
-  GET  /api/auth/oauth/status             Admin session + userinfo
-  GET  /api/auth/oauth/user/status        End-user session
-MCP / agent:
-  POST /api/mcp/tool                      BFF → optional token exchange → MCP tools/call
-  GET  /api/mcp/inspector/tools           BFF MCP inspector: tools/list
-  POST /api/mcp/inspector/invoke          BFF MCP inspector: tools/call
-Agent identity (optional “on behalf of”):
-  GET  /api/agent/identity/status         Actor bootstrap / mapping status
-  POST /api/agent/identity/bootstrap      Optional ROPC + PingOne user for agent client
-CIBA (when enabled):
-  POST /api/auth/ciba/initiate            Start backchannel auth
-  GET  /api/auth/ciba/poll/:authReqId     Poll until approved or denied
-`;
-
-/** RFC 8693 token exchange as used by the Banking BFF before MCP calls — see Token exchange tab. */
-const TOKEN_EXCHANGE_EDU = `
-── Where this runs ──
-  The browser never calls PingOne /token for MCP. The Banking API server holds the user’s
-  OAuth tokens in the session and, when a tool needs an MCP-scoped access token, performs
-  RFC 8693 Token Exchange (grant_type=urn:ietf:params:oauth:grant-type:token-exchange)
-  against PingOne’s POST …/as/token endpoint (same host as your issuer).
-
-── BEFORE the token exchange (inputs the BFF already has) ──
-  • Session cookie → identifies the signed-in user (admin or customer).
-  • req.session (server) → access_token / refresh_token / user from the initial OAuth code flow.
-  • Optional “on behalf of” path: USE_AGENT_ACTOR_FOR_MCP=true and MCP resource URI set →
-    the BFF may use subject_token (user) + actor_token (AGENT_OAUTH_CLIENT_* client-credentials
-    token) so PingOne can mint a delegated token (JWT may include an “act” claim per your AS policy).
-
-── THE token request (outbound from BFF to PingOne — not visible in browser DevTools as XHR) ──
-  POST {issuer}/as/token
-  Content-Type: application/x-www-form-urlencoded
-
-  Typical parameters (names may vary slightly by PingOne):
-    grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-    client_id=… & client_secret=…   (or other client auth per your app)
-    subject_token=<user access token from session>
-    subject_token_type=urn:ietf:params:oauth:token-type:access_token
-    audience=<MCP resource / API audience PingOne expects>
-    scope=<space-separated scopes for the MCP layer>
-
-  Optional actor path (delegation):
-    actor_token=<token from agent client credentials>
-    actor_token_type=urn:ietf:params:oauth:token-type:access_token
-    (PingOne policy must allow this exchange.)
-
-── AFTER a successful exchange (what the BFF receives) ──
-  HTTP/1.1 200 OK
-  Content-Type: application/json
-
-  {
-    "access_token": "<JWT or opaque string — MCP/WebSocket uses this as Bearer>",
-    "token_type": "Bearer",
-    "expires_in": 3600,
-    "scope": "…",
-    "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
-  }
-
-  The BFF then opens or reuses the WebSocket to banking_mcp_server and sends MCP messages
-  that carry this token (or passes it per your MCP auth binding). Downstream Banking REST
-  calls still use RS audience/scopes as configured.
-
-── API status codes (PingOne /token and BFF wrapping) ──
-  200  OK — body is JSON with access_token (and usually expires_in).
-  400  Bad Request — invalid grant, wrong token type, audience not allowed, malformed request;
-       body often: { "error": "invalid_grant", "error_description": "…" }
-  401  Unauthorized — client authentication failed (wrong client_id/secret or auth method).
-  403  Forbidden — policy or consent blocks the exchange (wording depends on AS).
-  502/503 Bad Gateway — BFF could not reach PingOne (network/DNS); app may return a JSON
-       error from /api/mcp/tool or inspector routes.
-
-── BFF responses YOU may see in the browser (after token exchange succeeds or fails) ──
-  POST /api/mcp/tool — 200 with MCP tool result JSON; 401 if no session or no usable token;
-       5xx if MCP server or PingOne is unreachable.
-  GET /api/mcp/inspector/tools — 200 with tools list; 401 if not authenticated.
-  POST /api/mcp/inspector/invoke — same pattern as tool calls.
-
-── Error JSON shape (OAuth-style, from PingOne through BFF on failure) ──
-  { "error": "invalid_grant" | "invalid_client" | …, "error_description": "human-readable" }
-
-── Mental model ──
-  1) User completes OAuth (authorization code) → session has subject token.
-  2) User invokes MCP tool → BFF may exchange subject token for MCP-audience token (RFC 8693).
-  3) Only after step 2 does the MCP layer see a Bearer suited to the tool/RS chain.
-  Open the Config page → “MCP Inspector setup” for commands and env snippets that match your URL.
-`;
-
 const PINGONE_STEPS = [
   {
     step: '1',
@@ -270,7 +87,7 @@ const PINGONE_STEPS = [
   {
     step: '5',
     title: 'Set CIBA_ENABLED=true',
-    detail: 'In your .env or Vercel environment variables, add: CIBA_ENABLED=true',
+    detail: 'In your .env or hosted environment variables (Replit Secrets, Vercel, etc.), add: CIBA_ENABLED=true',
   },
 ];
 
@@ -674,7 +491,7 @@ export default function CIBAPanel() {
             <div className="ciba-tab-content">
               <h3 className="ciba-section-title">Two different OAuth sign-ins</h3>
               <p className="ciba-section-desc">
-                Each button on the login page starts a <em>different</em> authorization flow (admin PingOne app vs end-user app). On <strong>Vercel</strong>, those clients and secrets are <strong>pre-configured on the server</strong> — visitors do not type OAuth credentials in Application Configuration — but <strong>both</strong> Admin and Customer sign-in are still available. On <strong>localhost</strong>, you configure those apps in the Config UI (SQLite).
+                Each button on the login page starts a <em>different</em> authorization flow using a <strong>different PingOne OAuth client</strong> (admin app vs end-user app) — <strong>two clients on every platform</strong>. On <strong>hosted</strong> deployments, both client IDs and secrets are <strong>pre-configured on the server</strong> — visitors do not type them in Application Configuration. On <strong>localhost</strong>, you configure both apps in the Config UI (SQLite).
               </p>
               <div className="ciba-cards" style={{ marginBottom: '1rem' }}>
                 <div className="ciba-card">

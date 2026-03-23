@@ -2,13 +2,12 @@
  * Unit tests for HealthMonitor utility
  */
 
-import { 
-  HealthMonitor, 
-  HealthStatus, 
-  type HealthCheck, 
-  type HealthCheckConfig 
+import {
+  HealthMonitor,
+  HealthStatus,
+  type HealthCheckConfig
 } from '../../src/utils/HealthMonitor';
-import { Logger, LogLevel, type LoggerConfig } from '../../src/utils/Logger';
+import { Logger } from '../../src/utils/Logger';
 import { ErrorHandler, ErrorSeverity } from '../../src/utils/ErrorHandler';
 
 describe('HealthMonitor', () => {

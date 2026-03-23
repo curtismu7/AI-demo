@@ -228,7 +228,7 @@ export default function BankingAgent({ user }) {
       addMessage(
         'error',
         isConnErr
-          ? 'Banking Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nVercel: set MCP_SERVER_URL to your hosted MCP server URL.'
+          ? 'Banking Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nHosted: set MCP_SERVER_URL to your reachable MCP server URL (if your platform allows outbound WS).'
           : `Error: ${err.message}`,
         actionId
       );

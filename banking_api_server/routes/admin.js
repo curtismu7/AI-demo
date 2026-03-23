@@ -320,4 +320,38 @@ router.put('/settings', requireAdmin, requireScopes(['banking:admin']), (req, re
   }
 });
 
+// ── OAuth verbose log (admin UI; file / KV / memory — see oauthVerboseLogStore) ──
+
+const oauthVerboseLogStore = require('../services/oauthVerboseLogStore');
+
+router.get('/oauth-debug-log', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), oauthVerboseLogStore.MAX_LINES);
+    const { lines, backend } = await oauthVerboseLogStore.getRecentLines(limit);
+    res.json({
+      lines,
+      backend,
+      hint:
+        backend === 'memory'
+          ? 'Logs are in server memory only (typical on Vercel without KV). Connect Vercel KV for shared durable logs across instances.'
+          : backend === 'kv'
+            ? 'Logs stored in Vercel KV (shared across serverless instances).'
+            : 'Logs stored under data/logs/oauth-verbose.log on the API host.',
+    });
+  } catch (error) {
+    console.error('oauth-debug-log read error:', error);
+    res.status(500).json({ error: 'log_read_failed', message: error.message });
+  }
+});
+
+router.delete('/oauth-debug-log', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+  try {
+    await oauthVerboseLogStore.clear();
+    res.json({ ok: true, message: 'OAuth verbose log cleared.' });
+  } catch (error) {
+    console.error('oauth-debug-log clear error:', error);
+    res.status(500).json({ error: 'log_clear_failed', message: error.message });
+  }
+});
+
 module.exports = router;

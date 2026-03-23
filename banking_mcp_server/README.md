@@ -1,6 +1,6 @@
 # Banking MCP Server
 
-A TypeScript-based Model Context Protocol (MCP) server for banking operations with PingOne Advanced Identity Cloud authentication.
+A TypeScript-based Model Context Protocol (MCP) server for banking operations with PingOne AI Core authentication.
 
 ## Features
 
@@ -15,10 +15,10 @@ A TypeScript-based Model Context Protocol (MCP) server for banking operations wi
 
 - Node.js 20.x or higher
 - npm 9.x or higher
-- PingOne Advanced Identity Cloud account with OAuth clients configured
+- PingOne AI Core account with OAuth clients configured
 - Banking API server running
 
-> **📋 OAuth Setup Required**: You need to configure OAuth clients in PingOne Advanced Identity Cloud before running the server. See [PingOne OAuth Setup Guide](./docs/pingone-oauth-setup.md) for detailed configuration instructions.
+> **📋 OAuth Setup Required**: You need to configure OAuth clients in PingOne AI Core before running the server. See [PingOne OAuth Setup Guide](./docs/pingone-oauth-setup.md) for detailed configuration instructions.
 
 ## Development
 

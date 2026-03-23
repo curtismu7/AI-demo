@@ -153,7 +153,7 @@ export class SessionManager {
   /**
    * Get session by agent token hash
    */
-  async getSessionByAgentToken(agentTokenHash: string): Promise<SessionData | null> {
+  async getSessionByAgentToken(_agentTokenHash: string): Promise<SessionData | null> {
     // This is a simplified implementation for testing
     // In production, this would need proper indexing
     

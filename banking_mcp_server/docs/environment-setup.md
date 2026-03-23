@@ -20,7 +20,7 @@ This guide provides detailed instructions for setting up the Banking MCP Server 
 
 - Node.js 20.x or higher
 - npm 9.x or higher
-- PingOne Advanced Identity Cloud account
+- PingOne AI Core account
 - Banking API server running
 
 ### Basic Setup
@@ -107,7 +107,7 @@ Configuration is loaded in this order (later sources override earlier ones):
 All environments require these variables:
 
 ```bash
-# PingOne Advanced Identity Cloud
+# PingOne AI Core
 PINGONE_BASE_URL=https://your-environment-id.forgeblocks.com:443
 PINGONE_CLIENT_ID=your-client-id
 PINGONE_CLIENT_SECRET=your-client-secret
@@ -119,7 +119,7 @@ PINGONE_TOKEN_ENDPOINT=https://your-environment-id.forgeblocks.com:443/am/oauth2
 ENCRYPTION_KEY=your-64-character-encryption-key
 ```
 
-> **📋 OAuth Client Setup Required**: Before configuring these variables, you need to set up OAuth clients in PingOne Advanced Identity Cloud. See the [PingOne OAuth Setup Guide](./pingone-oauth-setup.md) for detailed instructions on client configuration, scopes, and redirect URIs.
+> **📋 OAuth Client Setup Required**: Before configuring these variables, you need to set up OAuth clients in PingOne AI Core. See the [PingOne OAuth Setup Guide](./pingone-oauth-setup.md) for detailed instructions on client configuration, scopes, and redirect URIs.
 
 ### Configuration Tools
 

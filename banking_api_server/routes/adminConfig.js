@@ -12,18 +12,30 @@
  * Security model:
  *  • GET is open (returns masked data — no secret exposure).
  *  • POST is open when no config is stored yet (first-run setup).
- *  • POST is restricted to admin OAuth session once config exists (or X-Config-Password on Vercel).
+ *  • POST is restricted to admin OAuth session once config exists (or X-Config-Password on hosted stacks).
  *  • On Vercel without KV, POST/reset return 403 (env-only); with KV, writes go to Upstash.
- *  • Reset uses the same gate as POST; on Vercel prefer ADMIN_CONFIG_PASSWORD for auth.
+ *  • Reset uses the same gate as POST; on hosted stacks prefer ADMIN_CONFIG_PASSWORD for auth.
  */
 
 const express = require('express');
 const axios   = require('axios');
 const router  = express.Router();
+const rateLimit = require('express-rate-limit');
 const configStore = require('../services/configStore');
 const { FIELD_DEFS, SECRET_KEYS } = require('../services/configStore');
 const { getOAuthRedirectDebugInfo } = require('../services/oauthRedirectUris');
 const { blockInDemoMode } = require('../middleware/demoMode');
+const hosting = require('../config/hosting');
+
+// Stricter rate limit for config reads — prevents enumeration/recon on shared deployments
+const configReadLimiter = rateLimit({
+  windowMs: 60 * 1000,   // 1 minute window
+  max: 20,               // 20 reads per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'too_many_requests', message: 'Too many config requests. Please wait a minute.' },
+  skip: (req) => req.session?.isAdmin || req.session?.oauthUser?.role === 'admin', // skip for authenticated admins
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -35,16 +47,15 @@ function isAdminSession(req) {
 
 /**
  * Gate: allow request if (a) no config is stored yet, OR (b) caller is admin,
- * OR (c) on Vercel and the correct ADMIN_CONFIG_PASSWORD header is provided,
- * OR (d) on Vercel and ADMIN_CONFIG_PASSWORD is not set (open demo mode).
+ * OR (c) hosted mode and the correct ADMIN_CONFIG_PASSWORD header is provided,
+ * OR (d) hosted mode and ADMIN_CONFIG_PASSWORD is not set (open demo mode).
  */
 function requireAdminOrUnconfigured(req, res, next) {
   if (!configStore.isConfigured()) return next(); // first-run: always open
   if (isAdminSession(req)) return next();          // OAuth admin session
 
-  // Vercel path: sessions don't persist across serverless invocations.
-  // Check an optional admin password header instead.
-  if (process.env.VERCEL) {
+  // Vercel / opt-in Replit: sessions may not persist — optional admin password header.
+  if (hosting.useConfigPasswordHeader()) {
     const envPassword = process.env.ADMIN_CONFIG_PASSWORD;
     if (!envPassword) return next(); // no password configured → open demo mode
     if (req.headers['x-config-password'] === envPassword) return next();
@@ -64,7 +75,7 @@ function requireAdminOrUnconfigured(req, res, next) {
 // GET /api/admin/config
 // ---------------------------------------------------------------------------
 
-router.get('/', async (req, res) => {
+router.get('/', configReadLimiter, async (req, res) => {
   try {
     await configStore.ensureInitialized();
     let redirectInfo = null;
@@ -78,8 +89,8 @@ router.get('/', async (req, res) => {
       isConfigured: configStore.isConfigured(),
       storageType:  configStore.getStorageType(),
       readOnly:     configStore.isReadOnly(),
-      /** Vercel: PingOne OAuth clients (admin, customer, worker) are set in deployment env/KV — not collected in this UI. */
-      deploymentManagedPingOneOAuth: !!process.env.VERCEL,
+      /** Hosted (Vercel or REPLIT_MANAGED_OAUTH): OAuth clients from env/KV — UI may be deployment-managed. */
+      deploymentManagedPingOneOAuth: hosting.isDeploymentManagedPingOneOAuth(),
       /** Demo mode: destructive operations are limited — set via DEMO_MODE env var on shared/public deployments. */
       demoMode: !!process.env.DEMO_MODE,
       /** Exact redirect URIs to register in PingOne for this deployment (server-computed). */
@@ -96,11 +107,11 @@ router.get('/', async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post('/', requireAdminOrUnconfigured, async (req, res) => {
-  if (process.env.VERCEL && !configStore.hasKvStorage()) {
+  if (hosting.isVercel() && !configStore.hasKvStorage()) {
     return res.status(403).json({
       error:   'read_only',
       message:
-        'This deployment has no Vercel KV / Upstash connection. Set KV_REST_API_URL and KV_REST_API_TOKEN (or use the Vercel KV integration), or manage PingOne settings via environment variables only.',
+        'This Vercel deployment has no KV / Upstash connection. Set KV_REST_API_URL and KV_REST_API_TOKEN (or the Vercel KV integration), or manage PingOne settings via environment variables only.',
     });
   }
   try {
@@ -185,11 +196,11 @@ router.post('/test', async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post('/reset', blockInDemoMode('config reset'), requireAdminOrUnconfigured, async (req, res) => {
-  if (process.env.VERCEL && !configStore.hasKvStorage()) {
+  if (hosting.isVercel() && !configStore.hasKvStorage()) {
     return res.status(403).json({
       error:   'read_only',
       message:
-        'This deployment has no KV store. Reset is only available when KV_REST_API_URL and KV_REST_API_TOKEN are configured.',
+        'This Vercel deployment has no KV store. Reset is only available when KV_REST_API_URL and KV_REST_API_TOKEN are configured.',
     });
   }
   try {

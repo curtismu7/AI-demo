@@ -75,7 +75,7 @@ export interface ServerCapabilities {
   tools?: {
     listChanged?: boolean;
   };
-  logging?: {};
+  logging?: Record<string, never>;
   prompts?: {
     listChanged?: boolean;
   };

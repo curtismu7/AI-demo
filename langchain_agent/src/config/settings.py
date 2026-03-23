@@ -19,7 +19,7 @@ except ImportError:
 
 @dataclass
 class PingOneConfig:
-    """Configuration for PingOne Advanced Identity Cloud (ForgeRock)."""
+    """Configuration for PingOne AI Core (ForgeRock)."""
     base_url: str
     client_registration_endpoint: str
     token_endpoint: str
@@ -301,7 +301,7 @@ class ConfigManager:
                    defaults.get(key) or 
                    default or "")
         
-        # PingOne Advanced Identity Cloud (ForgeRock) configuration
+        # PingOne AI Core (ForgeRock) configuration
         pingone_config = PingOneConfig(
             base_url=self._get_required_env("PINGONE_BASE_URL", file_config, defaults),
             client_registration_endpoint=self._get_required_env("PINGONE_CLIENT_REGISTRATION_ENDPOINT", file_config, defaults),

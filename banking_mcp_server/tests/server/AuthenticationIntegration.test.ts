@@ -6,7 +6,7 @@
 import { AuthenticationIntegration } from '../../src/server/AuthenticationIntegration';
 import { BankingAuthenticationManager } from '../../src/auth/BankingAuthenticationManager';
 import { BankingSessionManager, BankingSession, UserTokens } from '../../src/storage/BankingSessionManager';
-import { PingOneConfig, AgentTokenInfo, AuthenticationError, AuthErrorCodes } from '../../src/interfaces/auth';
+import { PingOneConfig, AgentTokenInfo } from '../../src/interfaces/auth';
 import { AuthorizationRequest } from '../../src/interfaces/mcp';
 
 // Mock dependencies

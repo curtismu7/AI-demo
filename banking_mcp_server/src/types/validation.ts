@@ -3,17 +3,6 @@
  */
 
 import { AgentTokenInfo, UserTokens, AuthorizationRequest } from '../interfaces/auth';
-import { Account, Transaction, TransactionRequest } from '../interfaces/banking';
-import { 
-  MCPMessage, 
-  MCPResponse, 
-  MCPError, 
-  ToolDefinition, 
-  ToolResult, 
-  HandshakeMessage, 
-  ToolCallMessage,
-  JSONSchema
-} from '../interfaces/mcp';
 
 /**
  * Validates AgentTokenInfo structure and data

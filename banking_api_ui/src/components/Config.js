@@ -117,7 +117,7 @@ export default function Config() {
   const [storageType, setStorageType] = useState('');
   const [isConfigured, setIsConfigured] = useState(false);
   const [readOnly, setReadOnly]       = useState(false);
-  /** Vercel: OAuth client IDs/secrets (and worker) come from deployment — UI does not edit them. */
+  /** Hosted (Replit/Vercel + managed OAuth): client IDs/secrets from deployment — UI may not edit them. */
   const [deploymentManaged, setDeploymentManaged] = useState(false);
 
   const [demoMode, setDemoMode]   = useState(false);
@@ -128,7 +128,7 @@ export default function Config() {
   const [testing, setTesting]     = useState(false);
 
   const [testResult, setTestResult] = useState(null);
-  // Admin password for Vercel (since serverless sessions don't persist)
+  // Admin password for hosted serverless or REPLIT_CONFIG_PASSWORD_MODE (sessions / config gate)
   const [configPassword, setConfigPassword] = useState('');  // matches ADMIN_CONFIG_PASSWORD env var
   /** Server-computed OAuth redirect URIs for PingOne allowlists */
   const [redirectInfo, setRedirectInfo] = useState(null);
@@ -169,6 +169,7 @@ export default function Config() {
       setStorageType(data.storageType || '');
       setIsConfigured(data.isConfigured || false);
       setReadOnly(data.readOnly || false);
+      setRedirectInfo(data.redirectInfo ?? null);
 
       // Persist public values back to IndexedDB
       await savePublicConfig(formUpdates);
@@ -206,7 +207,7 @@ export default function Config() {
     else toast.error(msg);
   }
 
-  // Build auth headers for config write requests (Vercel: password header)
+  // Build auth headers for config write requests (hosted: password header)
   const getConfigHeaders = () => {
     if (storageType === 'vercel-kv' && configPassword) {
       return { 'X-Config-Password': configPassword };
@@ -290,9 +291,9 @@ export default function Config() {
             <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>⚙️ Application Configuration</h1>
             <p style={{ fontSize: '0.875rem', opacity: 0.85, marginTop: '0.25rem' }}>
               {deploymentManaged ? (
-                <><strong>Hosted:</strong> OAuth client credentials live <strong>on the server</strong> (backend defaults and/or deployment secrets — not entered by visitors). Use <strong>Admin</strong> and <strong>Customer</strong> sign-in on the login page. Register the redirect URIs below in PingOne.{' '}</>
+                <><strong>Hosted:</strong> <strong>Two</strong> PingOne OAuth apps (admin + end-user) — client credentials live <strong>on the server</strong> (secrets / KV — not entered by visitors). Use <strong>Admin</strong> and <strong>Customer</strong> sign-in on the login page. Register both redirect URIs below in PingOne.{' '}</>
               ) : (
-                <><strong>Local:</strong> configure PingOne apps here (admin + end-user). Stored in SQLite.{' '}</>
+                <><strong>Local:</strong> configure <strong>both</strong> PingOne apps here (admin + end-user). Stored in SQLite.{' '}</>
               )}
             </p>
           </div>
@@ -315,7 +316,7 @@ export default function Config() {
 
       <div className="container" style={{ padding: '2rem 20px', maxWidth: '800px' }}>
 
-        {/* Read-only banner (Vercel deployment) */}
+        {/* Read-only banner (hosted serverless, no KV) */}
         {readOnly && (
           <div style={{
             background: '#eff6ff',
@@ -325,7 +326,7 @@ export default function Config() {
             marginBottom: '1.5rem',
             color: '#1e40af',
           }}>
-            <strong>Read-only mode (Vercel, no KV):</strong> Runtime PingOne fields are supplied by the deployment (server-side). Connect <strong>Vercel KV / Upstash</strong> if you need to edit values from this UI. On <strong>localhost</strong>, SQLite stores configuration locally.
+            <strong>Read-only mode (hosted, no KV):</strong> Runtime PingOne fields are supplied by the deployment (server-side). Connect <strong>Upstash Redis / KV</strong> (<code>KV_REST_API_URL</code>) if you need to edit values from this UI. On <strong>localhost</strong> or <strong>Replit with SQLite</strong>, configuration is stored on disk.
           </div>
         )}
 
@@ -480,7 +481,7 @@ export default function Config() {
             color: '#166534',
             fontSize: '0.9rem',
           }}>
-            <strong>Local development:</strong> Configure <strong>Admin</strong> and <strong>End-User</strong> OAuth apps independently (two PingOne apps, two client IDs/secrets). This layout is only shown when the API server is not running on Vercel.
+            <strong>Local development:</strong> Configure <strong>Admin</strong> and <strong>End-User</strong> OAuth apps independently — <strong>two PingOne apps and two client IDs</strong>, same model as production. This layout is shown when deployment-managed OAuth is off (e.g. local or Replit with full editor).
           </div>
         )}
 
@@ -524,7 +525,7 @@ export default function Config() {
             color: '#9a3412',
           }}>
             <strong>Not saved yet:</strong> Complete the fields below, then <strong>Save Configuration</strong>.
-            Values are stored in {storageType === 'vercel-kv' ? 'Vercel KV' : 'SQLite'} so they survive restarts.
+            Values are stored in {storageType === 'vercel-kv' ? 'Redis (KV)' : 'SQLite'} so they survive restarts.
           </div>
         )}
 
@@ -608,7 +609,7 @@ export default function Config() {
             </div>
           </div>
 
-          {/* ── OAuth: Vercel = deployment-managed; local = full editor ── */}
+          {/* ── OAuth: hosted managed vs local full editor ── */}
           {deploymentManaged ? (
             <div className="card" style={{ borderColor: '#a7f3d0', background: '#f8fffc' }}>
               <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.35rem' }}>
@@ -820,7 +821,7 @@ export default function Config() {
               <h2 className="card-title">Advanced</h2>
             </div>
 
-            {/* Vercel warning: LangChain agent is local-only */}
+            {/* Hosted warning: LangChain agent is local-only */}
             {storageType === 'vercel-kv' && (
               <div style={{
                 background: '#fff7ed',
@@ -836,8 +837,8 @@ export default function Config() {
               }}>
                 <span style={{ fontSize: '1rem', lineHeight: 1 }}>⚠️</span>
                 <div>
-                  <strong>LangChain / MCP Agent not available on Vercel.</strong> The agent runs
-                  as a local Python process and cannot be reached from a Vercel deployment.
+                  <strong>LangChain / MCP Agent not available on hosted cloud.</strong> The agent runs
+                  as a local Python process and cannot be reached from a browser-only cloud deployment (Vercel, Replit web, etc.).
                   Leave this field blank — the chat panel will show a "not configured" message
                   instead of failing silently.
                 </div>
@@ -850,10 +851,10 @@ export default function Config() {
                 fieldKey="mcp_server_url"
                 value={form.mcp_server_url}
                 onChange={handleChange}
-                placeholder={storageType === 'vercel-kv' ? 'Not available on Vercel — leave blank' : 'http://localhost:8000'}
+                placeholder={storageType === 'vercel-kv' ? 'Not available on hosted cloud — leave blank' : 'http://localhost:8000'}
                 help={storageType === 'vercel-kv'
-                  ? '⚠️ This URL is only reachable when running locally. On Vercel, clear this field.'
-                  : 'URL of the banking LangChain agent (WebSocket). Local only — not available on Vercel.'}
+                  ? '⚠️ This URL is only reachable when running locally. On Replit/Vercel, clear this field.'
+                  : 'URL of the banking LangChain agent (WebSocket). Local only — not reachable from hosted cloud.'}
                 disabled={readOnly}
               />
               <div>
@@ -870,7 +871,7 @@ export default function Config() {
               </div>
             </div>
 
-            {/* Vercel: admin password required to save once config is set — hidden in read-only mode */}
+            {/* Hosted KV: admin password may be required — hidden in read-only mode */}
             {storageType === 'vercel-kv' && !readOnly && (
               <div style={{ marginTop: '1rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
                 <div style={{
@@ -882,12 +883,12 @@ export default function Config() {
                   fontSize: '0.8125rem',
                   color: '#6b21a8',
                 }}>
-                  <strong>🔑 Vercel Config Password</strong> — once credentials are saved, updates require
-                  an admin password. Set <code>ADMIN_CONFIG_PASSWORD</code> in your Vercel environment
+                  <strong>🔑 Config password</strong> — once credentials are saved, updates require
+                  an admin password. Set <code>ADMIN_CONFIG_PASSWORD</code> in your Replit / Vercel secrets
                   variables, then enter it here before saving. Leave blank on first-time setup.
                 </div>
                 <div className="form-group" style={{ maxWidth: '400px' }}>
-                  <label className="form-label">Config Password (Vercel only)</label>
+                  <label className="form-label">Config Password (hosted KV)</label>
                   <input
                     type="password"
                     className="form-input"
@@ -896,7 +897,7 @@ export default function Config() {
                     placeholder="Value of ADMIN_CONFIG_PASSWORD env var"
                   />
                   <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                    Required to overwrite config on Vercel. Not stored — enter each session.
+                    Required to overwrite config when the API uses this gate. Not stored — enter each session.
                   </p>
                 </div>
               </div>
@@ -946,7 +947,7 @@ export default function Config() {
               <div className="card-header">
                 <h2 className="card-title">Run Your Own Instance</h2>
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
-                  The hosted demo at <code>banking-demo-puce.vercel.app</code> uses a shared PingOne environment.
+                  The hosted demo at <code>banking-demo-puce.vercel.app</code> may use a shared PingOne environment (see project docs for the current URL).
                   Your own deployment gets its own isolated PingOne environment — users you create there are separate.
                 </p>
               </div>
@@ -966,7 +967,7 @@ export default function Config() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
 
-                {/* Path A: Vercel */}
+                {/* Path A: hosted cloud */}
                 <div style={{
                   border: '1px solid #c7d2fe',
                   borderRadius: '0.5rem',
@@ -974,7 +975,7 @@ export default function Config() {
                   background: '#eef2ff',
                 }}>
                   <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', color: '#3730a3' }}>
-                    ☁️ Path A: Deploy to Vercel
+                    ☁️ Path A: Deploy (Vercel or Replit)
                   </h3>
                   <p style={{ fontSize: '0.8rem', color: '#4338ca', marginBottom: '1rem', marginTop: 0 }}>
                     Your own PingOne environment, zero-downtime deploys, free tier available.
@@ -982,7 +983,7 @@ export default function Config() {
                   <ol style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.82rem', color: '#312e81', lineHeight: 1.65 }}>
                     <li>Fork or clone the repo from GitHub</li>
                     <li>In PingOne, create <strong>two OIDC web apps</strong> (Admin + Customer) and note each Client ID</li>
-                    <li>Set these Vercel environment variables:
+                    <li>Set these environment variables on your host (Vercel, Replit Secrets, etc.):
                       <table style={{ width: '100%', marginTop: '0.5rem', marginBottom: '0.5rem', fontSize: '0.78rem', borderCollapse: 'collapse' }}>
                         <tbody>
                           {[
@@ -995,7 +996,7 @@ export default function Config() {
                             ['PINGONE_ADMIN_ROLE', 'Role name (default: admin)'],
                             ['PINGONE_USER_ROLE', 'Role name (default: customer)'],
                             ['SESSION_SECRET', 'Random 32+ char string'],
-                            ['PUBLIC_APP_URL', 'Your Vercel URL (e.g. https://my-app.vercel.app)'],
+                            ['PUBLIC_APP_URL', 'Your public URL (e.g. https://my-app.vercel.app or *.replit.dev)'],
                           ].map(([k, v]) => (
                             <tr key={k}>
                               <td style={{ fontFamily: 'monospace', padding: '0.15rem 0.35rem 0.15rem 0', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{k}</td>
@@ -1006,6 +1007,16 @@ export default function Config() {
                       </table>
                     </li>
                     <li>Add the redirect URIs shown on this page to each PingOne app</li>
+                    <li>
+                      <strong>Replit-specific (optional but recommended):</strong>{' '}
+                      set <code>REPLIT_MANAGED_OAUTH=true</code> when this page should be reference-only for OAuth credentials,
+                      and set <code>REPLIT_CONFIG_PASSWORD_MODE=true</code> + <code>ADMIN_CONFIG_PASSWORD</code> if you want
+                      password-gated config updates on hosted deployments.
+                    </li>
+                    <li>
+                      <strong>Replit networking:</strong> if UI and API are on different origins, set <code>CORS_ORIGIN</code> to the UI URL.
+                      Keep <code>PUBLIC_APP_URL</code> as your stable published Replit HTTPS URL (no trailing slash).
+                    </li>
                     <li>Deploy — no additional setup needed</li>
                   </ol>
                 </div>

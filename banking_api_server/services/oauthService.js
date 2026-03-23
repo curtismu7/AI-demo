@@ -1,68 +1,66 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const oauthConfig = require('../config/oauth');
-
-const DEBUG_TOKENS = process.env.DEBUG_TOKENS === 'true';
+const { isOAuthVerboseDebug } = require('../utils/oauthDebugFlags');
+const { verboseOAuthLog } = require('../utils/oauthVerboseLogger');
 
 // Utility function to decode and log OAuth token information
 const logTokenInfo = (token, context = '') => {
-  if (!DEBUG_TOKENS) return;
-  
+  if (!isOAuthVerboseDebug()) return;
+
   try {
     // Parse JWT without verification (just for reading claims)
     const parts = token.split('.');
     if (parts.length !== 3) {
-      console.log(`🔐 [${context}] Invalid token format`);
+      verboseOAuthLog(`🔐 [${context}] Invalid token format`);
       return;
     }
-    
+
     const header = JSON.parse(Buffer.from(parts[0], 'base64').toString());
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    
+
     if (!header || !payload) {
-      console.log(`🔐 [${context}] Failed to decode token`);
+      verboseOAuthLog(`🔐 [${context}] Failed to decode token`);
       return;
     }
-    
-    console.log(`🔐 [${context}] Token Information:`);
-    console.log(`   Algorithm: ${header.alg}`);
-    console.log(`   Type: ${header.typ}`);
-    if (header.kid) console.log(`   Key ID: ${header.kid}`);
-    
-    console.log(`   Subject: ${payload.sub || 'N/A'}`);
-    console.log(`   Issuer: ${payload.iss || 'N/A'}`);
-    console.log(`   Audience: ${Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud || 'N/A'}`);
-    
+
+    verboseOAuthLog(`🔐 [${context}] Token Information:`);
+    verboseOAuthLog(`   Algorithm: ${header.alg}`);
+    verboseOAuthLog(`   Type: ${header.typ}`);
+    if (header.kid) verboseOAuthLog(`   Key ID: ${header.kid}`);
+
+    verboseOAuthLog(`   Subject: ${payload.sub || 'N/A'}`);
+    verboseOAuthLog(`   Issuer: ${payload.iss || 'N/A'}`);
+    verboseOAuthLog(`   Audience: ${Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud || 'N/A'}`);
+
     if (payload.exp) {
       const expDate = new Date(payload.exp * 1000);
       const now = new Date();
       const timeUntilExp = expDate.getTime() - now.getTime();
-      console.log(`   Expires: ${expDate.toISOString()} (in ${Math.round(timeUntilExp / 1000 / 60)} minutes)`);
+      verboseOAuthLog(`   Expires: ${expDate.toISOString()} (in ${Math.round(timeUntilExp / 1000 / 60)} minutes)`);
     }
-    
+
     if (payload.iat) {
       const iatDate = new Date(payload.iat * 1000);
-      console.log(`   Issued At: ${iatDate.toISOString()}`);
+      verboseOAuthLog(`   Issued At: ${iatDate.toISOString()}`);
     }
-    
-    if (payload.preferred_username) console.log(`   Username: ${payload.preferred_username}`);
-    if (payload.email) console.log(`   Email: ${payload.email}`);
-    if (payload.given_name) console.log(`   First Name: ${payload.given_name}`);
-    if (payload.family_name) console.log(`   Last Name: ${payload.family_name}`);
-    
-    // Log roles/permissions
+
+    if (payload.preferred_username) verboseOAuthLog(`   Username: ${payload.preferred_username}`);
+    if (payload.email) verboseOAuthLog(`   Email: ${payload.email}`);
+    if (payload.given_name) verboseOAuthLog(`   First Name: ${payload.given_name}`);
+    if (payload.family_name) verboseOAuthLog(`   Last Name: ${payload.family_name}`);
+
     if (payload.realm_access?.roles) {
-      console.log(`   Realm Roles: ${payload.realm_access.roles.join(', ')}`);
+      verboseOAuthLog(`   Realm Roles: ${payload.realm_access.roles.join(', ')}`);
     }
     if (payload.resource_access) {
-      console.log(`   Resource Access: ${JSON.stringify(payload.resource_access)}`);
+      verboseOAuthLog(`   Resource Access: ${JSON.stringify(payload.resource_access)}`);
     }
     if (payload.scope) {
-      console.log(`   Scopes: ${payload.scope}`);
+      verboseOAuthLog(`   Scopes: ${payload.scope}`);
     }
-    
   } catch (error) {
-    console.log(`🔐 [${context}] Error decoding token: ${error.message}`);
+    verboseOAuthLog(`🔐 [${context}] Error decoding token: ${error.message}`);
   }
 };
 

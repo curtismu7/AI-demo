@@ -225,8 +225,8 @@ describe('AuthorizationRequestGenerator', () => {
         sessionId: 'session-2'
       };
 
-      const request1 = generator.generateAuthorizationRequest(session1Options);
-      const request2 = generator.generateAuthorizationRequest(session2Options);
+      generator.generateAuthorizationRequest(session1Options);
+      generator.generateAuthorizationRequest(session2Options);
       generator.generateAuthorizationRequest(session1Options); // Another request for session-1
 
       const session1Requests = generator.getPendingRequestsForSession('session-1');

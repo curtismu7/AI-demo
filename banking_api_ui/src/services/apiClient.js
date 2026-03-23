@@ -102,17 +102,9 @@ class ApiClient {
     }
   }
 
-  isTokenExpired(token) {
-    try {
-      // For OAuth tokens, we can't decode them like JWTs
-      // Instead, we'll rely on the server to tell us if they're expired
-      // This is a placeholder - in a real implementation, you might want to
-      // check the token's expiration time if available from the session status
-      return false;
-    } catch (error) {
-      console.error('Error checking token expiration:', error);
-      return true;
-    }
+  isTokenExpired(_token) {
+    // OAuth access tokens are opaque here; rely on the BFF/session for validity.
+    return false;
   }
 
   async refreshToken() {

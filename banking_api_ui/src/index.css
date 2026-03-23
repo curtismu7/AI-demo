@@ -9,7 +9,7 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscole;
+  -moz-osx-font-smoothing: grayscale;
   background-color: #f8fafc;
   color: #1e293b;
 }
@@ -298,21 +298,23 @@ body {
 }
 
 .btn-primary {
-  background-color: #1e40af;
+  background-color: #277ba5;
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #1e3a8a;
+  background-color: #21698c;
 }
 
 .btn-secondary {
-  background-color: #6b7280;
-  color: white;
+  background-color: #ffffff;
+  color: #277ba5;
+  border: 1px solid #277ba5;
 }
 
 .btn-secondary:hover {
-  background-color: #4b5563;
+  background-color: #277ba5;
+  color: #ffffff;
 }
 
 .btn-danger {
@@ -656,22 +658,20 @@ body {
   font-size: 0.875rem;
 }
 
+/* Layout for OAuth buttons — colors come from Ping end-user-nano .btn-* */
 .oauth-btn {
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 1rem;
   font-weight: 500;
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-  border: none;
-  color: white;
   border-radius: 0.5rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .oauth-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(39, 123, 165, 0.25);
 }
 
 .login-footer {
@@ -790,10 +790,31 @@ body {
   font-size: 0.9rem;
 }
 
-.btn-secondary {
-  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+/* Ping One end-user-nano: avoid flat grey for “secondary” — outline-style primary */
+.end-user-nano .btn.btn-secondary {
+  --bs-btn-color: #277ba5;
+  --bs-btn-bg: #ffffff;
+  --bs-btn-border-color: #277ba5;
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: #21698c;
+  --bs-btn-hover-border-color: #1f6284;
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: #1f6284;
+  --bs-btn-active-border-color: #1d5c7c;
+  --bs-btn-focus-shadow-rgb: 39, 123, 165;
+  --bs-btn-disabled-color: #8a9aa8;
+  --bs-btn-disabled-bg: #f1f5f9;
+  --bs-btn-disabled-border-color: #cbd5e1;
 }
 
-.btn-secondary:hover {
-  box-shadow: 0 8px 25px rgba(149, 165, 166, 0.4);
+.end-user-nano .pagination-btn {
+  color: #277ba5;
+  border-color: #277ba5;
+  background-color: #ffffff;
+}
+
+.end-user-nano .pagination-btn:hover:not(:disabled) {
+  color: #ffffff;
+  background-color: #277ba5;
+  border-color: #21698c;
 }

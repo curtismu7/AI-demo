@@ -5,7 +5,6 @@ import {
   CibaVsLoginContent,
   LoginFlowPkceContent,
   LoginFlowSecurityContent,
-  OAuthApiCheatsheet,
 } from './educationContent';
 
 export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {

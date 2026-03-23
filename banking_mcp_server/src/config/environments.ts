@@ -4,7 +4,7 @@
  */
 
 import { BankingMCPServerConfig, EnvironmentVariables, SecurityConfig, ServerConfig, LoggingConfig } from '../interfaces/config';
-import { PingOneConfig, BankingAPIConfig } from '../interfaces';
+import { BankingAPIConfig } from '../interfaces';
 
 export enum Environment {
   DEVELOPMENT = 'development',

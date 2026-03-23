@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios';
-import { BankingAPIClient, BankingAPIClientOptions } from '../../src/banking/BankingAPIClient';
+import { BankingAPIClient } from '../../src/banking/BankingAPIClient';
 import {
   Account,
   Transaction,

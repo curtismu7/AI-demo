@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ChatInterface from './ChatInterface';
 import './ChatWidget.css';
 
@@ -33,31 +33,31 @@ const ChatWidget = ({
         });
     };
 
-    const handleMouseMove = (e) => {
-        if (isDragging) {
+    const handleMouseMove = useCallback(
+        (e) => {
             const widget = document.querySelector('.chat-widget');
             if (widget) {
                 widget.style.left = `${e.clientX - dragOffset.x}px`;
                 widget.style.top = `${e.clientY - dragOffset.y}px`;
                 widget.style.position = 'fixed';
             }
-        }
-    };
+        },
+        [dragOffset]
+    );
 
-    const handleMouseUp = () => {
+    const handleMouseUp = useCallback(() => {
         setIsDragging(false);
-    };
+    }, []);
 
     useEffect(() => {
-        if (isDragging) {
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            return () => {
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-            };
-        }
-    }, [isDragging, dragOffset]);
+        if (!isDragging) return undefined;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging, handleMouseMove, handleMouseUp]);
 
     if (!isOpen) return null;
 

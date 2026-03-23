@@ -251,36 +251,31 @@ export class BankingToolProvider {
    * Execute get_my_accounts tool
    */
   private async executeGetMyAccounts(userToken: string): Promise<BankingToolResult> {
-    try {
-      console.log(`[BankingToolProvider] Calling Banking API: getMyAccounts`);
-      const accounts = await this.apiClient.getMyAccounts(userToken);
-      console.log(`[BankingToolProvider] Banking API raw response:`, accounts);
-      console.log(`[BankingToolProvider] Response type:`, typeof accounts);
-      console.log(`[BankingToolProvider] Is array:`, Array.isArray(accounts));
+    console.log(`[BankingToolProvider] Calling Banking API: getMyAccounts`);
+    const accounts = await this.apiClient.getMyAccounts(userToken);
+    console.log(`[BankingToolProvider] Banking API raw response:`, accounts);
+    console.log(`[BankingToolProvider] Response type:`, typeof accounts);
+    console.log(`[BankingToolProvider] Is array:`, Array.isArray(accounts));
 
-      if (accounts && accounts.length !== undefined) {
-        console.log(`[BankingToolProvider] Banking API response: Found ${accounts.length} accounts`);
-      } else {
-        console.log(`[BankingToolProvider] Banking API response: accounts is not an array or is undefined`);
-      }
-
-      // Return structured JSON response
-      const response = {
-        success: true,
-        count: accounts.length,
-        accounts: accounts.map(account => ({
-          id: account.id,
-          type: account.accountType,
-          number: account.accountNumber,
-          balance: account.balance,
-          status: account.status || 'active'
-        }))
-      };
-
-      return this.createSuccessResult(JSON.stringify(response, null, 2));
-    } catch (error) {
-      throw error; // Re-throw to be handled by main executeTool method
+    if (accounts && accounts.length !== undefined) {
+      console.log(`[BankingToolProvider] Banking API response: Found ${accounts.length} accounts`);
+    } else {
+      console.log(`[BankingToolProvider] Banking API response: accounts is not an array or is undefined`);
     }
+
+    const response = {
+      success: true,
+      count: accounts.length,
+      accounts: accounts.map(account => ({
+        id: account.id,
+        type: account.accountType,
+        number: account.accountNumber,
+        balance: account.balance,
+        status: account.status || 'active'
+      }))
+    };
+
+    return this.createSuccessResult(JSON.stringify(response, null, 2));
   }
 
   /**
@@ -290,65 +285,53 @@ export class BankingToolProvider {
     userToken: string,
     params: { account_id: string }
   ): Promise<BankingToolResult> {
-    try {
-      console.log(`[BankingToolProvider] Calling Banking API: getAccountBalance for account ${params.account_id}`);
-      const balanceResponse = await this.apiClient.getAccountBalance(userToken, params.account_id);
-      console.log(`[BankingToolProvider] Banking API response: Account balance ${balanceResponse.balance}`);
+    console.log(`[BankingToolProvider] Calling Banking API: getAccountBalance for account ${params.account_id}`);
+    const balanceResponse = await this.apiClient.getAccountBalance(userToken, params.account_id);
+    console.log(`[BankingToolProvider] Banking API response: Account balance ${balanceResponse.balance}`);
 
-      // Return structured JSON response
-      const response = {
-        success: true,
-        accountId: params.account_id,
-        balance: balanceResponse.balance
-      };
+    const response = {
+      success: true,
+      accountId: params.account_id,
+      balance: balanceResponse.balance
+    };
 
-      return this.createSuccessResult(JSON.stringify(response, null, 2));
-    } catch (error) {
-      throw error; // Re-throw to be handled by main executeTool method
-    }
+    return this.createSuccessResult(JSON.stringify(response, null, 2));
   }
 
   /**
    * Execute get_my_transactions tool
    */
   private async executeGetMyTransactions(userToken: string): Promise<BankingToolResult> {
-    try {
-      const transactions = await this.apiClient.getMyTransactions(userToken);
+    const transactions = await this.apiClient.getMyTransactions(userToken);
 
-      // Validate that transactions is an array
-      if (!Array.isArray(transactions)) {
-        console.error(`[BankingToolProvider] Expected transactions to be an array, got:`, typeof transactions, transactions);
-        
-        // Return structured error response
-        const errorResponse = {
-          success: false,
-          error: 'Invalid response format from banking API',
-          receivedType: typeof transactions,
-          receivedData: transactions
-        };
-        
-        return this.createSuccessResult(JSON.stringify(errorResponse, null, 2));
-      }
+    if (!Array.isArray(transactions)) {
+      console.error(`[BankingToolProvider] Expected transactions to be an array, got:`, typeof transactions, transactions);
 
-      // Return structured JSON response
-      const response = {
-        success: true,
-        count: transactions.length,
-        transactions: transactions.map(transaction => ({
-          id: transaction.id,
-          type: transaction.type,
-          amount: transaction.amount,
-          date: transaction.createdAt,
-          fromAccountId: transaction.fromAccountId || null,
-          toAccountId: transaction.toAccountId || null,
-          description: transaction.description || null
-        }))
+      const errorResponse = {
+        success: false,
+        error: 'Invalid response format from banking API',
+        receivedType: typeof transactions,
+        receivedData: transactions
       };
 
-      return this.createSuccessResult(JSON.stringify(response, null, 2));
-    } catch (error) {
-      throw error; // Re-throw to be handled by main executeTool method
+      return this.createSuccessResult(JSON.stringify(errorResponse, null, 2));
     }
+
+    const response = {
+      success: true,
+      count: transactions.length,
+      transactions: transactions.map(transaction => ({
+        id: transaction.id,
+        type: transaction.type,
+        amount: transaction.amount,
+        date: transaction.createdAt,
+        fromAccountId: transaction.fromAccountId || null,
+        toAccountId: transaction.toAccountId || null,
+        description: transaction.description || null
+      }))
+    };
+
+    return this.createSuccessResult(JSON.stringify(response, null, 2));
   }
 
   /**
@@ -358,35 +341,30 @@ export class BankingToolProvider {
     userToken: string,
     params: { to_account_id: string; amount: number; description?: string }
   ): Promise<BankingToolResult> {
-    try {
-      console.log(`[BankingToolProvider] Calling Banking API: createDeposit - Amount: ${params.amount}, Account: ${params.to_account_id}`);
-      const response = await this.apiClient.createDeposit(
-        userToken,
-        params.to_account_id,
-        params.amount,
-        params.description
-      );
-      console.log(`[BankingToolProvider] Banking API response: Deposit successful - ${response.message}`);
+    console.log(`[BankingToolProvider] Calling Banking API: createDeposit - Amount: ${params.amount}, Account: ${params.to_account_id}`);
+    const response = await this.apiClient.createDeposit(
+      userToken,
+      params.to_account_id,
+      params.amount,
+      params.description
+    );
+    console.log(`[BankingToolProvider] Banking API response: Deposit successful - ${response.message}`);
 
-      // Return structured JSON response
-      const result = {
-        success: true,
-        operation: 'deposit',
-        message: response.message,
-        transaction: response.transaction ? {
-          id: response.transaction.id,
-          amount: params.amount,
-          toAccountId: params.to_account_id,
-          description: params.description || null
-        } : null,
+    const result = {
+      success: true,
+      operation: 'deposit',
+      message: response.message,
+      transaction: response.transaction ? {
+        id: response.transaction.id,
         amount: params.amount,
-        accountId: params.to_account_id
-      };
+        toAccountId: params.to_account_id,
+        description: params.description || null
+      } : null,
+      amount: params.amount,
+      accountId: params.to_account_id
+    };
 
-      return this.createSuccessResult(JSON.stringify(result, null, 2));
-    } catch (error) {
-      throw error; // Re-throw to be handled by main executeTool method
-    }
+    return this.createSuccessResult(JSON.stringify(result, null, 2));
   }
 
   /**
@@ -396,33 +374,28 @@ export class BankingToolProvider {
     userToken: string,
     params: { from_account_id: string; amount: number; description?: string }
   ): Promise<BankingToolResult> {
-    try {
-      const response = await this.apiClient.createWithdrawal(
-        userToken,
-        params.from_account_id,
-        params.amount,
-        params.description
-      );
+    const response = await this.apiClient.createWithdrawal(
+      userToken,
+      params.from_account_id,
+      params.amount,
+      params.description
+    );
 
-      // Return structured JSON response
-      const result = {
-        success: true,
-        operation: 'withdrawal',
-        message: response.message,
-        transaction: response.transaction ? {
-          id: response.transaction.id,
-          amount: params.amount,
-          fromAccountId: params.from_account_id,
-          description: params.description || null
-        } : null,
+    const result = {
+      success: true,
+      operation: 'withdrawal',
+      message: response.message,
+      transaction: response.transaction ? {
+        id: response.transaction.id,
         amount: params.amount,
-        accountId: params.from_account_id
-      };
+        fromAccountId: params.from_account_id,
+        description: params.description || null
+      } : null,
+      amount: params.amount,
+      accountId: params.from_account_id
+    };
 
-      return this.createSuccessResult(JSON.stringify(result, null, 2));
-    } catch (error) {
-      throw error; // Re-throw to be handled by main executeTool method
-    }
+    return this.createSuccessResult(JSON.stringify(result, null, 2));
   }
 
   /**
@@ -432,40 +405,35 @@ export class BankingToolProvider {
     userToken: string,
     params: { from_account_id: string; to_account_id: string; amount: number; description?: string }
   ): Promise<BankingToolResult> {
-    try {
-      const response = await this.apiClient.createTransfer(
-        userToken,
-        params.from_account_id,
-        params.to_account_id,
-        params.amount,
-        params.description
-      );
+    const response = await this.apiClient.createTransfer(
+      userToken,
+      params.from_account_id,
+      params.to_account_id,
+      params.amount,
+      params.description
+    );
 
-      // Return structured JSON response
-      const result = {
-        success: true,
-        operation: 'transfer',
-        message: response.message,
-        withdrawalTransaction: response.withdrawalTransaction ? {
-          id: response.withdrawalTransaction.id,
-          amount: params.amount,
-          fromAccountId: params.from_account_id
-        } : null,
-        depositTransaction: response.depositTransaction ? {
-          id: response.depositTransaction.id,
-          amount: params.amount,
-          toAccountId: params.to_account_id
-        } : null,
+    const result = {
+      success: true,
+      operation: 'transfer',
+      message: response.message,
+      withdrawalTransaction: response.withdrawalTransaction ? {
+        id: response.withdrawalTransaction.id,
         amount: params.amount,
-        fromAccountId: params.from_account_id,
-        toAccountId: params.to_account_id,
-        description: params.description || null
-      };
+        fromAccountId: params.from_account_id
+      } : null,
+      depositTransaction: response.depositTransaction ? {
+        id: response.depositTransaction.id,
+        amount: params.amount,
+        toAccountId: params.to_account_id
+      } : null,
+      amount: params.amount,
+      fromAccountId: params.from_account_id,
+      toAccountId: params.to_account_id,
+      description: params.description || null
+    };
 
-      return this.createSuccessResult(JSON.stringify(result, null, 2));
-    } catch (error) {
-      throw error; // Re-throw to be handled by main executeTool method
-    }
+    return this.createSuccessResult(JSON.stringify(result, null, 2));
   }
 
   /**

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import axios from 'axios';
-import apiClient from '../services/apiClient';
+import bffAxios from '../services/bffAxios';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import BankingAgent from './BankingAgent';
@@ -23,47 +23,62 @@ const Dashboard = ({ user, onLogout }) => {
     fetchDashboardData();
   }, []);
 
-  // Auto-refresh effect
-  useEffect(() => {
-    let interval;
-    if (autoRefresh) {
-      interval = setInterval(() => {
-        fetchDashboardData();
-      }, 5000); // 5 seconds
-    }
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [autoRefresh]);
-
   const fetchDashboardData = async () => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
       setLoading(true);
-      const [statsResponse, activityResponse] = await Promise.all([
-        apiClient.get('/api/admin/stats'),
-        apiClient.get('/api/admin/activity/recent?hours=24')
+      setError('');
+      const [statsResult, activityResult] = await Promise.allSettled([
+        bffAxios.get('/api/admin/stats'),
+        bffAxios.get('/api/admin/activity/recent?hours=24'),
       ]);
 
-      setStats(statsResponse.data.stats);
-      setRecentActivity(activityResponse.data.logs);
+      if (statsResult.status === 'rejected') {
+        const error = statsResult.reason;
+        console.error('Dashboard stats error:', error?.response?.data || error?.message || error);
+        const status = error.response?.status;
+        const detail =
+          error.response?.data?.error_description ||
+          error.response?.data?.message ||
+          error.message ||
+          '';
+        if (status === 401) {
+          setForbidden403(false);
+          setError('Your session has expired. Please log in again.');
+        } else if (status === 403) {
+          setForbidden403(true);
+          setError('You do not have permission to access the admin dashboard.');
+        } else {
+          setForbidden403(false);
+          setError(
+            detail
+              ? `Failed to load dashboard data (${status || 'error'}): ${detail}`
+              : `Failed to load dashboard data${status ? ` (HTTP ${status})` : ''}. Try refreshing the page.`
+          );
+        }
+        return;
+      }
+
+      const nextStats = statsResult.value.data?.stats;
+      if (!nextStats || typeof nextStats !== 'object') {
+        setForbidden403(false);
+        setError('Failed to load dashboard data: invalid response from server.');
+        return;
+      }
+      setStats(nextStats);
       setForbidden403(false);
+
+      if (activityResult.status === 'fulfilled') {
+        setRecentActivity(activityResult.value.data?.logs ?? []);
+      } else {
+        console.error('Dashboard activity error:', activityResult.reason?.response?.data || activityResult.reason?.message);
+        setRecentActivity([]);
+      }
     } catch (error) {
       console.error('Dashboard error:', error);
-      
-      if (error.response?.status === 401) {
-        setForbidden403(false);
-        setError('Your session has expired. Please log in again.');
-      } else if (error.response?.status === 403) {
-        setForbidden403(true);
-        setError('You do not have permission to access the admin dashboard.');
-      } else {
-        setForbidden403(false);
-        setError('Failed to load dashboard data');
-      }
+      setForbidden403(false);
+      setError(error.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
       fetchingRef.current = false;
@@ -160,17 +175,17 @@ const Dashboard = ({ user, onLogout }) => {
           <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#374151', lineHeight: 1.5 }}>
             <p style={{ marginTop: 0 }}>
               The API rejected this request. Common causes: the access token was issued to the <strong>end-user</strong> PingOne
-              app but the admin dashboard requires the <strong>admin</strong> app; or Vercel env vars
-              (<code>PINGONE_ENVIRONMENT_ID</code>, admin client id/secret, redirect URIs) do not match the PingOne app
+              app but the admin dashboard requires the <strong>admin</strong> app; or hosted env vars
+              (<code>PINGONE_ENVIRONMENT_ID</code>, <strong>admin</strong> and <strong>user</strong> client IDs/secrets, redirect URIs) do not match the PingOne apps
               that issued the token.
             </p>
             <p>
-              <strong>Shared Vercel URL:</strong> everyone uses the same env vars in the Vercel project — set{' '}
+              <strong>Shared hosted URL:</strong> everyone uses the same env vars in the deployment — set{' '}
               <code>PINGONE_AI_CORE_CLIENT_ID</code> (or <code>PINGONE_CORE_CLIENT_ID</code>) to your <strong>admin</strong> PingOne
               application ID, and register this site&apos;s redirect URIs in that app.
             </p>
             <p>
-              <strong>Serverless:</strong> set <code>REDIS_URL</code> (or Vercel KV) so OAuth session/state survives across
+              <strong>Serverless / multi-instance:</strong> set <code>REDIS_URL</code> (or Vercel KV / Replit Redis) so OAuth session/state survives across
               instances — otherwise <strong>Admin Sign in</strong> may fail before you reach PingOne.
             </p>
             <p style={{ marginBottom: 0 }}>
@@ -282,6 +297,26 @@ const Dashboard = ({ user, onLogout }) => {
             }}
           >
             MCP Inspector
+          </Link>
+          <Link
+            to="/oauth-debug-logs"
+            title="OAuth verbose log (Config → Debug OAuth logging)"
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '2px solid rgba(255, 255, 255, 0.85)',
+              color: '#1e40af',
+              padding: '10px 18px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              textDecoration: 'none',
+              transition: 'all 0.2s ease',
+              backdropFilter: 'blur(10px)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            OAuth debug log
           </Link>
           <button 
             onClick={openTokenModal}

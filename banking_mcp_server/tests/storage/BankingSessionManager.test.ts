@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { BankingSessionManager, UserTokens, SessionStats } from '../../src/storage/BankingSessionManager';
+import { BankingSessionManager, UserTokens } from '../../src/storage/BankingSessionManager';
 
 describe('BankingSessionManager', () => {
   const testStoragePath = path.join(__dirname, 'test-banking-sessions');
@@ -340,9 +340,8 @@ describe('BankingSessionManager', () => {
       const agentToken1 = 'agent-token-1';
       const agentToken2 = 'agent-token-2';
       
-      // Create one valid session and one that will expire
-      const validSession = await bankingSessionManager.createSession(agentToken1, 24);
-      const expiredSession = await bankingSessionManager.createSession(agentToken2, 0.0001);
+      await bankingSessionManager.createSession(agentToken1, 24);
+      await bankingSessionManager.createSession(agentToken2, 0.0001);
       
       // Wait for one session to expire
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -525,11 +524,9 @@ describe('BankingSessionManager', () => {
 
     it('should track session creation times', async () => {
       const agentToken = 'test-agent-token';
-      const beforeCreation = Date.now();
-      
+
       await bankingSessionManager.createSession(agentToken);
-      
-      const afterCreation = Date.now();
+
       const stats = bankingSessionManager.getMonitoringStatistics();
       
       expect(stats.totalSessionsCreated).toBe(1);

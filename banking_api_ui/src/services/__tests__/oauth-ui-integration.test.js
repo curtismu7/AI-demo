@@ -1,14 +1,15 @@
 /**
  * UI OAuth Integration Tests
- * 
+ *
  * Tests the UI OAuth flow without JWT generation, focusing on:
  * - OAuth token management in UI components
  * - API client OAuth token handling
  * - Token refresh and expiration handling
  * - Error handling for insufficient scopes
- * 
+ *
  * Requirements covered: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3
  */
+/* eslint-disable import/first, jest/no-jasmine-globals, jest/no-conditional-expect, no-unused-vars, no-undef -- legacy skipped suite; mock-before-import; Jasmine fail() */
 
 jest.mock('axios', () => {
   const mockClient = {

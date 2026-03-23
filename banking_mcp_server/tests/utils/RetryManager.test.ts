@@ -123,7 +123,7 @@ describe('RetryManager', () => {
       const calculateDelay = (retryManagerWithJitter as any).calculateDelay.bind(retryManagerWithJitter);
       
       const delay1 = calculateDelay(1);
-      const delay2 = calculateDelay(1);
+      calculateDelay(1);
       
       // With jitter, delays should be different
       expect(delay1).toBeGreaterThanOrEqual(1000);
