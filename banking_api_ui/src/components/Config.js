@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
@@ -117,6 +117,7 @@ function TextField({ label, fieldKey, value, onChange, help, placeholder, type =
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Config() {
+  const navigate = useNavigate();
   const [form, setForm]               = useState(EMPTY_FORM);
   const [secretMeta, setSecretMeta]   = useState({});   // { <key>_set: bool }
   const [showSecret, setShowSecret]   = useState({});   // { key: bool }
@@ -247,7 +248,8 @@ export default function Config() {
       // Persist public fields to IndexedDB
       await savePublicConfig(form);
 
-      showToast('success', 'Configuration saved successfully!');
+      showToast('success', 'Configuration saved! Redirecting to sign in…');
+      setTimeout(() => navigate('/', { state: { scrollToAgent: true } }), 1500);
     } catch (err) {
       showToast('error', `Save failed: ${err.response?.data?.message || err.message}`);
     } finally {

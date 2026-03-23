@@ -101,7 +101,7 @@ function App() {
       console.log('❌ Error checking OAuth sessions:', error.message);
       setLoading(false);
     }
-  }, []);
+  }, [injectEmailIntoNextSessionInit]);
 
   useEffect(() => {
     console.log('🔍 App useEffect - Starting authentication check...');

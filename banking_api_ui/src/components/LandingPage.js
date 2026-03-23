@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import BankingAgent from './BankingAgent';
 import './LandingPage.css';
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('personal');
   const [scrollY, setScrollY] = React.useState(0);
@@ -12,6 +15,13 @@ const LandingPage = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  React.useEffect(() => {
+    if (location.state?.scrollToAgent) {
+      const el = document.getElementById('agent-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [location.state]);
 
   const handleOAuthLogin = (userType = 'user') => {
     const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
@@ -98,7 +108,7 @@ const LandingPage = () => {
             <button 
               type="button"
               className="nav-cta"
-              onClick={() => document.getElementById('agent-section').scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => navigate('/config')}
             >
               Try AI Assistant
             </button>
@@ -137,7 +147,7 @@ const LandingPage = () => {
               <button 
                 type="button"
                 className="cta-primary"
-                onClick={() => document.getElementById('agent-section').scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => navigate('/config')}
               >
                 Start Conversation
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" title="Arrow icon">
@@ -351,7 +361,7 @@ const LandingPage = () => {
             <button 
               type="button"
               className="cta-primary"
-              onClick={() => document.getElementById('agent-section').scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => navigate('/config')}
             >
               Start Your AI Journey
             </button>
