@@ -22,16 +22,34 @@ if (isReplit)  console.log('[platform] Replit deployment detected');
 if (!isVercel && !isReplit && isProduction) console.log('[platform] Generic production deployment');
 
 // ── Optional persistent session store (required for Vercel / multi-instance deployments) ──
+// Resolve Redis URL: explicit REDIS_URL takes priority; fall back to deriving it from
+// Upstash environment variables (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)
+// which are automatically injected when you add the Upstash Vercel integration.
+function _resolveRedisUrl() {
+  if (process.env.REDIS_URL) return process.env.REDIS_URL;
+  const restUrl   = process.env.UPSTASH_REDIS_REST_URL;
+  const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (restUrl && restToken) {
+    // REST URL looks like https://<hostname>.upstash.io — convert to Redis protocol URL.
+    // Upstash uses the same token as the Redis password.
+    const host = restUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return `rediss://default:${restToken}@${host}:6379`;
+  }
+  return null;
+}
+
 let sessionStore;
-if (process.env.REDIS_URL) {
+const _redisUrl = _resolveRedisUrl();
+if (_redisUrl) {
   try {
     const RedisStore = require('connect-redis').default || require('connect-redis');
     const { createClient } = require('redis');
-    const redisClient = createClient({ url: process.env.REDIS_URL, socket: { tls: process.env.REDIS_URL.startsWith('rediss://') } });
+    const redisClient = createClient({ url: _redisUrl, socket: { tls: _redisUrl.startsWith('rediss://') } });
     redisClient.connect().catch((err) => console.error('[session-store] Redis connect error:', err.message));
     redisClient.on('error', (err) => console.error('[session-store] Redis error:', err.message));
     sessionStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
-    console.log('[session-store] Using Redis store (REDIS_URL)');
+    const src = process.env.REDIS_URL ? 'REDIS_URL' : 'UPSTASH_REDIS_REST_URL';
+    console.log(`[session-store] Using Redis store (${src})`);
   } catch (err) {
     console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
   }
@@ -40,9 +58,9 @@ if (process.env.REDIS_URL) {
 if (!sessionStore && (process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT)) {
   const platform = process.env.VERCEL ? 'Vercel' : 'Replit';
   console.warn(
-    `[session-store] WARNING: Running on ${platform} without REDIS_URL. ` +
+    `[session-store] WARNING: Running on ${platform} without Redis. ` +
     'Sessions use in-memory store — they will be lost on process restart. ' +
-    'Set REDIS_URL (Upstash Redis: https://upstash.com) for persistent sessions.',
+    'Set REDIS_URL or add the Upstash integration (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN) for persistent sessions.',
   );
 }
 
