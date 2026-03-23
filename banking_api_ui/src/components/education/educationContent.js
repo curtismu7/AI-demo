@@ -565,7 +565,94 @@ export function TokenExchangeContent() {
         <em>before</em> and <em>after</em> that call, typical HTTP status codes, and
         success/error JSON shapes.
       </p>
-      <pre className="edu-code">{TOKEN_EXCHANGE_EDU}</pre>
+
+      <h3>Where this runs</h3>
+      <p>
+        The browser <strong>never</strong> calls PingOne <code>/token</code> for MCP. The Banking
+        API server holds the user's OAuth tokens in the session and, when a tool needs an
+        MCP-scoped access token, performs RFC 8693 Token Exchange (
+        <code>grant_type=urn:ietf:params:oauth:grant-type:token-exchange</code>) against
+        PingOne's <code>POST …/as/token</code> endpoint (same host as your issuer).
+      </p>
+
+      <h3>Before the exchange — inputs the BFF already has</h3>
+      <ul>
+        <li>
+          <strong>Session cookie</strong> — identifies the signed-in user (admin or customer).
+        </li>
+        <li>
+          <strong>req.session (server)</strong> — <code>access_token</code> /{' '}
+          <code>refresh_token</code> / user from the initial OAuth code flow.
+        </li>
+        <li>
+          <strong>Optional "on behalf of" path</strong> — <code>USE_AGENT_ACTOR_FOR_MCP=true</code>{' '}
+          and MCP resource URI set → the BFF may use <code>subject_token</code> (user) +{' '}
+          <code>actor_token</code> (agent client-credentials token) so PingOne can mint a
+          delegated token (JWT may include an <code>act</code> claim per your AS policy).
+        </li>
+      </ul>
+
+      <h3>The token request (BFF → PingOne, not visible in browser DevTools)</h3>
+      <pre className="edu-code">{`POST {issuer}/as/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+client_id=…  &  client_secret=…          (or other client auth per your app)
+subject_token=<user access token from session>
+subject_token_type=urn:ietf:params:oauth:token-type:access_token
+audience=<MCP resource / API audience PingOne expects>
+scope=<space-separated scopes for the MCP layer>
+
+# Optional actor path (delegation):
+actor_token=<token from agent client credentials>
+actor_token_type=urn:ietf:params:oauth:token-type:access_token
+# (PingOne policy must allow this exchange.)`}</pre>
+
+      <h3>After a successful exchange — what the BFF receives</h3>
+      <pre className="edu-code">{`HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "access_token": "<JWT or opaque string — MCP/WebSocket uses this as Bearer>",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "…",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
+}`}</pre>
+      <p>
+        The BFF then opens or reuses the WebSocket to <code>banking_mcp_server</code> and sends
+        MCP messages that carry this token. Downstream Banking REST calls still use RS
+        audience/scopes as configured.
+      </p>
+
+      <h3>HTTP status codes</h3>
+      <ul>
+        <li><strong>200</strong> — body is JSON with <code>access_token</code> (and usually <code>expires_in</code>).</li>
+        <li><strong>400</strong> — invalid grant, wrong token type, audience not allowed, malformed request. Body often: <code>{`{"error":"invalid_grant","error_description":"…"}`}</code></li>
+        <li><strong>401</strong> — client authentication failed (wrong <code>client_id</code>/secret or auth method).</li>
+        <li><strong>403</strong> — policy or consent blocks the exchange.</li>
+        <li><strong>502/503</strong> — BFF could not reach PingOne (network/DNS).</li>
+      </ul>
+
+      <h3>BFF API responses you may see in the browser</h3>
+      <ul>
+        <li><code>POST /api/mcp/tool</code> — 200 with MCP tool result JSON; 401 if no session or no usable token; 5xx if MCP server or PingOne is unreachable.</li>
+        <li><code>GET /api/mcp/inspector/tools</code> — 200 with tools list; 401 if not authenticated.</li>
+        <li><code>POST /api/mcp/inspector/invoke</code> — same pattern as tool calls.</li>
+      </ul>
+
+      <h3>Error JSON shape (OAuth-style, from PingOne through BFF)</h3>
+      <pre className="edu-code">{`{ "error": "invalid_grant" | "invalid_client" | …, "error_description": "human-readable" }`}</pre>
+
+      <h3>Mental model</h3>
+      <ol>
+        <li>User completes OAuth (authorization code) → session has subject token.</li>
+        <li>User invokes MCP tool → BFF may exchange subject token for MCP-audience token (RFC 8693).</li>
+        <li>Only after step 2 does the MCP layer see a Bearer suited to the tool/RS chain.</li>
+      </ol>
+      <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+        Open the Config page → "MCP Inspector setup" for env snippets that match your URL.
+      </p>
 
       <h3>Delegation (actor_token path) — "on behalf of"</h3>
       <pre className="edu-code">{`── Delegation request (USE_AGENT_ACTOR_FOR_MCP=true) ──
