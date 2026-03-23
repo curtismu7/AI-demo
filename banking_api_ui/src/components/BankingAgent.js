@@ -262,15 +262,39 @@ export default function BankingAgent({ user }) {
     });
   }, []);
 
-  // Check on mount
+  // Check on mount — auto-open if already authenticated (e.g. page refresh after login)
   useEffect(() => {
-    checkSelfAuth();
-  }, [checkSelfAuth]);
+    Promise.all([
+      fetch('/api/auth/oauth/status').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/user/status').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/session').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([admin, endUser, session]) => {
+      const authenticated = (admin?.authenticated && admin.user)
+        || (endUser?.authenticated && endUser.user)
+        || (session?.authenticated && session.user);
+      if (authenticated) {
+        const u = (admin?.authenticated && admin.user) || (endUser?.authenticated && endUser.user) || session?.user;
+        setSessionUser(u);
+        setIsOpen(true);
+        setMessages([{ role: 'assistant', content: "👋 You're signed in! I can check balances, move money, and explain the OAuth flows happening behind the scenes. What would you like to do?" }]);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Re-check when App.js confirms a login
+  // Re-check when App.js confirms a login, and auto-open the agent
   useEffect(() => {
-    window.addEventListener('userAuthenticated', checkSelfAuth);
-    return () => window.removeEventListener('userAuthenticated', checkSelfAuth);
+    const onAuth = () => {
+      checkSelfAuth();
+      setIsOpen(true);
+      setMessages(prev =>
+        prev.length === 0
+          ? [{ role: 'assistant', content: "👋 You're signed in! I can check balances, move money, and explain the OAuth flows happening behind the scenes. What would you like to do?" }]
+          : prev
+      );
+    };
+    window.addEventListener('userAuthenticated', onAuth);
+    return () => window.removeEventListener('userAuthenticated', onAuth);
   }, [checkSelfAuth]);
 
   // Re-check when panel opens (catches sessions established after mount)
