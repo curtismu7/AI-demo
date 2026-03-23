@@ -98,7 +98,8 @@ class OAuthService {
       scope: this.config.scopes.join(' '),
       state: state,
       code_challenge: codeChallenge,
-      code_challenge_method: 'S256'
+      code_challenge_method: 'S256',
+      login_hint: 'bankuser'
     });
 
     return `${this.config.authorizationEndpoint}?${params.toString()}`;

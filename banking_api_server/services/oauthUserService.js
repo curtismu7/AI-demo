@@ -94,7 +94,8 @@ class OAuthUserService {
       scope: this.config.scopes.join(' '),
       state: state,
       code_challenge: this.generateCodeChallenge(codeVerifier),
-      code_challenge_method: 'S256'
+      code_challenge_method: 'S256',
+      login_hint: 'bankuser'
     });
 
     if (options.acr_values) {
