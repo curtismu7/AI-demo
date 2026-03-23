@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import {
   getMyAccounts,
@@ -109,6 +110,77 @@ function ActionForm({ action, onSubmit, onCancel, loading }) {
   );
 }
 
+// ─── Results Panel (side panel showing rich formatted data next to the agent) ──
+
+function AccountsTable({ accounts }) {
+  if (!accounts?.length) return <p className="bar-rp-empty">No accounts found.</p>;
+  return (
+    <table className="bar-rp-table">
+      <thead><tr><th>Type</th><th>Account #</th><th>Balance</th></tr></thead>
+      <tbody>
+        {accounts.map((a, i) => (
+          <tr key={a.account_number || a.id || i}>
+            <td>{a.account_type || a.type || 'Account'}</td>
+            <td><code>{a.account_number || a.id}</code></td>
+            <td className="bar-rp-amount">{formatCurrency(a.balance)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function TransactionsTable({ transactions }) {
+  if (!transactions?.length) return <p className="bar-rp-empty">No transactions found.</p>;
+  return (
+    <table className="bar-rp-table">
+      <thead><tr><th>Type</th><th>Amount</th><th>Description</th><th>Date</th></tr></thead>
+      <tbody>
+        {transactions.slice(0, 20).map((t, i) => (
+          <tr key={t.id || i}>
+            <td><span className={`bar-rp-type bar-rp-type-${(t.type||'').toLowerCase()}`}>{t.type}</span></td>
+            <td className="bar-rp-amount">{formatCurrency(t.amount)}</td>
+            <td>{t.description || '—'}</td>
+            <td className="bar-rp-date">{new Date(t.created_at || t.createdAt || Date.now()).toLocaleDateString()}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function ResultsPanel({ panel, onClose, style }) {
+  if (!panel) return null;
+  return (
+    <div className="banking-agent-results-panel" style={style} role="complementary" aria-label="Results">
+      <div className="bar-rp-header">
+        <span className="bar-rp-title">{panel.title}</span>
+        <button className="bar-rp-close" onClick={onClose} aria-label="Close results">✕</button>
+      </div>
+      <div className="bar-rp-body">
+        {panel.type === 'accounts'      && <AccountsTable      accounts={panel.data} />}
+        {panel.type === 'transactions'  && <TransactionsTable  transactions={panel.data} />}
+        {panel.type === 'balance'       && (
+          <div className="bar-rp-balance">
+            <span className="bar-rp-balance-label">Balance</span>
+            <span className="bar-rp-balance-value">{formatCurrency(panel.data)}</span>
+          </div>
+        )}
+        {panel.type === 'confirm'       && (
+          <div className="bar-rp-confirm">
+            <span className="bar-rp-confirm-icon">✅</span>
+            <div className="bar-rp-confirm-body">
+              <div className="bar-rp-confirm-label">{panel.title}</div>
+              {panel.data?.transaction_id && <div>Transaction ID: <code>{panel.data.transaction_id}</code></div>}
+              {panel.data?.amount        && <div>Amount: {formatCurrency(panel.data.amount)}</div>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 // ─── Login actions (shown when not authenticated) ────────────────────────────
@@ -148,7 +220,15 @@ export default function BankingAgent({ user }) {
   const [loading, setLoading] = useState(false);
   /** null = loading; which OAuth flows have client IDs + environment */
   const [oauthConfig, setOauthConfig] = useState(null);
+  /** {x,y} when panel has been dragged; null = CSS-anchored default position */
+  const [dragPos, setDragPos] = useState(null);
+  /** Side panel showing rich results next to the agent */
+  const [resultPanel, setResultPanel] = useState(null);
+
   const bottomRef = useRef(null);
+  const panelRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
   const navigate = useNavigate();
 
   const isLoggedIn = !!user;
@@ -178,6 +258,42 @@ export default function BankingAgent({ user }) {
     fetchNlStatus().then(setNlMeta).catch(() => setNlMeta({ geminiConfigured: false }));
   }, [isOpen, isLoggedIn]);
 
+  // ── Drag-to-move ──────────────────────────────────────────────────────────
+  const handleDragStart = useCallback((e) => {
+    // Don't intercept button/input clicks
+    if (e.target.closest('button, input, textarea, select')) return;
+    const rect = panelRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    isDraggingRef.current = true;
+    dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    // Anchor to current pixel position so we can move freely
+    if (!dragPos) setDragPos({ x: rect.left, y: rect.top });
+    e.preventDefault();
+  }, [dragPos]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isDraggingRef.current) return;
+      const x = Math.max(0, Math.min(window.innerWidth  - 50, e.clientX - dragOffsetRef.current.x));
+      const y = Math.max(0, Math.min(window.innerHeight - 50, e.clientY - dragOffsetRef.current.y));
+      setDragPos({ x, y });
+    };
+    const onUp = () => { isDraggingRef.current = false; };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    };
+  }, []);
+
+  // Panel position: override CSS anchoring when user has dragged the window
+  const panelStyle    = dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : {};
+  // Results panel sits to the left of the agent; shifts with it when dragged
+  const resultsPanelStyle = dragPos
+    ? { left: Math.max(8, dragPos.x - 528), top: dragPos.y, bottom: 'auto', right: 'auto' }
+    : {};
+
   function addMessage(role, content, tool) {
     setMessages(prev => [...prev, { id: Date.now().toString(), role, content, tool }]);
   }
@@ -188,31 +304,41 @@ export default function BankingAgent({ user }) {
   async function runAction(actionId, form, opts = {}) {
     const { skipUserLabel = false } = opts;
     setActiveAction(null);
+    const label = ACTIONS.find(a => a.id === actionId)?.label || actionId;
     if (!skipUserLabel) {
-      const label = ACTIONS.find(a => a.id === actionId)?.label || actionId;
       addMessage('user', label);
     }
     setLoading(true);
+
+    // Toast: show in-progress indicator
+    const toastId = `agent-${actionId}-${Date.now()}`;
+    toast.info(`⚙️ ${label}…`, { toastId, autoClose: false, isLoading: true });
 
     try {
       let response;
       switch (actionId) {
         case 'accounts':
+          toast.update(toastId, { render: '🔍 Calling get_my_accounts…' });
           response = await getMyAccounts();
           break;
         case 'transactions':
+          toast.update(toastId, { render: '🔍 Calling get_my_transactions…' });
           response = await getMyTransactions();
           break;
         case 'balance':
+          toast.update(toastId, { render: '🔍 Calling get_account_balance…' });
           response = await getAccountBalance(form.accountId);
           break;
         case 'deposit':
+          toast.update(toastId, { render: '⬇️ Calling create_deposit…' });
           response = await createDeposit(form.accountId, parseFloat(form.amount), form.note);
           break;
         case 'withdraw':
+          toast.update(toastId, { render: '⬆️ Calling create_withdrawal…' });
           response = await createWithdrawal(form.accountId, parseFloat(form.amount), form.note);
           break;
         case 'transfer':
+          toast.update(toastId, { render: '↔️ Calling create_transfer…' });
           response = await createTransfer(form.fromId, form.toId, parseFloat(form.amount), form.note);
           break;
         default:
@@ -225,30 +351,54 @@ export default function BankingAgent({ user }) {
         tokenChain.setTokenEvents(actionId, tokenEvents);
       }
 
-      // Show inline token event summary in the chat
+      // Show inline token event summary in the chat + dedicated toasts
       if (tokenEvents.length > 0) {
         const exchanged = tokenEvents.find(e => e.id === 'exchanged-token');
-        const skipped = tokenEvents.find(e => e.id === 'exchange-skipped');
-        const failed = tokenEvents.find(e => e.id === 'exchange-failed');
-        const t1 = tokenEvents.find(e => e.id === 'user-token');
+        const skipped   = tokenEvents.find(e => e.id === 'exchange-skipped');
+        const failed    = tokenEvents.find(e => e.id === 'exchange-failed');
+        const t1        = tokenEvents.find(e => e.id === 'user-token');
 
         let tokenMsg = null;
         if (exchanged) {
           const mayActStatus = t1?.mayActPresent ? '✅ may_act validated' : '⚠️ no may_act';
-          const actStatus = exchanged.actPresent ? `✅ act: ${exchanged.actDetails}` : '⚠️ no act claim';
+          const actStatus    = exchanged.actPresent ? `✅ act: ${exchanged.actDetails}` : '⚠️ no act claim';
           tokenMsg = `🔐 RFC 8693 Token Exchange\n${mayActStatus} → T2 issued · ${actStatus}\nScope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`;
+          toast.info(`🔐 Token Exchange complete — T2 issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
         } else if (skipped) {
           tokenMsg = '🔐 Token Exchange skipped — MCP_RESOURCE_URI not configured. T1 forwarded directly.';
+          toast.warning('⚠️ Token Exchange skipped — T1 forwarded directly', { autoClose: 4000 });
         } else if (failed) {
           tokenMsg = `🔐 Token Exchange failed: ${failed.error || 'unknown error'}`;
+          toast.error(`❌ Token Exchange failed: ${failed.error || 'unknown error'}`, { autoClose: 6000 });
         }
         if (tokenMsg) {
           addMessage('token-event', tokenMsg, actionId);
         }
       }
 
+      // Populate side results panel for rich data types
+      const result = response.result;
+      if (result?.accounts) {
+        setResultPanel({ type: 'accounts', title: '🏦 Accounts', data: result.accounts });
+      } else if (result?.transactions) {
+        setResultPanel({ type: 'transactions', title: '📋 Recent Transactions', data: result.transactions });
+      } else if (result?.balance !== undefined) {
+        setResultPanel({ type: 'balance', title: '💰 Balance', data: result.balance });
+      } else if (result?.transaction_id || result?.transactionId || result?.id) {
+        setResultPanel({ type: 'confirm', title: `✅ ${label} confirmed`, data: result });
+      }
+
       addMessage('assistant', formatResult(response.result), actionId);
+
+      // Dismiss loading toast and show success
+      toast.update(toastId, {
+        render: `✅ ${label} complete`,
+        type: 'success',
+        isLoading: false,
+        autoClose: 2500,
+      });
     } catch (err) {
+      toast.dismiss(toastId);
       const isConnErr =
         err.message.includes('timed out') ||
         err.message.includes('ECONNREFUSED') ||
@@ -256,6 +406,13 @@ export default function BankingAgent({ user }) {
         err.message.includes('mcp_error') ||
         err.message.includes('Failed to fetch') ||
         err.message.includes('502');
+
+      if (isConnErr) {
+        toast.error('🔌 MCP server unreachable — check your server connection', { autoClose: 8000 });
+      } else {
+        toast.error(`❌ ${err.message}`, { autoClose: 6000 });
+      }
+
       addMessage(
         'error',
         isConnErr
@@ -320,6 +477,7 @@ export default function BankingAgent({ user }) {
       }
       addMessage('assistant', result.message || 'Try a banking action or a topic like “token exchange”.');
     } catch (err) {
+      toast.error(`❌ Could not parse request: ${err.message}`, { autoClose: 5000 });
       addMessage('assistant', `Could not parse: ${err.message}`);
     } finally {
       setNlLoading(false);
@@ -338,11 +496,29 @@ export default function BankingAgent({ user }) {
         {isOpen ? '✕' : '🤖'}
       </button>
 
+      {/* Results panel — sits to the left of the agent */}
+      {isOpen && resultPanel && (
+        <ResultsPanel
+          panel={resultPanel}
+          onClose={() => setResultPanel(null)}
+          style={resultsPanelStyle}
+        />
+      )}
+
       {/* Panel */}
       {isOpen && (
-        <div className="banking-agent-panel" role="dialog" aria-label="Banking MCP Agent">
-          {/* Header */}
-          <div className="banking-agent-header">
+        <div
+          className="banking-agent-panel"
+          role="dialog"
+          aria-label="Banking MCP Agent"
+          ref={panelRef}
+          style={panelStyle}
+        >
+          {/* Header — drag handle */}
+          <div
+            className="banking-agent-header banking-agent-drag-handle"
+            onMouseDown={handleDragStart}
+          >
             <div className="banking-agent-header-info">
               <span className="banking-agent-avatar">🏦</span>
               <div>
