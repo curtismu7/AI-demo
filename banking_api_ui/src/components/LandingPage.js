@@ -104,6 +104,14 @@ const LandingPage = () => {
             <a href="#features" className="nav-link">Features</a>
             <a href="#how-it-works" className="nav-link">How It Works</a>
             <a href="#testimonials" className="nav-link">Testimonials</a>
+            <button
+              type="button"
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.5rem', color: 'inherit', fontSize: 'inherit' }}
+              onClick={() => navigate('/config')}
+            >
+              ⚙ Config
+            </button>
             <button 
               type="button"
               className="nav-cta"
