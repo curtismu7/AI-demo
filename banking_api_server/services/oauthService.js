@@ -99,7 +99,7 @@ class OAuthService {
       state: state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
-      login_hint: 'bankuser'
+      login_hint: 'admin'
     });
 
     return `${this.config.authorizationEndpoint}?${params.toString()}`;
