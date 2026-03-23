@@ -11,7 +11,7 @@ const {
   getExpectedFrontendOrigin,
 } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
-const { setAuthCookie } = require('../services/authStateCookie');
+const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -38,6 +38,9 @@ router.get('/login', (req, res) => {
       delete req.session.user;
       delete req.session.clientType;
       delete req.session.oauthType;
+      // Also clear the _auth cookie so the session-restore middleware cannot
+      // resurrect the customer identity on a different Vercel instance.
+      clearAuthCookie(res, _isProd());
     }
 
     // Generate state parameter for CSRF protection

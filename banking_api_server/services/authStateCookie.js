@@ -172,6 +172,15 @@ function restoreSessionFromCookie(req, _res, next) {
       req.session.user      = auth;
       req.session.oauthType = auth.oauthType;
       req.session._restoredFromCookie = true; // flag so routes can detect it
+      // Set a synthetic token stub so /status endpoints that check
+      // req.session.oauthTokens?.accessToken return authenticated:true.
+      // Routes that need the actual token will receive it from the real session
+      // (same Vercel instance) or will fail gracefully with a 401.
+      req.session.oauthTokens = req.session.oauthTokens || {
+        accessToken: '_cookie_session',
+        tokenType:   'Bearer',
+        expiresAt:   auth.expiresAt || (Date.now() + 24 * 60 * 60 * 1000),
+      };
       console.log('[auth-cookie] Session restored from _auth cookie for:', auth.email, '(no Redis session found)');
     }
   }

@@ -7,7 +7,7 @@ const { determineClientType } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 const { getFrontendOrigin, getUserRedirectUri, validateRedirectUriOrigin, getExpectedFrontendOrigin } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
-const { setAuthCookie } = require('../services/authStateCookie');
+const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -119,6 +119,18 @@ router.get('/login', (req, res) => {
     // Guard: end-user flow needs user client + env (not admin_client_id)
     if (!configStore.isUserOAuthConfigured()) {
       return res.redirect(`${getFrontendOrigin(req)}/config?error=not_configured`);
+    }
+
+    // Drop any prior admin session so Customer sign-in starts fresh.
+    const isAdminSession = req.session?.oauthType === 'admin' || req.session?.user?.role === 'admin';
+    if (isAdminSession) {
+      delete req.session.oauthTokens;
+      delete req.session.user;
+      delete req.session.clientType;
+      delete req.session.oauthType;
+      // Also clear the _auth cookie so the session-restore middleware cannot
+      // resurrect the admin identity on a different Vercel instance.
+      clearAuthCookie(res, _isProd());
     }
 
     const state = oauthService.generateState();
