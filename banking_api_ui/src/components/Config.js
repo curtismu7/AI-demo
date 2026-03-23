@@ -120,6 +120,9 @@ export default function Config() {
   /** Vercel: OAuth client IDs/secrets (and worker) come from deployment — UI does not edit them. */
   const [deploymentManaged, setDeploymentManaged] = useState(false);
 
+  const [demoMode, setDemoMode]   = useState(false);
+  const [showSelfHosting, setShowSelfHosting] = useState(false);
+
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
   const [testing, setTesting]     = useState(false);
@@ -159,7 +162,8 @@ export default function Config() {
         }
       }
 
-      setDeploymentManaged(!!data.deploymentManagedPingOneOAuth);
+      setDeploymentManaged(!!data.deploymentManagedPingOneOAuth || process.env.REACT_APP_MANAGED_DEPLOYMENT === 'true');
+      setDemoMode(!!data.demoMode);
       setForm((prev) => ({ ...prev, ...formUpdates }));
       setSecretMeta(meta);
       setStorageType(data.storageType || '');
@@ -336,6 +340,34 @@ export default function Config() {
             fontSize: '0.9rem',
           }}>
             <strong>Hosted deployment:</strong> <strong>Client IDs and secrets</strong> are configured on the server (not on this screen). You only need to <strong>register the redirect URIs</strong> in PingOne for your Admin and Customer apps — see the blue box below for the exact values.
+          </div>
+        )}
+
+        {demoMode && (
+          <div style={{
+            background: '#fffbeb',
+            border: '1px solid #fcd34d',
+            borderRadius: '0.5rem',
+            padding: '1rem 1.25rem',
+            marginBottom: '1.5rem',
+            color: '#92400e',
+            fontSize: '0.9rem',
+          }}>
+            <strong>Demo mode:</strong> This is a shared public demo. All banking data is simulated — no real transactions occur.
+            Transfers and account operations are limited. To use your own data,{' '}
+            <button
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#b45309',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: 0,
+                fontSize: 'inherit',
+                fontWeight: 600,
+              }}
+              onClick={() => setShowSelfHosting(true)}
+            >run your own instance</button>.
           </div>
         )}
 
@@ -884,6 +916,132 @@ export default function Config() {
           )}
 
         </form>
+
+        {/* ── Run Your Own Instance ── */}
+        <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+          <button
+            type="button"
+            onClick={() => setShowSelfHosting((v) => !v)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'none',
+              border: '1px solid #d1d5db',
+              borderRadius: '0.5rem',
+              padding: '0.65rem 1.1rem',
+              cursor: 'pointer',
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              color: '#374151',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            {showSelfHosting ? '🚀 Run Your Own Instance ▲' : '🚀 Run Your Own Instance ▼'}
+          </button>
+
+          {showSelfHosting && (
+            <div className="card" style={{ marginTop: '1rem' }}>
+              <div className="card-header">
+                <h2 className="card-title">Run Your Own Instance</h2>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                  The hosted demo at <code>banking-demo-puce.vercel.app</code> uses a shared PingOne environment.
+                  Your own deployment gets its own isolated PingOne environment — users you create there are separate.
+                </p>
+              </div>
+
+              <div style={{
+                background: '#fefce8',
+                border: '1px solid #fde68a',
+                borderRadius: '0.375rem',
+                padding: '0.75rem 1rem',
+                marginBottom: '1.5rem',
+                fontSize: '0.8125rem',
+                color: '#78350f',
+              }}>
+                <strong>Client secrets are optional</strong> — both deployment modes support PKCE (public client).
+                Only expose a client secret if your PingOne app is configured as confidential.
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+
+                {/* Path A: Vercel */}
+                <div style={{
+                  border: '1px solid #c7d2fe',
+                  borderRadius: '0.5rem',
+                  padding: '1.25rem',
+                  background: '#eef2ff',
+                }}>
+                  <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', color: '#3730a3' }}>
+                    ☁️ Path A: Deploy to Vercel
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: '#4338ca', marginBottom: '1rem', marginTop: 0 }}>
+                    Your own PingOne environment, zero-downtime deploys, free tier available.
+                  </p>
+                  <ol style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.82rem', color: '#312e81', lineHeight: 1.65 }}>
+                    <li>Fork or clone the repo from GitHub</li>
+                    <li>In PingOne, create <strong>two OIDC web apps</strong> (Admin + Customer) and note each Client ID</li>
+                    <li>Set these Vercel environment variables:
+                      <table style={{ width: '100%', marginTop: '0.5rem', marginBottom: '0.5rem', fontSize: '0.78rem', borderCollapse: 'collapse' }}>
+                        <tbody>
+                          {[
+                            ['PINGONE_ENVIRONMENT_ID', 'Your PingOne env UUID'],
+                            ['PINGONE_REGION', 'com / eu / ca / asia / com.au'],
+                            ['PINGONE_ADMIN_CLIENT_ID', 'Admin app Client ID'],
+                            ['PINGONE_ADMIN_CLIENT_SECRET', 'Admin secret (or omit for PKCE-only)'],
+                            ['PINGONE_USER_CLIENT_ID', 'Customer app Client ID'],
+                            ['PINGONE_USER_CLIENT_SECRET', 'Customer secret (or omit)'],
+                            ['PINGONE_ADMIN_ROLE', 'Role name (default: admin)'],
+                            ['PINGONE_USER_ROLE', 'Role name (default: customer)'],
+                            ['SESSION_SECRET', 'Random 32+ char string'],
+                            ['PUBLIC_APP_URL', 'Your Vercel URL (e.g. https://my-app.vercel.app)'],
+                          ].map(([k, v]) => (
+                            <tr key={k}>
+                              <td style={{ fontFamily: 'monospace', padding: '0.15rem 0.35rem 0.15rem 0', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{k}</td>
+                              <td style={{ color: '#4338ca', padding: '0.15rem 0', verticalAlign: 'top' }}>{v}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </li>
+                    <li>Add the redirect URIs shown on this page to each PingOne app</li>
+                    <li>Deploy — no additional setup needed</li>
+                  </ol>
+                </div>
+
+                {/* Path B: Localhost */}
+                <div style={{
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '0.5rem',
+                  padding: '1.25rem',
+                  background: '#f0fdf4',
+                }}>
+                  <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', color: '#14532d' }}>
+                    🖥️ Path B: Run on localhost
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: '#166534', marginBottom: '1rem', marginTop: 0 }}>
+                    Default API server uses <code>api.pingdemo.com</code> as the host.
+                  </p>
+                  <ol style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.82rem', color: '#14532d', lineHeight: 1.65 }}>
+                    <li>Clone the repo</li>
+                    <li>Copy <code>banking_api_server/.env.example</code> → <code>banking_api_server/.env</code> and fill in your PingOne values</li>
+                    <li>By default the API server listens on <code>api.pingdemo.com</code> — add that to your local hosts file, or change <code>PORT</code>/<code>HOST</code> in <code>.env</code></li>
+                    <li>
+                      <code>npm install &amp;&amp; npm run dev</code> in <code>banking_api_server/</code>
+                    </li>
+                    <li>
+                      <code>npm install &amp;&amp; npm start</code> in <code>banking_api_ui/</code>
+                    </li>
+                    <li>Open this Config page and follow the on-screen setup</li>
+                  </ol>
+                </div>
+
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

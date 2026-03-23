@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const dataStore = require('../data/store');
 const { authenticateToken, requireScopes } = require('../middleware/auth');
+const { blockInDemoMode } = require('../middleware/demoMode');
 
 // Get all accounts (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:accounts:read', 'banking:read']), async (req, res) => {
@@ -71,7 +72,7 @@ router.get('/:id/balance', authenticateToken, requireScopes(['banking:accounts:r
 });
 
 // Create new account (admin only)
-router.post('/', authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.post('/', blockInDemoMode('account creation'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -87,7 +88,7 @@ router.post('/', authenticateToken, requireScopes(['banking:write']), async (req
 });
 
 // Update account (admin only)
-router.put('/:id', authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.put('/:id', blockInDemoMode('account update'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -106,7 +107,7 @@ router.put('/:id', authenticateToken, requireScopes(['banking:write']), async (r
 });
 
 // Delete account (admin only)
-router.delete('/:id', authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.delete('/:id', blockInDemoMode('account deletion'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {

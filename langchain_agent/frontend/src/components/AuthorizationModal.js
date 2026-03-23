@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import './AuthorizationModal.css';
 
-const AuthorizationModal = ({ 
-  isOpen, 
-  onClose, 
-  authorizationUrl, 
+const AuthorizationModal = ({
+  isOpen,
+  onClose,
+  authorizationUrl,
   onAuthorizationComplete,
-  onAuthorizationError 
+  onAuthorizationError
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const cleanupRef = React.useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -17,6 +18,16 @@ const AuthorizationModal = ({
       setIsLoading(false);
     }
   }, [isOpen]);
+
+  // Clean up any active auth session when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
+    };
+  }, []);
 
   const handleAuthorize = () => {
     if (!authorizationUrl) {
@@ -40,11 +51,20 @@ const AuthorizationModal = ({
       return;
     }
 
+    const cleanup = () => {
+      clearInterval(pollTimer);
+      window.removeEventListener('message', messageHandler);
+      if (authWindow && !authWindow.closed) {
+        authWindow.close();
+      }
+      cleanupRef.current = null;
+    };
+
     // Poll for window closure or message
     const pollTimer = setInterval(() => {
       try {
         if (authWindow.closed) {
-          clearInterval(pollTimer);
+          cleanup();
           setIsLoading(false);
           setError('Authorization was cancelled');
           if (onAuthorizationError) {
@@ -65,39 +85,25 @@ const AuthorizationModal = ({
       }
 
       if (event.data.type === 'OAUTH_SUCCESS') {
-        clearInterval(pollTimer);
+        cleanup();
         setIsLoading(false);
-        authWindow.close();
-        window.removeEventListener('message', messageHandler);
-        
         if (onAuthorizationComplete) {
           onAuthorizationComplete(event.data.code, event.data.state);
         }
         onClose();
       } else if (event.data.type === 'OAUTH_ERROR') {
-        clearInterval(pollTimer);
+        cleanup();
         setIsLoading(false);
-        authWindow.close();
-        window.removeEventListener('message', messageHandler);
-        
-        const error = new Error(event.data.error || 'Authorization failed');
-        setError(error.message);
+        const err = new Error(event.data.error || 'Authorization failed');
+        setError(err.message);
         if (onAuthorizationError) {
-          onAuthorizationError(error);
+          onAuthorizationError(err);
         }
       }
     };
 
     window.addEventListener('message', messageHandler);
-
-    // Cleanup function
-    return () => {
-      clearInterval(pollTimer);
-      window.removeEventListener('message', messageHandler);
-      if (authWindow && !authWindow.closed) {
-        authWindow.close();
-      }
-    };
+    cleanupRef.current = cleanup;
   };
 
   const handleCancel = () => {

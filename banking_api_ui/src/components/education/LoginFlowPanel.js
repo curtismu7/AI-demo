@@ -1,6 +1,12 @@
 // banking_api_ui/src/components/education/LoginFlowPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import {
+  CibaVsLoginContent,
+  LoginFlowPkceContent,
+  LoginFlowSecurityContent,
+  OAuthApiCheatsheet,
+} from './educationContent';
 
 export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
@@ -28,60 +34,12 @@ export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
     {
       id: 'ciba',
       label: 'CIBA (OOB)',
-      content: (
-        <>
-          <h3>CIBA vs browser login (this panel)</h3>
-          <p>
-            <strong>Authorization Code + PKCE</strong> (tabs above) uses a <strong>redirect</strong> to PingOne and back.
-            <strong> CIBA</strong> (Client-Initiated Backchannel Authentication) keeps the user in the app: the BFF calls{' '}
-            <code>POST …/bc-authorize</code> with <code>login_hint</code> and <code>binding_message</code>, then polls{' '}
-            <code>POST …/token</code> with <code>grant_type=ciba</code> until the user approves.
-          </p>
-          <p>
-            <strong>Email or push</strong> is determined by your <strong>PingOne / DaVinci</strong> configuration, not by this SPA.
-            An <strong>email-only</strong> flow (approve link in the inbox) does not require PingOne MFA push or a registered phone app.
-            A <strong>push</strong> flow uses your MFA policy and registered devices (e.g. PingID / MS Authenticator).
-          </p>
-          <p>
-            For sequence diagrams, PingOne admin steps, and a live <strong>Try It</strong> demo, open the floating{' '}
-            <strong>CIBA guide</strong> (bottom-right).
-          </p>
-        </>
-      ),
+      content: <CibaVsLoginContent />,
     },
     {
       id: 'pkce',
       label: 'PKCE deep dive',
-      content: (
-        <>
-          <h3>Why PKCE?</h3>
-          <p>
-            PKCE (RFC 7636) proves that the same app that started the authorize request is exchanging the code — even for public clients
-            that cannot store a secret. The authorization server never sees the raw <code>code_verifier</code> until the token step.
-          </p>
-          <h3>Two requests side by side</h3>
-          <p><strong>1) Authorize (browser redirect)</strong></p>
-          <pre className="edu-code">{`GET /as/authorize?
-  response_type=code
-  &client_id=...
-  &redirect_uri=...
-  &scope=openid%20...
-  &state=<random>
-  &code_challenge=<BASE64URL(SHA256(verifier))>
-  &code_challenge_method=S256`}</pre>
-          <p><strong>2) Token (server-to-server)</strong></p>
-          <pre className="edu-code">{`POST /as/token
-Content-Type: application/x-www-form-urlencoded
-
-grant_type=authorization_code
-&code=<auth_code>
-&redirect_uri=...
-&client_id=...
-&client_secret=...   (confidential client)
-&code_verifier=<original secret>`}</pre>
-          <p>PingOne hashes the verifier and must match the challenge from step 1. An attacker who intercepts the redirect <strong>cannot</strong> exchange the code without the verifier.</p>
-        </>
-      ),
+      content: <LoginFlowPkceContent />,
     },
     {
       id: 'tokens',
@@ -110,19 +68,7 @@ grant_type=authorization_code
     {
       id: 'security',
       label: 'Security notes',
-      content: (
-        <>
-          <h3>Why T1 never touches the browser</h3>
-          <p>
-            Access tokens are stored in the BFF session. The browser only holds a <strong>session cookie</strong> (httpOnly, Secure in production),
-            so XSS cannot read T1 from JavaScript.
-          </p>
-          <h3>Session fixation</h3>
-          <p>On successful login, the server should regenerate the session id so a pre-issued cookie cannot be reused to hijack the new session.</p>
-          <h3>State parameter</h3>
-          <p><code>state</code> is generated per authorize request and echoed in the callback — if it does not match, the callback is rejected (CSRF / mix-up defense).</p>
-        </>
-      ),
+      content: <LoginFlowSecurityContent />,
     },
   ];
 

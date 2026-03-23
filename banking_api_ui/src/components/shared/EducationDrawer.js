@@ -19,10 +19,10 @@ export default function EducationDrawer({
     if (!isOpen) return;
     if (initialTabId && tabs.some((t) => t.id === initialTabId)) {
       setActiveId(initialTabId);
-    } else if (!tabs.find((t) => t.id === activeId)) {
-      setActiveId(tabs[0]?.id);
+    } else {
+      setActiveId((prev) => (tabs.find((t) => t.id === prev) ? prev : tabs[0]?.id));
     }
-  }, [isOpen, initialTabId, tabs, activeId]);
+  }, [isOpen, initialTabId, tabs]);
 
   if (!isOpen) return null;
 

@@ -17,6 +17,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const fetchingRef = React.useRef(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -38,6 +39,8 @@ const Dashboard = ({ user, onLogout }) => {
   }, [autoRefresh]);
 
   const fetchDashboardData = async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     try {
       setLoading(true);
       const [statsResponse, activityResponse] = await Promise.all([
@@ -63,6 +66,7 @@ const Dashboard = ({ user, onLogout }) => {
       }
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   };
 

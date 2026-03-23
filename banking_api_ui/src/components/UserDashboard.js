@@ -37,6 +37,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [success, setSuccess] = useState(null);
   const [stepUpRequired, setStepUpRequired] = useState(false);
+  const fetchingRef = React.useRef(false);
 
   // Auto-dismiss success messages after 4 seconds
   useEffect(() => {
@@ -141,6 +142,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   }, [autoRefresh]);
 
   const fetchUserData = async (silent = false) => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     try {
       // Only show loading spinner for initial load, not auto-refreshes
       if (!silent) {
@@ -194,6 +197,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       if (!silent) {
         setLoading(false);
       }
+      fetchingRef.current = false;
     }
   };
 

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const dataStore = require('../data/store');
 const { authenticateToken, requireScopes } = require('../middleware/auth');
+const { blockInDemoMode } = require('../middleware/demoMode');
 const runtimeSettings = require('../config/runtimeSettings');
 const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 const configStore = require('../services/configStore');
@@ -321,7 +322,7 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
 });
 
 // Update transaction (admin only)
-router.put('/:id', authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
+router.put('/:id', blockInDemoMode('transaction update'), authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -340,7 +341,7 @@ router.put('/:id', authenticateToken, requireScopes(['banking:transactions:write
 });
 
 // Delete transaction (admin only)
-router.delete('/:id', authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
+router.delete('/:id', blockInDemoMode('transaction deletion'), authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {

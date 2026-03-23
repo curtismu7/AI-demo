@@ -46,6 +46,56 @@
   flex-direction: column;
 }
 
+.chat-commands {
+  border-top: 1px solid #e9ecef;
+  padding: 0.4rem 1rem 0;
+  background-color: #f8f9fa;
+}
+
+.commands-toggle {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.commands-toggle:hover {
+  color: #007bff;
+}
+
+.commands-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.4rem 0 0.5rem;
+}
+
+.command-chip {
+  background: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+  color: #343a40;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.command-chip:hover:not(:disabled) {
+  background: #007bff;
+  border-color: #007bff;
+  color: #fff;
+}
+
+.command-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .chat-input {
   border-top: 1px solid #e9ecef;
   padding: 1rem;

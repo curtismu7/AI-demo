@@ -5,9 +5,22 @@ import AuthorizationModal from './AuthorizationModal';
 import { useWebSocket } from '../hooks/useWebSocket';
 import './ChatInterface.css';
 
+const QUICK_COMMANDS = [
+  { label: '🏦 My Accounts',        text: 'Show my accounts' },
+  { label: '📋 Transactions',        text: 'Show my recent transactions' },
+  { label: '💰 Balance',             text: 'What is my current balance?' },
+  { label: '↔ Transfer',            text: 'I want to transfer money between accounts' },
+  { label: '⬇ Deposit',             text: 'I want to make a deposit' },
+  { label: '⬆ Withdraw',            text: 'I want to make a withdrawal' },
+  { label: '🔐 Explain CIBA',        text: 'What is CIBA and how does it work?' },
+  { label: '🔄 Token Exchange',      text: 'Explain RFC 8693 token exchange' },
+  { label: '🤖 MCP Protocol',        text: 'How does the MCP protocol work with OAuth?' },
+];
+
 const ChatInterface = ({ apiUrl, onDashboardRefresh }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCommands, setShowCommands] = useState(false);
   const [authModal, setAuthModal] = useState({
     isOpen: false,
     authorizationUrl: null,
@@ -244,6 +257,11 @@ const ChatInterface = ({ apiUrl, onDashboardRefresh }) => {
     }
   }, [lastMessage, detectAndRefreshDashboard]);
 
+  const handleQuickCommand = (text) => {
+    setShowCommands(false);
+    handleSendMessage(text);
+  };
+
   const handleSendMessage = async (messageContent) => {
     if (!messageContent.trim() || !isConnected) return;
 
@@ -375,8 +393,32 @@ const ChatInterface = ({ apiUrl, onDashboardRefresh }) => {
         <div ref={messagesEndRef} />
       </div>
       
+      <div className="chat-commands">
+        <button
+          className="commands-toggle"
+          onClick={() => setShowCommands(s => !s)}
+          aria-expanded={showCommands}
+          title="Quick commands"
+        >
+          {showCommands ? '▼' : '▶'} Commands
+        </button>
+        {showCommands && (
+          <div className="commands-grid">
+            {QUICK_COMMANDS.map(cmd => (
+              <button
+                key={cmd.text}
+                className="command-chip"
+                onClick={() => handleQuickCommand(cmd.text)}
+                disabled={!isConnected || isLoading}
+              >
+                {cmd.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <div className="chat-input">
-        <MessageInput 
+        <MessageInput
           onSendMessage={handleSendMessage}
           disabled={!isConnected || isLoading}
         />

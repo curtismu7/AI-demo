@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const dataStore = require('../data/store');
 const { requireAdmin, requireOwnershipOrAdmin, requireAIAgent, authenticateToken, requireScopes, hashPassword } = require('../middleware/auth');
+const { blockInDemoMode, isDemoMode } = require('../middleware/demoMode');
 
 // Query user by email (AI agents only)
 router.get('/query/by-email/:email', authenticateToken, requireAIAgent, (req, res) => {
@@ -89,7 +90,7 @@ router.get('/:userId', authenticateToken, requireScopes(['banking:read']), requi
 });
 
 // Create new user (admin only)
-router.post('/', authenticateToken, requireScopes(['banking:write']), requireAdmin, async (req, res) => {
+router.post('/', blockInDemoMode('user creation'), authenticateToken, requireScopes(['banking:write']), requireAdmin, async (req, res) => {
   try {
     const { username, email, password, firstName, lastName, role } = req.body;
 
@@ -147,6 +148,15 @@ router.put('/:userId', authenticateToken, requireScopes(['banking:write']), requ
     const { userId } = req.params;
     const updates = req.body;
 
+    // Demo mode: block password changes
+    if (isDemoMode() && (req.body.password !== undefined)) {
+      return res.status(403).json({
+        error:   'demo_mode',
+        operation: 'password change',
+        message: '"password change" is disabled on the shared public demo. Deploy your own instance to enable all operations.',
+      });
+    }
+
     const user = dataStore.getUserById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -198,7 +208,7 @@ router.put('/:userId', authenticateToken, requireScopes(['banking:write']), requ
 });
 
 // Delete user (admin only)
-router.delete('/:userId', authenticateToken, requireScopes(['banking:write']), requireAdmin, async (req, res) => {
+router.delete('/:userId', blockInDemoMode('user deletion'), authenticateToken, requireScopes(['banking:write']), requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
 

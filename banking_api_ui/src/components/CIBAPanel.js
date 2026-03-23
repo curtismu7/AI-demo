@@ -16,6 +16,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import './CIBAPanel.css';
+import {
+  CibaWhatContent,
+  CibaFullStackContent,
+  TokenExchangeContent,
+} from './education/educationContent';
 
 // ---------------------------------------------------------------------------
 // Static content
@@ -626,55 +631,14 @@ export default function CIBAPanel() {
           {/* ── Full stack (platform map) ── */}
           {activeTab === 'fullstack' && (
             <div className="ciba-tab-content">
-              <p className="ciba-section-desc">
-                The diagram below uses the <strong>same swimlane pattern and RFC callouts</strong> as{' '}
-                <strong>Agent Gateway demo architecture.vsdx</strong> in this repo: Web Browser SPA → Agent (security strip:
-                OAuth 2.1, RFC 8707, 9728, 7523, 8693) → MCP ingress / egress → MCP Server / Tool → Resource Server;
-                401 → OAuth flows → Bearer retry; phased OAuth with <strong>resource</strong> (RFC 8707). This app maps that
-                pattern onto <strong>PingOne</strong>, the <strong>Banking BFF</strong>, and <strong>banking_mcp_server</strong>.
-              </p>
-
-              <h3 className="ciba-section-title">Agent Gateway–style architecture map</h3>
-              <CodeBlock>{FULL_STACK_DIAGRAM}</CodeBlock>
-
-              <h3 className="ciba-section-title">How this demo maps to the diagram</h3>
-              <ul className="ciba-flow-list">
-                <li><strong>Web Browser SPA</strong> — React UI; session cookie only (no raw AT/RT in JavaScript).</li>
-                <li><strong>Agent / LLM</strong> — LangChain agent + chat widget (separate process); same MCP server as the BFF.</li>
-                <li><strong>MCP ingress (gateway role)</strong> — Banking BFF: scope checks, session, <code>/api/mcp/tool</code>, optional introspection.</li>
-                <li><strong>MCP egress</strong> — BFF performs RFC 8693 token exchange + WebSocket MCP to the server; RFC 8707 resource for MCP audience when configured.</li>
-                <li><strong>IDP / AS</strong> — PingOne (<code>/authorize</code>, <code>/token</code>, introspection).</li>
-                <li><strong>MCP Server + Tool</strong> — <code>banking_mcp_server</code>; tools call the Banking API with Bearer + scopes.</li>
-                <li><strong>Resource Server (RS)</strong> — Banking REST API (same host as BFF in this deployment).</li>
-              </ul>
-
-              <h3 className="ciba-section-title">Key API endpoints (this deployment)</h3>
-              <CodeBlock>{OAUTH_API_CHEATSHEET}</CodeBlock>
-
-              <div className="ciba-notice ciba-notice--info">
-                <strong>Chat widget / LangChain:</strong> the embedded chat uses a WebSocket to an agent host; that
-                agent uses its own MCP client to the same MCP server. The flow is parallel to <code>/api/mcp/tool</code> but
-                runs in a different process — both ultimately hit the same MCP tools and Banking API.
-              </div>
+              <CibaFullStackContent />
             </div>
           )}
 
           {/* ── Token exchange (RFC 8693) — before/after token, HTTP, responses ── */}
-          {activeTab === 'tokenx' && (
-            <div className="ciba-tab-content">
-              <h3 className="ciba-section-title">Token exchange for MCP (RFC 8693)</h3>
-              <p className="ciba-section-desc">
-                This demo keeps OAuth tokens on the <strong>server</strong>. When the MCP layer needs an access token
-                with the right <strong>audience</strong> for tools or delegation, the Banking BFF calls PingOne’s
-                <code> POST …/as/token</code> with <code>grant_type=token-exchange</code>. The panel below lists what happens
-                <em>before</em> and <em>after</em> that call, typical HTTP status codes, and success/error JSON shapes.
-              </p>
-              <CodeBlock>{TOKEN_EXCHANGE_EDU}</CodeBlock>
-              <div className="ciba-notice ciba-notice--info">
-                <strong>Related:</strong> <strong>Sign-in &amp; roles</strong> explains “on behalf of” and{' '}
-                <code>/api/agent/identity/bootstrap</code>. <strong>Application Configuration</strong> includes an{' '}
-                <strong>MCP Inspector setup</strong> wizard that generates env snippets and commands for your URLs.
-              </div>
+          {activeTab === ‘tokenx’ && (
+            <div className=”ciba-tab-content”>
+              <TokenExchangeContent />
             </div>
           )}
 
@@ -754,50 +718,7 @@ export default function CIBAPanel() {
           {/* ── What is CIBA ── */}
           {activeTab === 'what' && (
             <div className="ciba-tab-content">
-              <p className="ciba-section-desc">
-                CIBA decouples the <strong>consumption device</strong> (where the app runs) from
-                where the user <strong>approves</strong> (often another device or their email). No browser redirect.
-                No popup. PingOne delivers the approval step by <strong>email</strong> or <strong>push</strong> depending on your DaVinci configuration.
-              </p>
-
-              <h3 className="ciba-section-title">The flow</h3>
-              <CodeBlock>{SEQUENCE_DIAGRAM}</CodeBlock>
-
-              <h3 className="ciba-section-title">Key concepts</h3>
-              <div className="ciba-cards">
-                <div className="ciba-card">
-                  <div className="ciba-card-icon">🔑</div>
-                  <div>
-                    <strong>auth_req_id</strong><br />
-                    A short-lived ID returned by PingOne. The server polls this
-                    to check if the user has approved.
-                  </div>
-                </div>
-                <div className="ciba-card">
-                  <div className="ciba-card-icon">📩</div>
-                  <div>
-                    <strong>binding_message</strong><br />
-                    The text shown in the approval email or push — e.g. "Approve $500 transfer".
-                    Helps the user know exactly what they're approving.
-                  </div>
-                </div>
-                <div className="ciba-card">
-                  <div className="ciba-card-icon">📊</div>
-                  <div>
-                    <strong>Poll vs Ping delivery</strong><br />
-                    <em>Poll:</em> server polls the token endpoint every 5s.<br />
-                    <em>Ping:</em> PingOne calls your server when the user approves (requires a public callback URL).
-                  </div>
-                </div>
-                <div className="ciba-card">
-                  <div className="ciba-card-icon">🛡</div>
-                  <div>
-                    <strong>BFF pattern</strong><br />
-                    Tokens are <em>never</em> sent to the browser. They stay in the
-                    server-side session. The browser only sees approval status.
-                  </div>
-                </div>
-              </div>
+              <CibaWhatContent />
             </div>
           )}
 

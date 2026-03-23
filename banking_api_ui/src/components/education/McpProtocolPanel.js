@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import EducationDrawer from '../shared/EducationDrawer';
+import { McpProtocolContent, OAuthApiCheatsheet } from './educationContent';
 
 const TOOLS = [
   { name: 'get_my_accounts', scopes: 'banking read', returns: 'List of accounts for the user' },
@@ -18,14 +19,7 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
     {
       id: 'what',
       label: 'What is MCP',
-      content: (
-        <>
-          <p>
-            <strong>Model Context Protocol (MCP)</strong> structures how an LLM discovers and calls tools. This demo uses JSON-RPC 2.0 messages over a WebSocket to <code>banking_mcp_server</code>.
-          </p>
-          <p>The client sends <code>tools/list</code>, then <code>tools/call</code> with a tool name and arguments.</p>
-        </>
-      ),
+      content: <McpProtocolContent />,
     },
     {
       id: 'catalog',
@@ -56,13 +50,7 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
     {
       id: 'auth',
       label: 'Auth flow',
-      content: (
-        <>
-          <p>After WebSocket connect, the MCP server validates the bearer token (often via introspection), checks <code>aud</code>, <code>act</code>, and scopes, then runs the tool and calls the Banking REST API.</p>
-          <pre className="edu-code">{`// JSON-RPC (simplified)
-{ "jsonrpc": "2.0", "method": "tools/call", "params": { "name": "get_my_accounts", "arguments": {} }, "id": 1 }`}</pre>
-        </>
-      ),
+      content: <OAuthApiCheatsheet />,
     },
     {
       id: 'hosts',
