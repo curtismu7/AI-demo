@@ -224,6 +224,11 @@ export default function BankingAgent({ user }) {
   const [dragPos, setDragPos] = useState(null);
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
+  /**
+   * Self-detected session user — populated by independent auth check so the
+   * agent knows the session even if the parent App.js user prop hasn't resolved yet.
+   */
+  const [sessionUser, setSessionUser] = useState(null);
 
   const bottomRef = useRef(null);
   const panelRef = useRef(null);
@@ -231,8 +236,43 @@ export default function BankingAgent({ user }) {
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const navigate = useNavigate();
 
-  const isLoggedIn = !!user;
+  // Effective user: prefer prop (App.js state), fall back to self-detected session
+  const effectiveUser = user || sessionUser;
+  const isLoggedIn = !!effectiveUser;
   const isConfigured = oauthConfig && (oauthConfig.admin || oauthConfig.user);
+
+  /**
+   * Independently check auth endpoints.  Called on mount, on panel open, and
+   * when the 'userAuthenticated' event fires (App.js dispatches this after login).
+   */
+  const checkSelfAuth = useCallback(() => {
+    Promise.all([
+      fetch('/api/auth/oauth/status').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/user/status').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([admin, endUser]) => {
+      if (admin?.authenticated && admin.user) {
+        setSessionUser(admin.user);
+      } else if (endUser?.authenticated && endUser.user) {
+        setSessionUser(endUser.user);
+      }
+    });
+  }, []);
+
+  // Check on mount
+  useEffect(() => {
+    checkSelfAuth();
+  }, [checkSelfAuth]);
+
+  // Re-check when App.js confirms a login
+  useEffect(() => {
+    window.addEventListener('userAuthenticated', checkSelfAuth);
+    return () => window.removeEventListener('userAuthenticated', checkSelfAuth);
+  }, [checkSelfAuth]);
+
+  // Re-check when panel opens (catches sessions established after mount)
+  useEffect(() => {
+    if (isOpen) checkSelfAuth();
+  }, [isOpen, checkSelfAuth]);
 
   // Check config status from IndexedDB cache whenever panel opens
   useEffect(() => {
@@ -534,7 +574,7 @@ export default function BankingAgent({ user }) {
               <div>
                 <div className="banking-agent-title">PingOne AI IAM Core</div>
                 <div className="banking-agent-subtitle">
-                  {isLoggedIn ? `Powered by MCP · ${user.name?.split(' ')[0] || 'Secure'}` : 'How can I help you today?'}
+                  {isLoggedIn ? `Powered by MCP · ${effectiveUser.name?.split(' ')[0] || effectiveUser.firstName || 'Secure'}` : 'How can I help you today?'}
                 </div>
               </div>
             </div>
