@@ -108,7 +108,7 @@ function describeMayAct(claims, bffClientId) {
 
   if (may_act.client_id) {
     const match = !bffClientId || may_act.client_id === bffClientId;
-    const mismatchMsg = match ? '✅ matches BFF' : `❌ mismatch (BFF is ${bffClientId})`;
+    const mismatchMsg = match ? '✅ matches Backend For Frontend (BFF)' : `❌ mismatch (Backend For Frontend (BFF) is ${bffClientId})`;
     checks.push(`client_id: ${may_act.client_id} ${mismatchMsg}`);
     if (!match) mismatch = true;
   }
@@ -162,9 +162,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     'active',
     t1Decoded,
     'Issued by PingOne after Authorization Code + PKCE login. ' +
-    'Stored in the BFF session (server-side httpOnly cookie — never sent to the browser). ' +
+    'Stored in the Backend For Frontend (BFF) session (server-side httpOnly cookie — never sent to the browser). ' +
     (t1Claims?.may_act
-      ? `Contains may_act: ${JSON.stringify(t1Claims.may_act)} — this prospectively authorises the BFF to exchange this token. ${mayActInfo.reason}`
+      ? `Contains may_act: ${JSON.stringify(t1Claims.may_act)} — this prospectively authorises the Backend For Frontend (BFF) to exchange this token. ${mayActInfo.reason}`
       : 'No may_act claim — PingOne must be configured to add may_act for token exchange to succeed.'),
     {
       rfc: 'RFC 7519 (JWT) · RFC 9068 (OAuth2 JWT AT)',
@@ -228,10 +228,10 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     'RFC 8693 Token Exchange → T2',
     'acquiring',
     null,
-    `BFF is exchanging T1 for a delegated token scoped to audience=${mcpResourceUri}, ` +
+    `Backend For Frontend (BFF) is exchanging T1 for a delegated token scoped to audience=${mcpResourceUri}, ` +
     `scope="${toolScopes.join(' ')}". ` +
     (t1Claims?.may_act
-      ? `PingOne will validate may_act.client_id="${t1Claims.may_act.client_id}" against the authenticated BFF client.`
+      ? `PingOne will validate may_act.client_id="${t1Claims.may_act.client_id}" against the authenticated Backend For Frontend (BFF) client.`
       : 'PingOne will check exchange policy (may_act not present in T1 — exchange may be rejected).'),
     {
       rfc: 'RFC 8693 · RFC 8707 (resource indicator)',
@@ -276,11 +276,11 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       t2Decoded,
       'PingOne issued T2 after validating may_act. ' +
       (t2Claims?.act
-        ? `act: ${JSON.stringify(t2Claims.act)} — this is the current fact: the BFF is acting on behalf of the user. ` +
+        ? `act: ${JSON.stringify(t2Claims.act)} — this is the current fact: the Backend For Frontend (BFF) is acting on behalf of the user. ` +
           'Resource servers use act (not may_act) to identify the current actor for audit and policy decisions.'
         : 'act claim not present — PingOne may not have applied delegation policy. ') +
       `Audience is narrowed to ${mcpResourceUri}, scope narrowed to "${toolScopes.join(' ')}". ` +
-      'T1 (the user\'s original token) never leaves the BFF.',
+      'T1 (the user\'s original token) never leaves the Backend For Frontend (BFF).',
       {
         rfc: 'RFC 8693 · RFC 8707',
         exchangeMethod,

@@ -106,7 +106,7 @@ function EventRow({ event, isLast }) {
           )}
           {event.actPresent === true && (
             <div className="tcd-pill tcd-pill--act">
-              act ✅ {event.actDetails} — BFF is the current actor
+              act ✅ {event.actDetails} — Backend For Frontend (BFF) is the current actor
             </div>
           )}
 
@@ -158,7 +158,7 @@ const PLACEHOLDER_EVENTS = [
     label: 'User Token (T1)',
     status: 'waiting',
     claims: null,
-    explanation: 'Issued after Authorization Code + PKCE login. Stored in BFF session. Contains may_act authorising this server to exchange it.',
+    explanation: 'Issued after Authorization Code + PKCE login. Stored in Backend For Frontend (BFF) session. Contains may_act authorising this server to exchange it.',
     rfc: 'RFC 7519 · RFC 9068',
   },
   {
@@ -166,7 +166,7 @@ const PLACEHOLDER_EVENTS = [
     label: 'RFC 8693 Token Exchange → T2',
     status: 'waiting',
     claims: null,
-    explanation: 'BFF presents T1 to PingOne. PingOne validates may_act, narrows scope to the tool\'s required scopes, and issues T2 with act claim.',
+    explanation: 'Backend For Frontend (BFF) presents T1 to PingOne. PingOne validates may_act, narrows scope to the tool\'s required scopes, and issues T2 with act claim.',
     rfc: 'RFC 8693 · RFC 8707',
   },
   {
@@ -174,7 +174,7 @@ const PLACEHOLDER_EVENTS = [
     label: 'Exchanged Token (T2) → MCP Server',
     status: 'waiting',
     claims: null,
-    explanation: 'T2 is scoped to the MCP server audience. Contains act: { client_id: bff } — proves delegation. T1 never leaves the BFF.',
+    explanation: 'T2 is scoped to the MCP server audience. Contains act: { client_id: bff } — proves delegation. T1 never leaves the Backend For Frontend (BFF).',
     rfc: 'RFC 8693',
   },
 ];
@@ -195,7 +195,7 @@ const TokenChainDisplay = () => {
           {isLive && <span className="tcd-live-dot" title="Live data from last tool call" />}
         </div>
         <p className="tcd-header-sub">
-          RFC 8693 token exchange — BFF → PingOne → MCP Server → Banking API
+          RFC 8693 token exchange — Backend For Frontend (BFF) → PingOne → MCP Server → Banking API
         </p>
       </div>
 
