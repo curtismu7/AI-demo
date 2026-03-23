@@ -11,6 +11,7 @@ const {
   getExpectedFrontendOrigin,
 } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
+const { setAuthCookie } = require('../services/authStateCookie');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -213,6 +214,14 @@ router.get('/callback', async (req, res) => {
           console.error('Session save error:', saveErr);
           return res.redirect(`${redirectOrigin}/login?error=session_error`);
         }
+        // Set a signed auth-state cookie so the session-restore middleware can
+        // answer /status and /nl requests even when the session hits a different
+        // serverless instance on Vercel.
+        setAuthCookie(res, {
+          ...authedUser,
+          oauthType: 'admin',
+          expiresAt: oauthTokens.expiresAt,
+        }, _isProd());
         const adminUrl = process.env.FRONTEND_ADMIN_URL || `${redirectOrigin}/admin`;
         res.redirect(`${adminUrl}?oauth=success`);
       });

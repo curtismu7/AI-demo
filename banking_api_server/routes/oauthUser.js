@@ -7,6 +7,7 @@ const { determineClientType } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 const { getFrontendOrigin, getUserRedirectUri, validateRedirectUriOrigin, getExpectedFrontendOrigin } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
+const { setAuthCookie } = require('../services/authStateCookie');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -332,6 +333,15 @@ router.get('/callback', async (req, res) => {
           console.error('Session save error:', saveErr);
           return res.redirect(`${origin}/login?error=session_error`);
         }
+
+        // Set a signed auth-state cookie so the session-restore middleware can
+        // answer /status and /nl requests even when the session hits a different
+        // serverless instance on Vercel.
+        setAuthCookie(res, {
+          ...authedUser,
+          oauthType: 'user',
+          expiresAt: oauthTokens.expiresAt,
+        }, _isProd());
 
         if (stepUpReturnTo) {
           return res.redirect(stepUpReturnTo);

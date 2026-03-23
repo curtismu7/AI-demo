@@ -79,6 +79,7 @@ const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const tokenRoutes = require('./routes/tokens');
 const { getOAuthRedirectDebugInfo } = require('./services/oauthRedirectUris');
+const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
 
 // Import middleware
 const { authenticateToken } = require('./middleware/auth');
@@ -203,6 +204,11 @@ app.use((req, res, next) => {
   configStore.ensureInitialized().then(() => next()).catch(next);
 });
 
+// Restore session user from signed _auth cookie when in-memory session is empty.
+// This keeps auth working on Vercel serverless (no Redis) where each request may
+// land on a fresh instance with no in-memory session data.
+app.use(restoreSessionFromCookie);
+
 
 
 // Health check endpoint
@@ -227,6 +233,10 @@ app.get('/api/auth/logout', (req, res) => {
       console.error('Session destruction error during unified logout:', err);
     }
 
+    // Clear the auth-state cookie so the session-restore middleware does not
+    // keep the user signed in on the next request.
+    clearAuthCookie(res, isProduction);
+
     const envId  = configStore.getEffective('pingone_environment_id');
     const region = configStore.getEffective('pingone_region') || 'com';
     const pingoneSignoff = `https://auth.pingone.${region}/${envId}/as/signoff`;
@@ -237,6 +247,34 @@ app.get('/api/auth/logout', (req, res) => {
     }
 
     res.redirect(`${pingoneSignoff}?${params.toString()}`);
+  });
+});
+
+// Debug endpoint — shows auth state for the current request (Vercel debugging).
+// Returns cookie presence, session state, and platform flags.
+// No secrets are exposed.
+app.get('/api/auth/debug', (req, res) => {
+  const cookieNames = Object.keys(
+    Object.fromEntries(
+      (req.headers.cookie || '').split(';').map(p => [p.split('=')[0].trim(), 1])
+    )
+  ).filter(Boolean);
+  res.json({
+    platform: { vercel: !!process.env.VERCEL, replit: !!process.env.REPL_ID, production: isProduction },
+    sessionPresent:    !!req.session,
+    sessionId:         req.session?.id ? req.session.id.slice(0, 8) + '...' : null,
+    sessionHasUser:    !!req.session?.user,
+    sessionOauthType:  req.session?.oauthType || null,
+    sessionRestored:   !!req.session?._restoredFromCookie,
+    sessionHasTokens:  !!req.session?.oauthTokens?.accessToken,
+    cookiesPresent:    cookieNames,
+    hasAuthCookie:     cookieNames.includes('_auth'),
+    hasPkceCookie:     cookieNames.includes('_pkce'),
+    sessionCookieName: cookieNames.includes('connect.sid') ? 'connect.sid present' : 'connect.sid MISSING',
+    storageType:       configStore.getStorageType(),
+    isConfigured:      configStore.isConfigured(),
+    userEmail:         req.session?.user?.email || null,
+    userRole:          req.session?.user?.role || null,
   });
 });
 
