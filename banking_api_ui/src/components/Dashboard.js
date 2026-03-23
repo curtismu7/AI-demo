@@ -16,7 +16,6 @@ const Dashboard = ({ user, onLogout }) => {
   const [forbidden403, setForbidden403] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(false);
   const fetchingRef = React.useRef(false);
 
   useEffect(() => {
