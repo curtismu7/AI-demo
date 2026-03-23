@@ -101,6 +101,9 @@ class OAuthUserService {
     if (options.acr_values) {
       params.set('acr_values', options.acr_values);
     }
+    if (options.nonce) {
+      params.set('nonce', options.nonce);
+    }
 
     return `${this.config.authorizationEndpoint}?${params.toString()}`;
   }
@@ -180,6 +183,58 @@ class OAuthUserService {
     } catch (error) {
       console.error('User info error:', error.response?.data || error.message);
       throw new Error('Failed to get user information');
+    }
+  }
+
+  /**
+   * RFC 6749 §6 — Refresh an access token using a stored refresh token.
+   * Returns the updated token data or throws on failure.
+   */
+  async refreshAccessToken(refreshToken) {
+    if (!refreshToken) throw new Error('No refresh token provided');
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: this.config.clientId,
+    });
+    if (this.config.clientSecret) body.set('client_secret', this.config.clientSecret);
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 10000,
+      });
+      console.log('[TokenRefresh] End-user access token refreshed successfully');
+      return response.data;
+    } catch (error) {
+      console.error('[TokenRefresh] Failed:', error.response?.data || error.message);
+      throw new Error(`Token refresh failed: ${error.response?.data?.error_description || error.message}`);
+    }
+  }
+
+  /**
+   * RFC 7009 — Revoke a token at the PingOne revocation endpoint.
+   * Best-effort: logs errors but does not throw, so logout always completes.
+   */
+  async revokeToken(token, tokenType) {
+    if (!token) return;
+    const revocationEndpoint = this.config.tokenEndpoint
+      ? this.config.tokenEndpoint.replace(/\/as\/token$/, '/as/revoke')
+      : null;
+    if (!revocationEndpoint) {
+      console.warn('[RFC7009] Cannot revoke token: tokenEndpoint not configured');
+      return;
+    }
+    const body = new URLSearchParams({ token, client_id: this.config.clientId });
+    if (this.config.clientSecret) body.set('client_secret', this.config.clientSecret);
+    if (tokenType) body.set('token_type_hint', tokenType);
+    try {
+      await axios.post(revocationEndpoint, body.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 5000,
+      });
+      console.log(`[RFC7009] User token revoked (hint: ${tokenType || 'none'})`);
+    } catch (err) {
+      console.warn('[RFC7009] User token revocation failed (non-fatal):', err.response?.data || err.message);
     }
   }
 

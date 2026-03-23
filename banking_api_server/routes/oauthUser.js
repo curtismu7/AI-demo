@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const oauthService = require('../services/oauthUserService');
 const configStore = require('../services/configStore');
@@ -147,17 +148,21 @@ router.get('/login', (req, res) => {
     const resourceParam = process.env.ENDUSER_AUDIENCE
       ? `&resource=${encodeURIComponent(process.env.ENDUSER_AUDIENCE)}`
       : '';
-    const url = oauthService.generateAuthorizationUrl(state, codeVerifier, {}, redirectUri) + resourceParam;
+
+    // Generate a nonce for OIDC replay protection (RFC 6749 / OIDC Core §3.1.2.1)
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const url = oauthService.generateAuthorizationUrl(state, codeVerifier, { nonce }, redirectUri) + resourceParam;
 
     // Store state, verifier and redirect URI in session for CSRF protection and PKCE
     req.session.oauthState = state;
     req.session.oauthCodeVerifier = codeVerifier;
     req.session.oauthRedirectUri = redirectUri;
+    req.session.oauthNonce = nonce;
     req.session.oauthType = 'user'; // Distinguish from admin OAuth
 
     // Vercel / serverless: also persist PKCE data in a signed cookie so the
     // callback can recover it when the in-memory session is on a different instance.
-    setPkceCookie(res, { state, codeVerifier, redirectUri }, _isProd());
+    setPkceCookie(res, { state, codeVerifier, redirectUri, nonce }, _isProd());
 
     // Explicitly save before redirecting — required with async stores (Redis/Upstash)
     // so the state/verifier are persisted before PingOne sends the callback.
@@ -221,14 +226,31 @@ router.get('/callback', async (req, res) => {
     // Retrieve and clear the PKCE code verifier and redirect URI from session / cookie
     const codeVerifier = req.session.oauthCodeVerifier || pkceCookie?.codeVerifier;
     const redirectUri   = req.session.oauthRedirectUri  || pkceCookie?.redirectUri;
+    const expectedNonce = req.session.oauthNonce         || pkceCookie?.nonce;
     delete req.session.oauthCodeVerifier;
     delete req.session.oauthRedirectUri;
     delete req.session.oauthState;
+    delete req.session.oauthNonce;
     clearPkceCookie(res, _isProd());
 
     // Exchange code for token (with PKCE verifier)
     const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri);
     console.log('Token received for end user');
+
+    // Verify nonce in ID token to prevent ID token replay attacks (OIDC Core §3.1.2.7)
+    if (expectedNonce && tokenData.id_token) {
+      try {
+        const idPayload = JSON.parse(Buffer.from(tokenData.id_token.split('.')[1], 'base64url').toString());
+        if (!idPayload.nonce) {
+          console.warn('[oauth/user/callback] ID token has no nonce claim');
+        } else if (idPayload.nonce !== expectedNonce) {
+          console.error('[oauth/user/callback] Nonce mismatch — possible ID token replay attack');
+          return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
+        }
+      } catch (e) {
+        console.warn('[oauth/user/callback] Could not decode ID token for nonce verification:', e.message);
+      }
+    }
     
     // Get user information from PingOne Core
     const userInfo = await oauthService.getUserInfo(tokenData.access_token);
@@ -394,17 +416,19 @@ router.get('/stepup', (req, res) => {
     const state = oauthService.generateState();
     const codeVerifier = oauthService.generateCodeVerifier();
     const redirectUri = getUserRedirectUri(req);
-    const url = oauthService.generateAuthorizationUrl(state, codeVerifier, { acr_values: acrValue }, redirectUri);
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const url = oauthService.generateAuthorizationUrl(state, codeVerifier, { acr_values: acrValue, nonce }, redirectUri);
 
     // Persist PKCE + state + redirect URI + where to go after MFA
     req.session.oauthState = state;
     req.session.oauthCodeVerifier = codeVerifier;
     req.session.oauthRedirectUri = redirectUri;
+    req.session.oauthNonce = nonce;
     req.session.oauthType = 'user';
     req.session.stepUpReturnTo = `${returnTo}?stepup=done`;
 
     // Vercel / serverless: PKCE cookie fallback
-    setPkceCookie(res, { state, codeVerifier, redirectUri }, _isProd());
+    setPkceCookie(res, { state, codeVerifier, redirectUri, nonce }, _isProd());
 
     console.log(`[StepUp] Initiating MFA step-up with acr_values=${acrValue}`);
     req.session.save((err) => {
@@ -448,8 +472,14 @@ router.get('/status', (req, res) => {
  * Logout end user OAuth session and end PingOne SSO session
  */
 router.get('/logout', (req, res) => {
-  const idToken = req.session.oauthTokens?.idToken || null;
+  const idToken      = req.session.oauthTokens?.idToken      || null;
+  const accessToken  = req.session.oauthTokens?.accessToken  || null;
+  const refreshToken = req.session.oauthTokens?.refreshToken || null;
   const postLogoutUri = `${getFrontendOrigin(req)}/login`;
+
+  // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
+  if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
+  if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
 
   req.session.destroy((err) => {
     if (err) {
@@ -473,10 +503,33 @@ router.get('/logout', (req, res) => {
 });
 
 /**
- * Refresh token (placeholder for future implementation)
+ * RFC 6749 §6 — Refresh the end-user access token using the stored refresh token.
+ * Called by the frontend or auto-refresh middleware when the access token is near expiry.
  */
-router.get('/refresh', (req, res) => {
-  res.status(501).json({ error: 'Token refresh not implemented yet' });
+router.post('/refresh', async (req, res) => {
+  try {
+    const refreshToken = req.session.oauthTokens?.refreshToken;
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'no_refresh_token', message: 'No refresh token in session' });
+    }
+    const tokenData = await oauthService.refreshAccessToken(refreshToken);
+    // Update session with new tokens
+    req.session.oauthTokens = {
+      ...req.session.oauthTokens,
+      accessToken:  tokenData.access_token,
+      refreshToken: tokenData.refresh_token || req.session.oauthTokens.refreshToken,
+      idToken:      tokenData.id_token      || req.session.oauthTokens.idToken,
+      expiresAt:    Date.now() + ((tokenData.expires_in || 3600) * 1000),
+      tokenType:    tokenData.token_type    || 'Bearer',
+    };
+    req.session.save((err) => {
+      if (err) console.error('[refresh] Session save error:', err);
+    });
+    return res.json({ success: true, expiresAt: req.session.oauthTokens.expiresAt });
+  } catch (err) {
+    console.error('[refresh] Token refresh failed:', err.message);
+    return res.status(401).json({ error: 'refresh_failed', message: err.message });
+  }
 });
 
 module.exports = router;

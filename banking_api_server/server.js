@@ -21,6 +21,13 @@ if (isVercel)  console.log('[platform] Vercel deployment detected');
 if (isReplit)  console.log('[platform] Replit deployment detected');
 if (!isVercel && !isReplit && isProduction) console.log('[platform] Generic production deployment');
 
+// Security guard: SKIP_TOKEN_SIGNATURE_VALIDATION must never be enabled in production.
+// Validates at startup (before any request is served) so misconfigurations are caught early.
+if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
+  console.error('[FATAL] SKIP_TOKEN_SIGNATURE_VALIDATION=true is not allowed in production. Remove this env var before deploying.');
+  process.exit(1);
+}
+
 // ── Optional persistent session store (required for Vercel / multi-instance deployments) ──
 // Resolve Redis URL: explicit REDIS_URL takes priority; fall back to deriving it from
 // Upstash environment variables (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)
@@ -68,6 +75,7 @@ if (!sessionStore && (process.env.VERCEL || process.env.REPL_ID || process.env.R
 const authRoutes        = require('./routes/auth');
 const oauthRoutes       = require('./routes/oauth');
 const oauthUserRoutes   = require('./routes/oauthUser');
+const oauthService      = require('./services/oauthService');
 const userRoutes        = require('./routes/users');
 const accountRoutes     = require('./routes/accounts');
 const transactionRoutes = require('./routes/transactions');
@@ -84,6 +92,8 @@ const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authSt
 // Import middleware
 const { authenticateToken } = require('./middleware/auth');
 const { logActivity } = require('./middleware/activityLogger');
+const { correlationIdMiddleware } = require('./middleware/correlationId');
+const { refreshIfExpiring } = require('./middleware/tokenRefresh');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -161,6 +171,14 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Tighter rate limit for auth endpoints to slow brute-force / credential-stuffing.
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: process.env.NODE_ENV === 'development' ? 200 : 20,
+  message: { error: 'Too many authentication requests, please wait before retrying.' }
+});
+app.use('/api/auth/oauth', authLimiter);
+
 // Logging middleware
 app.use(morgan('combined'));
 
@@ -195,6 +213,9 @@ app.use(session({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Correlation ID — attach X-Request-ID to every request/response for distributed tracing.
+app.use(correlationIdMiddleware);
+
 // Activity logging middleware
 app.use(logActivity);
 
@@ -209,7 +230,9 @@ app.use((req, res, next) => {
 // land on a fresh instance with no in-memory session data.
 app.use(restoreSessionFromCookie);
 
-
+// RFC 6749 §6 — silently refresh near-expired end-user access tokens on
+// authenticated API routes so UIs never serve stale tokens to downstream services.
+app.use(['/api/users', '/api/accounts', '/api/transactions', '/api/mcp', '/api/banking-agent', '/api/tokens'], refreshIfExpiring);
 
 // Health check endpoint
 app.get('/api/healthz', (req, res) => {
@@ -223,10 +246,21 @@ app.get('/api/healthz', (req, res) => {
 // Unified logout — destroys whichever session is active and redirects
 // browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/login).
 // Called as a full page navigation (window.location.href), NOT via axios.
-app.get('/api/auth/logout', (req, res) => {
-  const idToken = req.session.oauthTokens?.idToken || null;
-  const frontendUrl = process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000';
+app.get('/api/auth/logout', async (req, res) => {
+  const idToken      = req.session.oauthTokens?.idToken       || null;
+  const accessToken  = req.session.oauthTokens?.accessToken   || null;
+  const refreshToken = req.session.oauthTokens?.refreshToken  || null;
+  const frontendUrl  = process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000';
   const postLogoutUri = `${frontendUrl}/login`;
+
+  // RFC 7009 — revoke tokens before destroying the session so they can no
+  // longer be used even if intercepted.  Runs in parallel; non-fatal on error.
+  if (accessToken  && accessToken  !== '_cookie_session') {
+    oauthService.revokeToken(accessToken,  'access_token');
+  }
+  if (refreshToken && refreshToken !== '_cookie_session') {
+    oauthService.revokeToken(refreshToken, 'refresh_token');
+  }
 
   req.session.destroy((err) => {
     if (err) {

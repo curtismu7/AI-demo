@@ -104,6 +104,22 @@ export class TokenIntrospector {
       console.warn(`[TokenIntrospector] MCP_SERVER_RESOURCE_URI is set but token has no aud claim — skipping aud check`);
     }
 
+    // RFC 8693 §4.2 — enforce may_act when BFF_CLIENT_ID + REQUIRE_MAY_ACT are configured.
+    // Ensures only tokens exchanged by the designated BFF client are accepted by this MCP server.
+    const bffClientId = process.env.BFF_CLIENT_ID;
+    const requireMayAct = process.env.REQUIRE_MAY_ACT === 'true';
+    if (requireMayAct && bffClientId) {
+      const mayAct = (tokenInfo as any).may_act;
+      if (!mayAct || mayAct.client_id !== bffClientId) {
+        console.error(`[TokenIntrospector] may_act enforcement failed: expected client_id=${bffClientId}, got ${mayAct?.client_id || 'none'}`);
+        throw new AuthenticationError(
+          'Token missing valid may_act claim for BFF client',
+          AuthErrorCodes.INVALID_AGENT_TOKEN
+        );
+      }
+      console.log(`[TokenIntrospector] may_act validated: actor=${mayAct.client_id}`);
+    }
+
     // Check if token is expired
     if (tokenInfo.exp && tokenInfo.exp < Math.floor(Date.now() / 1000)) {
       throw new AuthenticationError(

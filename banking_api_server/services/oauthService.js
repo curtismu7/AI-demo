@@ -89,7 +89,7 @@ class OAuthService {
   /**
    * Generate authorization URL for the authorization code flow with PKCE (S256)
    */
-  generateAuthorizationUrl(state, codeVerifier, redirectUri) {
+  generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce = null) {
     const codeChallenge = this.generateCodeChallenge(codeVerifier);
     const params = new URLSearchParams({
       response_type: 'code',
@@ -101,6 +101,10 @@ class OAuthService {
       code_challenge_method: 'S256',
       login_hint: 'admin'
     });
+
+    if (nonce) {
+      params.set('nonce', nonce);
+    }
 
     return `${this.config.authorizationEndpoint}?${params.toString()}`;
   }
@@ -296,6 +300,39 @@ class OAuthService {
     // Admin role checking is now handled in the local user management system
     console.log('hasAdminRole called but deprecated - using local user management instead');
     return false;
+  }
+
+  /**
+   * RFC 7009 — Revoke a token (access or refresh) at the PingOne revocation endpoint.
+   * Best-effort: logs errors but does not throw, so logout always completes.
+   *
+   * @param {string} token        - The token to revoke
+   * @param {string} [tokenType]  - 'access_token' | 'refresh_token' (hint only, optional)
+   */
+  async revokeToken(token, tokenType) {
+    if (!token) return;
+    // PingOne revocation endpoint: replace /token with /token/revoke in the token endpoint URL
+    // PingOne AI IAM Core exposes: POST /{envId}/as/revoke
+    const revocationEndpoint = this.config.tokenEndpoint
+      ? this.config.tokenEndpoint.replace(/\/as\/token$/, '/as/revoke')
+      : null;
+    if (!revocationEndpoint) {
+      console.warn('[RFC7009] Cannot revoke token: tokenEndpoint not configured');
+      return;
+    }
+    const body = new URLSearchParams({ token, client_id: this.config.clientId });
+    if (this.config.clientSecret) body.set('client_secret', this.config.clientSecret);
+    if (tokenType) body.set('token_type_hint', tokenType);
+    try {
+      await axios.post(revocationEndpoint, body.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 5000,
+      });
+      console.log(`[RFC7009] Token revoked (hint: ${tokenType || 'none'})`);
+    } catch (err) {
+      // Log but don't block logout on revocation failure
+      console.warn('[RFC7009] Token revocation failed (non-fatal):', err.response?.data || err.message);
+    }
   }
 
   /**

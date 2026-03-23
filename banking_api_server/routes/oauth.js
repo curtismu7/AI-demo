@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const oauthService = require('../services/oauthService');
 const configStore = require('../services/configStore');
@@ -61,15 +62,19 @@ router.get('/login', (req, res) => {
     req.session.oauthCodeVerifier = codeVerifier;
     req.session.oauthRedirectUri = redirectUri;
 
+    // Generate a nonce for OIDC replay protection (RFC 6749 / OIDC Core §3.1.2.1)
+    const nonce = crypto.randomBytes(16).toString('hex');
+    req.session.oauthNonce = nonce;
+
     // Generate authorization URL (includes code_challenge derived from verifier)
     const resourceParam = process.env.ENDUSER_AUDIENCE
       ? `&resource=${encodeURIComponent(process.env.ENDUSER_AUDIENCE)}`
       : '';
-    const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri) + resourceParam;
+    const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce) + resourceParam;
 
     // Vercel / serverless: also store PKCE data in a signed cookie so the
     // callback can recover it if the in-memory session is on a different instance.
-    setPkceCookie(res, { state, codeVerifier, redirectUri }, _isProd());
+    setPkceCookie(res, { state, codeVerifier, redirectUri, nonce }, _isProd());
 
     // Explicitly save before redirecting — required with async stores (Redis/Upstash)
     // so the state/verifier are persisted before PingOne sends the callback.
@@ -126,15 +131,30 @@ router.get('/callback', async (req, res) => {
     // Clear state, code_verifier and redirect URI from session and cookie
     const codeVerifier = req.session.oauthCodeVerifier || pkceCookie?.codeVerifier;
     const redirectUri   = req.session.oauthRedirectUri  || pkceCookie?.redirectUri;
+    const expectedNonce = req.session.oauthNonce         || pkceCookie?.nonce;
     delete req.session.oauthState;
     delete req.session.oauthCodeVerifier;
     delete req.session.oauthRedirectUri;
+    delete req.session.oauthNonce;
     clearPkceCookie(res, _isProd());
 
     // Exchange authorization code for access token (with PKCE verifier)
     const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri);
-    
-    // Get user information from PingOne Core
+
+    // Verify nonce in ID token to prevent ID token replay attacks (OIDC Core §3.1.2.7)
+    if (expectedNonce && tokenData.id_token) {
+      try {
+        const idPayload = JSON.parse(Buffer.from(tokenData.id_token.split('.')[1], 'base64url').toString());
+        if (!idPayload.nonce) {
+          console.warn('[oauth/callback] ID token has no nonce claim');
+        } else if (idPayload.nonce !== expectedNonce) {
+          console.error('[oauth/callback] Nonce mismatch — possible ID token replay attack');
+          return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
+        }
+      } catch (e) {
+        console.warn('[oauth/callback] Could not decode ID token for nonce verification:', e.message);
+      }
+    }
     const userInfo = await oauthService.getUserInfo(tokenData.access_token);
     console.log('User info from PingOne Core:', JSON.stringify(userInfo, null, 2));
     
