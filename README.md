@@ -61,7 +61,7 @@ or Vercel KV in production — **no `.env` file required**.
 |---|---|---|
 | AS endpoints | `openam-*.forgeblocks.com/am/oauth2/...` | `auth.pingone.com/{envId}/as/...` |
 | Token validation | PingOne AI IAM Core introspection (HTTP call) | PingOne JWKS (JWT signature) |
-| Token Exchange | Not implemented | RFC 8693 via `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` |
+| Token Exchange | Not implemented | Implemented — `banking_api_server/services/agentMcpTokenService.js` performs RFC 8693 exchange on every `POST /api/mcp/tool` when `MCP_RESOURCE_URI` is set |
 | MCP server config | `PINGONE_BASE_URL=*.pingidentity.com` | `PINGONE_BASE_URL=https://auth.pingone.com/{envId}/as` |
 
 ## Services
@@ -99,24 +99,38 @@ or Vercel KV in production — **no `.env` file required**.
    cd banking_api_ui && npm start
    ```
 
-## Token Exchange Flow
+## Token Exchange Flow (RFC 8693)
 
-The AI agent (langchain_agent / MCP server) uses **RFC 8693 Token Exchange** to exchange its own agent access token for a user-delegated banking token:
+The Banking BFF (`banking_api_server`) performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
 
 ```
-Agent → PingOne (client_credentials) → agent_access_token
-Agent → /api/token-exchange (oauth-playground OR PingOne directly):
-  grant_type = urn:ietf:params:oauth:grant-type:token-exchange
-  subject_token = agent_access_token
-  requested_token_type = urn:ietf:params:oauth:token-type:access_token
-  audience = banking_api_enduser
-  scope = banking:read banking:transactions:read
-→ user_delegated_token
-Agent → banking_api_server (with user_delegated_token)
+1. Retrieve user's access token (T1) from server-side session
+2. POST {issuer}/as/token
+     grant_type = urn:ietf:params:oauth:grant-type:token-exchange
+     subject_token = T1  (user's access token)
+     subject_token_type = urn:ietf:params:oauth:token-type:access_token
+     audience = <MCP_RESOURCE_URI>          ← binds audience to MCP server
+     scope = <tool-specific scopes>         ← e.g. banking:accounts:read
+3. PingOne validates may_act claim on T1, issues T2 (MCP-audience token)
+4. BFF opens WebSocket to banking_mcp_server with T2 as Bearer
 ```
 
-The `oauth-playground` server (`/api/token-exchange`) has a full RFC 8693 implementation 
-for PingOne — either run it alongside this app or implement the exchange directly.
+Optional delegation path (`USE_AGENT_ACTOR_FOR_MCP=true`):
+```
+     actor_token = <agent client_credentials token>   ← agent acts on behalf of user
+     actor_token_type = urn:ietf:params:oauth:token-type:access_token
+     → T2 carries  act: { sub: "<agent-client-id>" }  per RFC 8693 §4.1
+```
+
+The exchange is **dormant until configured** — if `MCP_RESOURCE_URI` is not set, T1 is forwarded directly (safe for local dev). To activate:
+
+| Env var | Purpose |
+|---|---|
+| `MCP_RESOURCE_URI` | Audience URI for the MCP server (activates the exchange) |
+| `USE_AGENT_ACTOR_FOR_MCP` | `true` to add `actor_token` (adds `act` claim to T2) |
+| `AGENT_OAUTH_CLIENT_ID` | Agent OAuth client ID (required when actor path is on) |
+
+Required in PingOne: enable the token-exchange grant type on the BFF client and configure a `may_act` / actor policy so PingOne will accept the exchange.
 
 ## PingOne Configuration Required
 
@@ -128,10 +142,10 @@ In your PingOne environment (`b9817c16-9910-4415-b67e-4ac687da74d9`), you need:
 2. **Web Application** (auth_code + PKCE) — for user login
    - Already configured: `a4f963ea-0736-456a-be72-b1fa4f63f81f`
 
-3. **Token Exchange** policy — allow the Worker App to exchange tokens
-   - In PingOne: Applications → Policies → Token Exchange
-   - Subject token issuer: same PingOne environment
-   - Requested audience: `banking_api_enduser`
+3. **Token Exchange** policy on the BFF client — allows the BFF to exchange user tokens for MCP-audience tokens
+   - In PingOne: Applications → your BFF app → Grant Types → enable **Token Exchange**
+   - Add a Token Exchange policy: subject token issuer = this PingOne environment; allowed audience = value of `MCP_RESOURCE_URI`
+   - Add a `may_act` claim to tokens issued to end-users (Attribute Mappings) so the BFF's client_id appears in `may_act.client_id`
 
 ## MCP Security Gateway — Potential Architecture
 
