@@ -5,7 +5,6 @@ import axios from 'axios';
 import bffAxios from '../services/bffAxios';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
-import BankingAgent from './BankingAgent';
 import TokenChainDisplay from './TokenChainDisplay';
 
 const Dashboard = ({ user, onLogout }) => {
@@ -769,8 +768,6 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
       )}
 
-      {/* Banking AI Assistant — floating chat panel (available for admin too) */}
-      <BankingAgent user={user} />
     </div>
   );
 };

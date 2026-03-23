@@ -6,7 +6,6 @@ import apiClient from '../services/apiClient';
 import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
-import BankingAgent from './BankingAgent';
 import TokenChainDisplay from './TokenChainDisplay';
 import './UserDashboard.css';
 
@@ -881,8 +880,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
       )}
 
-      {/* Banking AI Assistant — floating chat panel */}
-      <BankingAgent user={user} />
     </div>
   );
 };

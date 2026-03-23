@@ -1,7 +1,7 @@
 // banking_api_server/routes/bankingAgentNl.js
 /**
  * POST /api/banking-agent/nl — natural language → education or banking intent.
- * Session required. Uses Gemini when GEMINI_API_KEY is set; otherwise heuristic parser (free).
+ * Session required. LLM priority: Groq (GROQ_API_KEY) → Gemini (GEMINI_API_KEY) → heuristic regex.
  */
 'use strict';
 
@@ -28,12 +28,17 @@ router.post('/nl', async (req, res) => {
   }
 });
 
-/** GET /api/banking-agent/nl/status — whether Gemini is configured (no secrets returned). */
+/** GET /api/banking-agent/nl/status — which LLM backends are configured (no secrets returned). */
 router.get('/nl/status', (req, res) => {
+  const groq = !!process.env.GROQ_API_KEY;
   const gemini = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY);
+  const activeProvider = groq ? 'groq' : gemini ? 'gemini' : 'heuristic';
   return res.json({
+    groqConfigured: groq,
+    groqModel: groq ? (process.env.GROQ_MODEL || 'llama-3.1-8b-instant') : null,
     geminiConfigured: gemini,
-    model: gemini ? (process.env.GEMINI_MODEL || 'gemini-1.5-flash') : null,
+    geminiModel: gemini ? (process.env.GEMINI_MODEL || 'gemini-1.5-flash') : null,
+    activeProvider,
     heuristicAlwaysAvailable: true,
   });
 });

@@ -1,11 +1,12 @@
 // banking_api_server/services/geminiNlIntent.js
 /**
- * Optional Gemini (Google AI) intent parsing — free tier friendly when GEMINI_API_KEY is set.
- * Falls back to caller if unset or on error.
+ * LLM intent parsing — priority: Groq → Gemini → heuristic regex.
+ * Set GROQ_API_KEY for fastest inference; GEMINI_API_KEY as fallback; neither = free heuristic.
  */
 'use strict';
 
 const { parseHeuristic, EDU } = require('./nlIntentParser');
+const { parseWithGroq } = require('./groqNlIntent');
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
@@ -65,16 +66,24 @@ async function parseWithGemini(userMessage) {
 
 /**
  * @param {string} message
- * @returns {Promise<{ source: 'gemini'|'heuristic', result: object }>}
+ * @returns {Promise<{ source: 'groq'|'gemini'|'heuristic', result: object }>}
  */
 async function parseNaturalLanguage(message) {
-  const gemini = await parseWithGemini(message).catch((e) => {
-    console.warn('[geminiNlIntent]', e.message);
+  // 1. Try Groq (fastest, OpenAI-compatible)
+  const groq = await parseWithGroq(message).catch((e) => {
+    console.warn('[nlIntent] Groq error:', e.message);
     return null;
   });
-  if (gemini) {
-    return { source: 'gemini', result: gemini };
-  }
+  if (groq) return { source: 'groq', result: groq };
+
+  // 2. Try Gemini
+  const gemini = await parseWithGemini(message).catch((e) => {
+    console.warn('[nlIntent] Gemini error:', e.message);
+    return null;
+  });
+  if (gemini) return { source: 'gemini', result: gemini };
+
+  // 3. Heuristic regex (always available, zero cost)
   return { source: 'heuristic', result: parseHeuristic(message) };
 }
 

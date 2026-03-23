@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import BankingAgent from './BankingAgent';
 import './LandingPage.css';
 
 const LandingPage = () => {
@@ -320,7 +319,36 @@ const LandingPage = () => {
               </div>
               
               <div className="demo-chat">
-                <BankingAgent />
+                <div style={{
+                  background: '#0f172a',
+                  borderRadius: '1rem',
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  minHeight: '260px',
+                  boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderBottom: '1px solid #1e293b', paddingBottom: '0.75rem' }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981' }} />
+                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>BX Finance AI Agent</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', flex: 1 }}>
+                    <div style={{ alignSelf: 'flex-start', background: '#1e293b', color: '#e2e8f0', borderRadius: '0.75rem 0.75rem 0.75rem 0', padding: '0.6rem 0.9rem', fontSize: '0.85rem', maxWidth: '80%' }}>
+                      Hi! I can check balances, move money, and explain how OAuth works. Sign in to get started.
+                    </div>
+                    <div style={{ alignSelf: 'flex-end', background: '#6366f1', color: '#fff', borderRadius: '0.75rem 0.75rem 0 0.75rem', padding: '0.6rem 0.9rem', fontSize: '0.85rem', maxWidth: '80%' }}>
+                      What's my account balance?
+                    </div>
+                    <div style={{ alignSelf: 'flex-start', background: '#1e293b', color: '#e2e8f0', borderRadius: '0.75rem 0.75rem 0.75rem 0', padding: '0.6rem 0.9rem', fontSize: '0.85rem', maxWidth: '80%' }}>
+                      I'll need to verify your identity first. Click <strong>Customer Sign In</strong> →
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem', color: '#64748b', fontSize: '0.78rem' }}>
+                    <span>💬</span>
+                    <span>Chat opens in the bottom-right corner after sign in</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
