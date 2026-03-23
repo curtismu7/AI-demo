@@ -35,9 +35,12 @@ const Login = () => {
         case 'no_code':
           errorMessage = 'No authorization code received. Please try again.';
           break;
-        case 'callback_failed':
-          errorMessage = 'Authentication callback failed. Please try again.';
+        case 'callback_failed': {
+          const detail = searchParams.get('detail');
+          const detailMsg = detail && detail !== 'unknown' ? ` (${detail})` : '';
+          errorMessage = `Authentication callback failed${detailMsg}. Check that your PingOne redirect URI is registered correctly.`;
           break;
+        }
         case 'oauth_init_failed':
           errorMessage = 'Failed to initialize OAuth. Please try again.';
           break;

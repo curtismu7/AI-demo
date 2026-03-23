@@ -244,16 +244,20 @@ export default function BankingAgent({ user }) {
   /**
    * Independently check auth endpoints.  Called on mount, on panel open, and
    * when the 'userAuthenticated' event fires (App.js dispatches this after login).
+   * Checks all three session types: admin OAuth, end-user OAuth, and basic auth.
    */
   const checkSelfAuth = useCallback(() => {
     Promise.all([
       fetch('/api/auth/oauth/status').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/auth/oauth/user/status').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([admin, endUser]) => {
+      fetch('/api/auth/session').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([admin, endUser, session]) => {
       if (admin?.authenticated && admin.user) {
         setSessionUser(admin.user);
       } else if (endUser?.authenticated && endUser.user) {
         setSessionUser(endUser.user);
+      } else if (session?.authenticated && session.user) {
+        setSessionUser(session.user);
       }
     });
   }, []);

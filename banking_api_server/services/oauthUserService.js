@@ -137,8 +137,15 @@ class OAuthUserService {
 
       return response.data;
     } catch (error) {
-      console.error('Token exchange error:', error.response?.data || error.message);
-      throw new Error('Failed to exchange code for token');
+      const pingoneError = error.response?.data?.error;
+      const pingoneDesc  = error.response?.data?.error_description;
+      console.error('[exchangeCodeForToken] Failed:', error.response?.data || error.message);
+      const msg = pingoneError
+        ? `Token exchange failed: ${pingoneError}${pingoneDesc ? ' — ' + pingoneDesc : ''}`
+        : 'Failed to exchange code for token';
+      const err = new Error(msg);
+      err.pingoneError = pingoneError || 'token_exchange_failed';
+      throw err;
     }
   }
 
@@ -181,8 +188,11 @@ class OAuthUserService {
 
       return response.data;
     } catch (error) {
-      console.error('User info error:', error.response?.data || error.message);
-      throw new Error('Failed to get user information');
+      const pingoneError = error.response?.data?.error;
+      console.error('[getUserInfo] Failed:', error.response?.data || error.message);
+      const err = new Error('Failed to get user information');
+      err.pingoneError = pingoneError || 'userinfo_failed';
+      throw err;
     }
   }
 

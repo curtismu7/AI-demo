@@ -251,7 +251,8 @@ router.get('/callback', async (req, res) => {
     });
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.redirect(`${getFrontendOrigin(req)}/login?error=callback_failed`);
+    const detail = error.pingoneError || 'unknown';
+    res.redirect(`${getFrontendOrigin(req)}/login?error=callback_failed&detail=${encodeURIComponent(detail)}`);
   }
 });
 

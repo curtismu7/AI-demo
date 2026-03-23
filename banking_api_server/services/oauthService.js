@@ -142,8 +142,15 @@ class OAuthService {
 
       return tokenResponse.data;
     } catch (error) {
-      console.error('Token exchange error:', error.response?.data || error.message);
-      throw new Error('Failed to exchange authorization code for token');
+      const pingoneError = error.response?.data?.error;
+      const pingoneDesc  = error.response?.data?.error_description;
+      console.error('[exchangeCodeForToken] Failed:', error.response?.data || error.message);
+      const msg = pingoneError
+        ? `Token exchange failed: ${pingoneError}${pingoneDesc ? ' — ' + pingoneDesc : ''}`
+        : 'Failed to exchange authorization code for token';
+      const err = new Error(msg);
+      err.pingoneError = pingoneError || 'token_exchange_failed';
+      throw err;
     }
   }
 

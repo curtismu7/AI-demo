@@ -111,6 +111,26 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// Generic session status — works for all auth types (basic auth, OAuth admin, OAuth user).
+// Used by BankingAgent.js and apiClient.js to detect any active session without
+// caring whether the user authenticated via username/password or PingOne OAuth.
+router.get('/session', (req, res) => {
+  const u = req.session?.user;
+  if (!u) return res.json({ authenticated: false, user: null });
+  res.json({
+    authenticated: true,
+    user: {
+      id:        u.id,
+      username:  u.username,
+      email:     u.email,
+      firstName: u.firstName,
+      lastName:  u.lastName,
+      role:      u.role,
+    },
+    authType: req.session.oauthType || req.session.tokenType || 'session',
+  });
+});
+
 // Get current user
 router.get('/me', authenticateToken, (req, res) => {
   try {
