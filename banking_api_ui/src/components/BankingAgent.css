@@ -319,6 +319,23 @@
   border-radius: 10px;
 }
 
+/* ─── Token event inline messages ────────────────────────────────────────── */
+.banking-agent-msg.token-event {
+  justify-content: center;
+}
+
+.banking-agent-msg.token-event .banking-agent-msg-bubble {
+  max-width: 95%;
+  background: #edf5ff;
+  color: #003a6d;
+  border: 1px solid #b0c8f5;
+  border-left: 3px solid #277ba5;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.55;
+  padding: 7px 11px;
+}
+
 /* Typing indicator */
 .banking-agent-dots {
   display: inline-flex;
