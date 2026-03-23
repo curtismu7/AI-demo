@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import Login from './components/Login';
+import LandingPage from './components/LandingPage';
 import BankingAgent from './components/BankingAgent';
 import Dashboard from './components/Dashboard';
 import UserDashboard from './components/UserDashboard';
@@ -19,6 +19,7 @@ import CIBAPanel from './components/CIBAPanel';
 import McpInspector from './components/McpInspector';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import { EducationUIProvider } from './context/EducationUIContext';
+import { TokenChainProvider } from './context/TokenChainContext';
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import './App.css';
@@ -31,7 +32,7 @@ function App() {
   const pendingUserEmailRef = useRef(null);
 
   // Inject userEmail into the first session_init WS message then restore send.
-  const injectEmailIntoNextSessionInit = (email) => {
+  const injectEmailIntoNextSessionInit = useCallback((email) => {
     pendingUserEmailRef.current = email;
     const _origSend = WebSocket.prototype.send;
     WebSocket.prototype.send = function(data) {
@@ -41,12 +42,13 @@ function App() {
           msg.userEmail = pendingUserEmailRef.current;
           pendingUserEmailRef.current = null;
           data = JSON.stringify(msg);
-          WebSocket.prototype.send = _origSend;
         }
-      } catch(_e) {}
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
       return _origSend.call(this, data);
     };
-  };
+  }, []);
 
   const checkOAuthSession = useCallback(async () => {
     console.log('🔍 checkOAuthSession - Checking for active OAuth sessions...');
@@ -155,6 +157,7 @@ function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <EducationUIProvider>
+      <TokenChainProvider>
         <div className="App end-user-nano">
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {/* Config page is always accessible, regardless of auth state */}
@@ -164,7 +167,7 @@ function App() {
             <Route path="*" element={
               !user ? (
                 <>
-                  <Login />
+                  <LandingPage />
                   <BankingAgent user={null} />
                 </>
               ) : (
@@ -193,6 +196,7 @@ function App() {
           <EducationPanelsHost />
           <CIBAPanel />
         </div>
+      </TokenChainProvider>
       </EducationUIProvider>
     </Router>
   );

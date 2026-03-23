@@ -10,6 +10,7 @@ import {
 } from '../services/bankingAgentService';
 import { loadPublicConfig } from '../services/configService';
 import { useEducationUIOptional } from '../context/EducationUIContext';
+import { useTokenChainOptional } from '../context/TokenChainContext';
 import { EDU } from './education/educationIds';
 import { EDUCATION_COMMANDS } from './education/educationCommands';
 import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
@@ -136,6 +137,7 @@ function normalizeBankingParams(action, params) {
 
 export default function BankingAgent({ user }) {
   const edu = useEducationUIOptional();
+  const tokenChain = useTokenChainOptional();
   const [isOpen, setIsOpen] = useState(false);
   const [showLearn, setShowLearn] = useState(false);
   const [nlInput, setNlInput] = useState('');
@@ -193,30 +195,59 @@ export default function BankingAgent({ user }) {
     setLoading(true);
 
     try {
-      let result;
+      let response;
       switch (actionId) {
         case 'accounts':
-          result = await getMyAccounts();
+          response = await getMyAccounts();
           break;
         case 'transactions':
-          result = await getMyTransactions();
+          response = await getMyTransactions();
           break;
         case 'balance':
-          result = await getAccountBalance(form.accountId);
+          response = await getAccountBalance(form.accountId);
           break;
         case 'deposit':
-          result = await createDeposit(form.accountId, parseFloat(form.amount), form.note);
+          response = await createDeposit(form.accountId, parseFloat(form.amount), form.note);
           break;
         case 'withdraw':
-          result = await createWithdrawal(form.accountId, parseFloat(form.amount), form.note);
+          response = await createWithdrawal(form.accountId, parseFloat(form.amount), form.note);
           break;
         case 'transfer':
-          result = await createTransfer(form.fromId, form.toId, parseFloat(form.amount), form.note);
+          response = await createTransfer(form.fromId, form.toId, parseFloat(form.amount), form.note);
           break;
         default:
           throw new Error(`Unknown action: ${actionId}`);
       }
-      addMessage('assistant', formatResult(result), actionId);
+
+      // Push token events to TokenChainContext (updates TokenChainDisplay on dashboard)
+      const tokenEvents = response.tokenEvents || [];
+      if (tokenChain && tokenEvents.length > 0) {
+        tokenChain.setTokenEvents(actionId, tokenEvents);
+      }
+
+      // Show inline token event summary in the chat
+      if (tokenEvents.length > 0) {
+        const exchanged = tokenEvents.find(e => e.id === 'exchanged-token');
+        const skipped = tokenEvents.find(e => e.id === 'exchange-skipped');
+        const failed = tokenEvents.find(e => e.id === 'exchange-failed');
+        const t1 = tokenEvents.find(e => e.id === 'user-token');
+
+        let tokenMsg = null;
+        if (exchanged) {
+          const mayActStatus = t1?.mayActPresent ? '✅ may_act validated' : '⚠️ no may_act';
+          const actStatus = exchanged.actPresent ? `✅ act: ${exchanged.actDetails}` : '⚠️ no act claim';
+          tokenMsg = `🔐 RFC 8693 Token Exchange\n${mayActStatus} → T2 issued · ${actStatus}\nScope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`;
+        } else if (skipped) {
+          tokenMsg = '🔐 Token Exchange skipped — MCP_RESOURCE_URI not configured. T1 forwarded directly.';
+        } else if (failed) {
+          tokenMsg = `🔐 Token Exchange failed: ${failed.error || 'unknown error'}`;
+        }
+        if (tokenMsg) {
+          addMessage('token-event', tokenMsg, actionId);
+        }
+      }
+
+      addMessage('assistant', formatResult(response.result), actionId);
     } catch (err) {
       const isConnErr =
         err.message.includes('timed out') ||

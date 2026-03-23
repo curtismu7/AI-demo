@@ -1,18 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
 import BankingAgent from './BankingAgent';
 import './LandingPage.css';
 
 const LandingPage = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('personal');
-  const [scrollY, setScrollY] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('personal');
+  const [scrollY, setScrollY] = React.useState(0);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleOAuthLogin = (userType = 'user') => {
+    const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
+    if (userType === 'admin') {
+      window.location.href = `${apiUrl}/api/auth/oauth/login`;
+    } else {
+      window.location.href = `${apiUrl}/api/auth/oauth/user/login`;
+    }
+  };
 
   const features = [
     {
@@ -88,6 +96,7 @@ const LandingPage = () => {
             <a href="#how-it-works" className="nav-link">How It Works</a>
             <a href="#testimonials" className="nav-link">Testimonials</a>
             <button 
+              type="button"
               className="nav-cta"
               onClick={() => document.getElementById('agent-section').scrollIntoView({ behavior: 'smooth' })}
             >
@@ -96,6 +105,7 @@ const LandingPage = () => {
           </div>
           
           <button 
+            type="button"
             className="nav-toggle"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
@@ -125,17 +135,25 @@ const LandingPage = () => {
             </p>
             <div className="hero-actions">
               <button 
+                type="button"
                 className="cta-primary"
                 onClick={() => document.getElementById('agent-section').scrollIntoView({ behavior: 'smooth' })}
               >
                 Start Conversation
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" title="Arrow icon">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
               </button>
-              <a href="#features" className="cta-secondary">
-                Learn More
-              </a>
+              <button 
+                type="button"
+                className="cta-secondary"
+                onClick={() => handleOAuthLogin('user')}
+              >
+                Sign In to Access
+              </button>
+            </div>
+            <div className="hero-note">
+              <p>🔐 Powered by PingOne AI IAM Core • No passwords required</p>
             </div>
           </div>
           
@@ -184,7 +202,7 @@ const LandingPage = () => {
           
           <div className="features-grid">
             {features.map((feature, index) => (
-              <div key={index} className="feature-card">
+              <div key={`feature-${feature.title.replace(/\s+/g, '-').toLowerCase()}`} className="feature-card">
                 <div className="feature-icon">{feature.icon}</div>
                 <h3>{feature.title}</h3>
                 <p>{feature.description}</p>
@@ -235,12 +253,14 @@ const LandingPage = () => {
           <div className="agent-demo">
             <div className="demo-tabs">
               <button 
+                type="button"
                 className={`tab ${activeTab === 'personal' ? 'active' : ''}`}
                 onClick={() => setActiveTab('personal')}
               >
                 Personal Banking
               </button>
               <button 
+                type="button"
                 className={`tab ${activeTab === 'business' ? 'active' : ''}`}
                 onClick={() => setActiveTab('business')}
               >
@@ -268,6 +288,25 @@ const LandingPage = () => {
                     </>
                   )}
                 </div>
+                <div className="auth-notice">
+                  <p>🔐 Sign in required to access AI banking features</p>
+                  <div className="auth-buttons">
+                    <button 
+                      type="button"
+                      className="auth-btn primary"
+                      onClick={() => handleOAuthLogin('user')}
+                    >
+                      Customer Sign In
+                    </button>
+                    <button 
+                      type="button"
+                      className="auth-btn secondary"
+                      onClick={() => handleOAuthLogin('admin')}
+                    >
+                      Admin Sign In
+                    </button>
+                  </div>
+                </div>
               </div>
               
               <div className="demo-chat">
@@ -288,7 +327,7 @@ const LandingPage = () => {
           
           <div className="testimonials-grid">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="testimonial-card">
+              <div key={`testimonial-${testimonial.name.replace(/\s+/g, '-').toLowerCase()}`} className="testimonial-card">
                 <div className="testimonial-avatar">{testimonial.avatar}</div>
                 <div className="testimonial-content">
                   <p>"{testimonial.content}"</p>
@@ -310,6 +349,7 @@ const LandingPage = () => {
             <h2>Ready to Experience the Future?</h2>
             <p>Join thousands of users who have transformed their banking experience with AI</p>
             <button 
+              type="button"
               className="cta-primary"
               onClick={() => document.getElementById('agent-section').scrollIntoView({ behavior: 'smooth' })}
             >

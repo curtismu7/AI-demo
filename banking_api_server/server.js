@@ -357,7 +357,7 @@ const { oauthErrorHandler } = require('./middleware/oauthErrorHandler');
 // with `act: { client_id: <bff> }` and a scope narrowed to what the tool needs,
 // scoped to the MCP server audience — the user's raw token never leaves the BFF.
 
-const { resolveMcpAccessToken } = require('./services/agentMcpTokenService');
+const { resolveMcpAccessTokenWithEvents } = require('./services/agentMcpTokenService');
 const { mcpCallTool } = require('./services/mcpWebSocketClient');
 
 // POST /api/mcp/tool — call a banking MCP tool
@@ -369,23 +369,26 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   }
 
   let agentToken;
+  let tokenEvents = [];
   try {
-    agentToken = await resolveMcpAccessToken(req, tool);
+    const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
+    agentToken = resolved.token;
+    tokenEvents = resolved.tokenEvents;
   } catch (err) {
     console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
-    return res.status(502).json({ error: 'token_exchange_failed', message: err.message });
+    return res.status(502).json({ error: 'token_exchange_failed', message: err.message, tokenEvents });
   }
 
   if (!agentToken) {
-    return res.status(401).json({ error: 'authentication_required', message: 'Sign in to use the banking agent.' });
+    return res.status(401).json({ error: 'authentication_required', message: 'Sign in to use the banking agent.', tokenEvents });
   }
 
   try {
     const result = await mcpCallTool(tool, params || {}, agentToken);
-    return res.json({ result });
+    return res.json({ result, tokenEvents });
   } catch (err) {
     console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
-    return res.status(502).json({ error: 'mcp_error', message: err.message });
+    return res.status(502).json({ error: 'mcp_error', message: err.message, tokenEvents });
   }
 });
 
