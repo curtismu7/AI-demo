@@ -211,11 +211,11 @@ test.describe('BankingAgent — Login page (unauthenticated)', () => {
     await expect(page.locator('.banking-agent-panel')).toBeVisible();
   });
 
-  test('panel shows PingOne AI Core title', async ({ page }) => {
+  test('panel shows PingOne AI IAM Core title', async ({ page }) => {
     await mockUnauthenticated(page);
     await page.goto('/');
     await page.locator('.banking-agent-fab').click();
-    await expect(page.locator('.banking-agent-title')).toHaveText('PingOne AI Core');
+    await expect(page.locator('.banking-agent-title')).toHaveText('PingOne AI IAM Core');
   });
 
   test('subtitle shows "How can I help you today?" when not logged in', async ({ page }) => {

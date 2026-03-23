@@ -315,7 +315,7 @@ export default function BankingAgent({ user }) {
             <div className="banking-agent-header-info">
               <span className="banking-agent-avatar">🏦</span>
               <div>
-                <div className="banking-agent-title">PingOne AI Core</div>
+                <div className="banking-agent-title">PingOne AI IAM Core</div>
                 <div className="banking-agent-subtitle">
                   {isLoggedIn ? `Powered by MCP · ${user.name?.split(' ')[0] || 'Secure'}` : 'How can I help you today?'}
                 </div>
@@ -332,9 +332,9 @@ export default function BankingAgent({ user }) {
                   {isLoggedIn
                     ? 'Use **Learn topics** or **Ask in plain language**, or pick a banking action. Calls go through the Banking API; the MCP server runs tools with scoped tokens.'
                     : oauthConfig === null
-                      ? 'Welcome to PingOne AI Core. Checking configuration…'
+                      ? 'Welcome to PingOne AI IAM Core. Checking configuration…'
                       : isConfigured
-                        ? 'PingOne AI Core is configured. Sign in to get started.'
+                        ? 'PingOne AI IAM Core is configured. Sign in to get started.'
                         : 'Set up your PingOne credentials to get started.'}
                 </p>
                 <div className="banking-agent-learn">

@@ -1,9 +1,9 @@
 /**
  * educationContent.js — Shared rich education content components
  *
- * Pure JSX components (no state, no effects, no props) used by both
- * CIBAPanel and the education drawer panels (LoginFlowPanel, McpProtocolPanel,
- * IntrospectionPanel, AgentGatewayPanel).
+ * Mostly pure JSX components (no state, no effects, no props). TokenChainPanel
+ * is separate (local UI state for expand/copy). Used by CIBAPanel and education
+ * drawer panels (LoginFlowPanel, McpProtocolPanel, IntrospectionPanel, AgentGatewayPanel).
  *
  * All code blocks use <pre className="edu-code"> to match EducationDrawer CSS.
  * Prose uses standard <h3>, <p>, <ul> elements.

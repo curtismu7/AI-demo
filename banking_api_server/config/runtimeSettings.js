@@ -14,6 +14,8 @@ const settings = {
   stepUpAmountThreshold: parseFloat(process.env.STEP_UP_AMOUNT_THRESHOLD) || 250,
   stepUpAcrValue: process.env.STEP_UP_ACR_VALUE || 'Multi_factor',
   stepUpEnabled: true,
+  // Step-up method: 'ciba' (back-channel challenge) or 'email' (OIDC re-auth redirect)
+  stepUpMethod: process.env.STEP_UP_METHOD || 'ciba',
 
   // Which transaction types require step-up
   stepUpTransactionTypes: ['transfer', 'withdrawal'],

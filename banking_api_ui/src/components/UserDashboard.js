@@ -7,6 +7,7 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import BankingAgent from './BankingAgent';
+import TokenChainDisplay from './TokenChainDisplay';
 import './UserDashboard.css';
 
 const UserDashboard = ({ user: propUser, onLogout }) => {
@@ -37,6 +38,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [success, setSuccess] = useState(null);
   const [stepUpRequired, setStepUpRequired] = useState(false);
+  // 'ciba' | 'email' — set from the 428 response step_up_method field
+  const [stepUpMethod, setStepUpMethod] = useState('email');
+  // CIBA step-up state
+  const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
+  const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const fetchingRef = React.useRef(false);
 
   // Auto-dismiss success messages after 4 seconds
@@ -201,6 +207,44 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     }
   };
 
+  // ── CIBA step-up: initiate back-channel authentication ──
+  const handleCibaStepUp = async () => {
+    if (!user?.email) { setError('Cannot initiate CIBA: no email on session.'); return; }
+    try {
+      const { data } = await axios.post('/api/auth/ciba/initiate', {
+        loginHint: user.email,
+        bindingMessage: 'Approve your banking transaction',
+        scope: 'openid profile',
+      });
+      setCibaAuthReqId(data.authReqId);
+      setCibaStatus('pending');
+    } catch (err) {
+      setError('CIBA initiation failed: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // Poll CIBA status when a request is in flight
+  useEffect(() => {
+    if (!cibaAuthReqId || cibaStatus !== 'pending') return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await axios.get(`/api/auth/ciba/poll/${cibaAuthReqId}`);
+        if (data.status === 'completed' || data.status === 'approved') {
+          setCibaStatus('completed');
+          setCibaAuthReqId(null);
+          setStepUpRequired(false);
+          await fetchUserData(true);
+          setSuccess('Identity verified — please retry your transaction.');
+        } else if (data.status === 'failed' || data.status === 'expired' || data.status === 'error') {
+          setCibaStatus('error');
+          setCibaAuthReqId(null);
+          setError(`CIBA verification ${data.status}. Please try again.`);
+        }
+      } catch (_) { /* keep polling */ }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [cibaAuthReqId, cibaStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleTransfer = async (e) => {
     e.preventDefault();
 
@@ -228,6 +272,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     } catch (error) {
       console.error('Transfer error:', error);
       if (error.response?.status === 428) {
+        setStepUpMethod(error.response.data?.step_up_method || 'email');
+        setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
         setError('You do not have permission to perform transfers. Please contact your administrator.');
@@ -264,6 +310,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     } catch (error) {
       console.error('Deposit error:', error);
       if (error.response?.status === 428) {
+        setStepUpMethod(error.response.data?.step_up_method || 'email');
+        setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
         setError('You do not have permission to make deposits. Please contact your administrator.');
@@ -300,6 +348,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     } catch (error) {
       console.error('Withdrawal error:', error);
       if (error.response?.status === 428) {
+        setStepUpMethod(error.response.data?.step_up_method || 'email');
+        setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
         setError('You do not have permission to make withdrawals. Please contact your administrator.');
@@ -382,16 +432,44 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <span style={{ marginLeft: 8 }}>
             Transfers and withdrawals of $250 or more require MFA. Please verify your identity to continue.
           </span>
-          <a
-            href={`/api/auth/oauth/user/stepup?return_to=${process.env.REACT_APP_CLIENT_URL || 'http://localhost:4000'}/dashboard`}
-            className="inline-message__action"
-            style={{ marginLeft: 12, fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}
-          >
-            Verify now →
-          </a>
+          {stepUpMethod === 'ciba' ? (
+            <>
+              {cibaStatus === 'idle' && (
+                <button
+                  onClick={handleCibaStepUp}
+                  className="inline-message__action"
+                  style={{ marginLeft: 12, fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', textDecoration: 'underline', color: 'inherit', fontSize: 'inherit' }}
+                >
+                  Verify via CIBA →
+                </button>
+              )}
+              {cibaStatus === 'pending' && (
+                <span style={{ marginLeft: 12, fontStyle: 'italic' }}>
+                  ⏳ Waiting for approval on your device…
+                </span>
+              )}
+              {cibaStatus === 'error' && (
+                <button
+                  onClick={() => { setCibaStatus('idle'); setCibaAuthReqId(null); }}
+                  className="inline-message__action"
+                  style={{ marginLeft: 12, fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', textDecoration: 'underline', color: 'inherit', fontSize: 'inherit' }}
+                >
+                  Retry →
+                </button>
+              )}
+            </>
+          ) : (
+            <a
+              href={`/api/auth/oauth/user/stepup?return_to=${process.env.REACT_APP_CLIENT_URL || 'http://localhost:4000'}/dashboard`}
+              className="inline-message__action"
+              style={{ marginLeft: 12, fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}
+            >
+              Verify now →
+            </a>
+          )}
           <span
             className="inline-message__dismiss"
-            onClick={() => setStepUpRequired(false)}
+            onClick={() => { setStepUpRequired(false); setCibaAuthReqId(null); setCibaStatus('idle'); }}
             style={{ marginLeft: 12, cursor: 'pointer' }}
           >
             ✕
@@ -464,6 +542,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       </div>
 
       <div className="dashboard-content">
+        {/* Token Chain Display */}
+        <div className="section">
+          <TokenChainDisplay />
+        </div>
+
         {/* Account Summary */}
         <div className="section">
           <h2>Your Accounts</h2>

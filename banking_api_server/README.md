@@ -1,6 +1,6 @@
 # Banking API with PingOne Core OAuth Integration
 
-A comprehensive banking API server with administrative UI and PingOne AI Core OAuth2 integration for secure admin authentication.
+A comprehensive banking API server with administrative UI and PingOne AI IAM Core OAuth2 integration for secure admin authentication.
 
 ## Features
 

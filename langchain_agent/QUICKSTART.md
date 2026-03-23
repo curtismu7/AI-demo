@@ -5,7 +5,7 @@ Get the LangChain MCP OAuth Agent running in 5 minutes!
 ## 📋 Prerequisites
 
 - **Python 3.11+**
-- **PingOne AI Core** account
+- **PingOne AI IAM Core** account
 - **OpenAI API** key
 
 ## ⚡ Quick Setup

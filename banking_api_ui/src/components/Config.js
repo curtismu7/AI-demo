@@ -30,11 +30,17 @@ const EMPTY_FORM = {
   frontend_url: '',
   mcp_server_url: '',           // populated from saved config; not defaulted to localhost
   debug_oauth: 'false',
-  // PingOne Authorize
+  // PingOne Authorize (in-app authorization policy gate)
   authorize_enabled: 'false',
   authorize_policy_id: '',
   authorize_worker_client_id: '',
   authorize_worker_client_secret: '',
+  // Step-up authentication for large transfers / withdrawals
+  // 'ciba'  → back-channel (CIBA) challenge shown inline; no page redirect
+  // 'email' → OIDC re-authentication redirect (email / OTP MFA via PingOne)
+  step_up_method: 'ciba',
+  // Whether the CIBA feature is enabled globally (also surfaces in CIBA panel)
+  ciba_enabled: 'false',
 };
 
 // ─── Helper: secret field wrapper ────────────────────────────────────────────
@@ -744,13 +750,62 @@ export default function Config() {
             </div>
           </div>
 
-          {/* ── Section 5: PingOne Authorize ── */}
+          {/* ── Section 5: Step-Up Authentication ── */}
+          <div className="card">
+            <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.35rem' }}>
+              <h2 className="card-title" style={{ margin: 0 }}>Step-Up Authentication</h2>
+              <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>
+                Choose how users are challenged when a large transfer or withdrawal triggers
+                the step-up gate. Both methods require CIBA to be enabled in your PingOne
+                application and support PKCE.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Step-up method</label>
+                <select
+                  className="form-input"
+                  value={form.step_up_method}
+                  onChange={(e) => handleChange('step_up_method', e.target.value)}
+                  disabled={readOnly}
+                >
+                  <option value="ciba">CIBA — back-channel challenge (inline, no page redirect)</option>
+                  <option value="email">Email / OTP — OIDC re-authentication redirect</option>
+                </select>
+                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  <strong>CIBA:</strong> the dashboard shows a "Verify via CIBA" button that sends a
+                  back-channel auth request; the user approves on their registered device.{' '}
+                  <strong>Email / OTP:</strong> the browser redirects to PingOne for a fresh MFA
+                  sign-in (email code, TOTP, etc.).
+                </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Enable CIBA globally</label>
+                <select
+                  className="form-input"
+                  value={form.ciba_enabled}
+                  onChange={(e) => handleChange('ciba_enabled', e.target.value)}
+                  disabled={readOnly}
+                >
+                  <option value="false">Disabled</option>
+                  <option value="true">Enabled</option>
+                </select>
+                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  Required when step-up method is CIBA. Also controls the CIBA panel on the
+                  demo pages.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Section 6: PingOne Authorize (in-app authorization) ── */}
           <div className="card">
             <div className="card-header">
-              <h2 className="card-title">PingOne Authorize</h2>
+              <h2 className="card-title">PingOne Authorize — In-App Authorization</h2>
               <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>
-                Policy-based authorization for transfers and withdrawals. Requires a Worker app
+                Policy-based in-app authorization for transfers and withdrawals. Requires a Worker app
                 with the <strong>Identity Data Admin</strong> role and a configured Policy Decision Point.
+                Can be combined with step-up above.
               </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

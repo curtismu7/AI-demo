@@ -6,6 +6,7 @@ import bffAxios from '../services/bffAxios';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import BankingAgent from './BankingAgent';
+import TokenChainDisplay from './TokenChainDisplay';
 
 const Dashboard = ({ user, onLogout }) => {
   const { open } = useEducationUI();
@@ -379,6 +380,9 @@ const Dashboard = ({ user, onLogout }) => {
           </button>
         </div>
       </div>
+
+      {/* Token Chain Display */}
+      <TokenChainDisplay />
 
       {/* Statistics Cards */}
       <div className="stats-grid">

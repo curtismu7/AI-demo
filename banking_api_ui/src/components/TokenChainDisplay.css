@@ -1,0 +1,305 @@
+.token-chain-display {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.token-chain-header {
+  margin-bottom: 24px;
+}
+
+.token-chain-header h3 {
+  margin: 0 0 8px 0;
+  color: #212529;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.token-chain-header p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.token-chain-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.token-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.token-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+}
+
+.token-card.expanded {
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+.token-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.token-info h4 {
+  margin: 0 0 8px 0;
+  color: #212529;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.token-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.token-status span {
+  color: #495057;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.expand-button {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.expand-button:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.token-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  color: #721c24;
+  font-size: 0.875rem;
+}
+
+.error-icon {
+  font-size: 14px;
+}
+
+.token-content {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.content-header h5 {
+  margin: 0 0 12px 0;
+  color: #495057;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.content-body {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.content-body pre {
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #495057;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.token-content-jwt {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.jwt-section h5 {
+  margin: 0 0 8px 0;
+  color: #495057;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.jwt-section p {
+  margin: 0;
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+.token-connector {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 0;
+  position: relative;
+}
+
+.connector-line {
+  width: 2px;
+  height: 20px;
+  background: #dee2e6;
+  margin: 0 8px;
+}
+
+.connector-arrow {
+  color: #6c757d;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.token-chain-legend {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.token-chain-legend h5 {
+  margin: 0 0 12px 0;
+  color: #495057;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-item .status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legend-item span {
+  color: #495057;
+  font-size: 0.875rem;
+}
+
+/* Status-specific styling */
+.token-card.active {
+  border-left: 4px solid #4CAF50;
+}
+
+.token-card.acquiring {
+  border-left: 4px solid #FF9800;
+}
+
+.token-card.waiting {
+  border-left: 4px solid #2196F3;
+}
+
+.token-card.error {
+  border-left: 4px solid #F44336;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .token-chain-display {
+    padding: 16px;
+    margin: 16px 0;
+  }
+  
+  .token-chain-header h3 {
+    font-size: 1.25rem;
+  }
+  
+  .token-card {
+    padding: 12px;
+  }
+  
+  .token-info h4 {
+    font-size: 0.9rem;
+  }
+  
+  .legend-items {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Animation for status changes */
+.token-card {
+  transition: all 0.3s ease;
+}
+
+.status-indicator {
+  transition: background-color 0.3s ease;
+}
+
+/* Scrollbar styling for token content */
+.content-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.content-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.content-body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

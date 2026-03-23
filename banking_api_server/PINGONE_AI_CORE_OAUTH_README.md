@@ -1,6 +1,6 @@
 # PingOne Core OAuth Integration with MCP
 
-This guide explains how to configure and use PingOne AI Core as the OAuth provider for the MCP server and client.
+This guide explains how to configure and use PingOne AI IAM Core as the OAuth provider for the MCP server and client.
 
 ## 🔐 Overview
 

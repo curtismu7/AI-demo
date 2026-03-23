@@ -24,7 +24,7 @@ This guide covers deployment options and environment setup for the Banking MCP S
 
 ### External Dependencies
 
-- **PingOne AI Core**: For authentication and authorization
+- **PingOne AI IAM Core**: For authentication and authorization
 - **Banking API Server**: The backend banking API (typically running on port 3001)
 
 ## Environment Configuration

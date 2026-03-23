@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# PingOne AI Core OAuth Environment Setup Script
+# PingOne AI IAM Core OAuth Environment Setup Script
 # This script helps you set up your environment configuration
 
-echo "🚀 PingOne AI Core OAuth Environment Setup"
+echo "🚀 PingOne AI IAM Core OAuth Environment Setup"
 echo "=================================="
 
 # Check if .env already exists
@@ -37,12 +37,12 @@ fi
 echo "✅ Environment file created successfully!"
 echo ""
 echo "📝 Next steps:"
-echo "1. Edit .env file and replace placeholder values with your PingOne AI Core configuration"
-echo "2. Configure your PingOne AI Core OAuth2 client (see PINGONE_AI_CORE_SETUP.md for details)"
+echo "1. Edit .env file and replace placeholder values with your PingOne AI IAM Core configuration"
+echo "2. Configure your PingOne AI IAM Core OAuth2 client (see PINGONE_AI_CORE_SETUP.md for details)"
 echo "3. Run 'npm install' to install dependencies"
 echo "4. Run 'npm start' to start the server"
 echo ""
-echo "🔧 Required PingOne AI Core configuration:"
+echo "🔧 Required PingOne AI IAM Core configuration:"
 echo "   - Tenant name"
 echo "   - OAuth2 client ID"
 echo "   - OAuth2 client secret"

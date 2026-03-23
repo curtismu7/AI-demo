@@ -79,6 +79,11 @@ const FIELD_DEFS = {
   ciba_notification_endpoint: { public: true,  default: '' },
   ciba_poll_interval_ms:      { public: true,  default: '5000' },
   ciba_auth_request_expiry:   { public: true,  default: '300' },
+
+  // Step-up authentication method for large transfers / withdrawals
+  // 'ciba'  → back-channel (CIBA) challenge shown inline on the dashboard
+  // 'email' → OIDC re-authentication redirect (PingOne email / OTP MFA)
+  step_up_method: { public: true, default: 'ciba' },
 };
 
 // ---------------------------------------------------------------------------
@@ -342,6 +347,8 @@ class ConfigStore {
       mcp_server_url:         ['MCP_SERVER_URL'],
       mcp_resource_uri:       ['MCP_SERVER_RESOURCE_URI'],
       debug_oauth:            ['DEBUG_OAUTH'],
+      ciba_enabled:           ['CIBA_ENABLED'],
+      step_up_method:         ['STEP_UP_METHOD'],
     };
 
     const envVars = envFallbackMap[key] || [];

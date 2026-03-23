@@ -55,12 +55,12 @@ or Vercel KV in production — **no `.env` file required**.
               Environment: b9817c16-...
 ```
 
-## Key Changes from Original (ForgeRock/PingOne AI Core → PingOne)
+## Key Changes from Original (ForgeRock/PingOne AI IAM Core → PingOne)
 
 | Component | Before | After |
 |---|---|---|
 | AS endpoints | `openam-*.forgeblocks.com/am/oauth2/...` | `auth.pingone.com/{envId}/as/...` |
-| Token validation | PingOne AI Core introspection (HTTP call) | PingOne JWKS (JWT signature) |
+| Token validation | PingOne AI IAM Core introspection (HTTP call) | PingOne JWKS (JWT signature) |
 | Token Exchange | Not implemented | RFC 8693 via `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` |
 | MCP server config | `PINGONE_BASE_URL=*.pingidentity.com` | `PINGONE_BASE_URL=https://auth.pingone.com/{envId}/as` |
 

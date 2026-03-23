@@ -57,7 +57,7 @@ export default function Onboarding() {
         <div style={{ ...cardStyle, background: '#eff6ff', borderColor: '#bfdbfe' }}>
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: '#1e3a8a' }}>What you need</h2>
           <p style={{ margin: 0, color: '#1e40af', fontSize: '0.9375rem', lineHeight: 1.6 }}>
-            This demo uses <strong>PingOne AI Core</strong> with <strong>two separate OAuth clients</strong> everywhere: one PingOne application for <em>Admin</em> sign-in and one for <em>Customer</em> (end-user) sign-in — same on Vercel, Replit, and localhost. On <strong>hosted</strong> deployments, those client IDs and secrets (and worker tokens) may be <strong>pre-configured on the server</strong> — visitors do not type them in the UI. On <strong>localhost</strong>, you enter both apps in Application Configuration (SQLite). Until the API is configured, sign-in may redirect to the configuration page.
+            This demo uses <strong>PingOne AI IAM Core</strong> with <strong>two separate OAuth clients</strong> everywhere: one PingOne application for <em>Admin</em> sign-in and one for <em>Customer</em> (end-user) sign-in — same on Vercel, Replit, and localhost. On <strong>hosted</strong> deployments, those client IDs and secrets (and worker tokens) may be <strong>pre-configured on the server</strong> — visitors do not type them in the UI. On <strong>localhost</strong>, you enter both apps in Application Configuration (SQLite). Until the API is configured, sign-in may redirect to the configuration page.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 # PingOne Core OAuth Integration Setup Guide
 
-This guide explains how to configure PingOne AI Core OAuth2 authorization code flow for admin user authentication.
+This guide explains how to configure PingOne AI IAM Core OAuth2 authorization code flow for admin user authentication.
 
 ## Prerequisites
 

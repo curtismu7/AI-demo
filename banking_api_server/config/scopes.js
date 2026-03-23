@@ -142,7 +142,7 @@ const ROUTE_SCOPE_MAP = {
 
 // OAuth provider scope configuration templates
 const OAUTH_PROVIDER_SCOPE_CONFIGS = {
-  // PingOne AI Core scope configuration
+  // PingOne AI IAM Core scope configuration
   pingone_ai_core: {
     // Admin client scopes
     adminClient: {

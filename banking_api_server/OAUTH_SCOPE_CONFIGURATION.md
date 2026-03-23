@@ -153,7 +153,7 @@ TOKEN_CACHE_TTL=600
 
 ## OAuth Provider Configuration
 
-### PingOne AI Core setup
+### PingOne AI IAM Core setup
 
 #### Admin Client Configuration
 1. **Client Type**: Confidential

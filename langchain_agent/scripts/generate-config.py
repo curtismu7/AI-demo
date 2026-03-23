@@ -51,7 +51,7 @@ def create_env_file(environment: str, output_path: Path, include_secrets: bool =
     
     lines.extend([
         "",
-        "# PingOne AI Core Configuration",
+        "# PingOne AI IAM Core Configuration",
         "# Replace 'your-tenant' with your actual ForgeRock tenant name",
         "PINGONE_BASE_URL=https://your-tenant.forgeblocks.com",
         "PINGONE_CLIENT_REGISTRATION_ENDPOINT=https://your-tenant.forgeblocks.com/am/oauth2/realms/alpha/register",

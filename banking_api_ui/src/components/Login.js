@@ -72,7 +72,7 @@ const Login = () => {
               </div>
             </div>
             <h1>Secure Account Access</h1>
-            <p className="login-product-line">PingOne AI Core</p>
+            <p className="login-product-line">PingOne AI IAM Core</p>
             <p>Sign in to access your banking services</p>
           </div>
 
@@ -92,7 +92,7 @@ const Login = () => {
                   className="btn btn-primary oauth-btn"
                   disabled={loading}
                 >
-                  {loading ? 'Redirecting...' : 'Admin Sign in with PingOne AI Core'}
+                  {loading ? 'Redirecting...' : 'Admin Sign in with PingOne AI IAM Core'}
                 </button>
               </div>
 
@@ -108,7 +108,7 @@ const Login = () => {
                   className="btn btn-danger oauth-btn"
                   disabled={loading}
                 >
-                  {loading ? 'Redirecting...' : 'Customer Sign in with PingOne AI Core'}
+                  {loading ? 'Redirecting...' : 'Customer Sign in with PingOne AI IAM Core'}
                 </button>
               </div>
             </div>
@@ -146,8 +146,8 @@ const Login = () => {
 
           <div className="login-footer">
             <p>
-              <strong>PingOne AI Core</strong><br />
-              Secure authentication powered by PingOne AI Core
+              <strong>PingOne AI IAM Core</strong><br />
+              Secure authentication powered by PingOne AI IAM Core
             </p>
           </div>
         </div>

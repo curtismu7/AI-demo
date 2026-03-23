@@ -1,6 +1,6 @@
-# PingOne AI Core OAuth Client Setup
+# PingOne AI IAM Core OAuth Client Setup
 
-This document provides detailed instructions for configuring an OAuth 2.0 client in PingOne AI Core for the Banking MCP Server.
+This document provides detailed instructions for configuring an OAuth 2.0 client in PingOne AI IAM Core for the Banking MCP Server.
 
 ## Table of Contents
 
@@ -406,7 +406,7 @@ LOG_LEVEL=DEBUG
 
 ## Support
 
-For additional support with PingOne AI Core configuration:
+For additional support with PingOne AI IAM Core configuration:
 
 1. **PingOne Documentation**: [PingOne Developer Portal](https://docs.pingidentity.com/)
 2. **OAuth 2.0 Specification**: [RFC 6749](https://tools.ietf.org/html/rfc6749)

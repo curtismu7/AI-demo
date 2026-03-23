@@ -1,5 +1,5 @@
 /**
- * Token Introspector for PingOne AI Core
+ * Token Introspector for PingOne AI IAM Core
  * Handles token validation and introspection with PingOne endpoints
  */
 
@@ -24,7 +24,7 @@ export class TokenIntrospector {
   }
 
   /**
-   * Introspect a token using PingOne AI Core introspection endpoint
+   * Introspect a token using PingOne AI IAM Core introspection endpoint
    */
   async introspectToken(token: string): Promise<TokenInfo> {
     try {

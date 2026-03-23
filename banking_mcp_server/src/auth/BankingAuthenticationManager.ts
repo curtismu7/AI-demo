@@ -1,6 +1,6 @@
 /**
  * Banking Authentication Manager
- * Main authentication manager that combines all PingOne AI Core components
+ * Main authentication manager that combines all PingOne AI IAM Core components
  */
 
 import { TokenIntrospector } from './TokenIntrospector';
@@ -27,7 +27,7 @@ export class BankingAuthenticationManager {
   }
 
   /**
-   * Validate AI agent token with PingOne AI Core
+   * Validate AI agent token with PingOne AI IAM Core
    */
   async validateAgentToken(token: string): Promise<AgentTokenInfo> {
     return this.tokenIntrospector.validateAgentToken(token);

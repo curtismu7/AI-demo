@@ -1,5 +1,5 @@
 /**
- * Authorization Manager for PingOne AI Core
+ * Authorization Manager for PingOne AI IAM Core
  * Handles user authorization code exchange and token refresh flows
  */
 
