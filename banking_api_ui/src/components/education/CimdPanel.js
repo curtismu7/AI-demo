@@ -33,7 +33,7 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
             using a CIMD-style form, the backend creates the OAuth application in PingOne via the
             Management API, and then hosts the resulting CIMD document for you at:
           </p>
-          <code style={{display:'block',padding:'8px',background:'var(--edu-code-bg,#0f172a)',borderRadius:'4px',marginTop:'8px'}}>
+          <code style={{display:'block',padding:'8px',background:'var(--edu-code-bg,#0f172a)',color:'#e2e8f0',borderRadius:'4px',marginTop:'8px',fontFamily:'ui-monospace,monospace'}}>
             {'/.well-known/oauth-client/{pingone-app-id}'}
           </code>
         </>
@@ -104,7 +104,7 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
           <p>
             A CIMD JSON document at <code>/.well-known/oauth-client/{'{id}'}</code> looks like this:
           </p>
-          <pre style={{background:'var(--edu-code-bg,#0f172a)',padding:'12px',borderRadius:'6px',overflow:'auto',fontSize:'13px'}}>
+          <pre style={{background:'var(--edu-code-bg,#0f172a)',color:'#e2e8f0',padding:'12px',borderRadius:'6px',overflow:'auto',fontSize:'13px',fontFamily:'ui-monospace,monospace'}}>
 {`{
   "client_id": "https://app.example.com/.well-known/oauth-client/abc123",
   "client_name": "My Banking App",
@@ -188,7 +188,7 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
             How client registration and a CIMD-style authorization request flows
             end-to-end in this demo:
           </p>
-          <pre style={{background:'var(--edu-code-bg,#0f172a)',padding:'16px',borderRadius:'6px',overflow:'auto',fontSize:'12px',lineHeight:'1.7'}}>
+          <pre style={{background:'var(--edu-code-bg,#0f172a)',color:'#e2e8f0',padding:'16px',borderRadius:'6px',overflow:'auto',fontSize:'12px',lineHeight:'1.7',fontFamily:'ui-monospace,monospace'}}>
 {`┌─────────────────────────────────────────────────────────────────────┐
 │              CIMD Registration + Authorization Flow                 │
 └─────────────────────────────────────────────────────────────────────┘
@@ -280,7 +280,7 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
             <li>You receive the <code>client_id</code> (PingOne app ID), client secret, and the CIMD document URL</li>
             <li>
               Fetch the document directly:
-              <code style={{display:'block',margin:'8px 0',padding:'6px 12px',background:'var(--edu-code-bg,#0f172a)',borderRadius:'4px'}}>
+              <code style={{display:'block',margin:'8px 0',padding:'6px 12px',background:'var(--edu-code-bg,#0f172a)',color:'#e2e8f0',borderRadius:'4px',fontFamily:'ui-monospace,monospace'}}>
                 {'GET /.well-known/oauth-client/{pingone-app-id}'}
               </code>
             </li>
