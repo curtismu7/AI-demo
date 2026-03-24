@@ -19,8 +19,8 @@
     "test:mcp-inspector": "jest --testPathPattern=mcp-inspector --forceExit --verbose",
     "test:scope-assignments": "node test-scope-assignments.js",
     "test:oauth-provider-scopes": "node test-oauth-provider-scopes.js",
-    "build": "cd client && npm run build",
-    "install-client": "cd client && npm install",
+    "build": "cd ../banking_api_ui && npm run build",
+    "install-client": "cd ../banking_api_ui && npm install",
     "heroku-postbuild": "npm run install-client && npm run build"
   },
   "dependencies": {
