@@ -138,6 +138,11 @@ class OAuthProviderMonitor {
   }
 
   getHealthStatus() {
+    // No data yet — don't report healthy or unhealthy, just unknown
+    if (this.metrics.totalRequests === 0) {
+      return 'unknown';
+    }
+
     const successRate = this.getSuccessRate();
     const avgResponseTime = this.metrics.averageResponseTime;
     
@@ -167,6 +172,13 @@ class OAuthProviderMonitor {
 
   logHealthSummary() {
     const metrics = this.getMetrics();
+
+    // Skip the periodic log entirely when there has been no OAuth traffic yet.
+    // With 0 requests the success rate is 0 which would otherwise fire a
+    // noisy ERROR every 5 minutes even on a healthy, idle server.
+    if (metrics.totalRequests === 0) {
+      return;
+    }
     
     logger.logProviderHealth(
       metrics.healthStatus === 'healthy',
