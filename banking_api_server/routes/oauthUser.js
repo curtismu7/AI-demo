@@ -117,6 +117,13 @@ async function createSampleDataForCustomer(userId, firstName, lastName) {
  */
 router.get('/login', (req, res) => {
   try {
+    const _mask = (v, n) => v ? v.slice(0, n) + '...' : 'MISSING';
+    console.log('[oauth/user/login] env_id=%s  user_client_id=%s  user_secret=%s',
+      _mask(configStore.getEffective('pingone_environment_id'), 8),
+      _mask(configStore.getEffective('user_client_id'), 8),
+      _mask(configStore.getEffective('user_client_secret'), 4)
+    );
+
     // Guard: end-user flow needs user client + env (not admin_client_id)
     if (!configStore.isUserOAuthConfigured()) {
       return res.redirect(`${getFrontendOrigin(req)}/config?error=not_configured`);
