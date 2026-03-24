@@ -364,12 +364,7 @@ const LandingPage = () => {
         <div className="container">
           <div className="footer-content">
             <div className="footer-brand">
-              <div className="brand-icon">
-                <div className="brand-square"></div>
-                <div className="brand-square"></div>
-                <div className="brand-square"></div>
-                <div className="brand-square"></div>
-              </div>
+              <img src="/logo.svg" alt="BX Finance Logo" style={{ height: 40, width: 40, borderRadius: 10, background: '#fff', marginRight: 10, verticalAlign: 'middle' }} />
               <span className="brand-name">BX Finance</span>
               <p>Powered by PingOne AI IAM Core</p>
             </div>
