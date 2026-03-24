@@ -95,6 +95,7 @@ const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authSt
 const { authenticateToken } = require('./middleware/auth');
 const { logActivity } = require('./middleware/activityLogger');
 const { correlationIdMiddleware } = require('./middleware/correlationId');
+const { delegationAuditMiddleware } = require('./middleware/delegationAuditLogger');
 const { refreshIfExpiring } = require('./middleware/tokenRefresh');
 
 const app = express();
@@ -229,6 +230,9 @@ app.use(correlationIdMiddleware);
 
 // Activity logging middleware
 app.use(logActivity);
+
+// Delegation audit logging — extract act/may_act claims for audit trail
+app.use(delegationAuditMiddleware);
 
 // Ensure configStore is loaded before any request touches OAuth config.
 // The promise is memoised — this is a no-op after the first request.

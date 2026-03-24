@@ -315,30 +315,36 @@ router.get('/status', (req, res) => {
 });
 
 /**
- * Refresh OAuth tokens if needed
+ * RFC 6749 §6 — Refresh the admin OAuth access token using the stored refresh token.
+ * Called by the frontend or auto-refresh middleware when the access token is near expiry.
  */
 router.post('/refresh', async (req, res) => {
   try {
-    if (!req.session.oauthTokens?.refreshToken) {
-      return res.status(401).json({ error: 'No refresh token available' });
+    const refreshToken = req.session.oauthTokens?.refreshToken;
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'no_refresh_token', message: 'No refresh token in session' });
     }
 
-    // Check if token is expired or about to expire (within 5 minutes)
-    const expiresAt = req.session.oauthTokens.expiresAt;
-    const now = Date.now();
-    const fiveMinutes = 5 * 60 * 1000;
-
-    if (expiresAt - now > fiveMinutes) {
-      return res.json({ message: 'Token is still valid' });
-    }
-
-    // TODO: Implement token refresh logic
-    // This would require implementing the refresh token flow with PingOne Core
+    const tokenData = await oauthService.refreshAccessToken(refreshToken);
     
-    res.json({ message: 'Token refresh not yet implemented' });
-  } catch (error) {
-    console.error('Token refresh error:', error);
-    res.status(500).json({ error: 'Failed to refresh token' });
+    // Update session with new tokens (refresh token rotation per RFC 6749 best practices)
+    req.session.oauthTokens = {
+      ...req.session.oauthTokens,
+      accessToken:  tokenData.access_token,
+      refreshToken: tokenData.refresh_token || req.session.oauthTokens.refreshToken,
+      idToken:      tokenData.id_token      || req.session.oauthTokens.idToken,
+      expiresAt:    Date.now() + ((tokenData.expires_in || 3600) * 1000),
+      tokenType:    tokenData.token_type    || 'Bearer',
+    };
+
+    req.session.save((err) => {
+      if (err) console.error('[admin refresh] Session save error:', err);
+    });
+
+    return res.json({ success: true, expiresAt: req.session.oauthTokens.expiresAt });
+  } catch (err) {
+    console.error('[admin refresh] Token refresh failed:', err.message);
+    return res.status(401).json({ error: 'refresh_failed', message: err.message });
   }
 });
 

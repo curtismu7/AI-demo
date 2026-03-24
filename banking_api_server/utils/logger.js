@@ -166,6 +166,34 @@ class StructuredLogger {
   logErrorHandling(errorType, metadata = {}) {
     return this.log(LOG_LEVELS.ERROR, LOG_CATEGORIES.ERROR_HANDLING, `Error handled: ${errorType}`, metadata);
   }
+
+  // Audit logging for delegation chains and sensitive operations
+  audit(eventType, auditData = {}) {
+    const timestamp = new Date().toISOString();
+    const auditEntry = {
+      timestamp,
+      level: 'AUDIT',
+      eventType,
+      ...auditData
+    };
+
+    const formatted = JSON.stringify(auditEntry);
+    
+    // Always log audit events to console
+    console.log(`\x1b[35m[AUDIT]\x1b[0m ${formatted}`);
+    
+    // Write to dedicated audit log file
+    if (this.enableFileLogging) {
+      try {
+        const filepath = path.join(this.logDirectory, 'audit.log');
+        fs.appendFileSync(filepath, formatted + '\n');
+      } catch (error) {
+        console.error('Failed to write to audit log file:', error.message);
+      }
+    }
+    
+    return auditEntry;
+  }
 }
 
 // Create singleton instance
