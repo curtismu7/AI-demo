@@ -9,4 +9,5 @@ export const EDU = {
   RFC_INDEX: 'rfc-index',
   STEP_UP: 'step-up',
   PINGONE_AUTHORIZE: 'pingone-authorize',
+  CIMD: 'cimd',
 };

@@ -12,7 +12,9 @@ const { v4: uuidv4 } = require('uuid');
 function correlationIdMiddleware(req, res, next) {
   const id = req.headers['x-request-id'] || req.headers['x-correlation-id'] || uuidv4();
   req.requestId = id;
+  req.correlationId = id; // Also set correlationId for consistency
   res.setHeader('X-Request-ID', id);
+  res.setHeader('X-Correlation-ID', id); // Echo both headers
   next();
 }
 

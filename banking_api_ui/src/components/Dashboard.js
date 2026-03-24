@@ -317,6 +317,26 @@ const Dashboard = ({ user, onLogout }) => {
           >
             OAuth debug log
           </Link>
+          <Link
+            to="/client-registration"
+            title="Create OAuth clients in PingOne using the CIMD interface"
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '2px solid rgba(255, 255, 255, 0.85)',
+              color: '#1e40af',
+              padding: '10px 18px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              textDecoration: 'none',
+              transition: 'all 0.2s ease',
+              backdropFilter: 'blur(10px)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Client Registration
+          </Link>
           <button 
             onClick={openTokenModal}
             title="View OAuth Token Info"

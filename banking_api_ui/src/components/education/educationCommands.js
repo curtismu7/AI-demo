@@ -17,4 +17,5 @@ export const EDUCATION_COMMANDS = [
   { id: 'rfc', label: 'RFC & spec index', panel: EDU.RFC_INDEX, tab: 'index' },
   { id: 'step-up', label: 'Step-up MFA', panel: EDU.STEP_UP, tab: 'what' },
   { id: 'authorize', label: 'PingOne Authorize', panel: EDU.PINGONE_AUTHORIZE, tab: 'what' },
+  { id: 'cimd', label: 'OAuth: Client ID Metadata Doc (CIMD)', panel: EDU.CIMD, tab: 'what' },
 ];

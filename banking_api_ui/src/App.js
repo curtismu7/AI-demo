@@ -18,6 +18,7 @@ import Onboarding from './components/Onboarding';
 import CIBAPanel from './components/CIBAPanel';
 import McpInspector from './components/McpInspector';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
+import ClientRegistrationPage from './components/ClientRegistrationPage';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
 import EducationBar from './components/EducationBar';
@@ -180,9 +181,11 @@ function App() {
                     <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
-                    <Route
-                      path="/oauth-debug-logs"
+                    <Route path="/oauth-debug-logs"
                       element={user?.role === 'admin' ? <OAuthDebugLogViewer /> : <Navigate to="/" replace />}
+                    />
+                    <Route path="/client-registration"
+                      element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
