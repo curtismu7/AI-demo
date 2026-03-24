@@ -162,6 +162,15 @@ app.use(cors({
 // session cookies with sameSite:'none'/secure:true are set correctly.
 app.set('trust proxy', 1);
 
+// Enforce HTTPS on Vercel and Replit — redirect any plain HTTP request.
+// Both platforms terminate TLS before Express and set x-forwarded-proto.
+if (isVercel || isReplit) {
+  app.use((req, res, next) => {
+    if (req.secure) return next();
+    return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+  });
+}
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
