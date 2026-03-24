@@ -22,11 +22,20 @@ For CIMD / client-id-metadata / dynamic client registration / register a client 
 
 /**
  * @param {string} userMessage
+ * @param {{ role?: string, firstName?: string }} [context]
  * @returns {Promise<object|null>} parsed intent object or null to fall through to next parser
  */
-async function parseWithGroq(userMessage) {
+async function parseWithGroq(userMessage, context = {}) {
   const key = process.env.GROQ_API_KEY;
   if (!key) return null;
+
+  const systemWithCtx = context.role
+    ? `${SYSTEM}\n\nSigned-in user: role=${context.role}${context.firstName ? ', name=' + context.firstName : ''}. ${
+        context.role === 'admin'
+          ? 'Admin users can query ALL accounts and transactions system-wide, not just their own.'
+          : 'This is a regular customer — banking actions apply to their own accounts only.'
+      }`
+    : SYSTEM;
 
   const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
     method: 'POST',
@@ -37,7 +46,7 @@ async function parseWithGroq(userMessage) {
     body: JSON.stringify({
       model: MODEL,
       messages: [
-        { role: 'system', content: SYSTEM },
+        { role: 'system', content: systemWithCtx },
         { role: 'user', content: userMessage },
       ],
       temperature: 0.1,

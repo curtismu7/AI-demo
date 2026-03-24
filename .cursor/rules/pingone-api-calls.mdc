@@ -1,0 +1,330 @@
+---
+description: Patterns for calling the BX Finance banking API server (which calls PingOne on your behalf). Use when writing code that talks to the banking_api_server, or when adding new server-side PingOne API calls.
+globs: banking_api_server/**/*.js, banking_api_ui/src/**/*.js, banking_api_ui/src/**/*.jsx, api/**/*.js
+alwaysApply: false
+---
+
+# Calling the Banking API Server (PingOne Proxy Layer)
+
+## Architecture Overview
+
+```
+Browser / UI
+    │  (cookies only, no tokens)
+    ▼
+banking_api_server  ← BFF: holds all tokens server-side
+    │
+    ├─ /api/auth/*        → PingOne AS  (auth.pingone.{region}/{envId}/as/*)
+    ├─ /api/auth/ciba/*   → PingOne CIBA (bc-authorize, token polling)
+    └─ Internal services  → PingOne Management API (api.pingone.{region}/v1/*)
+```
+
+The UI **never** calls PingOne directly — it always calls the `banking_api_server` which proxies to PingOne. Tokens are stored in server-side sessions (`req.session.oauthTokens`), never in the response body.
+
+---
+
+## Config Access (Server-Side)
+
+All PingOne config is read via `configStore.getEffective()` — **never hardcode URLs or credentials**:
+
+```javascript
+const configStore = require('../services/configStore');
+const oauthConfig = require('../config/oauth'); // lazy getters backed by configStore
+
+// Auth Server endpoints (lazy, config-driven)
+oauthConfig.tokenEndpoint        // https://auth.pingone.{region}/{envId}/as/token
+oauthConfig.authorizationEndpoint // .../authorize
+oauthConfig.cibaEndpoint          // .../bc-authorize
+oauthConfig.jwksEndpoint          // .../jwks
+oauthConfig.userInfoEndpoint      // .../userinfo
+
+// Client credentials
+oauthConfig.clientId      // admin_client_id from configStore
+oauthConfig.clientSecret  // admin_client_secret (decrypted in memory)
+oauthConfig.scopes        // ['openid', 'profile', 'email']
+
+// Raw config values
+const envId  = configStore.getEffective('pingone_environment_id');
+const region = configStore.getEffective('pingone_region') || 'com';
+
+// URL builders
+const authBase = `https://auth.pingone.${region}/${envId}/as`;
+const apiBase  = `https://api.pingone.${region}/v1`;
+```
+
+---
+
+## Calling PingOne from a New Service
+
+### Pattern: Management API (worker client_credentials)
+
+Use this for provisioning/management calls (user CRUD, app registration, etc.):
+
+```javascript
+'use strict';
+const axios = require('axios');
+const configStore = require('../services/configStore');
+
+async function getManagementToken() {
+  const envId        = configStore.getEffective('pingone_environment_id');
+  const region       = configStore.getEffective('pingone_region') || 'com';
+  const clientId     = configStore.getEffective('pingone_client_id');     // worker app
+  const clientSecret = configStore.getEffective('pingone_client_secret');
+
+  if (!envId || !clientId || !clientSecret) {
+    throw new Error('PingOne admin credentials not configured');
+  }
+
+  const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
+  const response = await axios.post(
+    tokenUrl,
+    'grant_type=client_credentials',
+    {
+      auth: { username: clientId, password: clientSecret },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 10000,
+    }
+  );
+  return response.data.access_token;
+}
+
+async function callPingOneManagementApi(path) {
+  const envId  = configStore.getEffective('pingone_environment_id');
+  const region = configStore.getEffective('pingone_region') || 'com';
+  const token  = await getManagementToken();
+
+  const url = `https://api.pingone.${region}/v1/environments/${envId}${path}`;
+  const { data } = await axios.get(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    timeout: 10000,
+  });
+  return data;
+}
+```
+
+### Pattern: Auth Server (token endpoint)
+
+Use `oauthService` for auth-server calls (token exchange, refresh, revoke):
+
+```javascript
+const oauthService = require('../services/oauthService');
+
+// Token exchange (RFC 8693) — T1 → T2 scoped for MCP
+const mcpToken = await oauthService.performTokenExchange(
+  req.session.oauthTokens.access_token,
+  process.env.MCP_SERVER_AUDIENCE,
+  ['banking:read', 'banking:write']
+);
+
+// Refresh
+const refreshed = await oauthService.refreshAccessToken(
+  req.session.oauthTokens.refresh_token
+);
+
+// Revoke (RFC 7009)
+await oauthService.revokeToken(
+  req.session.oauthTokens.refresh_token,
+  'refresh_token'
+);
+```
+
+### Pattern: CIBA (backchannel auth)
+
+```javascript
+const cibaService = require('../services/cibaService');
+
+// Initiate
+const { auth_req_id, expires_in, interval } = await cibaService.initiateBackchannelAuth(
+  loginHint,        // user's email or sub
+  bindingMessage,   // short string shown in push/email
+  'openid profile email banking:write',
+  acrValues         // e.g. 'Multi_factor' for step-up
+);
+
+// Poll (returns tokens when approved)
+const tokens = await cibaService.pollForTokens(auth_req_id);
+// throws { error: 'authorization_pending' } while waiting
+// throws { error: 'access_denied' } on denial
+```
+
+---
+
+## Calling the Banking API Server from the UI
+
+The React UI always calls the server's `/api/*` routes. Use the service layer — never `fetch` in components.
+
+### Example: Auth / Session
+
+```javascript
+// src/services/authService.js
+export async function getSession() {
+  const resp = await fetch('/api/auth/session', { credentials: 'include' });
+  if (!resp.ok) return null;
+  return resp.json(); // { user, oauthType, tokenType, ... }
+}
+
+export async function loginAdmin() {
+  window.location.href = '/api/auth/oauth/login';
+}
+
+export async function loginUser() {
+  window.location.href = '/api/auth/oauthuser/login';
+}
+
+export async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+}
+```
+
+### Example: CIBA Initiate + Poll from UI
+
+```javascript
+// UI initiates CIBA via the server — server calls PingOne bc-authorize
+export async function initiateCiba(bindingMessage, scope, acrValues) {
+  const resp = await fetch('/api/auth/ciba/initiate', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ binding_message: bindingMessage, scope, acr_values: acrValues }),
+  });
+  if (!resp.ok) throw new Error(`CIBA initiate failed: ${resp.status}`);
+  return resp.json(); // { auth_req_id, expires_in, interval }
+}
+
+export async function pollCiba(authReqId) {
+  const resp = await fetch(`/api/auth/ciba/poll/${authReqId}`, { credentials: 'include' });
+  if (!resp.ok) throw new Error(`Poll failed: ${resp.status}`);
+  return resp.json(); // { status: 'pending' | 'approved' | 'denied' }
+}
+```
+
+### Example: Token Exchange / MCP
+
+```javascript
+// The server handles T1→T2 exchange; UI just calls the agent endpoint
+export async function callBankingAgent(message) {
+  const resp = await fetch('/api/banking-agent', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  if (!resp.ok) throw new Error(`Agent call failed: ${resp.status}`);
+  return resp.json();
+}
+```
+
+---
+
+## Available Server API Routes
+
+| Route | Auth Required | Description |
+|-------|---------------|-------------|
+| `GET  /api/auth/oauth/login` | No | Redirect to PingOne admin login (PKCE) |
+| `GET  /api/auth/oauthuser/login` | No | Redirect to PingOne user login (PKCE) |
+| `GET  /api/auth/oauth/callback` | No | PingOne admin callback |
+| `GET  /api/auth/oauthuser/callback` | No | PingOne user callback |
+| `GET  /api/auth/session` | No | Returns current session user info |
+| `POST /api/auth/logout` | No | Revoke tokens + destroy session |
+| `POST /api/auth/ciba/initiate` | Yes | Start CIBA backchannel flow |
+| `GET  /api/auth/ciba/poll/:authReqId` | Yes | Poll CIBA approval status |
+| `GET  /api/auth/ciba/status` | No | Check if CIBA is enabled |
+| `GET  /api/auth/oauth/redirect-info` | No | Debug: shows current redirect URIs |
+| `GET  /api/accounts` | Yes | List user's bank accounts |
+| `GET  /api/transactions` | Yes | List transactions |
+| `POST /api/transactions/transfer` | Yes | Initiate transfer |
+| `GET  /api/admin/users` | Admin | PingOne user directory (via Management API) |
+| `POST /api/admin/client-registration` | Admin | Create PingOne app (CIMD flow) |
+| `GET  /api/config` | Admin | Read app config |
+| `POST /api/config` | Admin | Update app config (PingOne IDs, secrets) |
+
+---
+
+## Error Handling for PingOne Calls
+
+Always surface PingOne's error fields — don't swallow them:
+
+```javascript
+try {
+  const response = await axios.post(tokenUrl, body, { headers });
+  return response.data;
+} catch (err) {
+  const pingoneError = err.response?.data?.error;
+  const pingoneDesc  = err.response?.data?.error_description;
+  const status       = err.response?.status;
+
+  console.error('[MyService] PingOne error:', { pingoneError, pingoneDesc, status });
+
+  const msg = pingoneError
+    ? `PingOne error: ${pingoneError}${pingoneDesc ? ' — ' + pingoneDesc : ''}`
+    : err.message;
+
+  const wrapped = new Error(msg);
+  wrapped.pingoneError = pingoneError;
+  wrapped.status = status;
+  throw wrapped;
+}
+```
+
+In route handlers, propagate status codes where possible:
+
+```javascript
+router.post('/my-route', authenticateToken, async (req, res) => {
+  try {
+    const result = await myPingOneService.doSomething(req.session.oauthTokens);
+    res.json(result);
+  } catch (err) {
+    const status = err.status === 401 ? 401 : err.status === 403 ? 403 : 502;
+    res.status(status).json({
+      error: err.pingoneError || 'upstream_error',
+      message: err.message,
+    });
+  }
+});
+```
+
+---
+
+## PingOne API Reference (Quick)
+
+### Auth Server (AS) — `https://auth.pingone.{region}/{envId}/as/`
+
+| Endpoint | Use |
+|----------|-----|
+| `/authorize` | Start PKCE flow |
+| `/token` | Exchange code, refresh, token-exchange, client_credentials |
+| `/token/revoke` | RFC 7009 revocation |
+| `/bc-authorize` | CIBA initiate |
+| `/userinfo` | OIDC user claims |
+| `/jwks` | Public keys for JWT validation |
+| `/.well-known/openid-configuration` | Discovery |
+
+### Management API — `https://api.pingone.{region}/v1/environments/{envId}/`
+
+| Endpoint | Use |
+|----------|-----|
+| `/applications` | List / create OAuth apps |
+| `/applications/{id}/secret` | Fetch client secret |
+| `/users` | Create / list directory users |
+| `/users/{id}` | Read / update user |
+
+### Regions
+
+| Config value | Auth base | API base |
+|-------------|-----------|----------|
+| `com` (default) | `auth.pingone.com` | `api.pingone.com` |
+| `eu` | `auth.pingone.eu` | `api.pingone.eu` |
+| `ca` | `auth.pingone.ca` | `api.pingone.ca` |
+| `asia` | `auth.pingone.asia` | `api.pingone.asia` |
+
+---
+
+## Security Rules
+
+- ✅ All PingOne calls go through `banking_api_server` — never from the browser
+- ✅ Client secrets read from `configStore.getEffective()` — never from `process.env` directly in route files
+- ✅ Management API tokens are short-lived, obtained per-request via client_credentials
+- ✅ Token timeout set on all `axios` calls (`timeout: 10000`)
+- ✅ Check `configStore.isConfigured()` before attempting PingOne calls; return graceful error if not set up
+- ❌ Never log `access_token`, `client_secret`, or `code_verifier` values
+- ❌ Never pass raw tokens to `res.json()` — store in `req.session.oauthTokens`
