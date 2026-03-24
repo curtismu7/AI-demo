@@ -10,6 +10,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import PageNav from './PageNav';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -191,7 +192,7 @@ const TOKEN_AUTH_OPTIONS = [
   { value: 'none',                label: 'none (public client / PKCE only)' },
 ];
 
-export default function ClientRegistrationPage() {
+export default function ClientRegistrationPage({ user, onLogout }) {
   const { openPanel } = useEducationUI();
 
   // Form fields
@@ -258,6 +259,7 @@ export default function ClientRegistrationPage() {
 
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 24px' }}>
+      <PageNav user={user} onLogout={onLogout} title="Client Registration" />
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>

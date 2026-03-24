@@ -211,10 +211,10 @@ function App() {
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/oauth-debug-logs"
-                      element={user?.role === 'admin' ? <OAuthDebugLogViewer /> : <Navigate to="/" replace />}
+                      element={user?.role === 'admin' ? <OAuthDebugLogViewer user={user} onLogout={logout} /> : <Navigate to="/" replace />}
                     />
                     <Route path="/client-registration"
-                      element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
+                      element={user?.role === 'admin' ? <ClientRegistrationPage user={user} onLogout={logout} /> : <Navigate to="/" replace />}
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

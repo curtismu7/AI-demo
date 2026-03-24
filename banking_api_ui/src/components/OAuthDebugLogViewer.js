@@ -3,11 +3,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
+import PageNav from './PageNav';
 
 /**
  * Admin-only viewer for OAuth verbose log lines (file / KV / memory on the API server).
  */
-export default function OAuthDebugLogViewer() {
+export default function OAuthDebugLogViewer({ user, onLogout }) {
   const [lines, setLines] = useState([]);
   const [backend, setBackend] = useState('');
   const [hint, setHint] = useState('');
@@ -52,6 +53,7 @@ export default function OAuthDebugLogViewer() {
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '1.5rem' }}>
+      <PageNav user={user} onLogout={onLogout} title="OAuth Debug Log" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a' }}>OAuth debug log</h1>

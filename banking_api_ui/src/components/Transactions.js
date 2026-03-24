@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
+import PageNav from './PageNav';
 
 const Transactions = ({ user, onLogout }) => {
   const [transactions, setTransactions] = useState([]);
@@ -60,6 +61,7 @@ const Transactions = ({ user, onLogout }) => {
 
   return (
     <div>
+      <PageNav user={user} onLogout={onLogout} title="Transactions" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: '#1e293b' }}>Transactions</h1>
       </div>

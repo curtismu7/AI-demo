@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
+import PageNav from './PageNav';
 
 const Accounts = ({ user, onLogout }) => {
   const [accounts, setAccounts] = useState([]);
@@ -41,6 +42,7 @@ const Accounts = ({ user, onLogout }) => {
 
   return (
     <div>
+      <PageNav user={user} onLogout={onLogout} title="Accounts" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: '#1e293b' }}>Accounts</h1>
       </div>

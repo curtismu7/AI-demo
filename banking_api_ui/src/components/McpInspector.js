@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import PageNav from './PageNav';
 import './McpInspector.css';
 
 /**
@@ -83,10 +83,9 @@ const McpInspector = ({ user, onLogout }) => {
     }
   };
 
-  const homePath = user?.role === 'admin' ? '/admin' : '/dashboard';
-
   return (
     <div className="mcp-inspector">
+      <PageNav user={user} onLogout={onLogout} title="MCP Inspector" />
       <header className="mcp-inspector__header">
         <div>
           <h1>MCP Inspector</h1>
@@ -110,14 +109,6 @@ const McpInspector = ({ user, onLogout }) => {
               Agent Gateway
             </button>
           </div>
-          <Link to={homePath} className="mcp-inspector__link">
-            ← Dashboard
-          </Link>
-          {onLogout && (
-            <button type="button" className="mcp-inspector__btn-ghost" onClick={onLogout}>
-              Log out
-            </button>
-          )}
         </div>
       </header>
 

@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import PageNav from './PageNav';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ function MultiSelect({ value = [], options, onChange, disabled }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-const SecuritySettings = ({ user }) => {
+const SecuritySettings = ({ user, onLogout }) => {
   const { open } = useEducationUI();
   const [settings, setSettings] = useState(null);
   const [form, setForm] = useState(null);
@@ -203,7 +204,7 @@ const SecuritySettings = ({ user }) => {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-
+      <PageNav user={user} onLogout={onLogout} title="Security Settings" />
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)', color: 'white', padding: '32px 40px', borderRadius: '8px', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

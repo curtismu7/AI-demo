@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import PageNav from './PageNav';
 
 const ActivityLogs = ({ user, onLogout }) => {
   const { open } = useEducationUI();
@@ -187,6 +188,7 @@ const ActivityLogs = ({ user, onLogout }) => {
 
   return (
     <div>
+      <PageNav user={user} onLogout={onLogout} title="Activity Logs" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h1 style={{ color: '#1e293b', margin: 0 }}>Activity Logs</h1>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>

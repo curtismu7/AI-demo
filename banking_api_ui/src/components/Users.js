@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
+import PageNav from './PageNav';
 
 const Users = ({ user, onLogout }) => {
   const [users, setUsers] = useState([]);
@@ -112,6 +113,7 @@ const Users = ({ user, onLogout }) => {
 
   return (
     <div>
+      <PageNav user={user} onLogout={onLogout} title="Users" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: '#1e293b' }}>Users</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>

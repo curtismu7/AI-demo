@@ -1,7 +1,8 @@
 .mcp-inspector {
   max-width: 960px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  /* padding-right leaves room for the fixed CIMD/Logs buttons (~160px wide + 28px edge) */
+  padding: 1.5rem 190px 3rem 1rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #0f172a;
 }
