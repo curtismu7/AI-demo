@@ -1,5 +1,5 @@
 ---
-description: TypeScript and JavaScript development standards for this banking demo. Use when writing, editing, or refactoring any TypeScript in banking_mcp_server, or JavaScript in banking_api_server or banking_api_ui.
+description: 'TypeScript and JavaScript coding standards for BX Finance banking demo. USE FOR: strict TypeScript, eliminate any types, type errors, ESLint rules, CJS vs ESM modules, async/await patterns, React JSX components, React hooks, jest unit tests, interface vs type alias, generics, null safety, module imports, banking_mcp_server TypeScript, banking_api_server JavaScript, banking_api_ui React. DO NOT USE FOR: OAuth flows (use oauth-implementation); Vercel deployment config (use vercel-deployment); PingOne Management API calls (use pingone-api-calls).'
 globs: banking_mcp_server/**/*.ts, banking_mcp_server/**/*.tsx, banking_api_server/**/*.js, banking_api_ui/src/**/*.js, banking_api_ui/src/**/*.jsx
 alwaysApply: false
 ---

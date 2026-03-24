@@ -1,5 +1,5 @@
 ---
-description: Vercel serverless deployment patterns, session handling, env var management, routing, and common gotchas for this banking demo. Use when modifying vercel.json, api/handler.js, session/cookie code, or deploying.
+description: 'Vercel serverless deployment patterns and gotchas for BX Finance banking demo. USE FOR: vercel.json rewrites, api/handler.js, Upstash Redis session store, express-session config, cookie settings, PKCE state cookie, cold start, serverless function timeouts, environment variables, configStore, buildCommand, outputDirectory, deploy to production, preview deployments. DO NOT USE FOR: OAuth token logic (use oauth-implementation); MCP server deployment — use Railway/Render/Fly not Vercel (use mcp-server); PingOne Management API (use pingone-api-calls).'
 globs: vercel.json, api/**/*.js, banking_api_server/server.js, banking_api_server/services/configStore.js, banking_api_server/services/pkceStateCookie.js, banking_api_server/services/authStateCookie.js
 alwaysApply: false
 ---

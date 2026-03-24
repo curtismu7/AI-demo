@@ -1,5 +1,5 @@
 ---
-description: Patterns for calling the BX Finance banking API server (which calls PingOne on your behalf). Use when writing code that talks to the banking_api_server, or when adding new server-side PingOne API calls.
+description: 'Patterns for calling PingOne Management API from banking_api_server. USE FOR: read user, update user attributes, p1:read:user, p1:update:user, list users, create user, delete user, MFA device enrollment, enable/disable MFA, PingOne Management API /v1/environments, /users endpoint, worker app token calls, admin PingOne REST API. DO NOT USE FOR: OAuth login, token exchange, or session flows (use oauth-implementation); MCP server tools (use mcp-server); Vercel config (use vercel-deployment).'
 globs: banking_api_server/**/*.js, banking_api_ui/src/**/*.js, banking_api_ui/src/**/*.jsx, api/**/*.js
 alwaysApply: false
 ---

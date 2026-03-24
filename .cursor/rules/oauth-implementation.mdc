@@ -1,5 +1,5 @@
 ---
-description: Comprehensive PingOne OAuth 2.0 / OIDC implementation guide — covers ALL grant types (Authorization Code+PKCE, Client Credentials, CIBA, Token Exchange, Device Authorization, Refresh, Revocation, Introspection, PAR). Use for ALL authentication, authorization, token handling, session management, or PingOne integration work in this project.
+description: 'Authoritative PingOne OAuth 2.0 / OIDC guide for ALL grant types. USE FOR: authentication, login, logout, Authorization Code + PKCE, Client Credentials, CIBA backchannel auth, Token Exchange, Device Authorization, refresh token, revocation, introspection, PAR, nonce, state, CSRF, id_token validation, act/may_act claims, scope enforcement, session management, DaVinci, PingOne app config checklist, OAuth error codes. DO NOT USE FOR: calling PingOne Management API to manage users or MFA (use pingone-api-calls); MCP server tool registration (use mcp-server).'
 globs: banking_api_server/**/*.js, banking_api_ui/src/**/*.js, api/**/*.js
 alwaysApply: false
 ---

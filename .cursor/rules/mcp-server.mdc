@@ -1,5 +1,5 @@
 ---
-description: MCP server tool registration, session management, auth challenge handling, and WebSocket protocol patterns for the banking_mcp_server. Use when adding tools, modifying auth flows, or working on the MCP server.
+description: 'BX Finance MCP server (TypeScript): tool registration, session management, auth challenge handling, WebSocket protocol. USE FOR: add or modify MCP tools, BankingToolRegistry, BankingToolProvider, MCPMessageHandler, BankingSessionManager, tools/call, tools/list, initialize handshake, auth challenge flow, missing scope detection, Railway/Render/Fly deployment of MCP server. DO NOT USE FOR: OAuth token flows or PKCE (use oauth-implementation); PingOne Management API calls (use pingone-api-calls); Vercel deployment (use vercel-deployment); TypeScript style rules (use typescript-write).'
 globs: banking_mcp_server/**/*.ts, banking_mcp_server/**/*.js
 alwaysApply: false
 ---
