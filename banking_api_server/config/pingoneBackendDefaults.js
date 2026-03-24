@@ -17,7 +17,7 @@
  * @type {Record<string, string>}
  */
 module.exports = {
-  pingone_environment_id: 'b9817c16-9910-4415-b67e-4ac687da74d9',
+  pingone_environment_id: 'd02d2305-f445-406d-82ee-7cdbf6eeabfd',
   admin_client_id:        '949a748e-4dd0-44a3-944e-721ee1e3ca16f',
   user_client_id:         '5df1fbdb-0f2e-46b1-a5bb-86f456e83620',
   /** Redirect URIs are derived from the public app URL at runtime. */
