@@ -105,27 +105,31 @@ function App() {
       .then(({ data }) => savePublicConfig(data.config))
       .catch(() => {}); // non-fatal
 
-    // On Vercel, the OAuth callback lands on one serverless instance and
-    // immediately 302-redirects the browser to /admin?oauth=success. The React
-    // app mounts fresh on a *different* cold instance that may not have loaded
-    // the Redis session yet. We use a retry loop with backoff (200 → 600 →
-    // 1400 → 3000 ms) so we catch it even if the first check races.
+    // Detect whether we're landing here straight from the OAuth callback.
+    // On Vercel the callback runs on one serverless instance and 302s to
+    // /admin?oauth=success, which loads on a *different* cold instance that
+    // may not yet have the Redis session. We only enable the retry loop in
+    // that specific case. For regular page loads (refresh with an existing
+    // session, or unauthenticated visits) a single check is enough — the
+    // session is either warm (Vercel Redis / localhost in-memory) or absent.
+    const isOAuthReturn = window.location.search.includes('oauth=success');
     let cancelled = false;
-    const delays = [0, 400, 900, 1800, 3000];
-    let idx = 0;
 
-    async function attempt() {
+    async function attempt(delaysRemaining) {
       if (cancelled) return;
       const found = await checkOAuthSession();
-      setLoading(false); // always unhide UI after first attempt
-      if (!found && idx < delays.length - 1) {
-        idx++;
-        setTimeout(attempt, delays[idx]);
+      setLoading(false); // unblock UI immediately after first attempt
+      if (!found && delaysRemaining.length > 0) {
+        const [next, ...rest] = delaysRemaining;
+        setTimeout(() => attempt(rest), next);
       }
     }
 
-    // Small initial delay to let React hydrate fully
-    const t = setTimeout(attempt, 150);
+    // On OAuth return: retry with backoff in case of Vercel cold-start lag.
+    // On regular load: single check only.
+    const retryDelays = isOAuthReturn ? [400, 900, 1800, 3000] : [];
+    const t = setTimeout(() => attempt(retryDelays), 150);
+
     return () => {
       cancelled = true;
       clearTimeout(t);
