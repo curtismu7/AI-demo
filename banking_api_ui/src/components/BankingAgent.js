@@ -276,11 +276,43 @@ export default function BankingAgent({ user }) {
       url.searchParams.delete('oauth');
       url.searchParams.delete('stepup');
       window.history.replaceState({}, '', url.toString());
-      // Kick off an immediate check and, if it fails (session store cold-start),
-      // retry once after 800 ms.
-      checkSelfAuth();
-      const retryTimer = setTimeout(() => checkSelfAuth(), 800);
-      return () => clearTimeout(retryTimer);
+
+      // Auth cookie is set on the callback response, but on Vercel the status
+      // check may land on a cold instance before Redis propagates.  Retry with
+      // increasing backoff (immediate, 600, 1400, 2500 ms).
+      const retryDelays = [0, 600, 1400, 2500];
+      let timers = [];
+      retryDelays.forEach((delay, i) => {
+        const t = setTimeout(async () => {
+          const result = await Promise.all([
+            fetch('/api/auth/oauth/status',      { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+          ]);
+          const [admin, endUser, session] = result;
+          const found = (admin?.authenticated && admin.user)
+            ? admin.user
+            : (endUser?.authenticated && endUser.user)
+              ? endUser.user
+              : (session?.authenticated && session.user)
+                ? session.user
+                : null;
+          if (found) {
+            setSessionUser(found);
+            setMessages(prev =>
+              prev.length === 0
+                ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(found) }]
+                : prev
+            );
+            // Notify App.js once so it can navigate to dashboard routes
+            if (i === 0) window.dispatchEvent(new CustomEvent('userAuthenticated'));
+            // Cancel remaining retries
+            timers.forEach(clearTimeout);
+          }
+        }, delay);
+        timers.push(t);
+      });
+      return () => timers.forEach(clearTimeout);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);

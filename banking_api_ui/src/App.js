@@ -84,10 +84,11 @@ function App() {
         setUser(found);
         if (found.email) injectEmailIntoNextSessionInit(found.email);
         window.dispatchEvent(new CustomEvent('userAuthenticated'));
+        return true; // signal: found a session
       }
-      setLoading(false);
-    } catch (error) {
-      setLoading(false);
+      return false;
+    } catch (_) {
+      return false;
     }
   }, [injectEmailIntoNextSessionInit]);
 
@@ -104,11 +105,42 @@ function App() {
       .then(({ data }) => savePublicConfig(data.config))
       .catch(() => {}); // non-fatal
 
-    const t = setTimeout(() => {
-      checkOAuthSession();
-    }, 200);
-    return () => clearTimeout(t);
+    // On Vercel, the OAuth callback lands on one serverless instance and
+    // immediately 302-redirects the browser to /admin?oauth=success. The React
+    // app mounts fresh on a *different* cold instance that may not have loaded
+    // the Redis session yet. We use a retry loop with backoff (200 → 600 →
+    // 1400 → 3000 ms) so we catch it even if the first check races.
+    let cancelled = false;
+    const delays = [0, 400, 900, 1800, 3000];
+    let idx = 0;
+
+    async function attempt() {
+      if (cancelled) return;
+      const found = await checkOAuthSession();
+      setLoading(false); // always unhide UI after first attempt
+      if (!found && idx < delays.length - 1) {
+        idx++;
+        setTimeout(attempt, delays[idx]);
+      }
+    }
+
+    // Small initial delay to let React hydrate fully
+    const t = setTimeout(attempt, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [checkOAuthSession]);
+
+  // If BankingAgent self-detects a session and dispatches 'userAuthenticated',
+  // re-run our own check so App.js sets the user state and shows the correct routes.
+  useEffect(() => {
+    const onAuth = () => {
+      if (!user) checkOAuthSession();
+    };
+    window.addEventListener('userAuthenticated', onAuth);
+    return () => window.removeEventListener('userAuthenticated', onAuth);
+  }, [user, checkOAuthSession]);
 
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
