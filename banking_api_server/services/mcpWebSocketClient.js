@@ -33,6 +33,38 @@ function getSessionAccessToken(req) {
   return t.accessToken || t.access_token || null;
 }
 
+/** Limit concurrent MCP WebSocket handshakes per process (connection pool / back-pressure). */
+const MCP_WS_MAX_CONCURRENT = Math.max(1, parseInt(process.env.MCP_WS_MAX_CONCURRENT || '8', 10) || 8);
+let mcpWsActiveCount = 0;
+const mcpWsWaitQueue = [];
+
+/**
+ * Acquire a slot in the MCP WebSocket pool; release when the RPC completes (success or error).
+ * @returns {Promise<void>}
+ */
+function acquireMcpWsSlot() {
+  return new Promise((resolve) => {
+    if (mcpWsActiveCount < MCP_WS_MAX_CONCURRENT) {
+      mcpWsActiveCount += 1;
+      resolve();
+    } else {
+      mcpWsWaitQueue.push(resolve);
+    }
+  });
+}
+
+/**
+ * Release a slot and wake the next waiter if any.
+ */
+function releaseMcpWsSlot() {
+  if (mcpWsWaitQueue.length > 0) {
+    const next = mcpWsWaitQueue.shift();
+    next();
+  } else {
+    mcpWsActiveCount -= 1;
+  }
+}
+
 /**
  * After initialize, run one follow-up JSON-RPC method and return the result body.
  * @param {'tools/list'|'tools/call'} followMethod
@@ -40,66 +72,88 @@ function getSessionAccessToken(req) {
  */
 function mcpRpc(agentToken, followMethod, followParams) {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(getMcpServerUrl());
-    let msgId = 1;
-    let initialized = false;
-
-    const timeout = setTimeout(() => {
-      ws.terminate();
-      reject(new Error('MCP call timed out'));
-    }, 15000);
-
-    ws.on('error', (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-
-    ws.on('open', () => {
-      const initParams = {
-        protocolVersion: '2024-11-05',
-        clientInfo: { name: 'banking-api-server' },
-      };
-      if (agentToken) initParams.agentToken = agentToken;
-      ws.send(
-        JSON.stringify({
-          jsonrpc: '2.0',
-          id: msgId++,
-          method: 'initialize',
-          params: initParams,
-        })
-      );
-    });
-
-    ws.on('message', (raw) => {
-      let msg;
-      try {
-        msg = JSON.parse(raw.toString());
-      } catch {
-        return;
+    let released = false;
+    const safeRelease = () => {
+      if (!released) {
+        released = true;
+        releaseMcpWsSlot();
       }
+    };
 
-      if (!initialized) {
-        initialized = true;
-        ws.send(
-          JSON.stringify({
-            jsonrpc: '2.0',
-            id: msgId++,
-            method: followMethod,
-            params: followParams || {},
-          })
-        );
-        return;
-      }
+    acquireMcpWsSlot()
+      .then(() => {
+        const ws = new WebSocket(getMcpServerUrl());
+        let msgId = 1;
+        let initialized = false;
 
-      clearTimeout(timeout);
-      ws.close();
+        const timeout = setTimeout(() => {
+          ws.terminate();
+          safeRelease();
+          reject(new Error('MCP call timed out'));
+        }, 15000);
 
-      if (msg.error) {
-        reject(new Error(msg.error.message || JSON.stringify(msg.error)));
-      } else {
-        resolve(msg.result);
-      }
-    });
+        ws.on('error', (err) => {
+          clearTimeout(timeout);
+          safeRelease();
+          reject(err);
+        });
+
+        ws.on('open', () => {
+          const initParams = {
+            protocolVersion: '2024-11-05',
+            clientInfo: { name: 'banking-api-server' },
+          };
+          if (agentToken) initParams.agentToken = agentToken;
+          ws.send(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: msgId++,
+              method: 'initialize',
+              params: initParams,
+            })
+          );
+        });
+
+        ws.on('message', (raw) => {
+          let msg;
+          try {
+            msg = JSON.parse(raw.toString());
+          } catch {
+            clearTimeout(timeout);
+            safeRelease();
+            reject(new Error('MCP invalid JSON response'));
+            return;
+          }
+
+          if (!initialized) {
+            initialized = true;
+            ws.send(
+              JSON.stringify({
+                jsonrpc: '2.0',
+                id: msgId++,
+                method: followMethod,
+                params: followParams || {},
+              })
+            );
+            return;
+          }
+
+          clearTimeout(timeout);
+          ws.close();
+
+          if (msg.error) {
+            safeRelease();
+            reject(new Error(msg.error.message || JSON.stringify(msg.error)));
+          } else {
+            safeRelease();
+            resolve(msg.result);
+          }
+        });
+      })
+      .catch((err) => {
+        safeRelease();
+        reject(err);
+      });
   });
 }
 

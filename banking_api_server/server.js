@@ -465,7 +465,8 @@ const { oauthErrorHandler } = require('./middleware/oauthErrorHandler');
 // scoped to the MCP server audience — the user's raw token never leaves the BFF.
 
 const { resolveMcpAccessTokenWithEvents } = require('./services/agentMcpTokenService');
-const { mcpCallTool } = require('./services/mcpWebSocketClient');
+const { mcpCallTool, getSessionAccessToken } = require('./services/mcpWebSocketClient');
+const { introspectToken } = require('./middleware/tokenIntrospection');
 
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), async (req, res) => {
@@ -488,6 +489,33 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
 
   if (!agentToken) {
     return res.status(401).json({ error: 'authentication_required', message: 'Sign in to use the banking agent.', tokenEvents });
+  }
+
+  // Introspect session token for zero-trust validation (RFC 7662)
+  const sessionAccessToken = getSessionAccessToken(req);
+  const introspectionConfigured = !!process.env.PINGONE_INTROSPECTION_ENDPOINT;
+  if (introspectionConfigured) {
+    if (!sessionAccessToken) {
+      return res.status(401).json({
+        error: 'authentication_required',
+        message: 'Session access token missing; cannot validate session.',
+        tokenEvents,
+      });
+    }
+    try {
+      const introspectionResult = await introspectToken(sessionAccessToken);
+      if (!introspectionResult.active) {
+        console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
+        return res.status(401).json({
+          error: 'token_inactive',
+          message: 'Session token is no longer active. Please sign in again.',
+          tokenEvents,
+        });
+      }
+    } catch (err) {
+      console.error(`[MCP Proxy] Session token introspection error for tool ${tool}:`, err.message);
+      // Continue on introspection failure (graceful degradation) but log the error
+    }
   }
 
   try {

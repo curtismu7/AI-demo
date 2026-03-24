@@ -35,27 +35,29 @@ function decodeJwtClaims(token) {
 /**
  * Build a sanitized claims snapshot for the UI.
  * Strips any field that could be sensitive or identifying beyond what's needed for education.
+ * @param {Record<string, unknown>|null|undefined} claims
  */
 function sanitizeClaims(claims) {
-  if (!claims) { return null; }
+  if (claims == null || typeof claims !== 'object') return null;
+  const c = claims;
   const result = {};
-  if (claims.sub)    result.sub    = claims.sub;
-  if (claims.aud)    result.aud    = claims.aud;
-  if (claims.scope)  result.scope  = claims.scope;
-  if (claims.iss)    result.iss    = claims.iss;
-  if (claims.exp)    result.exp    = claims.exp;
-  if (claims.iat)    result.iat    = claims.iat;
-  if (claims.nbf)    result.nbf    = claims.nbf;
-  if (claims.may_act) result.may_act = claims.may_act;
-  if (claims.act)    result.act    = claims.act;
-  if (claims.client_id) result.client_id = claims.client_id;
-  if (claims.azp)    result.azp    = claims.azp;
-  if (claims.jti)    result.jti    = claims.jti;
-  if (email)  result.email  = email;
-  if (preferred_username) result.preferred_username = preferred_username;
-  if (given_name) result.given_name = given_name;
-  if (family_name) result.family_name = family_name;
-  if (acr)    result.acr    = acr;
+  if (c.sub) result.sub = c.sub;
+  if (c.aud) result.aud = c.aud;
+  if (c.scope) result.scope = c.scope;
+  if (c.iss) result.iss = c.iss;
+  if (c.exp) result.exp = c.exp;
+  if (c.iat) result.iat = c.iat;
+  if (c.nbf) result.nbf = c.nbf;
+  if (c.may_act) result.may_act = c.may_act;
+  if (c.act) result.act = c.act;
+  if (c.client_id) result.client_id = c.client_id;
+  if (c.azp) result.azp = c.azp;
+  if (c.jti) result.jti = c.jti;
+  if (c.email) result.email = c.email;
+  if (c.preferred_username) result.preferred_username = c.preferred_username;
+  if (c.given_name) result.given_name = c.given_name;
+  if (c.family_name) result.family_name = c.family_name;
+  if (c.acr) result.acr = c.acr;
   return result;
 }
 
@@ -177,6 +179,20 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   const toolScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
   const useActor = process.env.USE_AGENT_ACTOR_FOR_MCP === 'true' && process.env.AGENT_OAUTH_CLIENT_ID;
+  const requireMayAct = process.env.REQUIRE_MAY_ACT === 'true';
+
+  // Pre-flight: token exchange requires may_act when REQUIRE_MAY_ACT=true (aligns with banking_mcp_server).
+  if (requireMayAct && mcpResourceUri && !t1Claims?.may_act) {
+    tokenEvents.push(buildTokenEvent(
+      'may-act-required',
+      'may_act (RFC 8693) — required',
+      'failed',
+      t1Decoded,
+      'REQUIRE_MAY_ACT=true but the user token has no may_act claim. Add may_act via PingOne token policy, or set REQUIRE_MAY_ACT=false for local testing.',
+      { rfc: 'RFC 8693 §4.2' }
+    ));
+    return { token: null, tokenEvents };
+  }
 
   // ── No exchange configured ──────────────────────────────────────────────────
   if (!mcpResourceUri) {

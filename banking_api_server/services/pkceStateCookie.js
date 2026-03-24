@@ -16,13 +16,14 @@
  * The cookie is signed with the SESSION_SECRET so it cannot be forged or
  * tampered with by a browser.  It contains no sensitive material (the
  * code_verifier is a public-client value; the state is a CSRF token that
- * expires in ≤5 minutes).
+ * expires in ≤15 minutes).
  */
 
 const crypto = require('crypto');
 
 const COOKIE_NAME    = '_pkce';
-const MAX_AGE_MS     = 5 * 60 * 1000; // 5 minutes — longer than the longest PingOne redirect
+/** PKCE cookie lifetime (was 5 min; extended to 15 min for MFA / slow networks). */
+const MAX_AGE_MS     = 15 * 60 * 1000;
 const COOKIE_PATH    = '/api/auth';    // only sent to auth routes
 
 /**
