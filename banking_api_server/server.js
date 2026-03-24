@@ -21,6 +21,18 @@ if (isVercel)  console.log('[platform] Vercel deployment detected');
 if (isReplit)  console.log('[platform] Replit deployment detected');
 if (!isVercel && !isReplit && isProduction) console.log('[platform] Generic production deployment');
 
+// Log OAuth config so mismatches are visible in Vercel logs
+if (isVercel) {
+  const _mask = (v, n = 4) => v ? v.slice(0, n) + '...' : 'MISSING';
+  const _envId    = process.env.PINGONE_ENVIRONMENT_ID || process.env.PINGONE_ENV_ID || '';
+  const _adminId  = process.env.PINGONE_ADMIN_CLIENT_ID  || process.env.PINGONE_AI_CORE_CLIENT_ID  || process.env.PINGONE_CORE_CLIENT_ID  || '';
+  const _adminSec = process.env.PINGONE_ADMIN_CLIENT_SECRET || process.env.PINGONE_AI_CORE_CLIENT_SECRET || process.env.PINGONE_CORE_CLIENT_SECRET || '';
+  const _userId   = process.env.PINGONE_USER_CLIENT_ID   || process.env.PINGONE_AI_CORE_USER_CLIENT_ID   || process.env.PINGONE_CORE_USER_CLIENT_ID   || '';
+  const _userSec  = process.env.PINGONE_USER_CLIENT_SECRET  || process.env.PINGONE_AI_CORE_USER_CLIENT_SECRET  || process.env.PINGONE_CORE_USER_CLIENT_SECRET  || '';
+  console.log('[oauth-config] env_id=%s  admin_client_id=%s  admin_secret=%s  user_client_id=%s  user_secret=%s',
+    _mask(_envId, 8), _mask(_adminId, 8), _mask(_adminSec, 4), _mask(_userId, 8), _mask(_userSec, 4));
+}
+
 // Security guard: SKIP_TOKEN_SIGNATURE_VALIDATION must never be enabled in production.
 // Validates at startup (before any request is served) so misconfigurations are caught early.
 if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
