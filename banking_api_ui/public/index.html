@@ -266,8 +266,12 @@
     window.initializeChatWidget = initializeChatWidget;
     window.destroyChatWidget = destroyChatWidget;
 
-    // Listen for authentication events from React
+    // Listen for authentication events from React.
+    // Only auto-initialize the LangChain widget on localhost — it connects to
+    // ws://localhost:8082/ws which doesn't exist on Vercel production.
     window.addEventListener('userAuthenticated', function(event) {
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!isLocalhost) return; // BankingAgent handles AI on production
       console.log('👤 User authenticated - initializing chat widget');
       const userToken = event.detail && event.detail.token;
       setTimeout(() => initializeChatWidget(userToken), 500);
