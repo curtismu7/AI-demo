@@ -16,6 +16,7 @@ import SecuritySettings from './components/SecuritySettings';
 import Config from './components/Config';
 import Onboarding from './components/Onboarding';
 import CIBAPanel from './components/CIBAPanel';
+import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
@@ -198,6 +199,7 @@ function App() {
           <BankingAgent user={user} />
           <EducationPanelsHost />
           <CIBAPanel />
+          <CimdSimPanel />
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
           {/* Floating Log Viewer Button */}
           <button

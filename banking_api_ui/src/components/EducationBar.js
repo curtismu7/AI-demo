@@ -27,6 +27,13 @@ export default function EducationBar() {
     setMenuOpen(false);
   };
 
+  const openCimd = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('education-open-cimd', { detail: { tab: 'what' } }));
+    }
+    setMenuOpen(false);
+  };
+
   return (
     <div className="edu-bar" role="navigation" aria-label="Learn topics">
       <div className="edu-bar-inner">
@@ -80,6 +87,9 @@ export default function EducationBar() {
         </button>
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.RFC_INDEX, 'index')}>
           RFC Index
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openCimd}>
+          CIMD
         </button>
       </div>
     </div>

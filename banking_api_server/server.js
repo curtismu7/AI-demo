@@ -86,6 +86,7 @@ const mcpInspectorRoutes = require('./routes/mcpInspector');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const tokenRoutes = require('./routes/tokens');
+const logsRoutes = require('./routes/logs');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
 const { getOAuthRedirectDebugInfo } = require('./services/oauthRedirectUris');
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
@@ -342,6 +343,7 @@ app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/transactions', authenticateToken, transactionRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
+app.use('/api/logs', logsRoutes);
 
 // Public CIMD well-known endpoint — no authentication required.
 // Mounted after session/auth middleware but before static files.

@@ -538,12 +538,12 @@ export default function BankingAgent({ user }) {
       if (result.kind === 'education' && result.education?.panel) {
         const panel = result.education.panel;
         const tab   = result.education.tab || null;
-        edu?.open(panel, tab);
-        // For CIMD, close the agent so the panel is fully visible and give a rich summary
+        // For CIMD, use the standalone CimdSimPanel (dispatches custom event)
         if (panel === EDU.CIMD) {
+          window.dispatchEvent(new CustomEvent('education-open-cimd', { detail: { tab: tab || 'what' } }));
           setIsOpen(false);
           addMessage('assistant',
-            `📄 CIMD Guide opened — see the sliding panel on the right.\n\n` +
+            `📄 CIMD Simulator opened — see the sliding panel on the right.\n\n` +
             `OAuth Client ID Metadata Document (CIMD) redefines what a client_id is:\n` +
             `• Instead of an opaque string, the client_id is a URL you control\n` +
             `• That URL hosts a JSON document describing the client (redirect_uris, grant_types, scopes…)\n` +
@@ -551,10 +551,11 @@ export default function BankingAgent({ user }) {
             `• The client controls updates: just update the hosted document\n\n` +
             `This demo registers the client in PingOne via the Management API and hosts the document at:\n` +
             `/.well-known/oauth-client/{pingone-app-id}\n\n` +
-            `Guide tabs: What is CIMD · CIMD vs DCR · Document format · How AS uses it · Flow diagram · Try it`
+            `Panel tabs: What is CIMD · CIMD vs DCR · Doc format · How AS uses it · Flow diagram · ▶ Simulate · PingOne`
           );
           return;
         }
+        edu?.open(panel, tab);
         addMessage('assistant', `Opened help: ${panel} (${source}).`);
         return;
       }
