@@ -213,11 +213,13 @@ const _rateLimitHandler = (req, res) => {
 };
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 1000 : 100,
+  max: process.env.NODE_ENV === 'development' ? 1000 : 500,
   handler: _rateLimitHandler,
 });
-// Exempt log-viewer polling from the global rate limit
-app.use((req, res, next) => req.path.startsWith('/api/logs') ? next() : limiter(req, res, next));
+// Exempt log-viewer polling and banking agent from the global rate limit
+app.use((req, res, next) =>
+  (req.path.startsWith('/api/logs') || req.path.startsWith('/api/banking-agent') || req.path.startsWith('/api/agent'))
+    ? next() : limiter(req, res, next));
 
 // Tighter rate limit for auth endpoints to slow brute-force / credential-stuffing.
 const authLimiter = rateLimit({
