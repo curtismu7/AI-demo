@@ -287,14 +287,9 @@ class ConfigStore {
    * This is what config/oauth.js getters call.
    */
   getEffective(key) {
-    if (!process.env.VERCEL || USE_KV) {
-      const stored = this.get(key);
-      if (stored) return stored;
-    }
-
     // Env-var fallback map (PINGONE_CORE_* / PINGONE_AI_CORE_* / PINGONE_ADMIN_* all refer to the same PingOne apps)
-    // NOTE: env vars take priority over committed defaults so Vercel / deployment env vars
-    // always override the pinned demo values in pingoneBackendDefaults.js.
+    // NOTE: env vars always take priority — over KV, SQLite, and committed defaults.
+    // This ensures Vercel env vars override anything saved in the Config UI.
     const envFallbackMap = {
       pingone_environment_id: ['PINGONE_ENVIRONMENT_ID'],
       pingone_region:         ['PINGONE_REGION'],
@@ -347,6 +342,12 @@ class ConfigStore {
     for (const envKey of envVars) {
       const v = process.env[envKey];
       if (v) return v;
+    }
+
+    // KV / SQLite stored config — after env vars so Vercel env vars always win.
+    if (!process.env.VERCEL || USE_KV) {
+      const stored = this.get(key);
+      if (stored) return stored;
     }
 
     // Optional committed defaults — last resort so any env var above wins.
