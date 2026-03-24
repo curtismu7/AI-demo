@@ -54,62 +54,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   // Initialize chat widget (configuration is handled in index.html)
   useChatWidget();
 
-  // Function to decode JWT token
-  const decodeToken = (token) => {
-    try {
-      if (!token) return null;
-      
-      const parts = token.split('.');
-      if (parts.length !== 3) return null;
-      
-      const header = JSON.parse(atob(parts[0]));
-      const payload = JSON.parse(atob(parts[1]));
-      
-      return {
-        header,
-        payload,
-        raw: token
-      };
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      return null;
-    }
-  };
-
   // Function to fetch current OAuth tokens
   const fetchTokenData = async () => {
     try {
-      console.log('🔍 Fetching current OAuth token data...');
-      
-      // Try both admin and user status endpoints
+      // Try user claims first, fall back to admin claims
       let response;
       try {
-        response = await axios.get('/api/auth/oauth/user/status');
+        response = await axios.get('/api/auth/oauth/user/token-claims', { withCredentials: true });
         if (!response.data.authenticated) {
-          response = await axios.get('/api/auth/oauth/status');
+          response = await axios.get('/api/auth/oauth/token-claims', { withCredentials: true });
         }
-      } catch (error) {
-        response = await axios.get('/api/auth/oauth/status');
+      } catch {
+        response = await axios.get('/api/auth/oauth/token-claims', { withCredentials: true });
       }
-      
-      if (response.data.authenticated && response.data.accessToken) {
-        const decodedAccessToken = decodeToken(response.data.accessToken);
-        
-        const tokenInfo = {
-          accessToken: decodedAccessToken,
-          tokenType: response.data.tokenType,
-          expiresAt: response.data.expiresAt,
-          clientType: response.data.clientType,
-          oauthProvider: response.data.oauthProvider,
-          user: response.data.user
-        };
-        
-        console.log('✅ Token data fetched:', tokenInfo);
-        setTokenData(tokenInfo);
-      } else {
-        console.log('❌ No authenticated session found');
-        setTokenData(null);
-      }
+      setTokenData(response.data.authenticated ? response.data : null);
     } catch (error) {
       console.error('❌ Error fetching token data:', error);
       setTokenData(null);
@@ -808,7 +766,18 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <div className="token-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>OAuth Token Information</h3>
-              <button className="close-btn" onClick={() => setShowTokenModal(false)}>×</button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    style={{ padding: '0.25rem 0.75rem', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fff5f5', color: '#dc2626', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    Log Out
+                  </button>
+                )}
+                <button type="button" className="close-btn" onClick={() => setShowTokenModal(false)}>×</button>
+              </div>
             </div>
             <div className="modal-content">
               {tokenData ? (
@@ -818,37 +787,39 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                     <div className="session-info-grid">
                       <div className="session-row">
                         <span className="session-label">User:</span>
-                        <span className="session-value">{tokenData.user?.username} ({tokenData.user?.email})</span>
+                        <span className="session-value">{tokenData.user?.firstName} {tokenData.user?.lastName} ({tokenData.user?.email})</span>
                       </div>
                       <div className="session-row">
                         <span className="session-label">Role:</span>
                         <span className="session-value">{tokenData.user?.role}</span>
-                        <span className="session-label">Provider:</span>
-                        <span className="session-value">{tokenData.oauthProvider}</span>
+                        <span className="session-label">Session:</span>
+                        <span className="session-value">{tokenData.sessionType}</span>
                       </div>
                       <div className="session-row">
                         <span className="session-label">Client:</span>
                         <span className="session-value">{tokenData.clientType}</span>
-                        <span className="session-label">Token:</span>
+                        <span className="session-label">Token type:</span>
                         <span className="session-value">{tokenData.tokenType}</span>
                       </div>
                       <div className="session-row">
                         <span className="session-label">Expires:</span>
                         <span className="session-value">{tokenData.expiresAt ? new Date(tokenData.expiresAt).toLocaleString() : 'N/A'}</span>
+                        <span className="session-label">Refresh token:</span>
+                        <span className="session-value">{tokenData.hasRefreshToken ? '✅ present' : '❌ none'}</span>
                       </div>
                     </div>
                   </div>
 
-                  {tokenData.accessToken && (
+                  {tokenData.decoded && (
                     <div className="token-section">
                       <h4>Access Token Header</h4>
                       <pre className="token-json">
-                        {JSON.stringify(tokenData.accessToken.header, null, 2)}
+                        {JSON.stringify(tokenData.decoded.header, null, 2)}
                       </pre>
                     </div>
                   )}
 
-                  {tokenData.accessToken && (
+                  {tokenData.decoded && (
                     <div className="token-section">
                       <h4 className="token-payload-heading">
                         Access Token Payload
@@ -856,17 +827,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                         <button type="button" className="token-payload-hint" title="scope" onClick={() => open(EDU.LOGIN_FLOW, 'tokens')}>ⓘ</button>
                       </h4>
                       <pre className="token-json">
-                        {JSON.stringify(tokenData.accessToken.payload, null, 2)}
+                        {JSON.stringify(tokenData.decoded.payload, null, 2)}
                       </pre>
                     </div>
                   )}
 
-                  {tokenData.accessToken && (
+                  {!tokenData.decoded && (
                     <div className="token-section">
-                      <h4>Raw Access Token</h4>
-                      <div className="token-raw-display">
-                        {tokenData.accessToken.raw}
-                      </div>
+                      <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Token claims not available (local/cookie session).</p>
                     </div>
                   )}
                 </div>

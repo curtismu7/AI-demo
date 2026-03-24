@@ -330,6 +330,37 @@ router.get('/status', (req, res) => {
 });
 
 /**
+ * GET /api/auth/oauth/token-claims
+ * Returns decoded JWT claims from the session access token (for demo/educational display).
+ * The raw token is never sent to the browser — only the decoded header + payload.
+ */
+router.get('/token-claims', (req, res) => {
+  const tokens = req.session?.oauthTokens;
+  const user   = req.session?.user;
+  if (!user || !tokens?.accessToken || tokens.accessToken === '_cookie_session') {
+    return res.json({ authenticated: false });
+  }
+  try {
+    const parts = tokens.accessToken.split('.');
+    if (parts.length !== 3) return res.json({ authenticated: true, decoded: null });
+    const header  = JSON.parse(Buffer.from(parts[0], 'base64').toString());
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    return res.json({
+      authenticated: true,
+      sessionType: req.session.oauthType || 'unknown',
+      clientType:  req.session.clientType || null,
+      tokenType:   tokens.tokenType || 'Bearer',
+      expiresAt:   tokens.expiresAt || null,
+      hasRefreshToken: !!tokens.refreshToken,
+      user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role },
+      decoded: { header, payload },
+    });
+  } catch {
+    return res.json({ authenticated: true, decoded: null });
+  }
+});
+
+/**
  * RFC 6749 §6 — Refresh the admin OAuth access token using the stored refresh token.
  * Called by the frontend or auto-refresh middleware when the access token is near expiry.
  */
