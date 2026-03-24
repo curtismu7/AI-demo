@@ -26,6 +26,7 @@ const ACTIONS = [
   { id: 'deposit',      label: '⬇ Deposit',             desc: 'Deposit into an account' },
   { id: 'withdraw',     label: '⬆ Withdraw',            desc: 'Withdraw from an account' },
   { id: 'transfer',     label: '↔ Transfer',            desc: 'Transfer between accounts' },
+  { id: 'logout',       label: '🚪 Log Out',             desc: 'Sign out of your account' },
 ];
 
 // ─── Suggested prompts — role-aware ──────────────────────────────────────────
@@ -227,7 +228,7 @@ function normalizeBankingParams(action, params) {
   return p;
 }
 
-export default function BankingAgent({ user }) {
+export default function BankingAgent({ user, onLogout }) {
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   // Always open by default, unless user explicitly collapsed it (persisted in localStorage)
@@ -609,6 +610,10 @@ export default function BankingAgent({ user }) {
   }
 
   function handleActionClick(actionId) {
+    if (actionId === 'logout') {
+      onLogout?.();
+      return;
+    }
     // No form needed for read-only queries
     if (actionId === 'accounts' || actionId === 'transactions') {
       runAction(actionId, {});
@@ -675,6 +680,11 @@ export default function BankingAgent({ user }) {
       }
       if (result.kind === 'banking' && result.banking?.action) {
         const { action, params } = result.banking;
+        if (action === 'logout') {
+          addMessage('assistant', 'Signing you out…');
+          setTimeout(() => onLogout?.(), 800);
+          return;
+        }
         const p = normalizeBankingParams(action, params);
         if (action === 'accounts' || action === 'transactions') {
           await runAction(action, {}, { skipUserLabel: true });

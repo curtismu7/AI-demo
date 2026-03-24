@@ -93,6 +93,9 @@ function parseBanking(t) {
   if (/\b(withdraw|withdrawal)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'withdraw' } };
   }
+  if (/\b(logout|log out|sign out|signout)\b/.test(t)) {
+    return { kind: 'banking', banking: { action: 'logout' } };
+  }
   return null;
 }
 

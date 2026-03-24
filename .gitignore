@@ -83,3 +83,4 @@ test-results/
 # macOS / zip extraction cruft
 **/__MACOSX/
 
+.env*.local

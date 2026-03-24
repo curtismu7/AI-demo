@@ -221,13 +221,16 @@ app.use((req, res, next) =>
   (req.path.startsWith('/api/logs') || req.path.startsWith('/api/banking-agent') || req.path.startsWith('/api/agent'))
     ? next() : limiter(req, res, next));
 
-// Tighter rate limit for auth endpoints to slow brute-force / credential-stuffing.
+// Tighter rate limit for login/callback only — not status polling endpoints.
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 200 : 20,
+  max: process.env.NODE_ENV === 'development' ? 200 : 30,
   handler: _rateLimitHandler,
 });
-app.use('/api/auth/oauth', authLimiter);
+app.use('/api/auth/oauth/login',         authLimiter);
+app.use('/api/auth/oauth/callback',      authLimiter);
+app.use('/api/auth/oauth/user/login',    authLimiter);
+app.use('/api/auth/oauth/user/callback', authLimiter);
 
 // Logging middleware
 app.use(morgan('combined'));

@@ -34,6 +34,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
+  const _sessionFoundRef = useRef(false); // prevent userAuthenticated dispatch loop
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);
@@ -83,7 +84,10 @@ function App() {
       if (found) {
         setUser(found);
         if (found.email) injectEmailIntoNextSessionInit(found.email);
-        window.dispatchEvent(new CustomEvent('userAuthenticated'));
+        if (!_sessionFoundRef.current) {
+          _sessionFoundRef.current = true;
+          window.dispatchEvent(new CustomEvent('userAuthenticated'));
+        }
         return true; // signal: found a session
       }
       return false;
@@ -148,6 +152,7 @@ function App() {
 
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
+    _sessionFoundRef.current = false;
 
     // Signal that the user intentionally logged out so the startup
     // session-check in useEffect skips auto-login on return to /login.
@@ -217,7 +222,7 @@ function App() {
               )
             } />
           </Routes>
-          <BankingAgent user={user} />
+          <BankingAgent user={user} onLogout={logout} />
           <EducationPanelsHost />
           <CIBAPanel />
           <CimdSimPanel />
