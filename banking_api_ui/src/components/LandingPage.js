@@ -64,27 +64,6 @@ const LandingPage = () => {
     }
   ];
 
-  const testimonials = [
-    {
-      name: 'Sarah Chen',
-      role: 'Small Business Owner',
-      content: 'The AI assistant helped me manage my business finances effortlessly. It understands natural language and makes complex banking simple.',
-      avatar: '👩‍💼'
-    },
-    {
-      name: 'Michael Rodriguez',
-      role: 'Tech Entrepreneur',
-      content: 'Finally, a banking experience that speaks my language. The agent integration is seamless and incredibly intuitive.',
-      avatar: '👨‍💻'
-    },
-    {
-      name: 'Emily Johnson',
-      role: 'Digital Nomad',
-      content: 'I can manage my finances from anywhere in the world. The AI agent handles everything from transfers to financial planning.',
-      avatar: '👩‍💻'
-    }
-  ];
-
   return (
     <div className="landing-page">
       {/* Navigation */}
@@ -103,7 +82,7 @@ const LandingPage = () => {
           <div className={`nav-menu ${isMenuOpen ? 'open' : ''}`}>
             <a href="#features" className="nav-link">Features</a>
             <a href="#how-it-works" className="nav-link">How It Works</a>
-            <a href="#testimonials" className="nav-link">Testimonials</a>
+
             <button
               type="button"
               className="nav-link"
@@ -359,31 +338,6 @@ const LandingPage = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section id="testimonials" className="testimonials">
-        <div className="container">
-          <div className="section-header">
-            <h2>Loved by Thousands</h2>
-            <p>See what our customers are saying about AI-powered banking</p>
-          </div>
-          
-          <div className="testimonials-grid">
-            {testimonials.map((testimonial, index) => (
-              <div key={`testimonial-${testimonial.name.replace(/\s+/g, '-').toLowerCase()}`} className="testimonial-card">
-                <div className="testimonial-avatar">{testimonial.avatar}</div>
-                <div className="testimonial-content">
-                  <p>"{testimonial.content}"</p>
-                  <div className="testimonial-author">
-                    <strong>{testimonial.name}</strong>
-                    <span>{testimonial.role}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
