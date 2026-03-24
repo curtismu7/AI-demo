@@ -1,0 +1,326 @@
+---
+description: MCP server tool registration, session management, auth challenge handling, and WebSocket protocol patterns for the banking_mcp_server. Use when adding tools, modifying auth flows, or working on the MCP server.
+globs: banking_mcp_server/**/*.ts, banking_mcp_server/**/*.js
+alwaysApply: false
+---
+
+# MCP Server — BX Finance Banking MCP Server
+
+## Architecture
+
+```
+banking_api_ui (React)
+    │  WebSocket (wss://mcp-server-host)
+    ▼
+banking_mcp_server           ← TypeScript MCP server (must run on always-on host)
+    │
+    ├─ MCPMessageHandler     → routes initialize / tools/list / tools/call
+    ├─ BankingToolRegistry   → static registry of all tool definitions
+    ├─ BankingToolProvider   → executes tools, handles auth challenges
+    ├─ AuthorizationChallengeHandler → detects missing scopes, generates OAuth challenge
+    ├─ BankingSessionManager → per-connection session (userTokens, CIBA state)
+    └─ BankingAPIClient      → calls banking_api_server HTTP endpoints
+```
+
+> **Important:** Vercel does NOT support persistent WebSocket connections. The MCP server must be deployed separately on Railway, Render, or Fly.io. Set `MCP_SERVER_URL=wss://...` in Vercel env vars.
+
+---
+
+## Adding a New Tool
+
+### 1. Register in `BankingToolRegistry.ts`
+
+```typescript
+// src/tools/BankingToolRegistry.ts
+export class BankingToolRegistry {
+  private static readonly TOOLS: Record<string, BankingToolDefinition> = {
+
+    my_new_tool: {
+      name: 'my_new_tool',
+      description: 'Human-readable description for the AI agent',
+      requiresUserAuth: true,          // false for public/query operations
+      requiredScopes: ['banking:transactions:write'],  // PingOne scopes needed
+      handler: 'executeMyNewTool',     // method name on BankingToolProvider
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: {
+            type: 'string',
+            description: 'Account ID (UUID, use the "id" field from get_my_accounts)',
+            minLength: 1
+          },
+          amount: {
+            type: 'number',
+            description: 'Amount in dollars',
+            minimum: 0.01,
+            multipleOf: 0.01
+          }
+        },
+        required: ['account_id', 'amount'],
+        additionalProperties: false    // always false — reject unknown params
+      }
+    },
+
+  };
+}
+```
+
+**Scope reference:**
+
+| Scope | Action |
+|-------|--------|
+| `banking:accounts:read` | Get accounts, balances |
+| `banking:transactions:read` | Get transactions |
+| `banking:transactions:write` | Deposit, withdrawal, transfer |
+| (empty `[]`) | Public/query, no OAuth required |
+
+### 2. Implement handler in `BankingToolProvider.ts`
+
+```typescript
+// src/tools/BankingToolProvider.ts
+async executeMyNewTool(
+  params: Record<string, unknown>,
+  session: Session,
+  agentToken?: string
+): Promise<BankingToolResult> {
+  // Validate required params
+  const { account_id, amount } = params;
+  if (!account_id || typeof account_id !== 'string') {
+    return { type: 'text', text: 'Error: account_id is required', success: false };
+  }
+
+  try {
+    const result = await this.apiClient.post('/api/transactions/my-op', {
+      accountId: account_id,
+      amount,
+    }, session);
+
+    return {
+      type: 'text',
+      text: JSON.stringify(result, null, 2),
+      success: true,
+    };
+  } catch (err) {
+    if (err instanceof AuthenticationError) {
+      const challenge = await this.authChallengeHandler.generateAuthorizationChallenge(
+        session.sessionId,
+        ['banking:transactions:write'],
+      );
+      return {
+        type: 'text',
+        text: 'Authorization required to perform this operation',
+        success: false,
+        authChallenge: challenge,
+      };
+    }
+    if (err instanceof BankingAPIError) {
+      return { type: 'text', text: `Banking error: ${err.message}`, success: false, error: err.message };
+    }
+    throw err;
+  }
+}
+```
+
+---
+
+## Tool Result Format
+
+All tool handlers return `BankingToolResult`:
+
+```typescript
+export interface BankingToolResult extends ToolResult {
+  type: 'text';          // always 'text'
+  text: string;          // human/AI-readable content
+  success?: boolean;     // true on success, false on error
+  error?: string;        // error message on failure
+  authChallenge?: AuthorizationRequest;  // set when auth is needed
+}
+
+// ✅ Success
+return { type: 'text', text: JSON.stringify(data, null, 2), success: true };
+
+// ✅ Error
+return { type: 'text', text: `Error: ${message}`, success: false, error: message };
+
+// ✅ Auth required
+return { type: 'text', text: 'Authorization required', success: false, authChallenge: challenge };
+```
+
+---
+
+## Session Management
+
+Sessions live in `BankingSessionManager`. Each WebSocket connection gets a `sessionId`.
+
+```typescript
+// BankingSession structure
+interface BankingSession extends SessionData {
+  userTokens?: UserTokens[];     // array — one per scope set
+  userEmail?: string;            // injected at connection time (for CIBA)
+  sessionStats?: SessionStats;   // tool call counts, API call counts
+}
+
+interface UserTokens {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  scope: string;           // space-separated scopes this token covers
+  issuedAt: Date;
+}
+
+// Usage in tool handlers
+const session = await this.sessionManager.getSession(sessionId);
+const tokens = session.userTokens ?? [];
+const validToken = this.findTokenForScopes(tokens, requiredScopes);
+
+// Associate new tokens after auth challenge completes
+await this.sessionManager.associateUserTokens(sessionId, newTokens);
+```
+
+---
+
+## Authorization Challenge Flow
+
+When a tool needs scopes the current session doesn't have:
+
+```typescript
+// 1. Detect — called automatically by BankingToolProvider before execution
+const { challengeNeeded, challenge } = await this.authChallengeHandler
+  .detectAuthorizationChallenge(session, tool.requiredScopes);
+
+// 2. Generate challenge — returns an OAuth authorization URL
+interface AuthorizationChallenge {
+  type: 'oauth_authorization_required';
+  authorizationUrl: string;  // PingOne /authorize URL with PKCE
+  state: string;             // CSRF token
+  scope: string;
+  sessionId: string;
+  expiresAt: Date;
+  instructions: string;      // Human-readable message shown to user
+}
+
+// 3. Complete — UI sends back the authorization code
+interface AuthorizationCodeRequest {
+  sessionId: string;
+  authorizationCode: string;
+  state: string;
+}
+// Handler exchanges code for tokens and associates with session
+```
+
+---
+
+## MCP Protocol Message Flow
+
+```typescript
+// MCPMessageHandler routes these methods:
+switch (message.method) {
+  case 'initialize':   // Handshake — returns serverInfo + capabilities
+  case 'tools/list':   // Returns BankingToolRegistry.getAllTools()
+  case 'tools/call':   // Executes tool via BankingToolProvider
+}
+
+// MessageHandlerContext — passed with every message
+interface MessageHandlerContext {
+  connectionId: string;
+  agentToken?: string;  // Bearer token from the banking_api_server (T2)
+  session?: BankingSession;
+  userEmail?: string;   // injected at connection for CIBA flows
+  sendNotification?: (notification: object) => void;  // push updates to client
+}
+```
+
+---
+
+## CIBA in MCP Server
+
+The MCP server can initiate CIBA to step up permissions for a tool call:
+
+```typescript
+// CIBAPendingRequest (stored in BankingSession)
+interface CIBAPendingRequest {
+  authReqId: string;
+  initiatedAt: number;   // epoch ms
+  expiresAt: number;     // epoch ms
+  interval: number;      // poll interval seconds
+  userEmail: string;
+  requiredScope: string;
+}
+
+// When step-up auth is needed:
+// 1. MCP server calls banking_api_server POST /api/auth/ciba/initiate
+// 2. Returns auth_req_id to session, sends notification to UI
+// 3. MCP server polls banking_api_server GET /api/auth/ciba/poll/:authReqId
+// 4. On approval, tokens added to session, tool execution continues
+```
+
+---
+
+## BankingAPIClient — Calling the API Server
+
+```typescript
+// Use this.apiClient in tool handlers — never use fetch directly
+import { BankingAPIClient } from '../banking/BankingAPIClient';
+
+// GET with session token
+const accounts = await this.apiClient.get('/api/accounts', session);
+
+// POST with body
+const result = await this.apiClient.post('/api/transactions/transfer', {
+  fromAccountId,
+  toAccountId,
+  amount,
+}, session);
+
+// apiClient picks the right token from session.userTokens automatically
+// Throws BankingAPIError on non-2xx responses
+// Throws AuthenticationError (with AuthErrorCodes) on 401/403
+```
+
+---
+
+## Server Capabilities Declaration
+
+Declared in `MCPMessageHandler`:
+
+```typescript
+private readonly serverCapabilities: ServerCapabilities = {
+  tools: { listChanged: false },
+  logging: {},
+  prompts: { listChanged: false },
+  resources: { subscribe: false, listChanged: false },
+};
+```
+
+Do not change `listChanged` to `true` without implementing the `tools/listChanged` notification.
+
+---
+
+## Deployment
+
+The MCP server is **not** deployed to Vercel. It needs an always-on WebSocket host:
+
+| Platform | Free tier | Deploy command |
+|----------|-----------|----------------|
+| Railway | ~$5/mo | `railway up` |
+| Render | Free (sleeps after 15min) | Connect GitHub repo |
+| Fly.io | Free (3 shared VMs) | `fly deploy` |
+
+```bash
+# Build
+cd banking_mcp_server
+npm run build:clean   # rm -rf dist && tsc
+
+# Run in production
+npm run start:prod    # NODE_ENV=production node dist/index.js
+
+# Env vars required on MCP server host:
+BANKING_API_URL=https://banking-demo-puce.vercel.app
+PINGONE_AUTH_URL=https://auth.pingone.com/{envId}/as
+ADMIN_CLIENT_ID=...
+ADMIN_CLIENT_SECRET=...
+PORT=8080
+```
+
+After deploying, set `MCP_SERVER_URL=wss://your-mcp-host` in the Vercel project settings.
