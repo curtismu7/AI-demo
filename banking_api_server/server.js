@@ -212,7 +212,8 @@ const limiter = rateLimit({
     retryAfter: '15 minutes'
   }
 });
-app.use(limiter);
+// Exempt log-viewer polling from the global rate limit
+app.use((req, res, next) => req.path.startsWith('/api/logs') ? next() : limiter(req, res, next));
 
 // Tighter rate limit for auth endpoints to slow brute-force / credential-stuffing.
 const authLimiter = rateLimit({

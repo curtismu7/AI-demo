@@ -90,7 +90,7 @@ const LogViewer = ({ isOpen, onClose }) => {
         fetchLogs();
         fetchStats();
       }
-    }, 2000); // Refresh every 2 seconds
+    }, 5000); // Refresh every 5 seconds
 
     return () => clearInterval(interval);
   }, [isOpen, autoRefresh, paused, fetchLogs, fetchStats]);
