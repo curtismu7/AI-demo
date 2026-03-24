@@ -53,5 +53,8 @@
     "express"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": "24.x"
+  }
 }

@@ -952,6 +952,11 @@ export default function Config() {
                     value={configPassword}
                     onChange={(e) => setConfigPassword(e.target.value)}
                     placeholder="Value of ADMIN_CONFIG_PASSWORD env var"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
                   />
                   <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
                     Required to overwrite config when the API uses this gate. Not stored — enter each session.
