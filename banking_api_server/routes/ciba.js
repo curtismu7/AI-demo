@@ -107,7 +107,7 @@ router.post('/initiate', authenticateToken, async (req, res) => {
   try {
     const result = await cibaService.initiateBackchannelAuth(
       loginHint,
-      binding_message,
+      req.body.binding_message,
       scope || 'openid profile email',
       acr_values || '',
     );
