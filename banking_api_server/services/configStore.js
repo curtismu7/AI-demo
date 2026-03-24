@@ -292,17 +292,9 @@ class ConfigStore {
       if (stored) return stored;
     }
 
-    // Optional committed defaults (public IDs only — see config/pingoneBackendDefaults.js)
-    try {
-      const builtin = require('../config/pingoneBackendDefaults');
-      if (builtin && builtin[key] !== undefined && String(builtin[key]).trim() !== '') {
-        return String(builtin[key]).trim();
-      }
-    } catch (_) {
-      /* optional file missing */
-    }
-
     // Env-var fallback map (PINGONE_CORE_* / PINGONE_AI_CORE_* / PINGONE_ADMIN_* all refer to the same PingOne apps)
+    // NOTE: env vars take priority over committed defaults so Vercel / deployment env vars
+    // always override the pinned demo values in pingoneBackendDefaults.js.
     const envFallbackMap = {
       pingone_environment_id: ['PINGONE_ENVIRONMENT_ID'],
       pingone_region:         ['PINGONE_REGION'],
@@ -355,6 +347,17 @@ class ConfigStore {
     for (const envKey of envVars) {
       const v = process.env[envKey];
       if (v) return v;
+    }
+
+    // Optional committed defaults — last resort so any env var above wins.
+    // Used for the hosted demo where visitors have no need to configure credentials.
+    try {
+      const builtin = require('../config/pingoneBackendDefaults');
+      if (builtin && builtin[key] !== undefined && String(builtin[key]).trim() !== '') {
+        return String(builtin[key]).trim();
+      }
+    } catch (_) {
+      /* optional file missing */
     }
 
     return FIELD_DEFS[key]?.default || '';
