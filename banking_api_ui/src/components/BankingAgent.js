@@ -230,7 +230,11 @@ function normalizeBankingParams(action, params) {
 export default function BankingAgent({ user }) {
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
-  const [isOpen, setIsOpen] = useState(false);
+  // Always open by default, unless user explicitly collapsed it (persisted in localStorage)
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('bankingAgentOpen');
+    return saved === null ? true : saved === 'true';
+  });
   const [isDark, setIsDark] = useState(true);
   const [showCommands, setShowCommands] = useState(false);
   const [nlInput, setNlInput] = useState('');
@@ -258,6 +262,11 @@ export default function BankingAgent({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+
+  // Persist isOpen state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('bankingAgentOpen', isOpen.toString());
+  }, [isOpen]);
 
   // Auto-open when returning from /config (Config.js navigates back with scrollToAgent:true)
   useEffect(() => {
@@ -690,15 +699,17 @@ export default function BankingAgent({ user }) {
 
   return (
     <>
-      {/* FAB */}
-      <button
-        className={`banking-agent-fab ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(v => !v)}
-        aria-label={isOpen ? 'Close agent panel' : 'Open banking agent'}
-        title="Banking MCP Agent"
-      >
-        {isOpen ? '✕' : '🤖'}
-      </button>
+      {/* FAB - only shown when agent is collapsed */}
+      {!isOpen && (
+        <button
+          className="banking-agent-fab"
+          onClick={() => setIsOpen(true)}
+          aria-label="Expand banking agent"
+          title="Expand Banking Agent"
+        >
+          ▲
+        </button>
+      )}
 
       {/* Results panel — sits to the left of the agent (wide-screen only) */}
       {isOpen && resultPanel && (
@@ -739,7 +750,14 @@ export default function BankingAgent({ user }) {
               >
                 {isDark ? '☀️' : '🌙'}
               </button>
-              <button className="ba-icon-btn" onClick={() => setIsOpen(false)} aria-label="Close">✕</button>
+              <button 
+                className="ba-icon-btn" 
+                onClick={() => setIsOpen(false)} 
+                aria-label="Collapse agent"
+                title="Collapse agent"
+              >
+                ▼
+              </button>
             </div>
           </div>
 

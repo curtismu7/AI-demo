@@ -174,7 +174,7 @@ describe('CimdSimPanel — education-open-cimd event', () => {
   });
 });
 
-// ── Simulate tab — idle / running / done ──────────────────────────────────────
+// ── Simulate tab — idle / running / done (manual Next-button navigation) ────────
 
 describe('CimdSimPanel — Simulate tab state machine', () => {
   beforeEach(() => {
@@ -208,25 +208,85 @@ describe('CimdSimPanel — Simulate tab state machine', () => {
     expect(screen.getByText(/① Authorization Request/i)).toBeInTheDocument();
   });
 
-  it('advances to step 1 (AS Detects) after 1.5 s', async () => {
+  it('shows a Next button on step 0 instead of auto-advancing', async () => {
     const runBtn = screen.getByRole('button', { name: /run simulation/i });
     await act(async () => { fireEvent.click(runBtn); });
-    act(() => { jest.advanceTimersByTime(1600); });
+    // Must find the Next button — there should be NO timer-driven auto-advance
+    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
+  });
+
+  it('advances to step 1 (AS Detects URL) when Next is clicked on step 0', async () => {
+    const runBtn = screen.getByRole('button', { name: /run simulation/i });
+    await act(async () => { fireEvent.click(runBtn); });
+    const nextBtn = screen.getByRole('button', { name: /next/i });
+    await act(async () => { fireEvent.click(nextBtn); });
     expect(screen.getByText(/② AS Detects URL client_id/i)).toBeInTheDocument();
   });
 
-  it('shows reset button after full animation completes', async () => {
+  it('step 1 also shows a Next button (not auto-advancing)', async () => {
     const runBtn = screen.getByRole('button', { name: /run simulation/i });
     await act(async () => { fireEvent.click(runBtn); });
-    // runAllTimers runs all chained timeouts (including nested ones)
-    act(() => { jest.runAllTimers(); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    // Still on step 1, Next button should be present
+    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
+  });
+
+  it('step 2 shows a Fetch Document button instead of generic Next', async () => {
+    const runBtn = screen.getByRole('button', { name: /run simulation/i });
+    await act(async () => { fireEvent.click(runBtn); });
+    // Step 0 → 1
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    // Step 1 → 2
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    // Now on step 2: AS Fetches Metadata Document
+    expect(screen.getByText(/③ AS Fetches Metadata Document/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /fetch document/i })).toBeInTheDocument();
+  });
+
+  it('Fetch Document button advances to step 3 and shows the document', async () => {
+    const runBtn = screen.getByRole('button', { name: /run simulation/i });
+    await act(async () => { fireEvent.click(runBtn); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); }); // → 1
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); }); // → 2
+
+    const fetchBtn = screen.getByRole('button', { name: /fetch document/i });
+    await act(async () => {
+      fireEvent.click(fetchBtn);
+      jest.runAllTimers(); // advance the 900ms spinner
+    });
+
+    // Step 3: Metadata Document Received
+    expect(screen.getByText(/④ Metadata Document Received/i)).toBeInTheDocument();
+  });
+
+  it('shows reset button only after reaching the final step', async () => {
+    const runBtn = screen.getByRole('button', { name: /run simulation/i });
+    await act(async () => { fireEvent.click(runBtn); });
+    // Steps 0 → 1 → 2
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    // Step 2 → 3 (fetch)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /fetch document/i }));
+      jest.runAllTimers();
+    });
+    // Steps 3 → 4 → 5 (final)
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
     expect(screen.getByText(/↩ Reset simulation/i)).toBeInTheDocument();
   });
 
   it('reset returns to idle state', async () => {
     const runBtn = screen.getByRole('button', { name: /run simulation/i });
     await act(async () => { fireEvent.click(runBtn); });
-    act(() => { jest.runAllTimers(); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /fetch document/i }));
+      jest.runAllTimers();
+    });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
     const resetBtn = screen.getByText(/↩ Reset simulation/i);
     fireEvent.click(resetBtn);
     expect(screen.getByRole('button', { name: /run simulation/i })).toBeInTheDocument();
