@@ -519,7 +519,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   }
 
   try {
-    const result = await mcpCallTool(tool, params || {}, agentToken);
+    const result = await mcpCallTool(tool, params || {}, agentToken, req.correlationId);
     return res.json({ result, tokenEvents });
   } catch (err) {
     console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);

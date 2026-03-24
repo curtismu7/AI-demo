@@ -69,8 +69,9 @@ function releaseMcpWsSlot() {
  * After initialize, run one follow-up JSON-RPC method and return the result body.
  * @param {'tools/list'|'tools/call'} followMethod
  * @param {object} followParams
+ * @param {string} [correlationId] - Optional correlation ID for distributed tracing
  */
-function mcpRpc(agentToken, followMethod, followParams) {
+function mcpRpc(agentToken, followMethod, followParams, correlationId) {
   return new Promise((resolve, reject) => {
     let released = false;
     const safeRelease = () => {
@@ -104,6 +105,7 @@ function mcpRpc(agentToken, followMethod, followParams) {
             clientInfo: { name: 'banking-api-server' },
           };
           if (agentToken) initParams.agentToken = agentToken;
+          if (correlationId) initParams.correlationId = correlationId;
           ws.send(
             JSON.stringify({
               jsonrpc: '2.0',
@@ -157,15 +159,15 @@ function mcpRpc(agentToken, followMethod, followParams) {
   });
 }
 
-function mcpListTools(agentToken) {
-  return mcpRpc(agentToken, 'tools/list', {});
+function mcpListTools(agentToken, correlationId) {
+  return mcpRpc(agentToken, 'tools/list', {}, correlationId);
 }
 
-function mcpCallTool(toolName, toolParams, agentToken) {
+function mcpCallTool(toolName, toolParams, agentToken, correlationId) {
   return mcpRpc(agentToken, 'tools/call', {
     name: toolName,
     arguments: toolParams || {},
-  });
+  }, correlationId);
 }
 
 module.exports = {
