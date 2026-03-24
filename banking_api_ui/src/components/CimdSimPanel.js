@@ -548,7 +548,7 @@ function SimulateTab() {
   const [fetchStatus, setFetchStatus] = useState('idle');    // 'idle' | 'loading' | 'done'
   const [realClientId, setRealClientId] = useState('');
   const [usedRealDoc,  setUsedRealDoc]  = useState(false);
-  const activeTimers = useRef([]);
+  const prefetchedDoc = useRef(null);
 
   const demoDoc       = buildDemoDoc();
   const displayDoc    = cimdDoc || demoDoc;
@@ -565,69 +565,65 @@ function SimulateTab() {
 
   const cimdPath = clientIdUrl.split('/').pop() || 'acmecorp-banking-demo';
 
-  function clearTimers() {
-    activeTimers.current.forEach(clearTimeout);
-    activeTimers.current = [];
-  }
-
-  useEffect(() => () => clearTimers(), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const runAnimation = useCallback((docToUse) => {
-    const t1 = setTimeout(() => setSimStep(1), 1500);
-    const t2 = setTimeout(() => {
-      setSimStep(2);
-      setFetchStatus('loading');
-    }, 3200);
-    const t3 = setTimeout(() => {
-      setFetchStatus('done');
-      setCimdDoc(docToUse);
-      setSimStep(3);
-      const t4 = setTimeout(() => setSimStep(4), 2000);
-      const t5 = setTimeout(() => {
-        setSimStep(5);
-        setSimState('done');
-      }, 4500);
-      activeTimers.current.push(t4, t5);
-    }, 5300);
-    activeTimers.current.push(t1, t2, t3);
-  }, []);
+  const TOTAL_STEPS = SIM_STEP_LABELS.length - 1; // 0–5
 
   const startSimulation = useCallback(async () => {
-    clearTimers();
-
-    let docToUse = demoDoc;
+    prefetchedDoc.current = null;
     let usedReal = false;
 
-    // Pre-fetch real document before animation starts so URLs are correct
     if (realClientId.trim()) {
       try {
         const resp = await axios.get(
           `/.well-known/oauth-client/${realClientId.trim()}`,
           { withCredentials: false }
         );
-        docToUse = resp.data;
+        prefetchedDoc.current = resp.data;
         usedReal = true;
       } catch (_) {
         // Fall back to demo doc silently
       }
     }
 
-    setCimdDoc(docToUse);
+    setCimdDoc(null);
     setUsedRealDoc(usedReal);
     setSimStep(0);
     setSimState('running');
     setFetchStatus('idle');
-    runAnimation(docToUse);
-  }, [realClientId, demoDoc, runAnimation]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [realClientId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const nextStep = useCallback(async () => {
+    const next = simStep + 1;
+
+    // Step 2 → 3: show spinner then reveal doc
+    if (simStep === 2) {
+      setFetchStatus('loading');
+      // Brief async pause to show spinner (doc is already fetched)
+      await new Promise(r => setTimeout(r, 900));
+      setFetchStatus('done');
+      const doc = prefetchedDoc.current || demoDoc;
+      setCimdDoc(doc);
+      setSimStep(3);
+      return;
+    }
+
+    if (next >= TOTAL_STEPS) {
+      setSimStep(TOTAL_STEPS);
+      setSimState('done');
+    } else {
+      setSimStep(next);
+    }
+  }, [simStep, demoDoc, TOTAL_STEPS]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reset = useCallback(() => {
-    clearTimers();
+    prefetchedDoc.current = null;
     setSimState('idle');
     setSimStep(0);
     setFetchStatus('idle');
     setCimdDoc(null);
     setUsedRealDoc(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isFetching  = fetchStatus === 'loading';
 
   /* ── Render ── */
   return (
@@ -727,6 +723,13 @@ function SimulateTab() {
                 <code>https://</code> — this signals to the AS that it should fetch the
                 metadata document.
               </div>
+              <button
+                className="cimd-btn cimd-btn--primary"
+                onClick={nextStep}
+                style={{ marginTop: '16px', width: '100%' }}
+              >
+                Next →
+              </button>
             </div>
           )}
 
@@ -770,6 +773,13 @@ if (client_id.startsWith('https://')) {
                 <span className="cimd-check-icon">→</span>
                 <span>Taking CIMD path — will fetch the metadata document</span>
               </div>
+              <button
+                className="cimd-btn cimd-btn--primary"
+                onClick={nextStep}
+                style={{ marginTop: '16px', width: '100%' }}
+              >
+                Next →
+              </button>
             </div>
           )}
 
@@ -794,6 +804,14 @@ Accept: application/json`}</CodeBlock>
                   </div>
                 )}
               </div>
+              <button
+                className="cimd-btn cimd-btn--primary"
+                onClick={nextStep}
+                disabled={isFetching}
+                style={{ marginTop: '16px', width: '100%' }}
+              >
+                {isFetching ? 'Fetching…' : 'Fetch Document →'}
+              </button>
             </div>
           )}
 
@@ -819,6 +837,13 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                   use your own.
                 </div>
               )}
+              <button
+                className="cimd-btn cimd-btn--primary"
+                onClick={nextStep}
+                style={{ marginTop: '16px', width: '100%' }}
+              >
+                Next →
+              </button>
             </div>
           )}
 
@@ -886,6 +911,13 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                   </div>
                 </div>
               </div>
+              <button
+                className="cimd-btn cimd-btn--primary"
+                onClick={nextStep}
+                style={{ marginTop: '16px', width: '100%' }}
+              >
+                Next →
+              </button>
             </div>
           )}
 
