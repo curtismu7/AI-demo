@@ -26,6 +26,14 @@ const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.en
  */
 router.get('/login', (req, res) => {
   try {
+    const _clientId = configStore.getEffective('admin_client_id');
+    const _envId    = configStore.getEffective('pingone_environment_id');
+    console.log('[oauth/login] HIT client_id=%s env_id=%s configured=%s',
+      _clientId ? _clientId.slice(0, 8) + '...' : 'MISSING',
+      _envId    ? _envId.slice(0, 8)    + '...' : 'MISSING',
+      configStore.isConfigured()
+    );
+
     // Guard: redirect to config if PingOne credentials are not set
     if (!configStore.isConfigured()) {
       return res.redirect(`${getFrontendOrigin(req)}/config?error=not_configured`);
