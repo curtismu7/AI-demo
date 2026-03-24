@@ -7,10 +7,6 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
-const { promisify } = require('util');
-
-const execAsync = promisify(exec);
 
 /**
  * Get application logs from file system
@@ -104,46 +100,10 @@ router.get('/app', async (req, res) => {
  */
 router.get('/vercel', async (req, res) => {
   try {
-    const { limit = 100, since, follow } = req.query;
+    const { limit = 100 } = req.query;
 
-    // Check if Vercel CLI is available
-    let logs = [];
-    
-    try {
-      // Try to get logs from Vercel CLI
-      const sinceParam = since ? `--since=${since}` : '';
-      const limitParam = `--output=json`;
-      
-      const { stdout } = await execAsync(
-        `vercel logs ${sinceParam} ${limitParam}`,
-        { cwd: path.join(__dirname, '../..'), timeout: 10000 }
-      );
-
-      // Parse Vercel CLI output
-      const lines = stdout.split('\n').filter(line => line.trim());
-      logs = lines.map(line => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return {
-            timestamp: new Date().toISOString(),
-            message: line,
-            source: 'vercel'
-          };
-        }
-      });
-    } catch (cliError) {
-      // Fallback: return console logs from current process
-      // (Vercel serverless does not have CLI access — this is expected, no need to log it)
-      logs = [
-        {
-          timestamp: new Date().toISOString(),
-          level: 'info',
-          message: 'Vercel CLI not available. Showing application logs instead.',
-          source: 'system'
-        }
-      ];
-    }
+    // On Vercel serverless the CLI is not available — serve in-process logs directly.
+    let logs = [...recentLogs];
 
     // Limit results
     logs = logs.slice(0, parseInt(limit));
