@@ -98,6 +98,9 @@ function getOAuthRedirectDebugInfo(req) {
     userRedirectUri: user,
     requestHost: getPublicHost(req),
     pingOneRegisterThese: [...new Set([admin, user])],
+    environmentId: configStore.getEffective('pingone_environment_id') || null,
+    adminClientId: configStore.getEffective('admin_client_id') || null,
+    userClientId:  configStore.getEffective('user_client_id')  || null,
     /** Stable production alias for this repo’s Vercel deployment (allowlist in PingOne). */
     stableDemoOrigin: OFFICIAL_DEMO_ORIGIN,
     instructions: {

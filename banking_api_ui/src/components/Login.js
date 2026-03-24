@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import axios from 'axios';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 
@@ -8,6 +9,13 @@ const Login = () => {
   const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
   const edu = useEducationUIOptional();
+  const [oauthDebug, setOauthDebug] = useState(null);
+
+  useEffect(() => {
+    axios.get('/api/auth/oauth/redirect-info')
+      .then(r => setOauthDebug(r.data))
+      .catch(() => {});
+  }, []);
 
   const handleOAuthLogin = () => {
     // OAuth redirect_uri to PingOne is computed on the server (must match PingOne app allowlist).
@@ -163,6 +171,14 @@ const Login = () => {
               Secure authentication powered by PingOne AI IAM Core
             </p>
           </div>
+
+          {oauthDebug && (
+            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '0.75rem', fontFamily: 'monospace', color: '#374151' }}>
+              <div><strong>env_id:</strong> {oauthDebug.environmentId || 'MISSING'}</div>
+              <div><strong>admin_client_id:</strong> {oauthDebug.adminClientId || 'MISSING'}</div>
+              <div><strong>user_client_id:</strong> {oauthDebug.userClientId || 'MISSING'}</div>
+            </div>
+          )}
         </div>
       </div>
   );
