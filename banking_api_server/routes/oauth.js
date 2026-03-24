@@ -252,7 +252,11 @@ router.get('/callback', async (req, res) => {
   } catch (error) {
     console.error('OAuth callback error:', error);
     const detail = error.pingoneError || 'unknown';
-    res.redirect(`${getFrontendOrigin(req)}/login?error=callback_failed&detail=${encodeURIComponent(detail)}`);
+    const desc   = error.pingoneDesc   || '';
+    const query  = desc
+      ? `error=callback_failed&detail=${encodeURIComponent(detail)}&info=${encodeURIComponent(desc)}`
+      : `error=callback_failed&detail=${encodeURIComponent(detail)}`;
+    res.redirect(`${getFrontendOrigin(req)}/login?${query}`);
   }
 });
 

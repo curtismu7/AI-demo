@@ -150,6 +150,7 @@ class OAuthService {
         : 'Failed to exchange authorization code for token';
       const err = new Error(msg);
       err.pingoneError = pingoneError || 'token_exchange_failed';
+      err.pingoneDesc  = pingoneDesc  || '';
       throw err;
     }
   }

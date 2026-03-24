@@ -37,8 +37,10 @@ const Login = () => {
           break;
         case 'callback_failed': {
           const detail = searchParams.get('detail');
+          const info   = searchParams.get('info');
           const detailMsg = detail && detail !== 'unknown' ? ` (${detail})` : '';
-          errorMessage = `Authentication callback failed${detailMsg}. Check that your PingOne redirect URI is registered correctly.`;
+          const infoMsg   = info ? ` — ${info}` : '';
+          errorMessage = `Authentication callback failed${detailMsg}${infoMsg}. Check that your PingOne redirect URI is registered correctly.`;
           break;
         }
         case 'oauth_init_failed':
