@@ -121,13 +121,13 @@ class OAuthService {
         redirect_uri: redirectUri || this.config.redirectUri,
         client_id: this.config.clientId,
       };
-      // Include client_secret only if present (not required when using PKCE with public clients)
-      if (this.config.clientSecret) {
-        body.client_secret = this.config.clientSecret;
-      }
-      // Always send code_verifier for PKCE
+      // If using PKCE (codeVerifier present), skip client_secret — sending both
+      // causes `invalid_client` on servers that treat them as conflicting auth methods.
       if (codeVerifier) {
         body.code_verifier = codeVerifier;
+      } else if (this.config.clientSecret) {
+        // No PKCE — fall back to client_secret if configured
+        body.client_secret = this.config.clientSecret;
       }
       const tokenResponse = await axios.post(this.config.tokenEndpoint, body, {
         headers: {
