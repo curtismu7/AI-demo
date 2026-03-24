@@ -17,12 +17,9 @@
  * @type {Record<string, string>}
  */
 module.exports = {
-  // All empty — rely on Vercel env vars or Config UI.
-  // Set PINGONE_ENVIRONMENT_ID, PINGONE_AI_CORE_CLIENT_ID, PINGONE_AI_CORE_USER_CLIENT_ID
-  // (and their _SECRET counterparts) in your Vercel project settings.
-  pingone_environment_id: '',
-  admin_client_id:        '',
-  user_client_id:         '',
+  pingone_environment_id: 'b9817c16-9910-4415-b67e-4ac687da74d9',
+  admin_client_id:        '949a748e-4dd0-44a3-944e-721ee1e3ca16f',
+  user_client_id:         '5df1fbdb-0f2e-46b1-a5bb-86f456e83620',
   /** Redirect URIs are derived from the public app URL at runtime. */
   admin_redirect_uri: '',
   user_redirect_uri:  '',
