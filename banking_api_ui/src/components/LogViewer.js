@@ -12,6 +12,7 @@ const LogViewer = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [paused, setPaused] = useState(false);
   const [filter, setFilter] = useState({
     level: '',
     search: '',
@@ -77,12 +78,14 @@ const LogViewer = ({ isOpen, onClose }) => {
     if (!isOpen || !autoRefresh) return;
 
     const interval = setInterval(() => {
-      fetchLogs();
-      fetchStats();
+      if (!paused) {
+        fetchLogs();
+        fetchStats();
+      }
     }, 2000); // Refresh every 2 seconds
 
     return () => clearInterval(interval);
-  }, [isOpen, autoRefresh, fetchLogs, fetchStats]);
+  }, [isOpen, autoRefresh, paused, fetchLogs, fetchStats]);
 
   useEffect(() => {
     if (autoScroll && logContainerRef.current) {
@@ -101,6 +104,19 @@ const LogViewer = ({ isOpen, onClose }) => {
       console.error('Error clearing logs:', err);
       setError(err.message);
     }
+  };
+
+  const [copied, setCopied] = useState(false);
+
+  const copyLast10Lines = () => {
+    const last10 = logs.slice(-10);
+    const text = last10
+      .map(log => `[${formatTimestamp(log.timestamp)}] [${(log.level || 'info').toUpperCase()}] ${typeof log.message === 'object' ? JSON.stringify(log.message) : log.message}`)
+      .join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const downloadLogs = () => {
@@ -209,8 +225,21 @@ const LogViewer = ({ isOpen, onClose }) => {
             🔄 Refresh
           </button>
 
+          {autoRefresh && (
+            <button
+              onClick={() => setPaused(p => !p)}
+              className={paused ? 'resume-button' : 'pause-button'}
+            >
+              {paused ? '▶ Resume' : '⏸ Pause'}
+            </button>
+          )}
+
           <button onClick={downloadLogs} className="download-button">
             💾 Download
+          </button>
+
+          <button onClick={copyLast10Lines} className="copy-button" disabled={logs.length === 0}>
+            {copied ? '✅ Copied!' : '📋 Copy last 10'}
           </button>
 
           {(filter.source === 'console' || filter.source === 'all') && (
@@ -286,7 +315,8 @@ const LogViewer = ({ isOpen, onClose }) => {
 
         <div className="log-viewer-footer">
           <span>{logs.length} logs displayed</span>
-          {autoRefresh && <span className="refresh-indicator">● Live</span>}
+          {autoRefresh && !paused && <span className="refresh-indicator">● Live</span>}
+          {autoRefresh && paused && <span className="refresh-indicator paused-indicator">⏸ Paused</span>}
         </div>
       </div>
     </div>

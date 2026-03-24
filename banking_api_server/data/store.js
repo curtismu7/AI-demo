@@ -24,8 +24,10 @@ class DataStore {
 
   async initializeData() {
     try {
-      // Ensure data directory exists
-      await fs.mkdir(this.dataDir, { recursive: true });
+      // Ensure data directory exists (skipped on Vercel — read-only FS)
+      if (!process.env.VERCEL) {
+        await fs.mkdir(this.dataDir, { recursive: true });
+      }
       
       // Load persistent data or initialize with sample data
       await this.loadOrInitializeData();
@@ -119,6 +121,8 @@ class DataStore {
   }
 
   async saveDataToFile(filePath, data) {
+    // Vercel runs on a read-only filesystem — skip all disk writes
+    if (process.env.VERCEL) return;
     try {
       await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
     } catch (error) {
