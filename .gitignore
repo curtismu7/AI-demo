@@ -78,6 +78,7 @@ test-results/
 # Local archives & one-off root scripts
 /Archive.zip
 /fix_p1aic.py
+/logs-*.json
 
 # macOS / zip extraction cruft
 **/__MACOSX/

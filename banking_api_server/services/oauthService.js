@@ -125,16 +125,10 @@ class OAuthService {
       if (codeVerifier) {
         body.set('code_verifier', codeVerifier);
       }
-      // Client authentication uses HTTP Basic Auth (client_secret_basic) when a
-      // secret is configured — this is the RFC 6749 §2.3.1 recommended method and
-      // is orthogonal to PKCE. Sending the secret as a body parameter (client_secret_post)
-      // alongside code_verifier can cause `invalid_client` on strict servers.
+      // Use CLIENT_SECRET_POST (body param) to match PingOne app configuration.
       const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
       if (this.config.clientSecret) {
-        const creds = Buffer.from(
-          `${encodeURIComponent(this.config.clientId)}:${encodeURIComponent(this.config.clientSecret)}`
-        ).toString('base64');
-        headers['Authorization'] = `Basic ${creds}`;
+        body.set('client_secret', this.config.clientSecret);
       }
       const tokenResponse = await axios.post(this.config.tokenEndpoint, body.toString(), {
         headers,
