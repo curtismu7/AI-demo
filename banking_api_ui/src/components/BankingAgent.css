@@ -3,8 +3,8 @@
 /* ─── Floating Action Button ─────────────────────────────────────────────── */
 .banking-agent-fab {
   position: fixed;
-  bottom: var(--fab-bottom, 28px);
-  right: var(--float-edge, 28px);
+  bottom: var(--fab-bottom, 24px);
+  right: var(--float-edge, 24px);
   z-index: 10060;
   width: var(--fab-size, 56px);
   height: var(--fab-size, 56px);
@@ -52,11 +52,11 @@
   --ba-shadow:    0 24px 60px rgba(0,0,0,0.55);
 
   position: fixed;
-  bottom: var(--agent-panel-bottom, 96px);
-  right: var(--float-edge, 28px);
+  bottom: var(--agent-panel-bottom, 24px);
+  right: var(--float-edge, 24px);
   z-index: 10059;
-  width: 420px;
-  max-height: 680px;
+  width: 820px;
+  height: 560px;
   display: flex;
   flex-direction: column;
   background: var(--ba-bg);
@@ -67,6 +67,136 @@
   color: var(--ba-text);
   animation: agent-slide-up 0.22s ease;
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+}
+
+/* ─── Two-column body ─────────────────────────────────────────────────── */
+.ba-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ─── Left column ─────────────────────────────────────────────────────── */
+.ba-left-col {
+  width: 240px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--ba-border);
+  padding: 14px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--ba-surface);
+}
+
+.ba-left-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ba-muted);
+  margin-bottom: 2px;
+}
+
+.ba-suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--ba-chip-txt);
+  background: var(--ba-chip-bg);
+  border: 1px solid var(--ba-chip-bd);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1.35;
+}
+.ba-suggestion:hover { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
+
+.ba-action-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--ba-text);
+  background: transparent;
+  border: 1px solid var(--ba-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  line-height: 1.35;
+}
+.ba-action-item:hover:not(:disabled) { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
+.ba-action-item:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ba-left-divider {
+  height: 1px;
+  background: var(--ba-border);
+  margin: 4px 0;
+}
+
+.ba-left-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.ba-left-auth-notice {
+  font-size: 11px;
+  color: var(--ba-muted);
+  line-height: 1.45;
+  padding: 8px;
+  background: rgba(99,102,241,0.08);
+  border: 1px solid var(--ba-chip-bd);
+  border-radius: 8px;
+}
+
+.ba-left-auth-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--ba-border);
+  background: var(--ba-chip-bg);
+  color: var(--ba-text);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.ba-left-auth-btn:hover:not(:disabled) { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
+.ba-left-auth-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ba-left-auth-btn.primary { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
+.ba-left-auth-btn.primary:hover { background: var(--ba-accent-h); border-color: var(--ba-accent-h); }
+
+.ba-left-config-btn {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px dashed var(--ba-border);
+  background: transparent;
+  color: var(--ba-muted);
+  transition: background 0.15s, color 0.15s;
+  text-align: center;
+}
+.ba-left-config-btn:hover { background: var(--ba-surface); color: var(--ba-text); }
+.ba-left-config-btn.configured { border-color: #10b981; color: #10b981; background: rgba(16,185,129,0.08); }
+
+/* ─── Right column ────────────────────────────────────────────────────── */
+.ba-right-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
 }
 
 /* Light mode override */
@@ -547,16 +677,38 @@
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────── */
-@media (max-width: 420px) {
+@media (max-width: 860px) {
   .banking-agent-panel {
     right: 0;
     left: 0;
     bottom: 0;
     width: 100%;
-    max-height: 80vh;
+    height: 85vh;
     border-radius: 14px 14px 0 0;
   }
+  .ba-left-col {
+    width: 200px;
+  }
+}
 
+@media (max-width: 600px) {
+  .banking-agent-panel {
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 90vh;
+    border-radius: 14px 14px 0 0;
+  }
+  .ba-body {
+    flex-direction: column;
+  }
+  .ba-left-col {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--ba-border);
+    max-height: 180px;
+  }
 }
 
 /* ─── Login action buttons (shown when not authenticated) ────────────── */

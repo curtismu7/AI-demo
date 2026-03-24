@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   getMyAccounts,
   getAccountBalance,
@@ -26,6 +26,16 @@ const ACTIONS = [
   { id: 'deposit',      label: '⬇ Deposit',             desc: 'Deposit into an account' },
   { id: 'withdraw',     label: '⬆ Withdraw',            desc: 'Withdraw from an account' },
   { id: 'transfer',     label: '↔ Transfer',            desc: 'Transfer between accounts' },
+];
+
+// ─── Suggested prompts shown in the left panel ────────────────────────────────
+
+const SUGGESTIONS = [
+  'Check my account balance',
+  'Transfer $100 to savings',
+  'What are my recent transactions?',
+  'Show my accounts',
+  'Deposit $500 into checking',
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -183,13 +193,6 @@ function ResultsPanel({ panel, onClose, style }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-// ─── Login actions (shown when not authenticated) ────────────────────────────
-
-const LOGIN_ACTIONS = [
-  { id: 'login_admin', label: '👑 Admin Login',    desc: 'Sign in as an administrator' },
-  { id: 'login_user',  label: '👤 Customer Login', desc: 'Sign in as a bank customer' },
-];
-
 function handleLoginAction(actionId) {
   const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
   if (actionId === 'login_admin') {
@@ -237,6 +240,7 @@ export default function BankingAgent({ user }) {
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   // Auto-open when returning from /config (Config.js navigates back with scrollToAgent:true)
   useEffect(() => {
@@ -258,9 +262,9 @@ export default function BankingAgent({ user }) {
    */
   const checkSelfAuth = useCallback(() => {
     Promise.all([
-      fetch('/api/auth/oauth/status').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/oauth/user/status').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/session').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/status',      { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([admin, endUser, session]) => {
       if (admin?.authenticated && admin.user) {
         setSessionUser(admin.user);
@@ -275,9 +279,9 @@ export default function BankingAgent({ user }) {
   // Check on mount — auto-open if already authenticated (e.g. page refresh after login)
   useEffect(() => {
     Promise.all([
-      fetch('/api/auth/oauth/status').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/oauth/user/status').then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/session').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/status',      { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([admin, endUser, session]) => {
       const authenticated = (admin?.authenticated && admin.user)
         || (endUser?.authenticated && endUser.user)
@@ -604,7 +608,7 @@ export default function BankingAgent({ user }) {
         {isOpen ? '✕' : '🤖'}
       </button>
 
-      {/* Results panel — sits to the left of the agent */}
+      {/* Results panel — sits to the left of the agent (wide-screen only) */}
       {isOpen && resultPanel && (
         <ResultsPanel
           panel={resultPanel}
@@ -622,7 +626,7 @@ export default function BankingAgent({ user }) {
           ref={panelRef}
           style={panelStyle}
         >
-          {/* Header */}
+          {/* Header — spans full width */}
           <div className="ba-header banking-agent-drag-handle" onMouseDown={handleDragStart}>
             <div className="ba-header-left">
               <span className="ba-status-dot" />
@@ -647,149 +651,217 @@ export default function BankingAgent({ user }) {
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="banking-agent-messages">
-            {messages.length === 0 && (
-              <div className="ba-welcome">
-                <p>
-                  {isLoggedIn
-                    ? 'Tap ⚡ for commands, or just type what you need.'
-                    : oauthConfig === null
-                      ? 'Checking configuration…'
-                      : isConfigured
-                        ? 'PingOne is configured — sign in below to get started.'
-                        : 'Set up your PingOne credentials to get started.'}
-                </p>
-              </div>
-            )}
-            {messages.map(msg => (
-              <div key={msg.id} className={`banking-agent-msg ${msg.role}`}>
-                {msg.role === 'assistant' && <span className="banking-agent-msg-avatar">🏦</span>}
-                <div className="banking-agent-msg-bubble">
-                  <pre className="banking-agent-msg-text">{msg.content}</pre>
-                  {msg.tool && <span className="banking-agent-tool-badge">⚙ {msg.tool}</span>}
-                </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="banking-agent-msg assistant typing">
-                <span className="banking-agent-msg-avatar">🏦</span>
-                <div className="banking-agent-msg-bubble">
-                  <span className="banking-agent-dots"><span /><span /><span /></span>
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
+          {/* Two-column body */}
+          <div className="ba-body">
 
-          {/* Learn topic chips + plain-language (signed-in only) */}
-          {isLoggedIn && !activeAction && (
-            <div className="ba-commands-popup">
-              <div className="ba-commands-section">Banking Actions</div>
-              <div className="ba-chips">
-                {ACTIONS.map(a => (
-                  <button
-                    key={a.id}
-                    className="ba-chip"
-                    onClick={() => { handleActionClick(a.id); setShowCommands(false); }}
-                    disabled={loading}
-                    title={a.desc}
-                  >
-                    {a.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Commands popup (⚡ button) — shown when showCommands is true */}
-          {showCommands && isLoggedIn && !activeAction && (
-            <div className="ba-commands-popup" style={{ borderTop: 'none', borderBottom: `1px solid var(--ba-border)` }}>
-              <div className="ba-commands-section">Learn &amp; Explore</div>
-              <div className="ba-chips">
-                {EDUCATION_COMMANDS.map(cmd => (
-                  <button
-                    key={cmd.id}
-                    className="ba-chip ba-chip--learn"
-                    onClick={() => { openEducationCommand(cmd); setShowCommands(false); }}
-                  >
-                    {cmd.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Action form (when user selects a transaction action) */}
-          {activeAction && (
-            <ActionForm
-              action={activeAction}
-              loading={loading}
-              onSubmit={form => runAction(activeAction, form)}
-              onCancel={() => setActiveAction(null)}
-            />
-          )}
-
-          {/* Bottom bar */}
-          <div className="ba-bottom">
-            {isLoggedIn ? (
-              <div className="ba-input-row">
+            {/* ── Left column: suggestions + actions/auth ── */}
+            <div className="ba-left-col">
+              <div className="ba-left-label">Try asking:</div>
+              {SUGGESTIONS.map(s => (
                 <button
-                  className={`ba-cmd-btn${showCommands ? ' active' : ''}`}
-                  onClick={() => setShowCommands(s => !s)}
-                  title="Learn &amp; Explore topics"
-                  aria-expanded={showCommands}
-                >
-                  ⚡
-                </button>
-                <input
-                  className="ba-input"
-                  value={nlInput}
-                  onChange={e => setNlInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleNaturalLanguage();
-                      setShowCommands(false);
+                  key={s}
+                  className="ba-suggestion"
+                  onClick={() => {
+                    setNlInput(s);
+                    // If logged in, send immediately; otherwise just populate the input
+                    if (isLoggedIn) {
+                      setNlInput('');
+                      addMessage('user', s);
+                      setNlLoading(true);
+                      parseNaturalLanguage(s)
+                        .then(({ result }) => {
+                          if (result.kind === 'banking' && result.banking?.action) {
+                            const { action, params } = result.banking;
+                            const p = normalizeBankingParams(action, params);
+                            if (action === 'accounts' || action === 'transactions') {
+                              runAction(action, {}, { skipUserLabel: true });
+                            } else if (action === 'balance' && p.accountId) {
+                              runAction('balance', { accountId: p.accountId }, { skipUserLabel: true });
+                            } else {
+                              runAction(action, p, { skipUserLabel: true });
+                            }
+                          } else {
+                            addMessage('assistant', result.message || 'Try a banking action or a topic like "token exchange".');
+                          }
+                        })
+                        .catch(err => addMessage('assistant', `Could not parse: ${err.message}`))
+                        .finally(() => setNlLoading(false));
                     }
                   }}
-                  placeholder={nlMeta?.groqConfigured ? 'Ask anything… (Groq AI)' : 'Ask anything…'}
-                  disabled={nlLoading}
-                />
-                <button
-                  className="ba-send-btn"
-                  onClick={() => { handleNaturalLanguage(); setShowCommands(false); }}
-                  disabled={nlLoading || !nlInput.trim()}
-                  aria-label="Send"
                 >
-                  {nlLoading ? '…' : '↑'}
+                  "{s}"
                 </button>
-              </div>
-            ) : (
-              <div className="ba-auth-row">
-                <button
-                  className={`ba-auth-btn${isConfigured ? ' done' : ''}`}
-                  onClick={() => { setIsOpen(false); navigate('/config'); }}
-                  title="Open PingOne configuration settings"
-                >
-                  {isConfigured ? '✅ Configured' : '⚙️ Configure'}
-                </button>
-                {LOGIN_ACTIONS.map(a => {
-                  const canUse = a.id === 'login_admin' ? oauthConfig?.admin : oauthConfig?.user;
-                  return (
+              ))}
+
+              <div className="ba-left-divider" />
+
+              {isLoggedIn ? (
+                <>
+                  <div className="ba-left-label">Actions:</div>
+                  {ACTIONS.map(a => (
                     <button
                       key={a.id}
-                      className="ba-auth-btn"
-                      onClick={() => handleLoginAction(a.id)}
-                      disabled={oauthConfig === null || !canUse}
-                      title={canUse ? a.desc : 'Configure credentials first'}
+                      className="ba-action-item"
+                      onClick={() => handleActionClick(a.id)}
+                      disabled={loading}
+                      title={a.desc}
                     >
                       {a.label}
                     </button>
-                  );
-                })}
+                  ))}
+
+                  <div className="ba-left-divider" />
+
+                  <div className="ba-left-label">Learn &amp; Explore:</div>
+                  {EDUCATION_COMMANDS.slice(0, 5).map(cmd => (
+                    <button
+                      key={cmd.id}
+                      className="ba-action-item"
+                      onClick={() => openEducationCommand(cmd)}
+                      title={cmd.label}
+                    >
+                      {cmd.label}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <div className="ba-left-auth">
+                  <div className="ba-left-auth-notice">
+                    🔐 Sign in required to access AI banking features
+                  </div>
+                  <button
+                    className="ba-left-auth-btn primary"
+                    onClick={() => handleLoginAction('login_user')}
+                    disabled={oauthConfig === null || !oauthConfig?.user}
+                    title={oauthConfig?.user ? 'Sign in as a bank customer' : 'Configure credentials first'}
+                  >
+                    👤 Customer Sign In
+                  </button>
+                  <button
+                    className="ba-left-auth-btn"
+                    onClick={() => handleLoginAction('login_admin')}
+                    disabled={oauthConfig === null || !oauthConfig?.admin}
+                    title={oauthConfig?.admin ? 'Sign in as administrator' : 'Configure credentials first'}
+                  >
+                    👑 Admin Sign In
+                  </button>
+                  <button
+                    className={`ba-left-config-btn${isConfigured ? ' configured' : ''}`}
+                    onClick={() => { setIsOpen(false); navigate('/config'); }}
+                  >
+                    {isConfigured ? '✅ PingOne Configured' : '⚙️ Configure PingOne'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── Right column: chat messages + input ── */}
+            <div className="ba-right-col">
+              {/* Messages */}
+              <div className="banking-agent-messages">
+                {messages.length === 0 && (
+                  <div className="ba-welcome">
+                    <p>
+                      {isLoggedIn
+                        ? 'Type a message or pick an action on the left.'
+                        : oauthConfig === null
+                          ? 'Checking configuration…'
+                          : isConfigured
+                            ? 'PingOne is configured — sign in to get started.'
+                            : 'Set up your PingOne credentials to get started.'}
+                    </p>
+                  </div>
+                )}
+                {messages.map(msg => (
+                  <div key={msg.id} className={`banking-agent-msg ${msg.role}`}>
+                    {msg.role === 'assistant' && <span className="banking-agent-msg-avatar">🏦</span>}
+                    <div className="banking-agent-msg-bubble">
+                      <pre className="banking-agent-msg-text">{msg.content}</pre>
+                      {msg.tool && <span className="banking-agent-tool-badge">⚙ {msg.tool}</span>}
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="banking-agent-msg assistant typing">
+                    <span className="banking-agent-msg-avatar">🏦</span>
+                    <div className="banking-agent-msg-bubble">
+                      <span className="banking-agent-dots"><span /><span /><span /></span>
+                    </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
               </div>
-            )}
+
+              {/* Learn popup (⚡ button) */}
+              {showCommands && isLoggedIn && !activeAction && (
+                <div className="ba-commands-popup">
+                  <div className="ba-commands-section">Learn &amp; Explore</div>
+                  <div className="ba-chips">
+                    {EDUCATION_COMMANDS.map(cmd => (
+                      <button
+                        key={cmd.id}
+                        className="ba-chip ba-chip--learn"
+                        onClick={() => { openEducationCommand(cmd); setShowCommands(false); }}
+                      >
+                        {cmd.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action form (when user selects a transaction action) */}
+              {activeAction && (
+                <ActionForm
+                  action={activeAction}
+                  loading={loading}
+                  onSubmit={form => runAction(activeAction, form)}
+                  onCancel={() => setActiveAction(null)}
+                />
+              )}
+
+              {/* Bottom input bar */}
+              <div className="ba-bottom">
+                {isLoggedIn ? (
+                  <div className="ba-input-row">
+                    <button
+                      className={`ba-cmd-btn${showCommands ? ' active' : ''}`}
+                      onClick={() => setShowCommands(s => !s)}
+                      title="Learn &amp; Explore topics"
+                      aria-expanded={showCommands}
+                    >
+                      ⚡
+                    </button>
+                    <input
+                      className="ba-input"
+                      value={nlInput}
+                      onChange={e => setNlInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleNaturalLanguage();
+                          setShowCommands(false);
+                        }
+                      }}
+                      placeholder={nlMeta?.groqConfigured ? 'Message BX Finance AI… (Groq AI)' : 'Message BX Finance AI…'}
+                      disabled={nlLoading}
+                    />
+                    <button
+                      className="ba-send-btn"
+                      onClick={() => { handleNaturalLanguage(); setShowCommands(false); }}
+                      disabled={nlLoading || !nlInput.trim()}
+                      aria-label="Send"
+                    >
+                      {nlLoading ? '…' : '↑'}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--ba-muted)', fontSize: '12px' }}>
+                    Sign in using the buttons on the left to start chatting
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

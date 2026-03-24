@@ -1,0 +1,365 @@
+---
+description: OAuth 2.0, OIDC, PKCE, CIBA, Token Exchange, and PingOne-specific auth patterns for this banking demo. Use for any authentication, authorization, session management, token handling, or PingOne integration work.
+globs: banking_api_server/**/*.js, banking_api_ui/src/**/*.js, api/**/*.js
+alwaysApply: false
+---
+
+# OAuth / OIDC Implementation — BX Finance Banking Demo
+
+## Project Auth Architecture
+
+This project uses a **Backend For Frontend (BFF)** pattern:
+- `banking_api_server` is the confidential client — it holds tokens in server-side sessions, never exposes them to the browser.
+- `banking_api_ui` (React SPA) only ever receives opaque session cookies — never raw tokens.
+- Two PingOne applications: **Admin client** (admin users/employees) and **User client** (bank customers).
+- Tokens are stored in `req.session.oauthTokens` on the server, managed by `express-session`.
+
+## Environment Variables
+
+```bash
+# PingOne Core
+PINGONE_AUTH_URL=https://auth.pingone.com/{environmentId}/as
+PINGONE_ENV_ID=<envId>
+
+# Admin (confidential) client
+ADMIN_CLIENT_ID=<admin-app-client-id>
+ADMIN_CLIENT_SECRET=<admin-app-client-secret>
+ADMIN_REDIRECT_URI=https://your-domain.com/api/auth/oauth/callback
+
+# User (public) client
+USER_CLIENT_ID=<user-app-client-id>
+USER_CLIENT_SECRET=<user-app-client-secret>    # optional for public client
+USER_REDIRECT_URI=https://your-domain.com/api/auth/oauthuser/callback
+
+# Token exchange / MCP delegation
+ENDUSER_AUDIENCE=<resource-server-audience-for-user-tokens>
+MCP_SERVER_AUDIENCE=<resource-server-audience-for-mcp-tokens>
+
+# CIBA
+CIBA_ENABLED=true
+CIBA_TOKEN_DELIVERY_MODE=poll  # or 'ping'
+CIBA_BINDING_MESSAGE=Banking App Authentication
+
+# Security
+SKIP_TOKEN_SIGNATURE_VALIDATION=false  # MUST be false in production
+```
+
+## Authorization Code + PKCE Flow (Project Pattern)
+
+### 1. Initiate Login (Server → PingOne)
+
+```javascript
+const crypto = require('crypto');
+const { oauthService } = require('../services/oauthService');
+const { setPkceCookie } = require('../services/pkceStateCookie');
+const { validateRedirectUriOrigin } = require('../services/oauthRedirectUris');
+
+router.get('/login', (req, res) => {
+  const state = oauthService.generateState(); // crypto.randomBytes(16).hex
+  const codeVerifier = oauthService.generateCodeVerifier(); // crypto.randomBytes(32).base64url
+  const nonce = crypto.randomBytes(16).toString('hex'); // OIDC replay protection
+  const redirectUri = getAdminRedirectUri(req);
+
+  // Validate redirect_uri origin — prevent open redirect
+  const uriCheck = validateRedirectUriOrigin(redirectUri);
+  if (!uriCheck.ok) return res.status(400).json({ error: 'invalid_redirect_uri' });
+
+  // Store in session (in-process) AND signed cookie (Vercel serverless cross-instance)
+  req.session.oauthState = state;
+  req.session.oauthCodeVerifier = codeVerifier;
+  req.session.oauthRedirectUri = redirectUri;
+  req.session.oauthNonce = nonce;
+  setPkceCookie(res, { state, codeVerifier, redirectUri, nonce }, isProd());
+
+  const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce);
+
+  // Save session before redirect (required for async stores like Upstash/Redis)
+  req.session.save(err => {
+    if (err) return res.status(500).json({ error: 'session_save_failed' });
+    res.redirect(authUrl);
+  });
+});
+```
+
+### 2. Callback — Exchange Code for Tokens
+
+```javascript
+router.get('/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) return res.redirect(`${getFrontendOrigin(req)}/login?error=oauth_error`);
+
+  // State validation — prefer session, fall back to PKCE cookie (serverless)
+  const pkceData = req.session.oauthState === state
+    ? { codeVerifier: req.session.oauthCodeVerifier, redirectUri: req.session.oauthRedirectUri, nonce: req.session.oauthNonce }
+    : readPkceCookie(req);  // signed cookie fallback
+
+  if (!pkceData || pkceData.state !== state) {
+    return res.redirect(`${getFrontendOrigin(req)}/login?error=invalid_state`);
+  }
+
+  const tokens = await oauthService.exchangeCodeForTokens(
+    code, pkceData.codeVerifier, pkceData.redirectUri
+  );
+
+  // Verify nonce in id_token to prevent replay attacks
+  const idTokenClaims = oauthService.decodeToken(tokens.id_token);
+  if (idTokenClaims.nonce !== pkceData.nonce) {
+    return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
+  }
+
+  // BFF: store tokens server-side, never send to browser
+  req.session.oauthTokens = tokens;
+  req.session.oauthType = 'admin';
+  req.session.user = { ...idTokenClaims, role: determineRole(idTokenClaims) };
+
+  clearPkceCookie(res, isProd());
+  res.redirect(`${getFrontendOrigin(req)}/dashboard`);
+});
+```
+
+### 3. PKCE Code Challenge Generation
+
+```javascript
+function generateCodeChallenge(verifier) {
+  return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
+
+// Authorization URL includes:
+// response_type=code
+// code_challenge=<sha256(verifier)>
+// code_challenge_method=S256
+// nonce=<random-hex>
+// state=<random-hex>
+```
+
+## CIBA — Client-Initiated Backchannel Authentication
+
+Used for step-up auth and out-of-band user approval (e.g., approving a large transfer).
+
+```javascript
+// POST /api/auth/ciba/initiate — requires existing session
+// Body: { scope?, binding_message?, acr_values?, login_hint? }
+router.post('/initiate', authenticateToken, async (req, res) => {
+  const { scope, binding_message, acr_values } = req.body;
+  const loginHint = req.body.login_hint || req.session.user?.email;
+
+  const result = await cibaService.initiateAuthentication({
+    loginHint,
+    scope: scope || 'openid profile email',
+    bindingMessage: binding_message || 'Banking App Authentication',
+    acrValues: acr_values || process.env.STEP_UP_ACR_VALUE,
+  });
+
+  // Returns { auth_req_id, expires_in, interval } — store in session
+  req.session.cibaAuthReqId = result.auth_req_id;
+  res.json(result);
+});
+
+// GET /api/auth/ciba/poll/:authReqId — returns pending | approved | denied
+router.get('/poll/:authReqId', authenticateToken, async (req, res) => {
+  const status = await cibaService.pollStatus(req.params.authReqId);
+  if (status === 'approved') {
+    const tokens = await cibaService.retrieveTokens(req.params.authReqId);
+    req.session.oauthTokens = tokens; // BFF: stay server-side
+  }
+  res.json({ status });
+});
+```
+
+**PingOne CIBA Setup:**
+1. Enable CIBA grant type on the PingOne application
+2. Set `CIBA_ENABLED=true`
+3. Configure DaVinci for delivery: email-only (no MFA push needed) or push (requires MFA policy + registered device)
+4. For step-up: set `STEP_UP_ACR_VALUE` to your DaVinci policy ACR value
+
+## Token Exchange — RFC 8693 (MCP Delegation)
+
+Used to mint a scoped MCP token from the user's access token. The act claim proves delegation.
+
+```javascript
+// The user's T1 (from PKCE login) has may_act: { sub: <bff-client-id> }
+// Exchange T1 → T2 scoped to the MCP server audience
+async function exchangeTokenForMcp(userAccessToken, targetScopes) {
+  const params = new URLSearchParams({
+    grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+    subject_token: userAccessToken,
+    subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+    requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+    audience: process.env.MCP_SERVER_AUDIENCE,
+    scope: targetScopes,
+    client_id: process.env.ADMIN_CLIENT_ID,
+    client_secret: process.env.ADMIN_CLIENT_SECRET,
+  });
+
+  const response = await fetch(`${process.env.PINGONE_AUTH_URL}/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params,
+  });
+
+  // T2 contains act: { client_id: <bff> } — proves delegation, not impersonation
+  return response.json(); // { access_token (T2), token_type, expires_in }
+}
+```
+
+## Token Refresh
+
+```javascript
+// services/tokenRefresh.js pattern
+async function refreshAccessToken(refreshToken) {
+  const response = await fetch(`${process.env.PINGONE_AUTH_URL}/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: process.env.ADMIN_CLIENT_ID,
+      client_secret: process.env.ADMIN_CLIENT_SECRET,
+    }),
+  });
+  return response.json(); // new { access_token, refresh_token, expires_in }
+}
+```
+
+## Token Revocation — RFC 7009
+
+Always revoke on logout. Revoke both access_token and refresh_token.
+
+```javascript
+// services/tokenRevocation.js pattern
+async function revokeToken(token, tokenTypeHint = 'refresh_token') {
+  await fetch(`${process.env.PINGONE_AUTH_URL}/token/revoke`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')}`,
+    },
+    body: new URLSearchParams({ token, token_type_hint: tokenTypeHint }),
+  });
+}
+
+router.post('/logout', async (req, res) => {
+  const { oauthTokens } = req.session;
+  if (oauthTokens?.refresh_token) {
+    await revokeToken(oauthTokens.refresh_token, 'refresh_token');
+  }
+  req.session.destroy(() => {
+    clearAuthCookie(res, isProd());
+    res.json({ ok: true });
+  });
+});
+```
+
+## Scope Configuration
+
+| Scope | Who | Purpose |
+|-------|-----|---------|
+| `openid profile email` | All flows | OIDC identity |
+| `banking:read` | User client | Read accounts/transactions |
+| `banking:write` | User client | Transfer/payment actions |
+| `banking:admin` | Admin client | User management, config |
+| `p1:read:user` | Admin | PingOne user directory read |
+| `p1:update:userMfaEnabled` | Admin | Enable/disable MFA |
+
+Scopes are configured in PingOne → Applications → Scope Assignments.
+Customer vs admin scopes are separated via the `oauthType` session field (`'user'` vs `'admin'`).
+
+## PingOne-Specific Endpoints
+
+```javascript
+// Discovery
+GET ${PINGONE_AUTH_URL}/.well-known/openid-configuration
+
+// Authorize
+GET ${PINGONE_AUTH_URL}/authorize?client_id=...&response_type=code&scope=...&state=...&code_challenge=...&code_challenge_method=S256&nonce=...
+
+// Token
+POST ${PINGONE_AUTH_URL}/token
+
+// Revoke
+POST ${PINGONE_AUTH_URL}/token/revoke
+
+// CIBA Backchannel
+POST ${PINGONE_AUTH_URL}/backchannel/authentication
+
+// UserInfo
+GET ${PINGONE_AUTH_URL}/userinfo
+```
+
+## Session Management — Vercel Serverless
+
+Vercel runs multiple instances; in-process session stores don't share state. This project uses a **dual-store strategy**:
+
+1. `express-session` with Upstash Redis (or cookie store) for primary session
+2. A **signed PKCE cookie** (`_pkce`) as fallback for callback state recovery
+
+```javascript
+// On login: store in BOTH session and signed cookie
+setPkceCookie(res, { state, codeVerifier, redirectUri, nonce }, isProd());
+
+// On callback: prefer session, fall back to cookie
+const pkceData = req.session.oauthState === state
+  ? req.session
+  : readPkceCookie(req); // validates HMAC signature
+```
+
+## Auth Middleware Pattern
+
+```javascript
+// middleware/auth.js
+function authenticateToken(req, res, next) {
+  const { oauthTokens, user } = req.session;
+
+  // 1. Check session has a valid user
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+
+  // 2. Check token not expired — attempt refresh if so
+  if (oauthTokens && isTokenExpired(oauthTokens.access_token)) {
+    return refreshAndContinue(req, res, next);
+  }
+
+  next();
+}
+
+function determineClientType(req) {
+  // 'admin' | 'user' | 'local'
+  return req.session.oauthType || req.session.clientType || 'local';
+}
+```
+
+## Correlation IDs
+
+Every auth request should carry a correlation ID for log tracing:
+
+```javascript
+const correlationId = req.headers['x-correlation-id'] || crypto.randomUUID();
+req.correlationId = correlationId;
+res.setHeader('x-correlation-id', correlationId);
+// Include in all PingOne API calls as X-Request-ID or X-Correlation-ID header
+```
+
+## Security Checklist
+
+- ✅ PKCE (S256) on every authorization code flow
+- ✅ State parameter validated on every callback (CSRF protection)
+- ✅ Nonce validated in id_token after callback (replay protection)
+- ✅ Redirect URIs validated server-side before constructing auth URL
+- ✅ Tokens stored in server-side session (BFF) — never in localStorage or response body
+- ✅ Tokens stored in HttpOnly, Secure, SameSite=Lax cookies
+- ✅ RFC 7009 token revocation on logout
+- ✅ `SKIP_TOKEN_SIGNATURE_VALIDATION=false` enforced in production
+- ✅ Admin session cleared before initiating user/customer login (prevents role confusion)
+- ✅ Rate limiting on `/api/auth/*` endpoints
+- ❌ Never use implicit flow
+- ❌ Never log raw tokens — log only token type, expiry, and event type
+- ❌ Never expose `client_secret` to the browser/frontend
+
+## Additional Implementations
+
+See [references/python-java.md](oauth-references/python-java.md) for:
+- Python Flask with Authlib OIDC provider
+- OpenID Connect discovery and JWKS endpoints
+- Java Spring Security OAuth2 server
+- Token introspection endpoint
+- Token revocation with Redis
