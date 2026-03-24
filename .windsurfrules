@@ -1,0 +1,488 @@
+# BX Finance Banking Demo — Windsurf Project Rules
+
+## Project Overview
+
+Full-stack banking demo built on PingOne. Three packages:
+
+| Package | Language | Role |
+|---|---|---|
+| `banking_api_server` | JavaScript (CJS, Node 18+) | BFF — Express API server, holds all tokens server-side |
+| `banking_api_ui` | JavaScript + JSX (React 18, CRA) | SPA — session cookies only, never raw tokens |
+| `banking_mcp_server` | TypeScript (strict, Node 18+) | MCP WebSocket server — NOT on Vercel |
+
+Deployed on Vercel (api + UI). MCP server deployed separately on Railway/Render/Fly.io.
+
+---
+
+## 1. PingOne OAuth 2.0 / OIDC
+
+### Pattern: Always BFF (Backend For Frontend)
+
+The `banking_api_server` is the confidential OAuth client. It holds tokens in `req.session.oauthTokens`. The React SPA never sees raw tokens.
+
+```javascript
+// ✅ Store tokens in session only
+req.session.oauthTokens = {
+  accessToken: tokens.access_token,
+  refreshToken: tokens.refresh_token,
+  idToken: tokens.id_token,
+  expiresAt: Date.now() + ((tokens.expires_in || 3600) * 1000),
+  tokenType: tokens.token_type,
+};
+// ❌ Never
+res.json({ access_token: tokens.access_token });
+```
+
+### PingOne Endpoints
+
+Base: `https://auth.pingone.{tld}/{envId}/as/`
+
+| Endpoint | Use |
+|---|---|
+| `/as/authorize` | Start PKCE login redirect |
+| `/as/token` | Exchange code, refresh, CIBA poll, client_credentials, token exchange |
+| `/as/revoke` | RFC 7009 revocation |
+| `/as/introspect` | RFC 7662 introspection |
+| `/as/bc-authorize` | CIBA initiate |
+| `/as/par` | PAR (RFC 9126) |
+| `/as/device_authorization` | Device Authorization Grant |
+| `/as/jwks` | Public keys for JWT verification |
+| `/as/.well-known/openid-configuration` | OIDC Discovery |
+
+Region TLDs: `com` (default) | `ca` | `eu` | `com.au` | `sg` | `asia`
+
+Config: `const region = configStore.getEffective('pingone_region') || 'com';`
+
+### Authorization Code + PKCE (Primary Login Flow)
+
+```javascript
+// Step 1 — Initiate login
+const state        = oauthService.generateState();          // crypto.randomBytes(32).hex
+const codeVerifier = oauthService.generateCodeVerifier();   // crypto.randomBytes(64).hex
+const nonce        = crypto.randomBytes(16).toString('hex');
+
+// Generate code_challenge: base64url(sha256(verifier))
+function generateCodeChallenge(verifier) {
+  return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
+
+// Store in BOTH session AND signed PKCE cookie (Vercel cross-instance fallback)
+req.session.oauthState = state;
+req.session.oauthCodeVerifier = codeVerifier;
+req.session.oauthNonce = nonce;
+setPkceCookie(res, { state, codeVerifier, redirectUri, nonce }, isProd());
+
+// MUST save session before redirect (async Redis store)
+req.session.save(err => {
+  if (err) return res.status(500).json({ error: 'session_save_failed' });
+  res.redirect(authUrl);
+});
+
+// Auth URL params:
+// response_type=code & client_id & redirect_uri & scope=openid profile email
+// & state & code_challenge & code_challenge_method=S256 & nonce
+// & acr_values (optional DaVinci policy) & login_hint (optional)
+```
+
+```javascript
+// Step 2 — Callback
+const pkceData = req.session.oauthState === state
+  ? req.session
+  : readPkceCookie(req);  // validates HMAC
+if (!pkceData || pkceData.state !== state) return redirect('?error=invalid_state');
+
+// exchangeCodeForToken uses Authorization: Basic base64(id:secret) — NOT body params
+const tokens = await oauthService.exchangeCodeForToken(code, pkceData.codeVerifier, pkceData.redirectUri);
+
+// Verify nonce to prevent replay attacks
+const idTokenClaims = jwt.decode(tokens.id_token);
+if (idTokenClaims.nonce !== pkceData.nonce) return redirect('?error=nonce_mismatch');
+```
+
+### Client Credentials (M2M / Agent)
+
+```javascript
+// Worker app — no refresh_token, no id_token returned
+grant_type=client_credentials & client_id & client_secret (or Basic auth header)
+// Use: oauthService.getAgentClientCredentialsToken()
+```
+
+### CIBA — Backchannel Authentication
+
+```javascript
+// Initiate: POST /as/bc-authorize  (Basic auth)
+// login_hint=email & scope & binding_message & acr_values (optional step-up)
+// Returns: { auth_req_id, expires_in, interval }
+
+// Poll: POST /as/token
+// grant_type=urn:openid:params:grant-type:ciba & auth_req_id={id}
+// Errors: authorization_pending → retry; slow_down → interval += 5 (max 30); access_denied → abort; expired_token → restart
+```
+
+### Token Exchange — RFC 8693
+
+```javascript
+// T1 (user token) → T2 (MCP-scoped delegated token)
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+subject_token={T1} & subject_token_type=urn:ietf:params:oauth:token-type:access_token
+actor_token={agentT0} & actor_token_type=urn:ietf:params:oauth:token-type:access_token  // optional
+requested_token_type=urn:ietf:params:oauth:token-type:access_token
+audience={MCP_SERVER_AUDIENCE} & scope=banking:read banking:write
+
+// T2 contains: sub=user.sub, act={ client_id: bff-admin-client-id }
+// T1 must contain: may_act: { client_id: <adminClientId> }  (configure in PingOne token customization)
+```
+
+### Token Refresh
+
+```javascript
+// middleware/tokenRefresh.js — auto-refresh 5 min before expiry
+// PingOne ROTATES refresh tokens — always store the new refresh_token
+// Non-fatal: always calls next() even on error
+// Enable additionalRefreshTokenReplayProtectionEnabled on the PingOne app
+```
+
+### Revocation — RFC 7009
+
+```javascript
+// On logout: revoke BOTH refresh_token AND access_token
+// POST /as/revoke  token={token} & token_type_hint={hint} + client auth
+// PingOne API resource tokens (api.pingone.com) cannot be revoked
+```
+
+### OIDC ID Token Validation
+
+Validate in order: signature (RS256, JWKS) → iss → aud contains clientId → exp → nonce → acr (if step-up)
+
+`SKIP_TOKEN_SIGNATURE_VALIDATION=true` is **fatal in production** — server exits at startup.
+
+### PingOne App Config
+
+| Setting | Admin | User | Agent |
+|---|---|---|---|
+| Type | `WEB_APP` | `WEB_APP` | `WORKER` |
+| Grant types | `authorization_code`, `refresh_token`, token-exchange, CIBA | `authorization_code`, `refresh_token` | `client_credentials` |
+| PKCE | `S256_REQUIRED` | `S256_REQUIRED` | N/A |
+| Token auth method | `CLIENT_SECRET_BASIC` | `CLIENT_SECRET_BASIC` | `CLIENT_SECRET_BASIC` |
+
+### Common OAuth Error Codes
+
+| Error | Fix |
+|---|---|
+| `invalid_client` | Use `CLIENT_SECRET_BASIC` (Authorization header), not body params |
+| `invalid_grant` | Fresh PKCE per request — never reuse codes |
+| `authorization_pending` | Keep polling CIBA |
+| `slow_down` | CIBA interval += 5s (max 30s) |
+| `invalid_scope` | Add scope to app's resource grant in PingOne console |
+| `interaction_required` | Redirect with `acr_values` |
+
+### Security Rules
+
+- ✅ PKCE S256 on every authorization code flow
+- ✅ State + nonce validated on every callback
+- ✅ Redirect URIs validated server-side (prevent open redirect)
+- ✅ Tokens in server-side session only
+- ✅ RFC 7009 revocation on logout (both tokens)
+- ✅ `act`/`may_act` claims validated on exchanged tokens
+- ✅ Scope enforcement middleware on all resource routes
+- ❌ Never use implicit flow (`response_type=token`)
+- ❌ Never log raw tokens
+- ❌ Never expose `client_secret` to the browser
+
+---
+
+## 2. PingOne Management API Calls
+
+**Never hardcode URLs or credentials.** All config via `configStore.getEffective()`:
+
+```javascript
+const configStore = require('../services/configStore');
+const oauthConfig = require('../config/oauth'); // lazy getters
+
+const envId  = configStore.getEffective('pingone_environment_id');
+const region = configStore.getEffective('pingone_region') || 'com';
+const apiBase = `https://api.pingone.${region}/v1/environments/${envId}`;
+```
+
+### Management API Pattern (Worker app)
+
+```javascript
+async function getManagementToken() {
+  const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
+  const resp = await axios.post(tokenUrl, 'grant_type=client_credentials', {
+    auth: { username: clientId, password: clientSecret },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeout: 10000,
+  });
+  return resp.data.access_token;
+}
+// GET /users, POST /users, GET /users/{id}, PATCH /users/{id}
+// Always timeout: 10000 on all axios calls
+```
+
+### Error Handling for PingOne Calls
+
+```javascript
+} catch (err) {
+  const pingoneError = err.response?.data?.error;
+  const pingoneDesc  = err.response?.data?.error_description;
+  const status       = err.response?.status;
+  const msg = pingoneError ? `PingOne error: ${pingoneError} — ${pingoneDesc}` : err.message;
+  const wrapped = new Error(msg);
+  wrapped.pingoneError = pingoneError;
+  wrapped.status = status;
+  throw wrapped;
+}
+// In routes: propagate 401/403 from PingOne; use 502 for other upstream errors
+```
+
+### Management API Scopes (Worker app)
+
+`p1:read:user` | `p1:update:user` | `p1:update:userMfaEnabled` | `p1:create:userMfaEnabled` | `p1:delete:user`
+
+---
+
+## 3. Vercel Deployment
+
+### How It Works
+
+```
+vercel.json → installCommand: npm i --prefix banking_api_server && npm i --prefix banking_api_ui
+              buildCommand:   cd banking_api_ui && npm run build
+              outputDirectory: banking_api_ui/build
+Routing: /api/:path* → api/handler.js  |  /(*) → /index.html
+api/handler.js = module.exports = require('../banking_api_server/server');
+```
+
+### Critical Gotchas
+
+**1. Multiple instances — sessions don't share memory.**
+Always use Redis (Upstash): `REDIS_URL` in Vercel env vars. Without it, OAuth state is lost between instances → `invalid_state` / `nonce_mismatch` errors.
+
+**2. `req.session.save()` required before redirects.**
+Redis is async — without explicit save, session may not flush before PingOne redirects back.
+
+**3. `trust proxy` required.**
+```javascript
+app.set('trust proxy', 1); // Vercel terminates TLS — required for req.secure and secure cookies
+```
+
+**4. Cookie settings for Vercel.**
+```javascript
+cookie: { secure: true, httpOnly: true, sameSite: 'none', maxAge: 86400000 }
+// sameSite: 'none' required — PingOne redirects cross-domain
+```
+
+**5. WebSocket NOT supported on Vercel.** MCP server must be on Railway/Render/Fly.io. Set `MCP_SERVER_URL=wss://...` in Vercel env vars.
+
+**6. `CI=false` required** in build env to prevent CRA treating warnings as errors.
+
+### vercel.json
+
+```json
+{
+  "version": 2,
+  "build": { "env": { "NODE_VERSION": "20", "CI": "false", "GENERATE_SOURCEMAP": "false" } },
+  "installCommand": "npm install --prefix banking_api_server && npm install --prefix banking_api_ui",
+  "buildCommand": "cd banking_api_ui && npm run build",
+  "outputDirectory": "banking_api_ui/build",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/handler" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}
+```
+
+Adding a new Express route NEVER requires a `vercel.json` change.
+
+### Required Env Vars
+
+| Variable | Description |
+|---|---|
+| `REDIS_URL` | Upstash Redis — `rediss://...` |
+| `SESSION_SECRET` | 32+ char random string |
+| `PINGONE_ENVIRONMENT_ID` | PingOne env ID |
+| `PINGONE_REGION` | `com` / `eu` / `ca` / `asia` |
+| `PINGONE_AI_CORE_CLIENT_ID` | Admin app client ID |
+| `PINGONE_AI_CORE_CLIENT_SECRET` | Admin app client secret |
+| `PINGONE_AI_CORE_REDIRECT_URI` | `https://<url>/api/auth/oauth/callback` |
+| `PINGONE_AI_CORE_USER_CLIENT_ID` | User app client ID |
+| `PINGONE_AI_CORE_USER_REDIRECT_URI` | `https://<url>/api/auth/oauth/user/callback` |
+| `MCP_SERVER_URL` | `wss://your-mcp-host` |
+| `SKIP_TOKEN_SIGNATURE_VALIDATION` | **Fatal if `true` in production** |
+
+### Deploy Command
+
+```bash
+npm run build --prefix banking_api_ui && git add -A && git commit -m "..." && git push origin main && vercel --prod
+```
+
+After deploying: verify redirect URIs in PingOne match the Vercel URL. Check `GET /api/auth/oauth/redirect-info`.
+
+### Common Issues
+
+| Symptom | Fix |
+|---|---|
+| `invalid_state` / `nonce_mismatch` | Add `REDIS_URL` (missing session store) |
+| Server exits immediately | `SKIP_TOKEN_SIGNATURE_VALIDATION=true` in prod — remove it |
+| MCP "connecting..." forever | Set `MCP_SERVER_URL` in Vercel env vars |
+| Redirect URI mismatch | Update PingOne app redirect URIs to match Vercel URL |
+
+---
+
+## 4. MCP Server (TypeScript)
+
+Located in `banking_mcp_server/`. WebSocket-based MCP protocol server.
+
+**Core classes:**
+- `BankingToolRegistry` — static registry of all tool definitions
+- `BankingToolProvider` — executes tools, surfaces auth challenges
+- `MCPMessageHandler` — routes `initialize` / `tools/list` / `tools/call`
+- `BankingSessionManager` — per-WebSocket-connection session
+- `BankingAPIClient` — calls `banking_api_server` HTTP endpoints
+
+### Adding a New Tool
+
+**1. Register in `BankingToolRegistry.ts`:**
+
+```typescript
+my_new_tool: {
+  name: 'my_new_tool',
+  description: 'Description for the AI agent',
+  requiresUserAuth: true,
+  requiredScopes: ['banking:transactions:write'],
+  handler: 'executeMyNewTool',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      account_id: { type: 'string', description: '...', minLength: 1 },
+      amount:     { type: 'number', minimum: 0.01, multipleOf: 0.01 }
+    },
+    required: ['account_id', 'amount'],
+    additionalProperties: false   // always false
+  }
+}
+```
+
+**2. Implement in `BankingToolProvider.ts`:**
+
+```typescript
+async executeMyNewTool(params, session, agentToken?): Promise<BankingToolResult> {
+  try {
+    const result = await this.apiClient.post('/api/...', params, session);
+    return { type: 'text', text: JSON.stringify(result, null, 2), success: true };
+  } catch (err) {
+    if (err instanceof AuthenticationError) {
+      const challenge = await this.authChallengeHandler.generateAuthorizationChallenge(
+        session.sessionId, ['banking:transactions:write']);
+      return { type: 'text', text: 'Authorization required', success: false, authChallenge: challenge };
+    }
+    if (err instanceof BankingAPIError)
+      return { type: 'text', text: `Banking error: ${err.message}`, success: false };
+    throw err;
+  }
+}
+```
+
+### Tool Result Format
+
+```typescript
+// Always: { type: 'text', text: string, success?: boolean, error?: string, authChallenge?: AuthorizationRequest }
+return { type: 'text', text: JSON.stringify(data, null, 2), success: true };         // success
+return { type: 'text', text: `Error: ${msg}`, success: false, error: msg };          // error
+return { type: 'text', text: 'Authorization required', authChallenge: challenge };   // auth needed
+```
+
+### Deployment (NOT Vercel)
+
+```bash
+cd banking_mcp_server && npm run build:clean   # rm -rf dist && tsc
+NODE_ENV=production node dist/index.js
+# Required env: BANKING_API_URL, PINGONE_AUTH_URL, ADMIN_CLIENT_ID, ADMIN_CLIENT_SECRET, PORT
+```
+
+Set `MCP_SERVER_URL=wss://your-mcp-host` in Vercel project settings after deploying.
+
+---
+
+## 5. TypeScript / JavaScript Standards
+
+### banking_mcp_server — TypeScript (strict)
+
+```bash
+npm run build:clean  # full rebuild
+npm run typecheck    # tsc --noEmit
+npm run validate     # typecheck + lint + tests (run before committing)
+```
+
+**Strict rules:**
+- **Never `any`** — use `unknown` + type guards, or correct domain type
+- **No non-null assertion `!`** without a comment
+- Use `Record<string, unknown>` for arbitrary objects
+- Mark all async functions with explicit return types: `Promise<BankingToolResult>`
+- Prefer `interface` for object shapes, `type` for unions/intersections
+- Constructor injection for all dependencies (see `BankingToolProvider` pattern)
+- Import types from barrel: `import { BankAccount } from '../types/banking'`
+
+```typescript
+// ✅ Discriminated union — TypeScript enforces exhaustiveness
+function processStatus(status: 'pending' | 'completed' | 'failed'): string {
+  switch (status) {
+    case 'pending':   return 'Processing...';
+    case 'completed': return 'Done';
+    case 'failed':    return 'Failed';
+  }
+}
+// ❌ Never: function processStatus(status: any): string
+```
+
+### banking_api_server — JavaScript (CommonJS)
+
+```javascript
+'use strict';
+const router = express.Router();
+// Always async/await + try/catch — never .then() chains
+// Never: import/export — CommonJS only (require/module.exports)
+```
+
+Session / BFF:
+```javascript
+req.session.oauthTokens = tokens;  // ✅ tokens in session
+res.json({ access_token: ... });   // ❌ never expose tokens
+```
+
+Validate at API boundaries only (user input, external APIs). No defensive validation for internal calls.
+
+### banking_api_ui — React (JSX)
+
+- Functional components + hooks only (no class components)
+- Use service layer (`src/services/`) for all API calls — never `fetch` in components
+- Co-located CSS: `BankingAgent.css` next to `BankingAgent.js`
+- Education panels: use structured JSX (`<ol>`, `<code>`) not `<pre>` prose dumps
+- Logo: always `/logo.svg` (from `public/`)
+
+### General Rules (All Files)
+
+- **No `console.log` with raw tokens, passwords, or PII**
+- **No `TODO` comments** in committed code
+- All secrets from `process.env` or `configStore.getEffective()` — never hardcoded
+- `npm run validate` before committing to `banking_mcp_server`
+
+---
+
+## 6. API Routes Reference
+
+| Route | Auth | Description |
+|---|---|---|
+| `GET /api/auth/oauth/login` | No | Admin login (PKCE) |
+| `GET /api/auth/oauthuser/login` | No | User login (PKCE) |
+| `GET /api/auth/session` | No | Current session info |
+| `POST /api/auth/logout` | No | Revoke + destroy session |
+| `POST /api/auth/ciba/initiate` | Yes | Start CIBA |
+| `GET /api/auth/ciba/poll/:authReqId` | Yes | Poll CIBA status |
+| `GET /api/accounts` | Yes | List accounts |
+| `GET /api/transactions` | Yes | List transactions |
+| `POST /api/transactions/transfer` | Yes | Transfer |
+| `GET /api/admin/users` | Admin | PingOne user directory |
+| `GET /api/config` | Admin | Read app config |
+| `POST /api/config` | Admin | Update config |
