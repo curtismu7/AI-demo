@@ -5,7 +5,7 @@
  * Critical coverage areas:
  *  1.  PKCE helpers — generateCodeVerifier / generateCodeChallenge
  *  2.  generateAuthorizationUrl — client_id, redirect_uri, PKCE params, state, scopes, nonce
- *  3.  exchangeCodeForToken — PKCE path (never send secret), secret path, no-auth path
+ *  3.  exchangeCodeForToken — PKCE with Basic Auth, PKCE public client, non-PKCE paths
  *  4.  exchangeCodeForToken — error propagation (pingoneError / pingoneDesc)
  *  5.  revokeToken — best-effort (never throws)
  */
@@ -191,52 +191,84 @@ describe('exchangeCodeForToken — request body', () => {
     });
   });
 
+  // Helper: parse the URLSearchParams string body from axios.post call
+  function getCallBody(callIndex = 0) {
+    const raw = axios.post.mock.calls[callIndex][1];
+    return Object.fromEntries(new URLSearchParams(raw));
+  }
+  function getCallHeaders(callIndex = 0) {
+    return axios.post.mock.calls[callIndex][2]?.headers || {};
+  }
+
   test('always sends grant_type=authorization_code', async () => {
     await svc.exchangeCodeForToken('code-abc', 'verifier-123');
-    const body = axios.post.mock.calls[0][1];
+    const body = getCallBody();
     expect(body.grant_type).toBe('authorization_code');
   });
 
   test('always sends the correct client_id', async () => {
     await svc.exchangeCodeForToken('code-abc', 'verifier-123');
-    const body = axios.post.mock.calls[0][1];
+    const body = getCallBody();
     expect(body.client_id).toBe(MOCK_CONFIG.clientId);
   });
 
   test('sends the provided code', async () => {
     await svc.exchangeCodeForToken('my-auth-code', 'verifier-123');
-    const body = axios.post.mock.calls[0][1];
+    const body = getCallBody();
     expect(body.code).toBe('my-auth-code');
   });
 
-  // --- PKCE path -----------------------------------------------------------
-  describe('PKCE path (codeVerifier present)', () => {
-    test('sends code_verifier', async () => {
+  // --- PKCE + confidential client (has secret) ----------------------------
+  describe('PKCE path with client_secret configured (confidential client)', () => {
+    test('sends code_verifier in body', async () => {
       await svc.exchangeCodeForToken('code', 'my-verifier');
-      const body = axios.post.mock.calls[0][1];
-      expect(body.code_verifier).toBe('my-verifier');
+      expect(getCallBody().code_verifier).toBe('my-verifier');
     });
 
-    test('does NOT send client_secret even when config has one', async () => {
+    test('sends client_secret via Basic Auth header (not in body)', async () => {
       // config.clientSecret is set to 'test-admin-client-secret' in MOCK_CONFIG
       await svc.exchangeCodeForToken('code', 'my-verifier');
-      const body = axios.post.mock.calls[0][1];
+      const body = getCallBody();
+      const headers = getCallHeaders();
+      // Secret must NOT appear in body
       expect(body.client_secret).toBeUndefined();
+      // Secret MUST appear in Authorization: Basic <base64(id:secret)>
+      expect(headers['Authorization']).toMatch(/^Basic /);
+      const decoded = Buffer.from(headers['Authorization'].replace('Basic ', ''), 'base64').toString();
+      expect(decoded).toBe(`${encodeURIComponent(MOCK_CONFIG.clientId)}:${encodeURIComponent(MOCK_CONFIG.clientSecret)}`);
     });
   });
 
-  // --- non-PKCE path -------------------------------------------------------
-  describe('non-PKCE path (no codeVerifier), secret configured', () => {
-    test('sends client_secret', async () => {
+  // --- PKCE + public client (no secret) ------------------------------------
+  describe('PKCE path, no secret configured (public client)', () => {
+    beforeEach(() => {
+      restoreService();
+      svc = makeService({ clientSecret: '' });
+    });
+    afterEach(() => restoreService());
+
+    test('sends code_verifier in body', async () => {
+      await svc.exchangeCodeForToken('code', 'my-verifier');
+      expect(getCallBody().code_verifier).toBe('my-verifier');
+    });
+
+    test('does NOT send Authorization header', async () => {
+      await svc.exchangeCodeForToken('code', 'my-verifier');
+      expect(getCallHeaders()['Authorization']).toBeUndefined();
+    });
+  });
+
+  // --- non-PKCE, secret configured -----------------------------------------
+  describe('non-PKCE path, secret configured', () => {
+    test('sends client_secret via Basic Auth header', async () => {
       await svc.exchangeCodeForToken('code', null);
-      const body = axios.post.mock.calls[0][1];
-      expect(body.client_secret).toBe(MOCK_CONFIG.clientSecret);
+      const headers = getCallHeaders();
+      expect(headers['Authorization']).toMatch(/^Basic /);
     });
 
     test('does NOT send code_verifier', async () => {
       await svc.exchangeCodeForToken('code', null);
-      const body = axios.post.mock.calls[0][1];
-      expect(body.code_verifier).toBeUndefined();
+      expect(getCallBody().code_verifier).toBeUndefined();
     });
   });
 
@@ -248,11 +280,13 @@ describe('exchangeCodeForToken — request body', () => {
     });
     afterEach(() => restoreService());
 
-    test('sends neither client_secret nor code_verifier', async () => {
+    test('sends neither Authorization header nor code_verifier', async () => {
       await svc.exchangeCodeForToken('code', undefined);
-      const body = axios.post.mock.calls[0][1];
+      const body = getCallBody();
+      const headers = getCallHeaders();
       expect(body.client_secret).toBeUndefined();
       expect(body.code_verifier).toBeUndefined();
+      expect(headers['Authorization']).toBeUndefined();
     });
   });
 
@@ -261,13 +295,13 @@ describe('exchangeCodeForToken — request body', () => {
     test('uses provided redirectUri', async () => {
       const custom = 'https://custom.example.com/cb';
       await svc.exchangeCodeForToken('code', 'v', custom);
-      const body = axios.post.mock.calls[0][1];
+      const body = getCallBody();
       expect(body.redirect_uri).toBe(custom);
     });
 
     test('falls back to config.redirectUri when not provided', async () => {
       await svc.exchangeCodeForToken('code', 'v');
-      const body = axios.post.mock.calls[0][1];
+      const body = getCallBody();
       expect(body.redirect_uri).toBe(MOCK_CONFIG.redirectUri);
     });
   });

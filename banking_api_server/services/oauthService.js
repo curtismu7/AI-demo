@@ -115,24 +115,29 @@ class OAuthService {
    */
   async exchangeCodeForToken(code, codeVerifier, redirectUri) {
     try {
-      const body = {
+      const body = new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: redirectUri || this.config.redirectUri,
         client_id: this.config.clientId,
-      };
-      // If using PKCE (codeVerifier present), skip client_secret — sending both
-      // causes `invalid_client` on servers that treat them as conflicting auth methods.
+      });
+      // PKCE code_verifier goes in the body regardless of client type (RFC 7636).
       if (codeVerifier) {
-        body.code_verifier = codeVerifier;
-      } else if (this.config.clientSecret) {
-        // No PKCE — fall back to client_secret if configured
-        body.client_secret = this.config.clientSecret;
+        body.set('code_verifier', codeVerifier);
       }
-      const tokenResponse = await axios.post(this.config.tokenEndpoint, body, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+      // Client authentication uses HTTP Basic Auth (client_secret_basic) when a
+      // secret is configured — this is the RFC 6749 §2.3.1 recommended method and
+      // is orthogonal to PKCE. Sending the secret as a body parameter (client_secret_post)
+      // alongside code_verifier can cause `invalid_client` on strict servers.
+      const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      if (this.config.clientSecret) {
+        const creds = Buffer.from(
+          `${encodeURIComponent(this.config.clientId)}:${encodeURIComponent(this.config.clientSecret)}`
+        ).toString('base64');
+        headers['Authorization'] = `Basic ${creds}`;
+      }
+      const tokenResponse = await axios.post(this.config.tokenEndpoint, body.toString(), {
+        headers,
       });
 
       // Log the received access token information
