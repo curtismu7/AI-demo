@@ -28,14 +28,22 @@ const ACTIONS = [
   { id: 'transfer',     label: '↔ Transfer',            desc: 'Transfer between accounts' },
 ];
 
-// ─── Suggested prompts shown in the left panel ────────────────────────────────
+// ─── Suggested prompts — role-aware ──────────────────────────────────────────
 
-const SUGGESTIONS = [
+const SUGGESTIONS_CUSTOMER = [
   'Check my account balance',
   'Transfer $100 to savings',
   'What are my recent transactions?',
   'Show my accounts',
   'Deposit $500 into checking',
+];
+
+const SUGGESTIONS_ADMIN = [
+  'Show all customer accounts',
+  'List recent system transactions',
+  'Check account balance',
+  'Show all accounts',
+  'What are recent transactions?',
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -193,6 +201,15 @@ function ResultsPanel({ panel, onClose, style }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
+function welcomeMessage(u) {
+  if (!u) return "👋 You're signed in! What would you like to do?";
+  const name = u.firstName || u.name?.split(' ')[0] || 'there';
+  if (u.role === 'admin') {
+    return `👑 Welcome, ${name}! As an admin you can query accounts system-wide, view all transactions, manage users, and explore PingOne OAuth flows. What would you like to do?`;
+  }
+  return `👋 Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
+}
+
 function handleLoginAction(actionId) {
   const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
   if (actionId === 'login_admin') {
@@ -270,7 +287,7 @@ export default function BankingAgent({ user }) {
       setIsOpen(true);
       setMessages(prev =>
         prev.length === 0
-          ? [{ id: Date.now().toString(), role: 'assistant', content: "👋 You're signed in! I can check balances, move money, and explain the OAuth flows happening behind the scenes. What would you like to do?" }]
+          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user) }]
           : prev
       );
     }
@@ -316,7 +333,7 @@ export default function BankingAgent({ user }) {
         const u = (admin?.authenticated && admin.user) || (endUser?.authenticated && endUser.user) || session?.user;
         setSessionUser(u);
         setIsOpen(true);
-        setMessages([{ role: 'assistant', content: "👋 You're signed in! I can check balances, move money, and explain the OAuth flows happening behind the scenes. What would you like to do?" }]);
+        setMessages([{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(u) }]);
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -329,12 +346,13 @@ export default function BankingAgent({ user }) {
       setIsOpen(true);
       setMessages(prev =>
         prev.length === 0
-          ? [{ role: 'assistant', content: "👋 You're signed in! I can check balances, move money, and explain the OAuth flows happening behind the scenes. What would you like to do?" }]
+          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUser) }]
           : prev
       );
     };
     window.addEventListener('userAuthenticated', onAuth);
     return () => window.removeEventListener('userAuthenticated', onAuth);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkSelfAuth]);
 
   // Re-check when panel opens (catches sessions established after mount)
@@ -660,7 +678,7 @@ export default function BankingAgent({ user }) {
                 <div className="ba-title">BX Finance AI Agent</div>
                 <div className="ba-subtitle">
                   {isLoggedIn
-                    ? `${effectiveUser.name?.split(' ')[0] || effectiveUser.firstName || 'Signed in'} · Powered by MCP`
+                    ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'} · Powered by MCP`
                     : 'Sign in to get started'}
                 </div>
               </div>
@@ -682,8 +700,22 @@ export default function BankingAgent({ user }) {
 
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">
+              {/* Dashboard navigation button — shown when logged in */}
+              {isLoggedIn && (
+                <button
+                  className="ba-left-auth-btn primary"
+                  style={{ marginBottom: 2 }}
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate(effectiveUser?.role === 'admin' ? '/admin' : '/dashboard');
+                  }}
+                >
+                  {effectiveUser?.role === 'admin' ? '👑 Admin Dashboard' : '📊 My Dashboard'}
+                </button>
+              )}
+
               <div className="ba-left-label">Try asking:</div>
-              {SUGGESTIONS.map(s => (
+              {(effectiveUser?.role === 'admin' ? SUGGESTIONS_ADMIN : SUGGESTIONS_CUSTOMER).map(s => (
                 <button
                   key={s}
                   className="ba-suggestion"

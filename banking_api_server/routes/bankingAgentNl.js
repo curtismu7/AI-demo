@@ -20,7 +20,11 @@ router.post('/nl', async (req, res) => {
   }
 
   try {
-    const { source, result } = await parseNaturalLanguage(message.trim());
+    const context = {
+      role:      req.session.user.role,
+      firstName: req.session.user.firstName,
+    };
+    const { source, result } = await parseNaturalLanguage(message.trim(), context);
     return res.json({ source, result });
   } catch (e) {
     console.error('[bankingAgentNl]', e);

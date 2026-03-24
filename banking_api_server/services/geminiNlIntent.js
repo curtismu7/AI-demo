@@ -22,16 +22,26 @@ Prefer banking when the user asks to move money or list data; prefer education w
 For CIMD / client-id-metadata / dynamic client registration / register a client / DCR / RFC 7591 → use panel cimd.`;
 
 /**
+ * @param {string} userMessage
+ * @param {{ role?: string, firstName?: string }} [context]
  * @returns {Promise<object|null>} parsed result object or null to use heuristic
  */
-async function parseWithGemini(userMessage) {
+async function parseWithGemini(userMessage, context = {}) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
   if (!key) return null;
+
+  const systemWithCtx = context.role
+    ? `${SYSTEM}\n\nSigned-in user: role=${context.role}${context.firstName ? ', name=' + context.firstName : ''}. ${
+        context.role === 'admin'
+          ? 'Admin users can query ALL accounts and transactions system-wide, not just their own.'
+          : 'This is a regular customer — banking actions apply to their own accounts only.'
+      }`
+    : SYSTEM;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
   const body = {
     contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-    systemInstruction: { parts: [{ text: SYSTEM }] },
+    systemInstruction: { parts: [{ text: systemWithCtx }] },
     generationConfig: {
       temperature: 0.1,
       maxOutputTokens: 512,
@@ -67,18 +77,19 @@ async function parseWithGemini(userMessage) {
 
 /**
  * @param {string} message
+ * @param {{ role?: string, firstName?: string }} [context] - user context for role-aware routing
  * @returns {Promise<{ source: 'groq'|'gemini'|'heuristic', result: object }>}
  */
-async function parseNaturalLanguage(message) {
+async function parseNaturalLanguage(message, context = {}) {
   // 1. Try Groq (fastest, OpenAI-compatible)
-  const groq = await parseWithGroq(message).catch((e) => {
+  const groq = await parseWithGroq(message, context).catch((e) => {
     console.warn('[nlIntent] Groq error:', e.message);
     return null;
   });
   if (groq) return { source: 'groq', result: groq };
 
   // 2. Try Gemini
-  const gemini = await parseWithGemini(message).catch((e) => {
+  const gemini = await parseWithGemini(message, context).catch((e) => {
     console.warn('[nlIntent] Gemini error:', e.message);
     return null;
   });
