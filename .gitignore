@@ -53,7 +53,10 @@ coverage/
 # IDE
 .vscode/
 .idea/
-.claude/
+# .claude/ root is ignored; exclude contents but allow skills/ subdirectory
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 
 # SSL certs (generated locally via mkcert — never commit private keys)
 certs/
