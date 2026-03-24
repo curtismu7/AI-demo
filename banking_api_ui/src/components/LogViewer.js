@@ -33,23 +33,31 @@ const LogViewer = ({ isOpen, onClose }) => {
         ...(filter.search && { search: filter.search })
       };
 
+      let incoming = [];
       if (filter.source === 'all') {
         const sources = ['console', 'app', 'vercel'];
         const results = await Promise.allSettled(
           sources.map(src => axios.get(`/api/logs/${src}`, { params }))
         );
-        const merged = results
+        incoming = results
           .flatMap((r, i) =>
             r.status === 'fulfilled'
               ? (r.value.data.logs || []).map(l => ({ ...l, _src: sources[i] }))
               : []
           )
           .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        setLogs(merged);
       } else {
         const response = await axios.get(`/api/logs/${filter.source}`, { params });
-        setLogs((response.data.logs || []).map(l => ({ ...l, _src: filter.source })));
+        incoming = (response.data.logs || []).map(l => ({ ...l, _src: filter.source }));
       }
+
+      // Merge incoming with existing logs, deduplicating on timestamp+message
+      setLogs(prev => {
+        const seen = new Set(prev.map(l => `${l.timestamp}|${l.message}`));
+        const newEntries = incoming.filter(l => !seen.has(`${l.timestamp}|${l.message}`));
+        if (newEntries.length === 0) return prev;
+        return [...prev, ...newEntries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      });
     } catch (err) {
       console.error('Error fetching logs:', err);
       setError(err.message);
