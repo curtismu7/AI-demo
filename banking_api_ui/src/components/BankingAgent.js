@@ -250,6 +250,32 @@ export default function BankingAgent({ user }) {
     }
   }, [location.state]);
 
+  // Auto-open when redirected back from OAuth login (?oauth=success in URL)
+  useEffect(() => {
+    if (searchParams.get('oauth') === 'success') {
+      setIsOpen(true);
+      // Strip oauth params from URL so they don't re-trigger on navigation
+      const url = new URL(window.location.href);
+      url.searchParams.delete('oauth');
+      url.searchParams.delete('stepup');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams]);
+
+  // Auto-open when the user prop transitions from null → authenticated user
+  // (fires on initial mount when App.js has already resolved the session,
+  //  and again if the user changes while the component is mounted)
+  useEffect(() => {
+    if (user) {
+      setIsOpen(true);
+      setMessages(prev =>
+        prev.length === 0
+          ? [{ id: Date.now().toString(), role: 'assistant', content: "👋 You're signed in! I can check balances, move money, and explain the OAuth flows happening behind the scenes. What would you like to do?" }]
+          : prev
+      );
+    }
+  }, [user]);
+
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
   const isLoggedIn = !!effectiveUser;

@@ -1,0 +1,378 @@
+---
+description: TypeScript and JavaScript development standards for this banking demo. Use when writing, editing, or refactoring any TypeScript in banking_mcp_server, or JavaScript in banking_api_server or banking_api_ui.
+globs: banking_mcp_server/**/*.ts, banking_mcp_server/**/*.tsx, banking_api_server/**/*.js, banking_api_ui/src/**/*.js, banking_api_ui/src/**/*.jsx
+alwaysApply: false
+---
+
+# TypeScript / JavaScript Development — BX Finance Banking Demo
+
+## Project Language Map
+
+| Package | Language | Runtime | Entry |
+|---------|----------|---------|-------|
+| `banking_mcp_server` | **TypeScript** (strict) | Node 18+ / ts-node | `src/index.ts` → `dist/index.js` |
+| `banking_api_server` | **JavaScript** (ES2020, CommonJS) | Node 18+ | `server.js` |
+| `banking_api_ui` | **JavaScript + JSX** (React 18, CRA) | Browser | `src/index.js` |
+
+---
+
+## TypeScript — banking_mcp_server
+
+### tsconfig Key Settings
+
+```jsonc
+{
+  "target": "ES2020",
+  "module": "commonjs",
+  "strict": true,            // all strict checks enabled
+  "esModuleInterop": true,
+  "declaration": true,       // emit .d.ts files
+  "sourceMap": true,
+  "experimentalDecorators": true,
+  "emitDecoratorMetadata": true,
+  "outDir": "./dist",
+  "rootDir": "./src"
+}
+```
+
+### Scripts
+
+```bash
+npm run build          # tsc (incremental)
+npm run build:clean    # rm -rf dist && tsc
+npm run dev            # nodemon + ts-node (watch mode)
+npm run typecheck      # tsc --noEmit (no emit, type-check only)
+npm run lint           # eslint src/**/*.ts
+npm run lint:fix       # eslint --fix
+npm run test           # jest --forceExit
+npm run validate       # typecheck + lint + test:ci (pre-commit)
+```
+
+### Type Definitions (src/types/)
+
+Always import from the barrel `../types` (or relative `../interfaces/*`):
+
+```typescript
+import { BankAccount, Transaction, TransferRequest, TransferResult } from '../types/banking';
+import { Session, AuthErrorCodes, AuthenticationError } from '../interfaces/auth';
+import { ToolResult, AuthorizationRequest } from '../interfaces/mcp';
+```
+
+**Core banking types:**
+
+```typescript
+interface BankAccount {
+  accountId: string;
+  accountNumber: string;
+  accountType: 'checking' | 'savings' | 'credit' | 'investment';
+  balance: number;
+  currency: string;
+  status: 'active' | 'inactive' | 'frozen';
+  ownerId: string;
+}
+
+interface Transaction {
+  transactionId: string;
+  accountId: string;
+  amount: number;
+  currency: string;
+  type: 'debit' | 'credit';
+  category: string;
+  description: string;
+  timestamp: Date;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  metadata?: Record<string, unknown>;  // use unknown, never any
+}
+
+interface TransferRequest {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  reference?: string;
+}
+```
+
+### Class Patterns
+
+Use **constructor injection** for all dependencies. Follow the existing provider pattern:
+
+```typescript
+export class BankingToolProvider {
+  private authChallengeHandler: AuthorizationChallengeHandler;
+
+  constructor(
+    private apiClient: BankingAPIClient,
+    private authManager: BankingAuthenticationManager,
+    private sessionManager: BankingSessionManager,
+  ) {
+    this.authChallengeHandler = new AuthorizationChallengeHandler(
+      authManager,
+      sessionManager,
+    );
+  }
+
+  async executeTool(
+    toolName: string,
+    params: Record<string, unknown>,
+    session: Session,
+    agentToken?: string,
+  ): Promise<BankingToolResult> {
+    // ...
+  }
+}
+```
+
+### Tool Result Pattern
+
+All MCP tools return `BankingToolResult`:
+
+```typescript
+export interface BankingToolResult extends ToolResult {
+  type: 'text';
+  text: string;
+  success?: boolean;
+  error?: string;
+  authChallenge?: AuthorizationRequest;
+}
+
+// On success:
+return { type: 'text', text: JSON.stringify(data, null, 2), success: true };
+
+// On error:
+return { type: 'text', text: `Error: ${err.message}`, success: false, error: err.message };
+```
+
+### Error Handling
+
+```typescript
+import { AuthenticationError, AuthErrorCodes } from '../interfaces/auth';
+import { BankingAPIError } from '../interfaces/banking';
+
+try {
+  const result = await this.apiClient.transfer(request);
+  return { type: 'text', text: JSON.stringify(result), success: true };
+} catch (err) {
+  if (err instanceof AuthenticationError) {
+    // Surface auth challenges back through the MCP protocol
+    const challenge = await this.authChallengeHandler.handle(err, session);
+    return { type: 'text', text: 'Authorization required', authChallenge: challenge };
+  }
+  if (err instanceof BankingAPIError) {
+    console.error(`[BankingToolProvider] API error:`, err.message, err.statusCode);
+    return { type: 'text', text: `Banking error: ${err.message}`, success: false };
+  }
+  throw err; // re-throw unexpected errors
+}
+```
+
+### Strict TypeScript Rules
+
+- **Never use `any`** — use `unknown` and narrow with type guards, or use the correct domain type.
+- **No non-null assertion (`!`)** without a comment explaining why it's safe.
+- Use `Record<string, unknown>` for arbitrary objects, not `object` or `{}`.
+- Use discriminated unions for state machines (status fields).
+- Mark all async functions with explicit return types: `Promise<BankingToolResult>`.
+- Prefer `interface` over `type` for object shapes; use `type` for unions/intersections.
+
+```typescript
+// ✅ Good
+function processStatus(status: 'pending' | 'completed' | 'failed'): string {
+  switch (status) {
+    case 'pending': return 'Processing...';
+    case 'completed': return 'Done';
+    case 'failed': return 'Failed';
+    // TypeScript enforces exhaustiveness
+  }
+}
+
+// ❌ Bad
+function processStatus(status: any): string { ... }
+```
+
+### Logging Pattern
+
+Use the `Logger` utility from `src/utils/Logger.ts`:
+
+```typescript
+import { Logger } from '../utils/Logger';
+const logger = new Logger('[BankingToolProvider]');
+
+// Structured logging — always include context
+logger.info(`Starting tool execution: ${toolName}`, { sessionId, toolName });
+logger.error(`Tool failed: ${toolName}`, { error: err.message, sessionId });
+// Never log raw tokens or credentials
+```
+
+---
+
+## JavaScript — banking_api_server
+
+### Module Pattern
+
+CommonJS only (`require`/`module.exports`). Do **not** use ESM `import`/`export`.
+
+```javascript
+'use strict';
+
+const express = require('express');
+const router = express.Router();
+const oauthService = require('../services/oauthService');
+const configStore = require('../services/configStore');
+
+// ...
+
+module.exports = router;
+```
+
+### Async Route Handlers
+
+Always wrap Express routes in try/catch. Use `async/await`, not `.then()` chains:
+
+```javascript
+router.post('/transfer', authenticateToken, async (req, res) => {
+  try {
+    const { fromAccountId, toAccountId, amount } = req.body;
+
+    // Input validation at boundary only
+    if (!fromAccountId || !toAccountId || !amount) {
+      return res.status(400).json({ error: 'missing_fields' });
+    }
+
+    const result = await bankingService.transfer({ fromAccountId, toAccountId, amount });
+    res.json(result);
+  } catch (err) {
+    console.error('[transfer] Error:', err.message);
+    res.status(500).json({ error: 'transfer_failed', message: err.message });
+  }
+});
+```
+
+### Session / BFF Pattern
+
+Tokens are stored **only** in `req.session` — never sent to the browser:
+
+```javascript
+// ✅ Store in session
+req.session.oauthTokens = tokens;
+req.session.user = userClaims;
+req.session.oauthType = 'admin'; // or 'user'
+
+// ✅ Read from session
+const { oauthTokens, user } = req.session;
+
+// ❌ Never
+res.json({ access_token: tokens.access_token }); // don't expose tokens
+```
+
+### Input Validation
+
+Validate at API boundaries (user input, external APIs). Do **not** add defensive validation for internal function calls.
+
+```javascript
+// Validate shape, existence, and types
+const { username, password } = req.body;
+if (!username || typeof username !== 'string' || username.length > 100) {
+  return res.status(400).json({ error: 'invalid_username' });
+}
+
+// Sanitize before using in queries (no SQL here, but same principle for headers/logs)
+const safeUsername = username.trim().toLowerCase();
+```
+
+### Correlation IDs
+
+Every request handler should propagate correlation IDs:
+
+```javascript
+const correlationId = req.headers['x-correlation-id'] || crypto.randomUUID();
+req.correlationId = correlationId;
+res.setHeader('x-correlation-id', correlationId);
+```
+
+---
+
+## JavaScript/JSX — banking_api_ui (React)
+
+### Component Pattern
+
+Functional components with hooks only. No class components.
+
+```jsx
+import React, { useState, useEffect, useCallback } from 'react';
+
+export default function AccountList({ userId }) {
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchAccounts = useCallback(async () => {
+    try {
+      const resp = await fetch(`/api/accounts?userId=${encodeURIComponent(userId)}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setAccounts(await resp.json());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+
+  if (loading) return <div className="loading-spinner" />;
+  if (error)   return <div className="error-message">{error}</div>;
+  return <ul>{accounts.map(a => <AccountCard key={a.accountId} account={a} />)}</ul>;
+}
+```
+
+### API Calls
+
+Always use the service layer (`src/services/`), never `fetch` directly in components:
+
+```javascript
+// src/services/accountService.js
+export async function getAccounts() {
+  const resp = await fetch('/api/accounts', { credentials: 'include' });
+  if (!resp.ok) throw new Error(`Failed to load accounts: ${resp.status}`);
+  return resp.json();
+}
+```
+
+### CSS / Styling
+
+- Each component has a co-located `.css` file: `BankingAgent.css` alongside `BankingAgent.js`
+- Use BEM-style class names: `.banking-agent__header`, `.banking-agent__body--loading`
+- FAB buttons are positioned in the top-right stack (CIMD at `top: 68px`, Logs at `top: 116px`)
+- Logo references always use `/logo.svg` (served from `public/`)
+
+### Education / Documentation Components
+
+Education panels use structured JSX, **not** raw text in `<pre>` blocks:
+
+```jsx
+// ✅ Good — structured prose
+<section className="edu-section">
+  <h3>How PKCE Works</h3>
+  <ol>
+    <li>Generate a random <code>code_verifier</code></li>
+    <li>Hash it with SHA-256 → <code>code_challenge</code></li>
+    <li>Send <code>code_challenge</code> in the authorization request</li>
+    <li>Send <code>code_verifier</code> in the token exchange</li>
+  </ol>
+</section>
+
+// ❌ Bad — prose dump in pre
+<pre>{`PKCE works by... verifier... challenge...`}</pre>
+```
+
+---
+
+## General Rules (All Files)
+
+- **No `console.log` with raw tokens, passwords, or PII.** Log event type and metadata only.
+- **No `TODO` comments** left in committed code — either fix it or open a GitHub issue.
+- **Prefer composition over inheritance** — use utilities from `src/utils/` (Logger, ErrorHandler, RetryManager, CircuitBreaker).
+- **Security:** Never hardcode credentials. All secrets come from `process.env` or `configStore`.
+- **Testing:** Unit tests in `tests/unit/`, integration tests in `tests/integration/`. Run `npm run validate` before committing to the `banking_mcp_server`.
