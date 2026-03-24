@@ -58,64 +58,42 @@ function App() {
   }, []);
 
   const checkOAuthSession = useCallback(async () => {
-    console.log('🔍 checkOAuthSession - Checking for active OAuth sessions...');
     try {
-      // Check admin OAuth session
-      console.log('👑 Checking admin OAuth session...');
-      const adminResponse = await axios.get('/api/auth/oauth/status');
-      console.log('👑 Admin OAuth response:', {
-        authenticated: adminResponse.data.authenticated,
-        user: adminResponse.data.user,
-        expiresAt: adminResponse.data.expiresAt
-      });
-      
-      if (adminResponse.data.authenticated) {
-        console.log('✅ Admin OAuth session found, logging in user:', adminResponse.data.user);
-        setUser(adminResponse.data.user);
-        const userEmail = adminResponse.data.user?.email;
-        if (userEmail) {
-          injectEmailIntoNextSessionInit(userEmail);
-        }
+      // Check all three session types in parallel — OAuth admin, OAuth end-user,
+      // and the generic /session endpoint that catches _auth-cookie-restored sessions
+      // and local (username/password) sessions too.
+      const [adminResp, userResp, sessionResp] = await Promise.allSettled([
+        axios.get('/api/auth/oauth/status',      { withCredentials: true }),
+        axios.get('/api/auth/oauth/user/status', { withCredentials: true }),
+        axios.get('/api/auth/session',           { withCredentials: true }),
+      ]);
+
+      const admin   = adminResp.status   === 'fulfilled' ? adminResp.value.data   : null;
+      const endUser = userResp.status    === 'fulfilled' ? userResp.value.data    : null;
+      const session = sessionResp.status === 'fulfilled' ? sessionResp.value.data : null;
+
+      const found = (admin?.authenticated && admin.user)
+        ? admin.user
+        : (endUser?.authenticated && endUser.user)
+          ? endUser.user
+          : (session?.authenticated && session.user)
+            ? session.user
+            : null;
+
+      if (found) {
+        setUser(found);
+        if (found.email) injectEmailIntoNextSessionInit(found.email);
         window.dispatchEvent(new CustomEvent('userAuthenticated'));
-        setLoading(false);
-        return;
       }
-      
-      // Check end user OAuth session
-      console.log('👤 Checking end user OAuth session...');
-      const userResponse = await axios.get('/api/auth/oauth/user/status');
-      console.log('👤 End user OAuth response:', {
-        authenticated: userResponse.data.authenticated,
-        user: userResponse.data.user,
-        expiresAt: userResponse.data.expiresAt
-      });
-      
-      if (userResponse.data.authenticated) {
-        console.log('✅ End user OAuth session found, logging in user:', userResponse.data.user);
-        setUser(userResponse.data.user);
-        const userEmail = userResponse.data.user?.email;
-        if (userEmail) {
-          injectEmailIntoNextSessionInit(userEmail);
-        }
-        window.dispatchEvent(new CustomEvent('userAuthenticated'));
-        setLoading(false);
-        return;
-      }
-      
-      console.log('❌ No active OAuth sessions found');
       setLoading(false);
     } catch (error) {
-      console.log('❌ Error checking OAuth sessions:', error.message);
       setLoading(false);
     }
   }, [injectEmailIntoNextSessionInit]);
 
   useEffect(() => {
-    console.log('🔍 App useEffect - Starting authentication check...');
-
     const userLoggedOut = localStorage.getItem('userLoggedOut');
     if (userLoggedOut === 'true') {
-      console.log('🚪 User explicitly logged out, skipping authentication check');
       localStorage.removeItem('userLoggedOut');
       setLoading(false);
       return;
@@ -127,7 +105,6 @@ function App() {
       .catch(() => {}); // non-fatal
 
     const t = setTimeout(() => {
-      console.log('🔄 Checking for OAuth session...');
       checkOAuthSession();
     }, 200);
     return () => clearTimeout(t);

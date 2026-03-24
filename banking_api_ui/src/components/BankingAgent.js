@@ -276,7 +276,13 @@ export default function BankingAgent({ user }) {
       url.searchParams.delete('oauth');
       url.searchParams.delete('stepup');
       window.history.replaceState({}, '', url.toString());
+      // Kick off an immediate check and, if it fails (session store cold-start),
+      // retry once after 800 ms.
+      checkSelfAuth();
+      const retryTimer = setTimeout(() => checkSelfAuth(), 800);
+      return () => clearTimeout(retryTimer);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Auto-open when the user prop transitions from null → authenticated user
@@ -302,6 +308,7 @@ export default function BankingAgent({ user }) {
    * Independently check auth endpoints.  Called on mount, on panel open, and
    * when the 'userAuthenticated' event fires (App.js dispatches this after login).
    * Checks all three session types: admin OAuth, end-user OAuth, and basic auth.
+   * When a session is found, also dispatches 'userAuthenticated' so App.js syncs.
    */
   const checkSelfAuth = useCallback(() => {
     Promise.all([
@@ -309,12 +316,17 @@ export default function BankingAgent({ user }) {
       fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([admin, endUser, session]) => {
-      if (admin?.authenticated && admin.user) {
-        setSessionUser(admin.user);
-      } else if (endUser?.authenticated && endUser.user) {
-        setSessionUser(endUser.user);
-      } else if (session?.authenticated && session.user) {
-        setSessionUser(session.user);
+      const found = (admin?.authenticated && admin.user)
+        ? admin.user
+        : (endUser?.authenticated && endUser.user)
+          ? endUser.user
+          : (session?.authenticated && session.user)
+            ? session.user
+            : null;
+      if (found) {
+        setSessionUser(found);
+        // Notify App.js so it sets its own `user` state → shows dashboard routes
+        window.dispatchEvent(new CustomEvent('userAuthenticated'));
       }
     });
   }, []);
@@ -326,14 +338,18 @@ export default function BankingAgent({ user }) {
       fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([admin, endUser, session]) => {
-      const authenticated = (admin?.authenticated && admin.user)
-        || (endUser?.authenticated && endUser.user)
-        || (session?.authenticated && session.user);
-      if (authenticated) {
-        const u = (admin?.authenticated && admin.user) || (endUser?.authenticated && endUser.user) || session?.user;
-        setSessionUser(u);
+      const found = (admin?.authenticated && admin.user)
+        ? admin.user
+        : (endUser?.authenticated && endUser.user)
+          ? endUser.user
+          : (session?.authenticated && session.user)
+            ? session.user
+            : null;
+      if (found) {
+        setSessionUser(found);
         setIsOpen(true);
-        setMessages([{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(u) }]);
+        setMessages([{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(found) }]);
+        window.dispatchEvent(new CustomEvent('userAuthenticated'));
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
