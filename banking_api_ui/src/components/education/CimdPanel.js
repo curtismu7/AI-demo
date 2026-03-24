@@ -180,6 +180,90 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
       ),
     },
     {
+      id: 'flow',
+      label: 'Flow diagram',
+      content: (
+        <>
+          <p>
+            How client registration and a CIMD-style authorization request flows
+            end-to-end in this demo:
+          </p>
+          <pre style={{background:'var(--edu-code-bg,#0f172a)',padding:'16px',borderRadius:'6px',overflow:'auto',fontSize:'12px',lineHeight:'1.7'}}>
+{`┌─────────────────────────────────────────────────────────────────────┐
+│              CIMD Registration + Authorization Flow                 │
+└─────────────────────────────────────────────────────────────────────┘
+
+  REGISTRATION (admin only — one time)
+  ─────────────────────────────────────
+  Admin Browser           BFF (this server)          PingOne Mgmt API
+       │                        │                           │
+       │  POST /api/admin/      │                           │
+       │  clients               │                           │
+       │  { client_name,        │                           │
+       │    redirect_uris,      │                           │
+       │    grant_types, … }    │                           │
+       │ ──────────────────────►│                           │
+       │                        │  POST /environments/{id}/ │
+       │                        │  applications             │
+       │                        │ ─────────────────────────►│
+       │                        │◄─────────────────────────┤
+       │                        │  { id, client_secret }    │
+       │                        │                           │
+       │                        │  Build CIMD document      │
+       │                        │  { client_id: URL,        │
+       │                        │    redirect_uris, … }     │
+       │                        │  Store in cimdStore Map   │
+       │◄──────────────────────┤                           │
+       │  { client_id,          │                           │
+       │    client_secret,      │                           │
+       │    cimd_url,           │                           │
+       │    cimd_document }     │                           │
+       │                        │                           │
+
+  DOCUMENT SERVING (public, cacheable)
+  ─────────────────────────────────────
+  Any caller               BFF
+       │                    │
+       │  GET /.well-known/ │
+       │  oauth-client/{id} │
+       │ ──────────────────►│
+       │◄──────────────────┤
+       │  CIMD JSON doc     │
+       │  Cache-Control:    │
+       │  public, max-age=  │
+       │  3600              │
+       │                    │
+
+  AUTHORIZATION (future / CIMD-native AS)
+  ─────────────────────────────────────────
+  Client App              CIMD-capable AS         BFF CIMD endpoint
+       │                        │                       │
+       │  GET /authorize?       │                       │
+       │  client_id=https://…/  │                       │
+       │  .well-known/oauth-    │                       │
+       │  client/{id}           │                       │
+       │ ──────────────────────►│                       │
+       │                        │  GET /.well-known/    │
+       │                        │  oauth-client/{id}    │
+       │                        │ ─────────────────────►│
+       │                        │◄─────────────────────┤
+       │                        │  CIMD document        │
+       │                        │  (validates redirect, │
+       │                        │   grant_types, auth   │
+       │                        │   method, scopes)     │
+       │◄──────────────────────┤                       │
+       │  Authorization code    │                       │
+       │  (normal PKCE flow)    │                       │
+       │                        │                       │
+
+  ⚠  PingOne does NOT yet do the AS→CIMD-endpoint fetch natively.
+     The demo pre-registers via Management API and hosts the doc
+     so you can observe both halves of the pattern.`}
+          </pre>
+        </>
+      ),
+    },
+    {
       id: 'try-it',
       label: 'Try it',
       content: (

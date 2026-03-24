@@ -11,13 +11,14 @@ const MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown, no explanation) with one of:
-{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize","tab":"optional tab id"}}
+{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd","tab":"optional tab id"}}
 {"kind":"education","ciba":true,"tab":"what"}
 {"kind":"banking","banking":{"action":"accounts|transactions|balance|deposit|withdraw|transfer","params":{"accountId":"optional","fromId":"","toId":"","amount":0,"note":""}}}
 {"kind":"none","message":"short hint"}
 
-User wants banking operations OR to open help topics (OAuth, MCP, CIBA, token exchange, etc.).
-Prefer banking when the user asks to move money or list data; prefer education when they ask how something works.`;
+User wants banking operations OR to open help topics (OAuth, MCP, CIBA, token exchange, CIMD client registration, etc.).
+Prefer banking when the user asks to move money or list data; prefer education when they ask how something works.
+For CIMD / client-id-metadata / dynamic client registration / register a client / DCR / RFC 7591 → use panel cimd.`;
 
 /**
  * @param {string} userMessage

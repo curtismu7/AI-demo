@@ -15,6 +15,7 @@ const EDU = {
   RFC_INDEX: 'rfc-index',
   STEP_UP: 'step-up',
   PINGONE_AUTHORIZE: 'pingone-authorize',
+  CIMD: 'cimd',
 };
 
 function norm(s) {
@@ -61,6 +62,9 @@ function parseEducation(t) {
   }
   if (/\b(pingone authorize|authorize policy|pdp)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.PINGONE_AUTHORIZE, tab: 'what' } };
+  }
+  if (/\b(cimd|client.?id.?metadata|client metadata document|self.?register|register client|dynamic client|dcr|rfc.?7591)\b/.test(t)) {
+    return { kind: 'education', education: { panel: EDU.CIMD, tab: 'what' } };
   }
   return null;
 }
