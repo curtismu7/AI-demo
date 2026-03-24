@@ -35,16 +35,16 @@ jest.mock('axios', () => {
       defaults: { headers: { common: {} } },
     },
   };
-});jest.mock('react-router-dom', () => {
-  const actual = jest.requireActual('react-router-dom');
-  return {
-    ...actual,
-    BrowserRouter: ({ children }) => <>{children}</>,
-    Routes: ({ children }) => <>{children}</>,
-    Route: () => null,
-    Navigate: () => null,
-  };
 });
+
+jest.mock('react-router-dom', () => ({
+  BrowserRouter: ({ children }) => children,
+  Routes:        ({ children }) => children,
+  Route:         () => null,
+  Navigate:      () => null,
+  useNavigate:   () => jest.fn(),
+  useLocation:   () => ({ pathname: '/', search: '' }),
+}));
 
 // Minimal stubs for heavy child components that can't render in jsdom
 jest.mock('../components/LandingPage',   () => () => <div data-testid="landing-page" />);
@@ -68,10 +68,10 @@ jest.mock('../components/ClientRegistrationPage', () => () => null);
 jest.mock('../components/LogViewer',     () => () => null);
 jest.mock('../components/education/EducationPanelsHost', () => () => null);
 jest.mock('../context/EducationUIContext', () => ({
-  EducationUIProvider: ({ children }) => <>{children}</>,
+  EducationUIProvider: ({ children }) => children,
 }));
 jest.mock('../context/TokenChainContext', () => ({
-  TokenChainProvider: ({ children }) => <>{children}</>,
+  TokenChainProvider: ({ children }) => children,
 }));
 jest.mock('../services/configService', () => ({
   savePublicConfig: jest.fn().mockResolvedValue(undefined),
@@ -81,7 +81,6 @@ jest.mock('react-toastify', () => ({
   toast: { success: jest.fn(), error: jest.fn() },
 }));
 
-import React from 'react';
 import { render, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import axios from 'axios';
@@ -152,7 +151,6 @@ describe('App — unauthenticated state', () => {
     window.addEventListener('userAuthenticated', listener);
     render(<App />);
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
     expect(listener).not.toHaveBeenCalled();
     window.removeEventListener('userAuthenticated', listener);
   });
@@ -160,13 +158,10 @@ describe('App — unauthenticated state', () => {
   it('calls /api/auth/oauth/status, /api/auth/oauth/user/status, and /api/auth/session', async () => {
     render(<App />);
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
-    await waitFor(() => {
-      const urls = axios.get.mock.calls.map(c => c[0]);
-      expect(urls).toContain('/api/auth/oauth/status');
-      expect(urls).toContain('/api/auth/oauth/user/status');
-      expect(urls).toContain('/api/auth/session');
-    });
+    const urls = () => axios.get.mock.calls.map(c => c[0]);
+    await waitFor(() => expect(urls()).toContain('/api/auth/oauth/status'));
+    await waitFor(() => expect(urls()).toContain('/api/auth/oauth/user/status'));
+    await waitFor(() => expect(urls()).toContain('/api/auth/session'));
   });
 });
 
@@ -192,21 +187,7 @@ describe('App — admin OAuth session detected', () => {
     window.addEventListener('userAuthenticated', listener);
     render(<App />);
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
     await waitFor(() => expect(listener).toHaveBeenCalled());
-    window.removeEventListener('userAuthenticated', listener);
-  });
-
-  it('dispatches userAuthenticated event when session is found', async () => {
-    const listener = jest.fn();
-    window.addEventListener('userAuthenticated', listener);
-
-    render(<App />);
-    await act(async () => { jest.runAllTimers(); });
-    await waitFor(() => {
-      expect(listener).toHaveBeenCalled();
-    });
-
     window.removeEventListener('userAuthenticated', listener);
   });
 });
@@ -240,7 +221,6 @@ describe('App — end-user OAuth session detected', () => {
     window.addEventListener('userAuthenticated', listener);
     render(<App />);
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
     await waitFor(() => expect(listener).toHaveBeenCalled());
     window.removeEventListener('userAuthenticated', listener);
   });
@@ -275,7 +255,6 @@ describe('App — generic /api/auth/session fallback', () => {
     window.addEventListener('userAuthenticated', listener);
     render(<App />);
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
     await waitFor(() => expect(listener).toHaveBeenCalled());
     window.removeEventListener('userAuthenticated', listener);
   });
@@ -300,12 +279,8 @@ describe('App — regular page load does not retry', () => {
 
   it('makes exactly one round of endpoint checks (no retry loop)', async () => {
     render(<App />);
-    // Run the initial 150ms timeout
     await act(async () => { jest.advanceTimersByTime(200); });
-    await act(async () => {}); // flush promises
-    // Run any remaining timers (there should be none if no retry)
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
 
     const authCalls = axios.get.mock.calls
       .map(c => c[0])
@@ -350,18 +325,11 @@ describe('App — ?oauth=success triggers retry loop', () => {
 
     // Advance through initial check + 3 retries
     await act(async () => { jest.advanceTimersByTime(200); });
-    await act(async () => {});
     await act(async () => { jest.advanceTimersByTime(450); });
-    await act(async () => {});
     await act(async () => { jest.advanceTimersByTime(950); });
-    await act(async () => {});
     await act(async () => { jest.advanceTimersByTime(1900); });
-    await act(async () => {});
 
-    await waitFor(() => {
-      expect(listener).toHaveBeenCalled();
-    });
-
+    await waitFor(() => expect(listener).toHaveBeenCalled());
     window.removeEventListener('userAuthenticated', listener);
   });
 });
@@ -386,7 +354,6 @@ describe('App — userAuthenticated event re-triggers check', () => {
     mockAllUnauthenticated();
     render(<App />);
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
 
     const callsBefore = axios.get.mock.calls
       .map(c => c[0]).filter(u => u.startsWith('/api/auth')).length;
@@ -396,7 +363,6 @@ describe('App — userAuthenticated event re-triggers check', () => {
       window.dispatchEvent(new CustomEvent('userAuthenticated'));
     });
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
 
     // App should re-run checkOAuthSession — more auth calls expected
     const callsAfter = axios.get.mock.calls
@@ -426,7 +392,6 @@ describe('App — userLoggedOut localStorage flag skips check', () => {
     mockAllUnauthenticated();
     render(<App />);
     await act(async () => { jest.runAllTimers(); });
-    await act(async () => {});
 
     // The flag should have been cleared
     expect(localStorage.getItem('userLoggedOut')).toBeNull();
