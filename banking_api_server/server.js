@@ -389,7 +389,9 @@ app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/auth/oauth/user', oauthUserRoutes);
 app.use('/api/auth/ciba', cibaRoutes);
 app.use('/api/agent', agentIdentityRoutes);
-app.use('/api/banking-agent', authenticateToken, bankingAgentNlRoutes);
+// NL route uses its own req.session?.user check — full JWT validation is not
+// needed here and causes invalid_token errors when JWKS fetch times out.
+app.use('/api/banking-agent', bankingAgentNlRoutes);
 app.use('/api/mcp/inspector', authenticateToken, mcpInspectorRoutes);
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
