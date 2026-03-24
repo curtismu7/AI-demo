@@ -36,18 +36,26 @@ const Login = () => {
           errorMessage = 'No authorization code received. Please try again.';
           break;
         case 'callback_failed': {
-          const detail = searchParams.get('detail');
-          const info   = searchParams.get('info');
-          const detailMsg = detail && detail !== 'unknown' ? ` (${detail})` : '';
-          const infoMsg   = info ? ` — ${info}` : '';
-          errorMessage = `Authentication callback failed${detailMsg}${infoMsg}. Check that your PingOne redirect URI is registered correctly.`;
+          const detail = searchParams.get('detail') || '';
+          if (detail === 'invalid_client') {
+            errorMessage = 'Sign-in failed due to a configuration issue. Please contact your administrator.';
+          } else if (detail === 'invalid_grant') {
+            errorMessage = 'Your sign-in session expired. Please try again.';
+          } else if (detail === 'access_denied') {
+            errorMessage = 'Access was denied. Please contact your administrator if this is unexpected.';
+          } else {
+            errorMessage = 'Sign-in could not be completed. Please try again.';
+          }
           break;
         }
+        case 'too_many_requests':
+          errorMessage = 'Too many sign-in attempts. Please wait a few minutes and try again.';
+          break;
         case 'oauth_init_failed':
-          errorMessage = 'Failed to initialize OAuth. Please try again.';
+          errorMessage = 'Sign-in is temporarily unavailable. Please try again.';
           break;
         default:
-          errorMessage = 'Authentication error occurred. Please try again.';
+          errorMessage = 'Something went wrong during sign-in. Please try again.';
       }
       setError(errorMessage);
     }

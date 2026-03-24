@@ -204,22 +204,26 @@ if (isVercel || isReplit) {
 }
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit for development
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
+const _rateLimitHandler = (req, res) => {
+  // Auth routes are browser-driven redirects — send to login page with friendly error
+  if (req.path.startsWith('/api/auth')) {
+    return res.redirect('/login?error=too_many_requests');
   }
+  res.status(429).json({ error: 'Too many requests. Please wait a few minutes and try again.' });
+};
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100,
+  handler: _rateLimitHandler,
 });
 // Exempt log-viewer polling from the global rate limit
 app.use((req, res, next) => req.path.startsWith('/api/logs') ? next() : limiter(req, res, next));
 
 // Tighter rate limit for auth endpoints to slow brute-force / credential-stuffing.
 const authLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: 60 * 1000,
   max: process.env.NODE_ENV === 'development' ? 200 : 20,
-  message: { error: 'Too many authentication requests, please wait before retrying.' }
+  handler: _rateLimitHandler,
 });
 app.use('/api/auth/oauth', authLimiter);
 
