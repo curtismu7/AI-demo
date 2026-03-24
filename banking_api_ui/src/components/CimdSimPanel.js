@@ -707,21 +707,31 @@ function SimulateTab() {
             <div className="cimd-sim-step">
               <div className="cimd-sim-step-title">① Authorization Request</div>
               <p>
-                The browser sends an authorization request to the AS. The{' '}
-                <code>client_id</code> parameter is a full HTTPS URL — not an opaque string:
+                The client begins a standard OAuth 2.0 Authorization Code flow with PKCE.
+                The one difference from a traditional flow is the <code>client_id</code>{' '}
+                — instead of an opaque string like <code>app_client_abc123</code>, it is a{' '}
+                <strong>full HTTPS URL</strong> pointing to a metadata document the client
+                hosts itself:
               </p>
               <CodeBlock>{`GET /authorize
   ?response_type=code
   &client_id=${clientIdUrl}
   &redirect_uri=${encodeURIComponent(redirectUri)}
   &scope=${encodeURIComponent(docScope)}
-  &code_challenge=${DEMO_CODE_CHALLENGE}
+  &code_challenge=${DEMO_CODE_CHALLENGE}   ← PKCE: SHA-256 hash of a random verifier
   &code_challenge_method=S256
-  &state=xyz789-secure-random-state`}</CodeBlock>
+  &state=xyz789-secure-random-state         ← CSRF protection`}</CodeBlock>
               <div className="cimd-sim-hint">
-                💡 Notice: <code>client_id</code> is a URL beginning with{' '}
-                <code>https://</code> — this signals to the AS that it should fetch the
-                metadata document.
+                💡 <strong>The key CIMD innovation:</strong> <code>client_id</code> is a
+                URL beginning with <code>https://</code>. This single change is how the AS
+                knows to fetch client metadata dynamically instead of looking it up in a
+                pre-registration database.
+              </div>
+              <div className="cimd-sim-hint" style={{ marginTop: '8px' }}>
+                🔐 <strong>PKCE</strong> (<code>code_challenge</code> /{' '}
+                <code>code_verifier</code>) protects against authorization code interception.
+                Even if an attacker captures the code in the redirect, they cannot exchange
+                it without the original random verifier — which never leaves the client.
               </div>
               <button
                 className="cimd-btn cimd-btn--primary"
@@ -738,8 +748,10 @@ function SimulateTab() {
             <div className="cimd-sim-step">
               <div className="cimd-sim-step-title">② AS Detects URL client_id</div>
               <p>
-                The Authorization Server inspects the incoming <code>client_id</code>{' '}
-                and identifies it as a URL:
+                The Authorization Server's first job is to resolve the client. With CIMD,
+                the resolution logic branches on whether the <code>client_id</code> looks
+                like a URL. This keeps the AS <strong>fully backward-compatible</strong> —
+                opaque client IDs still work exactly as before:
               </p>
               <CodeBlock>{`// Authorization Server — client_id resolution (pseudocode)
 
@@ -748,11 +760,12 @@ const client_id = req.query.client_id;
 
 if (client_id.startsWith('https://')) {
   // ── CIMD path ─────────────────────────────────────────────
-  // client_id is a URL → fetch the Client ID Metadata Document
-  const doc = await fetchJSON(client_id);
+  // No prior registration needed: go fetch the client's own
+  // metadata document at the client_id URL.
+  const doc = await fetchJSON(client_id);   // next step →
   return validateAuthorizeRequest(req, doc);
 } else {
-  // ── Classical path ────────────────────────────────────────
+  // ── Classical path (unchanged) ───────────────────────────
   // Opaque client_id → look up in the local registration DB
   const client = await db.clients.findById(client_id);
   return validateAuthorizeRequest(req, client);
@@ -771,7 +784,14 @@ if (client_id.startsWith('https://')) {
               </div>
               <div className="cimd-check cimd-check--info" style={{ marginTop: '6px' }}>
                 <span className="cimd-check-icon">→</span>
-                <span>Taking CIMD path — will fetch the metadata document</span>
+                <span>Taking CIMD path — will fetch the metadata document next</span>
+              </div>
+              <div className="cimd-sim-hint" style={{ marginTop: '10px' }}>
+                ⚡ <strong>Why no registration?</strong> Unlike OAuth Dynamic Client
+                Registration (DCR), CIMD requires no admin approval, no client_secret
+                bootstrapping, and no write access to the AS database. The AS simply
+                trusts that whoever controls the HTTPS URL controls the client — the
+                same model that secures the web itself (DNS + TLS).
               </div>
               <button
                 className="cimd-btn cimd-btn--primary"
@@ -788,11 +808,25 @@ if (client_id.startsWith('https://')) {
             <div className="cimd-sim-step">
               <div className="cimd-sim-step-title">③ AS Fetches Metadata Document</div>
               <p>
-                The AS issues a GET request to the <code>client_id</code> URL:
+                The AS makes a plain HTTPS GET request to the <code>client_id</code> URL.
+                This is the heart of CIMD — the client's identity document is self-hosted
+                at a well-known path under the client's own domain:
               </p>
               <CodeBlock>{`GET /.well-known/oauth-client/${cimdPath} HTTP/1.1
-Host: ${cimdHost}
+Host: ${cimdHost}              ← the client's own domain
 Accept: application/json`}</CodeBlock>
+              <div className="cimd-sim-hint">
+                🔒 <strong>Security via HTTPS:</strong> TLS ensures the AS is talking to
+                the real <code>{cimdHost}</code> — the same chain of trust that protects
+                every HTTPS website. Only the domain owner can serve a response at this
+                URL, so the AS can trust the content without any shared secret.
+              </div>
+              <div className="cimd-sim-hint" style={{ marginTop: '8px' }}>
+                ⚡ <strong>Caching matters:</strong> The AS should honour{' '}
+                <code>Cache-Control</code> headers in the response. A well-configured
+                document with <code>max-age=3600</code> means the AS only fetches it once
+                per hour, keeping latency negligible for subsequent authorizations.
+              </div>
               <div className="cimd-fetch-status">
                 {fetchStatus === 'loading' && (
                   <div className="cimd-fetch-spinner">
@@ -819,19 +853,58 @@ Accept: application/json`}</CodeBlock>
           {simStep >= 3 && simStep <= 3 && cimdDoc && (
             <div className="cimd-sim-step">
               <div className="cimd-sim-step-title">④ Metadata Document Received</div>
-              <p>The AS receives the metadata document with HTTP caching headers:</p>
+              <p>
+                The AS receives a JSON document containing everything it needs to know
+                about this client. There is no database lookup — <strong>the document
+                IS the client registration</strong>. Let's look at what each field means:
+              </p>
               <CodeBlock>{`HTTP/1.1 200 OK
 Content-Type: application/json
-Cache-Control: public, max-age=3600
+Cache-Control: public, max-age=3600  ← AS may cache for 1 hour
 
 ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
+              <div className="cimd-sim-hint">
+                📋 <strong>Key fields explained:</strong>
+              </div>
+              <div className="cimd-checks" style={{ marginTop: '6px' }}>
+                <div className="cimd-check cimd-check--info">
+                  <span className="cimd-check-icon">🆔</span>
+                  <div>
+                    <strong>client_id</strong> — must exactly match the URL the AS
+                    fetched. Any mismatch is a security violation (DNS rebinding protection).
+                  </div>
+                </div>
+                <div className="cimd-check cimd-check--info">
+                  <span className="cimd-check-icon">↩</span>
+                  <div>
+                    <strong>redirect_uris</strong> — the exhaustive list of allowed
+                    callback URLs. The AS will reject any <code>redirect_uri</code> not
+                    in this list, preventing token theft via open redirect.
+                  </div>
+                </div>
+                <div className="cimd-check cimd-check--info">
+                  <span className="cimd-check-icon">🔑</span>
+                  <div>
+                    <strong>token_endpoint_auth_method</strong> — how the client will
+                    authenticate at the token endpoint (e.g.{' '}
+                    <code>client_secret_basic</code>, <code>private_key_jwt</code>).
+                  </div>
+                </div>
+                <div className="cimd-check cimd-check--info">
+                  <span className="cimd-check-icon">📦</span>
+                  <div>
+                    <strong>scope</strong> — the maximum scopes this client may ever
+                    request. The AS will downscope any request that exceeds this.
+                  </div>
+                </div>
+              </div>
               {usedRealDoc && (
-                <div className="cimd-sim-hint">
+                <div className="cimd-sim-hint" style={{ marginTop: '10px' }}>
                   ✅ Using your real document fetched from this backend
                 </div>
               )}
               {!usedRealDoc && (
-                <div className="cimd-sim-hint">
+                <div className="cimd-sim-hint" style={{ marginTop: '10px' }}>
                   ℹ Using the built-in demo document — register a real client via{' '}
                   <strong>Admin → Client Registration</strong> and enter its app ID to
                   use your own.
@@ -852,8 +925,10 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
             <div className="cimd-sim-step">
               <div className="cimd-sim-step-title">⑤ AS Validates the Authorization Request</div>
               <p>
-                The AS checks each parameter in the authorization request against the
-                metadata document:
+                With the document in hand, the AS validates every parameter from Step ①
+                against what the document permits. Each check prevents a specific class of
+                attack — a failure at any point causes the AS to return an error response
+                and <strong>never issue an authorization code</strong>:
               </p>
               <div className="cimd-checks">
                 <div className="cimd-check cimd-check--pass">
@@ -867,6 +942,9 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                       In document:{' '}
                       <code>{cimdDoc.redirect_uris?.[0] || redirectUri}</code>
                     </span>
+                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                      Prevents token theft — attacker cannot redirect the code to their own server
+                    </span>
                   </div>
                 </div>
                 <div className="cimd-check cimd-check--pass">
@@ -876,6 +954,9 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                     <span className="cimd-check-detail">
                       <code>authorization_code</code> ∈{' '}
                       {JSON.stringify(grantTypes)}
+                    </span>
+                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                      Prevents downgrade to implicit flow or other weaker grant types
                     </span>
                   </div>
                 </div>
@@ -887,7 +968,10 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                       Requested: <code>{docScope}</code>
                     </span>
                     <span className="cimd-check-detail">
-                      Document scope: <code>{cimdDoc.scope || docScope}</code>
+                      Document max scope: <code>{cimdDoc.scope || docScope}</code>
+                    </span>
+                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                      Prevents scope escalation — client cannot request more than it declared
                     </span>
                   </div>
                 </div>
@@ -898,6 +982,9 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                     <span className="cimd-check-detail">
                       <code>{authMethod}</code>
                     </span>
+                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                      AS knows how to authenticate this client at the token endpoint
+                    </span>
                   </div>
                 </div>
                 <div className="cimd-check cimd-check--pass">
@@ -907,6 +994,9 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
                     <span className="cimd-check-detail">
                       <code>code</code> ∈{' '}
                       {JSON.stringify(cimdDoc.response_types || ['code'])}
+                    </span>
+                    <span className="cimd-check-detail" style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                      Confirms the client declared it supports Authorization Code flow
                     </span>
                   </div>
                 </div>
@@ -926,9 +1016,11 @@ ${JSON.stringify(cimdDoc, null, 2)}`}</CodeBlock>
             <div className="cimd-sim-step">
               <div className="cimd-sim-step-title">⑥ Authorization Proceeds ✓</div>
               <p>
-                All validation passed. The AS issues an authorization code and redirects
-                the browser back to the client — exactly the same as a traditionally
-                pre-registered client:
+                All five checks passed. The AS issues a short-lived <strong>authorization
+                code</strong> and redirects the browser back to the client. This part of
+                the flow is <em>identical</em> to a traditionally pre-registered client —
+                CIMD only changes how the client was <em>identified</em>, not what happens
+                after:{' '}
               </p>
               <CodeBlock>{`HTTP/1.1 302 Found
 Location: ${redirectUri}
@@ -945,15 +1037,43 @@ grant_type=authorization_code
 &redirect_uri=${encodeURIComponent(redirectUri)}
 &code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk`}</CodeBlock>
 
+              <div className="cimd-sim-hint">
+                🔐 <strong>PKCE verification at token exchange:</strong> the client is
+                required to send the original <code>code_verifier</code> (the raw random
+                string whose hash was sent as <code>code_challenge</code> in Step ①).
+                The AS hashes it and compares — if they don't match, the token request
+                fails. This binds the code to the original client tab, preventing code
+                interception attacks.
+              </div>
               <div className="cimd-sim-done">
                 <div className="cimd-sim-done-icon">🎉</div>
                 <div>
                   <strong>CIMD flow complete!</strong>
                   <br />
-                  No out-of-band client registration was required. The AS discovered
-                  everything it needed from the metadata document hosted at the{' '}
-                  <code>client_id</code> URL, validated the request dynamically, and
-                  issued an authorization code.
+                  No out-of-band registration required, no secrets bootstrapped out-of-band,
+                  no admin approval needed. The AS discovered and validated the client
+                  entirely from a JSON document the client hosted at its own HTTPS URL —
+                  the same trust model the web has used for 30 years.
+                </div>
+              </div>
+              <div className="cimd-checks" style={{ marginTop: '12px' }}>
+                <div className="cimd-check cimd-check--info">
+                  <span className="cimd-check-icon">🏦</span>
+                  <div>
+                    <strong>Why this matters for open banking</strong> — any regulated
+                    third-party application can onboard to an AS simply by publishing a
+                    compliant metadata document at a stable HTTPS URL. No manual enrollment
+                    API calls, no waiting for approval, no shared secrets via email.
+                  </div>
+                </div>
+                <div className="cimd-check cimd-check--info">
+                  <span className="cimd-check-icon">🔄</span>
+                  <div>
+                    <strong>Instant rotation</strong> — to update scopes, redirect URIs,
+                    or auth method, the client simply updates the JSON document. The next
+                    authorization request picks up the new document automatically (subject
+                    to <code>Cache-Control</code> TTL).
+                  </div>
                 </div>
               </div>
 

@@ -279,6 +279,9 @@ function TryItTab({ cibaStatus }) {
               value={emailHint}
               onChange={(e) => setEmailHint(e.target.value)}
               placeholder="Defaults to currently logged-in user's email"
+              autoComplete="off"
+              data-lpignore="true"
+              data-form-type="other"
             />
           </label>
           <label className="ciba-label">
