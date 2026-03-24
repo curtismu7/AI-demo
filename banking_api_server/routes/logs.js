@@ -134,7 +134,7 @@ router.get('/vercel', async (req, res) => {
       });
     } catch (cliError) {
       // Fallback: return console logs from current process
-      console.log('Vercel CLI not available, using fallback logs');
+      // (Vercel serverless does not have CLI access — this is expected, no need to log it)
       logs = [
         {
           timestamp: new Date().toISOString(),

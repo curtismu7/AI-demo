@@ -51,9 +51,28 @@ if (_redisUrl) {
   try {
     const RedisStore = require('connect-redis').default || require('connect-redis');
     const { createClient } = require('redis');
-    const redisClient = createClient({ url: _redisUrl, socket: { tls: _redisUrl.startsWith('rediss://') } });
+    const redisClient = createClient({
+      url: _redisUrl,
+      // rediss:// URL already enables TLS — do NOT pass socket.tls:true or it double-wraps.
+      // In a Vercel serverless environment each request is a fresh invocation;
+      // disable reconnect strategy so a stale socket doesn't log noisy errors.
+      socket: {
+        connectTimeout: 5000,
+        reconnectStrategy: (retries) => {
+          if (retries < 2) return Math.min(retries * 200, 500);
+          // Give up after 2 attempts — serverless instances are short-lived.
+          return new Error('[session-store] Redis connection failed after retries');
+        },
+      },
+    });
     redisClient.connect().catch((err) => console.error('[session-store] Redis connect error:', err.message));
-    redisClient.on('error', (err) => console.error('[session-store] Redis error:', err.message));
+    redisClient.on('error', (err) => {
+      // Only log the first error per instance; subsequent socket-closed events are redundant
+      if (!redisClient._loggedError) {
+        console.error('[session-store] Redis error:', err.message);
+        redisClient._loggedError = true;
+      }
+    });
     sessionStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
     const src = process.env.REDIS_URL ? 'REDIS_URL' : 'UPSTASH_REDIS_REST_URL';
     console.log(`[session-store] Using Redis store (${src})`);
