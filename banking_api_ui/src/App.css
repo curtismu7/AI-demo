@@ -54,40 +54,48 @@
   to { transform: rotate(360deg); }
 }
 
-/* Log Viewer Floating Action Button */
+/* Log Viewer Floating Action Button — sits below CIMD button in top-right stack */
 .log-viewer-fab {
   position: fixed;
-  bottom: calc(var(--agent-panel-bottom) + var(--float-gap));
-  right: var(--float-edge);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+  top: 116px; /* CIMD is top:68px (~40px tall) + 8px gap = 116px */
+  right: var(--float-edge, 28px);
+  width: auto;
+  min-width: 100px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: white;
-  font-size: 24px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-  z-index: 999;
-  display: flex;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
+  z-index: 1001;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  user-select: none;
 }
 
 .log-viewer-fab:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+  background: linear-gradient(135deg, #7c8ef5 0%, #8b5cf6 100%);
 }
 
 .log-viewer-fab:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 
 @media (max-width: 768px) {
   .log-viewer-fab {
-    width: 44px;
-    height: 44px;
-    font-size: 20px;
+    min-width: 88px;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 0.75rem;
   }
 }

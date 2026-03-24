@@ -70,12 +70,7 @@ const LandingPage = () => {
       <nav className={`navbar ${scrollY > 50 ? 'scrolled' : ''}`}>
         <div className="nav-container">
           <div className="nav-brand">
-            <div className="brand-icon">
-              <div className="brand-square"></div>
-              <div className="brand-square"></div>
-              <div className="brand-square"></div>
-              <div className="brand-square"></div>
-            </div>
+            <img src="/logo.svg" alt="BX Finance Logo" style={{ height: 40, width: 40, marginRight: 12, borderRadius: 12, background: '#fff' }} />
             <span className="brand-name">BX Finance</span>
           </div>
           
@@ -149,7 +144,12 @@ const LandingPage = () => {
               </button>
             </div>
             <div className="hero-note">
-              <p>🔐 Powered by PingOne AI IAM Core • No passwords required</p>
+              <p style={{ fontSize: '2rem', color: '#ef4444', fontWeight: 800, margin: 0, lineHeight: 1.1 }}>
+                Powered by PingOne AI IAM Core
+              </p>
+              <p style={{ color: '#6b7280', fontSize: '1rem', margin: 0, marginTop: 4 }}>
+                No passwords required
+              </p>
             </div>
           </div>
           

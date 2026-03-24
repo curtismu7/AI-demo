@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   getMyAccounts,
   getAccountBalance,
@@ -236,6 +236,15 @@ export default function BankingAgent({ user }) {
   const isDraggingRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Auto-open when returning from /config (Config.js navigates back with scrollToAgent:true)
+  useEffect(() => {
+    if (location.state?.scrollToAgent) {
+      setIsOpen(true);
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;

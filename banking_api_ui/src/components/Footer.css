@@ -1,0 +1,22 @@
+.footer {
+  width: 100%;
+  background: #f8f8fa;
+  border-top: 1px solid #e0e0e0;
+  padding: 16px 0 8px 0;
+  position: relative;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+}
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.footer-logo {
+  height: 32px;
+  width: 32px;
+  margin-right: 8px;
+  vertical-align: middle;
+}

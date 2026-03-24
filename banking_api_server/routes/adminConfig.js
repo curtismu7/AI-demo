@@ -42,16 +42,18 @@ const configReadLimiter = rateLimit({
 // ---------------------------------------------------------------------------
 
 function isAdminSession(req) {
-  return !!(req.session?.oauthUser?.role === 'admin' || req.session?.isAdmin);
+  return !!(req.session?.user?.role === 'admin' || req.session?.isAdmin);
 }
 
 /**
  * Gate: allow request if (a) no config is stored yet, OR (b) caller is admin,
  * OR (c) hosted mode and the correct ADMIN_CONFIG_PASSWORD header is provided,
  * OR (d) hosted mode and ADMIN_CONFIG_PASSWORD is not set (open demo mode).
+ * OR (e) local dev (not Vercel / Replit) — always open.
  */
 function requireAdminOrUnconfigured(req, res, next) {
   if (!configStore.isConfigured()) return next(); // first-run: always open
+  if (!hosting.isVercel() && !hosting.isReplit()) return next(); // local dev: always open
   if (isAdminSession(req)) return next();          // OAuth admin session
 
   // Vercel / opt-in Replit: sessions may not persist — optional admin password header.

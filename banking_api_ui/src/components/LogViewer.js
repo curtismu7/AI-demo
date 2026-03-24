@@ -15,7 +15,7 @@ const LogViewer = ({ isOpen, onClose }) => {
   const [filter, setFilter] = useState({
     level: '',
     search: '',
-    source: 'console' // console, app, vercel
+    source: 'all' // all, console, app, vercel
   });
   const [stats, setStats] = useState(null);
   const logContainerRef = useRef(null);
@@ -32,10 +32,23 @@ const LogViewer = ({ isOpen, onClose }) => {
         ...(filter.search && { search: filter.search })
       };
 
-      const endpoint = `/api/logs/${filter.source}`;
-      const response = await axios.get(endpoint, { params });
-
-      setLogs(response.data.logs || []);
+      if (filter.source === 'all') {
+        const sources = ['console', 'app', 'vercel'];
+        const results = await Promise.allSettled(
+          sources.map(src => axios.get(`/api/logs/${src}`, { params }))
+        );
+        const merged = results
+          .flatMap((r, i) =>
+            r.status === 'fulfilled'
+              ? (r.value.data.logs || []).map(l => ({ ...l, _src: sources[i] }))
+              : []
+          )
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        setLogs(merged);
+      } else {
+        const response = await axios.get(`/api/logs/${filter.source}`, { params });
+        setLogs((response.data.logs || []).map(l => ({ ...l, _src: filter.source })));
+      }
     } catch (err) {
       console.error('Error fetching logs:', err);
       setError(err.message);
@@ -139,6 +152,7 @@ const LogViewer = ({ isOpen, onClose }) => {
               value={filter.source} 
               onChange={(e) => setFilter({ ...filter, source: e.target.value })}
             >
+              <option value="all">All Sources</option>
               <option value="console">Console Logs</option>
               <option value="app">Application Logs</option>
               <option value="vercel">Vercel Logs</option>
@@ -199,7 +213,7 @@ const LogViewer = ({ isOpen, onClose }) => {
             💾 Download
           </button>
 
-          {filter.source === 'console' && (
+          {(filter.source === 'console' || filter.source === 'all') && (
             <button onClick={clearLogs} className="clear-button">
               🗑️ Clear
             </button>
@@ -227,6 +241,7 @@ const LogViewer = ({ isOpen, onClose }) => {
               <tr>
                 <th style={{ width: '120px' }}>Time</th>
                 <th style={{ width: '80px' }}>Level</th>
+                <th style={{ width: '70px' }}>Source</th>
                 <th>Message</th>
               </tr>
             </thead>
@@ -251,6 +266,7 @@ const LogViewer = ({ isOpen, onClose }) => {
                         {log.level?.toUpperCase() || 'INFO'}
                       </span>
                     </td>
+                    <td className="log-source" style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{log._src || '—'}</td>
                     <td className="log-message">
                       {typeof log.message === 'object' 
                         ? JSON.stringify(log.message, null, 2)
