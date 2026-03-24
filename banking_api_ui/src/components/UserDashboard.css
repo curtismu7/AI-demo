@@ -861,6 +861,16 @@
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* Step-up / warning banners render inline in the page flow so they aren't hidden
+   behind the sticky EducationBar. Only toast-style messages stay position:fixed. */
+.inline-message--warning {
+  position: static;
+  transform: none;
+  left: auto;
+  margin: 0 0 1rem;
+  animation: none;
+}
+
 .inline-message--success {
   background: #d4edda;
   color: #155724;

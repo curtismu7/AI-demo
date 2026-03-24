@@ -287,14 +287,14 @@ const requireScopes = (requiredScopes, requireAll = false) => {
       // Normalize required scopes to array
       const scopesToCheck = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
 
-      // Admin role bypass: users with role=admin are trusted as having all banking scopes.
-      // This allows OAuth users whose PingOne token only carries standard OIDC scopes
-      // (openid/profile/email) to still access admin-gated routes without requiring
-      // custom banking:* scopes to be provisioned in PingOne.
-      if (req.user.role === 'admin') {
-        logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — user has admin role', {
+      // Role bypass: users authenticated via OAuth whose PingOne token only carries standard
+      // OIDC scopes (openid/profile/email) are trusted for banking endpoints based on role.
+      // Admin and customer OAuth users may not have banking:* scopes provisioned in PingOne.
+      if (req.user.role === 'admin' || (req.user.role === 'user' && req.user.tokenType === 'oauth')) {
+        logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — user has trusted OAuth role', {
           ...requestContext,
-          required_scopes: scopesToCheck
+          required_scopes: scopesToCheck,
+          user_role: req.user.role
         });
         return next();
       }

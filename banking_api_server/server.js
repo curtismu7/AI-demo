@@ -216,9 +216,9 @@ const limiter = rateLimit({
   max: process.env.NODE_ENV === 'development' ? 1000 : 500,
   handler: _rateLimitHandler,
 });
-// Exempt log-viewer polling and banking agent from the global rate limit
+// Exempt log-viewer polling, banking agent, and MCP tool calls from the global rate limit
 app.use((req, res, next) =>
-  (req.path.startsWith('/api/logs') || req.path.startsWith('/api/banking-agent') || req.path.startsWith('/api/agent'))
+  (req.path.startsWith('/api/logs') || req.path.startsWith('/api/banking-agent') || req.path.startsWith('/api/agent') || req.path.startsWith('/api/mcp'))
     ? next() : limiter(req, res, next));
 
 // Tighter rate limit for login/callback only — not status polling endpoints.
@@ -307,7 +307,7 @@ app.get('/api/auth/logout', async (req, res) => {
   const accessToken  = req.session.oauthTokens?.accessToken   || null;
   const refreshToken = req.session.oauthTokens?.refreshToken  || null;
   const frontendUrl  = process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000';
-  const postLogoutUri = `${frontendUrl}/login`;
+  const postLogoutUri = frontendUrl; // redirect to root — LandingPage shows when unauthenticated
 
   // RFC 7009 — revoke tokens before destroying the session so they can no
   // longer be used even if intercepted.  Runs in parallel; non-fatal on error.

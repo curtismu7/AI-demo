@@ -112,6 +112,9 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
     if (parsedAmount > 1_000_000) {
       return res.status(400).json({ error: 'amount_exceeds_limit', message: 'Transaction amount cannot exceed $1,000,000.' });
     }
+    if (type === 'transfer' && parsedAmount < 50) {
+      return res.status(400).json({ error: 'below_minimum', message: 'Transfer amount must be at least $50.' });
+    }
     // Round to 2 decimal places to prevent floating-point manipulation
     req.body.amount = Math.round(parsedAmount * 100) / 100;
 
