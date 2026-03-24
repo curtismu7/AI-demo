@@ -51,6 +51,43 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Log Viewer Floating Action Button */
+.log-viewer-fab {
+  position: fixed;
+  bottom: calc(var(--agent-panel-bottom) + var(--float-gap));
+  right: var(--float-edge);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.log-viewer-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.log-viewer-fab:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+  .log-viewer-fab {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
 }

@@ -19,6 +19,7 @@ import CIBAPanel from './components/CIBAPanel';
 import McpInspector from './components/McpInspector';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
+import LogViewer from './components/LogViewer';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
 import EducationBar from './components/EducationBar';
@@ -28,6 +29,7 @@ import './App.css';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [logViewerOpen, setLogViewerOpen] = useState(false);
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);
@@ -196,6 +198,16 @@ function App() {
           <BankingAgent user={user} />
           <EducationPanelsHost />
           <CIBAPanel />
+          <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
+          {/* Floating Log Viewer Button */}
+          <button
+            className="log-viewer-fab"
+            onClick={() => setLogViewerOpen(true)}
+            title="Open Log Viewer"
+            type="button"
+          >
+            📊
+          </button>
         </div>
       </TokenChainProvider>
       </EducationUIProvider>
