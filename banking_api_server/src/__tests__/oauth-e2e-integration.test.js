@@ -412,26 +412,26 @@ describe('End-to-End OAuth Integration Tests', () => {
   });
 
   describe('Token Refresh in E2E Flow', () => {
-    it('should handle token refresh during API access', async () => {
-      // Note: Token refresh is not yet implemented (returns 501)
+    it('should return 401 when no refresh token is in session', async () => {
+      // POST /api/auth/oauth/user/refresh — implemented (RFC 6749 §6).
+      // Without a prior login the session has no refresh token → 401.
       const refreshResponse = await agent
-        .get('/api/auth/oauth/user/refresh')
-        .expect(501);
+        .post('/api/auth/oauth/user/refresh')
+        .expect(401);
 
       expect(refreshResponse.body).toMatchObject({
-        error: 'Token refresh not implemented yet'
+        error: 'no_refresh_token',
       });
     });
 
-    it('should handle refresh token expiration', async () => {
-      // Note: Token refresh is not yet implemented (returns 501)
-      const refreshResponse = await agent
-        .get('/api/auth/oauth/user/refresh')
-        .expect(501);
+    it('should return 401 when session has no oauthTokens at all', async () => {
+      // Fresh agent — no login, no refresh token stored.
+      const freshAgent = request.agent(app);
+      const refreshResponse = await freshAgent
+        .post('/api/auth/oauth/user/refresh')
+        .expect(401);
 
-      expect(refreshResponse.body).toMatchObject({
-        error: 'Token refresh not implemented yet'
-      });
+      expect(refreshResponse.body.error).toBe('no_refresh_token');
     });
   });
 

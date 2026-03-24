@@ -130,7 +130,7 @@ router.get('/ready', async (_req, res) => {
 /**
  * Detailed health check with all components
  */
-router.get('/health', async (_req, res) => {
+router.get('/', async (_req, res) => {
   const health = {
     timestamp: new Date().toISOString(),
     status: 'healthy',

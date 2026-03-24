@@ -28,6 +28,19 @@ jest.mock('../../services/mcpWebSocketClient', () => {
 
 const mockPerformTokenExchange = jest.fn();
 
+// Configurable mock for resolveMcpAccessToken — set implementation per-test in beforeEach.
+// Default: return the bearer token directly (no exchange).
+// Exchange test: call mockPerformTokenExchange so expectations can be verified.
+const mockResolveMcpAccessToken = jest.fn();
+jest.mock('../../services/agentMcpTokenService', () => ({
+  resolveMcpAccessToken: (...args) => mockResolveMcpAccessToken(...args),
+  resolveMcpAccessTokenWithEvents: jest.fn(async (req) => {
+    const auth = req.headers?.authorization;
+    const token = auth && auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+    return { token };
+  }),
+}));
+
 jest.mock('../../services/oauthService', () => {
   const actual = jest.requireActual('../../services/oauthService');
   return {
@@ -67,6 +80,11 @@ describe('MCP Inspector routes', () => {
     });
     mockCall.mockResolvedValue({ content: [{ type: 'text', text: '{"ok":true}' }] });
     mockPerformTokenExchange.mockImplementation((token) => Promise.resolve(`exchanged:${token}`));
+    // Default: return the bearer token directly (no RFC 8693 exchange).
+    mockResolveMcpAccessToken.mockImplementation(async (req) => {
+      const auth = req.headers?.authorization;
+      return auth && auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+    });
     origGetEffective = configStore.getEffective.bind(configStore);
     getEffectiveSpy = jest.spyOn(configStore, 'getEffective').mockImplementation((key) => {
       if (key === 'mcp_resource_uri') return '';
@@ -143,6 +161,12 @@ describe('MCP Inspector routes', () => {
     });
 
     const token = bearerToken();
+    // Configure resolveMcpAccessToken to call the exchange mock so the test can
+    // verify the RFC 8693 exchange path without needing to execute the real service.
+    mockResolveMcpAccessToken.mockImplementation(async (_req, _tool) => {
+      return mockPerformTokenExchange(token, 'https://mcp-resource.example/aud', ['banking:accounts:read']);
+    });
+
     const res = await request(app)
       .post('/api/mcp/inspector/invoke')
       .set('Authorization', `Bearer ${token}`)

@@ -164,8 +164,14 @@ function optionalTokenIntrospectionMiddleware(req, res, next) {
   return tokenIntrospectionMiddleware(req, res, next);
 }
 
+/** Test helper: clears the in-process introspection cache between test runs. */
+function clearIntrospectionCache() {
+  introspectionCache.clear();
+}
+
 module.exports = {
   tokenIntrospectionMiddleware,
   optionalTokenIntrospectionMiddleware,
-  introspectToken
+  introspectToken,
+  clearIntrospectionCache,
 };
