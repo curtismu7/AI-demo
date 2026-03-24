@@ -73,6 +73,9 @@ function parseEducation(t) {
  * @returns {{ kind: 'banking', banking: { action: string, params?: object } } | null}
  */
 function parseBanking(t) {
+  if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b/.test(t)) {
+    return { kind: 'banking', banking: { action: 'mcp_tools' } };
+  }
   if (/\b(show|list|get|see).*(account|balances?)\b|\bmy accounts\b|\ball accounts\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'accounts' } };
   }

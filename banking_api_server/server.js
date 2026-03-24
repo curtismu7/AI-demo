@@ -307,7 +307,7 @@ app.get('/api/auth/logout', async (req, res) => {
   const accessToken  = req.session.oauthTokens?.accessToken   || null;
   const refreshToken = req.session.oauthTokens?.refreshToken  || null;
   const frontendUrl  = process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000';
-  const postLogoutUri = frontendUrl; // redirect to root — LandingPage shows when unauthenticated
+  const postLogoutUri = `${frontendUrl}/login`;
 
   // RFC 7009 — revoke tokens before destroying the session so they can no
   // longer be used even if intercepted.  Runs in parallel; non-fatal on error.

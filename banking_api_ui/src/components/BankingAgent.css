@@ -228,9 +228,9 @@
 /* ─── New header (ba-header) ─────────────────────────────────────────────── */
 .ba-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 9px;
   background: var(--ba-surface);
   border-bottom: 1px solid var(--ba-border);
   flex-shrink: 0;
@@ -238,6 +238,14 @@
   user-select: none;
 }
 .ba-header:active { cursor: grabbing; }
+
+/* Top row: title + buttons */
+.ba-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .ba-header-left { display: flex; align-items: center; gap: 10px; }
 .ba-status-dot {
   width: 9px; height: 9px; border-radius: 50%;
@@ -258,6 +266,44 @@
   flex-shrink: 0;
 }
 .ba-icon-btn:hover { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
+
+/* Connected services chips row */
+.ba-server-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ba-server-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px 2px 5px;
+  border-radius: 20px;
+  border: 1px solid var(--ba-border);
+  color: var(--ba-muted);
+  background: var(--ba-bg);
+  white-space: nowrap;
+}
+.ba-server-chip--active {
+  border-color: rgba(16,185,129,0.35);
+  color: #6ee7b7;
+  background: rgba(16,185,129,0.06);
+}
+.ba-chip-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+}
+.ba-chip-count {
+  font-weight: 400;
+  color: var(--ba-muted);
+  margin-left: 2px;
+}
+.ba-chip-count::before { content: '· '; }
 .ba-welcome { text-align: center; padding: 24px 16px 12px; color: var(--ba-muted); font-size: 13px; line-height: 1.6; }
 
 /* ─── Legacy header classes (kept for backward compat) ───────────────── */
@@ -945,4 +991,16 @@
   .banking-agent-results-panel {
     display: none;
   }
+}
+
+/* ─── Expanded (full-screen) mode ────────────────────────────────────────── */
+.banking-agent-panel.ba-expanded {
+  left: 16px;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  width: auto;
+  height: auto;
+  max-width: none;
+  border-radius: 12px;
 }

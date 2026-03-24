@@ -26,6 +26,7 @@ const ACTIONS = [
   { id: 'deposit',      label: '⬇ Deposit',             desc: 'Deposit into an account' },
   { id: 'withdraw',     label: '⬆ Withdraw',            desc: 'Withdraw from an account' },
   { id: 'transfer',     label: '↔ Transfer',            desc: 'Transfer between accounts' },
+  { id: 'mcp_tools',   label: '🔧 MCP Tools',           desc: 'List all available MCP banking tools' },
   { id: 'logout',       label: '🚪 Log Out',             desc: 'Sign out of your account' },
 ];
 
@@ -35,16 +36,19 @@ const SUGGESTIONS_CUSTOMER = [
   'Check my account balance',
   'Transfer $100 to savings',
   'What are my recent transactions?',
-  'Show my accounts',
-  'Deposit $500 into checking',
+  'List MCP tools',
+  'What is CIBA?',
+  'How does token exchange work?',
+  'What is MCP?',
 ];
 
 const SUGGESTIONS_ADMIN = [
   'Show all customer accounts',
   'List recent system transactions',
-  'Check account balance',
-  'Show all accounts',
-  'What are recent transactions?',
+  'List MCP tools',
+  'What is CIBA?',
+  'How does token exchange work?',
+  'What is step-up auth?',
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -228,6 +232,20 @@ function normalizeBankingParams(action, params) {
   return p;
 }
 
+// ─── Education topic inline messages (module-level for performance) ───────────
+
+const TOPIC_MESSAGES = {
+  'login-flow': `🔐 Authorization Code + PKCE Flow:\n\n1. App generates code_verifier (random 64 bytes) + code_challenge (SHA-256 hash)\n2. Browser redirects to PingOne /as/authorize with challenge\n3. User authenticates → PingOne redirects back with code\n4. BFF exchanges code + verifier for tokens (server-side only)\n5. Browser never sees the token — only a session cookie\n\nPKCE prevents interception: even if code is stolen, attacker can't exchange it without the verifier.`,
+  'token-exchange': `🔄 RFC 8693 Token Exchange (T1 → T2):\n\nWhy: The browser token (T1) has broad scope. The MCP server needs a narrowly-scoped token (T2) for least-privilege.\n\nHow:\n• BFF holds T1 (user's session token)\n• BFF calls PingOne /as/token with grant_type=urn:ietf:params:oauth:grant-type:token-exchange\n• T1 is subject_token; agent client credentials are actor_token\n• PingOne validates may_act claim in T1 and issues T2\n• T2 has: sub=user, act={client_id=agent}, narrow scope, MCP audience\n\nmay_act in T1 → act in T2 — proving delegation chain.`,
+  'may-act': `📋 may_act / act Claims (RFC 8693 §4.1):\n\nmay_act in T1 (user token): "this client is allowed to act on my behalf"\n  { "sub": "user-uuid", "may_act": { "client_id": "bff-admin-client" } }\n\nact in T2 (exchanged token): "this action was delegated"\n  { "sub": "user-uuid", "act": { "client_id": "bff-admin-client" } }\n\nThe MCP server validates act to confirm the BFF is the authorized actor — not just any client that got a token.`,
+  'mcp-protocol': `⚙️ Model Context Protocol (MCP):\n\nMCP is a JSON-RPC 2.0 protocol over WebSocket (or stdio/SSE) for AI tools.\n\nHandshake:\n  initialize → { protocolVersion, capabilities, serverInfo }\n  → initialized (ACK)\n\nDiscovery:\n  tools/list → [{ name, description, inputSchema }]\n\nExecution:\n  tools/call { name, arguments } → { content: [{ type, text }] }\n\nIn this demo:\n  Browser → BFF (/api/mcp/tool) → MCP Server (WebSocket) → Banking API\n\nToken flow: BFF performs RFC 8693 exchange before forwarding tool calls.`,
+  'introspection': `🔍 RFC 7662 Token Introspection:\n\nThe MCP server calls PingOne to validate tokens in real-time:\n  POST /as/introspect\n  { token: "...", token_type_hint: "access_token" }\n  → { active: true, sub, scope, exp, aud }\n\nWhy not just verify the JWT locally?\n• Catches revoked tokens (user logged out, compromised session)\n• Zero-trust: every tool call re-validates the token\n• Results cached 60s to avoid hammering PingOne`,
+  'step-up': `⬆️ Step-Up Authentication:\n\nTriggered when a high-value action requires stronger auth:\n• Transfer ≥ $250 → require MFA\n• BFF returns HTTP 428 with WWW-Authenticate: Bearer scope="step_up"\n\nTwo methods:\n1. CIBA: PingOne pushes challenge to user's device (out-of-band)\n2. Redirect: Browser redirects to /api/auth/oauth/user/stepup?acr_values=Multi_factor\n\nAfter approval, PingOne issues new token with higher ACR — BFF stores it and retries the original transaction.`,
+  'agent-gateway': `🌐 Agent Gateway / Resource Indicators (RFC 8707):\n\nRFC 8707: client specifies the resource URI when requesting a token\n  /as/token?resource=https://mcp.example.com\n  → token aud = "https://mcp.example.com"\n\nRFC 9728: Protected Resource Metadata\n  GET https://mcp.example.com/.well-known/oauth-protected-resource\n  → { resource, authorization_servers, scopes_supported }\n\nThis lets a dynamic AI agent discover what auth is needed before attempting a tool call — no hardcoded configuration.`,
+  'pingone-authorize': `🔐 PingOne Authorize (DaVinci):\n\nPingOne Authorize evaluates access policies at runtime using DaVinci flows.\n\nIn this demo it drives:\n• Step-up MFA triggers (ACR values like "Multi_factor")\n• CIBA push notifications to the user's device\n• Dynamic consent for high-value transactions\n\nThe acr_values parameter in /as/authorize tells PingOne which DaVinci policy to run.`,
+  'cimd': `📄 Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "▶ Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
+};
+
 export default function BankingAgent({ user, onLogout }) {
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
@@ -237,6 +255,7 @@ export default function BankingAgent({ user, onLogout }) {
     return saved === null ? true : saved === 'true';
   });
   const [isDark, setIsDark] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
   const [nlInput, setNlInput] = useState('');
   const [nlLoading, setNlLoading] = useState(false);
@@ -250,6 +269,8 @@ export default function BankingAgent({ user, onLogout }) {
   const [dragPos, setDragPos] = useState(null);
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
+  /** MCP server connection status for header display */
+  const [mcpStatus, setMcpStatus] = useState({ toolCount: null, connected: false });
   /**
    * Self-detected session user — populated by independent auth check so the
    * agent knows the session even if the parent App.js user prop hasn't resolved yet.
@@ -442,6 +463,22 @@ export default function BankingAgent({ user, onLogout }) {
     fetchNlStatus().then(setNlMeta).catch(() => setNlMeta({ geminiConfigured: false }));
   }, [isOpen, isLoggedIn]);
 
+  // Fetch MCP server tool count for header display (best-effort; silent on failure)
+  useEffect(() => {
+    if (!isOpen || !isLoggedIn) return;
+    fetch('/api/mcp/inspector/tools', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.tools) {
+          setMcpStatus({ toolCount: data.tools.length, connected: true });
+        } else {
+          setMcpStatus({ toolCount: ACTIONS.length, connected: true });
+        }
+      })
+      .catch(() => setMcpStatus({ toolCount: ACTIONS.length, connected: true }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isLoggedIn]);
+
   // ── Drag-to-move ──────────────────────────────────────────────────────────
   const handleDragStart = useCallback((e) => {
     // Don't intercept button/input clicks
@@ -472,7 +509,9 @@ export default function BankingAgent({ user, onLogout }) {
   }, []);
 
   // Panel position: override CSS anchoring when user has dragged the window
-  const panelStyle    = dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : {};
+  const panelStyle = isExpanded
+    ? { left: '16px', top: '16px', bottom: '16px', right: '16px', width: 'auto', height: 'auto' }
+    : dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : {};
   // Results panel sits to the left of the agent; shifts with it when dragged
   const resultsPanelStyle = dragPos
     ? { left: Math.max(8, dragPos.x - 528), top: dragPos.y, bottom: 'auto', right: 'auto' }
@@ -525,6 +564,23 @@ export default function BankingAgent({ user, onLogout }) {
           toast.update(toastId, { render: '↔️ Calling create_transfer…' });
           response = await createTransfer(form.fromId, form.toId, parseFloat(form.amount), form.note);
           break;
+        case 'mcp_tools': {
+          toast.update(toastId, { render: '🔧 Fetching MCP tool list…' });
+          const mcpRes = await fetch('/api/mcp/inspector/tools', { credentials: 'include' });
+          if (!mcpRes.ok) throw new Error(`MCP tools fetch failed: ${mcpRes.status}`);
+          const data = await mcpRes.json();
+          const tools = data.tools || [];
+          const toolText = tools.length === 0
+            ? 'No tools found — is the MCP server running?'
+            : tools.map((t, i) =>
+                `${i + 1}. ${t.name}\n   ${t.description || '(no description)'}\n   Inputs: ${Object.keys(t.inputSchema?.properties || {}).join(', ') || 'none'}`
+              ).join('\n\n');
+          addMessage('assistant', `🔧 MCP Banking Tools (${tools.length} available):\n\n${toolText}`, 'tools/list');
+          setIsExpanded(true);
+          toast.update(toastId, { render: `✅ ${tools.length} tools loaded`, type: 'success', isLoading: false, autoClose: 2000 });
+          setLoading(false);
+          return;
+        }
         default:
           throw new Error(`Unknown action: ${actionId}`);
       }
@@ -674,8 +730,12 @@ export default function BankingAgent({ user, onLogout }) {
           );
           return;
         }
+        const topicMsg = TOPIC_MESSAGES[panel];
         edu?.open(panel, tab);
-        addMessage('assistant', `Opened help: ${panel} (${source}).`);
+        addMessage('assistant', topicMsg
+          ? topicMsg
+          : `Opened help panel: ${panel}. See the sliding panel on the right for details.`
+        );
         return;
       }
       if (result.kind === 'banking' && result.banking?.action) {
@@ -686,6 +746,10 @@ export default function BankingAgent({ user, onLogout }) {
           return;
         }
         const p = normalizeBankingParams(action, params);
+        if (action === 'mcp_tools') {
+          await runAction('mcp_tools', {}, { skipUserLabel: true });
+          return;
+        }
         if (action === 'accounts' || action === 'transactions') {
           await runAction(action, {}, { skipUserLabel: true });
         } else if (action === 'balance' && p.accountId) {
@@ -733,7 +797,7 @@ export default function BankingAgent({ user, onLogout }) {
       {/* Panel */}
       {isOpen && (
         <div
-          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}`}
+          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded ? ' ba-expanded' : ''}`}
           role="dialog"
           aria-label="Banking AI Agent"
           ref={panelRef}
@@ -741,33 +805,56 @@ export default function BankingAgent({ user, onLogout }) {
         >
           {/* Header — spans full width */}
           <div className="ba-header banking-agent-drag-handle" onMouseDown={handleDragStart}>
-            <div className="ba-header-left">
-              <span className="ba-status-dot" />
-              <div>
-                <div className="ba-title">BX Finance AI Agent</div>
-                <div className="ba-subtitle">
-                  {isLoggedIn
-                    ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'} · Powered by MCP`
-                    : 'Sign in to get started'}
+            <div className="ba-header-top">
+              <div className="ba-header-left">
+                <span className="ba-status-dot" />
+                <div>
+                  <div className="ba-title">BX Finance AI Agent</div>
+                  <div className="ba-subtitle">
+                    {isLoggedIn
+                      ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'}`
+                      : 'Sign in to get started'}
+                  </div>
                 </div>
               </div>
+              <div className="ba-header-tools">
+                <button
+                  className="ba-icon-btn"
+                  onClick={() => { setIsExpanded(e => !e); setDragPos(null); }}
+                  title={isExpanded ? 'Restore size' : 'Expand to full screen'}
+                >
+                  {isExpanded ? '⊟' : '⊞'}
+                </button>
+                <button
+                  className="ba-icon-btn"
+                  onClick={() => setIsDark(d => !d)}
+                  title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {isDark ? '☀️' : '🌙'}
+                </button>
+                <button 
+                  className="ba-icon-btn" 
+                  onClick={() => setIsOpen(false)} 
+                  aria-label="Collapse agent"
+                  title="Collapse agent"
+                >
+                  ▼
+                </button>
+              </div>
             </div>
-            <div className="ba-header-tools">
-              <button
-                className="ba-icon-btn"
-                onClick={() => setIsDark(d => !d)}
-                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {isDark ? '☀️' : '🌙'}
-              </button>
-              <button 
-                className="ba-icon-btn" 
-                onClick={() => setIsOpen(false)} 
-                aria-label="Collapse agent"
-                title="Collapse agent"
-              >
-                ▼
-              </button>
+            {/* Connected services row */}
+            <div className="ba-server-chips">
+              <span className="ba-server-chip ba-server-chip--active" title="Banking AI tools service — connected">
+                <span className="ba-chip-dot" />
+                Banking Tools
+                {mcpStatus.connected && mcpStatus.toolCount != null && (
+                  <span className="ba-chip-count">{mcpStatus.toolCount} actions</span>
+                )}
+              </span>
+              <span className="ba-server-chip ba-server-chip--active" title="PingOne Identity — connected">
+                <span className="ba-chip-dot" />
+                PingOne Identity
+              </span>
             </div>
           </div>
 
