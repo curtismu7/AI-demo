@@ -980,6 +980,44 @@ export default function Config() {
 
         </form>
 
+        {/* ── Vercel Config ── */}
+        {redirectInfo && (
+          <div className="card" style={{ marginTop: '2rem', borderColor: '#fbbf24', background: '#fffbeb' }}>
+            <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+              <h2 className="card-title" style={{ margin: 0 }}>Vercel Config</h2>
+              <span style={{ fontSize: '0.8rem', color: '#92400e' }}>
+                Values the server is currently using — read from Vercel environment variables.
+                Compare these against your PingOne app settings to diagnose login failures.
+              </span>
+            </div>
+            <div style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.8rem', display: 'grid', gap: '0.6rem' }}>
+              {[
+                { label: 'Environment ID',     value: redirectInfo.environmentId },
+                { label: 'Admin Client ID',    value: redirectInfo.adminClientId },
+                { label: 'Admin Secret',       value: redirectInfo.adminSecretSet ? `${redirectInfo.adminSecretHint}•••• (set)` : null },
+                { label: 'User Client ID',     value: redirectInfo.userClientId },
+                { label: 'User Secret',        value: redirectInfo.userSecretSet  ? `${redirectInfo.userSecretHint}•••• (set)`  : null },
+                { label: 'Admin Redirect URI', value: redirectInfo.adminRedirectUri },
+                { label: 'User Redirect URI',  value: redirectInfo.userRedirectUri },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '0.5rem', alignItems: 'center' }}>
+                  <span style={{ color: '#92400e', fontWeight: 600, fontFamily: 'sans-serif', fontSize: '0.75rem' }}>{label}</span>
+                  <span style={{
+                    background: value ? '#fff' : '#fee2e2',
+                    border: `1px solid ${value ? '#fde68a' : '#fca5a5'}`,
+                    borderRadius: '4px',
+                    padding: '0.25rem 0.5rem',
+                    color: value ? '#1f2937' : '#dc2626',
+                    wordBreak: 'break-all',
+                  }}>
+                    {value || 'MISSING'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Run Your Own Instance ── */}
         <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
           <button
