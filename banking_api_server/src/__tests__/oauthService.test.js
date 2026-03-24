@@ -1,0 +1,386 @@
+/**
+ * @file oauthService.test.js
+ * @description Unit tests for OAuthService (admin OAuth client).
+ *
+ * Critical coverage areas:
+ *  1.  PKCE helpers — generateCodeVerifier / generateCodeChallenge
+ *  2.  generateAuthorizationUrl — client_id, redirect_uri, PKCE params, state, scopes, nonce
+ *  3.  exchangeCodeForToken — PKCE path (never send secret), secret path, no-auth path
+ *  4.  exchangeCodeForToken — error propagation (pingoneError / pingoneDesc)
+ *  5.  revokeToken — best-effort (never throws)
+ */
+
+const axios = require('axios');
+
+// ---- mock axios before requiring the service --------------------------------
+jest.mock('axios');
+
+// ---- mock debug helpers (no-ops) -------------------------------------------
+jest.mock('../../utils/oauthDebugFlags', () => ({ isOAuthVerboseDebug: () => false }));
+jest.mock('../../utils/oauthVerboseLogger', () => ({ verboseOAuthLog: jest.fn() }));
+
+// ---- controlled config fixture ---------------------------------------------
+const MOCK_CONFIG = {
+  environmentId:          'env-test-111',
+  _region:                'com',
+  _base:                  'https://auth.pingone.com/env-test-111/as',
+  authorizationEndpoint:  'https://auth.pingone.com/env-test-111/as/authorize',
+  tokenEndpoint:          'https://auth.pingone.com/env-test-111/as/token',
+  userInfoEndpoint:       'https://auth.pingone.com/env-test-111/as/userinfo',
+  jwksEndpoint:           'https://auth.pingone.com/env-test-111/as/jwks',
+  issuer:                 'https://auth.pingone.com/env-test-111/as',
+  clientId:               'test-admin-client-id',
+  clientSecret:           'test-admin-client-secret',
+  redirectUri:            'https://banking-demo-puce.vercel.app/api/auth/oauth/callback',
+  cibaEndpoint:           'https://auth.pingone.com/env-test-111/as/bc-authorize',
+  scopes:                 ['openid', 'profile', 'email'],
+  sessionSecret:          'test-sess-secret',
+  adminRole:              'admin',
+};
+
+jest.mock('../../config/oauth', () => MOCK_CONFIG);
+
+// ---- load SUT after mocks are in place -------------------------------------
+// oauthService exports a singleton instance (not the class)
+const svcSingleton = require('../../services/oauthService');
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function makeService(configOverrides = {}) {
+  // Each test gets the singleton but with isolated config values via MOCK_CONFIG overrides.
+  // Save current values so afterEach can restore them.
+  const saved = {};
+  for (const key of Object.keys(configOverrides)) {
+    saved[key] = MOCK_CONFIG[key];
+    MOCK_CONFIG[key] = configOverrides[key];
+  }
+  svcSingleton._testSavedConfig = saved;
+  return svcSingleton;
+}
+
+function restoreService() {
+  const saved = svcSingleton._testSavedConfig || {};
+  for (const [k, v] of Object.entries(saved)) {
+    MOCK_CONFIG[k] = v;
+  }
+  svcSingleton._testSavedConfig = {};
+}
+
+function parseBody(postCallArg) {
+  // axios.post receives an object body (not URLSearchParams) in exchangeCodeForToken
+  return postCallArg;
+}
+
+// ---------------------------------------------------------------------------
+// 1. PKCE helpers
+// ---------------------------------------------------------------------------
+describe('PKCE helpers', () => {
+  const svc = svcSingleton;
+
+  test('generateCodeVerifier returns a 128-char hex string', () => {
+    const v = svc.generateCodeVerifier();
+    expect(typeof v).toBe('string');
+    expect(v).toHaveLength(128); // 64 bytes → 128 hex chars
+    expect(/^[0-9a-f]+$/.test(v)).toBe(true);
+  });
+
+  test('generateCodeVerifier returns a different value each call', () => {
+    expect(svc.generateCodeVerifier()).not.toBe(svc.generateCodeVerifier());
+  });
+
+  test('generateCodeChallenge returns a base64url-encoded SHA-256 digest', () => {
+    const verifier = 'abc123';
+    const challenge = svc.generateCodeChallenge(verifier);
+    // base64url: no +, no /, no =
+    expect(/^[A-Za-z0-9\-_]+$/.test(challenge)).toBe(true);
+    // Deterministic for same input
+    expect(svc.generateCodeChallenge(verifier)).toBe(challenge);
+    // Different verifiers produce different challenges
+    expect(svc.generateCodeChallenge('xyz')).not.toBe(challenge);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. generateAuthorizationUrl
+// ---------------------------------------------------------------------------
+describe('generateAuthorizationUrl', () => {
+  const svc = svcSingleton;
+
+  function parse(url) {
+    const u = new URL(url);
+    return { base: u.origin + u.pathname, params: Object.fromEntries(u.searchParams) };
+  }
+
+  test('base URL uses configured authorizationEndpoint', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv', MOCK_CONFIG.redirectUri);
+    expect(parse(url).base).toBe(MOCK_CONFIG.authorizationEndpoint);
+  });
+
+  test('includes correct client_id', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv', MOCK_CONFIG.redirectUri);
+    expect(parse(url).params.client_id).toBe(MOCK_CONFIG.clientId);
+  });
+
+  test('includes provided redirect_uri', () => {
+    const customRedirect = 'https://example.com/callback';
+    const url = svc.generateAuthorizationUrl('st', 'cv', customRedirect);
+    expect(parse(url).params.redirect_uri).toBe(customRedirect);
+  });
+
+  test('falls back to config.redirectUri when none provided', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv');
+    expect(parse(url).params.redirect_uri).toBe(MOCK_CONFIG.redirectUri);
+  });
+
+  test('includes the provided state value', () => {
+    const url = svc.generateAuthorizationUrl('my-csrf-state', 'cv');
+    expect(parse(url).params.state).toBe('my-csrf-state');
+  });
+
+  test('includes response_type=code', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv');
+    expect(parse(url).params.response_type).toBe('code');
+  });
+
+  test('includes all configured scopes space-separated', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv');
+    const scope = parse(url).params.scope;
+    for (const s of MOCK_CONFIG.scopes) expect(scope).toContain(s);
+  });
+
+  test('includes code_challenge derived from codeVerifier', () => {
+    const verifier = 'test-verifier-xyz';
+    const expectedChallenge = svc.generateCodeChallenge(verifier);
+    const url = svc.generateAuthorizationUrl('st', verifier);
+    expect(parse(url).params.code_challenge).toBe(expectedChallenge);
+  });
+
+  test('includes code_challenge_method=S256', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv');
+    expect(parse(url).params.code_challenge_method).toBe('S256');
+  });
+
+  test('includes nonce when provided', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv', undefined, 'my-nonce');
+    expect(parse(url).params.nonce).toBe('my-nonce');
+  });
+
+  test('omits nonce when not provided', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv');
+    expect(parse(url).params.nonce).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. exchangeCodeForToken — happy paths
+// ---------------------------------------------------------------------------
+describe('exchangeCodeForToken — request body', () => {
+  let svc;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    svc = makeService({}); // singleton with default MOCK_CONFIG
+    axios.post.mockResolvedValue({
+      data: {
+        access_token: 'mock-access-token',
+        refresh_token: 'mock-refresh-token',
+        expires_in: 3600,
+        token_type: 'Bearer',
+      },
+    });
+  });
+
+  test('always sends grant_type=authorization_code', async () => {
+    await svc.exchangeCodeForToken('code-abc', 'verifier-123');
+    const body = axios.post.mock.calls[0][1];
+    expect(body.grant_type).toBe('authorization_code');
+  });
+
+  test('always sends the correct client_id', async () => {
+    await svc.exchangeCodeForToken('code-abc', 'verifier-123');
+    const body = axios.post.mock.calls[0][1];
+    expect(body.client_id).toBe(MOCK_CONFIG.clientId);
+  });
+
+  test('sends the provided code', async () => {
+    await svc.exchangeCodeForToken('my-auth-code', 'verifier-123');
+    const body = axios.post.mock.calls[0][1];
+    expect(body.code).toBe('my-auth-code');
+  });
+
+  // --- PKCE path -----------------------------------------------------------
+  describe('PKCE path (codeVerifier present)', () => {
+    test('sends code_verifier', async () => {
+      await svc.exchangeCodeForToken('code', 'my-verifier');
+      const body = axios.post.mock.calls[0][1];
+      expect(body.code_verifier).toBe('my-verifier');
+    });
+
+    test('does NOT send client_secret even when config has one', async () => {
+      // config.clientSecret is set to 'test-admin-client-secret' in MOCK_CONFIG
+      await svc.exchangeCodeForToken('code', 'my-verifier');
+      const body = axios.post.mock.calls[0][1];
+      expect(body.client_secret).toBeUndefined();
+    });
+  });
+
+  // --- non-PKCE path -------------------------------------------------------
+  describe('non-PKCE path (no codeVerifier), secret configured', () => {
+    test('sends client_secret', async () => {
+      await svc.exchangeCodeForToken('code', null);
+      const body = axios.post.mock.calls[0][1];
+      expect(body.client_secret).toBe(MOCK_CONFIG.clientSecret);
+    });
+
+    test('does NOT send code_verifier', async () => {
+      await svc.exchangeCodeForToken('code', null);
+      const body = axios.post.mock.calls[0][1];
+      expect(body.code_verifier).toBeUndefined();
+    });
+  });
+
+  // --- non-PKCE, no secret -------------------------------------------------
+  describe('non-PKCE path, no secret configured', () => {
+    beforeEach(() => {
+      restoreService();
+      svc = makeService({ clientSecret: '' });
+    });
+    afterEach(() => restoreService());
+
+    test('sends neither client_secret nor code_verifier', async () => {
+      await svc.exchangeCodeForToken('code', undefined);
+      const body = axios.post.mock.calls[0][1];
+      expect(body.client_secret).toBeUndefined();
+      expect(body.code_verifier).toBeUndefined();
+    });
+  });
+
+  // --- redirect_uri handling -----------------------------------------------
+  describe('redirect_uri resolution', () => {
+    test('uses provided redirectUri', async () => {
+      const custom = 'https://custom.example.com/cb';
+      await svc.exchangeCodeForToken('code', 'v', custom);
+      const body = axios.post.mock.calls[0][1];
+      expect(body.redirect_uri).toBe(custom);
+    });
+
+    test('falls back to config.redirectUri when not provided', async () => {
+      await svc.exchangeCodeForToken('code', 'v');
+      const body = axios.post.mock.calls[0][1];
+      expect(body.redirect_uri).toBe(MOCK_CONFIG.redirectUri);
+    });
+  });
+
+  // --- token endpoint -------------------------------------------------------
+  test('POSTs to the configured tokenEndpoint', async () => {
+    await svc.exchangeCodeForToken('code', 'v');
+    expect(axios.post.mock.calls[0][0]).toBe(MOCK_CONFIG.tokenEndpoint);
+  });
+
+  // --- return value ---------------------------------------------------------
+  test('returns the full token response data', async () => {
+    const result = await svc.exchangeCodeForToken('code', 'v');
+    expect(result.access_token).toBe('mock-access-token');
+    expect(result.refresh_token).toBe('mock-refresh-token');
+    expect(result.expires_in).toBe(3600);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. exchangeCodeForToken — error propagation
+// ---------------------------------------------------------------------------
+describe('exchangeCodeForToken — error handling', () => {
+  let svc;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    svc = makeService({});
+  });
+  afterEach(() => restoreService());
+
+  test('attaches pingoneError and pingoneDesc from PingOne response body', async () => {
+    axios.post.mockRejectedValue({
+      response: {
+        data: {
+          error: 'invalid_client',
+          error_description: 'The client authentication was invalid.',
+        },
+      },
+    });
+
+    await expect(svc.exchangeCodeForToken('c', 'v')).rejects.toMatchObject({
+      pingoneError: 'invalid_client',
+      pingoneDesc: 'The client authentication was invalid.',
+    });
+  });
+
+  test('error message includes the PingOne error code and description', async () => {
+    axios.post.mockRejectedValue({
+      response: { data: { error: 'invalid_grant', error_description: 'Code expired.' } },
+    });
+
+    await expect(svc.exchangeCodeForToken('c', 'v')).rejects.toThrow(
+      /invalid_grant.*Code expired/
+    );
+  });
+
+  test('falls back gracefully when PingOne provides no error body', async () => {
+    axios.post.mockRejectedValue(new Error('Network error'));
+
+    const err = await svc.exchangeCodeForToken('c', 'v').catch((e) => e);
+    expect(err.pingoneError).toBe('token_exchange_failed');
+    expect(err.pingoneDesc).toBe('');
+    expect(err.message).toMatch(/Failed to exchange/);
+  });
+
+  test('pingoneDesc is empty string when error_description is absent', async () => {
+    axios.post.mockRejectedValue({
+      response: { data: { error: 'server_error' } },
+    });
+
+    const err = await svc.exchangeCodeForToken('c', 'v').catch((e) => e);
+    expect(err.pingoneError).toBe('server_error');
+    expect(err.pingoneDesc).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. generateState
+// ---------------------------------------------------------------------------
+describe('generateState', () => {
+  const svc = svcSingleton;
+
+  test('returns a 64-char hex string', () => {
+    const s = svc.generateState();
+    expect(s).toHaveLength(64);
+    expect(/^[0-9a-f]+$/.test(s)).toBe(true);
+  });
+
+  test('returns unique values on successive calls', () => {
+    expect(svc.generateState()).not.toBe(svc.generateState());
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. revokeToken — best-effort (must not throw)
+// ---------------------------------------------------------------------------
+describe('revokeToken', () => {
+  let svc;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    svc = makeService({});
+  });
+  afterEach(() => restoreService());
+
+  test('resolves without throwing on success', async () => {
+    axios.post.mockResolvedValue({ status: 200, data: {} });
+    await expect(svc.revokeToken('some-token', 'access_token')).resolves.not.toThrow();
+  });
+
+  test('resolves without throwing even when PingOne returns an error', async () => {
+    axios.post.mockRejectedValue(new Error('revocation_endpoint_unreachable'));
+    await expect(svc.revokeToken('some-token', 'access_token')).resolves.not.toThrow();
+  });
+});
