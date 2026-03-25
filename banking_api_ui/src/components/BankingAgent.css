@@ -3,32 +3,62 @@
 /* ─── Floating Action Button ─────────────────────────────────────────────── */
 .banking-agent-fab {
   position: fixed;
-  bottom: var(--fab-bottom, 24px);
-  right: var(--float-edge, 24px);
+  bottom: var(--fab-bottom, 28px);
+  right: var(--float-edge, 28px);
   z-index: 10060;
-  width: var(--fab-size, 56px);
-  height: var(--fab-size, 56px);
-  border-radius: 50%;
+  height: 52px;
+  padding: 0 22px 0 18px;
+  border-radius: 26px;
   background: #6366f1;
   color: #fff;
-  font-size: 22px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(99,102,241,0.45);
+  box-shadow: 0 4px 24px rgba(99,102,241,0.55), 0 1px 6px rgba(0,0,0,0.18);
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Pulsing ring — draws the eye to the button */
+.banking-agent-fab::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 30px;
+  background: transparent;
+  border: 2px solid rgba(99,102,241,0.5);
+  animation: fab-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes fab-pulse {
+  0%   { opacity: 0.7; transform: scale(1); }
+  70%  { opacity: 0;   transform: scale(1.18); }
+  100% { opacity: 0;   transform: scale(1.18); }
 }
 
 .banking-agent-fab:hover {
   background: #4f46e5;
-  transform: scale(1.07);
-  box-shadow: 0 6px 24px rgba(99,102,241,0.55);
+  transform: scale(1.05);
+  box-shadow: 0 6px 28px rgba(99,102,241,0.65);
 }
 
 .banking-agent-fab.open { background: #4f46e5; }
+
+.banking-agent-fab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.banking-agent-fab-label {
+  font-size: 13px;
+  font-weight: 700;
+}
 
 /* ─── Chat Panel ────────────────────────────────────────────────────────── */
 .banking-agent-panel {

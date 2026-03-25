@@ -789,10 +789,11 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
         <button
           className="banking-agent-fab"
           onClick={() => setIsOpen(true)}
-          aria-label="Expand banking agent"
-          title="Expand Banking Agent"
+          aria-label="Open AI Banking Agent"
+          title="Open AI Banking Agent"
         >
-          ▲
+          <span className="banking-agent-fab-icon">🏦</span>
+          <span className="banking-agent-fab-label">AI Agent</span>
         </button>
       )}
 
