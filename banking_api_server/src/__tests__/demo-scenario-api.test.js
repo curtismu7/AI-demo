@@ -163,6 +163,18 @@ describe('Demo scenario API — account create/update', () => {
     expect(row.balance).toBe(123.45);
   });
 
+  it('PUT returns 409 when account id is missing from server (stale client / serverless)', async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .put('/')
+      .send({
+        accounts: [{ id: 'no-such-account-in-store', name: 'X', balance: 1 }],
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('stale_demo_accounts');
+  });
+
   it('PUT returns 403 when updating another user account id', async () => {
     global.__demoScenarioAccountTest.rows.push({
       id: 'other-user-acct',

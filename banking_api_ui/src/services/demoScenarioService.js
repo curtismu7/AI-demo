@@ -1,9 +1,16 @@
 // banking_api_ui/src/services/demoScenarioService.js
 
+function apiError(res, data) {
+  const err = new Error(data.message || data.error || `HTTP ${res.status}`);
+  err.code = data.error;
+  err.status = res.status;
+  return err;
+}
+
 export async function fetchDemoScenario() {
   const res = await fetch('/api/demo-scenario', { credentials: 'include' });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+  if (!res.ok) throw apiError(res, data);
   return data;
 }
 
@@ -15,7 +22,7 @@ export async function saveDemoScenario(body) {
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+  if (!res.ok) throw apiError(res, data);
   return data;
 }
 

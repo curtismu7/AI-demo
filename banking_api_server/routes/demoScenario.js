@@ -245,7 +245,14 @@ router.put('/', async (req, res) => {
         }
 
         const acct = dataStore.getAccountById(row.id);
-        if (!acct || acct.userId !== uid) {
+        if (!acct) {
+          return res.status(409).json({
+            error: 'stale_demo_accounts',
+            message:
+              'These account IDs are not on this server instance anymore (typical on cloud demo hosts after idle or a new deploy). Reload the Demo config page to fetch fresh accounts, then save again.',
+          });
+        }
+        if (acct.userId !== uid) {
           return res.status(403).json({ error: 'forbidden_account', message: 'You can only edit your own accounts.' });
         }
         const updates = {};

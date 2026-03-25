@@ -371,7 +371,18 @@ function AppWithAuth() {
       <EducationUIProvider>
       <TokenChainProvider>
         <div className="App end-user-nano">
-          <ToastContainer position="top-right" autoClose={22000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
+          <ToastContainer
+            position="bottom-right"
+            autoClose={22000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            draggable
+            // Increase spacing from viewport edges.
+            // react-toastify uses --toastify-toast-offset to compute bottom/right placement.
+            style={{ '--toastify-toast-offset': '96px' }}
+          />
           {/* Config page is always accessible, regardless of auth state */}
           <Routes>
             <Route path="/config" element={<Config />} />

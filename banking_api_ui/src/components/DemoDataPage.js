@@ -143,6 +143,10 @@ export default function DemoDataPage({ onLogout }) {
       await load();
     } catch (err) {
       toast.error(err.message || 'Save failed');
+      if (err.code === 'stale_demo_accounts') {
+        await load();
+        toast.info('Reloaded account list from the server — review the form and save again.');
+      }
     } finally {
       setSaving(false);
     }
