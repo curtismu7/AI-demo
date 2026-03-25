@@ -34,8 +34,6 @@ const ACTIONS = [
 // ─── Fake account data generator ────────────────────────────────────────────────
 
 function generateFakeAccounts(user) {
-  const firstName = user?.firstName || user?.name?.split(' ')[0] || 'User';
-  const lastName = user?.name?.split(' ')[1] || 'Customer';
   const userId = user?.sub || user?.id || 'user123';
   
   // Generate consistent account IDs based on user ID
@@ -298,7 +296,7 @@ function handleLoginAction(actionId) {
   }
 }
 
-function normalizeBankingParams(action, params) {
+function normalizeBankingParams(params) {
   const p = { ...(params || {}) };
   if (p.account_id && !p.accountId) p.accountId = p.account_id;
   if (p.from_account_id && !p.fromId) p.fromId = p.from_account_id;
@@ -392,7 +390,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
       // check may land on a cold instance before Redis propagates.  Retry with
       // increasing backoff (immediate, 600, 1400, 2500 ms).
       const retryDelays = [0, 600, 1400, 2500];
-      let timers = [];
+      const timers = [];
       retryDelays.forEach((delay, i) => {
         const t = setTimeout(async () => {
           const result = await Promise.all([
@@ -774,6 +772,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
           case 'transfer':
             highlightSection = 'accounts';
             break;
+          default:
+            // No highlighting for other actions
+            break;
         }
         
         if (highlightSection) {
@@ -969,7 +970,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
         setTimeout(() => onLogout?.(), 800);
         return;
       }
-      const p = normalizeBankingParams(action, params);
+      const p = normalizeBankingParams(params);
       if (action === 'mcp_tools') {
         await runAction('mcp_tools', {}, { skipUserLabel: true });
         return;

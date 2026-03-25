@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs').promises;
+const path = require('path');
 const router = express.Router();
 const dataStore = require('../data/store');
 const { requireAdmin, requireScopes } = require('../middleware/auth');
@@ -351,6 +353,69 @@ router.delete('/oauth-debug-log', requireAdmin, requireScopes(['banking:admin'])
   } catch (error) {
     console.error('oauth-debug-log clear error:', error);
     res.status(500).json({ error: 'log_clear_failed', message: error.message });
+  }
+});
+
+/**
+ * Build JSON snapshot of in-memory banking data (Dates → ISO strings).
+ */
+function buildSerializableBootstrapSnapshot() {
+  const snap = dataStore.getSnapshot();
+  return JSON.parse(
+    JSON.stringify(snap, (_key, value) => (value instanceof Date ? value.toISOString() : value))
+  );
+}
+
+/**
+ * GET downloadable seed file for committing as data/bootstrapData.json.
+ */
+router.get('/bootstrap/export', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+  try {
+    const body = buildSerializableBootstrapSnapshot();
+    const json = `${JSON.stringify(body, null, 2)}\n`;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="bootstrapData.json"');
+    res.send(json);
+  } catch (error) {
+    console.error('bootstrap export error:', error);
+    res.status(500).json({ error: 'bootstrap_export_failed', message: error.message });
+  }
+});
+
+/**
+ * POST writes seed file on disk (local dev only — never on Vercel).
+ */
+router.post('/bootstrap/export', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+  if (process.env.VERCEL) {
+    return res.status(403).json({
+      error: 'write_disabled',
+      message: 'Cannot write seed file on Vercel (read-only filesystem). Use GET to download JSON.',
+    });
+  }
+  const allowWrite =
+    process.env.NODE_ENV !== 'production' || process.env.ALLOW_BOOTSTRAP_EXPORT_WRITE === 'true';
+  if (!allowWrite) {
+    return res.status(403).json({
+      error: 'write_disabled',
+      message:
+        'Server file write is disabled in production unless ALLOW_BOOTSTRAP_EXPORT_WRITE=true. Use GET to download JSON.',
+    });
+  }
+  try {
+    const cwd = path.resolve(process.cwd());
+    const rel = process.env.BANKING_BOOTSTRAP_FILE || path.join('data', 'bootstrapData.json');
+    const outPath = path.resolve(cwd, rel);
+    const relToCwd = path.relative(cwd, outPath);
+    if (relToCwd.startsWith('..') || path.isAbsolute(relToCwd)) {
+      return res.status(400).json({ error: 'invalid_path', message: 'Path must stay within the API project directory.' });
+    }
+    const body = buildSerializableBootstrapSnapshot();
+    await fs.mkdir(path.dirname(outPath), { recursive: true });
+    await fs.writeFile(outPath, `${JSON.stringify(body, null, 2)}\n`, 'utf8');
+    res.json({ ok: true, path: outPath });
+  } catch (error) {
+    console.error('bootstrap write error:', error);
+    res.status(500).json({ error: 'bootstrap_write_failed', message: error.message });
   }
 });
 

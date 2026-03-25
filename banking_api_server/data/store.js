@@ -1,7 +1,10 @@
 const { v4: uuidv4 } = require('uuid');
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 const { sampleUsers, sampleAccounts, sampleTransactions, sampleActivityLogs } = require('./sampleData');
+
+const DEFAULT_BOOTSTRAP_PATH = path.join(__dirname, 'bootstrapData.json');
 
 class DataStore {
   constructor() {
@@ -9,150 +12,90 @@ class DataStore {
     this.accounts = new Map();
     this.transactions = new Map();
     this.activityLogs = new Map();
-    
-    this.dataDir = path.join(__dirname, '..', 'data', 'persistent');
-    this.files = {
-      users: path.join(this.dataDir, 'users.json'),
-      accounts: path.join(this.dataDir, 'accounts.json'),
-      transactions: path.join(this.dataDir, 'transactions.json'),
-      activityLogs: path.join(this.dataDir, 'activityLogs.json')
-    };
-    
-    // Initialize with sample data and load persistent data
     this.initializeData();
   }
 
-  async initializeData() {
+  initializeData() {
     try {
-      // Ensure data directory exists (skipped on Vercel — read-only FS)
-      if (!process.env.VERCEL) {
-        await fs.mkdir(this.dataDir, { recursive: true });
-      }
-      
-      // Load persistent data or initialize with sample data
-      await this.loadOrInitializeData();
+      const snapshot = this.loadBootstrapSnapshot();
+      this.hydrateFromSnapshot(snapshot);
     } catch (error) {
       console.error('Error initializing data store:', error);
-      // Fallback to sample data only
       this.initializeSampleData();
     }
   }
 
-  async loadOrInitializeData() {
+  loadBootstrapSnapshot() {
+    const bootstrapFile = process.env.BANKING_BOOTSTRAP_FILE || DEFAULT_BOOTSTRAP_PATH;
     try {
-      // Try to load existing data
-      const [usersData, accountsData, transactionsData, activityLogsData] = await Promise.allSettled([
-        this.loadDataFromFile(this.files.users),
-        this.loadDataFromFile(this.files.accounts),
-        this.loadDataFromFile(this.files.transactions),
-        this.loadDataFromFile(this.files.activityLogs)
-      ]);
-
-      // Load users
-      if (usersData.status === 'fulfilled' && usersData.value.length > 0) {
-        console.log('Loading users from file:', usersData.value.length, 'users');
-        usersData.value.forEach(user => {
-          this.users.set(user.id, { ...user, createdAt: new Date(user.createdAt) });
-        });
-        console.log('Loaded users:', Array.from(this.users.keys()));
-      } else {
-        // Initialize with sample data
-        console.log('No users file found, initializing with sample data');
-        sampleUsers.forEach(user => {
-          this.users.set(user.id, { ...user });
-        });
-        await this.saveDataToFile(this.files.users, Array.from(this.users.values()));
-      }
-
-      // Load accounts
-      if (accountsData.status === 'fulfilled' && accountsData.value.length > 0) {
-        accountsData.value.forEach(account => {
-          this.accounts.set(account.id, { ...account, createdAt: new Date(account.createdAt) });
-        });
-      } else {
-        sampleAccounts.forEach(account => {
-          this.accounts.set(account.id, { ...account });
-        });
-        await this.saveDataToFile(this.files.accounts, Array.from(this.accounts.values()));
-      }
-
-      // Load transactions
-      if (transactionsData.status === 'fulfilled' && transactionsData.value.length > 0) {
-        transactionsData.value.forEach(transaction => {
-          this.transactions.set(transaction.id, { ...transaction, createdAt: new Date(transaction.createdAt) });
-        });
-      } else {
-        sampleTransactions.forEach(transaction => {
-          this.transactions.set(transaction.id, { ...transaction });
-        });
-        await this.saveDataToFile(this.files.transactions, Array.from(this.transactions.values()));
-      }
-
-      // Load activity logs
-      if (activityLogsData.status === 'fulfilled' && activityLogsData.value.length > 0) {
-        activityLogsData.value.forEach(log => {
-          this.activityLogs.set(log.id, { ...log, timestamp: new Date(log.timestamp) });
-        });
-      } else {
-        sampleActivityLogs.forEach(log => {
-          this.activityLogs.set(log.id, { ...log });
-        });
-        await this.saveDataToFile(this.files.activityLogs, Array.from(this.activityLogs.values()));
-      }
-
-    } catch (error) {
-      console.error('Error loading data:', error);
-      // Fallback to sample data
-      this.initializeSampleData();
+      const raw = fs.readFileSync(bootstrapFile, 'utf8');
+      const parsed = JSON.parse(raw);
+      return this.normalizeBootstrap(parsed);
+    } catch {
+      return this.normalizeBootstrap({
+        users: sampleUsers,
+        accounts: sampleAccounts,
+        transactions: sampleTransactions,
+        activityLogs: sampleActivityLogs,
+      });
     }
   }
 
-  async loadDataFromFile(filePath) {
-    try {
-      const data = await fs.readFile(filePath, 'utf8');
-      return JSON.parse(data);
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        // File doesn't exist, return empty array
-        return [];
+  normalizeBootstrap(snapshot) {
+    const users = Array.isArray(snapshot.users) ? snapshot.users.map((user) => {
+      const normalized = { ...user };
+      if (normalized.password && !String(normalized.password).startsWith('$2')) {
+        normalized.password = bcrypt.hashSync(String(normalized.password), 10);
       }
-      throw error;
-    }
+      return normalized;
+    }) : [];
+
+    return {
+      users,
+      accounts: Array.isArray(snapshot.accounts) ? snapshot.accounts : [],
+      transactions: Array.isArray(snapshot.transactions) ? snapshot.transactions : [],
+      activityLogs: Array.isArray(snapshot.activityLogs) ? snapshot.activityLogs : [],
+    };
   }
 
-  async saveDataToFile(filePath, data) {
-    // Vercel runs on a read-only filesystem — skip all disk writes
-    if (process.env.VERCEL) return;
-    try {
-      await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-    } catch (error) {
-      console.error(`Error saving data to ${filePath}:`, error);
-    }
+  hydrateFromSnapshot(snapshot) {
+    const users = Array.isArray(snapshot.users) ? snapshot.users : [];
+    const accounts = Array.isArray(snapshot.accounts) ? snapshot.accounts : [];
+    const transactions = Array.isArray(snapshot.transactions) ? snapshot.transactions : [];
+    const activityLogs = Array.isArray(snapshot.activityLogs) ? snapshot.activityLogs : [];
+
+    this.users.clear();
+    this.accounts.clear();
+    this.transactions.clear();
+    this.activityLogs.clear();
+
+    users.forEach((user) => this.users.set(user.id, { ...user, createdAt: user.createdAt ? new Date(user.createdAt) : user.createdAt }));
+    accounts.forEach((account) => this.accounts.set(account.id, { ...account, createdAt: account.createdAt ? new Date(account.createdAt) : account.createdAt }));
+    transactions.forEach((transaction) => this.transactions.set(transaction.id, { ...transaction, createdAt: transaction.createdAt ? new Date(transaction.createdAt) : transaction.createdAt }));
+    activityLogs.forEach((log) => this.activityLogs.set(log.id, { ...log, timestamp: log.timestamp ? new Date(log.timestamp) : log.timestamp }));
+  }
+
+  async persistAllData() {
+    // In-memory runtime only by design: source-of-truth is committed JSON bootstrap.
+    return;
+  }
+
+  getSnapshot() {
+    return {
+      users: Array.from(this.users.values()),
+      accounts: Array.from(this.accounts.values()),
+      transactions: Array.from(this.transactions.values()),
+      activityLogs: Array.from(this.activityLogs.values()),
+    };
   }
 
   initializeSampleData() {
-    // Load users
-    sampleUsers.forEach(user => {
-      this.users.set(user.id, { ...user });
-    });
-
-    // Load accounts
-    sampleAccounts.forEach(account => {
-      this.accounts.set(account.id, { ...account });
-    });
-
-    // Load transactions
-    sampleTransactions.forEach(transaction => {
-      this.transactions.set(transaction.id, { ...transaction });
-    });
-
-    // Load activity logs
-    sampleActivityLogs.forEach(log => {
-      this.activityLogs.set(log.id, { ...log });
-    });
+    sampleUsers.forEach((user) => this.users.set(user.id, { ...user }));
+    sampleAccounts.forEach((account) => this.accounts.set(account.id, { ...account }));
+    sampleTransactions.forEach((transaction) => this.transactions.set(transaction.id, { ...transaction }));
+    sampleActivityLogs.forEach((log) => this.activityLogs.set(log.id, { ...log }));
   }
 
-  // User methods
   getAllUsers() {
     return Array.from(this.users.values());
   }
@@ -162,47 +105,32 @@ class DataStore {
   }
 
   getUserByUsername(username) {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    return Array.from(this.users.values()).find((user) => user.username === username);
   }
 
   async createUser(userData) {
     const id = uuidv4();
-    const user = {
-      id,
-      ...userData,
-      createdAt: new Date(),
-      isActive: true
-    };
+    const user = { id, ...userData, createdAt: new Date(), isActive: true };
     this.users.set(id, user);
-    
-    // Persist to file
-    await this.saveDataToFile(this.files.users, Array.from(this.users.values()));
-    
+    await this.persistAllData();
     return user;
   }
 
   async updateUser(id, updates) {
     const user = this.users.get(id);
     if (!user) return null;
-    
     const updatedUser = { ...user, ...updates };
     this.users.set(id, updatedUser);
-    
-    // Persist to file
-    await this.saveDataToFile(this.files.users, Array.from(this.users.values()));
-    
+    await this.persistAllData();
     return updatedUser;
   }
 
   async deleteUser(id) {
     const deleted = this.users.delete(id);
-    if (deleted) {
-      await this.saveDataToFile(this.files.users, Array.from(this.users.values()));
-    }
+    if (deleted) await this.persistAllData();
     return deleted;
   }
 
-  // Account methods
   getAllAccounts() {
     return Array.from(this.accounts.values());
   }
@@ -212,48 +140,37 @@ class DataStore {
   }
 
   getAccountsByUserId(userId) {
-    return Array.from(this.accounts.values()).filter(account => account.userId === userId);
+    return Array.from(this.accounts.values()).filter((account) => account.userId === userId);
   }
 
   async createAccount(accountData) {
-    // Use caller-supplied id if present so Map key always matches account.id
     const id = accountData.id || uuidv4();
     const account = {
       ...accountData,
       id,
       createdAt: accountData.createdAt || new Date(),
-      isActive: accountData.isActive !== undefined ? accountData.isActive : true
+      isActive: accountData.isActive !== undefined ? accountData.isActive : true,
     };
     this.accounts.set(id, account);
-    
-    // Persist to file
-    await this.saveDataToFile(this.files.accounts, Array.from(this.accounts.values()));
-    
+    await this.persistAllData();
     return account;
   }
 
   async updateAccount(id, updates) {
     const account = this.accounts.get(id);
     if (!account) return null;
-    
     const updatedAccount = { ...account, ...updates };
     this.accounts.set(id, updatedAccount);
-    
-    // Persist to file
-    await this.saveDataToFile(this.files.accounts, Array.from(this.accounts.values()));
-    
+    await this.persistAllData();
     return updatedAccount;
   }
 
   async deleteAccount(id) {
     const deleted = this.accounts.delete(id);
-    if (deleted) {
-      await this.saveDataToFile(this.files.accounts, Array.from(this.accounts.values()));
-    }
+    if (deleted) await this.persistAllData();
     return deleted;
   }
 
-  // Transaction methods
   getAllTransactions() {
     return Array.from(this.transactions.values());
   }
@@ -263,53 +180,38 @@ class DataStore {
   }
 
   getTransactionsByUserId(userId) {
-    return Array.from(this.transactions.values()).filter(transaction => transaction.userId === userId);
+    return Array.from(this.transactions.values()).filter((transaction) => transaction.userId === userId);
   }
 
   getTransactionsByAccountId(accountId) {
-    return Array.from(this.transactions.values()).filter(transaction => 
-      transaction.fromAccountId === accountId || transaction.toAccountId === accountId
+    return Array.from(this.transactions.values()).filter(
+      (transaction) => transaction.fromAccountId === accountId || transaction.toAccountId === accountId
     );
   }
 
   async createTransaction(transactionData) {
     const id = uuidv4();
-    const transaction = {
-      id,
-      ...transactionData,
-      createdAt: new Date(),
-      status: 'completed'
-    };
+    const transaction = { id, ...transactionData, createdAt: new Date(), status: 'completed' };
     this.transactions.set(id, transaction);
-    
-    // Persist to file
-    await this.saveDataToFile(this.files.transactions, Array.from(this.transactions.values()));
-    
+    await this.persistAllData();
     return transaction;
   }
 
   async updateTransaction(id, updates) {
     const transaction = this.transactions.get(id);
     if (!transaction) return null;
-    
     const updatedTransaction = { ...transaction, ...updates };
     this.transactions.set(id, updatedTransaction);
-    
-    // Persist to file
-    await this.saveDataToFile(this.files.transactions, Array.from(this.transactions.values()));
-    
+    await this.persistAllData();
     return updatedTransaction;
   }
 
   async deleteTransaction(id) {
     const deleted = this.transactions.delete(id);
-    if (deleted) {
-      await this.saveDataToFile(this.files.transactions, Array.from(this.transactions.values()));
-    }
+    if (deleted) await this.persistAllData();
     return deleted;
   }
 
-  // Activity log methods
   getAllActivityLogs() {
     return Array.from(this.activityLogs.values());
   }
@@ -319,31 +221,23 @@ class DataStore {
   }
 
   getActivityLogsByUserId(userId) {
-    return Array.from(this.activityLogs.values()).filter(log => log.userId === userId);
+    return Array.from(this.activityLogs.values()).filter((log) => log.userId === userId);
   }
 
   getActivityLogsByUsername(username) {
-    return Array.from(this.activityLogs.values()).filter(log => log.username === username);
+    return Array.from(this.activityLogs.values()).filter((log) => log.username === username);
   }
 
   async createActivityLog(logData) {
     const id = uuidv4();
-    const log = {
-      id,
-      ...logData,
-      timestamp: new Date()
-    };
+    const log = { id, ...logData, timestamp: new Date() };
     this.activityLogs.set(id, log);
-    
-    // Persist to file (but don't wait for it to avoid blocking the request)
-    this.saveDataToFile(this.files.activityLogs, Array.from(this.activityLogs.values())).catch(error => {
+    this.persistAllData().catch((error) => {
       console.error('Error saving activity log:', error);
     });
-    
     return log;
   }
 
-  // Utility methods
   getAccountBalance(accountId) {
     const account = this.accounts.get(accountId);
     return account ? account.balance : 0;
@@ -352,37 +246,33 @@ class DataStore {
   async updateAccountBalance(accountId, amount) {
     const account = this.accounts.get(accountId);
     if (!account) return false;
-    
     account.balance += amount;
     this.accounts.set(accountId, account);
-    
-    // Persist to file
-    await this.saveDataToFile(this.files.accounts, Array.from(this.accounts.values()));
-    
+    await this.persistAllData();
     return true;
   }
 
-  // Search methods
   searchUsers(query) {
-    const users = Array.from(this.users.values());
-    return users.filter(user => 
-      user.firstName.toLowerCase().includes(query.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(query.toLowerCase()) ||
-      user.username.toLowerCase().includes(query.toLowerCase()) ||
-      user.email.toLowerCase().includes(query.toLowerCase())
+    const q = query.toLowerCase();
+    return Array.from(this.users.values()).filter(
+      (user) =>
+        user.firstName.toLowerCase().includes(q) ||
+        user.lastName.toLowerCase().includes(q) ||
+        user.username.toLowerCase().includes(q) ||
+        user.email.toLowerCase().includes(q)
     );
   }
 
   searchTransactions(query) {
-    const transactions = Array.from(this.transactions.values());
-    return transactions.filter(transaction => 
-      transaction.description.toLowerCase().includes(query.toLowerCase()) ||
-      transaction.type.toLowerCase().includes(query.toLowerCase())
+    const q = query.toLowerCase();
+    return Array.from(this.transactions.values()).filter(
+      (transaction) =>
+        transaction.description.toLowerCase().includes(q) ||
+        transaction.type.toLowerCase().includes(q)
     );
   }
 }
 
-// Create singleton instance
 const dataStore = new DataStore();
 
 module.exports = dataStore;

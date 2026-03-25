@@ -75,7 +75,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   // Listen for agent data ready events to highlight sections
   useEffect(() => {
     const handleAgentDataReady = (e) => {
-      const { section, action, result } = e.detail;
+      const { section, action } = e.detail;
       setAgentHighlight(section);
       
       // Refresh data based on the action

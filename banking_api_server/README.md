@@ -8,7 +8,7 @@ A comprehensive banking API server with administrative UI and PingOne AI IAM Cor
 - **Admin Dashboard**: Comprehensive administrative interface with activity logging
 - **PingOne Core OAuth Integration**: Enterprise-grade authentication using authorization code flow
 - **Activity Logging**: Detailed request/response logging with filtering and export
-- **Persistent Data**: File-based data persistence across server restarts
+- **Runtime Seed Data**: Loads from committed JSON at startup; redeploy/restart reapplies the seed state
 - **Security**: JWT authentication, rate limiting, CORS, and Helmet security headers
 
 ## Quick Start
@@ -117,6 +117,13 @@ NODE_ENV=development
 5. Update `.env` file with client credentials
 
 ## Development
+
+### Refresh Bootstrap Seed
+
+- Run `npm run data:export-bootstrap` to write the current in-memory runtime data to `data/bootstrapData.json`.
+- Optional custom file: `npm run data:export-bootstrap -- ./data/my-seed.json`
+- Next app restart/redeploy will load from that JSON seed.
+- From the **Admin Dashboard** (while signed in as admin): **Export seed JSON** downloads the same snapshot; on `localhost`, **Save seed on server** calls `POST /api/admin/bootstrap/export` (disabled on Vercel; in production requires `ALLOW_BOOTSTRAP_EXPORT_WRITE=true`).
 
 ### Project Structure
 
