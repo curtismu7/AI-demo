@@ -15,6 +15,7 @@ import { useTokenChainOptional } from '../context/TokenChainContext';
 import { EDU } from './education/educationIds';
 import { EDUCATION_COMMANDS } from './education/educationCommands';
 import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
+import { getToolStepsForAction } from '../utils/agentToolSteps';
 import './BankingAgent.css';
 
 // ─── Action definitions ────────────────────────────────────────────────────────
@@ -29,6 +30,43 @@ const ACTIONS = [
   { id: 'mcp_tools',   label: '🔧 MCP Tools',           desc: 'List all available MCP banking tools' },
   { id: 'logout',       label: '🚪 Log Out',             desc: 'Sign out of your account' },
 ];
+
+// ─── Fake account data generator ────────────────────────────────────────────────
+
+function generateFakeAccounts(user) {
+  const firstName = user?.firstName || user?.name?.split(' ')[0] || 'User';
+  const lastName = user?.name?.split(' ')[1] || 'Customer';
+  const userId = user?.sub || user?.id || 'user123';
+  
+  // Generate consistent account IDs based on user ID
+  const seed = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  
+  const accounts = [
+    {
+      id: `acc_${seed}_checking`,
+      name: 'Primary Checking',
+      type: 'checking',
+      balance: 5234.89 + (seed % 1000),
+      accountNumber: `4872${seed % 10000}`,
+    },
+    {
+      id: `acc_${seed}_savings`,
+      name: 'Emergency Savings',
+      type: 'savings',
+      balance: 12567.43 + (seed % 2000),
+      accountNumber: `5921${seed % 10000}`,
+    },
+    {
+      id: `acc_${seed}_credit`,
+      name: 'Rewards Credit Card',
+      type: 'credit',
+      balance: -892.15 - (seed % 500),
+      accountNumber: `8234${seed % 10000}`,
+    },
+  ];
+  
+  return accounts;
+}
 
 // ─── Suggested prompts — role-aware ──────────────────────────────────────────
 
@@ -86,25 +124,27 @@ function formatResult(result) {
 
 // ─── Input form for actions that need parameters ──────────────────────────────
 
-function ActionForm({ action, onSubmit, onCancel, loading }) {
+function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
   const [form, setForm] = useState({});
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const fakeAccounts = generateFakeAccounts(effectiveUser);
+  
   const fields = {
-    balance:  [{ key: 'accountId', label: 'Account ID', placeholder: 'e.g. acc_abc123' }],
+    balance:  [{ key: 'accountId', label: 'Account', type: 'select', options: fakeAccounts }],
     deposit:  [
-      { key: 'accountId', label: 'Account ID', placeholder: 'e.g. acc_abc123' },
+      { key: 'accountId', label: 'Account', type: 'select', options: fakeAccounts },
       { key: 'amount',    label: 'Amount ($)',  placeholder: '0.00', type: 'number' },
       { key: 'note',      label: 'Note',        placeholder: 'optional' },
     ],
     withdraw: [
-      { key: 'accountId', label: 'Account ID', placeholder: 'e.g. acc_abc123' },
+      { key: 'accountId', label: 'Account', type: 'select', options: fakeAccounts },
       { key: 'amount',    label: 'Amount ($)',  placeholder: '0.00', type: 'number' },
       { key: 'note',      label: 'Note',        placeholder: 'optional' },
     ],
     transfer: [
-      { key: 'fromId',    label: 'From Account ID', placeholder: 'e.g. acc_abc123' },
-      { key: 'toId',      label: 'To Account ID',   placeholder: 'e.g. acc_def456' },
+      { key: 'fromId',    label: 'From Account', type: 'select', options: fakeAccounts },
+      { key: 'toId',      label: 'To Account',   type: 'select', options: fakeAccounts.filter(a => a.id !== fakeAccounts[0]?.id) },
       { key: 'amount',    label: 'Amount ($)',        placeholder: '0.00', type: 'number' },
       { key: 'note',      label: 'Note',              placeholder: 'optional' },
     ],
@@ -115,12 +155,26 @@ function ActionForm({ action, onSubmit, onCancel, loading }) {
       {(fields[action] || []).map(f => (
         <div key={f.key} className="banking-agent-field">
           <label>{f.label}</label>
-          <input
-            type={f.type || 'text'}
-            placeholder={f.placeholder}
-            value={form[f.key] || ''}
-            onChange={e => set(f.key, e.target.value)}
-          />
+          {f.type === 'select' ? (
+            <select
+              value={form[f.key] || (f.options[0]?.id || '')}
+              onChange={e => set(f.key, e.target.value)}
+              className="banking-agent-select"
+            >
+              {f.options.map(option => (
+                <option key={option.id} value={option.id}>
+                  {option.name} ({option.accountNumber}) - ${option.balance.toFixed(2)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={f.type || 'text'}
+              placeholder={f.placeholder}
+              value={form[f.key] || ''}
+              onChange={e => set(f.key, e.target.value)}
+            />
+          )}
         </div>
       ))}
       <div className="banking-agent-form-actions">
@@ -169,6 +223,26 @@ function TransactionsTable({ transactions }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** Renders MCP-style tool step chips (read/update account, transactions) between user ask and reply. */
+function ToolProgressChips({ steps }) {
+  if (!steps?.length) return null;
+  return (
+    <div className="ba-tool-progress" role="list" aria-label="Tool calls">
+      {steps.map((s, i) => (
+        <div key={`${s.name}-${i}`} className="ba-tool-chip" role="listitem">
+          <span className="ba-tool-chip-ico" aria-hidden />
+          <span className="ba-tool-chip-name">{s.name}</span>
+          <span className="ba-tool-chip-sep">·</span>
+          <span className={`ba-tool-chip-status ba-tool-chip-status--${s.status}`}>
+            {s.status === 'running' ? 'Running…' : s.status === 'success' ? 'Success' : 'Failed'}
+          </span>
+          <span className="ba-tool-chip-chev" aria-hidden>›</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -268,6 +342,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   const [oauthConfig, setOauthConfig] = useState(null);
   /** {x,y} when panel has been dragged; null = CSS-anchored default position */
   const [dragPos, setDragPos] = useState(null);
+  /** Panel dimensions for resizing */
+  const [panelSize, setPanelSize] = useState({ width: 820, height: 560 });
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
   /** MCP server connection status for header display */
@@ -279,6 +355,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   const [sessionUser, setSessionUser] = useState(null);
 
   const bottomRef = useRef(null);
+  const toolProgressIdRef = useRef(null);
   const panelRef = useRef(null);
   const isDraggingRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -530,13 +607,49 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
     };
   }, []);
 
+  // Resize handler
+  const handleResize = useCallback((e, direction) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = panelSize.width;
+    const startHeight = panelSize.height;
+
+    function onMove(e) {
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+
+      if (direction.includes('e')) {
+        newWidth = Math.min(1200, Math.max(600, startWidth + deltaX));
+      }
+      if (direction.includes('s')) {
+        newHeight = Math.min(800, Math.max(400, startHeight + deltaY));
+      }
+
+      setPanelSize({ width: newWidth, height: newHeight });
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [panelSize]);
+
   // Panel position: override CSS anchoring when user has dragged the window
   // In inline mode the CSS (.ba-mode-inline) handles size — no inline style needed
   const panelStyle = isInline
     ? {}
     : isExpanded
       ? { left: '16px', top: '16px', bottom: '16px', right: '16px', width: 'auto', height: 'auto' }
-      : dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : {};
+      : dragPos 
+        ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto', width: panelSize.width, height: panelSize.height }
+        : { width: panelSize.width, height: panelSize.height };
   // Results panel sits to the left of the agent; shifts with it when dragged
   const resultsPanelStyle = dragPos
     ? { left: Math.max(8, dragPos.x - 528), top: dragPos.y, bottom: 'auto', right: 'auto' }
@@ -544,8 +657,21 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   // In inline mode the panel is always visible; in float mode respect the open/closed state
   const effectiveIsOpen = isInline || isOpen;
 
-  function addMessage(role, content, tool) {
-    setMessages(prev => [...prev, { id: Date.now().toString(), role, content, tool }]);
+  function addMessage(role, content, tool, extra = {}) {
+    const { id: exId, ...rest } = extra;
+    const id = exId || `${Date.now()}`;
+    setMessages(prev => [...prev, { id, role, content: content ?? '', tool, ...rest }]);
+  }
+
+  function markToolProgressOutcome(success) {
+    const tid = toolProgressIdRef.current;
+    if (!tid) return;
+    toolProgressIdRef.current = null;
+    setMessages(prev => prev.map(m =>
+      m.id === tid && m.role === 'tool-progress'
+        ? { ...m, steps: (m.steps || []).map(s => ({ ...s, status: success ? 'success' : 'error' })) }
+        : m
+    ));
   }
 
   /**
@@ -565,6 +691,16 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
     toast.info(`⚙️ ${label}…`, { toastId, autoClose: false, isLoading: true });
 
     try {
+      const stepDefs = getToolStepsForAction(actionId);
+      if (stepDefs.length > 0) {
+        const tid = `tp-${Date.now()}`;
+        toolProgressIdRef.current = tid;
+        addMessage('tool-progress', '', null, {
+          id: tid,
+          steps: stepDefs.map(s => ({ ...s, status: 'running' })),
+        });
+      }
+
       let response;
       switch (actionId) {
         case 'accounts':
@@ -606,11 +742,14 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
           setIsExpanded(true);
           toast.update(toastId, { render: `✅ ${tools.length} tools loaded`, type: 'success', isLoading: false, autoClose: 2000 });
           setLoading(false);
+          toolProgressIdRef.current = null;
           return;
         }
         default:
           throw new Error(`Unknown action: ${actionId}`);
       }
+
+      markToolProgressOutcome(true);
 
       // Push token events to TokenChainContext (updates TokenChainDisplay on dashboard)
       const tokenEvents = response.tokenEvents || [];
@@ -643,16 +782,37 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
         }
       }
 
-      // Populate side results panel for rich data types
+      // Populate results — side panel or full-page depending on user preference
       const result = response.result;
+      const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
+
+      let resultType = null;
+      let resultData = null;
       if (result?.accounts) {
-        setResultPanel({ type: 'accounts', title: '🏦 Accounts', data: result.accounts });
+        resultType = 'accounts'; resultData = result.accounts;
       } else if (result?.transactions) {
-        setResultPanel({ type: 'transactions', title: '📋 Recent Transactions', data: result.transactions });
+        resultType = 'transactions'; resultData = result.transactions;
       } else if (result?.balance !== undefined) {
-        setResultPanel({ type: 'balance', title: '💰 Balance', data: result.balance });
+        resultType = 'balance'; resultData = result.balance;
       } else if (result?.transaction_id || result?.transactionId || result?.id) {
-        setResultPanel({ type: 'confirm', title: `✅ ${label} confirmed`, data: result });
+        resultType = 'confirm'; resultData = result;
+      }
+
+      if (resultType) {
+        if (displayMode === 'fullpage') {
+          // Push result to the main dashboard via custom event
+          window.dispatchEvent(new CustomEvent('banking-agent-result', {
+            detail: { type: resultType, data: resultData, label },
+          }));
+        } else {
+          const titleMap = {
+            accounts: '🏦 Accounts',
+            transactions: '📋 Recent Transactions',
+            balance: '💰 Balance',
+            confirm: `✅ ${label} confirmed`,
+          };
+          setResultPanel({ type: resultType, title: titleMap[resultType], data: resultData });
+        }
       }
 
       addMessage('assistant', formatResult(response.result), actionId);
@@ -665,6 +825,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
         autoClose: 2500,
       });
     } catch (err) {
+      markToolProgressOutcome(false);
       toast.dismiss(toastId);
       const isConnErr =
         err.message.includes('timed out') ||
@@ -717,6 +878,80 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
     }
   }
 
+  /**
+   * Shared NL dispatch: education panels, banking tools, or fallback hint.
+   * Used by the input bar and by left-column suggestion chips (same behavior).
+   */
+  async function dispatchNlResult(result, source = 'heuristic') {
+    setShowCommands(false);
+    if (result.kind === 'education' && result.ciba) {
+      openEducationCommand({ ciba: true, tab: result.tab });
+      setIsOpen(false);
+      addMessage('assistant',
+        `📲 CIBA Guide opened — see the sliding panel on the right.\n\n` +
+        `CIBA (Client-Initiated Backchannel Authentication) lets the server request user approval out-of-band:\n` +
+        `• Server calls POST /bc-authorize → PingOne sends email or push to user\n` +
+        `• User approves from their inbox or device — no browser redirect needed\n` +
+        `• Server polls POST /token until approved, then stores tokens server-side\n\n` +
+        `Great for chat agents (redirect would break the flow) and high-value step-up transactions.\n` +
+        `The guide has 8 tabs: What is CIBA · Sign-in & roles · Full stack · Token exchange · vs Login · Try It (live demo) · App Flows · PingOne Setup`
+      );
+      return;
+    }
+    if (result.kind === 'education' && result.education?.panel) {
+      const panel = result.education.panel;
+      const tab = result.education.tab || null;
+      if (panel === EDU.CIMD) {
+        window.dispatchEvent(new CustomEvent('education-open-cimd', { detail: { tab: tab || 'what' } }));
+        setIsOpen(false);
+        addMessage('assistant',
+          `📄 CIMD Simulator opened — see the sliding panel on the right.\n\n` +
+          `OAuth Client ID Metadata Document (CIMD) redefines what a client_id is:\n` +
+          `• Instead of an opaque string, the client_id is a URL you control\n` +
+          `• That URL hosts a JSON document describing the client (redirect_uris, grant_types, scopes…)\n` +
+          `• A CIMD-capable AS fetches the URL to learn the client's metadata — no pre-registration needed\n` +
+          `• The client controls updates: just update the hosted document\n\n` +
+          `This demo registers the client in PingOne via the Management API and hosts the document at:\n` +
+          `/.well-known/oauth-client/{pingone-app-id}\n\n` +
+          `Panel tabs: What is CIMD · CIMD vs DCR · Doc format · How AS uses it · Flow diagram · ▶ Simulate · PingOne`
+        );
+        return;
+      }
+      const topicMsg = TOPIC_MESSAGES[panel];
+      edu?.open(panel, tab);
+      addMessage('assistant', topicMsg
+        ? topicMsg
+        : `Opened help panel: ${panel}. See the sliding panel on the right for details.`
+      );
+      return;
+    }
+    if (result.kind === 'banking' && result.banking?.action) {
+      const { action, params } = result.banking;
+      if (action === 'logout') {
+        addMessage('assistant', 'Signing you out…');
+        setTimeout(() => onLogout?.(), 800);
+        return;
+      }
+      const p = normalizeBankingParams(action, params);
+      if (action === 'mcp_tools') {
+        await runAction('mcp_tools', {}, { skipUserLabel: true });
+        return;
+      }
+      if (action === 'accounts' || action === 'transactions') {
+        await runAction(action, {}, { skipUserLabel: true });
+      } else if (action === 'balance' && p.accountId) {
+        await runAction('balance', { accountId: p.accountId }, { skipUserLabel: true });
+      } else if (['balance', 'transfer', 'deposit', 'withdraw'].includes(action)) {
+        setActiveAction(action);
+        addMessage('assistant', `Open the form below to complete **${action}** (${source}).`);
+      } else {
+        await runAction(action, p, { skipUserLabel: true });
+      }
+      return;
+    }
+    addMessage('assistant', result.message || 'Try a banking action or a topic like “token exchange”.');
+  }
+
   async function handleNaturalLanguage() {
     const text = nlInput.trim();
     if (!text || !isLoggedIn) return;
@@ -725,75 +960,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
     setNlInput('');
     try {
       const { source, result } = await parseNaturalLanguage(text);
-      setShowCommands(false);
-      if (result.kind === 'education' && result.ciba) {
-        openEducationCommand({ ciba: true, tab: result.tab });
-        // Close agent panel so the CIBA guide (lower z-index) is fully visible
-        setIsOpen(false);
-        addMessage('assistant',
-          `📲 CIBA Guide opened — see the sliding panel on the right.\n\n` +
-          `CIBA (Client-Initiated Backchannel Authentication) lets the server request user approval out-of-band:\n` +
-          `• Server calls POST /bc-authorize → PingOne sends email or push to user\n` +
-          `• User approves from their inbox or device — no browser redirect needed\n` +
-          `• Server polls POST /token until approved, then stores tokens server-side\n\n` +
-          `Great for chat agents (redirect would break the flow) and high-value step-up transactions.\n` +
-          `The guide has 8 tabs: What is CIBA · Sign-in & roles · Full stack · Token exchange · vs Login · Try It (live demo) · App Flows · PingOne Setup`
-        );
-        return;
-      }
-      if (result.kind === 'education' && result.education?.panel) {
-        const panel = result.education.panel;
-        const tab   = result.education.tab || null;
-        // For CIMD, use the standalone CimdSimPanel (dispatches custom event)
-        if (panel === EDU.CIMD) {
-          window.dispatchEvent(new CustomEvent('education-open-cimd', { detail: { tab: tab || 'what' } }));
-          setIsOpen(false);
-          addMessage('assistant',
-            `📄 CIMD Simulator opened — see the sliding panel on the right.\n\n` +
-            `OAuth Client ID Metadata Document (CIMD) redefines what a client_id is:\n` +
-            `• Instead of an opaque string, the client_id is a URL you control\n` +
-            `• That URL hosts a JSON document describing the client (redirect_uris, grant_types, scopes…)\n` +
-            `• A CIMD-capable AS fetches the URL to learn the client's metadata — no pre-registration needed\n` +
-            `• The client controls updates: just update the hosted document\n\n` +
-            `This demo registers the client in PingOne via the Management API and hosts the document at:\n` +
-            `/.well-known/oauth-client/{pingone-app-id}\n\n` +
-            `Panel tabs: What is CIMD · CIMD vs DCR · Doc format · How AS uses it · Flow diagram · ▶ Simulate · PingOne`
-          );
-          return;
-        }
-        const topicMsg = TOPIC_MESSAGES[panel];
-        edu?.open(panel, tab);
-        addMessage('assistant', topicMsg
-          ? topicMsg
-          : `Opened help panel: ${panel}. See the sliding panel on the right for details.`
-        );
-        return;
-      }
-      if (result.kind === 'banking' && result.banking?.action) {
-        const { action, params } = result.banking;
-        if (action === 'logout') {
-          addMessage('assistant', 'Signing you out…');
-          setTimeout(() => onLogout?.(), 800);
-          return;
-        }
-        const p = normalizeBankingParams(action, params);
-        if (action === 'mcp_tools') {
-          await runAction('mcp_tools', {}, { skipUserLabel: true });
-          return;
-        }
-        if (action === 'accounts' || action === 'transactions') {
-          await runAction(action, {}, { skipUserLabel: true });
-        } else if (action === 'balance' && p.accountId) {
-          await runAction('balance', { accountId: p.accountId }, { skipUserLabel: true });
-        } else if (['balance', 'transfer', 'deposit', 'withdraw'].includes(action)) {
-          setActiveAction(action);
-          addMessage('assistant', `Open the form below to complete **${action}** (${source}).`);
-        } else {
-          await runAction(action, p, { skipUserLabel: true });
-        }
-        return;
-      }
-      addMessage('assistant', result.message || 'Try a banking action or a topic like “token exchange”.');
+      await dispatchNlResult(result, source);
     } catch (err) {
       toast.error(`❌ Could not parse request: ${err.message}`, { autoClose: 5000 });
       addMessage('assistant', `Could not parse: ${err.message}`);
@@ -929,31 +1096,12 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                   className="ba-suggestion"
                   onClick={() => {
                     setNlInput(s);
-                    // If logged in, send immediately; otherwise just populate the input
                     if (isLoggedIn) {
                       setNlInput('');
                       addMessage('user', s);
                       setNlLoading(true);
                       parseNaturalLanguage(s)
-                        .then(({ result }) => {
-                          if (result.kind === 'banking' && result.banking?.action) {
-                            const { action, params } = result.banking;
-                            const p = normalizeBankingParams(action, params);
-                            if (action === 'accounts' || action === 'transactions' || action === 'mcp_tools') {
-                              runAction(action, {}, { skipUserLabel: true });
-                            } else if (action === 'balance' && p.accountId) {
-                              runAction('balance', { accountId: p.accountId }, { skipUserLabel: true });
-                            } else if (['balance', 'transfer', 'deposit', 'withdraw'].includes(action)) {
-                              // Required params missing — show the form pre-populated with any known values
-                              setActiveAction(action);
-                              addMessage('assistant', `Please fill in the details below to complete your ${action}.`);
-                            } else {
-                              runAction(action, p, { skipUserLabel: true });
-                            }
-                          } else {
-                            addMessage('assistant', result.message || 'Try a banking action or a topic like "token exchange".');
-                          }
-                        })
+                        .then(({ source, result }) => dispatchNlResult(result, source))
                         .catch(err => addMessage('assistant', `Could not parse: ${err.message}`))
                         .finally(() => setNlLoading(false));
                     }
@@ -983,7 +1131,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                   <div className="ba-left-divider" />
 
                   <div className="ba-left-label">Learn &amp; Explore:</div>
-                  {EDUCATION_COMMANDS.slice(0, 5).map(cmd => (
+                  {EDUCATION_COMMANDS.map(cmd => (
                     <button
                       key={cmd.id}
                       className="ba-action-item"
@@ -1042,15 +1190,27 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                     </p>
                   </div>
                 )}
-                {messages.map(msg => (
-                  <div key={msg.id} className={`banking-agent-msg ${msg.role}`}>
-                    {msg.role === 'assistant' && <span className="banking-agent-msg-avatar">🏦</span>}
-                    <div className="banking-agent-msg-bubble">
-                      <pre className="banking-agent-msg-text">{msg.content}</pre>
-                      {msg.tool && <span className="banking-agent-tool-badge">⚙ {msg.tool}</span>}
+                {messages.map(msg => {
+                  if (msg.role === 'tool-progress') {
+                    return (
+                      <div key={msg.id} className="banking-agent-msg tool-progress">
+                        <span className="banking-agent-msg-avatar banking-agent-msg-avatar--tool" aria-hidden>⚙</span>
+                        <div className="banking-agent-msg-bubble banking-agent-msg-bubble--toolsteps">
+                          <ToolProgressChips steps={msg.steps} />
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={msg.id} className={`banking-agent-msg ${msg.role}`}>
+                      {msg.role === 'assistant' && <span className="banking-agent-msg-avatar">🏦</span>}
+                      <div className="banking-agent-msg-bubble">
+                        <pre className="banking-agent-msg-text">{msg.content}</pre>
+                        {msg.tool && <span className="banking-agent-tool-badge">⚙ {msg.tool}</span>}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {loading && (
                   <div className="banking-agent-msg assistant typing">
                     <span className="banking-agent-msg-avatar">🏦</span>
@@ -1087,6 +1247,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                   loading={loading}
                   onSubmit={form => runAction(activeAction, form)}
                   onCancel={() => setActiveAction(null)}
+                  effectiveUser={effectiveUser}
                 />
               )}
 
@@ -1133,6 +1294,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
               </div>
             </div>
           </div>
+          {/* Resize handles */}
+          <div className="ba-resize-handle ba-resize-handle--se" onMouseDown={(e) => handleResize(e, 'se')} />
+          <div className="ba-resize-handle ba-resize-handle--e" onMouseDown={(e) => handleResize(e, 'e')} />
+          <div className="ba-resize-handle ba-resize-handle--s" onMouseDown={(e) => handleResize(e, 's')} />
         </div>
       )}
     </>

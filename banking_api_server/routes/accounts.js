@@ -212,4 +212,5 @@ router.delete('/:id', blockInDemoMode('account deletion'), authenticateToken, re
   }
 });
 
+router.provisionDemoAccounts = provisionDemoAccounts;
 module.exports = router;

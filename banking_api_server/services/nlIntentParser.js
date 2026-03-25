@@ -82,10 +82,17 @@ function parseBanking(t) {
   if (/\b(transaction|history|activity|recent)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'transactions' } };
   }
-  if (/\bbalance\b/.test(t) && /\b(account|acc)\b/.test(t)) {
+  // Balance: explicit account id, or phrases like "my balance", "current balance", "check balance"
+  if (/\bbalance\b/.test(t)) {
     const m = t.match(/acc[_a-z0-9-]{6,}/i);
     if (m) return { kind: 'banking', banking: { action: 'balance', params: { accountId: m[0] } } };
-    return { kind: 'banking', banking: { action: 'balance' } };
+    if (
+      /\b(account|acc|checking|savings)\b/.test(t) ||
+      /\b(my|the|current|check|what|show|get)\b.*\bbalance\b/.test(t) ||
+      /\bbalance\b.*\b(my|current)\b/.test(t)
+    ) {
+      return { kind: 'banking', banking: { action: 'balance' } };
+    }
   }
   if (/\btransfer\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'transfer' } };

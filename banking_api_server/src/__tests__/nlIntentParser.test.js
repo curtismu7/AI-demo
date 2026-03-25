@@ -256,6 +256,10 @@ describe('nlIntentParser — agent chip / suggestion commands', () => {
     expect(bank('Check my account balance').banking.action).toBe('balance');
   });
 
+  it('suggestion "What is my current balance?" → balance', () => {
+    expect(bank('What is my current balance?').banking.action).toBe('balance');
+  });
+
   it('"deposit" chip → deposit', () => {
     expect(bank('Deposit').banking.action).toBe('deposit');
   });

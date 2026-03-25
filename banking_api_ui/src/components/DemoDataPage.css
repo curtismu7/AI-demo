@@ -1,0 +1,168 @@
+/* banking_api_ui/src/components/DemoDataPage.css */
+.demo-data-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.demo-data-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.demo-data-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+}
+
+.demo-data-lead {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 36rem;
+}
+
+.demo-data-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.demo-data-link {
+  color: #1d4ed8;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.demo-data-link:hover {
+  text-decoration: underline;
+}
+
+.demo-data-banner {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.demo-data-loading {
+  color: #6b7280;
+}
+
+.demo-data-section {
+  margin-bottom: 1.5rem;
+}
+
+.demo-data-section h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.demo-data-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.demo-data-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.demo-data-field span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.demo-data-field input {
+  padding: 0.5rem 0.55rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.35rem;
+  font-size: 0.95rem;
+  max-width: 320px;
+}
+
+.demo-data-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.demo-data-account-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: #fafafa;
+}
+
+.demo-data-account-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.demo-data-type {
+  text-transform: capitalize;
+  font-weight: 600;
+  color: #111827;
+}
+
+.demo-data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.demo-data-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.35rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.demo-data-btn.primary {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.demo-data-btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demo-data-btn.ghost {
+  background: #fff;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.demo-data-docs {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.88rem;
+  color: #4b5563;
+  line-height: 1.55;
+}
+
+.demo-data-docs h2 {
+  font-size: 1rem;
+  color: #111827;
+}

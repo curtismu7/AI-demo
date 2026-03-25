@@ -7,6 +7,7 @@
 
 const { parseHeuristic, EDU } = require('./nlIntentParser');
 const { parseWithGroq } = require('./groqNlIntent');
+const { sanitizeNlResult } = require('./nlIntentSanitize');
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
@@ -87,14 +88,22 @@ async function parseNaturalLanguage(message, context = {}) {
     console.warn('[nlIntent] Groq error:', e.message);
     return null;
   });
-  if (groq) return { source: 'groq', result: groq };
+  if (groq) {
+    const { result, rejected, reason } = sanitizeNlResult(groq, message);
+    if (rejected) console.warn('[nlIntent] Groq output rejected → heuristic:', reason);
+    return { source: rejected ? 'heuristic' : 'groq', result };
+  }
 
   // 2. Try Gemini
   const gemini = await parseWithGemini(message, context).catch((e) => {
     console.warn('[nlIntent] Gemini error:', e.message);
     return null;
   });
-  if (gemini) return { source: 'gemini', result: gemini };
+  if (gemini) {
+    const { result, rejected, reason } = sanitizeNlResult(gemini, message);
+    if (rejected) console.warn('[nlIntent] Gemini output rejected → heuristic:', reason);
+    return { source: rejected ? 'heuristic' : 'gemini', result };
+  }
 
   // 3. Heuristic regex (always available, zero cost)
   return { source: 'heuristic', result: parseHeuristic(message) };

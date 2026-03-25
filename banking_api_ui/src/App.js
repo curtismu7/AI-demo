@@ -22,16 +22,19 @@ import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
 import LogViewerPage from './components/LogViewerPage';
+import DemoDataPage from './components/DemoDataPage';
 
 import { savePublicConfig } from './services/configService';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
+import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import './App.css';
 
-function App() {
+function AppWithAuth() {
+  const { mode: agentUiMode } = useAgentUiMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -185,9 +188,10 @@ function App() {
                 <main className="main-content">
                   <EducationBar />
                   <Routes>
-                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
-                    <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
+                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                    <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <Navigate to="/" replace />} />
+                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                    <Route path="/demo-data" element={<DemoDataPage onLogout={logout} />} />
                     <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
@@ -206,7 +210,9 @@ function App() {
               )
             } />
           </Routes>
-          <BankingAgent user={user} />
+          {(!user || agentUiMode === 'floating') && (
+            <BankingAgent user={user} onLogout={logout} mode="float" />
+          )}
           <EducationPanelsHost />
           <CIBAPanel />
           <CimdSimPanel />
@@ -226,7 +232,7 @@ function App() {
             </svg>
             <span>Logs</span>
           </button>
-          <Footer />
+          <Footer user={user} />
         </div>
       </TokenChainProvider>
       </EducationUIProvider>
@@ -234,4 +240,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AgentUiModeProvider>
+      <AppWithAuth />
+    </AgentUiModeProvider>
+  );
+}

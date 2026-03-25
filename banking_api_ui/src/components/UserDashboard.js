@@ -7,9 +7,10 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import BankingAgent from './BankingAgent';
 import './UserDashboard.css';
 
-const UserDashboard = ({ user: propUser, onLogout }) => {
+const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -43,6 +44,33 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const fetchingRef = React.useRef(false);
+  const fetchUserDataRef = React.useRef(null);
+  const [agentHighlight, setAgentHighlight] = useState(null); // 'accounts' | 'transactions' | null
+
+  // Listen for full-page agent results dispatched by BankingAgent
+  useEffect(() => {
+    const handleAgentResult = (e) => {
+      const { type, data, label } = e.detail;
+      const labelSuffix = label ? ` \u2014 ${label}` : '';
+      const labelColon = label ? `: ${label}` : '';
+      if (type === 'accounts' && Array.isArray(data)) {
+        setAccounts(data);
+        setAgentHighlight('accounts');
+        setSuccess(`Agent updated accounts${labelSuffix}`);
+      } else if (type === 'transactions' && Array.isArray(data)) {
+        setTransactions(data);
+        setAgentHighlight('transactions');
+        setSuccess(`Agent updated transactions${labelSuffix}`);
+      } else if (type === 'balance' || type === 'confirm') {
+        if (fetchUserDataRef.current) fetchUserDataRef.current();
+        setAgentHighlight('accounts');
+        setSuccess(`Agent completed${labelColon} \u2014 balances refreshed`);
+      }
+      setTimeout(() => setAgentHighlight(null), 3000);
+    };
+    window.addEventListener('banking-agent-result', handleAgentResult);
+    return () => window.removeEventListener('banking-agent-result', handleAgentResult);
+  }, []);
 
   // Auto-dismiss success messages after 4 seconds
   useEffect(() => {
@@ -125,7 +153,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   useEffect(() => {
     // Initial data fetch
     fetchUserData();
-  }, []);
+    fetchUserDataRef.current = fetchUserData;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let refreshInterval;
@@ -508,6 +537,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               What is may_act?
             </button>
             <Link
+              to="/demo-data"
+              className="dashboard-edu-btn"
+              title="Edit sandbox account names, balances, and MFA threshold"
+            >
+              Demo config
+            </Link>
+            <Link
               to="/mcp-inspector"
               className="dashboard-header-mcp-btn"
               title="MCP discovery, tools/list & tools/call via BFF"
@@ -546,9 +582,21 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <TokenChainDisplay />
         </div>
 
+        {agentUiMode === 'embedded' && (
+          <div className="section embedded-banking-agent-section">
+            <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
+            <p className="embedded-banking-agent-lead">
+              Ask in natural language or use the actions on the left. Tool steps appear as you go.
+            </p>
+            <div className="embedded-banking-agent">
+              <BankingAgent user={user} onLogout={onLogout} mode="inline" />
+            </div>
+          </div>
+        )}
+
         {/* Account Summary */}
-        <div className="section">
-          <h2>Your Accounts</h2>
+        <div className={`section${agentHighlight === 'accounts' ? ' section--agent-updated' : ''}`}>
+          <h2>Your Accounts {agentHighlight === 'accounts' && <span className="agent-updated-badge">↻ Updated by Agent</span>}</h2>
           <div className="accounts-grid">
             {accounts.map(account => (
               <div key={account.id} className="account-card">
@@ -741,8 +789,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         )}
 
         {/* Recent Transactions */}
-        <div className="section">
-          <h2>Recent Transactions</h2>
+        <div className={`section${agentHighlight === 'transactions' ? ' section--agent-updated' : ''}`}>
+          <h2>Recent Transactions {agentHighlight === 'transactions' && <span className="agent-updated-badge">↻ Updated by Agent</span>}</h2>
           <div className="transactions-table">
             <div className="transaction-header">
               <div className="header-cell">Date</div>

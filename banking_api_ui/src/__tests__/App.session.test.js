@@ -73,6 +73,10 @@ jest.mock('../context/EducationUIContext', () => ({
 jest.mock('../context/TokenChainContext', () => ({
   TokenChainProvider: ({ children }) => children,
 }));
+jest.mock('../context/AgentUiModeContext', () => ({
+  AgentUiModeProvider: ({ children }) => children,
+  useAgentUiMode: () => ({ mode: 'floating', setMode: jest.fn() }),
+}));
 jest.mock('../services/configService', () => ({
   savePublicConfig: jest.fn().mockResolvedValue(undefined),
 }));

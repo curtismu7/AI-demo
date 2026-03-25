@@ -87,6 +87,10 @@
   z-index: 10059;
   width: 820px;
   height: 560px;
+  min-width: 600px;
+  min-height: 400px;
+  max-width: 1200px;
+  max-height: 800px;
   display: flex;
   flex-direction: column;
   background: var(--ba-bg);
@@ -97,6 +101,7 @@
   color: var(--ba-text);
   animation: agent-slide-up 0.22s ease;
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  resize: both;
 }
 
 /* ─── Two-column body ─────────────────────────────────────────────────── */
@@ -1049,4 +1054,193 @@
   border: none;
   animation: none;
   z-index: auto;
+}
+
+/* ─── Tool step chips (MCP-style transparency) ─────────────────────────── */
+.banking-agent-msg.tool-progress {
+  align-items: flex-start;
+  margin: 4px 0 2px;
+}
+
+.banking-agent-msg-bubble--toolsteps {
+  background: transparent !important;
+  border: none !important;
+  padding: 4px 0 8px !important;
+  max-width: 100% !important;
+}
+
+.ba-tool-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.ba-tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ba-border);
+  background: var(--ba-surface);
+  color: var(--ba-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: default;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.ba-tool-chip-ico {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ba-muted);
+  flex-shrink: 0;
+}
+
+.ba-tool-chip-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+
+.ba-tool-chip-sep {
+  color: var(--ba-muted);
+  font-weight: 400;
+}
+
+.ba-tool-chip-status {
+  color: var(--ba-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.ba-tool-chip-status--running {
+  color: #fbbf24;
+}
+
+.ba-tool-chip-status--success {
+  color: #86efac;
+}
+
+.ba-tool-chip-status--error {
+  color: #fca5a5;
+}
+
+.ba-tool-chip-chev {
+  color: var(--ba-muted);
+  font-size: 12px;
+  margin-left: 2px;
+}
+
+.ba-mode-light .ba-tool-chip {
+  background: #fff;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
+.ba-mode-light .ba-tool-chip-status--success {
+  color: #15803d;
+}
+
+.ba-mode-light .ba-tool-chip-status--running {
+  color: #b45309;
+}
+
+.ba-mode-light .ba-tool-chip-status--error {
+  color: #b91c1c;
+}
+
+.embedded-banking-agent {
+  margin-top: 1rem;
+  min-height: 520px;
+  height: min(70vh, 720px);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.embedded-banking-agent .banking-agent-panel.ba-mode-inline {
+  min-height: 520px;
+  height: 100%;
+}
+
+/* ─── Resize handles ───────────────────────────────────────────────────────── */
+.ba-resize-handle {
+  position: absolute;
+  background: transparent;
+  z-index: 10061;
+}
+
+.ba-resize-handle--se {
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  background: linear-gradient(135deg, transparent 50%, var(--ba-border) 50%);
+  border-radius: 0 0 16px 0;
+}
+
+.ba-resize-handle--e {
+  top: 50%;
+  right: 0;
+  width: 8px;
+  height: 40px;
+  transform: translateY(-50%);
+  cursor: e-resize;
+  background: linear-gradient(90deg, transparent 50%, var(--ba-border) 50%);
+}
+
+.ba-resize-handle--s {
+  bottom: 0;
+  left: 50%;
+  width: 40px;
+  height: 8px;
+  transform: translateX(-50%);
+  cursor: s-resize;
+  background: linear-gradient(180deg, transparent 50%, var(--ba-border) 50%);
+}
+
+.ba-mode-light .ba-resize-handle--se {
+  background: linear-gradient(135deg, transparent 50%, #e5e7eb 50%);
+}
+
+.ba-mode-light .ba-resize-handle--e {
+  background: linear-gradient(90deg, transparent 50%, #e5e7eb 50%);
+}
+
+.ba-mode-light .ba-resize-handle--s {
+  background: linear-gradient(180deg, transparent 50%, #e5e7eb 50%);
+}
+
+/* ─── Form elements ───────────────────────────────────────────────────────── */
+.banking-agent-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--ba-input-bd);
+  border-radius: 6px;
+  background: var(--ba-input-bg);
+  color: var(--ba-text);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.banking-agent-select:focus {
+  outline: none;
+  border-color: var(--ba-accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.ba-mode-light .banking-agent-select {
+  background: #fff;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
+.ba-mode-light .banking-agent-select:focus {
+  border-color: #6366f1;
 }

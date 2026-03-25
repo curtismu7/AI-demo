@@ -7,6 +7,22 @@
   min-height: 100vh;
 }
 
+.embedded-banking-agent-section {
+  margin-bottom: 1.5rem;
+}
+
+.embedded-banking-agent-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  color: #0f172a;
+}
+
+.embedded-banking-agent-lead {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
 .dashboard-header {
   background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
   color: white;
@@ -1841,4 +1857,30 @@
   .ud-left { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; }
   .ud-center { padding: 14px; }
   .ud-accounts-row { grid-template-columns: 1fr; }
+}
+
+/* ── Agent full-page result highlight ── */
+.section--agent-updated {
+  animation: agent-flash 0.4s ease-out;
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+@keyframes agent-flash {
+  0%   { background-color: rgba(99, 102, 241, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.agent-updated-badge {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  padding: 2px 8px;
+  vertical-align: middle;
 }

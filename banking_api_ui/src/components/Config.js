@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
+import { useAgentUiMode } from '../context/AgentUiModeContext';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
 import './Config.css';
 
@@ -143,6 +144,141 @@ function TextField({ label, fieldKey, value, onChange, help, placeholder, type =
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
+// ─── Display Preferences (localStorage only) ─────────────────────────────────
+const DISPLAY_MODE_KEY = 'agentDisplayMode';
+
+function DisplayPreferences() {
+  const [mode, setMode] = useState(() => localStorage.getItem(DISPLAY_MODE_KEY) || 'panel');
+
+  function handleChange(val) {
+    setMode(val);
+    localStorage.setItem(DISPLAY_MODE_KEY, val);
+  }
+
+  return (
+    <CollapsibleCard
+      title="Display Preferences"
+      subtitle="Choose how the AI Agent shows results"
+      defaultOpen={true}
+      className="config-page__display-prefs"
+    >
+      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+        Controls where banking results (accounts, transactions, balances) appear after an Agent action.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="agentDisplayMode"
+            value="panel"
+            checked={mode === 'panel'}
+            onChange={() => handleChange('panel')}
+            style={{ marginTop: '3px', flexShrink: 0 }}
+          />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Side Panel (default)</div>
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+              Results appear in the Agent chat panel alongside your conversation.
+              Good for quick lookups without leaving the current view.
+            </div>
+          </div>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="agentDisplayMode"
+            value="fullpage"
+            checked={mode === 'fullpage'}
+            onChange={() => handleChange('fullpage')}
+            style={{ marginTop: '3px', flexShrink: 0 }}
+          />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Full Page</div>
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+              Results update the main dashboard in the background — same account cards and
+              transaction tables as the full page, just triggered by the Agent.
+            </div>
+          </div>
+        </label>
+      </div>
+      {mode === 'fullpage' && (
+        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: '#1d4ed8' }}>
+          💡 Full Page mode: Agent results will update the account cards and transaction table on your dashboard.
+          The Agent chat stays open for follow-up questions.
+        </div>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+function AgentLayoutPreferences() {
+  const { mode, setMode } = useAgentUiMode();
+
+  function handleModeChange(next) {
+    if (next === mode) return;
+    setMode(next);
+    toast.info('Applying agent layout…', { autoClose: 1200 });
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 350);
+  }
+
+  return (
+    <CollapsibleCard
+      title="AI Agent layout"
+      subtitle="Choose floating widget or dashboard-embedded chat (only one is active)"
+      defaultOpen={true}
+      className="config-page__agent-layout"
+    >
+      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+        Controls whether the banking agent appears as a <strong>floating</strong> panel (FAB) or is <strong>embedded</strong>
+        into your dashboard home page. Tool steps (e.g. read/update account, transactions) show in the chat as actions run.
+        The page refreshes after you switch so the new layout loads immediately.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="bankingAgentUiMode"
+            value="floating"
+            checked={mode === 'floating'}
+            onChange={() => handleModeChange('floating')}
+            style={{ marginTop: '3px', flexShrink: 0 }}
+          />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Floating (default)</div>
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+              FAB in the corner — open/close over any page. Use this when you want the agent on every screen.
+            </div>
+          </div>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="bankingAgentUiMode"
+            value="embedded"
+            checked={mode === 'embedded'}
+            onChange={() => handleModeChange('embedded')}
+            style={{ marginTop: '3px', flexShrink: 0 }}
+          />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Embedded in dashboard</div>
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+              Chat is built into the customer or admin <strong>home</strong> dashboard only — no floating widget while you are signed in.
+              Other routes (e.g. MCP Inspector) do not include the embedded panel.
+            </div>
+          </div>
+        </label>
+      </div>
+      {mode === 'embedded' && (
+        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: '#1d4ed8' }}>
+          Embedded mode: go to <strong>Home</strong> or <strong>My Dashboard</strong> to use the agent. The sign-in experience still uses the floating agent when you are not logged in.
+        </div>
+      )}
+    </CollapsibleCard>
+  );
+}
+
 export default function Config() {
   const navigate = useNavigate();
   const [form, setForm]               = useState(EMPTY_FORM);
@@ -878,6 +1014,11 @@ export default function Config() {
           )}
 
         </form>
+
+        {/* ── Display Preferences (localStorage only — no server POST) ── */}
+        <DisplayPreferences />
+
+        <AgentLayoutPreferences />
 
         {/* ── Vercel Config ── */}
         {redirectInfo && (

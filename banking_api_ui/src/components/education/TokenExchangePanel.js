@@ -379,8 +379,8 @@ fetch(MCP_SERVER_URL, {
             represents the AI acting on behalf of users, not a user itself.
           </p>
           <pre className="edu-code">{`PingOne → Applications → Add Application
-  Type: Native / Worker (Client Credentials)
-  Grant type: Client Credentials
+  Type: Worker   ← M2M only, no redirect URIs, no user login
+  Grant type: Client Credentials (set automatically for Worker apps)
   Scopes: openid (or custom agent scopes)
 
 → Copy the Client ID and Client Secret`}</pre>

@@ -6,6 +6,7 @@ const { blockInDemoMode } = require('../middleware/demoMode');
 const runtimeSettings = require('../config/runtimeSettings');
 const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 const configStore = require('../services/configStore');
+const demoScenarioStore = require('../services/demoScenarioStore');
 
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -182,7 +183,10 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
     // ── Step-up MFA gate ─────────────────────────────────────────────────────
     // Transfers and withdrawals above the threshold require a fresh MFA token.
     // All values are read from runtimeSettings (configurable via admin UI at /settings).
-    const STEP_UP_THRESHOLD = runtimeSettings.get('stepUpAmountThreshold');
+    const STEP_UP_THRESHOLD = await demoScenarioStore.getStepUpThreshold(
+      req.user.id,
+      runtimeSettings.get('stepUpAmountThreshold'),
+    );
     const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue');
     const STEP_UP_TYPES = runtimeSettings.get('stepUpTransactionTypes');
     const STEP_UP_ENABLED = runtimeSettings.get('stepUpEnabled');

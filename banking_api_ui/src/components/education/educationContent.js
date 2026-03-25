@@ -10,6 +10,7 @@
  */
 
 import React from 'react';
+import TokenChainPanel from './TokenChainPanel';
 
 // ---------------------------------------------------------------------------
 // Raw content strings (shared between components)
@@ -482,6 +483,7 @@ export function CibaMcpFlowContent() {
 export function TokenExchangeContent() {
   return (
     <>
+      <TokenChainPanel />
       <h3>Token exchange for MCP (RFC 8693)</h3>
       <p>
         This demo keeps OAuth tokens on the <strong>server</strong>. When the MCP layer needs an

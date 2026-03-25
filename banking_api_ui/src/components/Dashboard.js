@@ -6,8 +6,9 @@ import bffAxios from '../services/bffAxios';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import BankingAgent from './BankingAgent';
 
-const Dashboard = ({ user, onLogout }) => {
+const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
   const { open } = useEducationUI();
   const [stats, setStats] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
@@ -294,6 +295,26 @@ const Dashboard = ({ user, onLogout }) => {
             What is may_act?
           </button>
           <Link
+            to="/demo-data"
+            title="Edit sandbox account names, balances, and MFA threshold"
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: '2px solid rgba(255, 255, 255, 0.85)',
+              color: '#1e40af',
+              padding: '10px 18px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              textDecoration: 'none',
+              transition: 'all 0.2s ease',
+              backdropFilter: 'blur(10px)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Demo config
+          </Link>
+          <Link
             to="/mcp-inspector"
             title="MCP discovery, tools/list & tools/call via BFF"
             style={{
@@ -441,6 +462,18 @@ const Dashboard = ({ user, onLogout }) => {
 
       {/* Token Chain Display */}
       <TokenChainDisplay />
+
+      {agentUiMode === 'embedded' && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.25rem' }}>AI banking assistant</h2>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: '#64748b' }}>
+            Natural language and MCP tools — step chips show what ran.
+          </p>
+          <div className="embedded-banking-agent">
+            <BankingAgent user={user} onLogout={onLogout} mode="inline" />
+          </div>
+        </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="stats-grid">

@@ -1,5 +1,6 @@
 // banking_api_ui/src/components/EducationBar.js
 import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import './EducationBar.css';
@@ -91,6 +92,13 @@ export default function EducationBar() {
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openCimd}>
           CIMD
         </button>
+        <Link
+          to="/demo-data"
+          className="btn btn-sm btn-outline-primary edu-bar-btn"
+          title="Sandbox accounts, balances, MFA threshold"
+        >
+          Demo config
+        </Link>
       </div>
     </div>
   );

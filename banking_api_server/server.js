@@ -110,6 +110,7 @@ const oauthService      = require('./services/oauthService');
 const userRoutes        = require('./routes/users');
 const accountRoutes     = require('./routes/accounts');
 const transactionRoutes = require('./routes/transactions');
+const demoScenarioRoutes = require('./routes/demoScenario');
 const adminRoutes       = require('./routes/admin');
 const adminConfigRoutes = require('./routes/adminConfig');
 const cibaRoutes        = require('./routes/ciba');
@@ -293,7 +294,7 @@ app.use(restoreSessionFromCookie);
 
 // RFC 6749 §6 — silently refresh near-expired end-user access tokens on
 // authenticated API routes so UIs never serve stale tokens to downstream services.
-app.use(['/api/users', '/api/accounts', '/api/transactions', '/api/mcp', '/api/banking-agent', '/api/tokens'], refreshIfExpiring);
+app.use(['/api/users', '/api/accounts', '/api/transactions', '/api/mcp', '/api/banking-agent', '/api/tokens', '/api/demo-scenario'], refreshIfExpiring);
 
 // Health check endpoint
 app.get('/api/healthz', (req, res) => {
@@ -401,6 +402,7 @@ app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/transactions', authenticateToken, transactionRoutes);
+app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
 app.use('/api/logs', logsRoutes);
