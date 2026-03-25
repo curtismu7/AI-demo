@@ -123,3 +123,48 @@
     font-size: 0.75rem;
   }
 }
+
+/* Global Demo Config button — visible on all authenticated pages */
+.demo-config-fab {
+  position: fixed;
+  top: 164px; /* below Logs FAB in the right stack */
+  right: var(--float-edge, 28px);
+  width: auto;
+  min-width: 116px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: white;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.35);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
+  z-index: 1001;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.demo-config-fab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.45);
+  background: linear-gradient(135deg, #0f8c82 0%, #2dd4bf 100%);
+}
+
+.demo-config-fab:active {
+  transform: scale(0.97);
+}
+
+@media (max-width: 768px) {
+  .demo-config-fab {
+    min-width: 98px;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 0.75rem;
+  }
+}

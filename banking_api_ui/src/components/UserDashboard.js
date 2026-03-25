@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
-import apiClient from '../services/apiClient';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
 import useChatWidget from '../hooks/useChatWidget';
@@ -11,6 +10,19 @@ import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
 import BankingAgent from './BankingAgent';
 import './UserDashboard.css';
+
+/**
+ * Human-readable account label; uses demo "account name" when set on Demo config.
+ * @param {{ name?: string; accountType?: string; accountNumber?: string }} account
+ * @returns {string}
+ */
+function accountSummaryLine(account) {
+  const num = account.accountNumber || 'N/A';
+  const type = account.accountType || 'Account';
+  const nick = typeof account.name === 'string' && account.name.trim() ? account.name.trim() : '';
+  if (nick) return `${nick} · ${type} - ${num}`;
+  return `${type} - ${num}`;
+}
 
 const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
   const { open } = useEducationUI();
@@ -198,7 +210,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       // Set up auto-refresh every 5 seconds
       refreshInterval = setInterval(() => {
         fetchUserData(true); // Silent refresh - no loading spinner
-      }, 5000); // 5 seconds
+      }, 20000); // 20 seconds
     }
     
     // Cleanup interval on component unmount or when autoRefresh changes
@@ -241,7 +253,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       console.error('Error fetching user data:', error);
       
       // Check if it's an authentication error
-      if (error.response?.status === 401 && !silent) {
+      if (error.response?.status === 429 && silent) {
+        setAutoRefresh(false);
+        setSuccess('Auto-refresh paused due to rate limits.');
+      } else if (error.response?.status === 401 && !silent) {
         setError('Your session has expired. Please log in again.');
       } else if (error.response?.status === 403) {
         setError('You do not have permission to access this information.');
@@ -303,7 +318,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
 
     try {
-      await apiClient.post('/api/transactions', {
+      await bffAxios.post('/api/transactions', {
         fromAccountId: selectedAccount.id,
         toAccountId: transferForm.toAccountId,
         amount: parseFloat(transferForm.amount),
@@ -341,7 +356,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
 
     try {
-      await apiClient.post('/api/transactions', {
+      await bffAxios.post('/api/transactions', {
         fromAccountId: null,
         toAccountId: depositAccount.id,
         amount: parseFloat(depositForm.amount),
@@ -379,7 +394,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
 
     try {
-      await apiClient.post('/api/transactions', {
+      await bffAxios.post('/api/transactions', {
         fromAccountId: withdrawAccount.id,
         toAccountId: null,
         amount: parseFloat(withdrawForm.amount),
@@ -534,79 +549,82 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           </span>
         </div>
       )}
-      <div className="dashboard-header">
-        <div className="bank-branding">
-          <div className="bank-logo">
-            <div className="logo-icon">
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
+      <div className="dashboard-header-stack">
+        <div className="dashboard-header">
+          <div className="bank-branding">
+            <div className="bank-logo">
+              <div className="logo-icon">
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+              </div>
+              <span className="bank-name">BX Finance</span>
             </div>
-            <span className="bank-name">BX Finance</span>
+          </div>
+          <div className="header-user">
+            <div className="user-info">
+              <span className="user-greeting">Hello, {user?.firstName} {user?.lastName}</span>
+              <span className="user-email">{user?.email}</span>
+            </div>
           </div>
         </div>
-        <div className="header-right">
-          <div className="user-info">
-            <span className="user-greeting">Hello, {user?.firstName} {user?.lastName}</span>
-            <span className="user-email">{user?.email}</span>
+        <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
+          >
+            How does login work?
+          </button>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.MAY_ACT, 'what')}
+          >
+            What is may_act?
+          </button>
+          <Link
+            to="/demo-data"
+            className="dashboard-toolbar-btn"
+            title="Edit sandbox account names, balances, and MFA threshold"
+          >
+            Demo config
+          </Link>
+          <Link
+            to="/mcp-inspector"
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
+            title="MCP discovery, tools/list & tools/call via BFF"
+          >
+            MCP Inspector
+          </Link>
+          <div className="dashboard-toolbar-toggle">
+            <label className="toggle-label toggle-label--toolbar">
+              <span className="toggle-text">Auto-refresh</span>
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+              </div>
+            </label>
           </div>
-          <div className="header-actions">
-            <button
-              type="button"
-              className="dashboard-edu-btn"
-              onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-            >
-              How does login work?
-            </button>
-            <button
-              type="button"
-              className="dashboard-edu-btn"
-              onClick={() => open(EDU.MAY_ACT, 'what')}
-            >
-              What is may_act?
-            </button>
-            <Link
-              to="/demo-data"
-              className="dashboard-edu-btn"
-              title="Edit sandbox account names, balances, and MFA threshold"
-            >
-              Demo config
-            </Link>
-            <Link
-              to="/mcp-inspector"
-              className="dashboard-header-mcp-btn"
-              title="MCP discovery, tools/list & tools/call via BFF"
-            >
-              MCP Inspector
-            </Link>
-            <div className="auto-refresh-toggle">
-              <label className="toggle-label">
-                <span className="toggle-text">Auto-refresh</span>
-                <div className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={autoRefresh}
-                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                    className="toggle-input"
-                  />
-                  <span className="toggle-slider"></span>
-                </div>
-              </label>
-            </div>
-            <button onClick={openTokenModal} className="token-info-btn" title="View OAuth Token Info">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
-              </svg>
-            </button>
-            <button onClick={onLogout} className="logout-btn">
-              Log Out
-            </button>
-          </div>
+          <button type="button" onClick={openTokenModal} className="dashboard-toolbar-btn dashboard-toolbar-btn--icon" title="View OAuth Token Info">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+            </svg>
+            <span className="dashboard-toolbar-btn__sr">Token info</span>
+          </button>
+          <button type="button" onClick={onLogout} className="dashboard-toolbar-btn dashboard-toolbar-btn--danger">
+            Log out
+          </button>
         </div>
       </div>
 
-      <div className="dashboard-content ud-body">
+      <div className={`dashboard-content ud-body ${agentUiMode === 'embedded' ? '' : 'ud-body--floating'}`}>
         <aside className="ud-left">
           <div className="section">
             <TokenChainDisplay />
@@ -620,7 +638,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           <div className="account-summary-table">
             <div className="account-summary-header">
               <div className="account-summary-cell">Account number</div>
-              <div className="account-summary-cell">Customer name</div>
+              <div className="account-summary-cell">Account name</div>
               <div className="account-summary-cell">Balance</div>
               <div className="account-summary-cell">Pending transactions</div>
               <div className="account-summary-cell">Actions</div>
@@ -628,7 +646,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
             {accounts.map((account) => (
               <div key={account.id} className="account-summary-row">
                 <div className="account-summary-cell account-summary-cell--mono">{account.accountNumber || 'N/A'}</div>
-                <div className="account-summary-cell">{`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'N/A'}</div>
+                <div className="account-summary-cell">{accountSummaryLine(account)}</div>
                 <div className="account-summary-cell account-summary-cell--balance">${Number(account.balance || 0).toFixed(2)}</div>
                 <div className="account-summary-cell">{pendingTransactionsByAccount[account.id] || 0}</div>
                 <div className="account-summary-cell">
@@ -651,7 +669,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
             <div className="section">
             <h2>Transfer Money</h2>
             <div className="transfer-form">
-              <p>From: {selectedAccount.accountType} - {selectedAccount.accountNumber} (${selectedAccount.balance.toFixed(2)})</p>
+              <p>From: {accountSummaryLine(selectedAccount)} (${selectedAccount.balance.toFixed(2)})</p>
               <form onSubmit={handleTransfer}>
                 <div className="form-group">
                   <label>To Account:</label>
@@ -665,7 +683,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                       .filter(account => account.id !== selectedAccount.id)
                       .map(account => (
                         <option key={account.id} value={account.id}>
-                          {account.accountType} - {account.accountNumber} (${account.balance.toFixed(2)})
+                          {accountSummaryLine(account)} (${account.balance.toFixed(2)})
                         </option>
                       ))
                     }
@@ -714,7 +732,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
             <div className="section">
             <h2>Deposit Money</h2>
             <div className="deposit-form">
-              <p>To: {depositAccount.accountType} - {depositAccount.accountNumber} (${depositAccount.balance.toFixed(2)})</p>
+              <p>To: {accountSummaryLine(depositAccount)} (${depositAccount.balance.toFixed(2)})</p>
               <form onSubmit={handleDeposit}>
                 <div className="form-group">
                   <label>Amount:</label>
@@ -759,7 +777,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
             <div className="section">
             <h2>Withdraw Money</h2>
             <div className="withdraw-form">
-              <p>From: {withdrawAccount.accountType} - {withdrawAccount.accountNumber} (${withdrawAccount.balance.toFixed(2)})</p>
+              <p>From: {accountSummaryLine(withdrawAccount)} (${withdrawAccount.balance.toFixed(2)})</p>
               <form onSubmit={handleWithdraw}>
                 <div className="form-group">
                   <label>Amount:</label>
@@ -861,17 +879,19 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           </div>
         </main>
 
-        <aside className="ud-right">
-          <div className="section embedded-banking-agent-section">
-            <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
-            <p className="embedded-banking-agent-lead">
-              Ask in natural language or use actions in the center panel. Tool steps stream as work runs.
-            </p>
-            <div className="embedded-banking-agent">
-              <BankingAgent user={user} onLogout={onLogout} mode="inline" />
+        {agentUiMode === 'embedded' && (
+          <aside className="ud-right">
+            <div className="section embedded-banking-agent-section">
+              <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
+              <p className="embedded-banking-agent-lead">
+                Ask in natural language or use actions in the center panel. Tool steps stream as work runs.
+              </p>
+              <div className="embedded-banking-agent">
+                <BankingAgent user={user} onLogout={onLogout} mode="inline" />
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
 
       {/* OAuth Token Info Modal */}

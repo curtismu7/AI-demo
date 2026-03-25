@@ -67,11 +67,16 @@ async function get_my_accounts(params, userId) {
 
 async function get_account_balance(params, userId) {
   const { account_id } = params;
-  if (!account_id) return { error: 'account_id is required' };
-
-  const account = dataStore.getAccountById(account_id);
-  if (!account) return { error: `Account ${account_id} not found` };
-  if (account.userId !== userId) return { error: 'Access denied — not your account' };
+  let account = null;
+  if (account_id) {
+    account = dataStore.getAccountById(account_id);
+    if (!account) return { error: `Account ${account_id} not found` };
+    if (account.userId !== userId) return { error: 'Access denied — not your account' };
+  } else {
+    const accounts = await ensureAccounts(userId);
+    account = accounts.find((a) => String(a.accountType || '').toLowerCase() === 'checking') || accounts[0];
+    if (!account) return { error: 'No accounts found for this user' };
+  }
 
   return {
     account_id: account.id,
@@ -101,7 +106,6 @@ async function get_my_transactions(params, userId) {
 
 async function create_deposit(params, userId) {
   const { account_id, amount, description } = params;
-  if (!account_id) return { error: 'account_id is required' };
 
   const parsedAmount = parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0)
@@ -109,15 +113,23 @@ async function create_deposit(params, userId) {
   if (parsedAmount > 1_000_000)
     return { error: 'amount cannot exceed $1,000,000' };
 
-  const account = dataStore.getAccountById(account_id);
-  if (!account) return { error: `Account ${account_id} not found` };
-  if (account.userId !== userId) return { error: 'Access denied — not your account' };
+  let account = null;
+  if (account_id) {
+    account = dataStore.getAccountById(account_id);
+    if (!account) return { error: `Account ${account_id} not found` };
+    if (account.userId !== userId) return { error: 'Access denied — not your account' };
+  } else {
+    const accounts = await ensureAccounts(userId);
+    account = accounts.find((a) => String(a.accountType || '').toLowerCase() === 'checking') || accounts[0];
+    if (!account) return { error: 'No accounts found for this user' };
+  }
+  const targetAccountId = account.id;
 
   const rounded = Math.round(parsedAmount * 100) / 100;
-  await dataStore.updateAccountBalance(account_id, rounded);
+  await dataStore.updateAccountBalance(targetAccountId, rounded);
 
   const txn = await dataStore.createTransaction({
-    toAccountId: account_id,
+    toAccountId: targetAccountId,
     fromAccountId: null,
     userId,
     amount: rounded,
@@ -127,7 +139,7 @@ async function create_deposit(params, userId) {
     createdAt: new Date(),
   });
 
-  const updated = dataStore.getAccountById(account_id);
+  const updated = dataStore.getAccountById(targetAccountId);
   return {
     success: true,
     transaction_id: txn.id,
@@ -139,7 +151,6 @@ async function create_deposit(params, userId) {
 
 async function create_withdrawal(params, userId) {
   const { account_id, amount, description } = params;
-  if (!account_id) return { error: 'account_id is required' };
 
   const parsedAmount = parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0)
@@ -147,18 +158,26 @@ async function create_withdrawal(params, userId) {
   if (parsedAmount > 1_000_000)
     return { error: 'amount cannot exceed $1,000,000' };
 
-  const account = dataStore.getAccountById(account_id);
-  if (!account) return { error: `Account ${account_id} not found` };
-  if (account.userId !== userId) return { error: 'Access denied — not your account' };
+  let account = null;
+  if (account_id) {
+    account = dataStore.getAccountById(account_id);
+    if (!account) return { error: `Account ${account_id} not found` };
+    if (account.userId !== userId) return { error: 'Access denied — not your account' };
+  } else {
+    const accounts = await ensureAccounts(userId);
+    account = accounts.find((a) => String(a.accountType || '').toLowerCase() === 'checking') || accounts[0];
+    if (!account) return { error: 'No accounts found for this user' };
+  }
+  const targetAccountId = account.id;
 
   const rounded = Math.round(parsedAmount * 100) / 100;
   if (account.balance < rounded)
     return { error: `Insufficient balance (current: $${account.balance.toFixed(2)}, requested: $${rounded.toFixed(2)})` };
 
-  await dataStore.updateAccountBalance(account_id, -rounded);
+  await dataStore.updateAccountBalance(targetAccountId, -rounded);
 
   const txn = await dataStore.createTransaction({
-    fromAccountId: account_id,
+    fromAccountId: targetAccountId,
     toAccountId: null,
     userId,
     amount: rounded,
@@ -168,7 +187,7 @@ async function create_withdrawal(params, userId) {
     createdAt: new Date(),
   });
 
-  const updated = dataStore.getAccountById(account_id);
+  const updated = dataStore.getAccountById(targetAccountId);
   return {
     success: true,
     transaction_id: txn.id,

@@ -475,9 +475,6 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
-  const isCustomerDashboardRoute =
-    (location.pathname === '/' || location.pathname === '/dashboard') &&
-    (effectiveUser?.role === 'customer' || effectiveUser?.role === 'user');
   const isLoggedIn = !!effectiveUser;
   const isConfigured = oauthConfig && (oauthConfig.admin || oauthConfig.user);
 
@@ -562,7 +559,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   // Mutual exclusion: close agent when an education panel opens
   useEffect(() => {
     if (edu?.panel) setIsOpen(false);
-  }, [edu?.panel, edu.close]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [edu?.panel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mutual exclusion: close any open education panel when agent opens
   useEffect(() => {
@@ -586,27 +583,17 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
 
   useEffect(() => {
     if (isOpen) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isOpen, bottomRef]);
+  }, [messages, isOpen]);
 
   useEffect(() => {
     if (!isOpen || !isLoggedIn) return;
     fetchNlStatus().then(setNlMeta).catch(() => setNlMeta({ geminiConfigured: false }));
   }, [isOpen, isLoggedIn]);
 
-  // Fetch MCP server tool count for header display (best-effort; silent on failure)
+  // Keep MCP status lightweight here to avoid auth/noise calls while browsing dashboards.
   useEffect(() => {
     if (!isOpen || !isLoggedIn) return;
-    fetch('/api/mcp/inspector/tools', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.tools) {
-          setMcpStatus({ toolCount: data.tools.length, connected: true });
-        } else {
-          setMcpStatus({ toolCount: ACTIONS.length, connected: true });
-        }
-      })
-      .catch(() => setMcpStatus({ toolCount: ACTIONS.length, connected: true }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setMcpStatus({ toolCount: ACTIONS.length, connected: true });
   }, [isOpen, isLoggedIn]);
 
   // ── Drag-to-move ──────────────────────────────────────────────────────────
@@ -1097,7 +1084,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   }
 
   // Float mode should return nothing when the dedicated /agent page is active
-  if (!isInline && (isAgentPage || isLogsPage || isCustomerDashboardRoute)) return null;
+  if (!isInline && (isAgentPage || isLogsPage)) return null;
 
   return (
     <>
@@ -1136,6 +1123,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
           {/* Header — spans full width */}
           {/* In inline mode: no drag handle. In float mode: drag to reposition */}
           <div
+            role="button"
+            tabIndex={isInline ? -1 : 0}
             className={`ba-header${isInline ? '' : ' banking-agent-drag-handle'}`}
             onMouseDown={isInline ? undefined : handleDragStart}
           >
@@ -1301,6 +1290,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                     👑 Admin Sign In
                   </button>
                   <button
+                    type="button"
                     className={`ba-left-config-btn${isConfigured ? ' configured' : ''}`}
                     onClick={() => { setIsOpen(false); navigate('/config'); }}
                   >
@@ -1367,6 +1357,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                     {EDUCATION_COMMANDS.map(cmd => (
                       <button
                         key={cmd.id}
+                        type="button"
                         className="ba-chip ba-chip--learn"
                         onClick={() => { openEducationCommand(cmd); setShowCommands(false); }}
                       >
@@ -1393,6 +1384,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                 {isLoggedIn ? (
                   <div className="ba-input-row">
                     <button
+                      type="button"
                       className={`ba-cmd-btn${showCommands ? ' active' : ''}`}
                       onClick={() => setShowCommands(s => !s)}
                       title="Learn &amp; Explore topics"
@@ -1415,6 +1407,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                       disabled={nlLoading}
                     />
                     <button
+                      type="button"
                       className="ba-send-btn"
                       onClick={() => { handleNaturalLanguage(); setShowCommands(false); }}
                       disabled={nlLoading || !nlInput.trim()}
@@ -1432,9 +1425,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
             </div>
           </div>
           {/* Resize handles */}
-          <div className="ba-resize-handle ba-resize-handle--se" onMouseDown={(e) => handleResize(e, 'se')} />
-          <div className="ba-resize-handle ba-resize-handle--e" onMouseDown={(e) => handleResize(e, 'e')} />
-          <div className="ba-resize-handle ba-resize-handle--s" onMouseDown={(e) => handleResize(e, 's')} />
+          <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--se" onMouseDown={(e) => handleResize(e, 'se')} aria-label="Resize southeast" />
+          <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--e" onMouseDown={(e) => handleResize(e, 'e')} aria-label="Resize east" />
+          <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--s" onMouseDown={(e) => handleResize(e, 's')} aria-label="Resize south" />
         </div>
       )}
     </>

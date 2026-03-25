@@ -27,8 +27,18 @@ const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 const COOKIE_SESSION_ALLOWED_ROUTES = new Set([
   'GET /api/accounts/my',
   'GET /api/transactions/my',
-  'POST /api/accounts/reset-demo'
+  'POST /api/accounts/reset-demo',
+  'GET /api/demo-scenario',
+  'PUT /api/demo-scenario',
 ]);
+
+function normalizeRouteKey(routeKey) {
+  if (!routeKey || typeof routeKey !== 'string') return '';
+  const [method, rawPath] = routeKey.split(' ');
+  if (!method || !rawPath) return routeKey;
+  const cleanPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, '') : rawPath;
+  return `${method} ${cleanPath}`;
+}
 
 // Get current environment configuration
 const envConfig = getCurrentEnvironmentConfig();
@@ -296,7 +306,10 @@ const requireScopes = (requiredScopes, requireAll = false) => {
       // may not have banking:* scopes in their PingOne token. Trust them based on role.
       // Only applies to session-sourced tokens (fromSession:true) — raw Bearer tokens are
       // still subject to scope enforcement so tests and direct API access behave correctly.
-      if (req.user.role === 'admin' || (req.user.role === 'user' && req.user.tokenType === 'oauth' && req.user.fromSession)) {
+      const isTrustedSessionOAuthUser = req.user.tokenType === 'oauth'
+        && req.user.fromSession
+        && ['user', 'customer', 'readonly', 'admin'].includes(req.user.role);
+      if (isTrustedSessionOAuthUser) {
         logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — user has trusted OAuth role', {
           ...requestContext,
           required_scopes: scopesToCheck,
@@ -548,7 +561,7 @@ const authenticateToken = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
     const sessionToken = req.session?.oauthTokens?.accessToken;
     const sessionUser = req.session?.user;
-    const routeKey = `${req.method} ${req.originalUrl?.split('?')[0] || req.path || req.url}`;
+    const routeKey = normalizeRouteKey(`${req.method} ${req.originalUrl?.split('?')[0] || req.path || req.url}`);
 
     logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Starting token authentication', {
       ...requestContext,

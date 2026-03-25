@@ -7,9 +7,8 @@
   background: linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid #e2e8f0;
   padding: 0.5rem 0.75rem;
-  position: sticky;
-  top: 0;
-  z-index: 1020;
+  position: relative;
+  z-index: 10;
 }
 
 .edu-bar-inner {
@@ -28,6 +27,16 @@
 /* Slight breathing room between Ping outline buttons */
 .edu-bar-btn {
   white-space: nowrap;
+  background: #e5e7eb !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.edu-bar-btn:hover,
+.edu-bar-btn:focus {
+  background: #dbe1e7 !important;
+  border-color: #94a3b8 !important;
+  color: #1f2937 !important;
 }
 
 .edu-bar-dropdown {

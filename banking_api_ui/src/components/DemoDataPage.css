@@ -93,6 +93,21 @@
   max-width: 320px;
 }
 
+.demo-data-json-editor {
+  width: 100%;
+  max-width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  line-height: 1.45;
+  background: #fff;
+  color: #111827;
+}
+
 .demo-data-accounts {
   display: flex;
   flex-direction: column;
@@ -165,4 +180,73 @@
 .demo-data-docs h2 {
   font-size: 1rem;
   color: #111827;
+}
+
+/* AI agent layout (floating vs embedded) */
+.demo-data-agent-layout {
+  padding: 1rem 1rem 1.1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #f9fafb;
+}
+
+.demo-data-agent-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.demo-data-agent-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  cursor: pointer;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.35rem;
+  border: 1px solid transparent;
+}
+
+.demo-data-agent-option:has(input:focus-visible) {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.demo-data-agent-option:has(input:checked) {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.demo-data-agent-option input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.demo-data-agent-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.demo-data-agent-option-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.demo-data-agent-option-desc {
+  font-size: 0.78rem;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.demo-data-agent-note {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.85rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.35rem;
+  font-size: 0.8rem;
+  color: #1d4ed8;
+  line-height: 1.45;
 }

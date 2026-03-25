@@ -130,10 +130,17 @@ function AppWithAuth() {
       return;
     }
 
-    // Sync server config (SQLite) → IndexedDB on every startup
-    axios.get('/api/admin/config')
-      .then(({ data }) => savePublicConfig(data.config))
-      .catch(() => {}); // non-fatal
+    // Sync server config (SQLite) → IndexedDB on startup, except demo-data route.
+    // This avoids unnecessary config calls while editing demo data.
+    const currentPath =
+      typeof window !== 'undefined' && typeof window.location?.pathname === 'string'
+        ? window.location.pathname
+        : '';
+    if (currentPath !== '/demo-data') {
+      axios.get('/api/admin/config')
+        .then(({ data }) => savePublicConfig(data.config))
+        .catch(() => {}); // non-fatal
+    }
 
     const oauthSuccess =
       typeof window !== 'undefined' &&

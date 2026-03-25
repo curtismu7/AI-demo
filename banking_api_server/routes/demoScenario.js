@@ -15,6 +15,33 @@ const accountsRouter = require('./accounts');
 const router = express.Router();
 
 const DEFAULT_STEP_UP = () => runtimeSettings.get('stepUpAmountThreshold');
+const BLOCKED_USER_FIELDS = new Set(['id', 'password', 'createdAt']);
+
+/**
+ * Returns safe user profile updates from a JSON object.
+ * Blocks immutable/sensitive fields and trims long strings.
+ */
+function sanitizeUserUpdates(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const updates = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (BLOCKED_USER_FIELDS.has(key)) continue;
+    if (typeof value === 'string') {
+      updates[key] = value.trim().slice(0, 300);
+      continue;
+    }
+    if (
+      value === null ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      (Array.isArray(value) && value.length <= 50) ||
+      (value && typeof value === 'object')
+    ) {
+      updates[key] = value;
+    }
+  }
+  return updates;
+}
 
 router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
@@ -23,6 +50,8 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
       accounts = await accountsRouter.provisionDemoAccounts(req.user.id);
     }
     const scenario = await demoScenarioStore.load(req.user.id);
+    const currentUser = dataStore.getUserById(req.user.id) || {};
+    const { password, ...userData } = currentUser;
     res.json({
       accounts: accounts.map(a => ({
         id: a.id,
@@ -47,6 +76,7 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
       persistenceNote: process.env.VERCEL && !(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL)
         ? 'KV not configured — threshold override is per server instance only until you add Upstash/KV.'
         : null,
+      userData,
     });
   } catch (e) {
     console.error('[demoScenario] GET', e);
@@ -56,7 +86,7 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
 
 router.put('/', authenticateToken, requireScopes(['banking:write']), async (req, res) => {
   try {
-    const { accounts: bodyAccounts, stepUpAmountThreshold } = req.body || {};
+    const { accounts: bodyAccounts, stepUpAmountThreshold, userData } = req.body || {};
     const uid = req.user.id;
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'stepUpAmountThreshold')) {
@@ -80,8 +110,10 @@ router.put('/', authenticateToken, requireScopes(['banking:write']), async (req,
           return res.status(403).json({ error: 'forbidden_account', message: 'You can only edit your own accounts.' });
         }
         const updates = {};
-        if (typeof row.name === 'string' && row.name.trim().length > 0) {
-          updates.name = row.name.trim().slice(0, 120);
+        if (Object.prototype.hasOwnProperty.call(row, 'name')) {
+          if (typeof row.name === 'string') {
+            updates.name = row.name.trim().slice(0, 120);
+          }
         }
         if (row.balance !== undefined && row.balance !== null) {
           const b = parseFloat(row.balance);
@@ -96,8 +128,21 @@ router.put('/', authenticateToken, requireScopes(['banking:write']), async (req,
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body, 'userData')) {
+      const user = dataStore.getUserById(uid);
+      if (!user) {
+        return res.status(404).json({ error: 'user_not_found', message: 'Signed-in user not found.' });
+      }
+      const safeUpdates = sanitizeUserUpdates(userData);
+      if (Object.keys(safeUpdates).length > 0) {
+        await dataStore.updateUser(uid, safeUpdates);
+      }
+    }
+
     const accounts = dataStore.getAccountsByUserId(uid);
     const scenario = await demoScenarioStore.load(uid);
+    const currentUser = dataStore.getUserById(uid) || {};
+    const { password, ...savedUserData } = currentUser;
     res.json({
       ok: true,
       accounts: accounts.map(a => ({
@@ -112,6 +157,7 @@ router.put('/', authenticateToken, requireScopes(['banking:write']), async (req,
         stepUpAmountThreshold:
           scenario.stepUpAmountThreshold != null ? scenario.stepUpAmountThreshold : DEFAULT_STEP_UP(),
       },
+      userData: savedUserData,
     });
   } catch (e) {
     console.error('[demoScenario] PUT', e);
