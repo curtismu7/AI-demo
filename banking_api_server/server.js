@@ -516,7 +516,8 @@ const { oauthErrorHandler } = require('./middleware/oauthErrorHandler');
 // scoped to the MCP server audience — the user's raw token never leaves the BFF.
 
 const { resolveMcpAccessTokenWithEvents } = require('./services/agentMcpTokenService');
-const { mcpCallTool, getSessionAccessToken } = require('./services/mcpWebSocketClient');
+const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./services/mcpWebSocketClient');
+const { callToolLocal } = require('./services/mcpLocalTools');
 const { introspectToken } = require('./middleware/tokenIntrospection');
 
 // POST /api/mcp/tool — call a banking MCP tool
@@ -569,12 +570,46 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     }
   }
 
+  // ── Try remote MCP server first; fall back to local handler if unreachable ──
+  const mcpUrl = getMcpServerUrl();
+  const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
+
   try {
+    // Skip the WebSocket attempt entirely when running on Vercel with no MCP_SERVER_URL
+    // configured — localhost:8080 is guaranteed to be unreachable serverless.
+    if (isLocalDefault && process.env.VERCEL) {
+      throw Object.assign(new Error('MCP_SERVER_URL not configured; using local tool handler'), { useLocal: true });
+    }
     const result = await mcpCallTool(tool, params || {}, agentToken, req.correlationId);
     return res.json({ result, tokenEvents });
   } catch (err) {
-    console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
-    return res.status(502).json({ error: 'mcp_error', message: err.message, tokenEvents });
+    const isConnErr =
+      err.useLocal ||
+      err.message.includes('ECONNREFUSED') ||
+      err.message.includes('ENETUNREACH') ||
+      err.message.includes('timed out') ||
+      err.message.includes('connect ETIMEDOUT') ||
+      (err.code && ['ECONNREFUSED', 'ENETUNREACH', 'ETIMEDOUT'].includes(err.code));
+
+    if (!isConnErr) {
+      console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
+      return res.status(502).json({ error: 'mcp_error', message: err.message, tokenEvents });
+    }
+
+    // ── Local fallback ──────────────────────────────────────────────────────
+    const sessionUser = req.session?.user;
+    if (!sessionUser?.id) {
+      return res.status(401).json({ error: 'authentication_required', message: 'Sign in to use the banking agent.', tokenEvents });
+    }
+
+    console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);
+    try {
+      const result = await callToolLocal(tool, params || {}, sessionUser.id);
+      return res.json({ result, tokenEvents, _localFallback: true });
+    } catch (localErr) {
+      console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
+      return res.status(502).json({ error: 'mcp_error', message: localErr.message, tokenEvents });
+    }
   }
 });
 
