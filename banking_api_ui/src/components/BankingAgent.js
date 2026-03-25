@@ -81,6 +81,8 @@ const SUGGESTIONS_CUSTOMER = [
 const SUGGESTIONS_ADMIN = [
   'Show all customer accounts',
   'List recent system transactions',
+  'Show me last 5 errors',
+  'Show last success login for bankuser',
   'List MCP tools',
   'What is CIBA?',
   'How does token exchange work?',
@@ -152,9 +154,10 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
     <div className="banking-agent-form">
       {(fields[action] || []).map(f => (
         <div key={f.key} className="banking-agent-field">
-          <label>{f.label}</label>
+          <label htmlFor={`field-${f.key}`}>{f.label}</label>
           {f.type === 'select' ? (
             <select
+              id={`field-${f.key}`}
               value={form[f.key] || (f.options[0]?.id || '')}
               onChange={e => set(f.key, e.target.value)}
               className="banking-agent-select"
@@ -167,6 +170,7 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
             </select>
           ) : (
             <input
+              id={`field-${f.key}`}
               type={f.type || 'text'}
               placeholder={f.placeholder}
               value={form[f.key] || ''}
@@ -176,10 +180,10 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
         </div>
       ))}
       <div className="banking-agent-form-actions">
-        <button className="banking-agent-btn-primary" disabled={loading} onClick={() => onSubmit(form)}>
+        <button type="button" className="banking-agent-btn-primary" disabled={loading} onClick={() => onSubmit(form)}>
           {loading ? '…' : 'Run'}
         </button>
-        <button className="banking-agent-btn-ghost" onClick={onCancel}>Cancel</button>
+        <button type="button" className="banking-agent-btn-ghost" onClick={onCancel}>Cancel</button>
       </div>
     </div>
   );
@@ -228,9 +232,9 @@ function TransactionsTable({ transactions }) {
 function ToolProgressChips({ steps }) {
   if (!steps?.length) return null;
   return (
-    <div className="ba-tool-progress" role="list" aria-label="Tool calls">
+    <ul className="ba-tool-progress" aria-label="Tool calls">
       {steps.map((s, i) => (
-        <div key={`${s.name}-${i}`} className="ba-tool-chip" role="listitem">
+        <li key={`${s.name}-${i}`} className="ba-tool-chip">
           <span className="ba-tool-chip-ico" aria-hidden />
           <span className="ba-tool-chip-name">{s.name}</span>
           <span className="ba-tool-chip-sep">·</span>
@@ -238,19 +242,19 @@ function ToolProgressChips({ steps }) {
             {s.status === 'running' ? 'Running…' : s.status === 'success' ? 'Success' : 'Failed'}
           </span>
           <span className="ba-tool-chip-chev" aria-hidden>›</span>
-        </div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
 function ResultsPanel({ panel, onClose, style }) {
   if (!panel) return null;
   return (
-    <div className="banking-agent-results-panel" style={style} role="complementary" aria-label="Results">
+    <aside className="banking-agent-results-panel" style={style} aria-label="Results">
       <div className="bar-rp-header">
         <span className="bar-rp-title">{panel.title}</span>
-        <button className="bar-rp-close" onClick={onClose} aria-label="Close results">✕</button>
+        <button type="button" className="bar-rp-close" onClick={onClose} aria-label="Close results">✕</button>
       </div>
       <div className="bar-rp-body">
         {panel.type === 'accounts'      && <AccountsTable      accounts={panel.data} />}
@@ -272,7 +276,7 @@ function ResultsPanel({ panel, onClose, style }) {
           </div>
         )}
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -302,6 +306,31 @@ function normalizeBankingParams(params) {
   if (p.from_account_id && !p.fromId) p.fromId = p.from_account_id;
   if (p.to_account_id && !p.toId) p.toId = p.to_account_id;
   return p;
+}
+
+/**
+ * Parses simple log-focused prompts into a structured query command.
+ */
+function parseLogPrompt(text) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  const lower = t.toLowerCase();
+
+  const errorMatch =
+    lower.match(/(?:show|list|give me|get)\s+(?:me\s+)?(?:the\s+)?last\s+(\d+)\s+errors?/) ||
+    lower.match(/last\s+(\d+)\s+errors?/);
+  if (errorMatch) {
+    return { type: 'errors', limit: Math.min(Math.max(parseInt(errorMatch[1], 10) || 5, 1), 50) };
+  }
+
+  const loginMatch =
+    lower.match(/last\s+success(?:ful)?\s+login\s+for\s+([a-z0-9._@-]+)/i) ||
+    lower.match(/last\s+login\s+for\s+([a-z0-9._@-]+)/i);
+  if (loginMatch) {
+    return { type: 'last_login', username: loginMatch[1] };
+  }
+
+  return null;
 }
 
 // ─── Education topic inline messages (module-level for performance) ───────────
@@ -362,6 +391,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   const [searchParams] = useSearchParams();
   // On the /agent route the inline instance is shown — hide floating widget entirely
   const isAgentPage = location.pathname === '/agent';
+  const isLogsPage = location.pathname === '/logs';
 
   // Persist isOpen state to localStorage whenever it changes
   useEffect(() => {
@@ -519,7 +549,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
     window.addEventListener('userAuthenticated', onAuth);
     return () => window.removeEventListener('userAuthenticated', onAuth);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkSelfAuth]);
+  }, [checkSelfAuth, user, sessionUser]);
 
   // Re-check when panel opens (catches sessions established after mount)
   useEffect(() => {
@@ -529,12 +559,12 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   // Mutual exclusion: close agent when an education panel opens
   useEffect(() => {
     if (edu?.panel) setIsOpen(false);
-  }, [edu?.panel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [edu?.panel, edu.close]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mutual exclusion: close any open education panel when agent opens
   useEffect(() => {
     if (isOpen && edu?.panel) edu.close();
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, edu?.panel, edu.close]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check config status from IndexedDB cache whenever panel opens
   useEffect(() => {
@@ -997,6 +1027,62 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
     addMessage('user', text);
     setNlInput('');
     try {
+      const logQuery = parseLogPrompt(text);
+      if (logQuery) {
+        if (logQuery.type === 'errors') {
+          const params = new URLSearchParams({
+            level: 'error',
+            limit: String(logQuery.limit),
+          });
+          const sources = ['console', 'app', 'vercel'];
+          const results = await Promise.allSettled(
+            sources.map((src) => fetch(`/api/logs/${src}?${params.toString()}`, { credentials: 'include' }))
+          );
+          const merged = [];
+          for (let i = 0; i < results.length; i += 1) {
+            const res = results[i];
+            if (res.status !== 'fulfilled' || !res.value.ok) continue;
+            const body = await res.value.json();
+            (body.logs || []).forEach((log) => merged.push({ ...log, _src: sources[i] }));
+          }
+          const top = merged
+            .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+            .slice(0, logQuery.limit);
+          if (top.length === 0) {
+            addMessage('assistant', `No error logs found in the last ${logQuery.limit} entries.`);
+          } else {
+            const lines = top.map((l, idx) => {
+              const when = new Date(l.timestamp || Date.now()).toLocaleString();
+              return `${idx + 1}. [${(l.level || 'error').toUpperCase()}] (${l._src}) ${when}\n   ${String(l.message || '').slice(0, 180)}`;
+            });
+            addMessage('assistant', `Last ${top.length} errors:\n\n${lines.join('\n\n')}`);
+          }
+        } else if (logQuery.type === 'last_login') {
+          const p = new URLSearchParams({
+            username: logQuery.username,
+            action: 'LOGIN',
+            limit: '1',
+          });
+          const res = await fetch(`/api/admin/activity?${p.toString()}`, { credentials: 'include' });
+          if (!res.ok) {
+            if (res.status === 403) {
+              addMessage('assistant', 'Log query requires admin access. Sign in as admin to query activity logs.');
+            } else {
+              addMessage('assistant', `Could not query login activity (HTTP ${res.status}).`);
+            }
+          } else {
+            const body = await res.json();
+            const log = body.logs?.[0];
+            if (!log) {
+              addMessage('assistant', `No successful login found for "${logQuery.username}".`);
+            } else {
+              const when = new Date(log.timestamp).toLocaleString();
+              addMessage('assistant', `Last successful login for ${logQuery.username}:\n\n- Time: ${when}\n- Endpoint: ${log.endpoint || '/api/auth/login'}\n- IP: ${log.ipAddress || 'n/a'}`);
+            }
+          }
+        }
+        return;
+      }
       const { source, result } = await parseNaturalLanguage(text);
       await dispatchNlResult(result, source);
     } catch (err) {
@@ -1008,7 +1094,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   }
 
   // Float mode should return nothing when the dedicated /agent page is active
-  if (!isInline && isAgentPage) return null;
+  if (!isInline && (isAgentPage || isLogsPage)) return null;
 
   return (
     <>

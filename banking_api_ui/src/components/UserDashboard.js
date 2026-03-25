@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
+import bffAxios from '../services/bffAxios';
 import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
@@ -46,6 +47,26 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const fetchingRef = React.useRef(false);
   const fetchUserDataRef = React.useRef(null);
   const [agentHighlight, setAgentHighlight] = useState(null); // 'accounts' | 'transactions' | null
+
+  /**
+   * Resolve authenticated user from all supported session endpoints.
+   * Keeps dashboard session logic aligned with App.js + BankingAgent.
+   */
+  const resolveSessionUser = async () => {
+    const [admin, endUser, session] = await Promise.allSettled([
+      bffAxios.get('/api/auth/oauth/status'),
+      bffAxios.get('/api/auth/oauth/user/status'),
+      bffAxios.get('/api/auth/session'),
+    ]);
+
+    const adminUser = admin.status === 'fulfilled' && admin.value?.data?.authenticated ? admin.value.data.user : null;
+    if (adminUser) return adminUser;
+    const endUserUser = endUser.status === 'fulfilled' && endUser.value?.data?.authenticated ? endUser.value.data.user : null;
+    if (endUserUser) return endUserUser;
+    const sessionUser = session.status === 'fulfilled' && session.value?.data?.authenticated ? session.value.data.user : null;
+    if (sessionUser) return sessionUser;
+    return null;
+  };
 
   // Listen for full-page agent results dispatched by BankingAgent
   useEffect(() => {
@@ -210,36 +231,22 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setLoading(true);
       }
 
-      // Check for OAuth session and get user info
-      try {
-        // Try end user OAuth session first
-        const userSessionResponse = await axios.get('/api/auth/oauth/user/status');
-        if (userSessionResponse.data.authenticated) {
-          setUser(userSessionResponse.data.user);
-        } else {
-          // Try admin OAuth session as fallback
-          const adminSessionResponse = await axios.get('/api/auth/oauth/status');
-          if (adminSessionResponse.data.authenticated) {
-            setUser(adminSessionResponse.data.user);
-          } else {
-            throw new Error('No valid OAuth session found');
-          }
-        }
-      } catch (sessionError) {
-        console.error('OAuth session error:', sessionError);
+      const sessionUser = await resolveSessionUser();
+      if (!sessionUser) {
         setError('Please log in to access your account');
         if (!silent) {
           setLoading(false);
         }
         return;
       }
+      setUser(sessionUser);
+      setError(null);
 
-      // Get user's accounts using the new API client
-      const accountsResponse = await apiClient.get('/api/accounts/my');
+      // Read via BFF cookie session client (same behavior as BankingAgent/App session checks)
+      const accountsResponse = await bffAxios.get('/api/accounts/my');
       setAccounts(accountsResponse.data.accounts);
 
-      // Get user's transactions using the new API client
-      const transactionsResponse = await apiClient.get('/api/transactions/my');
+      const transactionsResponse = await bffAxios.get('/api/transactions/my');
       setTransactions(transactionsResponse.data.transactions);
 
     } catch (error) {
@@ -602,26 +609,16 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         </div>
       </div>
 
-      <div className="dashboard-content">
-        {/* Token Chain Display */}
-        <div className="section">
-          <TokenChainDisplay />
-        </div>
-
-        {agentUiMode === 'embedded' && (
-          <div className="section embedded-banking-agent-section">
-            <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
-            <p className="embedded-banking-agent-lead">
-              Ask in natural language or use the actions on the left. Tool steps appear as you go.
-            </p>
-            <div className="embedded-banking-agent">
-              <BankingAgent user={user} onLogout={onLogout} mode="inline" />
-            </div>
+      <div className="dashboard-content ud-body">
+        <aside className="ud-left">
+          <div className="section">
+            <TokenChainDisplay />
           </div>
-        )}
+        </aside>
 
-        {/* Account Summary */}
-        <div className={`section${agentHighlight === 'accounts' ? ' section--agent-updated' : ''}`}>
+        <main className="ud-center">
+          {/* Account Summary */}
+          <div className={`section${agentHighlight === 'accounts' ? ' section--agent-updated' : ''}`}>
           <h2>Your Accounts {agentHighlight === 'accounts' && <span className="agent-updated-badge">↻ Updated by Agent</span>}</h2>
           <div className="accounts-grid">
             {accounts.map(account => (
@@ -659,11 +656,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
               </div>
             ))}
           </div>
-        </div>
+          </div>
 
-        {/* Transfer Form */}
-        {selectedAccount && (
-          <div className="section">
+          {/* Transfer Form */}
+          {selectedAccount && (
+            <div className="section">
             <h2>Transfer Money</h2>
             <div className="transfer-form">
               <p>From: {selectedAccount.accountType} - {selectedAccount.accountNumber} (${selectedAccount.balance.toFixed(2)})</p>
@@ -721,12 +718,12 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 </div>
               </form>
             </div>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Deposit Form */}
-        {depositAccount && (
-          <div className="section">
+          {/* Deposit Form */}
+          {depositAccount && (
+            <div className="section">
             <h2>Deposit Money</h2>
             <div className="deposit-form">
               <p>To: {depositAccount.accountType} - {depositAccount.accountNumber} (${depositAccount.balance.toFixed(2)})</p>
@@ -766,12 +763,12 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 </div>
               </form>
             </div>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Withdraw Form */}
-        {withdrawAccount && (
-          <div className="section">
+          {/* Withdraw Form */}
+          {withdrawAccount && (
+            <div className="section">
             <h2>Withdraw Money</h2>
             <div className="withdraw-form">
               <p>From: {withdrawAccount.accountType} - {withdrawAccount.accountNumber} (${withdrawAccount.balance.toFixed(2)})</p>
@@ -811,11 +808,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 </div>
               </form>
             </div>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Recent Transactions */}
-        <div className={`section${agentHighlight === 'transactions' ? ' section--agent-updated' : ''}`}>
+          {/* Recent Transactions */}
+          <div className={`section${agentHighlight === 'transactions' ? ' section--agent-updated' : ''}`}>
           <h2>Recent Transactions {agentHighlight === 'transactions' && <span className="agent-updated-badge">↻ Updated by Agent</span>}</h2>
           <div className="transactions-table">
             <div className="transaction-header">
@@ -873,7 +870,29 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 })}
             </div>
           </div>
-        </div>
+          </div>
+        </main>
+
+        <aside className="ud-right">
+          {agentUiMode === 'embedded' ? (
+            <div className="section embedded-banking-agent-section">
+              <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
+              <p className="embedded-banking-agent-lead">
+                Ask in natural language or use actions in the center panel. Tool steps stream as work runs.
+              </p>
+              <div className="embedded-banking-agent">
+                <BankingAgent user={user} onLogout={onLogout} mode="inline" />
+              </div>
+            </div>
+          ) : (
+            <div className="section embedded-banking-agent-section">
+              <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
+              <p className="embedded-banking-agent-lead">
+                Agent is set to floating mode. Open the chat bubble to use your assistant on any page.
+              </p>
+            </div>
+          )}
+        </aside>
       </div>
 
       {/* OAuth Token Info Modal */}
