@@ -210,6 +210,26 @@
   text-overflow: ellipsis;
 }
 
+/* ─── Learn & Explore section ────────────────────────────────────────────── */
+.sidenav-learn {
+  border-top: 1px solid var(--sn-border);
+  padding-top: 4px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  max-height: 320px;
+}
+
+/* Reset button so it looks identical to sidenav-link anchor/NavLink */
+.sidenav-learn-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  width: 100%;
+}
+
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
 .sidenav-footer {
   padding: 10px 6px;

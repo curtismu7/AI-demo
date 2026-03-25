@@ -246,7 +246,8 @@ const TOPIC_MESSAGES = {
   'cimd': `📄 Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "▶ Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
 };
 
-export default function BankingAgent({ user, onLogout }) {
+export default function BankingAgent({ user, onLogout, mode = 'float' }) {
+  const isInline = mode === 'inline';
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   // Always open by default, unless user explicitly collapsed it (persisted in localStorage)
@@ -284,6 +285,8 @@ export default function BankingAgent({ user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  // On the /agent route the inline instance is shown — hide floating widget entirely
+  const isAgentPage = location.pathname === '/agent';
 
   // Persist isOpen state to localStorage whenever it changes
   useEffect(() => {
@@ -509,13 +512,18 @@ export default function BankingAgent({ user, onLogout }) {
   }, []);
 
   // Panel position: override CSS anchoring when user has dragged the window
-  const panelStyle = isExpanded
-    ? { left: '16px', top: '16px', bottom: '16px', right: '16px', width: 'auto', height: 'auto' }
-    : dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : {};
+  // In inline mode the CSS (.ba-mode-inline) handles size — no inline style needed
+  const panelStyle = isInline
+    ? {}
+    : isExpanded
+      ? { left: '16px', top: '16px', bottom: '16px', right: '16px', width: 'auto', height: 'auto' }
+      : dragPos ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto' } : {};
   // Results panel sits to the left of the agent; shifts with it when dragged
   const resultsPanelStyle = dragPos
     ? { left: Math.max(8, dragPos.x - 528), top: dragPos.y, bottom: 'auto', right: 'auto' }
     : {};
+  // In inline mode the panel is always visible; in float mode respect the open/closed state
+  const effectiveIsOpen = isInline || isOpen;
 
   function addMessage(role, content, tool) {
     setMessages(prev => [...prev, { id: Date.now().toString(), role, content, tool }]);
@@ -771,10 +779,13 @@ export default function BankingAgent({ user, onLogout }) {
     }
   }
 
+  // Float mode should return nothing when the dedicated /agent page is active
+  if (!isInline && isAgentPage) return null;
+
   return (
     <>
-      {/* FAB - only shown when agent is collapsed */}
-      {!isOpen && (
+      {/* FAB - only shown when floating agent is collapsed (not in inline mode) */}
+      {!isInline && !isOpen && (
         <button
           className="banking-agent-fab"
           onClick={() => setIsOpen(true)}
@@ -785,8 +796,8 @@ export default function BankingAgent({ user, onLogout }) {
         </button>
       )}
 
-      {/* Results panel — sits to the left of the agent (wide-screen only) */}
-      {isOpen && resultPanel && (
+      {/* Results panel — sits to the left of the agent (float mode only) */}
+      {!isInline && effectiveIsOpen && resultPanel && (
         <ResultsPanel
           panel={resultPanel}
           onClose={() => setResultPanel(null)}
@@ -795,16 +806,20 @@ export default function BankingAgent({ user, onLogout }) {
       )}
 
       {/* Panel */}
-      {isOpen && (
+      {effectiveIsOpen && (
         <div
-          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded ? ' ba-expanded' : ''}`}
+          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded && !isInline ? ' ba-expanded' : ''}${isInline ? ' ba-mode-inline' : ''}`}
           role="dialog"
           aria-label="Banking AI Agent"
           ref={panelRef}
           style={panelStyle}
         >
           {/* Header — spans full width */}
-          <div className="ba-header banking-agent-drag-handle" onMouseDown={handleDragStart}>
+          {/* In inline mode: no drag handle. In float mode: drag to reposition */}
+          <div
+            className={`ba-header${isInline ? '' : ' banking-agent-drag-handle'}`}
+            onMouseDown={isInline ? undefined : handleDragStart}
+          >
             <div className="ba-header-top">
               <div className="ba-header-left">
                 <span className="ba-status-dot" />
@@ -818,13 +833,16 @@ export default function BankingAgent({ user, onLogout }) {
                 </div>
               </div>
               <div className="ba-header-tools">
-                <button
-                  className="ba-icon-btn"
-                  onClick={() => { setIsExpanded(e => !e); setDragPos(null); }}
-                  title={isExpanded ? 'Restore size' : 'Expand to full screen'}
-                >
-                  {isExpanded ? '⊟' : '⊞'}
-                </button>
+                {/* Expand/restore only available in float mode */}
+                {!isInline && (
+                  <button
+                    className="ba-icon-btn"
+                    onClick={() => { setIsExpanded(e => !e); setDragPos(null); }}
+                    title={isExpanded ? 'Restore size' : 'Expand to full screen'}
+                  >
+                    {isExpanded ? '⊟' : '⊞'}
+                  </button>
+                )}
                 <button
                   className="ba-icon-btn"
                   onClick={() => setIsDark(d => !d)}
@@ -832,14 +850,17 @@ export default function BankingAgent({ user, onLogout }) {
                 >
                   {isDark ? '☀️' : '🌙'}
                 </button>
-                <button 
-                  className="ba-icon-btn" 
-                  onClick={() => setIsOpen(false)} 
-                  aria-label="Collapse agent"
-                  title="Collapse agent"
-                >
-                  ▼
-                </button>
+                {/* Collapse to FAB only in float mode */}
+                {!isInline && (
+                  <button 
+                    className="ba-icon-btn" 
+                    onClick={() => setIsOpen(false)} 
+                    aria-label="Collapse agent"
+                    title="Collapse agent"
+                  >
+                    ▼
+                  </button>
+                )}
               </div>
             </div>
             {/* Connected services row */}

@@ -15,6 +15,7 @@ import Transactions from './components/Transactions';
 import SecuritySettings from './components/SecuritySettings';
 import Config from './components/Config';
 import Onboarding from './components/Onboarding';
+import AgentPage from './pages/AgentPage';
 import CIBAPanel from './components/CIBAPanel';
 import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
@@ -214,6 +215,7 @@ function App() {
                     <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
+                    <Route path="/agent" element={<AgentPage user={user} onLogout={logout} />} />
                     <Route path="/oauth-debug-logs"
                       element={user?.role === 'admin' ? <OAuthDebugLogViewer user={user} onLogout={logout} /> : <Navigate to="/" replace />}
                     />
