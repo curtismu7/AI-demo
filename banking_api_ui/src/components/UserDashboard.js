@@ -138,8 +138,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   // Function to fetch current OAuth tokens
   const fetchTokenData = async () => {
     try {
-      console.log('🔍 Fetching current OAuth token data...');
-      
       // Try both admin and user status endpoints
       let response;
       try {
@@ -163,14 +161,12 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           user: response.data.user
         };
         
-        console.log('✅ Token data fetched:', tokenInfo);
         setTokenData(tokenInfo);
       } else {
-        console.log('❌ No authenticated session found');
         setTokenData(null);
       }
     } catch (error) {
-      console.error('❌ Error fetching token data:', error);
+      console.error('Error fetching token data:', error);
       setTokenData(null);
     }
   };
@@ -193,7 +189,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     if (autoRefresh) {
       // Set up auto-refresh every 5 seconds
       refreshInterval = setInterval(() => {
-        console.log('🔄 Auto-refreshing dashboard data...');
         fetchUserData(true); // Silent refresh - no loading spinner
       }, 5000); // 5 seconds
     }
