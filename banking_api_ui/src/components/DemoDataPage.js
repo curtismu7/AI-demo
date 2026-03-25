@@ -29,6 +29,9 @@ export default function DemoDataPage({ onLogout }) {
   const [defaults, setDefaults] = useState(null);
   const [persistenceNote, setPersistenceNote] = useState(null);
 
+  /** Stable React key for a row before the server assigns an account id. */
+  const getAccountRowKey = a => a.id || a._clientKey;
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,10 +70,36 @@ export default function DemoDataPage({ onLogout }) {
     load();
   }, [load]);
 
-  const handleAccountChange = (id, field, value) => {
+  /** Updates a single account row (by id or draft _clientKey). */
+  const handleAccountChange = (rowKey, field, value) => {
     setAccounts(prev =>
-      prev.map(a => (a.id === id ? { ...a, [field]: value } : a)),
+      prev.map(a => (getAccountRowKey(a) === rowKey ? { ...a, [field]: value } : a)),
     );
+  };
+
+  /** Appends a new row; it is created on the server when the user saves. */
+  const handleAddAccount = () => {
+    const ck =
+      typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `draft-${Date.now()}`;
+    setAccounts(prev => [
+      ...prev,
+      {
+        id: '',
+        _clientKey: ck,
+        accountType: 'checking',
+        accountNumber: '—',
+        currency: 'USD',
+        _name: '',
+        _balance: '0',
+      },
+    ]);
+  };
+
+  /** Drops a not-yet-saved row from the form. */
+  const handleRemoveDraft = rowKey => {
+    setAccounts(prev => prev.filter(a => a.id || getAccountRowKey(a) !== rowKey));
   };
 
   const handleSubmit = async e => {
@@ -90,11 +119,18 @@ export default function DemoDataPage({ onLogout }) {
       }
       const body = {
         stepUpAmountThreshold,
-        accounts: accounts.map(a => ({
-          id: a.id,
-          name: a._name,
-          balance: a._balance === '' ? undefined : parseFloat(a._balance),
-        })),
+        accounts: accounts.map(a => {
+          const row = {
+            name: a._name,
+            balance: a._balance === '' ? undefined : parseFloat(a._balance),
+          };
+          if (a.id) {
+            row.id = a.id;
+          } else {
+            row.accountType = (a.accountType || 'checking').toLowerCase();
+          }
+          return row;
+        }),
         userData: {
           firstName: profile.firstName.trim(),
           lastName: profile.lastName.trim(),
@@ -127,18 +163,30 @@ export default function DemoDataPage({ onLogout }) {
       });
     }
     setAccounts(prev =>
-      prev.map(a => {
-        const type = (a.accountType || '').toLowerCase();
-        const bal =
-          type === 'checking' ? defaults.checkingBalance : type === 'savings' ? defaults.savingsBalance : a.balance;
-        const name =
-          type === 'checking' ? defaults.checkingName : type === 'savings' ? defaults.savingsName : a.name;
-        return {
-          ...a,
-          _name: name,
-          _balance: String(bal ?? ''),
-        };
-      }),
+      prev
+        .filter(a => a.id)
+        .map(a => {
+          const idStr = typeof a.id === 'string' ? a.id : '';
+          if (idStr.startsWith('chk-')) {
+            return {
+              ...a,
+              _name: defaults.checkingName,
+              _balance: String(defaults.checkingBalance ?? ''),
+            };
+          }
+          if (idStr.startsWith('sav-')) {
+            return {
+              ...a,
+              _name: defaults.savingsName,
+              _balance: String(defaults.savingsBalance ?? ''),
+            };
+          }
+          return {
+            ...a,
+            _name: a.name != null ? String(a.name) : a._name || '',
+            _balance: String(a.balance ?? a._balance ?? ''),
+          };
+        }),
     );
     toast.info('Form reset to defaults — click Save to apply');
   };
@@ -330,38 +378,71 @@ export default function DemoDataPage({ onLogout }) {
           </section>
 
           <section className="app-page-card demo-data-section">
-            <h2>Accounts</h2>
+            <div className="demo-data-accounts-header">
+              <h2>Accounts</h2>
+              <button type="button" className="demo-data-btn ghost" onClick={handleAddAccount}>
+                Add account
+              </button>
+            </div>
             {accounts.length === 0 ? (
-              <p>No accounts yet — open the dashboard once to provision demo accounts.</p>
+              <p className="demo-data-hint">
+                No accounts yet. Use <strong>Add account</strong> above, or open the dashboard once to provision the
+                default checking and savings accounts.
+              </p>
             ) : (
               <div className="demo-data-accounts">
-                {accounts.map(a => (
-                  <div key={a.id} className="demo-data-account-card">
-                    <div className="demo-data-account-meta">
-                      <span className="demo-data-type">{a.accountType}</span>
-                      <code>{a.accountNumber}</code>
+                {accounts.map(a => {
+                  const rowKey = getAccountRowKey(a);
+                  const isNew = !a.id;
+                  return (
+                    <div key={rowKey} className="demo-data-account-card">
+                      <div className="demo-data-account-meta">
+                        {isNew ? (
+                          <select
+                            className="demo-data-account-type-select"
+                            aria-label="Account type"
+                            value={a.accountType || 'checking'}
+                            onChange={e => handleAccountChange(rowKey, 'accountType', e.target.value)}
+                          >
+                            <option value="checking">Checking</option>
+                            <option value="savings">Savings</option>
+                          </select>
+                        ) : (
+                          <span className="demo-data-type">{a.accountType}</span>
+                        )}
+                        <code>{a.accountNumber}</code>
+                        {isNew && (
+                          <button
+                            type="button"
+                            className="demo-data-remove-draft"
+                            onClick={() => handleRemoveDraft(rowKey)}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <label className="demo-data-field">
+                        <span>Account name</span>
+                        <input
+                          type="text"
+                          value={a._name}
+                          onChange={e => handleAccountChange(rowKey, '_name', e.target.value)}
+                          maxLength={120}
+                        />
+                      </label>
+                      <label className="demo-data-field">
+                        <span>Balance ({a.currency || 'USD'})</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={a._balance}
+                          onChange={e => handleAccountChange(rowKey, '_balance', e.target.value)}
+                        />
+                      </label>
                     </div>
-                    <label className="demo-data-field">
-                      <span>Account name</span>
-                      <input
-                        type="text"
-                        value={a._name}
-                        onChange={e => handleAccountChange(a.id, '_name', e.target.value)}
-                        maxLength={120}
-                      />
-                    </label>
-                    <label className="demo-data-field">
-                      <span>Balance ({a.currency || 'USD'})</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={a._balance}
-                        onChange={e => handleAccountChange(a.id, '_balance', e.target.value)}
-                      />
-                    </label>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>

@@ -101,6 +101,19 @@
   color: #374151;
 }
 
+.demo-data-accounts-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.demo-data-accounts-header h2 {
+  margin: 0;
+}
+
 .demo-data-accounts {
   display: flex;
   flex-direction: column;
@@ -127,6 +140,32 @@
   text-transform: capitalize;
   font-weight: 600;
   color: #111827;
+}
+
+.demo-data-account-type-select {
+  font: inherit;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #111827;
+}
+
+.demo-data-remove-draft {
+  margin-left: auto;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+}
+
+.demo-data-remove-draft:hover {
+  background: #f1f5f9;
 }
 
 .demo-data-actions-row {

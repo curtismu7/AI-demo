@@ -6,6 +6,7 @@
 'use strict';
 
 const express = require('express');
+const { v4: uuidv4 } = require('uuid');
 const dataStore = require('../data/store');
 const runtimeSettings = require('../config/runtimeSettings');
 const demoScenarioStore = require('../services/demoScenarioStore');
@@ -26,6 +27,12 @@ const PROFILE_UI_FALLBACK = Object.freeze({
 
 function isBlank(v) {
   return v == null || (typeof v === 'string' && v.trim() === '');
+}
+
+/** True when the client sent a persisted account id (non-empty string). */
+function isExistingAccountId(id) {
+  if (id == null) return false;
+  return String(id).trim().length > 0;
 }
 
 /**
@@ -171,8 +178,53 @@ router.put('/', async (req, res) => {
     }
 
     if (Array.isArray(bodyAccounts)) {
+      const maxAccounts = 24;
+      const existingForUser = dataStore.getAccountsByUserId(uid);
+      const newRowCount = bodyAccounts.filter(
+        r => r && typeof r === 'object' && !isExistingAccountId(r.id),
+      ).length;
+      if (existingForUser.length + newRowCount > maxAccounts) {
+        return res.status(400).json({
+          error: 'max_accounts',
+          message: `You can have at most ${maxAccounts} accounts.`,
+        });
+      }
+
       for (const row of bodyAccounts) {
-        if (!row || !row.id) continue;
+        if (!row || typeof row !== 'object') continue;
+
+        if (!isExistingAccountId(row.id)) {
+          const typeRaw = typeof row.accountType === 'string' ? row.accountType.toLowerCase().trim() : '';
+          const accountType = typeRaw === 'savings' ? 'savings' : 'checking';
+          let name = typeof row.name === 'string' ? row.name.trim().slice(0, 120) : '';
+          if (!name) {
+            name = accountType === 'savings' ? 'Savings Account' : 'Checking Account';
+          }
+          let balance = 0;
+          if (row.balance !== undefined && row.balance !== null && row.balance !== '') {
+            const b = parseFloat(row.balance);
+            if (!Number.isFinite(b) || b < 0 || b > 99_999_999) {
+              return res.status(400).json({ error: 'invalid_balance', message: 'Balance must be a valid non-negative number.' });
+            }
+            balance = Math.round(b * 100) / 100;
+          }
+          const newId = uuidv4();
+          const numSuffix = newId.replace(/-/g, '').slice(0, 12).toUpperCase();
+          const acctNumPrefix = accountType === 'savings' ? 'SAV' : 'CHK';
+          await dataStore.createAccount({
+            id: newId,
+            userId: uid,
+            accountNumber: `${acctNumPrefix}-${numSuffix}`,
+            accountType,
+            balance,
+            currency: 'USD',
+            name,
+            createdAt: new Date(),
+            isActive: true,
+          });
+          continue;
+        }
+
         const acct = dataStore.getAccountById(row.id);
         if (!acct || acct.userId !== uid) {
           return res.status(403).json({ error: 'forbidden_account', message: 'You can only edit your own accounts.' });
