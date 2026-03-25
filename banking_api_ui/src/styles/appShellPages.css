@@ -68,7 +68,16 @@
 
 /* Wider content column (admin dashboard, data tables) */
 .app-page-shell__body--wide {
-  max-width: 1200px;
+  max-width: 1400px;
+}
+
+/* Extra horizontal room for dense admin toolbars (Sign in + Log out, many links) */
+.app-page-shell--toolbar-room .app-page-shell__hero {
+  max-width: 1280px;
+}
+
+.app-page-shell--toolbar-room .app-page-shell__body--wide {
+  max-width: 1520px;
 }
 
 /* Toolbar row under hero — light buttons (same language as customer dashboard) */

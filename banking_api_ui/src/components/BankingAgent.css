@@ -9,14 +9,14 @@
   height: 52px;
   padding: 0 22px 0 18px;
   border-radius: 26px;
-  background: #6366f1;
+  background: var(--ba-accent);
   color: #fff;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.01em;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 24px rgba(99,102,241,0.55), 0 1px 6px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 24px rgba(185,28,28,0.55), 0 1px 6px rgba(0,0,0,0.18);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -43,12 +43,12 @@
 }
 
 .banking-agent-fab:hover {
-  background: #4f46e5;
+  background: var(--ba-accent-h);
   transform: scale(1.05);
-  box-shadow: 0 6px 28px rgba(99,102,241,0.65);
+  box-shadow: 0 6px 28px rgba(185,28,28,0.65);
 }
 
-.banking-agent-fab.open { background: #4f46e5; }
+.banking-agent-fab.open { background: var(--ba-accent-h); }
 
 .banking-agent-fab-icon {
   font-size: 20px;
@@ -662,15 +662,15 @@
 .ba-input-row { display: flex; align-items: center; gap: 7px; }
 .ba-cmd-btn {
   flex-shrink: 0; width: 34px; height: 34px; border-radius: 8px;
-  background: var(--ba-chip-bg);
-  border: 1px solid var(--ba-chip-bd);
-  color: var(--ba-chip-txt);
+  background: var(--ba-accent);
+  border: 1px solid var(--ba-accent);
+  color: #fff;
   font-size: 15px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .ba-cmd-btn:hover, .ba-cmd-btn.active {
-  background: var(--ba-accent); color: #fff; border-color: var(--ba-accent);
+  background: var(--ba-accent-h); color: #fff; border-color: var(--ba-accent-h);
 }
 .ba-input {
   flex: 1;

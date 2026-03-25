@@ -8,6 +8,10 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import {
+  errorMessageSuggestsLogin,
+  navigateToCustomerOAuthLogin,
+} from '../utils/authUi';
 import './UserDashboard.css';
 
 /**
@@ -470,11 +474,30 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     backgroundRepeat: 'no-repeat'
   };
 
+  const showReauthCta = errorMessageSuggestsLogin(error);
+
   return (
     <div className="user-dashboard" style={dashboardStyle}>
       {error && (
-        <div className="inline-message inline-message--error" onClick={() => setError(null)}>
-          {error} <span className="inline-message__dismiss">✕</span>
+        <div
+          className="inline-message inline-message--error"
+          role="alert"
+          onClick={() => setError(null)}
+        >
+          <span className="inline-message__text">{error}</span>
+          {showReauthCta && (
+            <button
+              type="button"
+              className="inline-message__login-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigateToCustomerOAuthLogin();
+              }}
+            >
+              Sign in
+            </button>
+          )}
+          <span className="inline-message__dismiss">✕</span>
         </div>
       )}
       {success && (
@@ -601,6 +624,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </svg>
             <span className="dashboard-toolbar-btn__sr">Token info</span>
           </button>
+          {showReauthCta && (
+            <button
+              type="button"
+              className="dashboard-toolbar-btn dashboard-toolbar-btn--signin"
+              onClick={navigateToCustomerOAuthLogin}
+            >
+              Sign in
+            </button>
+          )}
           <button type="button" onClick={onLogout} className="dashboard-toolbar-btn dashboard-toolbar-btn--danger">
             Log out
           </button>

@@ -1,6 +1,6 @@
 .user-dashboard {
   width: 100%;
-  max-width: min(1760px, 100%);
+  max-width: min(1920px, 100%);
   margin: 0 auto;
   box-sizing: border-box;
   /* Keep content clear of sticky EducationBar at top */
@@ -121,6 +121,19 @@
   background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   border-color: var(--app-primary-red-hover);
   color: #fff;
+}
+
+.dashboard-toolbar-btn--signin {
+  background: linear-gradient(180deg, #15803d 0%, #166534 100%);
+  border: 1px solid #14532d;
+  box-shadow: 0 1px 3px rgba(22, 101, 52, 0.25);
+}
+
+.dashboard-toolbar-btn--signin:hover {
+  background: linear-gradient(180deg, #166534 0%, #14532d 100%);
+  border-color: #052e16;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(22, 101, 52, 0.35);
 }
 
 .dashboard-toolbar-btn--icon {
@@ -1104,6 +1117,36 @@
   background: #fadbd8;
   color: #922b21;
   border: 1px solid #f1948a;
+  flex-wrap: wrap;
+  max-width: min(960px, calc(100vw - 32px));
+}
+
+.inline-message__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.inline-message__login-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: linear-gradient(180deg, #15803d 0%, #166534 100%);
+  border: 1px solid #14532d;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(22, 101, 52, 0.2);
+}
+
+.inline-message__login-btn:hover {
+  background: linear-gradient(180deg, #166534 0%, #14532d 100%);
+}
+
+.inline-message__login-btn:focus-visible {
+  outline: 2px solid #166534;
+  outline-offset: 2px;
 }
 
 .inline-message--warning {
@@ -1636,9 +1679,10 @@
   padding-right: 24px;
 }
 
+/* Token Chain + future sidebar widgets — wide enough for RFC labels and flow text */
 .ud-left {
-  width: min(340px, 100%);
-  min-width: 280px;
+  width: min(480px, 100%);
+  min-width: 300px;
   flex-shrink: 0;
   background: #fff;
   border-right: 1px solid #e2e8f0;
@@ -1647,7 +1691,7 @@
 
 /* Token Chain sits here — avoid double card + tight padding */
 .ud-left > .section {
-  padding: 14px 12px 18px;
+  padding: 14px 14px 18px;
   background: transparent;
   border: none;
   box-shadow: none;

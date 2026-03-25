@@ -376,7 +376,7 @@ export default function CIBAPanel() {
   // Resizable drawer width — persisted in localStorage
   const [drawerWidth, setDrawerWidth] = useState(() => {
     const saved = parseInt(localStorage.getItem('cibaDrawerWidth'), 10);
-    return saved > 300 ? saved : 720;
+    return saved > 300 ? saved : 840;
   });
   const isResizingRef = useRef(false);
   const resizeStartRef = useRef({ x: 0, startWidth: 0 });

@@ -69,8 +69,8 @@
   top: 0;
   right: 0;
   bottom: 0;
-  /* Width is set via inline style (resizable); fallback 720px */
-  width: min(720px, 96vw);
+  /* Width is set via inline style (resizable); fallback gives Token Chain / tokenx tab room */
+  width: min(840px, 96vw);
   background: #fff;
   z-index: 1220;
   display: flex;

@@ -38,10 +38,12 @@
 }
 
 .tcd-header-sub {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.88);
   margin: 0;
-  line-height: 1.45;
+  line-height: 1.4;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 /* Live dot pulses when receiving live data */
@@ -252,6 +254,8 @@
   background: rgba(241, 245, 249, 0.85);
   border-radius: 8px;
   border: 1px solid rgba(226, 232, 240, 0.9);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ─── Status badge (own column — never overlaps title) ───────────────────── */

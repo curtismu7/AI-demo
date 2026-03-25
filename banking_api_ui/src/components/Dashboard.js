@@ -8,6 +8,10 @@ import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
 import BankingAgent from './BankingAgent';
+import {
+  errorMessageSuggestsLogin,
+  navigateToAdminOAuthLogin,
+} from '../utils/authUi';
 import '../styles/appShellPages.css';
 
 const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
@@ -233,9 +237,31 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
   }
 
   if (error) {
+    const showReauth = errorMessageSuggestsLogin(error);
     return (
-      <div style={{ maxWidth: '640px', margin: '2rem auto', padding: '0 1rem' }}>
-        <div className="alert alert-error">{error}</div>
+      <div style={{ maxWidth: '960px', margin: '2rem auto', padding: '0 1.25rem' }}>
+        <div className="alert alert-error" role="alert">
+          {error}
+        </div>
+        {showReauth && (
+          <div
+            className="admin-dashboard-error-actions"
+            style={{
+              marginTop: '1rem',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.65rem',
+            }}
+          >
+            <button type="button" className="btn btn-primary" onClick={navigateToAdminOAuthLogin}>
+              Admin sign in
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={onLogout}>
+              Log out
+            </button>
+          </div>
+        )}
         {forbidden403 && (
           <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#374151', lineHeight: 1.5 }}>
             <p style={{ marginTop: 0 }}>
@@ -266,7 +292,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
   }
 
   return (
-    <div className="admin-dashboard-page app-page-shell">
+    <div className="admin-dashboard-page app-page-shell app-page-shell--toolbar-room">
       <header className="app-page-shell__hero">
         <div className="app-page-shell__hero-top">
           <div className="admin-dashboard__intro">
