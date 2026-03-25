@@ -594,8 +594,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   useEffect(() => {
     const onMove = (e) => {
       if (!isDraggingRef.current) return;
-      const x = Math.max(0, Math.min(window.innerWidth  - 50, e.clientX - dragOffsetRef.current.x));
-      const y = Math.max(0, Math.min(window.innerHeight - 50, e.clientY - dragOffsetRef.current.y));
+      // Allow dragging off-page - no constraints
+      const x = e.clientX - dragOffsetRef.current.x;
+      const y = e.clientY - dragOffsetRef.current.y;
       setDragPos({ x, y });
     };
     const onUp = () => { isDraggingRef.current = false; };

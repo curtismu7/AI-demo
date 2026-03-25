@@ -41,6 +41,8 @@ function AppWithAuth() {
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);
+  /** Avoid dispatching userAuthenticated on every repeat check (prevents listener ↔ check loops). */
+  const sessionEstablishedRef = useRef(false);
 
   // Inject userEmail into the first session_init WS message then restore send.
   const injectEmailIntoNextSessionInit = useCallback((email) => {
@@ -63,8 +65,27 @@ function AppWithAuth() {
 
   const checkOAuthSession = useCallback(async () => {
     console.log('🔍 checkOAuthSession - Checking for active OAuth sessions...');
+
+    function notifyAuthenticatedOnce() {
+      if (!sessionEstablishedRef.current) {
+        sessionEstablishedRef.current = true;
+        window.dispatchEvent(new CustomEvent('userAuthenticated'));
+      }
+    }
+
+    function applySessionUser(u) {
+      setUser(u);
+      const userEmail = u?.email;
+      if (userEmail) {
+        injectEmailIntoNextSessionInit(userEmail);
+      }
+      setLoading(false);
+      notifyAuthenticatedOnce();
+      return true;
+    }
+
     try {
-      // Check admin OAuth session
+      // Priority: admin OAuth → end-user OAuth → generic cookie session
       console.log('👑 Checking admin OAuth session...');
       const adminResponse = await axios.get('/api/auth/oauth/status');
       console.log('👑 Admin OAuth response:', {
@@ -72,20 +93,12 @@ function AppWithAuth() {
         user: adminResponse.data.user,
         expiresAt: adminResponse.data.expiresAt
       });
-      
+
       if (adminResponse.data.authenticated) {
         console.log('✅ Admin OAuth session found, logging in user:', adminResponse.data.user);
-        setUser(adminResponse.data.user);
-        const userEmail = adminResponse.data.user?.email;
-        if (userEmail) {
-          injectEmailIntoNextSessionInit(userEmail);
-        }
-        window.dispatchEvent(new CustomEvent('userAuthenticated'));
-        setLoading(false);
-        return;
+        return applySessionUser(adminResponse.data.user);
       }
-      
-      // Check end user OAuth session
+
       console.log('👤 Checking end user OAuth session...');
       const userResponse = await axios.get('/api/auth/oauth/user/status');
       console.log('👤 End user OAuth response:', {
@@ -93,24 +106,26 @@ function AppWithAuth() {
         user: userResponse.data.user,
         expiresAt: userResponse.data.expiresAt
       });
-      
+
       if (userResponse.data.authenticated) {
         console.log('✅ End user OAuth session found, logging in user:', userResponse.data.user);
-        setUser(userResponse.data.user);
-        const userEmail = userResponse.data.user?.email;
-        if (userEmail) {
-          injectEmailIntoNextSessionInit(userEmail);
-        }
-        window.dispatchEvent(new CustomEvent('userAuthenticated'));
-        setLoading(false);
-        return;
+        return applySessionUser(userResponse.data.user);
       }
-      
+
+      console.log('🍪 Checking generic /api/auth/session (cookie restore)...');
+      const sessionResponse = await axios.get('/api/auth/session');
+      if (sessionResponse.data.authenticated) {
+        console.log('✅ Generic session found, logging in user:', sessionResponse.data.user);
+        return applySessionUser(sessionResponse.data.user);
+      }
+
       console.log('❌ No active OAuth sessions found');
       setLoading(false);
+      return false;
     } catch (error) {
       console.log('❌ Error checking OAuth sessions:', error.message);
       setLoading(false);
+      return false;
     }
   }, [injectEmailIntoNextSessionInit]);
 
@@ -130,15 +145,53 @@ function AppWithAuth() {
       .then(({ data }) => savePublicConfig(data.config))
       .catch(() => {}); // non-fatal
 
-    const t = setTimeout(() => {
-      console.log('🔄 Checking for OAuth session...');
-      checkOAuthSession();
-    }, 200);
-    return () => clearTimeout(t);
+    const oauthSuccess =
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search || '').get('oauth') === 'success';
+
+    /** After OAuth redirect the session can lag; retry with increasing backoff (matches App.session tests). */
+    const RETRY_DELAYS_MS = [450, 950, 1900];
+    let retryIndex = 0;
+    let cancelled = false;
+    const timeouts = [];
+
+    const arm = (delayMs, fn) => {
+      const id = setTimeout(() => {
+        if (!cancelled) void fn();
+      }, delayMs);
+      timeouts.push(id);
+    };
+
+    const runCheck = async () => {
+      if (cancelled) return;
+      const ok = await checkOAuthSession();
+      if (cancelled || ok) return;
+      if (!oauthSuccess || retryIndex >= RETRY_DELAYS_MS.length) return;
+      const delay = RETRY_DELAYS_MS[retryIndex++];
+      arm(delay, runCheck);
+    };
+
+    arm(200, runCheck);
+
+    return () => {
+      cancelled = true;
+      timeouts.forEach(clearTimeout);
+    };
+  }, [checkOAuthSession]);
+
+  // BankingAgent (and tests) may dispatch userAuthenticated to force a server re-check after client-side login hints.
+  useEffect(() => {
+    const handler = () => {
+      void checkOAuthSession();
+    };
+    window.addEventListener('userAuthenticated', handler);
+    return () => window.removeEventListener('userAuthenticated', handler);
   }, [checkOAuthSession]);
 
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
+
+    sessionEstablishedRef.current = false;
 
     // Signal that the user intentionally logged out so the startup
     // session-check in useEffect skips auto-login on return to /login.
