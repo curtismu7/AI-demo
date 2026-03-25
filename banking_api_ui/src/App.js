@@ -15,14 +15,13 @@ import Transactions from './components/Transactions';
 import SecuritySettings from './components/SecuritySettings';
 import Config from './components/Config';
 import Onboarding from './components/Onboarding';
-import AgentPage from './pages/AgentPage';
 import CIBAPanel from './components/CIBAPanel';
 import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
-import { openLogViewerWindow } from './components/LogViewer';
-import SideNav from './components/SideNav';
+import LogViewer from './components/LogViewer';
+import LogViewerPage from './components/LogViewerPage';
 
 import { savePublicConfig } from './services/configService';
 import { EducationUIProvider } from './context/EducationUIContext';
@@ -35,7 +34,7 @@ import './App.css';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const _sessionFoundRef = useRef(false); // prevent userAuthenticated dispatch loop
+  const [logViewerOpen, setLogViewerOpen] = useState(false);
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);
@@ -60,46 +59,64 @@ function App() {
   }, []);
 
   const checkOAuthSession = useCallback(async () => {
+    console.log('🔍 checkOAuthSession - Checking for active OAuth sessions...');
     try {
-      // Check all three session types in parallel — OAuth admin, OAuth end-user,
-      // and the generic /session endpoint that catches _auth-cookie-restored sessions
-      // and local (username/password) sessions too.
-      const [adminResp, userResp, sessionResp] = await Promise.allSettled([
-        axios.get('/api/auth/oauth/status',      { withCredentials: true }),
-        axios.get('/api/auth/oauth/user/status', { withCredentials: true }),
-        axios.get('/api/auth/session',           { withCredentials: true }),
-      ]);
-
-      const admin   = adminResp.status   === 'fulfilled' ? adminResp.value.data   : null;
-      const endUser = userResp.status    === 'fulfilled' ? userResp.value.data    : null;
-      const session = sessionResp.status === 'fulfilled' ? sessionResp.value.data : null;
-
-      const found = (admin?.authenticated && admin.user)
-        ? admin.user
-        : (endUser?.authenticated && endUser.user)
-          ? endUser.user
-          : (session?.authenticated && session.user)
-            ? session.user
-            : null;
-
-      if (found) {
-        setUser(found);
-        if (found.email) injectEmailIntoNextSessionInit(found.email);
-        if (!_sessionFoundRef.current) {
-          _sessionFoundRef.current = true;
-          window.dispatchEvent(new CustomEvent('userAuthenticated'));
+      // Check admin OAuth session
+      console.log('👑 Checking admin OAuth session...');
+      const adminResponse = await axios.get('/api/auth/oauth/status');
+      console.log('👑 Admin OAuth response:', {
+        authenticated: adminResponse.data.authenticated,
+        user: adminResponse.data.user,
+        expiresAt: adminResponse.data.expiresAt
+      });
+      
+      if (adminResponse.data.authenticated) {
+        console.log('✅ Admin OAuth session found, logging in user:', adminResponse.data.user);
+        setUser(adminResponse.data.user);
+        const userEmail = adminResponse.data.user?.email;
+        if (userEmail) {
+          injectEmailIntoNextSessionInit(userEmail);
         }
-        return true; // signal: found a session
+        window.dispatchEvent(new CustomEvent('userAuthenticated'));
+        setLoading(false);
+        return;
       }
-      return false;
-    } catch (_) {
-      return false;
+      
+      // Check end user OAuth session
+      console.log('👤 Checking end user OAuth session...');
+      const userResponse = await axios.get('/api/auth/oauth/user/status');
+      console.log('👤 End user OAuth response:', {
+        authenticated: userResponse.data.authenticated,
+        user: userResponse.data.user,
+        expiresAt: userResponse.data.expiresAt
+      });
+      
+      if (userResponse.data.authenticated) {
+        console.log('✅ End user OAuth session found, logging in user:', userResponse.data.user);
+        setUser(userResponse.data.user);
+        const userEmail = userResponse.data.user?.email;
+        if (userEmail) {
+          injectEmailIntoNextSessionInit(userEmail);
+        }
+        window.dispatchEvent(new CustomEvent('userAuthenticated'));
+        setLoading(false);
+        return;
+      }
+      
+      console.log('❌ No active OAuth sessions found');
+      setLoading(false);
+    } catch (error) {
+      console.log('❌ Error checking OAuth sessions:', error.message);
+      setLoading(false);
     }
   }, [injectEmailIntoNextSessionInit]);
 
   useEffect(() => {
+    console.log('🔍 App useEffect - Starting authentication check...');
+
     const userLoggedOut = localStorage.getItem('userLoggedOut');
     if (userLoggedOut === 'true') {
+      console.log('🚪 User explicitly logged out, skipping authentication check');
       localStorage.removeItem('userLoggedOut');
       setLoading(false);
       return;
@@ -110,50 +127,15 @@ function App() {
       .then(({ data }) => savePublicConfig(data.config))
       .catch(() => {}); // non-fatal
 
-    // Detect whether we're landing here straight from the OAuth callback.
-    // On Vercel the callback runs on one serverless instance and 302s to
-    // /admin?oauth=success, which loads on a *different* cold instance that
-    // may not yet have the Redis session. We only enable the retry loop in
-    // that specific case. For regular page loads (refresh with an existing
-    // session, or unauthenticated visits) a single check is enough — the
-    // session is either warm (Vercel Redis / localhost in-memory) or absent.
-    const isOAuthReturn = window.location.search.includes('oauth=success');
-    let cancelled = false;
-
-    async function attempt(delaysRemaining) {
-      if (cancelled) return;
-      const found = await checkOAuthSession();
-      setLoading(false); // unblock UI immediately after first attempt
-      if (!found && delaysRemaining.length > 0) {
-        const [next, ...rest] = delaysRemaining;
-        setTimeout(() => attempt(rest), next);
-      }
-    }
-
-    // On OAuth return: retry with backoff in case of Vercel cold-start lag.
-    // On regular load: single check only.
-    const retryDelays = isOAuthReturn ? [400, 900, 1800, 3000] : [];
-    const t = setTimeout(() => attempt(retryDelays), 150);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
+    const t = setTimeout(() => {
+      console.log('🔄 Checking for OAuth session...');
+      checkOAuthSession();
+    }, 200);
+    return () => clearTimeout(t);
   }, [checkOAuthSession]);
-
-  // If BankingAgent self-detects a session and dispatches 'userAuthenticated',
-  // re-run our own check so App.js sets the user state and shows the correct routes.
-  useEffect(() => {
-    const onAuth = () => {
-      if (!user) checkOAuthSession();
-    };
-    window.addEventListener('userAuthenticated', onAuth);
-    return () => window.removeEventListener('userAuthenticated', onAuth);
-  }, [user, checkOAuthSession]);
 
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
-    _sessionFoundRef.current = false;
 
     // Signal that the user intentionally logged out so the startup
     // session-check in useEffect skips auto-login on return to /login.
@@ -172,7 +154,7 @@ function App() {
     // Navigate the browser directly (NOT via axios) to the unified logout
     // endpoint. Express will destroy the server session, then 302-redirect
     // the browser to PingOne's RP-Initiated Logout → post_logout_redirect_uri
-    // (/logout). This ensures the PingOne SSO session is actually terminated
+    // (/login). This ensures the PingOne SSO session is actually terminated
     // and a subsequent login will prompt for credentials fresh.
     window.location.href = '/api/auth/logout';
   };
@@ -195,16 +177,14 @@ function App() {
           <Routes>
             <Route path="/config" element={<Config />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/logs" element={<LogViewerPage />} />
             <Route path="*" element={
               !user ? (
                 <LandingPage />
               ) : (
                 <main className="main-content">
-                  <div className="app-shell">
-                    <SideNav user={user} onLogout={logout} />
-                    <div className="app-shell-body">
-                    <EducationBar />
-                    <Routes>
+                  <EducationBar />
+                  <Routes>
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
@@ -214,30 +194,28 @@ function App() {
                     <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
-                    <Route path="/agent" element={<AgentPage user={user} onLogout={logout} />} />
                     <Route path="/oauth-debug-logs"
-                      element={user?.role === 'admin' ? <OAuthDebugLogViewer user={user} onLogout={logout} /> : <Navigate to="/" replace />}
+                      element={user?.role === 'admin' ? <OAuthDebugLogViewer /> : <Navigate to="/" replace />}
                     />
                     <Route path="/client-registration"
-                      element={user?.role === 'admin' ? <ClientRegistrationPage user={user} onLogout={logout} /> : <Navigate to="/" replace />}
+                      element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                    </div>
-                  </div>
+                  </Routes>
                 </main>
               )
             } />
           </Routes>
-          <BankingAgent user={user} onLogout={logout} />
+          <BankingAgent user={user} />
           <EducationPanelsHost />
           <CIBAPanel />
           <CimdSimPanel />
-          {/* Floating Log Viewer Button — opens in popup window */}
+          <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
+          {/* Floating Log Viewer Button — opens in a new window so it stays visible */}
           <button
             className="log-viewer-fab"
-            onClick={openLogViewerWindow}
-            title="Open Log Viewer"
+            onClick={() => window.open('/logs', 'BankingLogs', 'width=1400,height=900,scrollbars=yes,resizable=yes')}
+            title="Open Log Viewer in new window"
             type="button"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

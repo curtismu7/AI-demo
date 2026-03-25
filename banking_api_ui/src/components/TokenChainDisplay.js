@@ -158,23 +158,23 @@ const PLACEHOLDER_EVENTS = [
     label: 'User Token',
     status: 'waiting',
     claims: null,
-    explanation: 'Issued after Authorization Code + PKCE login. Stored in the Backend For Frontend (BFF) session only — never sent to the browser or MCP server directly. Contains may_act authorising the BFF to exchange it.',
+    explanation: 'Issued by PingOne after Authorization Code + PKCE login. Stored securely in the BFF session (server-side, httpOnly cookie — never exposed to the browser). Contains may_act authorising the BFF to exchange it on the user\'s behalf.',
     rfc: 'RFC 7519 · RFC 9068',
   },
   {
     id: 'exchange',
-    label: 'MCP Token (acquiring via RFC 8693)',
+    label: 'Token Exchange (RFC 8693): User Token → MCP Token',
     status: 'waiting',
     claims: null,
-    explanation: 'Backend For Frontend (BFF) presents the User Token to PingOne. PingOne validates may_act, narrows scope to the tool\'s required scopes, and issues the MCP Token with an act claim.',
+    explanation: 'BFF presents the User Token to PingOne as subject_token. PingOne validates may_act, narrows the scope to the tool\'s required scopes, and issues the MCP Token with an act claim identifying the BFF as the actor. The User Token NEVER leaves the BFF.',
     rfc: 'RFC 8693 · RFC 8707',
   },
   {
     id: 'exchanged-token',
-    label: 'MCP Token (delegated)',
+    label: 'MCP Token (Delegated) → MCP Server',
     status: 'waiting',
     claims: null,
-    explanation: 'The MCP Token is scoped to the MCP server audience. Contains act: { client_id: bff } — proves delegation. The User Token never leaves the Backend For Frontend (BFF).',
+    explanation: 'The MCP Token is scoped to the MCP server audience with narrowed scopes. Contains act: { client_id: bff } — proves delegation chain. The User Token stays in the BFF; only the MCP Token reaches the MCP Server and Banking API.',
     rfc: 'RFC 8693',
   },
 ];
@@ -195,7 +195,7 @@ const TokenChainDisplay = () => {
           {isLive && <span className="tcd-live-dot" title="Live data from last tool call" />}
         </div>
         <p className="tcd-header-sub">
-          User Token stays in BFF · Agent Token or MCP Token sent to MCP Server
+          User Token stays in BFF → RFC 8693 Exchange → MCP Token → MCP Server → Banking API
         </p>
       </div>
 

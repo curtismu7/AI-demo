@@ -35,29 +35,27 @@ function decodeJwtClaims(token) {
 /**
  * Build a sanitized claims snapshot for the UI.
  * Strips any field that could be sensitive or identifying beyond what's needed for education.
- * @param {Record<string, unknown>|null|undefined} claims
  */
 function sanitizeClaims(claims) {
-  if (claims == null || typeof claims !== 'object') return null;
-  const c = claims;
+  if (!claims) { return null; }
   const result = {};
-  if (c.sub) result.sub = c.sub;
-  if (c.aud) result.aud = c.aud;
-  if (c.scope) result.scope = c.scope;
-  if (c.iss) result.iss = c.iss;
-  if (c.exp) result.exp = c.exp;
-  if (c.iat) result.iat = c.iat;
-  if (c.nbf) result.nbf = c.nbf;
-  if (c.may_act) result.may_act = c.may_act;
-  if (c.act) result.act = c.act;
-  if (c.client_id) result.client_id = c.client_id;
-  if (c.azp) result.azp = c.azp;
-  if (c.jti) result.jti = c.jti;
-  if (c.email) result.email = c.email;
-  if (c.preferred_username) result.preferred_username = c.preferred_username;
-  if (c.given_name) result.given_name = c.given_name;
-  if (c.family_name) result.family_name = c.family_name;
-  if (c.acr) result.acr = c.acr;
+  if (claims.sub)    result.sub    = claims.sub;
+  if (claims.aud)    result.aud    = claims.aud;
+  if (claims.scope)  result.scope  = claims.scope;
+  if (claims.iss)    result.iss    = claims.iss;
+  if (claims.exp)    result.exp    = claims.exp;
+  if (claims.iat)    result.iat    = claims.iat;
+  if (claims.nbf)    result.nbf    = claims.nbf;
+  if (claims.may_act) result.may_act = claims.may_act;
+  if (claims.act)    result.act    = claims.act;
+  if (claims.client_id) result.client_id = claims.client_id;
+  if (claims.azp)    result.azp    = claims.azp;
+  if (claims.jti)    result.jti    = claims.jti;
+  if (email)  result.email  = email;
+  if (preferred_username) result.preferred_username = preferred_username;
+  if (given_name) result.given_name = given_name;
+  if (family_name) result.family_name = family_name;
+  if (acr)    result.acr    = acr;
   return result;
 }
 
@@ -155,7 +153,6 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ── Event 1: User token (T1) ────────────────────────────────────────────────
   const t1Decoded = decodeJwtClaims(userToken);
   const t1Claims = t1Decoded?.claims;
-  const userSub = t1Claims?.sub || null;
   const bffClientId = oauthService.config?.clientId || process.env.PINGONE_CLIENT_ID || null;
   const mayActInfo = describeMayAct(t1Claims, bffClientId);
 
@@ -180,72 +177,20 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   const toolScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
   const useActor = process.env.USE_AGENT_ACTOR_FOR_MCP === 'true' && process.env.AGENT_OAUTH_CLIENT_ID;
-  const requireMayAct = process.env.REQUIRE_MAY_ACT === 'true';
-
-  // Pre-flight: token exchange requires may_act when REQUIRE_MAY_ACT=true (aligns with banking_mcp_server).
-  if (requireMayAct && mcpResourceUri && !t1Claims?.may_act) {
-    tokenEvents.push(buildTokenEvent(
-      'may-act-required',
-      'may_act (RFC 8693) — required',
-      'failed',
-      t1Decoded,
-      'REQUIRE_MAY_ACT=true but the user token has no may_act claim. Add may_act via PingOne token policy, or set REQUIRE_MAY_ACT=false for local testing.',
-      { rfc: 'RFC 8693 §4.2' }
-    ));
-    return { token: null, tokenEvents, userSub };
-  }
 
   // ── No exchange configured ──────────────────────────────────────────────────
   if (!mcpResourceUri) {
-    const agentClientId = process.env.AGENT_OAUTH_CLIENT_ID;
-    if (agentClientId) {
-      // M2M path: use agent client_credentials as the transport token so the
-      // user's own access token (T1) never crosses the BFF→MCP boundary.
-      // The user's identity is communicated separately as userSub metadata in
-      // the MCP initialize handshake (see mcpWebSocketClient.js).
-      try {
-        const m2mToken = await oauthService.getAgentClientCredentialsToken();
-        const m2mDecoded = decodeJwtClaims(m2mToken);
-        tokenEvents.push(buildTokenEvent(
-          'agent-m2m-token',
-          'Agent Token (M2M)',
-          'active',
-          m2mDecoded,
-          `MCP_RESOURCE_URI not configured — using BFF Agent Token (client_credentials for ${agentClientId}) ` +
-          'to authenticate the BFF to the MCP server. The user\'s identity (sub) is passed as ' +
-          'trusted metadata in the MCP initialize handshake, NOT as the auth credential. ' +
-          'The User Token never crosses the BFF→MCP boundary.',
-          {
-            rfc: 'RFC 6749 §4.4 (Client Credentials)',
-            userSub,
-            note: 'Set MCP_RESOURCE_URI to enable RFC 8693 token exchange with full delegation chain.',
-          }
-        ));
-        return { token: m2mToken, tokenEvents, userSub };
-      } catch (err) {
-        tokenEvents.push(buildTokenEvent(
-          'agent-m2m-token',
-          'Agent Token — failed',
-          'failed',
-          null,
-          `Agent client_credentials failed: ${err.message}. Falling back to User Token passthrough (insecure — fix AGENT_OAUTH_CLIENT_SECRET).`,
-          { error: err.message }
-        ));
-        // Fall through to T1 passthrough below so the demo keeps working
-      }
-    }
-    // T1 passthrough — only reached when AGENT_OAUTH_CLIENT_ID is not set
     tokenEvents.push(buildTokenEvent(
       'exchange-skipped',
       'Token Exchange (RFC 8693)',
       'skipped',
       null,
-      'MCP_RESOURCE_URI is not configured and AGENT_OAUTH_CLIENT_ID is not set — the User Token is forwarded ' +
-      'directly to the MCP server. Set AGENT_OAUTH_CLIENT_ID/SECRET to use an Agent Token (M2M) ' +
-      'instead, or set MCP_RESOURCE_URI to enable RFC 8693 token exchange for a scoped MCP Token.',
-      { rfc: 'RFC 8693 (Token Exchange)', warning: 'T1_PASSTHROUGH' }
+      'MCP_RESOURCE_URI is not configured — the User Token is forwarded directly to the MCP server. ' +
+      'To enable delegation: set MCP_RESOURCE_URI to the MCP server\'s audience URI and configure ' +
+      'the token-exchange grant + may_act policy in PingOne.',
+      { rfc: 'RFC 8693 (Token Exchange)' }
     ));
-    return { token: userToken, tokenEvents, userSub };
+    return { token: userToken, tokenEvents };
   }
 
   // ── Event 2a (optional): Agent actor client-credentials token ───────────────
@@ -256,18 +201,18 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       const a0Decoded = decodeJwtClaims(actorToken);
       tokenEvents.push(buildTokenEvent(
         'agent-actor-token',
-        'Agent Token (actor)',
+        'Agent Token (Client Credentials)',
         'active',
         a0Decoded,
-        `Client-credentials token for the dedicated agent OAuth client (${process.env.AGENT_OAUTH_CLIENT_ID}). ` +
+        `Client-credentials token for the dedicated Agent OAuth client (${process.env.AGENT_OAUTH_CLIENT_ID}). ` +
         'Used as actor_token in the RFC 8693 exchange — the resulting MCP Token will carry ' +
-        'act: { client_id: agent-client } identifying the agent as the current actor.',
+        'act: { client_id: agent-client } identifying the Agent as the current actor.',
         { rfc: 'RFC 8693 §2.1 (actor_token)' }
       ));
     } catch (err) {
       tokenEvents.push(buildTokenEvent(
         'agent-actor-token',
-        'Agent Token — failed',
+        'Agent Token',
         'failed',
         null,
         `Agent client-credentials token failed: ${err.message}. Falling back to subject-only exchange.`,
@@ -280,14 +225,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ── Event 2b: Token exchange attempt ────────────────────────────────────────
   tokenEvents.push(buildTokenEvent(
     'exchange-in-progress',
-    'MCP Token (acquiring via RFC 8693)',
+    'Token Exchange (RFC 8693): User Token → MCP Token',
     'acquiring',
     null,
-    `Backend For Frontend (BFF) is exchanging the User Token for an MCP Token scoped to audience=${mcpResourceUri}, ` +
+    `Backend For Frontend (BFF) is exchanging the User Token for a delegated MCP Token scoped to audience=${mcpResourceUri}, ` +
     `scope="${toolScopes.join(' ')}". ` +
     (t1Claims?.may_act
       ? `PingOne will validate may_act.client_id="${t1Claims.may_act.client_id}" against the authenticated Backend For Frontend (BFF) client.`
-      : 'PingOne will check exchange policy (may_act not present in User Token — exchange may be rejected).'),
+      : 'PingOne will check exchange policy (may_act not present in T1 — exchange may be rejected).'),
     {
       rfc: 'RFC 8693 · RFC 8707 (resource indicator)',
       exchangeRequest: {
@@ -326,7 +271,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 
     tokenEvents.push(buildTokenEvent(
       'exchanged-token',
-      'MCP Token (delegated)',
+      'MCP Token (Delegated) → MCP Server',
       'exchanged',
       t2Decoded,
       'PingOne issued the MCP Token after validating may_act. ' +
@@ -335,7 +280,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
           'Resource servers use act (not may_act) to identify the current actor for audit and policy decisions.'
         : 'act claim not present — PingOne may not have applied delegation policy. ') +
       `Audience is narrowed to ${mcpResourceUri}, scope narrowed to "${toolScopes.join(' ')}". ` +
-      'The User Token never leaves the Backend For Frontend (BFF).',
+      'The User Token (your original login token) NEVER leaves the Backend For Frontend (BFF) — only the MCP Token reaches the MCP Server.',
       {
         rfc: 'RFC 8693 · RFC 8707',
         exchangeMethod,
@@ -346,7 +291,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       }
     ));
 
-    return { token: exchangedToken, tokenEvents, userSub };
+    return { token: exchangedToken, tokenEvents };
 
   } catch (err) {
     // Replace in-progress with failure
@@ -355,30 +300,34 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 
     tokenEvents.push(buildTokenEvent(
       'exchange-failed',
-      'MCP Token (exchange failed)',
+      'Token Exchange (RFC 8693) — Failed',
       'failed',
       null,
       `Exchange failed: ${err.message}. ` +
       (t1Claims?.may_act
-        ? `may_act was present — check that PingOne has the token-exchange grant enabled on this client and the audience policy allows ${mcpResourceUri}.`
-        : 'may_act was absent — add the may_act claim to the User Token via PingOne token policy, then retry.'),
+        ? 'may_act was present — check that PingOne has the token-exchange grant enabled on this client and the audience policy allows ' + mcpResourceUri + '.'
+        : 'may_act was absent — add the may_act claim to the user token via PingOne token policy, then retry.'),
       { error: err.message, rfc: 'RFC 8693' }
     ));
 
     // Fallback: try subject-only if actor exchange failed
     if (actorToken) {
-      exchangedToken = await oauthService.performTokenExchange(userToken, mcpResourceUri, toolScopes);
-      const t2Decoded = decodeJwtClaims(exchangedToken);
-      tokenEvents.push(buildTokenEvent(
-        'exchanged-token',
-        'MCP Token (delegated, subject-only fallback)',
-        'exchanged',
-        t2Decoded,
-        'Actor exchange failed; fell back to subject-only RFC 8693 exchange (no act claim from actor token). ' +
-        'The MCP Token is still scoped to the MCP audience.',
-        { rfc: 'RFC 8693', exchangeMethod: 'fallback-subject-only' }
-      ));
-      return { token: exchangedToken, tokenEvents, userSub };
+      try {
+        exchangedToken = await oauthService.performTokenExchange(userToken, mcpResourceUri, toolScopes);
+        const t2Decoded = decodeJwtClaims(exchangedToken);
+        tokenEvents.push(buildTokenEvent(
+          'exchanged-token',
+          'MCP Token (Subject-only Fallback)',
+          'exchanged',
+          t2Decoded,
+          'Agent Token exchange failed; fell back to subject-only RFC 8693 exchange (no act claim). ' +
+          'The MCP Token is still scoped to the MCP audience — the User Token never leaves the BFF.',
+          { rfc: 'RFC 8693', exchangeMethod: 'fallback-subject-only' }
+        ));
+        return { token: exchangedToken, tokenEvents };
+      } catch (err2) {
+        throw err2;
+      }
     }
     throw err;
   }
