@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import './LogViewer.css';
 
-const LogViewer = ({ isOpen, onClose }) => {
+const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -135,14 +135,25 @@ const LogViewer = ({ isOpen, onClose }) => {
     });
   };
 
-  if (!isOpen) return null;
+  if (!standalone && !isOpen) return null;
 
-  return (
-    <div className="log-viewer-overlay">
-      <div className="log-viewer-modal">
+  const inner = (
+    <div className={standalone ? 'log-viewer-standalone' : 'log-viewer-modal'}>
         <div className="log-viewer-header">
           <h2>📊 Log Viewer</h2>
-          <button className="close-button" onClick={onClose}>✕</button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {!standalone && (
+              <button
+                className="close-button"
+                title="Open in new window"
+                onClick={() => window.open('/logs', 'BankingLogs', 'width=1400,height=900,scrollbars=yes,resizable=yes')}
+                style={{ fontSize: '16px', padding: '4px 10px' }}
+              >
+                ⊞
+              </button>
+            )}
+            {!standalone && <button className="close-button" onClick={onClose}>✕</button>}
+          </div>
         </div>
 
         <div className="log-viewer-controls">
@@ -289,6 +300,13 @@ const LogViewer = ({ isOpen, onClose }) => {
           {autoRefresh && <span className="refresh-indicator">● Live</span>}
         </div>
       </div>
+  );
+
+  if (standalone) return inner;
+
+  return (
+    <div className="log-viewer-overlay">
+      {inner}
     </div>
   );
 };

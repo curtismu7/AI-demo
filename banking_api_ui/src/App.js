@@ -21,6 +21,7 @@ import McpInspector from './components/McpInspector';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
+import LogViewerPage from './components/LogViewerPage';
 
 import { savePublicConfig } from './services/configService';
 import { EducationUIProvider } from './context/EducationUIContext';
@@ -176,6 +177,7 @@ function App() {
           <Routes>
             <Route path="/config" element={<Config />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/logs" element={<LogViewerPage />} />
             <Route path="*" element={
               !user ? (
                 <LandingPage />
@@ -209,11 +211,11 @@ function App() {
           <CIBAPanel />
           <CimdSimPanel />
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {/* Floating Log Viewer Button */}
+          {/* Floating Log Viewer Button — opens in a new window so it stays visible */}
           <button
             className="log-viewer-fab"
-            onClick={() => setLogViewerOpen(true)}
-            title="Open Log Viewer"
+            onClick={() => window.open('/logs', 'BankingLogs', 'width=1400,height=900,scrollbars=yes,resizable=yes')}
+            title="Open Log Viewer in new window"
             type="button"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

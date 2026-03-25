@@ -449,3 +449,196 @@
 .config-page__card-subtitle--tight {
   font-size: 0.75rem;
 }
+
+/* ── Collapsible section cards ──────────────────────────── */
+.config-page__section {
+  padding: 0 !important;   /* toggle button owns the padding */
+  overflow: hidden;
+}
+
+.config-page__section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0.85rem 1.45rem;
+  cursor: pointer;
+  text-align: left;
+  gap: 0.75rem;
+  transition: background 0.15s;
+}
+
+.config-page__section-toggle:hover {
+  background: rgba(39, 123, 165, 0.05);
+}
+
+.config-page__section-toggle-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.18rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.config-page__section-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--p1-primary-dark);
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+
+.config-page__section-subtitle {
+  font-size: 0.725rem;
+  color: var(--p1-text-secondary);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(520px, calc(100% - 1rem));
+}
+
+.config-page__section-chevron {
+  font-size: 0.65rem;
+  color: var(--p1-text-secondary);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.config-page__section-body {
+  padding: 0 1.45rem 1.35rem;
+  border-top: 1px solid var(--p1-primary-soft);
+}
+
+/* When a section-body wraps a wizard/component that renders its own card,
+   strip the inner card's shadow and border so it doesn't double-nest */
+.config-page__section-body--passthrough {
+  padding: 0;
+  border-top: none;
+}
+
+.config-page__section-body--passthrough > .card {
+  margin-bottom: 0;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+
+/* ── Run Your Own Instance ──────────────────────────────── */
+.config-page__expand-wrap {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.config-page__expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--p1-border);
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #374151;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.config-page__expand-btn:hover {
+  background: #f8fafc;
+  border-color: var(--p1-primary);
+}
+
+.config-page__expand-chevron {
+  font-size: 0.75rem;
+  color: var(--p1-text-secondary);
+  margin-left: 0.5rem;
+}
+
+.config-page__self-host-card {
+  margin-top: 1rem;
+}
+
+.config-page__self-host-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.config-page__path-card {
+  border-radius: 10px;
+  padding: 1.25rem;
+  border: 1px solid transparent;
+}
+
+.config-page__path-card--indigo {
+  background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+  border-color: #c7d2fe;
+}
+
+.config-page__path-card--green {
+  background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #bbf7d0;
+}
+
+.config-page__path-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.config-page__path-card--indigo .config-page__path-title { color: #3730a3; }
+.config-page__path-card--green .config-page__path-title  { color: #14532d; }
+
+.config-page__path-desc {
+  font-size: 0.8rem;
+  margin: 0 0 0.85rem;
+}
+
+.config-page__path-card--indigo .config-page__path-desc { color: #4338ca; }
+.config-page__path-card--green .config-page__path-desc  { color: #166534; }
+
+.config-page__path-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.config-page__path-card--indigo .config-page__path-steps { color: #312e81; }
+.config-page__path-card--green .config-page__path-steps  { color: #14532d; }
+
+.config-page__env-table {
+  width: 100%;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  border-collapse: collapse;
+}
+
+.config-page__env-key {
+  font-family: var(--p1-mono);
+  padding: 0.15rem 0.5rem 0.15rem 0;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.config-page__env-val {
+  padding: 0.15rem 0;
+  vertical-align: top;
+}
+
+.config-page__path-card--indigo .config-page__env-val { color: #4338ca; }
+.config-page__path-card--green .config-page__env-val  { color: #166534; }
+
+@media (max-width: 700px) {
+  .config-page__self-host-grid {
+    grid-template-columns: 1fr;
+  }
+}

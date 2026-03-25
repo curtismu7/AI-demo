@@ -4,6 +4,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
+import './Config.css';
 
 // ─── Region options ───────────────────────────────────────────────────────────
 const REGION_OPTIONS = [
@@ -13,6 +14,32 @@ const REGION_OPTIONS = [
   { value: 'asia',   label: 'Asia-Pacific (asia)' },
   { value: 'com.au', label: 'Australia (com.au)' },
 ];
+
+// ─── Collapsible section card ─────────────────────────────────────────────────
+function CollapsibleCard({ title, subtitle, defaultOpen = true, className = '', passthrough = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`card config-page__section ${className}`}>
+      <button
+        type="button"
+        className="config-page__section-toggle"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <div className="config-page__section-toggle-left">
+          <span className="config-page__section-title">{title}</span>
+          {subtitle && <span className="config-page__section-subtitle">{subtitle}</span>}
+        </div>
+        <span className="config-page__section-chevron">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className={`config-page__section-body${passthrough ? ' config-page__section-body--passthrough' : ''}`}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Empty form state ─────────────────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -279,25 +306,20 @@ export default function Config() {
   // ── Render ──
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="config-page config-page--loading">
         <div className="loading" />
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div className="config-page">
       {/* Page header */}
-      <div style={{
-        background: 'linear-gradient(to bottom, #1e40af 0%, #1e3a8a 100%)',
-        color: 'white',
-        padding: '1rem 0',
-        boxShadow: '0 2px 4px rgba(0,0,0,.15)',
-      }}>
-        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="config-page__hero">
+        <div className="container config-page__hero-inner">
           <div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>⚙️ Application Configuration</h1>
-            <p style={{ fontSize: '0.875rem', opacity: 0.85, marginTop: '0.25rem' }}>
+            <h1 className="config-page__title">⚙️ Application Configuration</h1>
+            <p className="config-page__subtitle">
               {deploymentManaged ? (
                 <><strong>Hosted:</strong> <strong>Two</strong> PingOne OAuth apps (admin + end-user) — client credentials live <strong>on the server</strong> (secrets / KV — not entered by visitors). Use <strong>Admin</strong> and <strong>Customer</strong> sign-in on the login page. Register both redirect URIs below in PingOne.{' '}</>
               ) : (
@@ -305,206 +327,125 @@ export default function Config() {
               )}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div className="config-page__hero-actions">
             {isConfigured && (
-              <span style={{ fontSize: '0.75rem', background: '#d1fae5', color: '#065f46', padding: '0.25rem 0.75rem', borderRadius: '999px', fontWeight: 600 }}>
-                ✓ Configured
-              </span>
+              <span className="config-page__badge config-page__badge--ok">✓ Configured</span>
             )}
             {!isConfigured && (
-              <span style={{ fontSize: '0.75rem', background: '#fef3c7', color: '#92400e', padding: '0.25rem 0.75rem', borderRadius: '999px', fontWeight: 600 }}>
-                ⚠ Not configured
-              </span>
+              <span className="config-page__badge config-page__badge--warn">⚠ Not configured</span>
             )}
-            <Link to="/onboarding" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}>Setup guide</Link>
-            <Link to="/" style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.875rem', textDecoration: 'none' }}>← Back to app</Link>
+            <Link to="/onboarding" className="config-page__link">Setup guide</Link>
+            <Link to="/" className="config-page__link">← Back to app</Link>
           </div>
         </div>
       </div>
 
-      <div className="container" style={{ padding: '2rem 20px', maxWidth: '800px' }}>
+      <div className="container config-page__main">
 
         {/* Read-only banner (hosted serverless, no KV) */}
         {readOnly && (
-          <div style={{
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: '0.5rem',
-            padding: '1rem 1.25rem',
-            marginBottom: '1.5rem',
-            color: '#1e40af',
-          }}>
+          <div className="config-page__banner config-page__banner--info">
             <strong>Read-only mode (hosted, no KV):</strong> Runtime PingOne fields are supplied by the deployment (server-side). Connect <strong>Upstash Redis / KV</strong> (<code>KV_REST_API_URL</code>) if you need to edit values from this UI. On <strong>localhost</strong> or <strong>Replit with SQLite</strong>, configuration is stored on disk.
           </div>
         )}
 
         {deploymentManaged && (
-          <div style={{
-            background: '#ecfdf5',
-            border: '1px solid #a7f3d0',
-            borderRadius: '0.5rem',
-            padding: '1rem 1.25rem',
-            marginBottom: '1.5rem',
-            color: '#065f46',
-            fontSize: '0.9rem',
-          }}>
+          <div className="config-page__banner config-page__banner--hosted">
             <strong>Hosted deployment:</strong> <strong>Client IDs and secrets</strong> are configured on the server (not on this screen). You only need to <strong>register the redirect URIs</strong> in PingOne for your Admin and Customer apps — see the blue box below for the exact values.
           </div>
         )}
 
         {demoMode && (
-          <div style={{
-            background: '#fffbeb',
-            border: '1px solid #fcd34d',
-            borderRadius: '0.5rem',
-            padding: '1rem 1.25rem',
-            marginBottom: '1.5rem',
-            color: '#92400e',
-            fontSize: '0.9rem',
-          }}>
+          <div className="config-page__banner config-page__banner--warning">
             <strong>Demo mode:</strong> This is a shared public demo. All banking data is simulated — no real transactions occur.
             Transfers and account operations are limited. To use your own data,{' '}
             <button
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#b45309',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                padding: 0,
-                fontSize: 'inherit',
-                fontWeight: 600,
-              }}
+              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'inherit', fontWeight: 600 }}
               onClick={() => setShowSelfHosting(true)}
             >run your own instance</button>.
           </div>
         )}
 
         {redirectInfo && !redirectInfo.error && (
-          <div className="card" style={{
-            marginBottom: '1.5rem',
-            borderColor: '#818cf8',
-            background: 'linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%)',
-          }}>
-            <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.35rem' }}>
-              <h2 className="card-title" style={{ margin: 0 }}>Register these redirect URIs in PingOne</h2>
-              <p style={{ fontSize: '0.85rem', color: '#3730a3', margin: 0, lineHeight: 1.55 }}>
-                {redirectInfo.instructions?.summary || 'Each PingOne OAuth app must allowlist its callback URL exactly (scheme, host, path).'}
-                {' '}
-                {redirectInfo.stableDemoOrigin && (
-                  <span>
-                    Production alias for this demo: <code style={{ background: 'rgba(255,255,255,0.7)', padding: '0.1rem 0.35rem', borderRadius: 4 }}>{redirectInfo.stableDemoOrigin}</code>
-                  </span>
-                )}
-              </p>
-            </div>
-            <ol style={{ margin: '0 0 1rem 0', paddingLeft: '1.25rem', fontSize: '0.85rem', color: '#312e81', lineHeight: 1.6 }}>
+          <CollapsibleCard
+            title="Register these redirect URIs in PingOne"
+            subtitle="Copy the exact callback URLs into each PingOne OAuth app"
+            className="config-page__card--redirect"
+          >
+            <p className="config-page__redirect-lede">
+              {redirectInfo.instructions?.summary || 'Each PingOne OAuth app must allowlist its callback URL exactly (scheme, host, path).'}
+              {' '}
+              {redirectInfo.stableDemoOrigin && (
+                <span>Production alias for this demo: <code style={{ background: 'rgba(255,255,255,0.7)', padding: '0.1rem 0.35rem', borderRadius: 4 }}>{redirectInfo.stableDemoOrigin}</code></span>
+              )}
+            </p>
+            <ol className="config-page__redirect-steps">
               {(redirectInfo.instructions?.steps || []).map((step, i) => (
                 <li key={i} style={{ marginBottom: '0.35rem' }}>{step}</li>
               ))}
             </ol>
             <div style={{ display: 'grid', gap: '1rem' }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#312e81', marginBottom: '0.35rem' }}>Admin (staff) app — Redirect URI</div>
+                <div className="config-page__redirect-label">Admin (staff) app — Redirect URI</div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <code style={{
-                    flex: '1 1 240px',
-                    fontSize: '0.78rem',
-                    padding: '0.5rem 0.65rem',
-                    background: 'rgba(255,255,255,0.85)',
-                    borderRadius: 6,
-                    border: '1px solid #c7d2fe',
-                    wordBreak: 'break-all',
-                  }}>{redirectInfo.adminRedirectUri}</code>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ fontSize: '0.8rem' }}
-                    onClick={() => {
-                      navigator.clipboard.writeText(redirectInfo.adminRedirectUri);
-                      toast.success('Admin redirect URI copied');
-                    }}
-                  >
+                  <code className="config-page__code-block">{redirectInfo.adminRedirectUri}</code>
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}
+                    onClick={() => { navigator.clipboard.writeText(redirectInfo.adminRedirectUri); toast.success('Admin redirect URI copied'); }}>
                     Copy
                   </button>
                 </div>
               </div>
               <div>
-                <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#312e81', marginBottom: '0.35rem' }}>Customer (end-user) app — Redirect URI</div>
+                <div className="config-page__redirect-label">Customer (end-user) app — Redirect URI</div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <code style={{
-                    flex: '1 1 240px',
-                    fontSize: '0.78rem',
-                    padding: '0.5rem 0.65rem',
-                    background: 'rgba(255,255,255,0.85)',
-                    borderRadius: 6,
-                    border: '1px solid #c7d2fe',
-                    wordBreak: 'break-all',
-                  }}>{redirectInfo.userRedirectUri}</code>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ fontSize: '0.8rem' }}
-                    onClick={() => {
-                      navigator.clipboard.writeText(redirectInfo.userRedirectUri);
-                      toast.success('Customer redirect URI copied');
-                    }}
-                  >
+                  <code className="config-page__code-block">{redirectInfo.userRedirectUri}</code>
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}
+                    onClick={() => { navigator.clipboard.writeText(redirectInfo.userRedirectUri); toast.success('Customer redirect URI copied'); }}>
                     Copy
                   </button>
                 </div>
               </div>
             </div>
             {redirectInfo.canonicalOrigin && (
-              <p style={{ fontSize: '0.75rem', color: '#4338ca', marginTop: '1rem', marginBottom: 0 }}>
-                Canonical origin used for callbacks: <code>{redirectInfo.canonicalOrigin}</code>
-                {redirectInfo.requestHost && (
-                  <> · Request host: <code>{redirectInfo.requestHost}</code></>
-                )}
+              <p className="config-page__redirect-foot">
+                Canonical origin: <code>{redirectInfo.canonicalOrigin}</code>
+                {redirectInfo.requestHost && (<> · Request host: <code>{redirectInfo.requestHost}</code></>)}
               </p>
             )}
             {(redirectInfo.warnings || []).length > 0 && (
-              <div style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: '#92400e' }}>
-                {(redirectInfo.warnings || []).map((w, i) => (
-                  <p key={i} style={{ margin: '0.25rem 0' }}>⚠ {w}</p>
-                ))}
+              <div className="config-page__redirect-warn">
+                {(redirectInfo.warnings || []).map((w, i) => (<p key={i} style={{ margin: '0.25rem 0' }}>⚠ {w}</p>))}
               </div>
             )}
-          </div>
+          </CollapsibleCard>
         )}
 
         {redirectInfo?.error && (
-          <div className="card" style={{ marginBottom: '1.5rem', borderColor: '#fecaca', background: '#fef2f2' }}>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#991b1b' }}>Could not load redirect URI info: {redirectInfo.error}</p>
+          <div className="card config-page__banner--danger" style={{ marginBottom: '1.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem' }}>Could not load redirect URI info: {redirectInfo.error}</p>
           </div>
         )}
 
         {!deploymentManaged && (
-          <div style={{
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '0.5rem',
-            padding: '1rem 1.25rem',
-            marginBottom: '1.5rem',
-            color: '#166534',
-            fontSize: '0.9rem',
-          }}>
+          <div className="config-page__banner config-page__banner--success">
             <strong>Local development:</strong> Configure <strong>Admin</strong> and <strong>End-User</strong> OAuth apps independently — <strong>two PingOne apps and two client IDs</strong>, same model as production. This layout is shown when deployment-managed OAuth is off (e.g. local or Replit with full editor).
           </div>
         )}
 
         {/* Step-by-step directions */}
-        <div className="card" style={{ marginBottom: '1.5rem', borderColor: '#c7d2fe', background: '#f8fafc' }}>
-          <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.35rem' }}>
-            <h2 className="card-title" style={{ margin: 0 }}>How to complete this form</h2>
-            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>
-              For a printable-style checklist, open the <Link to="/onboarding">onboarding guide</Link>. Follow the steps below in order.
-            </p>
-          </div>
-          <ol style={{ margin: 0, padding: '0 0 0 1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.65 }}>
+        <CollapsibleCard
+          title="How to complete this form"
+          subtitle="Step-by-step setup checklist — open for a printable guide"
+          className="config-page__card--steps"
+          defaultOpen={false}
+        >
+          <p className="config-page__steps-intro">
+            For a printable-style checklist, open the <Link to="/onboarding">onboarding guide</Link>. Follow the steps below in order.
+          </p>
+          <ol className="config-page__steps-list">
             {deploymentManaged ? (
               <>
-                <li>Copy the <strong>Admin</strong> and <strong>Customer</strong> redirect URIs from the <strong>Register these redirect URIs in PingOne</strong> section above into each PingOne application’s allowlist.</li>
+                <li>Copy the <strong>Admin</strong> and <strong>Customer</strong> redirect URIs from the <strong>Register these redirect URIs in PingOne</strong> section above into each PingOne application's allowlist.</li>
                 <li>OAuth client IDs and secrets are stored <strong>on the server</strong> — visitors do not enter them here.</li>
                 <li>Use <strong>Admin sign-in</strong> and <strong>Customer sign-in</strong> on the login page.</li>
                 <li>Optional: other fields below may be read-only unless KV is connected.</li>
@@ -520,18 +461,11 @@ export default function Config() {
             <li>Optional: <strong>PingOne Authorize</strong> for transfer policy; <strong>Advanced</strong> / MCP URL is for local use.</li>
             <li><strong>Save Configuration</strong>, then sign in with Admin or Customer as needed.</li>
           </ol>
-        </div>
+        </CollapsibleCard>
 
         {/* First-run banner (local setup only) */}
         {!isConfigured && !readOnly && !deploymentManaged && (
-          <div style={{
-            background: '#fff7ed',
-            border: '1px solid #fed7aa',
-            borderRadius: '0.5rem',
-            padding: '1rem 1.25rem',
-            marginBottom: '1.5rem',
-            color: '#9a3412',
-          }}>
+          <div className="config-page__banner config-page__banner--warning">
             <strong>Not saved yet:</strong> Complete the fields below, then <strong>Save Configuration</strong>.
             Values are stored in {storageType === 'vercel-kv' ? 'Redis (KV)' : 'SQLite'} so they survive restarts.
           </div>
@@ -540,17 +474,14 @@ export default function Config() {
         <form onSubmit={handleSave}>
 
           {/* ── Section 1: PingOne Environment ── */}
-          <div className="card">
-            <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-              <h2 className="card-title" style={{ margin: 0 }}>PingOne Environment</h2>
-              <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                {deploymentManaged
-                  ? 'Values below reflect the deployment (read-only). OAuth clients are configured server-side.'
-                  : 'Identifies your tenant. Test the connection before relying on sign-in.'}
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={{ gridColumn: '1 / -1' }}>
+          <CollapsibleCard
+            title="PingOne Environment"
+            subtitle={deploymentManaged
+              ? 'Values reflect the deployment (read-only) — OAuth clients are configured server-side'
+              : 'Environment ID, region, and frontend URL — test the connection before signing in'}
+          >
+            <div className="config-page__grid">
+              <div className="config-page__grid-span-2">
                 <TextField
                   label="Environment ID"
                   fieldKey="pingone_environment_id"
@@ -574,21 +505,19 @@ export default function Config() {
                   ))}
                 </select>
               </div>
-              <div>
-                <TextField
-                  label="Frontend URL"
-                  fieldKey="frontend_url"
-                  value={form.frontend_url}
-                  onChange={handleChange}
-                  placeholder={window.location.origin}
-                  help="The URL your React app is served from"
-                  disabled={readOnly || deploymentManaged}
-                />
-              </div>
+              <TextField
+                label="Frontend URL"
+                fieldKey="frontend_url"
+                value={form.frontend_url}
+                onChange={handleChange}
+                placeholder={window.location.origin}
+                help="The URL your React app is served from"
+                disabled={readOnly || deploymentManaged}
+              />
             </div>
 
             {/* Test connection */}
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div className="config-page__test-row">
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -598,43 +527,34 @@ export default function Config() {
                 {testing ? 'Testing…' : '🔌 Test PingOne Connection'}
               </button>
               {testResult && (
-                <div style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.375rem',
-                  background: testResult.ok ? '#d1fae5' : '#fee2e2',
-                  color: testResult.ok ? '#065f46' : '#7f1d1d',
-                  fontSize: '0.875rem',
-                  flex: 1,
-                }}>
+                <div className={`config-page__test-result ${testResult.ok ? 'config-page__test-result--ok' : 'config-page__test-result--err'}`}>
                   {testResult.ok ? `✓ ${testResult.message}` : `✗ ${testResult.message}`}
                   {testResult.ok && testResult.issuer && (
-                    <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.2rem' }}>
-                      Issuer: {testResult.issuer}
-                    </div>
+                    <div className="config-page__test-issuer">Issuer: {testResult.issuer}</div>
                   )}
                 </div>
               )}
             </div>
-          </div>
+          </CollapsibleCard>
 
           {/* ── OAuth: hosted managed vs local full editor ── */}
           {deploymentManaged ? (
-            <div className="card" style={{ borderColor: '#a7f3d0', background: '#f8fffc' }}>
-              <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.35rem' }}>
-                <h2 className="card-title" style={{ margin: 0 }}>PingOne OAuth (server-side)</h2>
-                <span style={{ fontSize: '0.8rem', color: '#374151', lineHeight: 1.5 }}>
-                  Admin and Customer apps use client credentials stored <strong>on the backend</strong>. Redirect URIs you must add in PingOne are in the <strong>“Register these redirect URIs”</strong> section above (copy/paste). You do not type client secrets on this page.
-                </span>
-              </div>
-            </div>
+            <CollapsibleCard
+              title="PingOne OAuth (server-side)"
+              subtitle="Client credentials are on the backend — register the redirect URIs above in PingOne"
+              className="config-page__card--oauth-hosted"
+            >
+              <p className="config-page__card-subtitle" style={{ margin: 0 }}>
+                Admin and Customer apps use client credentials stored <strong>on the backend</strong>. Redirect URIs you must add in PingOne are in the <strong>"Register these redirect URIs"</strong> section above (copy/paste). You do not type client secrets on this page.
+              </p>
+            </CollapsibleCard>
           ) : (
             <>
-              <div className="card">
-                <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                  <h2 className="card-title" style={{ margin: 0 }}>Admin OAuth App</h2>
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Authorization Code + PKCE · used for admin dashboard sign-in. Register the redirect URI below in this PingOne app.</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <CollapsibleCard
+                title="Admin OAuth App"
+                subtitle="Authorization Code + PKCE · used for admin dashboard sign-in"
+              >
+                <div className="config-page__grid">
                   <TextField
                     label="Client ID"
                     fieldKey="admin_client_id"
@@ -644,7 +564,7 @@ export default function Config() {
                     disabled={readOnly}
                   />
                   <div />
-                  <div style={{ gridColumn: '1 / -1' }}>
+                  <div className="config-page__grid-span-2">
                     <SecretField
                       label="Client Secret"
                       fieldKey="admin_client_secret"
@@ -657,7 +577,7 @@ export default function Config() {
                       disabled={readOnly}
                     />
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
+                  <div className="config-page__grid-span-2">
                     <TextField
                       label="Redirect URI (must match PingOne app settings)"
                       fieldKey="admin_redirect_uri"
@@ -668,14 +588,13 @@ export default function Config() {
                     />
                   </div>
                 </div>
-              </div>
+              </CollapsibleCard>
 
-              <div className="card">
-                <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                  <h2 className="card-title" style={{ margin: 0 }}>End-User OAuth App</h2>
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Authorization Code + PKCE · used for customer sign-in. Use a separate PingOne app from the admin app.</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <CollapsibleCard
+                title="End-User OAuth App"
+                subtitle="Authorization Code + PKCE · used for customer sign-in — separate PingOne app from admin"
+              >
+                <div className="config-page__grid">
                   <TextField
                     label="Client ID"
                     fieldKey="user_client_id"
@@ -685,7 +604,7 @@ export default function Config() {
                     disabled={readOnly}
                   />
                   <div />
-                  <div style={{ gridColumn: '1 / -1' }}>
+                  <div className="config-page__grid-span-2">
                     <SecretField
                       label="Client Secret"
                       fieldKey="user_client_secret"
@@ -698,7 +617,7 @@ export default function Config() {
                       disabled={readOnly}
                     />
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
+                  <div className="config-page__grid-span-2">
                     <TextField
                       label="Redirect URI (must match PingOne app settings)"
                       fieldKey="user_redirect_uri"
@@ -709,17 +628,16 @@ export default function Config() {
                     />
                   </div>
                 </div>
-              </div>
+              </CollapsibleCard>
             </>
           )}
 
           {/* ── Section 4: Session & Roles ── */}
-          <div className="card">
-            <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-              <h2 className="card-title" style={{ margin: 0 }}>Session &amp; Roles</h2>
-              <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Session cookies are signed with the session secret. Role names must match how your PingOne users are assigned (e.g. group → role mapping).</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <CollapsibleCard
+            title="Session & Roles"
+            subtitle="Session cookie secret + admin/customer role names must match PingOne"
+          >
+            <div className="config-page__grid">
               <TextField
                 label="Admin Role name (in PingOne)"
                 fieldKey="admin_role"
@@ -736,7 +654,7 @@ export default function Config() {
                 placeholder="customer"
                 disabled={readOnly}
               />
-              <div style={{ gridColumn: '1 / -1' }}>
+              <div className="config-page__grid-span-2">
                 <SecretField
                   label="Session Secret"
                   fieldKey="session_secret"
@@ -750,19 +668,15 @@ export default function Config() {
                 />
               </div>
             </div>
-          </div>
+          </CollapsibleCard>
 
           {/* ── Section 5: Step-Up Authentication ── */}
-          <div className="card">
-            <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.35rem' }}>
-              <h2 className="card-title" style={{ margin: 0 }}>Step-Up Authentication</h2>
-              <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>
-                Choose how users are challenged when a large transfer or withdrawal triggers
-                the step-up gate. Both methods require CIBA to be enabled in your PingOne
-                application and support PKCE.
-              </p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <CollapsibleCard
+            title="Step-Up Authentication"
+            subtitle="Challenge method for large transfers — CIBA (inline) or Email/OTP (redirect)"
+            defaultOpen={false}
+          >
+            <div className="config-page__grid">
               <div className="form-group">
                 <label className="form-label">Step-up method</label>
                 <select
@@ -798,19 +712,15 @@ export default function Config() {
                 </p>
               </div>
             </div>
-          </div>
+          </CollapsibleCard>
 
           {/* ── Section 6: PingOne Authorize (in-app authorization) ── */}
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">PingOne Authorize — In-App Authorization</h2>
-              <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>
-                Policy-based in-app authorization for transfers and withdrawals. Requires a Worker app
-                with the <strong>Identity Data Admin</strong> role and a configured Policy Decision Point.
-                Can be combined with step-up above.
-              </p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <CollapsibleCard
+            title="PingOne Authorize — In-App Authorization"
+            subtitle="Policy-based authorization for transfers and withdrawals (optional)"
+            defaultOpen={false}
+          >
+            <div className="config-page__grid">
               <div className="form-group">
                 <label className="form-label">Enable PingOne Authorize</label>
                 <select
@@ -837,11 +747,11 @@ export default function Config() {
               />
             </div>
             {deploymentManaged ? (
-              <p style={{ fontSize: '0.85rem', color: '#374151', marginTop: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: '0.375rem' }}>
+              <div className="config-page__note-box" style={{ marginTop: '1rem' }}>
                 <strong>Worker app credentials</strong> for PingOne Authorize are configured in the deployment (same as OAuth clients). They are not edited on this page.
-              </p>
+              </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+              <div className="config-page__grid" style={{ marginTop: '1rem' }}>
                 <TextField
                   label="Worker App Client ID"
                   fieldKey="authorize_worker_client_id"
@@ -864,34 +774,31 @@ export default function Config() {
                 />
               </div>
             )}
-          </div>
+          </CollapsibleCard>
 
-          <McpInspectorSetupWizard
-            appBaseUrl={form.frontend_url || (typeof window !== 'undefined' ? window.location.origin : '')}
-            mcpAgentUrl={form.mcp_server_url}
-            storageType={storageType}
-          />
+          <CollapsibleCard
+            title="MCP Inspector Setup"
+            subtitle="Generate env snippets and commands for testing MCP tools (browser or npm)"
+            defaultOpen={false}
+            passthrough
+          >
+            <McpInspectorSetupWizard
+              appBaseUrl={form.frontend_url || (typeof window !== 'undefined' ? window.location.origin : '')}
+              mcpAgentUrl={form.mcp_server_url}
+              storageType={storageType}
+            />
+          </CollapsibleCard>
 
-          {/* ── Section 6: Advanced ── */}
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">Advanced</h2>
-            </div>
+          {/* ── Section 7: Advanced ── */}
+          <CollapsibleCard
+            title="Advanced"
+            subtitle="LangChain / MCP Agent URL and debug logging"
+            defaultOpen={false}
+          >
 
             {/* Hosted warning: LangChain agent is local-only */}
             {storageType === 'vercel-kv' && (
-              <div style={{
-                background: '#fff7ed',
-                border: '1px solid #fed7aa',
-                borderRadius: '0.5rem',
-                padding: '0.75rem 1rem',
-                marginBottom: '1rem',
-                display: 'flex',
-                gap: '0.5rem',
-                alignItems: 'flex-start',
-                fontSize: '0.875rem',
-                color: '#92400e',
-              }}>
+              <div className="config-page__callout">
                 <span style={{ fontSize: '1rem', lineHeight: 1 }}>⚠️</span>
                 <div>
                   <strong>LangChain / MCP Agent not available on hosted cloud.</strong> The agent runs
@@ -902,7 +809,7 @@ export default function Config() {
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="config-page__grid">
               <TextField
                 label="LangChain / MCP Agent URL"
                 fieldKey="mcp_server_url"
@@ -930,16 +837,8 @@ export default function Config() {
 
             {/* Hosted KV: admin password may be required — hidden in read-only mode */}
             {storageType === 'vercel-kv' && !readOnly && (
-              <div style={{ marginTop: '1rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
-                <div style={{
-                  background: '#faf5ff',
-                  border: '1px solid #e9d5ff',
-                  borderRadius: '0.5rem',
-                  padding: '0.75rem 1rem',
-                  marginBottom: '0.75rem',
-                  fontSize: '0.8125rem',
-                  color: '#6b21a8',
-                }}>
+              <div className="config-page__divider">
+                <div className="config-page__callout config-page__callout--purple" style={{ marginBottom: '0.75rem' }}>
                   <strong>🔑 Config password</strong> — once credentials are saved, updates require
                   an admin password. Set <code>ADMIN_CONFIG_PASSWORD</code> in your Replit / Vercel secrets
                   variables, then enter it here before saving. Leave blank on first-time setup.
@@ -959,11 +858,11 @@ export default function Config() {
                 </div>
               </div>
             )}
-          </div>
+          </CollapsibleCard>
 
           {/* ── Save button — hidden in read-only mode ── */}
           {!readOnly && (
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem', marginBottom: '2rem' }}>
+          <div className="config-page__actions">
             <button type="button" className="btn btn-secondary" onClick={loadConfig}>
               ↺ Reload from server
             </button>
@@ -976,72 +875,44 @@ export default function Config() {
         </form>
 
         {/* ── Run Your Own Instance ── */}
-        <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+        <div className="config-page__expand-wrap">
           <button
             type="button"
+            className="config-page__expand-btn"
             onClick={() => setShowSelfHosting((v) => !v)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              background: 'none',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.5rem',
-              padding: '0.65rem 1.1rem',
-              cursor: 'pointer',
-              fontSize: '0.9375rem',
-              fontWeight: 600,
-              color: '#374151',
-              width: '100%',
-              textAlign: 'left',
-            }}
           >
-            {showSelfHosting ? '🚀 Run Your Own Instance ▲' : '🚀 Run Your Own Instance ▼'}
+            🚀 Run Your Own Instance
+            <span className="config-page__expand-chevron">{showSelfHosting ? '▲' : '▼'}</span>
           </button>
 
           {showSelfHosting && (
-            <div className="card" style={{ marginTop: '1rem' }}>
+            <div className="card config-page__self-host-card">
               <div className="card-header">
                 <h2 className="card-title">Run Your Own Instance</h2>
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                <p className="config-page__card-subtitle" style={{ margin: 0 }}>
                   The hosted demo at <code>banking-demo-puce.vercel.app</code> may use a shared PingOne environment (see project docs for the current URL).
                   Your own deployment gets its own isolated PingOne environment — users you create there are separate.
                 </p>
               </div>
 
-              <div style={{
-                background: '#fefce8',
-                border: '1px solid #fde68a',
-                borderRadius: '0.375rem',
-                padding: '0.75rem 1rem',
-                marginBottom: '1.5rem',
-                fontSize: '0.8125rem',
-                color: '#78350f',
-              }}>
+              <div className="config-page__callout" style={{ marginBottom: '1.5rem' }}>
                 <strong>Client secrets are optional</strong> — both deployment modes support PKCE (public client).
                 Only expose a client secret if your PingOne app is configured as confidential.
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <div className="config-page__self-host-grid">
 
                 {/* Path A: hosted cloud */}
-                <div style={{
-                  border: '1px solid #c7d2fe',
-                  borderRadius: '0.5rem',
-                  padding: '1.25rem',
-                  background: '#eef2ff',
-                }}>
-                  <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', color: '#3730a3' }}>
-                    ☁️ Path A: Deploy (Vercel or Replit)
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: '#4338ca', marginBottom: '1rem', marginTop: 0 }}>
+                <div className="config-page__path-card config-page__path-card--indigo">
+                  <h3 className="config-page__path-title">☁️ Path A: Deploy (Vercel or Replit)</h3>
+                  <p className="config-page__path-desc">
                     Your own PingOne environment, zero-downtime deploys, free tier available.
                   </p>
-                  <ol style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.82rem', color: '#312e81', lineHeight: 1.65 }}>
+                  <ol className="config-page__path-steps">
                     <li>Fork or clone the repo from GitHub</li>
                     <li>In PingOne, create <strong>two OIDC web apps</strong> (Admin + Customer) and note each Client ID</li>
                     <li>Set these environment variables on your host (Vercel, Replit Secrets, etc.):
-                      <table style={{ width: '100%', marginTop: '0.5rem', marginBottom: '0.5rem', fontSize: '0.78rem', borderCollapse: 'collapse' }}>
+                      <table className="config-page__env-table">
                         <tbody>
                           {[
                             ['PINGONE_ENVIRONMENT_ID', 'Your PingOne env UUID'],
@@ -1056,8 +927,8 @@ export default function Config() {
                             ['PUBLIC_APP_URL', 'Your public URL (e.g. https://my-app.vercel.app or *.replit.dev)'],
                           ].map(([k, v]) => (
                             <tr key={k}>
-                              <td style={{ fontFamily: 'monospace', padding: '0.15rem 0.35rem 0.15rem 0', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{k}</td>
-                              <td style={{ color: '#4338ca', padding: '0.15rem 0', verticalAlign: 'top' }}>{v}</td>
+                              <td className="config-page__env-key">{k}</td>
+                              <td className="config-page__env-val">{v}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1079,19 +950,12 @@ export default function Config() {
                 </div>
 
                 {/* Path B: Localhost */}
-                <div style={{
-                  border: '1px solid #bbf7d0',
-                  borderRadius: '0.5rem',
-                  padding: '1.25rem',
-                  background: '#f0fdf4',
-                }}>
-                  <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', color: '#14532d' }}>
-                    🖥️ Path B: Run on localhost
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: '#166534', marginBottom: '1rem', marginTop: 0 }}>
+                <div className="config-page__path-card config-page__path-card--green">
+                  <h3 className="config-page__path-title">🖥️ Path B: Run on localhost</h3>
+                  <p className="config-page__path-desc">
                     Default API server uses <code>api.pingdemo.com</code> as the host.
                   </p>
-                  <ol style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.82rem', color: '#14532d', lineHeight: 1.65 }}>
+                  <ol className="config-page__path-steps">
                     <li>Clone the repo</li>
                     <li>Copy <code>banking_api_server/.env.example</code> → <code>banking_api_server/.env</code> and fill in your PingOne values</li>
                     <li>By default the API server listens on <code>api.pingdemo.com</code> — add that to your local hosts file, or change <code>PORT</code>/<code>HOST</code> in <code>.env</code></li>

@@ -155,26 +155,26 @@ function HistoryEntry({ entry, index }) {
 const PLACEHOLDER_EVENTS = [
   {
     id: 'user-token',
-    label: 'User Token (T1)',
+    label: 'User Token',
     status: 'waiting',
     claims: null,
-    explanation: 'Issued after Authorization Code + PKCE login. Stored in Backend For Frontend (BFF) session. Contains may_act authorising this server to exchange it.',
+    explanation: 'Issued by PingOne after Authorization Code + PKCE login. Stored securely in the BFF session (server-side, httpOnly cookie — never exposed to the browser). Contains may_act authorising the BFF to exchange it on the user\'s behalf.',
     rfc: 'RFC 7519 · RFC 9068',
   },
   {
     id: 'exchange',
-    label: 'RFC 8693 Token Exchange → T2',
+    label: 'Token Exchange (RFC 8693): User Token → MCP Token',
     status: 'waiting',
     claims: null,
-    explanation: 'Backend For Frontend (BFF) presents T1 to PingOne. PingOne validates may_act, narrows scope to the tool\'s required scopes, and issues T2 with act claim.',
+    explanation: 'BFF presents the User Token to PingOne as subject_token. PingOne validates may_act, narrows the scope to the tool\'s required scopes, and issues the MCP Token with an act claim identifying the BFF as the actor. The User Token NEVER leaves the BFF.',
     rfc: 'RFC 8693 · RFC 8707',
   },
   {
     id: 'exchanged-token',
-    label: 'Exchanged Token (T2) → MCP Server',
+    label: 'MCP Token (Delegated) → MCP Server',
     status: 'waiting',
     claims: null,
-    explanation: 'T2 is scoped to the MCP server audience. Contains act: { client_id: bff } — proves delegation. T1 never leaves the Backend For Frontend (BFF).',
+    explanation: 'The MCP Token is scoped to the MCP server audience with narrowed scopes. Contains act: { client_id: bff } — proves delegation chain. The User Token stays in the BFF; only the MCP Token reaches the MCP Server and Banking API.',
     rfc: 'RFC 8693',
   },
 ];
@@ -195,7 +195,7 @@ const TokenChainDisplay = () => {
           {isLive && <span className="tcd-live-dot" title="Live data from last tool call" />}
         </div>
         <p className="tcd-header-sub">
-          RFC 8693 token exchange — Backend For Frontend (BFF) → PingOne → MCP Server → Banking API
+          User Token stays in BFF → RFC 8693 Exchange → MCP Token → MCP Server → Banking API
         </p>
       </div>
 

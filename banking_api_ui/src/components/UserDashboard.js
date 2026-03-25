@@ -807,14 +807,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="modal-overlay" onClick={() => setShowTokenModal(false)}>
           <div className="token-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>OAuth Token Information</h3>
+              <h3>Your Token Chain</h3>
               <button className="close-btn" onClick={() => setShowTokenModal(false)}>×</button>
             </div>
             <div className="modal-content">
               {tokenData ? (
                 <div className="token-info">
+                  {/* Session summary */}
                   <div className="token-section">
-                    <h4>Session Info</h4>
+                    <h4>Session</h4>
                     <div className="session-info-grid">
                       <div className="session-row">
                         <span className="session-label">User:</span>
@@ -827,43 +828,112 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                         <span className="session-value">{tokenData.oauthProvider}</span>
                       </div>
                       <div className="session-row">
-                        <span className="session-label">Client:</span>
-                        <span className="session-value">{tokenData.clientType}</span>
-                        <span className="session-label">Token:</span>
-                        <span className="session-value">{tokenData.tokenType}</span>
-                      </div>
-                      <div className="session-row">
                         <span className="session-label">Expires:</span>
                         <span className="session-value">{tokenData.expiresAt ? new Date(tokenData.expiresAt).toLocaleString() : 'N/A'}</span>
                       </div>
                     </div>
                   </div>
 
+                  {/* User Token section */}
                   {tokenData.accessToken && (
                     <div className="token-section">
-                      <h4>Access Token Header</h4>
-                      <pre className="token-json">
-                        {JSON.stringify(tokenData.accessToken.header, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-
-                  {tokenData.accessToken && (
-                    <div className="token-section">
-                      <h4 className="token-payload-heading">
-                        Access Token Payload
-                        <button type="button" className="token-payload-hint" title="may_act / act" onClick={() => open(EDU.MAY_ACT, 'lifecycle')}>ⓘ</button>
-                        <button type="button" className="token-payload-hint" title="scope" onClick={() => open(EDU.LOGIN_FLOW, 'tokens')}>ⓘ</button>
+                      <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#93c5fd' }}>👤 User Token</span>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 'normal' }}>— stays in BFF session, never forwarded to MCP</span>
+                        <button type="button" className="token-payload-hint" title="Learn about token exchange" onClick={() => open(EDU.MAY_ACT, 'lifecycle')}>ⓘ</button>
                       </h4>
-                      <pre className="token-json">
-                        {JSON.stringify(tokenData.accessToken.payload, null, 2)}
-                      </pre>
+                      <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '10px 14px', fontSize: '0.78rem', marginBottom: '8px' }}>
+                        <strong style={{ color: '#93c5fd' }}>JWT Header</strong>
+                        <pre className="token-json" style={{ margin: '6px 0 0' }}>
+                          {JSON.stringify(tokenData.accessToken.header, null, 2)}
+                        </pre>
+                      </div>
+                      <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '10px 14px', fontSize: '0.78rem', marginBottom: '8px' }}>
+                        <strong style={{ color: '#93c5fd' }}>JWT Payload</strong>
+                        <button type="button" className="token-payload-hint" title="scope" onClick={() => open(EDU.LOGIN_FLOW, 'tokens')}>ⓘ</button>
+                        <pre className="token-json" style={{ margin: '6px 0 0' }}>
+                          {JSON.stringify(tokenData.accessToken.payload, null, 2)}
+                        </pre>
+                      </div>
+                      {tokenData.accessToken.payload?.may_act && (
+                        <div style={{ background: '#1e3a5f', borderRadius: '6px', padding: '8px 12px', fontSize: '0.8rem', color: '#93c5fd', marginBottom: '8px' }}>
+                          ✅ <strong>may_act present</strong> — PingOne will allow the BFF to exchange this User Token.
+                          <pre style={{ margin: '4px 0 0', background: 'none', fontSize: '0.75rem' }}>{JSON.stringify(tokenData.accessToken.payload.may_act, null, 2)}</pre>
+                        </div>
+                      )}
+                      {!tokenData.accessToken.payload?.may_act && (
+                        <div style={{ background: '#7f1d1d', borderRadius: '6px', padding: '8px 12px', fontSize: '0.8rem', color: '#fca5a5', marginBottom: '8px' }}>
+                          ⚠️ <strong>may_act absent</strong> — configure the may_act claim in your PingOne token policy to enable token exchange (RFC 8693).
+                        </div>
+                      )}
                     </div>
                   )}
 
+                  {/* What changes in the exchange */}
+                  <div className="token-section">
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem' }}>→</span>
+                      <span style={{ background: '#2d1b69', border: '1px solid #8b5cf6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#c4b5fd' }}>Token Exchange (RFC 8693)</span>
+                    </h4>
+                    <div style={{ background: '#0f172a', border: '1px solid #2d1b69', borderRadius: '6px', padding: '10px 14px', fontSize: '0.82rem' }}>
+                      <p style={{ margin: '0 0 8px', color: '#c4b5fd' }}>What changes when the BFF exchanges the User Token for an MCP Token:</p>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid #334155' }}>
+                            <th style={{ textAlign: 'left', padding: '4px 8px', color: '#94a3b8' }}>Claim</th>
+                            <th style={{ textAlign: 'left', padding: '4px 8px', color: '#93c5fd' }}>User Token (before)</th>
+                            <th style={{ textAlign: 'left', padding: '4px 8px', color: '#34d399' }}>MCP Token (after)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>aud</code></td>
+                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.aud ? (Array.isArray(tokenData.accessToken.payload.aud) ? tokenData.accessToken.payload.aud.join(', ') : String(tokenData.accessToken.payload.aud)).substring(0, 40) + '…' : 'BFF / PingOne client'}</td>
+                            <td style={{ padding: '4px 8px', color: '#34d399' }}>MCP Server Resource URI (narrowed)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>scope</code></td>
+                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.scope ? String(tokenData.accessToken.payload.scope).substring(0, 40) + '…' : 'broad scopes'}</td>
+                            <td style={{ padding: '4px 8px', color: '#34d399' }}>banking:read banking:write (narrowed)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>may_act</code></td>
+                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.may_act ? '✅ present' : '⚠️ absent'}</td>
+                            <td style={{ padding: '4px 8px', color: '#34d399' }}>removed (no longer needed)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>act</code></td>
+                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>absent</td>
+                            <td style={{ padding: '4px 8px', color: '#34d399' }}>added: {'{ "client_id": "bff" }'}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>sub</code></td>
+                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>user sub (unchanged)</td>
+                            <td style={{ padding: '4px 8px', color: '#34d399' }}>user sub (preserved)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* MCP Token section */}
+                  <div className="token-section">
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ background: '#1a2e1a', border: '1px solid #22c55e', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#86efac' }}>🤖 MCP Token</span>
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 'normal' }}>— sent to MCP Server &amp; Banking API</span>
+                    </h4>
+                    <div style={{ background: '#0f172a', border: '1px solid #1a2e1a', borderRadius: '6px', padding: '10px 14px', fontSize: '0.82rem', color: '#86efac' }}>
+                      <p style={{ margin: 0 }}>
+                        🔒 The MCP Token is minted server-side on each tool call — it is never stored in the browser or exposed via the API.
+                        Make a request via the <strong>AI Agent</strong> panel to see the live MCP Token claims in the <strong>Token Chain</strong> display above.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Raw token */}
                   {tokenData.accessToken && (
                     <div className="token-section">
-                      <h4>Raw Access Token</h4>
+                      <h4>Raw User Token (JWT)</h4>
                       <div className="token-raw-display">
                         {tokenData.accessToken.raw}
                       </div>

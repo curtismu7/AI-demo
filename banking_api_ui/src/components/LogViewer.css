@@ -329,6 +329,16 @@
   background: #555;
 }
 
+/* Standalone / pop-out window mode */
+.log-viewer-standalone {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  border-radius: 0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .log-viewer-modal {
