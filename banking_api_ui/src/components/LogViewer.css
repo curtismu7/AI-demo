@@ -422,11 +422,45 @@
 /* Standalone / pop-out window mode */
 .log-viewer-standalone {
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - 56px);
   display: flex;
   flex-direction: column;
   background: #1e1e1e;
   border-radius: 0;
+}
+
+.log-page-shell {
+  min-height: 100vh;
+  background: #111827;
+}
+
+.log-page-nav {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #0f172a;
+  border-bottom: 1px solid #1f2937;
+}
+
+.log-page-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #1d4ed8;
+  border: 1px solid #3b82f6;
+  color: #eff6ff;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.log-page-nav-btn:hover {
+  background: #2563eb;
 }
 
 /* Responsive */

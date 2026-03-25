@@ -332,6 +332,16 @@ function AppWithAuth() {
               <span>Logs</span>
             </button>
           )}
+          {user && !isLogsRoute && (
+            <button
+              className="demo-config-fab"
+              onClick={() => { window.location.href = '/demo-data'; }}
+              title="Open Demo config"
+              type="button"
+            >
+              Demo config
+            </button>
+          )}
           <Footer user={user} />
         </div>
       </TokenChainProvider>
