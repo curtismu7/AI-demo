@@ -1,862 +1,689 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
 import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
-import TokenChainDisplay from './TokenChainDisplay';
 import './UserDashboard.css';
 
+// ── Scope metadata ──────────────────────────────────────────────────────────
+const SCOPE_META = {
+  'openid':                    { cat: 'oidc',   label: 'openid',           color: '#64748b' },
+  'profile':                   { cat: 'oidc',   label: 'profile',          color: '#64748b' },
+  'email':                     { cat: 'oidc',   label: 'email',            color: '#64748b' },
+  'banking:read':              { cat: 'read',   label: 'banking:read',     color: '#2563eb' },
+  'banking:write':             { cat: 'write',  label: 'banking:write',    color: '#7c3aed' },
+  'banking:accounts:read':     { cat: 'read',   label: 'accounts:read',    color: '#2563eb' },
+  'banking:transactions:read': { cat: 'read',   label: 'txns:read',        color: '#2563eb' },
+  'banking:transactions:write':{ cat: 'write',  label: 'txns:write',       color: '#7c3aed' },
+  'transfer':                  { cat: 'action', label: 'transfer',         color: '#059669' },
+  'withdrawal':                { cat: 'action', label: 'withdrawal',       color: '#d97706' },
+  'deposit':                   { cat: 'action', label: 'deposit',          color: '#059669' },
+  'delete':                    { cat: 'admin',  label: 'delete',           color: '#dc2626' },
+  'modify':                    { cat: 'admin',  label: 'modify',           color: '#ea580c' },
+  'offline_access':            { cat: 'oidc',   label: 'offline_access',   color: '#64748b' },
+};
+
+const FULL_DEMO_SCOPES = [
+  'openid','profile','email',
+  'banking:read','banking:write',
+  'banking:transactions:write',
+  'transfer','withdrawal','deposit','delete','modify'
+];
+const TRANSFER_ONLY_SCOPES = ['openid','profile','email','transfer'];
+
+const txIcon = {
+  deposit:    { icon: '↓', color: '#059669', bg: '#d1fae5' },
+  withdrawal: { icon: '↑', color: '#dc2626', bg: '#fee2e2' },
+  transfer:   { icon: '⇄', color: '#2563eb', bg: '#dbeafe' },
+};
+
+// ── ScopeBadge ────────────────────────────────────────────────────────────
+function ScopeBadge({ scope, strike }) {
+  const meta = SCOPE_META[scope] || { color: '#6b7280', label: scope };
+  return (
+    <span style={{
+      display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
+      padding: '2px 7px', borderRadius: 20,
+      background: strike ? '#f1f5f9' : `${meta.color}18`,
+      color: strike ? '#94a3b8' : meta.color,
+      border: `1px solid ${strike ? '#e2e8f0' : `${meta.color}44`}`,
+      textDecoration: strike ? 'line-through' : 'none',
+      marginRight: 3, marginBottom: 3, whiteSpace: 'nowrap'
+    }}>
+      {meta.label}
+    </span>
+  );
+}
+
+// ── TokenStatusPanel ──────────────────────────────────────────────────────
+function TokenStatusPanel({ tokenData, onRefresh }) {
+  const [expanded, setExpanded] = useState(true);
+  const [scopeScenario, setScopeScenario] = useState('full');
+  const [scopeLog, setScopeLog] = useState([]);
+  const [showMayActSim, setShowMayActSim] = useState(false);
+  const { open } = useEducationUI();
+
+  const realScopes = tokenData?.scopes || tokenData?.claims?.scope?.split(' ') || [];
+  const displayScopes = scopeScenario === 'full' ? FULL_DEMO_SCOPES : TRANSFER_ONLY_SCOPES;
+
+  const handleDownscope = () => {
+    setScopeLog(prev => [...prev, {
+      id: Date.now(),
+      action: 'Transfer executed — scoped down to Transfer-only',
+      before: FULL_DEMO_SCOPES,
+      after: TRANSFER_ONLY_SCOPES,
+      ts: new Date(),
+    }]);
+    setScopeScenario('transfer-only');
+  };
+
+  const handleResetScope = () => {
+    setScopeLog(prev => [...prev, {
+      id: Date.now(),
+      action: 'Session refreshed — full scopes restored',
+      before: TRANSFER_ONLY_SCOPES,
+      after: FULL_DEMO_SCOPES,
+      ts: new Date(),
+    }]);
+    setScopeScenario('full');
+    setShowMayActSim(false);
+  };
+
+  const handleMayActSim = () => {
+    setShowMayActSim(true);
+    setScopeLog(prev => [...prev, {
+      id: Date.now(),
+      action: 'Token exchange — may_act delegated to MCP server',
+      before: [],
+      after: [],
+      mayActBefore: null,
+      mayActAfter: { client_id: 'bx-finance-mcp', sub: 'agent-svc@pingone.local' },
+      ts: new Date(),
+    }]);
+  };
+
+  const connected = tokenData?.authenticated;
+  const claims = tokenData?.claims || {};
+  const sub = (claims.sub || '').slice(0, 18) + ((claims.sub || '').length > 18 ? '…' : '');
+  const exp = claims.exp ? new Date(claims.exp * 1000) : null;
+
+  return (
+    <div className="ud-token-panel">
+      {/* Panel header */}
+      <button type="button" className="ud-tp-header" onClick={() => setExpanded(e => !e)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '1.1rem' }}>🔐</span>
+          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e293b' }}>Token Status</span>
+          <span style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: connected ? '#22c55e' : '#ef4444',
+            marginLeft: 2, flexShrink: 0
+          }} />
+        </div>
+        <span style={{
+          fontSize: '1.1rem', color: '#64748b', userSelect: 'none',
+          fontWeight: 700, lineHeight: 1,
+          transition: 'transform .15s',
+          display: 'inline-block',
+          transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)'
+        }}>▼</span>
+      </button>
+
+      {expanded && (
+        <div className="ud-tp-body">
+          {/* Identity */}
+          <div className="ud-tp-section">
+            <div className="ud-tp-label">Identity</div>
+            <div className="ud-tp-row"><span className="ud-tp-key">sub</span><code className="ud-tp-val">{sub || '—'}</code></div>
+            <div className="ud-tp-row"><span className="ud-tp-key">email</span><code className="ud-tp-val" style={{ fontSize: '0.72rem' }}>{claims.email || tokenData?.user?.email || '—'}</code></div>
+            <div className="ud-tp-row"><span className="ud-tp-key">role</span><code className="ud-tp-val">{tokenData?.user?.role || claims.role || 'customer'}</code></div>
+            {exp && <div className="ud-tp-row"><span className="ud-tp-key">expires</span><code className="ud-tp-val" style={{ fontSize: '0.69rem' }}>{format(exp, 'HH:mm:ss')}</code></div>}
+          </div>
+
+          {/* Current Scopes */}
+          <div className="ud-tp-section">
+            <div className="ud-tp-label">
+              Active Scopes
+              {scopeScenario === 'transfer-only' && (
+                <span style={{ marginLeft: 6, fontSize: '0.68rem', background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: 10, fontWeight: 600 }}>
+                  DOWNSCOPED
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: 4 }}>
+              {displayScopes.map(s => <ScopeBadge key={s} scope={s} />)}
+            </div>
+          </div>
+
+          {/* Scope Simulation */}
+          <div className="ud-tp-section">
+            <div className="ud-tp-label">Scope Simulation</div>
+            <p style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: 8, lineHeight: 1.5 }}>
+              Simulate how scopes narrow after a transfer operation.
+            </p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {scopeScenario === 'full' ? (
+                <button type="button" className="ud-sim-btn ud-sim-btn--orange" onClick={handleDownscope}>
+                  ↓ Downscope → Transfer-only
+                </button>
+              ) : (
+                <button type="button" className="ud-sim-btn ud-sim-btn--blue" onClick={handleResetScope}>
+                  ↺ Reset to Full Scopes
+                </button>
+              )}
+              <button type="button" className="ud-sim-btn ud-sim-btn--purple" onClick={handleMayActSim}>
+                ⇆ Simulate may_act
+              </button>
+            </div>
+          </div>
+
+          {/* may_act */}
+          {showMayActSim && (
+            <div className="ud-tp-section">
+              <div className="ud-tp-label">may_act Claim</div>
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, padding: '8px 10px', fontSize: '0.72rem', fontFamily: 'monospace' }}>
+                <div style={{ color: '#166534', marginBottom: 3 }}>{/* After token exchange: */}{'// After token exchange:'}</div>
+                <div><span style={{ color: '#2563eb' }}>"may_act"</span>: {'{'}</div>
+                <div style={{ paddingLeft: 12 }}><span style={{ color: '#059669' }}>"client_id"</span>: <span style={{ color: '#7c3aed' }}>"bx-finance-mcp"</span>,</div>
+                <div style={{ paddingLeft: 12 }}><span style={{ color: '#059669' }}>"sub"</span>: <span style={{ color: '#7c3aed' }}>"agent-svc@pingone"</span></div>
+                <div>{'}'}</div>
+              </div>
+              <button
+                type="button"
+                style={{ marginTop: 6, fontSize: '0.7rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                onClick={() => open(EDU.MAY_ACT, 'what')}
+              >
+                What is may_act? →
+              </button>
+            </div>
+          )}
+
+          {/* Before/After log */}
+          {scopeLog.length > 0 && (
+            <div className="ud-tp-section">
+              <div className="ud-tp-label">Change Log</div>
+              {scopeLog.slice(-3).reverse().map(entry => (
+                <div key={entry.id} style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: 4 }}>
+                    {format(entry.ts, 'HH:mm:ss')} — {entry.action}
+                  </div>
+                  {entry.before?.length > 0 && (
+                    <table className="ud-scope-table">
+                      <thead>
+                        <tr>
+                          <th>Scope</th>
+                          <th>Before</th>
+                          <th>After</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...new Set([...entry.before, ...entry.after])].map(s => {
+                          const wasBefore = entry.before.includes(s);
+                          const isAfter = entry.after.includes(s);
+                          const changed = wasBefore !== isAfter;
+                          return (
+                            <tr key={s} style={{ background: changed ? '#fef9ec' : 'transparent' }}>
+                              <td><ScopeBadge scope={s} /></td>
+                              <td style={{ textAlign: 'center', color: wasBefore ? '#22c55e' : '#ef4444' }}>{wasBefore ? '✓' : '✗'}</td>
+                              <td style={{ textAlign: 'center', color: isAfter ? '#22c55e' : '#ef4444' }}>{isAfter ? '✓' : '✗'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                  {entry.mayActAfter && (
+                    <div style={{ fontSize: '0.72rem', padding: '4px 8px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+                      <span style={{ color: '#0369a1' }}>may_act added</span> → client_id: {entry.mayActAfter.client_id}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {realScopes.length > 0 && (
+            <div className="ud-tp-section">
+              <div className="ud-tp-label">Live Token Scopes</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                {realScopes.map(s => <ScopeBadge key={s} scope={s} />)}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: 4 }}>
+                Actual scopes from PingOne token
+              </div>
+            </div>
+          )}
+
+          <button type="button" onClick={onRefresh} style={{ width: '100%', marginTop: 4, padding: '5px', fontSize: '0.72rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, color: '#475569', cursor: 'pointer' }}>
+            ↻ Refresh Token
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── AccountCard ────────────────────────────────────────────────────────────
+function AccountCard({ account, onTransfer, onDeposit, onWithdraw }) {
+  const isChecking = (account.accountType || '').toLowerCase() === 'checking';
+  const gradient = isChecking
+    ? 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)'
+    : 'linear-gradient(135deg, #065f46 0%, #059669 100%)';
+  const masked = (account.accountNumber || '').slice(-4).padStart(account.accountNumber?.length || 4, '•');
+
+  return (
+    <div className="ud-account-card" style={{ background: gradient }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.75)', marginBottom: 2 }}>
+            {isChecking ? 'Checking Account' : 'Savings Account'}
+          </div>
+          <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.05em' }}>
+            {masked}
+          </div>
+        </div>
+        <div style={{ fontSize: '1.4rem', opacity: 0.6 }}>{isChecking ? '💳' : '🏦'}</div>
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>Available Balance</div>
+        <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'white', letterSpacing: '-0.02em' }}>
+          ${account.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <button type="button" className="ud-card-btn" onClick={() => onTransfer(account)}>Transfer</button>
+        <button type="button" className="ud-card-btn" onClick={() => onDeposit(account)}>Deposit</button>
+        <button type="button" className="ud-card-btn" onClick={() => onWithdraw(account)}>Withdraw</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────
 const UserDashboard = ({ user: propUser, onLogout }) => {
   const navigate = useNavigate();
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
-  const [showTokenModal, setShowTokenModal] = useState(false);
-  const [tokenData, setTokenData] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [tokenData, setTokenData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedAccount, setSelectedAccount] = useState(null);
-  const [transferForm, setTransferForm] = useState({
-    toAccountId: '',
-    amount: '',
-    description: ''
-  });
-  const [depositForm, setDepositForm] = useState({
-    amount: '',
-    description: ''
-  });
-  const [depositAccount, setDepositAccount] = useState(null);
-  const [withdrawForm, setWithdrawForm] = useState({
-    amount: '',
-    description: ''
-  });
-  const [withdrawAccount, setWithdrawAccount] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
   const [success, setSuccess] = useState(null);
+
+  // Action state
+  const [activeAction, setActiveAction] = useState(null); // { type: 'transfer'|'deposit'|'withdraw', account }
+  const [formData, setFormData] = useState({ toAccountId: '', amount: '', description: '' });
+
+  // Step-up state
   const [stepUpRequired, setStepUpRequired] = useState(false);
-  // 'ciba' | 'email' — set from the 428 response step_up_method field
   const [stepUpMethod, setStepUpMethod] = useState('email');
-  // CIBA step-up state
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
-  const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
+  const [cibaStatus, setCibaStatus] = useState('idle');
+
   const fetchingRef = React.useRef(false);
 
-  // Auto-dismiss success messages after 4 seconds
+  useChatWidget();
+
+  // Auto-dismiss success
   useEffect(() => {
     if (!success) return;
     const t = setTimeout(() => setSuccess(null), 4000);
     return () => clearTimeout(t);
   }, [success]);
 
-  // Initialize chat widget (configuration is handled in index.html)
-  useChatWidget();
-
-  // Function to fetch current OAuth tokens
-  const fetchTokenData = async () => {
+  const fetchTokenData = useCallback(async () => {
     try {
-      // Try user claims first, fall back to admin claims
-      let response;
+      let res;
       try {
-        response = await axios.get('/api/auth/oauth/user/token-claims', { withCredentials: true });
-        if (!response.data.authenticated) {
-          response = await axios.get('/api/auth/oauth/token-claims', { withCredentials: true });
-        }
+        res = await axios.get('/api/auth/oauth/user/token-claims', { withCredentials: true });
+        if (!res.data.authenticated) res = await axios.get('/api/auth/oauth/token-claims', { withCredentials: true });
       } catch {
-        response = await axios.get('/api/auth/oauth/token-claims', { withCredentials: true });
+        res = await axios.get('/api/auth/oauth/token-claims', { withCredentials: true });
       }
-      setTokenData(response.data.authenticated ? response.data : null);
-    } catch (error) {
-      console.error('❌ Error fetching token data:', error);
-      setTokenData(null);
-    }
-  };
-
-  // Function to open token modal
-  const openTokenModal = () => {
-    fetchTokenData();
-    setShowTokenModal(true);
-  };
-
-  useEffect(() => {
-    // Initial data fetch
-    fetchUserData();
+      setTokenData(res.data.authenticated ? res.data : null);
+    } catch { setTokenData(null); }
   }, []);
 
-  useEffect(() => {
-    let refreshInterval;
-    
-    if (autoRefresh) {
-      // Set up auto-refresh every 5 seconds
-      refreshInterval = setInterval(() => {
-        console.log('🔄 Auto-refreshing dashboard data...');
-        fetchUserData(true); // Silent refresh - no loading spinner
-      }, 5000); // 5 seconds
-    }
-    
-    // Cleanup interval on component unmount or when autoRefresh changes
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-    };
-  }, [autoRefresh]);
-
-  const fetchUserData = async (silent = false) => {
+  const fetchUserData = useCallback(async (silent = false) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
-      // Only show loading spinner for initial load, not auto-refreshes
-      if (!silent) {
-        setLoading(true);
-      }
-
-      // Check for OAuth session and get user info
+      if (!silent) setLoading(true);
       try {
-        // Try end user OAuth session first
-        const userSessionResponse = await axios.get('/api/auth/oauth/user/status');
-        if (userSessionResponse.data.authenticated) {
-          setUser(userSessionResponse.data.user);
-        } else {
-          // Try admin OAuth session as fallback
-          const adminSessionResponse = await axios.get('/api/auth/oauth/status');
-          if (adminSessionResponse.data.authenticated) {
-            setUser(adminSessionResponse.data.user);
-          } else {
-            throw new Error('No valid OAuth session found');
-          }
+        const r = await axios.get('/api/auth/oauth/user/status');
+        if (r.data.authenticated) setUser(r.data.user);
+        else {
+          const r2 = await axios.get('/api/auth/oauth/status');
+          if (r2.data.authenticated) setUser(r2.data.user);
         }
-      } catch (sessionError) {
-        console.error('OAuth session error:', sessionError);
-        setError('Please log in to access your account');
-        if (!silent) {
-          setLoading(false);
-        }
-        return;
-      }
+      } catch { /* use propUser */ }
 
-      // Get user's accounts using the new API client
-      const accountsResponse = await apiClient.get('/api/accounts/my');
-      setAccounts(accountsResponse.data.accounts);
-
-      // Get user's transactions using the new API client
-      const transactionsResponse = await apiClient.get('/api/transactions/my');
-      setTransactions(transactionsResponse.data.transactions);
-
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      
-      // Check if it's an authentication error
-      if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
-      } else if (error.response?.status === 403) {
-        setError('You do not have permission to access this information.');
-      } else {
-        setError('Failed to load your account information');
-      }
+      const [acctRes, txnRes] = await Promise.all([
+        apiClient.get('/api/accounts/my'),
+        apiClient.get('/api/transactions/my'),
+      ]);
+      setAccounts(acctRes.data.accounts || []);
+      setTransactions(txnRes.data.transactions || []);
+    } catch (err) {
+      if (err.response?.status === 401) setError('Session expired. Please log in again.');
+      else setError('Failed to load account information');
     } finally {
-      if (!silent) {
-        setLoading(false);
-      }
+      if (!silent) setLoading(false);
       fetchingRef.current = false;
     }
-  };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── CIBA step-up: initiate back-channel authentication ──
-  const handleCibaStepUp = async () => {
-    if (!user?.email) { setError('Cannot initiate CIBA: no email on session.'); return; }
-    try {
-      const { data } = await axios.post('/api/auth/ciba/initiate', {
-        loginHint: user.email,
-        bindingMessage: 'Approve your banking transaction',
-        scope: 'openid profile',
-      });
-      setCibaAuthReqId(data.authReqId);
-      setCibaStatus('pending');
-    } catch (err) {
-      setError('CIBA initiation failed: ' + (err.response?.data?.message || err.message));
-    }
-  };
+  useEffect(() => { fetchUserData(); fetchTokenData(); }, [fetchUserData, fetchTokenData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Poll CIBA status when a request is in flight
+  // CIBA polling
   useEffect(() => {
     if (!cibaAuthReqId || cibaStatus !== 'pending') return;
-    const interval = setInterval(async () => {
+    const iv = setInterval(async () => {
       try {
         const { data } = await axios.get(`/api/auth/ciba/poll/${cibaAuthReqId}`);
         if (data.status === 'completed' || data.status === 'approved') {
-          setCibaStatus('completed');
-          setCibaAuthReqId(null);
-          setStepUpRequired(false);
-          await fetchUserData(true);
-          setSuccess('Identity verified — please retry your transaction.');
-        } else if (data.status === 'failed' || data.status === 'expired' || data.status === 'error') {
-          setCibaStatus('error');
-          setCibaAuthReqId(null);
-          setError(`CIBA verification ${data.status}. Please try again.`);
+          setCibaStatus('completed'); setCibaAuthReqId(null); setStepUpRequired(false);
+          await fetchUserData(true); setSuccess('Identity verified — please retry.');
+        } else if (['failed','expired','error'].includes(data.status)) {
+          setCibaStatus('error'); setCibaAuthReqId(null);
+          setError(`CIBA ${data.status}. Please try again.`);
         }
-      } catch (_) { /* keep polling */ }
+      } catch { /* keep polling */ }
     }, 5000);
-    return () => clearInterval(interval);
-  }, [cibaAuthReqId, cibaStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => clearInterval(iv);
+  }, [cibaAuthReqId, cibaStatus, fetchUserData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleTransfer = async (e) => {
+  const handleCibaStepUp = async () => {
+    if (!user?.email) { setError('No email on session.'); return; }
+    try {
+      const { data } = await axios.post('/api/auth/ciba/initiate', {
+        loginHint: user.email, bindingMessage: 'Approve your banking transaction', scope: 'openid profile',
+      });
+      setCibaAuthReqId(data.authReqId); setCibaStatus('pending');
+    } catch (err) { setError(`CIBA failed: ${err.response?.data?.message || err.message}`); }
+  };
+
+  const handleSubmitAction = async (e) => {
     e.preventDefault();
-
-    if (!selectedAccount || !transferForm.toAccountId || !transferForm.amount) {
-      setError('Please fill in all transfer details');
-      return;
-    }
+    const { type, account } = activeAction;
+    const amount = parseFloat(formData.amount);
+    if (!amount || amount <= 0) { setError('Please enter a valid amount.'); return; }
 
     try {
-      await apiClient.post('/api/transactions', {
-        fromAccountId: selectedAccount.id,
-        toAccountId: transferForm.toAccountId,
-        amount: parseFloat(transferForm.amount),
-        type: 'transfer',
-        description: transferForm.description || 'Transfer between accounts',
-        userId: user.id
-      });
-
-      // Reset form and refresh data
-      setTransferForm({ toAccountId: '', amount: '', description: '' });
-      setSelectedAccount(null);
-      await fetchUserData();
-
-      setSuccess('Transfer completed successfully!');
-    } catch (error) {
-      console.error('Transfer error:', error);
-      if (error.response?.status === 428) {
-        setStepUpMethod(error.response.data?.step_up_method || 'email');
-        setCibaStatus('idle');
-        setStepUpRequired(true);
-      } else if (error.response?.status === 403) {
-        setError('You do not have permission to perform transfers. Please contact your administrator.');
+      const body = {
+        type,
+        amount,
+        description: formData.description || `${type.charAt(0).toUpperCase() + type.slice(1)}`,
+        userId: user?.id,
+      };
+      if (type === 'transfer') {
+        if (!formData.toAccountId) { setError('Please select a destination account.'); return; }
+        body.fromAccountId = account.id;
+        body.toAccountId = formData.toAccountId;
+      } else if (type === 'deposit') {
+        body.toAccountId = account.id;
+        body.fromAccountId = null;
+      } else if (type === 'withdrawal') {
+        body.fromAccountId = account.id;
+        body.toAccountId = null;
+      }
+      await apiClient.post('/api/transactions', body);
+      setActiveAction(null);
+      setFormData({ toAccountId: '', amount: '', description: '' });
+      await fetchUserData(true);
+      setSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} completed successfully!`);
+    } catch (err) {
+      if (err.response?.status === 428) {
+        setStepUpMethod(err.response.data?.step_up_method || 'email');
+        setCibaStatus('idle'); setStepUpRequired(true);
       } else {
-        setError(error.response?.data?.error || 'Transfer failed');
+        setError(err.response?.data?.message || err.response?.data?.error || `${type} failed`);
       }
     }
   };
 
-  const handleDeposit = async (e) => {
-    e.preventDefault();
-
-    if (!depositAccount || !depositForm.amount) {
-      setError('Please fill in all deposit details');
-      return;
-    }
-
-    try {
-      await apiClient.post('/api/transactions', {
-        fromAccountId: null,
-        toAccountId: depositAccount.id,
-        amount: parseFloat(depositForm.amount),
-        type: 'deposit',
-        description: depositForm.description || 'Deposit to account',
-        userId: user.id
-      });
-
-      // Reset form and refresh data
-      setDepositForm({ amount: '', description: '' });
-      setDepositAccount(null);
-      await fetchUserData();
-
-      setSuccess('Deposit completed successfully!');
-    } catch (error) {
-      console.error('Deposit error:', error);
-      if (error.response?.status === 428) {
-        setStepUpMethod(error.response.data?.step_up_method || 'email');
-        setCibaStatus('idle');
-        setStepUpRequired(true);
-      } else if (error.response?.status === 403) {
-        setError('You do not have permission to make deposits. Please contact your administrator.');
-      } else {
-        setError(error.response?.data?.error || 'Deposit failed');
-      }
-    }
-  };
-
-  const handleWithdraw = async (e) => {
-    e.preventDefault();
-
-    if (!withdrawAccount || !withdrawForm.amount) {
-      setError('Please fill in all withdrawal details');
-      return;
-    }
-
-    try {
-      await apiClient.post('/api/transactions', {
-        fromAccountId: withdrawAccount.id,
-        toAccountId: null,
-        amount: parseFloat(withdrawForm.amount),
-        type: 'withdrawal',
-        description: withdrawForm.description || 'Withdrawal from account',
-        userId: user.id
-      });
-
-      // Reset form and refresh data
-      setWithdrawForm({ amount: '', description: '' });
-      setWithdrawAccount(null);
-      await fetchUserData();
-
-      setSuccess('Withdrawal completed successfully!');
-    } catch (error) {
-      console.error('Withdrawal error:', error);
-      if (error.response?.status === 428) {
-        setStepUpMethod(error.response.data?.step_up_method || 'email');
-        setCibaStatus('idle');
-        setStepUpRequired(true);
-      } else if (error.response?.status === 403) {
-        setError('You do not have permission to make withdrawals. Please contact your administrator.');
-      } else {
-        setError(error.response?.data?.error || 'Withdrawal failed');
-      }
-    }
-  };
-
-  // Function to determine if a transaction represents money going out (negative) or coming in (positive)
-  const isTransactionNegative = (transaction) => {
-    // For withdrawals, money is going out (negative)
-    if (transaction.type === 'withdrawal') {
-      return true;
-    }
-
-    // For deposits, money is coming in (positive)
-    if (transaction.type === 'deposit') {
-      return false;
-    }
-
-    // For other transaction types, determine based on which account is involved
-    // If this transaction has a fromAccountId, it means money is going out from that account
-    if (transaction.fromAccountId) {
-      return true;
-    }
-    // If this transaction has a toAccountId but no fromAccountId, it means money is coming in
-    if (transaction.toAccountId && !transaction.fromAccountId) {
-      return false;
-    }
-
-    // Default to positive for unknown transaction types
-    return false;
-  };
-
-  const getClientTypeIcon = (clientType) => {
-    if (clientType === 'enduser') {
-      return { icon: '◉', label: 'End User', color: '#4b5563' };
-    } else if (clientType === 'ai_agent') {
-      return { icon: '◎', label: 'AI Agent', color: '#6b7280' };
-    } else {
-      return { icon: '○', label: 'Unknown', color: '#9ca3af' };
-    }
-  };
+  const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+  const sortedTxns = [...transactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 20);
 
   if (loading) {
     return (
-      <div className="user-dashboard">
-        <div className="loading">Loading your account information...</div>
+      <div className="ud-loading">
+        <div className="ud-loading-spinner" />
+        <p>Loading your accounts…</p>
       </div>
     );
   }
 
-  const dashboardStyle = {
-    background: `
-      linear-gradient(rgba(248, 250, 252, 0.85), rgba(248, 250, 252, 0.85)),
-      url(${process.env.PUBLIC_URL}/images/pexels-1462751220-33995750.jpg)
-    `,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-    backgroundRepeat: 'no-repeat'
-  };
-
   return (
-    <div className="user-dashboard" style={dashboardStyle}>
+    <div className="user-dashboard-v2">
+      {/* ── Header ──────────────────────────────────────── */}
+      <header className="ud-header">
+        <div className="ud-header-brand">
+          <div className="ud-logo">
+            <div className="ud-logo-grid">
+              <span /><span /><span /><span />
+            </div>
+          </div>
+          <span className="ud-brand-name">BX Finance</span>
+        </div>
+        <div className="ud-header-user">
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
+              {user?.firstName} {user?.lastName}
+            </div>
+            <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>{user?.email}</div>
+          </div>
+        </div>
+        <div className="ud-header-actions">
+          <button type="button" className="ud-hdr-btn" onClick={() => open(EDU.LOGIN_FLOW, 'what')}>Login Flow</button>
+          <button type="button" className="ud-hdr-btn" onClick={() => open(EDU.MAY_ACT, 'what')}>may_act</button>
+          <button type="button" className="ud-hdr-btn ud-hdr-btn--ghost" onClick={() => navigate(-1)}>← Back</button>
+          <button type="button" className="ud-hdr-btn ud-hdr-btn--logout" onClick={onLogout}>Sign Out</button>
+        </div>
+      </header>
+
+      {/* ── Alerts ──────────────────────────────────────── */}
       {error && (
-        <div className="inline-message inline-message--error" onClick={() => setError(null)}>
-          {error} <span className="inline-message__dismiss">✕</span>
+        <div className="ud-alert ud-alert--error">
+          ⚠ {error}
+          <button type="button" className="ud-alert-dismiss" onClick={() => setError(null)}>✕</button>
         </div>
       )}
       {success && (
-        <div className="inline-message inline-message--success" onClick={() => setSuccess(null)}>
-          {success} <span className="inline-message__dismiss">✕</span>
+        <div className="ud-alert ud-alert--success">
+          ✓ {success}
+          <button type="button" className="ud-alert-dismiss" onClick={() => setSuccess(null)}>✕</button>
         </div>
       )}
       {stepUpRequired && (
-        <div className="inline-message inline-message--warning">
-          <strong>🔐 Additional verification required</strong>
-          <span style={{ marginLeft: 8 }}>
-            Transfers and withdrawals of $250 or more require MFA. Please verify your identity to continue.
-          </span>
+        <div className="ud-alert ud-alert--warning">
+          <span>🔐 <strong>MFA required</strong> — Transfers ≥$250 need additional verification.</span>
           {stepUpMethod === 'ciba' ? (
-            <>
-              {cibaStatus === 'idle' && (
-                <button
-                  onClick={handleCibaStepUp}
-                  className="inline-message__action"
-                  style={{ marginLeft: 12, fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', textDecoration: 'underline', color: 'inherit', fontSize: 'inherit' }}
-                >
-                  Verify via CIBA →
-                </button>
-              )}
-              {cibaStatus === 'pending' && (
-                <span style={{ marginLeft: 12, fontStyle: 'italic' }}>
-                  ⏳ Waiting for approval on your device…
-                </span>
-              )}
-              {cibaStatus === 'error' && (
-                <button
-                  onClick={() => { setCibaStatus('idle'); setCibaAuthReqId(null); }}
-                  className="inline-message__action"
-                  style={{ marginLeft: 12, fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', textDecoration: 'underline', color: 'inherit', fontSize: 'inherit' }}
-                >
-                  Retry →
-                </button>
-              )}
-            </>
+            cibaStatus === 'idle'   ? <button type="button" className="ud-alert-action" onClick={handleCibaStepUp}>Verify via CIBA →</button> :
+            cibaStatus === 'pending' ? <span style={{ marginLeft: 10, fontStyle: 'italic' }}>⏳ Waiting on device…</span> :
+            cibaStatus === 'error'   ? <button type="button" className="ud-alert-action" onClick={() => { setCibaStatus('idle'); setCibaAuthReqId(null); }}>Retry →</button> : null
           ) : (
-            <a
-              href={`/api/auth/oauth/user/stepup?return_to=${process.env.REACT_APP_CLIENT_URL || 'http://localhost:4000'}/dashboard`}
-              className="inline-message__action"
-              style={{ marginLeft: 12, fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}
-            >
+            <a className="ud-alert-action" href={`/api/auth/oauth/user/stepup?return_to=/dashboard`}>
               Verify now →
             </a>
           )}
-          <span
-            className="inline-message__dismiss"
-            onClick={() => { setStepUpRequired(false); setCibaAuthReqId(null); setCibaStatus('idle'); }}
-            style={{ marginLeft: 12, cursor: 'pointer' }}
-          >
-            ✕
-          </span>
+          <button type="button" className="ud-alert-dismiss" onClick={() => { setStepUpRequired(false); setCibaAuthReqId(null); setCibaStatus('idle'); }}>✕</button>
         </div>
       )}
-      <div className="dashboard-header">
-        <div className="bank-branding">
-          <div className="bank-logo">
-            <div className="logo-icon">
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
-            </div>
-            <span className="bank-name">BX Finance</span>
-          </div>
-        </div>
-        <div className="header-right">
-          <div className="user-info">
-            <span className="user-greeting">Hello, {user?.firstName} {user?.lastName}</span>
-            <span className="user-email">{user?.email}</span>
-          </div>
-          <div className="header-actions">
-            <button
-              type="button"
-              className="dashboard-edu-btn"
-              onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-            >
-              How does login work?
-            </button>
-            <button
-              type="button"
-              className="dashboard-edu-btn"
-              onClick={() => open(EDU.MAY_ACT, 'what')}
-            >
-              What is may_act?
-            </button>
-            <Link
-              to="/mcp-inspector"
-              className="dashboard-header-mcp-btn"
-              title="MCP discovery, tools/list & tools/call via BFF"
-            >
-              MCP Inspector
-            </Link>
-            <div className="auto-refresh-toggle">
-              <label className="toggle-label">
-                <span className="toggle-text">Auto-refresh</span>
-                <div className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={autoRefresh}
-                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                    className="toggle-input"
-                  />
-                  <span className="toggle-slider"></span>
-                </div>
-              </label>
-            </div>
-            <button onClick={openTokenModal} className="token-info-btn" title="View OAuth Token Info">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="dashboard-edu-btn"
-              title="Go back"
-            >
-              ← Back
-            </button>
-            <button onClick={onLogout} className="logout-btn">
-              Log Out
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <div className="dashboard-content">
-        {/* Token Chain Display */}
-        <div className="section">
-          <TokenChainDisplay />
-        </div>
+      {/* ── Body: 3-column ─────────────────────────────── */}
+      <div className="ud-body">
 
-        {/* Account Summary */}
-        <div className="section">
-          <h2>Your Accounts</h2>
-          <div className="accounts-grid">
-            {accounts.map(account => (
-              <div key={account.id} className="account-card">
-                <div className="account-header">
-                  <h3>{account.name}</h3>
-                  <span className={`account-type-badge ${(account.accountType || account.type || 'unknown').toLowerCase()}`}>
-                    {(account.accountType || account.type) ?
-                      (account.accountType || account.type).charAt(0).toUpperCase() + (account.accountType || account.type).slice(1) :
-                      'Unknown'}
-                  </span>
-                </div>
-                <p className="account-number">Account: {account.accountNumber}</p>
-                <p className="balance">Balance: ${account.balance.toFixed(2)}</p>
-                <div className="account-actions">
-                  <button
-                    className="select-account-btn"
-                    onClick={() => setSelectedAccount(account)}
-                  >
-                    Select for Transfer
-                  </button>
-                  <button
-                    className="deposit-btn"
-                    onClick={() => setDepositAccount(account)}
-                  >
-                    Deposit
-                  </button>
-                  <button
-                    className="withdraw-btn"
-                    onClick={() => setWithdrawAccount(account)}
-                  >
-                    Withdraw
-                  </button>
-                </div>
+        {/* LEFT — Token Status Panel */}
+        <aside className="ud-left">
+          <TokenStatusPanel tokenData={tokenData} onRefresh={fetchTokenData} />
+        </aside>
+
+        {/* CENTER — Banking Content */}
+        <main className="ud-center">
+          {/* Balance overview */}
+          <div className="ud-balance-bar">
+            <div>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Portfolio</div>
+              <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e293b', letterSpacing: '-0.03em' }}>
+                ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
-            ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="ud-action-pill" onClick={fetchUserData}>↻ Refresh</button>
+            </div>
           </div>
-        </div>
 
-        {/* Transfer Form */}
-        {selectedAccount && (
-          <div className="section">
-            <h2>Transfer Money</h2>
-            <div className="transfer-form">
-              <p>From: {selectedAccount.accountType} - {selectedAccount.accountNumber} (${selectedAccount.balance.toFixed(2)})</p>
-              <form onSubmit={handleTransfer}>
-                <div className="form-group">
-                  <label>To Account:</label>
-                  <select
-                    value={transferForm.toAccountId}
-                    onChange={(e) => setTransferForm({ ...transferForm, toAccountId: e.target.value })}
-                    required
-                  >
-                    <option value="">Select destination account</option>
-                    {accounts
-                      .filter(account => account.id !== selectedAccount.id)
-                      .map(account => (
-                        <option key={account.id} value={account.id}>
-                          {account.accountType} - {account.accountNumber} (${account.balance.toFixed(2)})
-                        </option>
-                      ))
-                    }
-                  </select>
+          {/* Account cards */}
+          <div className="ud-accounts-row">
+            {accounts.length === 0 ? (
+              <div className="ud-empty">No accounts found. Try refreshing.</div>
+            ) : (
+              accounts.map(acct => (
+                <AccountCard
+                  key={acct.id}
+                  account={acct}
+                  onTransfer={a => { setActiveAction({ type: 'transfer', account: a }); setFormData({ toAccountId: '', amount: '', description: '' }); }}
+                  onDeposit={a => { setActiveAction({ type: 'deposit', account: a }); setFormData({ toAccountId: '', amount: '', description: '' }); }}
+                  onWithdraw={a => { setActiveAction({ type: 'withdrawal', account: a }); setFormData({ toAccountId: '', amount: '', description: '' }); }}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Action form drawer */}
+          {activeAction && (
+            <div className="ud-action-drawer">
+              <div className="ud-drawer-header">
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                  {activeAction.type === 'transfer' ? '⇄ Transfer Money' :
+                   activeAction.type === 'deposit'  ? '↓ Deposit Funds' : '↑ Withdraw Funds'}
+                </span>
+                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                  {activeAction.account.name} · ${activeAction.account.balance?.toFixed(2)}
+                </span>
+                <button type="button" className="ud-drawer-close" onClick={() => setActiveAction(null)}>✕</button>
+              </div>
+              <form onSubmit={handleSubmitAction} className="ud-action-form">
+                {activeAction.type === 'transfer' && (
+                  <div className="ud-form-group">
+                    <label htmlFor="action-to-account">To Account</label>
+                    <select id="action-to-account" value={formData.toAccountId} onChange={e => setFormData({...formData, toAccountId: e.target.value})} required>
+                      <option value="">Select destination…</option>
+                      {accounts.filter(a => a.id !== activeAction.account.id).map(a => (
+                        <option key={a.id} value={a.id}>{a.name} · ${a.balance?.toFixed(2)}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="ud-form-group">
+                    <label htmlFor="action-amount">Amount ($)</label>
+                    <input id="action-amount" type="number" step="0.01" min="0.01" placeholder="0.00" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} required />
+                  </div>
+                  <div className="ud-form-group">
+                    <label htmlFor="action-description">Note (optional)</label>
+                    <input id="action-description" type="text" placeholder="Description…" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Amount:</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={transferForm.amount}
-                    onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
-                    placeholder="Enter amount"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Description:</label>
-                  <input
-                    type="text"
-                    value={transferForm.description}
-                    onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
-                    placeholder="Transfer description"
-                  />
-                </div>
-                <div className="form-actions">
-                  <button type="submit" className="transfer-btn">Transfer</button>
-                  <button
-                    type="button"
-                    className="cancel-btn"
-                    onClick={() => {
-                      setSelectedAccount(null);
-                      setTransferForm({ toAccountId: '', amount: '', description: '' });
-                    }}
-                  >
-                    Cancel
+                {activeAction.type === 'transfer' && (
+                  <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0 0 10px' }}>Minimum transfer: $50</p>
+                )}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="submit" className="ud-submit-btn">
+                    {activeAction.type === 'transfer' ? 'Transfer' : activeAction.type === 'deposit' ? 'Deposit' : 'Withdraw'}
                   </button>
+                  <button type="button" className="ud-cancel-btn" onClick={() => setActiveAction(null)}>Cancel</button>
                 </div>
               </form>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Deposit Form */}
-        {depositAccount && (
-          <div className="section">
-            <h2>Deposit Money</h2>
-            <div className="deposit-form">
-              <p>To: {depositAccount.accountType} - {depositAccount.accountNumber} (${depositAccount.balance.toFixed(2)})</p>
-              <form onSubmit={handleDeposit}>
-                <div className="form-group">
-                  <label>Amount:</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={depositForm.amount}
-                    onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
-                    placeholder="Enter amount"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Description:</label>
-                  <input
-                    type="text"
-                    value={depositForm.description}
-                    onChange={(e) => setDepositForm({ ...depositForm, description: e.target.value })}
-                    placeholder="Deposit description"
-                  />
-                </div>
-                <div className="form-actions">
-                  <button type="submit" className="deposit-submit-btn">Deposit</button>
-                  <button
-                    type="button"
-                    className="cancel-btn"
-                    onClick={() => {
-                      setDepositAccount(null);
-                      setDepositForm({ amount: '', description: '' });
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+          {/* Transactions */}
+          <div className="ud-txn-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#1e293b' }}>Recent Transactions</h3>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{transactions.length} transactions</span>
             </div>
-          </div>
-        )}
-
-        {/* Withdraw Form */}
-        {withdrawAccount && (
-          <div className="section">
-            <h2>Withdraw Money</h2>
-            <div className="withdraw-form">
-              <p>From: {withdrawAccount.accountType} - {withdrawAccount.accountNumber} (${withdrawAccount.balance.toFixed(2)})</p>
-              <form onSubmit={handleWithdraw}>
-                <div className="form-group">
-                  <label>Amount:</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={withdrawForm.amount}
-                    onChange={(e) => setWithdrawForm({ ...withdrawForm, amount: e.target.value })}
-                    placeholder="Enter amount"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Description:</label>
-                  <input
-                    type="text"
-                    value={withdrawForm.description}
-                    onChange={(e) => setWithdrawForm({ ...withdrawForm, description: e.target.value })}
-                    placeholder="Withdrawal description"
-                  />
-                </div>
-                <div className="form-actions">
-                  <button type="submit" className="withdraw-submit-btn">Withdraw</button>
-                  <button
-                    type="button"
-                    className="cancel-btn"
-                    onClick={() => {
-                      setWithdrawAccount(null);
-                      setWithdrawForm({ amount: '', description: '' });
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Recent Transactions */}
-        <div className="section">
-          <h2>Recent Transactions</h2>
-          <div className="transactions-table">
-            <div className="transaction-header">
-              <div className="header-cell">Date</div>
-              <div className="header-cell">Type</div>
-              <div className="header-cell">Amount</div>
-              <div className="header-cell">Description</div>
-              <div className="header-cell">Account</div>
-              <div className="header-cell">Interface</div>
-              <div className="header-cell">User</div>
-            </div>
-            <div className="transactions-list">
-              {transactions
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                .slice(0, 20)
-                .map(transaction => {
-                  const clientInfo = getClientTypeIcon(transaction.clientType);
+            {sortedTxns.length === 0 ? (
+              <div className="ud-empty">No transactions yet.</div>
+            ) : (
+              <div className="ud-txn-list">
+                {sortedTxns.map(txn => {
+                  const isOut = txn.type === 'withdrawal' || (txn.type === 'transfer' && txn.fromAccountId);
+                  const meta = txIcon[txn.type] || { icon: '•', color: '#64748b', bg: '#f1f5f9' };
                   return (
-                    <div key={transaction.id} className="transaction-row">
-                      <div className="transaction-cell">
-                        <span className="transaction-date">
-                          {format(new Date(transaction.createdAt), 'MMM dd, yyyy HH:mm')}
-                        </span>
+                    <div key={txn.id} className="ud-txn-row">
+                      <div className="ud-txn-icon" style={{ background: meta.bg, color: meta.color }}>
+                        {meta.icon}
                       </div>
-                      <div className="transaction-cell">
-                        <span className="transaction-type">{transaction.type}</span>
+                      <div className="ud-txn-info">
+                        <div className="ud-txn-desc">{txn.description || txn.type}</div>
+                        <div className="ud-txn-date">{format(new Date(txn.createdAt), 'MMM d, yyyy · h:mm a')}</div>
                       </div>
-                      <div className="transaction-cell">
-                        <span className={`transaction-amount ${isTransactionNegative(transaction) ? 'negative' : 'positive'}`}>
-                          {isTransactionNegative(transaction) ? '-' : '+'}
-                          ${transaction.amount.toFixed(2)}
-                        </span>
+                      <div className="ud-txn-type-badge" style={{ color: meta.color, background: meta.bg }}>
+                        {txn.type}
                       </div>
-                      <div className="transaction-cell">
-                        <span className="transaction-description">{transaction.description}</span>
-                      </div>
-                      <div className="transaction-cell">
-                        <span className="transaction-account">{transaction.accountInfo || 'Unknown'}</span>
-                      </div>
-                      <div className="transaction-cell">
-                        <div className="interface-indicator">
-                          <span className="interface-icon" style={{ color: clientInfo.color }}>
-                            {clientInfo.icon}
-                          </span>
-                          <span className="interface-label" style={{ color: clientInfo.color }}>
-                            {clientInfo.label}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="transaction-cell">
-                        <span className="transaction-user">{transaction.performedBy || 'Unknown'}</span>
+                      <div className={`ud-txn-amount ${isOut ? 'ud-txn-out' : 'ud-txn-in'}`}>
+                        {isOut ? '-' : '+'}${txn.amount?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
                   );
                 })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* OAuth Token Info Modal */}
-      {showTokenModal && (
-        <div className="modal-overlay" onClick={() => setShowTokenModal(false)}>
-          <div className="token-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>OAuth Token Information</h3>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                {onLogout && (
-                  <button
-                    type="button"
-                    onClick={onLogout}
-                    style={{ padding: '0.25rem 0.75rem', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fff5f5', color: '#dc2626', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    Log Out
-                  </button>
-                )}
-                <button type="button" className="close-btn" onClick={() => setShowTokenModal(false)}>×</button>
               </div>
-            </div>
-            <div className="modal-content">
-              {tokenData ? (
-                <div className="token-info">
-                  <div className="token-section">
-                    <h4>Session Info</h4>
-                    <div className="session-info-grid">
-                      <div className="session-row">
-                        <span className="session-label">User:</span>
-                        <span className="session-value">{tokenData.user?.firstName} {tokenData.user?.lastName} ({tokenData.user?.email})</span>
-                      </div>
-                      <div className="session-row">
-                        <span className="session-label">Role:</span>
-                        <span className="session-value">{tokenData.user?.role}</span>
-                        <span className="session-label">Session:</span>
-                        <span className="session-value">{tokenData.sessionType}</span>
-                      </div>
-                      <div className="session-row">
-                        <span className="session-label">Client:</span>
-                        <span className="session-value">{tokenData.clientType}</span>
-                        <span className="session-label">Token type:</span>
-                        <span className="session-value">{tokenData.tokenType}</span>
-                      </div>
-                      <div className="session-row">
-                        <span className="session-label">Expires:</span>
-                        <span className="session-value">{tokenData.expiresAt ? new Date(tokenData.expiresAt).toLocaleString() : 'N/A'}</span>
-                        <span className="session-label">Refresh token:</span>
-                        <span className="session-value">{tokenData.hasRefreshToken ? '✅ present' : '❌ none'}</span>
-                      </div>
-                    </div>
-                  </div>
+            )}
+          </div>
+        </main>
 
-                  {tokenData.decoded && (
-                    <div className="token-section">
-                      <h4>Access Token Header</h4>
-                      <pre className="token-json">
-                        {JSON.stringify(tokenData.decoded.header, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-
-                  {tokenData.decoded && (
-                    <div className="token-section">
-                      <h4 className="token-payload-heading">
-                        Access Token Payload
-                        <button type="button" className="token-payload-hint" title="may_act / act" onClick={() => open(EDU.MAY_ACT, 'lifecycle')}>ⓘ</button>
-                        <button type="button" className="token-payload-hint" title="scope" onClick={() => open(EDU.LOGIN_FLOW, 'tokens')}>ⓘ</button>
-                      </h4>
-                      <pre className="token-json">
-                        {JSON.stringify(tokenData.decoded.payload, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-
-                  {!tokenData.decoded && (
-                    <div className="token-section">
-                      <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Token claims not available (local/cookie session).</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="no-token">
-                  <p>No OAuth token data available</p>
-                </div>
-              )}
+        {/* RIGHT — Agent info panel */}
+        <aside className="ud-right">
+          <div className="ud-agent-info">
+            <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🤖</div>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', marginBottom: 6 }}>Banking Assistant</div>
+            <p style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.6, marginBottom: 12 }}>
+              Ask questions about your accounts, transactions, CIBA, token exchange, or MCP tools.
+            </p>
+            <p style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.5 }}>
+              Click the <strong>⊕</strong> button in the bottom-right corner to open the assistant.
+            </p>
+            <div className="ud-agent-hints">
+              <div className="ud-hint-chip">"What's my balance?"</div>
+              <div className="ud-hint-chip">"Explain token exchange"</div>
+              <div className="ud-hint-chip">"What is CIBA?"</div>
+              <div className="ud-hint-chip">"List MCP tools"</div>
             </div>
           </div>
-        </div>
-      )}
 
+          <div className="ud-agent-info" style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e293b', marginBottom: 8 }}>🔗 Auth Education</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button type="button" className="ud-edu-link" onClick={() => open(EDU.LOGIN_FLOW, 'what')}>How does login work?</button>
+              <button type="button" className="ud-edu-link" onClick={() => open(EDU.MAY_ACT, 'what')}>What is may_act?</button>
+              <button type="button" className="ud-edu-link" onClick={() => open(EDU.TOKEN_EXCHANGE, 'what')}>Token Exchange</button>
+              <button type="button" className="ud-edu-link" onClick={() => open(EDU.CIBA, 'what')}>CIBA / Backchannel Auth</button>
+              <button type="button" className="ud-edu-link" onClick={() => open(EDU.MCP_PROTOCOL, 'what')}>MCP Protocol</button>
+            </div>
+          </div>
+
+          <div className="ud-agent-info ud-mcp-status" style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e293b', marginBottom: 6 }}>⚙ MCP Server</div>
+            <p style={{ fontSize: '0.72rem', color: '#64748b', lineHeight: 1.55, margin: 0 }}>
+              The MCP server requires a persistent WebSocket connection and cannot run on Vercel serverless. Deploy it separately:
+            </p>
+            <code style={{ display: 'block', fontSize: '0.7rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 4, padding: '6px 8px', marginTop: 8, color: '#475569' }}>
+              cd banking_mcp_server<br />
+              npm run dev
+            </code>
+            <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 6, marginBottom: 0 }}>
+              Then set <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 3 }}>MCP_SERVER_URL</code> to your deployed URL.
+            </p>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 };
