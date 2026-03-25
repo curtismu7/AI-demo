@@ -127,28 +127,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   // Initialize chat widget (configuration is handled in index.html)
   useChatWidget();
 
-  // Function to decode JWT token
-  const decodeToken = (token) => {
-    try {
-      if (!token) return null;
-      
-      const parts = token.split('.');
-      if (parts.length !== 3) return null;
-      
-      const header = JSON.parse(atob(parts[0]));
-      const payload = JSON.parse(atob(parts[1]));
-      
-      return {
-        header,
-        payload,
-        raw: token
-      };
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      return null;
-    }
-  };
-
   // Function to fetch current OAuth tokens
   const fetchTokenData = async () => {
     try {

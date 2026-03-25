@@ -1033,7 +1033,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
             const res = results[i];
             if (res.status !== 'fulfilled' || !res.value.ok) continue;
             const body = await res.value.json();
-            (body.logs || []).forEach((log) => merged.push({ ...log, _src: sources[i] }));
+            (body.logs || []).forEach((log) => {
+  merged.push({ ...log, _src: sources[i] });
+});
           }
           const top = merged
             .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))

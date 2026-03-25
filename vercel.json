@@ -14,9 +14,10 @@
   "buildCommand": "cd banking_api_ui && npm run build",
   "outputDirectory": "banking_api_ui/build",
 
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/handler" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/handler" },
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/index.html" }
   ],
 
   "headers": [
