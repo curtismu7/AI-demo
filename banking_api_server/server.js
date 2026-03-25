@@ -205,9 +205,13 @@ if (isVercel || isReplit) {
 
 // Rate limiting
 const _rateLimitHandler = (req, res) => {
-  // Auth routes are browser-driven redirects — send to login page with friendly error
+  // Auth routes are browser-driven redirects — send to login page with friendly error.
+  // Use an absolute URL so Vercel edge / serverless does not choke on relative redirects.
   if (req.path.startsWith('/api/auth')) {
-    return res.redirect('/login?error=too_many_requests');
+    const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+    const host  = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+    const origin = host ? `${proto}://${host}` : (process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000');
+    return res.redirect(`${origin}/login?error=too_many_requests`);
   }
   res.status(429).json({ error: 'Too many requests. Please wait a few minutes and try again.' });
 };
@@ -222,9 +226,10 @@ app.use((req, res, next) =>
     ? next() : limiter(req, res, next));
 
 // Tighter rate limit for login/callback only — not status polling endpoints.
+// max=100 in production: enough headroom for demo testing while still preventing abuse.
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 200 : 30,
+  max: process.env.NODE_ENV === 'development' ? 200 : 100,
   handler: _rateLimitHandler,
 });
 app.use('/api/auth/oauth/login',         authLimiter);
