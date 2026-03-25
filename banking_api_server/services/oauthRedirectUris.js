@@ -16,19 +16,24 @@ function getPublicHost(req) {
   return req.get('host') || '';
 }
 
+/** Strip trailing slashes, whitespace, and newlines from a URL. */
+function _sanitizeUrl(url) {
+  return (url || '').trim().replace(/[\/\r\n]+$/, '');
+}
+
 /**
  * Frontend origin for redirects after login / config (no /api prefix).
  */
 function getFrontendOrigin(req) {
   const fromStore = configStore.getEffective('frontend_url');
-  if (fromStore) return fromStore.replace(/\/+$/, '');
+  if (fromStore) return _sanitizeUrl(fromStore);
   const canonical = getCanonicalPublicOrigin();
   if (canonical) return canonical;
   if (process.env.VERCEL) {
     const proto = req.protocol === 'http' ? 'http' : 'https';
     return `${proto}://${getPublicHost(req)}`;
   }
-  return (process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  return _sanitizeUrl(process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000');
 }
 
 /**
@@ -37,7 +42,7 @@ function getFrontendOrigin(req) {
  */
 function getAdminRedirectUri(req, opts = {}) {
   const fromStore = configStore.getEffective('admin_redirect_uri');
-  if (fromStore) return fromStore;
+  if (fromStore) return _sanitizeUrl(fromStore);
   const base = getCanonicalPublicOrigin();
   if (base) return `${base}/api/auth/oauth/callback`;
   if (process.env.VERCEL) {
@@ -61,7 +66,7 @@ function getAdminRedirectUri(req, opts = {}) {
  */
 function getUserRedirectUri(req, opts = {}) {
   const fromStore = configStore.getEffective('user_redirect_uri');
-  if (fromStore) return fromStore;
+  if (fromStore) return _sanitizeUrl(fromStore);
   const base = getCanonicalPublicOrigin();
   if (base) return `${base}/api/auth/oauth/user/callback`;
   if (process.env.VERCEL) {

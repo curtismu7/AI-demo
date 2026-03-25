@@ -341,7 +341,7 @@ class ConfigStore {
     const envVars = envFallbackMap[key] || [];
     for (const envKey of envVars) {
       const v = process.env[envKey];
-      if (v) return v;
+      if (v) return v.trim();
     }
 
     // KV / SQLite stored config — after env vars so Vercel env vars always win.
