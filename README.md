@@ -9,7 +9,7 @@ This is a **completely standalone** project — it can be handed to anyone and r
 | Component | Port | Description |
 |---|---|---|
 | `banking_api_ui` | 3000 | React frontend (admin + end-user dashboards) |
-| `banking_api_server` | 3001 | Express REST API with PingOne OAuth |
+| `banking_api_server` | 3001 | Express REST API — **BFF (Backend for Frontend)** with PingOne OAuth; tokens stay server-side |
 | `banking_mcp_server` | 8080 | MCP tool server for the AI agent |
 | `langchain_agent` | 8000 | LangChain + OpenAI AI banking agent |
 
@@ -101,7 +101,7 @@ or Vercel KV in production — **no `.env` file required**.
 
 ## Token Exchange Flow (RFC 8693)
 
-The Banking BFF (`banking_api_server`) performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
+The **BFF (Backend for Frontend)** — the `banking_api_server` — performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
 
 ```
 1. Retrieve user's access token (T1) from server-side session
@@ -112,7 +112,7 @@ The Banking BFF (`banking_api_server`) performs RFC 8693 Token Exchange on the *
      audience = <MCP_RESOURCE_URI>          ← binds audience to MCP server
      scope = <tool-specific scopes>         ← e.g. banking:accounts:read
 3. PingOne validates may_act claim on T1, issues T2 (MCP-audience token)
-4. BFF opens WebSocket to banking_mcp_server with T2 as Bearer
+4. BFF (Backend for Frontend) opens WebSocket to banking_mcp_server with T2 as Bearer
 ```
 
 Optional delegation path (`USE_AGENT_ACTOR_FOR_MCP=true`):

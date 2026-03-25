@@ -3,7 +3,6 @@
 
   "build": {
     "env": {
-      "NODE_VERSION": "24",
       "CI": "false",
       "GENERATE_SOURCEMAP": "false",
       "DEMO_MODE": "true"

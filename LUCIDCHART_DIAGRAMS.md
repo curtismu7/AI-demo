@@ -4,6 +4,8 @@ Source of truth for the diagrams below. Open in **diagrams.net (draw.io)** with 
 
 **Reference Visio:** `Agent Gateway demo architecture.vsdx` (repo root) — swimlanes, security/RFC strips, MCP ingress & egress gateway behavior, Baseline vs Gateway, 401 → OAuth → Bearer retry, and phased OAuth with **resource** (RFC 8707). The diagram below mirrors that **pattern** and labels; ports and hosts match this banking repo.
 
+**Terminology — BFF:** **BFF** means **Backend for Frontend**: a backend owned by the same app as the SPA, which holds **httpOnly session cookies**, stores **OAuth tokens on the server** (never in browser JavaScript), and proxies or orchestrates calls to the authorization server and APIs. In this repo the BFF is **`banking_api_server`** (Express — local port **3001**, production **same origin** as the UI with `/api` routes on Vercel).
+
 ---
 
 ## Diagram 0: Agent Gateway pattern (aligned with Agent Gateway demo architecture.vsdx)

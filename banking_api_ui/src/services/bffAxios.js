@@ -2,7 +2,8 @@
 import axios from 'axios';
 
 /**
- * Same-origin API calls that rely on the BFF session cookie only.
+ * Same-origin API calls that rely on the BFF (Backend for Frontend) session cookie only.
+ * The BFF is banking_api_server: it holds OAuth tokens server-side; the browser only sends the session cookie.
  * Intentionally no Authorization / refresh interceptors — those can break
  * admin routes when the SPA does not send Bearer tokens (session fallback).
  */

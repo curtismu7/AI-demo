@@ -58,7 +58,8 @@
   },
   "proxy": "http://localhost:3001",
   "engines": {
-    "node": "24.x"
+    "node": "20.x",
+    "npm": ">=9"
   },
   "jest": {
     "transformIgnorePatterns": [
