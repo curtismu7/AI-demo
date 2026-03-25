@@ -42,85 +42,112 @@ export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
         <>
           <h3>Plain English</h3>
           <p>
-            <strong>T1</strong> is the user&apos;s access token from the normal login — scoped for PingOne / BFF use. The <strong>MCP server</strong> needs a
-            different token (<strong>T2</strong>) with the right <code>audience</code> and often an <code>act</code> claim for delegation.
+            When you sign in, the app gets a digital <strong>"visitor pass"</strong> — think of it like a hotel key card
+            that proves who you are. But the AI assistant working behind the scenes lives in a separate, more secure
+            area that needs its <em>own</em> pass with different, tighter access.
           </p>
           <p>
-            <strong>Token Exchange (RFC 8693)</strong> lets the BFF swap T1 → T2 <em>without</em> sending the user through another browser login.
+            <strong>Token Exchange</strong> is how the app silently swaps your visitor pass for the right pass — without
+            asking you to sign in a second time. You never see it happen, but it&apos;s what keeps your account secure
+            and limits exactly what the AI can and cannot do on your behalf.
+          </p>
+          <p style={{ background: 'rgba(99,102,241,0.08)', borderLeft: '3px solid #6366f1', padding: '8px 12px', borderRadius: 4 }}>
+            🔑 <strong>Why it matters:</strong> Without this exchange, the AI would have to use your master sign-in pass for
+            everything — like handing a delivery driver your house key instead of a one-time access code.
           </p>
         </>
       ),
     },
     {
       id: 'before',
-      label: 'BEFORE (no exchange)',
+      label: 'Without the swap',
       content: (
         <>
-          <h3>The broken pattern</h3>
-          <p>If the BFF forwarded T1 directly to MCP:</p>
+          <h3>The problem (without token exchange)</h3>
+          <p>
+            Imagine the app just handed your sign-in pass directly to the AI assistant. Here&apos;s what goes wrong:
+          </p>
           <ul>
-            <li>Wrong <code>aud</code> — MCP expects its own resource audience.</li>
-            <li>No <code>act</code> claim — delegation not visible at the MCP layer.</li>
-            <li>Harder audit trail for &quot;who acted&quot; vs &quot;on behalf of whom&quot;.</li>
-            <li>Leaks a broadly scoped user token into the MCP trust boundary.</li>
+            <li>🚫 <strong>Wrong door</strong> — your pass is for the user area; the AI tools area needs a pass addressed specifically to it.</li>
+            <li>🚫 <strong>No paper trail</strong> — there&apos;s no record that <em>the AI</em> was the one acting, only that <em>you</em> did.</li>
+            <li>🚫 <strong>Too many permissions</strong> — your pass might allow things the AI should never be able to do alone.</li>
+            <li>🚫 <strong>Security risk</strong> — if the AI were ever compromised, an attacker could use your broad pass to access anything.</li>
           </ul>
         </>
       ),
     },
     {
       id: 'after',
-      label: 'AFTER (RFC 8693)',
+      label: 'How it works',
       content: (
         <>
-          <h3>Correct flow</h3>
-          <p>BFF calls PingOne <code>POST …/as/token</code>:</p>
-          <pre className="edu-code">{`grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-subject_token=<T1>
-subject_token_type=urn:ietf:params:oauth:token-type:access_token
-audience=<MCP resource URI>
-scope=<MCP scopes>
-# optional delegation:
-actor_token=<agent client token>
-actor_token_type=urn:ietf:params:oauth:token-type:access_token`}</pre>
-          <p><strong>Response</strong> includes T2 access token; JWT may contain <code>act</code> after successful exchange.</p>
+          <h3>The secure swap</h3>
+          <p>
+            The app asks PingOne (our identity provider) to exchange your sign-in pass for a fresh, limited-access pass.
+            The new pass is:
+          </p>
+          <ul>
+            <li>✅ <strong>Addressed to the AI tools area only</strong> — it won&apos;t work anywhere else</li>
+            <li>✅ <strong>Scoped to just what&apos;s needed</strong> — read accounts, make transfers, nothing more</li>
+            <li>✅ <strong>Labeled "acting on behalf of you"</strong> — so every action is clearly attributed</li>
+            <li>✅ <strong>Short-lived</strong> — expires quickly to reduce exposure if anything goes wrong</li>
+          </ul>
+          <p>
+            This happens automatically in the background every time you ask the AI assistant to do something for you.
+          </p>
+          <pre className="edu-code">{`Your sign-in pass (T1)
+  → sent to PingOne with a request: "please exchange for an AI tools pass"
+  → PingOne verifies policy allows this
+  → PingOne issues a new, restricted pass (T2)
+  → AI assistant uses T2 to access banking tools`}</pre>
         </>
       ),
     },
     {
       id: 'mayact',
-      label: 'may_act check',
+      label: 'Permission check',
       content: (
         <>
-          <h3>PingOne-style validation (conceptual)</h3>
+          <h3>How PingOne decides whether to allow the swap</h3>
+          <p>
+            Before issuing the new AI pass, PingOne runs through a quick checklist — like a hotel front desk verifying
+            that a contractor is on the approved vendor list before handing over a staff key:
+          </p>
           <ol>
-            <li>Verify T1 signature and expiry.</li>
-            <li>Ensure <code>may_act</code> (or policy) allows this client to exchange.</li>
-            <li>Caller client id matches allowed actor.</li>
-            <li>Requested audience allowed for this exchange.</li>
-            <li>Requested scope ⊆ original token scope.</li>
-            <li>Issue T2; failures return <code>invalid_grant</code> / policy errors.</li>
+            <li><strong>Is your sign-in pass still valid?</strong> Not expired, not revoked.</li>
+            <li><strong>Is this app on the approved list?</strong> Only registered apps can request a swap.</li>
+            <li><strong>Has the app been granted permission to act on your behalf?</strong> This is pre-configured by the bank&apos;s security policy.</li>
+            <li><strong>Is the requested access area allowed?</strong> Can only exchange for destinations the policy permits.</li>
+            <li><strong>Are the requested permissions a subset of what you already have?</strong> The AI can never get more access than you have.</li>
           </ol>
+          <p>If any check fails, the exchange is rejected and the AI cannot proceed.</p>
         </>
       ),
     },
     {
       id: 'live',
-      label: 'Live tokens',
+      label: 'See it live',
       content: (
         <>
-          <h3>Current session (T1)</h3>
-          <p>If you are signed in, the demo loads your access token from the OAuth status endpoint (same as the dashboard modal).</p>
+          <h3>Your current session</h3>
+          <p>
+            If you are signed in, here is a peek at the "visitor pass" your browser session holds.
+            The AI tools pass is never stored in the browser — it lives only on the server for the duration of each request.
+          </p>
           {live.loading && <p>Loading…</p>}
           {live.error && <p style={{ color: '#b91c1c' }}>{live.error}</p>}
           {!live.loading && live.t1?.payload && (
             <>
-              <p><strong>Decoded T1 payload (excerpt)</strong></p>
+              <p><strong>Your sign-in pass (decoded)</strong></p>
               <pre className="edu-code">{JSON.stringify(live.t1.payload, null, 2)}</pre>
-              <p>
-                <strong>T2</strong> is minted on the server when MCP needs it — open browser Network on <code>/api/mcp/tool</code> or use MCP Inspector;
-                the raw T2 is not stored in the React app.
+              <p style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+                The AI tools pass is created fresh for each AI request and stays server-side.
+                You can watch it happen in the browser&apos;s Network tab — look for <code>/api/mcp/tool</code>.
               </p>
             </>
+          )}
+          {!live.loading && !live.t1 && !live.error && (
+            <p style={{ color: '#6b7280' }}>Sign in to see your live session details here.</p>
           )}
         </>
       ),

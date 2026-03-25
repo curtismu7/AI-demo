@@ -895,158 +895,78 @@ POST /api/auth/ciba/cancel/:authReqId
 export function McpProtocolContent() {
   return (
     <>
-      <h3>What is MCP?</h3>
+      <h3>What powers the AI assistant?</h3>
       <p>
-        <strong>Model Context Protocol (MCP)</strong> is an open standard that structures how
-        an LLM host discovers and invokes tools exposed by a server. It uses{' '}
-        <strong>JSON-RPC 2.0</strong> messages, typically over a WebSocket or stdio transport.
-        This demo uses WebSocket to <code>banking_mcp_server</code>.
+        The AI assistant in this app doesn&apos;t just generate text — it <strong>connects to the banking system</strong> to fetch
+        real data and perform real actions. The technology that makes this possible is called{' '}
+        <strong>MCP (Model Context Protocol)</strong>.
       </p>
       <p>
-        MCP standardises: tool discovery (<code>tools/list</code>), tool invocation (
-        <code>tools/call</code>), and (in recent spec versions) OAuth 2.0 authorization
-        including resource indicators (RFC 8707) and authorization server metadata discovery
-        (RFC 9728).
+        Think of MCP like a <strong>universal remote control</strong>. Just as one remote can control your TV, sound bar,
+        and streaming box using a standard set of buttons, MCP gives any AI assistant a standard way to &quot;press the buttons&quot;
+        on any connected service — whether that&apos;s a bank, a calendar, or a database.
       </p>
-
-      <h3>tools/list — discover what the server offers</h3>
-      <pre className="edu-code">{`→ Client sends:
-{
-  "jsonrpc": "2.0",
-  "method": "tools/list",
-  "params": {},
-  "id": 1
-}
-
-← Server responds:
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "tools": [
-      {
-        "name": "get_my_accounts",
-        "description": "List all accounts for the authenticated user",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "required": []
-        }
-      },
-      {
-        "name": "create_transfer",
-        "description": "Transfer funds between accounts",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "fromAccountId": { "type": "string" },
-            "toAccountId":   { "type": "string" },
-            "amount":        { "type": "number" }
-          },
-          "required": ["fromAccountId", "toAccountId", "amount"]
-        }
-      }
-    ]
-  }
-}`}</pre>
-
-      <h3>tools/call — invoke a tool</h3>
-      <pre className="edu-code">{`→ Client sends:
-{
-  "jsonrpc": "2.0",
-  "method": "tools/call",
-  "params": {
-    "name": "create_transfer",
-    "arguments": {
-      "fromAccountId": "acc_001",
-      "toAccountId":   "acc_002",
-      "amount":        150.00
-    }
-  },
-  "id": 2
-}
-
-← Server responds (success):
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Transfer of $150.00 confirmed. Transaction ID: txn_abc123"
-      }
-    ],
-    "isError": false
-  }
-}
-
-← Server responds (tool error):
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "result": {
-    "content": [
-      { "type": "text", "text": "Insufficient funds" }
-    ],
-    "isError": true
-  }
-}`}</pre>
-
-      <h3>Authorization flow (MCP + OAuth)</h3>
       <p>
-        The MCP spec (2025-11-25) requires servers to support OAuth 2.0 with{' '}
-        <strong>resource indicators (RFC 8707)</strong> and AS metadata discovery via{' '}
-        <code>/.well-known/oauth-authorization-server</code> (RFC 9728).
+        This means the AI doesn&apos;t need custom code for every banking feature. Instead, the banking system
+        publishes a <strong>tool catalog</strong> (a menu of things it can do), and the AI picks from that menu
+        when responding to your requests.
       </p>
-      <pre className="edu-code">{`MCP client → GET {mcp-server}/.well-known/oauth-authorization-server
-← { "issuer": "https://auth.pingone.com/...", "token_endpoint": "...", ... }
 
-MCP client performs OAuth flow (PKCE or token exchange)
-  → obtains access token with audience = MCP server URL
+      <h3>How a tool call works</h3>
+      <p>
+        When you ask the AI &quot;what&apos;s my balance?&quot; here&apos;s what happens under the hood:
+      </p>
+      <pre className="edu-code">{`1. You type a question
+2. The AI understands you want "get_account_balance"
+3. The app sends a secure, signed request to the Banking Service:
+     → "call get_account_balance for account acc_001"
+4. The Banking Service checks your identity and permissions
+5. It returns the result to the AI
+6. The AI formats a friendly response for you`}</pre>
+      <p>
+        The AI never has direct access to your account data. Every single tool call goes through the same
+        security checks as if you had clicked a button in the app.
+      </p>
 
-MCP client → WebSocket ws://mcp-server/mcp
-  Headers: Authorization: Bearer <access-token>
-
-MCP server:
-  1. Validate Bearer token (introspection or JWKS)
-  2. Check aud == MCP server URL         (RFC 8707)
-  3. Check required scopes               (e.g. banking:read)
-  4. If valid → accept connection; run tools
-  5. If invalid → close with 401
-
-Tool execution (server-side, invisible to MCP client):
-  MCP server → Banking REST API
-    Authorization: Bearer <same token or downstream token>
-  Banking API validates token independently`}</pre>
-
-      <h3>How the BFF path works (this demo)</h3>
-      <pre className="edu-code">{`Browser  (session cookie)
-  ↓
-BFF  POST /api/mcp/tool  { name, arguments }
-  ↓ (optional) RFC 8693 token exchange → T2 with MCP audience
-  ↓
-WebSocket  ws://banking_mcp_server  Authorization: Bearer T2
-  ↓  tools/call  JSON-RPC
-  ↓
-MCP server validates T2 + scopes
-  ↓
-Banking REST API  Authorization: Bearer T2 (or downstream token)
-  ↓
-Response bubbles back to browser via BFF`}</pre>
-
-      <h3>Why JSON-RPC 2.0?</h3>
+      <h3>What tools are available?</h3>
+      <p>
+        The Banking Service currently provides these AI-callable tools:
+      </p>
       <ul>
-        <li>Symmetric — client and server can both initiate requests.</li>
-        <li>Stateless per request — <code>id</code> correlates requests to responses.</li>
-        <li>Notification support — <code>id: null</code> for fire-and-forget.</li>
-        <li>Well-defined error codes — <code>-32600</code> invalid request, <code>-32601</code> method not found, etc.</li>
-        <li>Transport-agnostic — works over WebSocket, stdio, HTTP (SSE for streaming).</li>
+        <li><strong>Get my accounts</strong> — lists all your accounts</li>
+        <li><strong>Check balance</strong> — balance for a specific account</li>
+        <li><strong>Recent transactions</strong> — your latest activity</li>
+        <li><strong>Transfer funds</strong> — move money between accounts</li>
+        <li><strong>Deposit</strong> — add funds to an account</li>
+        <li><strong>Withdraw</strong> — take funds from an account</li>
       </ul>
+
+      <h3>How the AI knows what tools exist</h3>
+      <p>
+        When the AI assistant starts up, it asks the Banking Service: <em>&quot;What can you do?&quot;</em> The service
+        responds with a tool catalog — each tool has a name, a description, and the parameters it needs.
+        The AI reads this catalog and figures out which tool to call when you make a request.
+      </p>
+      <pre className="edu-code">{`AI → Banking Service: "What tools do you have?"
+Banking Service → AI:
+  {
+    "tools": [
+      { "name": "get_my_accounts", "description": "List all accounts for the authenticated user" },
+      { "name": "create_transfer",  "description": "Transfer funds between accounts" },
+      ...
+    ]
+  }`}</pre>
+
+      <h3>Security: every tool call is verified</h3>
+      <p>
+        The AI cannot just call any tool it wants. Every call is accompanied by a security pass
+        (an OAuth access token) that proves: ✅ who you are, ✅ what you&apos;re allowed to do,
+        and ✅ that the AI is acting on your behalf. The Banking Service checks this pass before
+        executing anything.
+      </p>
     </>
   );
 }
-
 // ---------------------------------------------------------------------------
 // IntrospectionContent — RFC 7662 introspection (why, request, response)
 // ---------------------------------------------------------------------------

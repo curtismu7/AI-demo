@@ -8,6 +8,64 @@ import axios from 'axios';
 import './LogViewer.css';
 
 const LogViewer = ({ isOpen, onClose }) => {
+  // ── Drag-to-move ────────────────────────────────────────────────────────
+  const [dragPos, setDragPos] = useState(null); // null = default anchored position
+  const panelRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+  const handleDragStart = useCallback((e) => {
+    if (e.target.closest('button, input, select, label')) return;
+    const rect = panelRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    isDraggingRef.current = true;
+    dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    if (!dragPos) setDragPos({ x: rect.left, y: rect.top });
+    e.preventDefault();
+  }, [dragPos]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isDraggingRef.current) return;
+      // No clamping — allow dragging to secondary monitors
+      setDragPos({ x: e.clientX - dragOffsetRef.current.x, y: e.clientY - dragOffsetRef.current.y });
+    };
+    const onUp = () => { isDraggingRef.current = false; };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  const resetPosition = () => setDragPos(null);
+
+  // ── Pop out to new window ────────────────────────────────────────────────
+  const popOut = () => {
+    const w = window.open('', 'logviewer', 'width=1300,height=750,resizable=yes,scrollbars=yes');
+    if (!w) return;
+    const rows = logs.map(log => {
+      const level = (log.level || 'info').toLowerCase();
+      const colors = { error: '#ef4444', warn: '#f59e0b', info: '#3b82f6', debug: '#6b7280' };
+      const color = colors[level] || '#9ca3af';
+      const ts = new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+      const msg = typeof log.message === 'object' ? JSON.stringify(log.message, null, 2) : (log.message || '');
+      return `<tr style="border-bottom:1px solid #2a2a2a">
+        <td style="padding:8px 12px;color:#888;font-size:12px;white-space:nowrap">${ts}</td>
+        <td style="padding:8px 12px;text-align:center"><span style="background:${color};padding:2px 7px;border-radius:3px;color:#fff;font-size:11px;font-weight:600">${level.toUpperCase()}</span></td>
+        <td style="padding:8px 12px;font-size:11px;color:#9ca3af;text-transform:uppercase">${log._src||'—'}</td>
+        <td style="padding:8px 12px;white-space:pre-wrap;word-break:break-word;font-family:monospace;color:#ddd">${msg.replace(/</g,'&lt;')}</td>
+      </tr>`;
+    }).join('');
+    w.document.write(`<!DOCTYPE html><html><head><title>BX Finance — Log Viewer</title>
+      <style>*{box-sizing:border-box;margin:0;padding:0}body{background:#1e1e1e;color:#ddd;font-family:-apple-system,sans-serif;font-size:13px}
+      table{width:100%;border-collapse:collapse}thead{position:sticky;top:0;background:#252525;z-index:10}
+      th{text-align:left;padding:10px 12px;color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #444}
+      tr:hover{background:#252525}.src{font-size:.7rem}</style></head>
+      <body><table><thead><tr><th style="width:110px">Time</th><th style="width:70px">Level</th><th style="width:60px">Src</th><th>Message</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+    w.document.close();
+  };
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -161,12 +219,19 @@ const LogViewer = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  const panelStyle = dragPos
+    ? { position: 'fixed', left: dragPos.x, top: dragPos.y, right: 'auto', bottom: 'auto', transform: 'none' }
+    : {};
+
   return (
-    <div className="log-viewer-overlay">
-      <div className="log-viewer-modal">
-        <div className="log-viewer-header">
+    <div className="log-viewer-float" ref={panelRef} style={panelStyle}>
+        <div className="log-viewer-header" onMouseDown={handleDragStart} style={{ cursor: 'grab' }}>
           <h2>📊 Log Viewer</h2>
-          <button className="close-button" onClick={onClose}>✕</button>
+          <div className="log-viewer-header-actions">
+            <button className="log-action-btn" onClick={resetPosition} title="Reset position">⌂</button>
+            <button className="log-action-btn" onClick={popOut} title="Pop out to new window">⤢</button>
+            <button className="close-button" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         <div className="log-viewer-controls">
@@ -326,7 +391,6 @@ const LogViewer = ({ isOpen, onClose }) => {
           {autoRefresh && !paused && <span className="refresh-indicator">● Live</span>}
           {autoRefresh && paused && <span className="refresh-indicator paused-indicator">⏸ Paused</span>}
         </div>
-      </div>
     </div>
   );
 };

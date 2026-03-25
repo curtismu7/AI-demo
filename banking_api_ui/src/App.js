@@ -21,6 +21,7 @@ import McpInspector from './components/McpInspector';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
+import SideNav from './components/SideNav';
 
 import { savePublicConfig } from './services/configService';
 import { EducationUIProvider } from './context/EducationUIContext';
@@ -199,8 +200,11 @@ function App() {
                 <LandingPage />
               ) : (
                 <main className="main-content">
-                  <EducationBar />
-                  <Routes>
+                  <div className="app-shell">
+                    <SideNav user={user} onLogout={logout} />
+                    <div className="app-shell-body">
+                    <EducationBar />
+                    <Routes>
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
@@ -217,7 +221,9 @@ function App() {
                       element={user?.role === 'admin' ? <ClientRegistrationPage user={user} onLogout={logout} /> : <Navigate to="/" replace />}
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
+                    </Routes>
+                    </div>
+                  </div>
                 </main>
               )
             } />

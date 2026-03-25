@@ -6,61 +6,108 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
     {
       id: 'what',
-      label: 'What they are',
+      label: 'Plain English',
       content: (
         <>
           <p>
-            <strong>may_act</strong> (in T1) is <em>prospective</em> permission: &quot;this OAuth client is allowed to request a delegated token for this user.&quot;
+            When you sign in, PingOne can include a small note inside your security pass that says:{' '}
+            <strong>"The AI assistant is allowed to act on your behalf."</strong>
           </p>
           <p>
-            <strong>act</strong> (in T2 after exchange) is <em>current fact</em>: &quot;this client <strong>is</strong> acting right now&quot; for this request.
+            That pre-approval note is called <code>may_act</code> — it&apos;s like a landlord writing on a lease:{' '}
+            <em>"The building manager may enter the property to make repairs."</em> Nobody has entered yet; the note
+            just says they&apos;re allowed to.
           </p>
-          <p>Nobody is &quot;acting&quot; until a valid token exchange produces T2 with <code>act</code>.</p>
+          <p>
+            Later, when the AI actually makes a request on your behalf, it gets a fresh pass of its own that includes
+            an <code>act</code> claim. That claim says: <strong>"I am the AI assistant, and I am acting right now for [your name]
+            on this specific request."</strong>
+          </p>
+          <p>
+            Together, these two claims create a complete, auditable chain: <em>who approved the delegation</em> (<code>may_act</code>)
+            and <em>who is executing it right now</em> (<code>act</code>).
+          </p>
         </>
       ),
     },
     {
       id: 'lifecycle',
-      label: 'Lifecycle',
+      label: 'Step by step',
       content: (
         <>
-          <h3>ISSUE → EXCHANGE → USE</h3>
-          <pre className="edu-code">{`T1 (login) may include:
-  "may_act": { "client_id": "agent-app", ... }
-
-→ RFC 8693 token exchange at PingOne
-→ T2 for MCP audience:
-
-  "act": { "sub": "agent-app", ... }
-  "sub": "<user>"
-`}</pre>
-          <p>T1 shows who <em>may</em> delegate; T2 shows who <em>is</em> delegating for this call.</p>
-        </>
-      ),
-    },
-    {
-      id: 'attacks',
-      label: 'Attack scenarios',
-      content: (
-        <>
+          <h3>From sign-in to action</h3>
           <ol>
-            <li><strong>Rogue service</strong> steals T1 and tries to exchange — caller client_id must match <code>may_act</code>; mismatch → rejected.</li>
-            <li><strong>Token without policy</strong> — exchange rejected if <code>may_act</code> / policy does not allow delegation.</li>
-            <li><strong>Scope escalation</strong> — requested scopes must be subset of T1 scopes; else rejected.</li>
+            <li>
+              <strong>You sign in</strong> — PingOne issues a security pass that may include a note:
+              <pre className="edu-code">{`"may_act": { "client_id": "ai-banking-agent", ... }
+  ↑ "this specific AI app is allowed to act on your behalf"`}</pre>
+            </li>
+            <li>
+              <strong>You ask the AI to do something</strong> — the app requests a new, restricted pass
+              specifically for the AI banking tools.
+            </li>
+            <li>
+              <strong>PingOne issues the AI&apos;s pass</strong> — it includes:
+              <pre className="edu-code">{`"sub": "your-user-id"       ← the action benefits you
+"act": { "sub": "ai-banking-agent" }  ← the AI is doing it`}</pre>
+            </li>
+            <li>
+              <strong>The AI uses that pass</strong> — every banking tool call is signed with this pass,
+              creating an audit trail showing exactly who did what on whose behalf.
+            </li>
           </ol>
         </>
       ),
     },
     {
+      id: 'attacks',
+      label: 'Why it&apos;s secure',
+      content: (
+        <>
+          <h3>What stops bad actors</h3>
+          <ol>
+            <li>
+              <strong>A rogue app tries to steal your pass and act as the AI</strong> — rejected:
+              PingOne checks that the requesting app&apos;s ID matches the one listed in <code>may_act</code>.
+              Any other app gets a &quot;permission denied&quot;.
+            </li>
+            <li>
+              <strong>Someone tries to exchange a pass that has no approval note</strong> — rejected:
+              if no <code>may_act</code> (or equivalent policy) exists, no exchange is allowed.
+            </li>
+            <li>
+              <strong>The AI tries to request more permissions than you have</strong> — rejected:
+              the new pass can only contain a <em>subset</em> of the permissions in your original pass.
+              The AI can never do more than you can.
+            </li>
+          </ol>
+          <p style={{ background: 'rgba(99,102,241,0.08)', borderLeft: '3px solid #6366f1', padding: '8px 12px', borderRadius: 4 }}>
+            🔐 These checks are enforced by PingOne automatically — the app doesn&apos;t need to implement them itself.
+          </p>
+        </>
+      ),
+    },
+    {
       id: 'rfc8693',
-      label: 'RFC 8693 spec',
+      label: 'The standard',
       content: (
         <>
           <p>
-            <a href="https://datatracker.ietf.org/doc/html/rfc8693" target="_blank" rel="noopener noreferrer">RFC 8693 — OAuth 2.0 Token Exchange</a>
+            This feature is built on an open internet standard called{' '}
+            <a href="https://datatracker.ietf.org/doc/html/rfc8693" target="_blank" rel="noopener noreferrer">
+              RFC 8693 — OAuth 2.0 Token Exchange
+            </a>. It defines exactly how one security pass can be swapped for another
+            in a controlled, auditable way.
           </p>
           <p>
-            <strong>subject_token</strong> — who the action benefits (the user). <strong>actor_token</strong> — optional; identifies the OAuth client acting (machine client credentials token).
+            <strong>subject_token</strong> — identifies who the action benefits (you, the user).<br />
+            <strong>actor_token</strong> — identifies who is performing the action (the AI assistant app).<br />
+            <strong>act claim</strong> — embedded in the resulting pass; preserved in the audit log.
+          </p>
+          <p style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+            Many large identity providers (including PingOne) implement RFC 8693. Banks and financial
+            institutions use it to let AI agents and automation tools act on behalf of customers without
+            compromising security.
           </p>
         </>
       ),
@@ -71,7 +118,7 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
     <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
-      title="may_act and act claims"
+      title="How the AI acts on your behalf"
       tabs={tabs}
       initialTabId={initialTabId}
     />

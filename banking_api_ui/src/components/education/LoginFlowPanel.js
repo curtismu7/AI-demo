@@ -14,53 +14,83 @@ export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
       label: 'What happens',
       content: (
         <>
-          <h3>Ten-step login walkthrough</h3>
+          <h3>What happens when you click &quot;Sign In&quot;</h3>
+          <p>
+            Signing in uses a modern-day <strong>security handshake</strong> between this app and PingOne (our identity provider).
+            Here&apos;s the full journey — in plain English:
+          </p>
           <ol>
-            <li>You click <strong>Admin</strong> or <strong>Customer</strong> sign-in.</li>
-            <li>The Banking BFF starts the OAuth 2.0 <strong>authorization code + PKCE</strong> flow.</li>
-            <li>The server generates a <code>code_verifier</code> and <code>code_challenge</code>, stores the verifier server-side, and redirects your browser to PingOne.</li>
-            <li>PingOne shows the login / consent UI; you enter credentials (and MFA if required).</li>
-            <li>PingOne redirects back to the registered <code>redirect_uri</code> with an <strong>authorization code</strong> and the same <code>state</code> value (CSRF protection).</li>
-            <li>The BFF validates <code>state</code>, exchanges the code at <code>POST …/as/token</code> with the code verifier.</li>
-            <li>PingOne returns <strong>T1</strong> (access token, often a JWT) and usually a refresh token. Depending on policy, T1 may include <code>may_act</code> for later delegation.</li>
-            <li>The BFF stores tokens in the <strong>server session</strong> and issues an <strong>httpOnly session cookie</strong> to your browser — T1 is not exposed to JavaScript.</li>
-            <li>The session may call <code>session.regenerate()</code> on login to reduce fixation risk.</li>
-            <li>You land on <code>/admin</code> or <code>/dashboard</code>; subsequent API calls use the session cookie only.</li>
+            <li>
+              <strong>You click Sign In</strong> — the app generates a one-time secret code (a &quot;code verifier&quot;) and stores
+              it on the server. This code is never sent anywhere yet — it&apos;s like writing down a secret word before a quiz.
+            </li>
+            <li>
+              <strong>You&apos;re sent to PingOne</strong> — the app redirects your browser to PingOne&apos;s login page. Only
+              a scrambled (hashed) version of the code is included in this redirect — the original stays on the server.
+            </li>
+            <li>
+              <strong>You enter your credentials</strong> — PingOne shows the login form. You type your email, password, and
+              MFA code if required. PingOne verifies it all.
+            </li>
+            <li>
+              <strong>PingOne sends you back</strong> — after successful login, PingOne redirects you back to the app with a
+              temporary, one-time <em>authorization code</em> (like a numbered ticket at a deli counter).
+            </li>
+            <li>
+              <strong>The app redeems the ticket — server-side</strong> — the app takes that authorization code and the
+              original secret word and exchanges them with PingOne for real security tokens. The browser never touches these tokens.
+            </li>
+            <li>
+              <strong>Your session begins</strong> — the tokens are stored securely on the server, and your browser only
+              receives a session cookie — like a wristband that says &quot;this person has already been verified.&quot;
+            </li>
+            <li>
+              <strong>You land on your dashboard</strong> — every subsequent action uses that cookie. Your actual security
+              tokens are never exposed to the browser.
+            </li>
           </ol>
         </>
       ),
     },
     {
       id: 'ciba',
-      label: 'CIBA (OOB)',
+      label: 'Approve from your phone',
       content: <CibaVsLoginContent />,
     },
     {
       id: 'pkce',
-      label: 'PKCE deep dive',
+      label: 'One-time code protection',
       content: <LoginFlowPkceContent />,
     },
     {
       id: 'tokens',
-      label: 'The tokens',
+      label: 'What gets issued',
       content: (
         <>
-          <h3>Annotated JWT payload (example)</h3>
+          <h3>What&apos;s inside the security token</h3>
+          <p>
+            After login, PingOne issues an <strong>access token</strong> — a tamper-proof digital document
+            (called a JWT) that proves who you are and what you&apos;re allowed to do. Here&apos;s what it contains:
+          </p>
           <pre className="edu-code">{`{
-  "sub": "user id at PingOne",
-  "aud": "PingOne audience / resource",
-  "scope": "openid banking:read ...",
-  "may_act": { "client_id": "...", ... },  // if policy issues delegation hint
-  "exp": 1234567890,
-  "iss": "https://auth.pingone.com/.../as"
+  "sub": "who you are (your unique user ID at PingOne)",
+  "aud": "which service this token is for",
+  "scope": "what you're allowed to do: read accounts, etc.",
+  "may_act": { ... },  // optional: which AI apps can act on your behalf
+  "exp": 1234567890,   // when this token expires (Unix timestamp)
+  "iss": "https://auth.pingone.com/..."  // issued by PingOne
 }`}</pre>
           <ul>
-            <li><strong>sub</strong> — stable subject identifier.</li>
-            <li><strong>aud</strong> — who the token is for (may be PingOne resource identifier).</li>
-            <li><strong>scope</strong> — granted OAuth scopes.</li>
-            <li><strong>may_act</strong> — optional; indicates which client may perform token exchange on behalf of this user.</li>
-            <li><strong>exp</strong> / <strong>iss</strong> — expiry and issuer.</li>
+            <li><strong>sub</strong> — your unique, stable user identifier.</li>
+            <li><strong>aud</strong> — the specific service this token was issued for (it won&apos;t work anywhere else).</li>
+            <li><strong>scope</strong> — the list of things this token allows: read balances, make transfers, etc.</li>
+            <li><strong>may_act</strong> — an optional note saying which AI apps are pre-approved to act on your behalf.</li>
+            <li><strong>exp</strong> — the expiry time. After this, the token stops working automatically.</li>
           </ul>
+          <p style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+            Your browser <strong>never sees this token</strong>. It lives on the server; your browser only has a
+            session cookie.
+          </p>
         </>
       ),
     },
@@ -75,7 +105,7 @@ export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
     <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Login flow (Authorization Code + PKCE)"
+      title="How you sign in"
       tabs={tabs}
       initialTabId={initialTabId}
     />
