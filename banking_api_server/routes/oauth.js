@@ -81,10 +81,11 @@ router.get('/login', (req, res) => {
     const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce) + resourceParam;
 
     const cfg = oauthService.config || {};
-    console.log('[oauth/login] client_id=%s redirect_uri=%s env_id=%s',
+    console.log('[oauth/login] client_id=%s redirect_uri=%s env_id=%s authorize_pi.flow=%s',
       cfg.clientId ? cfg.clientId.slice(0, 8) + '...' : 'MISSING',
       redirectUri,
-      cfg.tokenEndpoint ? cfg.tokenEndpoint.split('/')[4] : 'MISSING'
+      cfg.tokenEndpoint ? cfg.tokenEndpoint.split('/')[4] : 'MISSING',
+      !!cfg.authorizeUsesPiFlow
     );
 
     // Vercel / serverless: also store PKCE data in a signed cookie so the

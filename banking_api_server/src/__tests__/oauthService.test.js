@@ -36,6 +36,7 @@ const MOCK_CONFIG = {
   scopes:                 ['openid', 'profile', 'email'],
   sessionSecret:          'test-sess-secret',
   adminRole:              'admin',
+  authorizeUsesPiFlow:    false,
 };
 
 jest.mock('../../config/oauth', () => MOCK_CONFIG);
@@ -141,6 +142,20 @@ describe('generateAuthorizationUrl', () => {
   test('includes response_type=code', () => {
     const url = svc.generateAuthorizationUrl('st', 'cv');
     expect(parse(url).params.response_type).toBe('code');
+    expect(parse(url).params.response_mode).toBeUndefined();
+  });
+
+  test('uses response_type=pi.flow and response_mode=pi.flow when authorizeUsesPiFlow', () => {
+    makeService({ authorizeUsesPiFlow: true });
+    try {
+      const url = svcSingleton.generateAuthorizationUrl('st', 'cv', MOCK_CONFIG.redirectUri);
+      const p = parse(url).params;
+      expect(p.response_type).toBe('pi.flow');
+      expect(p.response_mode).toBe('pi.flow');
+      expect(p.code_challenge_method).toBe('S256');
+    } finally {
+      restoreService();
+    }
   });
 
   test('includes all configured scopes space-separated', () => {

@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const oauthService = require('../services/oauthUserService');
+const oauthUserConfig = require('../config/oauthUser');
 const configStore = require('../services/configStore');
 const dataStore = require('../data/store');
 const { determineClientType } = require('../middleware/auth');
@@ -118,10 +119,11 @@ async function createSampleDataForCustomer(userId, firstName, lastName) {
 router.get('/login', (req, res) => {
   try {
     const _mask = (v, n) => v ? v.slice(0, n) + '...' : 'MISSING';
-    console.log('[oauth/user/login] env_id=%s  user_client_id=%s  user_secret=%s',
+    console.log('[oauth/user/login] env_id=%s  user_client_id=%s  user_secret=%s  authorize_pi.flow=%s',
       _mask(configStore.getEffective('pingone_environment_id'), 8),
       _mask(configStore.getEffective('user_client_id'), 8),
-      _mask(configStore.getEffective('user_client_secret'), 4)
+      _mask(configStore.getEffective('user_client_secret'), 4),
+      !!oauthUserConfig.authorizeUsesPiFlow
     );
 
     // Guard: end-user flow needs user client + env (not admin_client_id)

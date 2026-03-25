@@ -140,9 +140,9 @@
   text-align: left;
   padding: 7px 10px;
   font-size: 12px;
-  color: var(--ba-chip-txt);
-  background: var(--ba-chip-bg);
-  border: 1px solid var(--ba-chip-bd);
+  color: #fff;
+  background: var(--ba-accent);
+  border: 1px solid var(--ba-accent);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -156,9 +156,9 @@
   text-align: left;
   padding: 7px 10px;
   font-size: 12px;
-  color: var(--ba-text);
-  background: transparent;
-  border: 1px solid var(--ba-border);
+  color: #fff;
+  background: var(--ba-accent);
+  border: 1px solid var(--ba-accent);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -198,12 +198,12 @@
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
-  border: 1px solid var(--ba-border);
-  background: var(--ba-chip-bg);
-  color: var(--ba-text);
+  border: 1px solid var(--ba-accent);
+  background: var(--ba-accent);
+  color: #fff;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.ba-left-auth-btn:hover:not(:disabled) { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
+.ba-left-auth-btn:hover:not(:disabled) { background: var(--ba-accent-h); color: #fff; border-color: var(--ba-accent-h); }
 .ba-left-auth-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ba-left-auth-btn.primary { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
 .ba-left-auth-btn.primary:hover { background: var(--ba-accent-h); border-color: var(--ba-accent-h); }
@@ -217,13 +217,13 @@
   font-weight: 500;
   border-radius: 8px;
   cursor: pointer;
-  border: 1px dashed var(--ba-border);
-  background: transparent;
-  color: var(--ba-muted);
+  border: 1px solid var(--ba-accent);
+  background: var(--ba-accent);
+  color: #fff;
   transition: background 0.15s, color 0.15s;
   text-align: center;
 }
-.ba-left-config-btn:hover { background: var(--ba-surface); color: var(--ba-text); }
+.ba-left-config-btn:hover { background: var(--ba-accent-h); color: #fff; }
 .ba-left-config-btn.configured { border-color: #10b981; color: #10b981; background: rgba(16,185,129,0.08); }
 
 /* ─── Right column ────────────────────────────────────────────────────── */
@@ -292,16 +292,16 @@
 .ba-subtitle { font-size: 11px; color: var(--ba-muted); line-height: 1.3; }
 .ba-header-tools { display: flex; align-items: center; gap: 4px; }
 .ba-icon-btn {
-  background: transparent;
-  border: 1px solid var(--ba-border);
-  color: var(--ba-muted);
+  background: var(--ba-accent);
+  border: 1px solid var(--ba-accent);
+  color: #fff;
   width: 28px; height: 28px; border-radius: 6px;
   cursor: pointer; font-size: 13px;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   flex-shrink: 0;
 }
-.ba-icon-btn:hover { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
+.ba-icon-btn:hover { background: var(--ba-accent-h); color: #fff; border-color: var(--ba-accent-h); }
 
 /* Connected services chips row */
 .ba-server-chips {

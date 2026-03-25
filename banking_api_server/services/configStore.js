@@ -51,6 +51,11 @@ const FIELD_DEFS = {
   user_client_secret:     { public: false, default: '' },
   user_redirect_uri:      { public: true,  default: '' },
 
+  // PingOne authorize: pi.flow + response_mode=pi.flow for apps that support it (e.g. DaVinci flow policies).
+  // See https://developer.pingidentity.com/pingone-api/auth/auth-config-options/browserless-authentication-flow-options.html
+  admin_pingone_authorize_pi_flow: { public: true, default: 'false' },
+  user_pingone_authorize_pi_flow:  { public: true, default: 'false' },
+
   // Auth server
   admin_role:             { public: true,  default: 'admin' },
   user_role:              { public: true,  default: 'customer' },
@@ -327,6 +332,8 @@ class ConfigStore {
         'PINGONE_CORE_USER_REDIRECT_URI',
         'PINGONE_USER_REDIRECT_URI',
       ],
+      admin_pingone_authorize_pi_flow: ['PINGONE_ADMIN_AUTHORIZE_PI_FLOW'],
+      user_pingone_authorize_pi_flow:  ['PINGONE_USER_AUTHORIZE_PI_FLOW'],
       admin_role:             ['ADMIN_ROLE'],
       user_role:              ['USER_ROLE'],
       session_secret:         ['SESSION_SECRET'],

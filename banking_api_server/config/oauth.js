@@ -30,6 +30,15 @@ const config = {
   // offline_access: PingOne issues refresh_token for silent session renewal (admin + user flows)
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 
+  /**
+   * When true, /authorize uses response_type=pi.flow and response_mode=pi.flow (PingOne non-redirect / DaVinci).
+   * Requires a PingOne app configured for this mode; otherwise leave false (default authorization code + query).
+   */
+  get authorizeUsesPiFlow() {
+    const v = configStore.getEffective('admin_pingone_authorize_pi_flow');
+    return String(v).toLowerCase() === 'true' || v === '1';
+  },
+
   get sessionSecret()          { return configStore.getEffective('session_secret'); },
   get adminRole()              { return configStore.getEffective('admin_role') || 'admin'; },
 };

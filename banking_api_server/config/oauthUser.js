@@ -27,6 +27,12 @@ const config = {
   // offline_access: PingOne issues a refresh_token (RFC 6749 §6) — required for BFF auto-refresh and /api/auth/oauth/user/refresh
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 
+  /** Same as admin oauth.js — opt-in pi.flow authorize for supported PingOne apps. */
+  get authorizeUsesPiFlow() {
+    const v = configStore.getEffective('user_pingone_authorize_pi_flow');
+    return String(v).toLowerCase() === 'true' || v === '1';
+  },
+
   get sessionSecret()         { return configStore.getEffective('session_secret'); },
   get userRole()              { return configStore.getEffective('user_role') || 'customer'; },
 };

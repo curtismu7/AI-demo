@@ -87,12 +87,15 @@ class OAuthService {
   }
 
   /**
-   * Generate authorization URL for the authorization code flow with PKCE (S256)
+   * Build PingOne /authorize URL: default response_type=code + PKCE; if authorizeUsesPiFlow,
+   * uses response_type=pi.flow and response_mode=pi.flow (PingOne apps that support it).
    */
   generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce = null) {
+    const usePiFlow = !!this.config.authorizeUsesPiFlow;
     const codeChallenge = this.generateCodeChallenge(codeVerifier);
+    const responseType = usePiFlow ? 'pi.flow' : 'code';
     const params = new URLSearchParams({
-      response_type: 'code',
+      response_type: responseType,
       client_id: this.config.clientId,
       redirect_uri: redirectUri || this.config.redirectUri,
       scope: this.config.scopes.join(' '),
@@ -101,6 +104,10 @@ class OAuthService {
       code_challenge_method: 'S256',
       login_hint: 'admin'
     });
+
+    if (usePiFlow) {
+      params.set('response_mode', 'pi.flow');
+    }
 
     if (nonce) {
       params.set('nonce', nonce);

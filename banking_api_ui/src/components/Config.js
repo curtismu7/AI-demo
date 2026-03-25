@@ -50,6 +50,8 @@ const EMPTY_FORM = {
   admin_client_id: '',
   admin_client_secret: '',
   admin_redirect_uri: '',
+  admin_pingone_authorize_pi_flow: 'false',
+  user_pingone_authorize_pi_flow: 'false',
   user_client_id: '',
   user_client_secret: '',
   user_redirect_uri: '',
@@ -683,6 +685,9 @@ export default function Config() {
             >
               <p className="config-page__card-subtitle" style={{ margin: 0 }}>
                 Admin and Customer apps use client credentials stored <strong>on the backend</strong>. Redirect URIs you must add in PingOne are in the <strong>"Register these redirect URIs"</strong> section above (copy/paste). You do not type client secrets on this page.
+                {' '}Optional <strong>pi.flow</strong> authorize: set deployment env <code>PINGONE_ADMIN_AUTHORIZE_PI_FLOW=true</code> or <code>PINGONE_USER_AUTHORIZE_PI_FLOW=true</code> only when your PingOne apps support it (
+                <a href="https://developer.pingidentity.com/pingone-api/auth/auth-config-options/browserless-authentication-flow-options.html" target="_blank" rel="noopener noreferrer">docs</a>
+                ).
               </p>
             </CollapsibleCard>
           ) : (
@@ -723,6 +728,23 @@ export default function Config() {
                       placeholder={`${window.location.origin}/api/auth/oauth/callback`}
                       disabled={readOnly}
                     />
+                  </div>
+                  <div className="form-group config-page__grid-span-2">
+                    <label className="form-label">PingOne authorize — pi.flow</label>
+                    <select
+                      className="form-input"
+                      value={form.admin_pingone_authorize_pi_flow}
+                      onChange={(e) => handleChange('admin_pingone_authorize_pi_flow', e.target.value)}
+                      disabled={readOnly}
+                    >
+                      <option value="false">Standard (response_type=code, redirect with ?code=)</option>
+                      <option value="true">pi.flow — response_type=pi.flow + response_mode=pi.flow</option>
+                    </select>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      Enable only when this PingOne app supports non-redirect / DaVinci flow authorize (see{' '}
+                      <a href="https://developer.pingidentity.com/pingone-api/auth/auth-config-options/browserless-authentication-flow-options.html" target="_blank" rel="noopener noreferrer">PingOne: redirect and non-redirect flows</a>
+                      ). Default stays authorization code + PKCE.
+                    </p>
                   </div>
                 </div>
               </CollapsibleCard>
