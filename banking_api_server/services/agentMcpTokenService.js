@@ -155,6 +155,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ── Event 1: User token (T1) ────────────────────────────────────────────────
   const t1Decoded = decodeJwtClaims(userToken);
   const t1Claims = t1Decoded?.claims;
+  const userSub = t1Claims?.sub || null;
   const bffClientId = oauthService.config?.clientId || process.env.PINGONE_CLIENT_ID || null;
   const mayActInfo = describeMayAct(t1Claims, bffClientId);
 
@@ -191,22 +192,60 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       'REQUIRE_MAY_ACT=true but the user token has no may_act claim. Add may_act via PingOne token policy, or set REQUIRE_MAY_ACT=false for local testing.',
       { rfc: 'RFC 8693 §4.2' }
     ));
-    return { token: null, tokenEvents };
+    return { token: null, tokenEvents, userSub };
   }
 
   // ── No exchange configured ──────────────────────────────────────────────────
   if (!mcpResourceUri) {
+    const agentClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+    if (agentClientId) {
+      // M2M path: use agent client_credentials as the transport token so the
+      // user's own access token (T1) never crosses the BFF→MCP boundary.
+      // The user's identity is communicated separately as userSub metadata in
+      // the MCP initialize handshake (see mcpWebSocketClient.js).
+      try {
+        const m2mToken = await oauthService.getAgentClientCredentialsToken();
+        const m2mDecoded = decodeJwtClaims(m2mToken);
+        tokenEvents.push(buildTokenEvent(
+          'agent-m2m-token',
+          'Agent M2M Token (client_credentials) → MCP Server',
+          'active',
+          m2mDecoded,
+          `MCP_RESOURCE_URI not configured — using BFF agent client_credentials token (${agentClientId}) ` +
+          'to authenticate the BFF to the MCP server. The user\'s identity (sub) is passed as ' +
+          'trusted metadata in the MCP initialize handshake, NOT as the auth credential. ' +
+          'This keeps T1 (the user\'s own PingOne token) inside the BFF session only.',
+          {
+            rfc: 'RFC 6749 §4.4 (Client Credentials)',
+            userSub,
+            note: 'Set MCP_RESOURCE_URI to enable RFC 8693 token exchange with full delegation chain.',
+          }
+        ));
+        return { token: m2mToken, tokenEvents, userSub };
+      } catch (err) {
+        tokenEvents.push(buildTokenEvent(
+          'agent-m2m-token',
+          'Agent M2M Token — failed',
+          'failed',
+          null,
+          `Agent client_credentials failed: ${err.message}. Falling back to T1 passthrough (insecure — fix AGENT_OAUTH_CLIENT_SECRET).`,
+          { error: err.message }
+        ));
+        // Fall through to T1 passthrough below so the demo keeps working
+      }
+    }
+    // T1 passthrough — only reached when AGENT_OAUTH_CLIENT_ID is not set
     tokenEvents.push(buildTokenEvent(
       'exchange-skipped',
       'Token Exchange (RFC 8693)',
       'skipped',
       null,
-      'MCP_RESOURCE_URI is not configured — T1 is forwarded directly to the MCP server. ' +
-      'To enable delegation: set MCP_RESOURCE_URI to the MCP server\'s audience URI and configure ' +
-      'the token-exchange grant + may_act policy in PingOne.',
-      { rfc: 'RFC 8693 (Token Exchange)' }
+      'MCP_RESOURCE_URI is not configured and AGENT_OAUTH_CLIENT_ID is not set — T1 is forwarded ' +
+      'directly to the MCP server. Set AGENT_OAUTH_CLIENT_ID/SECRET to use a machine-to-machine ' +
+      'credential instead, or set MCP_RESOURCE_URI to enable RFC 8693 token exchange.',
+      { rfc: 'RFC 8693 (Token Exchange)', warning: 'T1_PASSTHROUGH' }
     ));
-    return { token: userToken, tokenEvents };
+    return { token: userToken, tokenEvents, userSub };
   }
 
   // ── Event 2a (optional): Agent actor client-credentials token ───────────────
@@ -307,7 +346,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       }
     ));
 
-    return { token: exchangedToken, tokenEvents };
+    return { token: exchangedToken, tokenEvents, userSub };
 
   } catch (err) {
     // Replace in-progress with failure
@@ -321,29 +360,25 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       null,
       `Exchange failed: ${err.message}. ` +
       (t1Claims?.may_act
-        ? 'may_act was present — check that PingOne has the token-exchange grant enabled on this client and the audience policy allows ' + mcpResourceUri + '.'
+        ? `may_act was present — check that PingOne has the token-exchange grant enabled on this client and the audience policy allows ${mcpResourceUri}.`
         : 'may_act was absent — add the may_act claim to the user token via PingOne token policy, then retry.'),
       { error: err.message, rfc: 'RFC 8693' }
     ));
 
     // Fallback: try subject-only if actor exchange failed
     if (actorToken) {
-      try {
-        exchangedToken = await oauthService.performTokenExchange(userToken, mcpResourceUri, toolScopes);
-        const t2Decoded = decodeJwtClaims(exchangedToken);
-        tokenEvents.push(buildTokenEvent(
-          'exchanged-token',
-          'Exchanged Token (T2) — fallback subject-only',
-          'exchanged',
-          t2Decoded,
-          'Actor exchange failed; fell back to subject-only RFC 8693 exchange (no act claim from actor token). ' +
-          'T2 is still scoped to the MCP audience.',
-          { rfc: 'RFC 8693', exchangeMethod: 'fallback-subject-only' }
-        ));
-        return { token: exchangedToken, tokenEvents };
-      } catch (err2) {
-        throw err2;
-      }
+      exchangedToken = await oauthService.performTokenExchange(userToken, mcpResourceUri, toolScopes);
+      const t2Decoded = decodeJwtClaims(exchangedToken);
+      tokenEvents.push(buildTokenEvent(
+        'exchanged-token',
+        'Exchanged Token (T2) — fallback subject-only',
+        'exchanged',
+        t2Decoded,
+        'Actor exchange failed; fell back to subject-only RFC 8693 exchange (no act claim from actor token). ' +
+        'T2 is still scoped to the MCP audience.',
+        { rfc: 'RFC 8693', exchangeMethod: 'fallback-subject-only' }
+      ));
+      return { token: exchangedToken, tokenEvents, userSub };
     }
     throw err;
   }

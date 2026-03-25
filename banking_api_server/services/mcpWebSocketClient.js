@@ -69,9 +69,10 @@ function releaseMcpWsSlot() {
  * After initialize, run one follow-up JSON-RPC method and return the result body.
  * @param {'tools/list'|'tools/call'} followMethod
  * @param {object} followParams
+ * @param {string|null} [userSub] - User subject identifier passed as trusted metadata (not auth credential)
  * @param {string} [correlationId] - Optional correlation ID for distributed tracing
  */
-function mcpRpc(agentToken, followMethod, followParams, correlationId) {
+function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) {
   return new Promise((resolve, reject) => {
     let released = false;
     const safeRelease = () => {
@@ -105,6 +106,9 @@ function mcpRpc(agentToken, followMethod, followParams, correlationId) {
             clientInfo: { name: 'banking-api-server' },
           };
           if (agentToken) initParams.agentToken = agentToken;
+          // userSub is the user's PingOne sub — passed as trusted metadata so the
+          // MCP server knows whose data to operate on without receiving T1 directly.
+          if (userSub) initParams.userSub = userSub;
           if (correlationId) initParams.correlationId = correlationId;
           ws.send(
             JSON.stringify({
@@ -159,15 +163,15 @@ function mcpRpc(agentToken, followMethod, followParams, correlationId) {
   });
 }
 
-function mcpListTools(agentToken, correlationId) {
-  return mcpRpc(agentToken, 'tools/list', {}, correlationId);
+function mcpListTools(agentToken, userSub, correlationId) {
+  return mcpRpc(agentToken, 'tools/list', {}, userSub, correlationId);
 }
 
-function mcpCallTool(toolName, toolParams, agentToken, correlationId) {
+function mcpCallTool(toolName, toolParams, agentToken, userSub, correlationId) {
   return mcpRpc(agentToken, 'tools/call', {
     name: toolName,
     arguments: toolParams || {},
-  }, correlationId);
+  }, userSub, correlationId);
 }
 
 module.exports = {

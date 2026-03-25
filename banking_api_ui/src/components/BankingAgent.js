@@ -356,7 +356,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   //  and again if the user changes while the component is mounted)
   useEffect(() => {
     if (user) {
-      setIsOpen(true);
+      // Respect explicit user preference — only auto-open if user hasn't collapsed it
+      if (localStorage.getItem('bankingAgentOpen') !== 'false') {
+        setIsOpen(true);
+      }
       setMessages(prev =>
         prev.length === 0
           ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user) }]
@@ -413,7 +416,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
             : null;
       if (found) {
         setSessionUser(found);
-        setIsOpen(true);
+        // Respect explicit user preference — only auto-open if user hasn't collapsed it
+        if (localStorage.getItem('bankingAgentOpen') !== 'false') {
+          setIsOpen(true);
+        }
         setMessages([{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(found) }]);
         window.dispatchEvent(new CustomEvent('userAuthenticated'));
       }
@@ -425,7 +431,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   useEffect(() => {
     const onAuth = () => {
       checkSelfAuth();
-      setIsOpen(true);
+      // Respect explicit user preference — only auto-open if user hasn't collapsed it
+      if (localStorage.getItem('bankingAgentOpen') !== 'false') {
+        setIsOpen(true);
+      }
       setMessages(prev =>
         prev.length === 0
           ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUser) }]

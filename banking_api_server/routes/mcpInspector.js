@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const configStore = require('../services/configStore');
-const { resolveMcpAccessToken } = require('../services/agentMcpTokenService');
+const { resolveMcpAccessTokenWithEvents } = require('../services/agentMcpTokenService');
 const {
   MCP_TOOL_SCOPES,
   getMcpServerUrl,
@@ -17,7 +17,8 @@ const {
 
 /** Discovery uses same token resolution as tools/call (scope from a representative tool). */
 async function sessionTokenForDiscovery(req) {
-  return resolveMcpAccessToken(req, 'get_my_accounts');
+  const { token, userSub } = await resolveMcpAccessTokenWithEvents(req, 'get_my_accounts');
+  return { token, userSub };
 }
 
 // GET /api/mcp/inspector/context — architecture + config hints for the demo UI
@@ -93,9 +94,9 @@ router.get('/context', async (req, res) => {
 router.get('/tools', async (req, res) => {
   try {
     await configStore.ensureInitialized();
-    let agentToken;
+    let agentToken, userSub;
     try {
-      agentToken = await sessionTokenForDiscovery(req);
+      ({ token: agentToken, userSub } = await sessionTokenForDiscovery(req));
     } catch (err) {
       return res.status(502).json({ error: 'token_resolution_failed', message: err.message });
     }
@@ -103,7 +104,7 @@ router.get('/tools', async (req, res) => {
       return res.status(401).json({ error: 'authentication_required', message: 'Sign in to run MCP discovery.' });
     }
     const started = Date.now();
-    const result = await mcpListTools(agentToken);
+    const result = await mcpListTools(agentToken, userSub);
     const durationMs = Date.now() - started;
     res.json({
       timingsMs: { roundTrip: durationMs },
@@ -128,10 +129,10 @@ router.post('/invoke', express.json(), async (req, res) => {
     if (!getSessionAccessToken(req)) {
       return res.status(401).json({ error: 'authentication_required', message: 'Sign in to invoke tools.' });
     }
-    const agentToken = await resolveMcpAccessToken(req, tool);
+    const { token: agentToken, userSub } = await resolveMcpAccessTokenWithEvents(req, tool);
 
     const started = Date.now();
-    const result = await mcpCallTool(tool, params || {}, agentToken);
+    const result = await mcpCallTool(tool, params || {}, agentToken, userSub);
     const durationMs = Date.now() - started;
 
     res.json({

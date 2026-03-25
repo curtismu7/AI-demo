@@ -529,11 +529,13 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   }
 
   let agentToken;
+  let userSub = null;
   let tokenEvents = [];
   try {
     const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
     agentToken = resolved.token;
     tokenEvents = resolved.tokenEvents;
+    userSub = resolved.userSub || null;
   } catch (err) {
     console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
     return res.status(502).json({ error: 'token_exchange_failed', message: err.message, tokenEvents });
@@ -580,7 +582,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     if (isLocalDefault && process.env.VERCEL) {
       throw Object.assign(new Error('MCP_SERVER_URL not configured; using local tool handler'), { useLocal: true });
     }
-    const result = await mcpCallTool(tool, params || {}, agentToken, req.correlationId);
+    const result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
     return res.json({ result, tokenEvents });
   } catch (err) {
     const isConnErr =

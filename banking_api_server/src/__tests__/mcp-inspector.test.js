@@ -28,17 +28,13 @@ jest.mock('../../services/mcpWebSocketClient', () => {
 
 const mockPerformTokenExchange = jest.fn();
 
-// Configurable mock for resolveMcpAccessToken — set implementation per-test in beforeEach.
-// Default: return the bearer token directly (no exchange).
-// Exchange test: call mockPerformTokenExchange so expectations can be verified.
+// Configurable mocks for token resolution — set implementation per-test in beforeEach.
+// Default: return the bearer token directly (no exchange), userSub from token sub claim.
 const mockResolveMcpAccessToken = jest.fn();
+const mockResolveMcpAccessTokenWithEvents = jest.fn();
 jest.mock('../../services/agentMcpTokenService', () => ({
   resolveMcpAccessToken: (...args) => mockResolveMcpAccessToken(...args),
-  resolveMcpAccessTokenWithEvents: jest.fn(async (req) => {
-    const auth = req.headers?.authorization;
-    const token = auth && auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
-    return { token };
-  }),
+  resolveMcpAccessTokenWithEvents: (...args) => mockResolveMcpAccessTokenWithEvents(...args),
 }));
 
 jest.mock('../../services/oauthService', () => {
@@ -82,8 +78,14 @@ describe('MCP Inspector routes', () => {
     mockPerformTokenExchange.mockImplementation((token) => Promise.resolve(`exchanged:${token}`));
     // Default: return the bearer token directly (no RFC 8693 exchange).
     mockResolveMcpAccessToken.mockImplementation(async (req) => {
-      const auth = req.headers?.authorization;
+      const auth = req.headers && req.headers.authorization;
       return auth && auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+    });
+    // Default resolveMcpAccessTokenWithEvents: return bearer token + null userSub.
+    mockResolveMcpAccessTokenWithEvents.mockImplementation(async (req) => {
+      const auth = req.headers && req.headers.authorization;
+      const token = auth && auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+      return { token, userSub: null };
     });
     origGetEffective = configStore.getEffective.bind(configStore);
     getEffectiveSpy = jest.spyOn(configStore, 'getEffective').mockImplementation((key) => {
@@ -125,7 +127,7 @@ describe('MCP Inspector routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.tools).toHaveLength(1);
     expect(res.body.tools[0].name).toBe('get_my_accounts');
-    expect(mockList).toHaveBeenCalledWith(token);
+    expect(mockList).toHaveBeenCalledWith(token, null);
     expect(res.body.timingsMs).toHaveProperty('roundTrip');
   });
 
@@ -150,7 +152,7 @@ describe('MCP Inspector routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.result).toEqual({ content: [{ type: 'text', text: '{"ok":true}' }] });
     expect(res.body.inspector.tool).toBe('get_my_accounts');
-    expect(mockCall).toHaveBeenCalledWith('get_my_accounts', {}, token);
+    expect(mockCall).toHaveBeenCalledWith('get_my_accounts', {}, token, null);
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
@@ -161,10 +163,11 @@ describe('MCP Inspector routes', () => {
     });
 
     const token = bearerToken();
-    // Configure resolveMcpAccessToken to call the exchange mock so the test can
-    // verify the RFC 8693 exchange path without needing to execute the real service.
-    mockResolveMcpAccessToken.mockImplementation(async (_req, _tool) => {
-      return mockPerformTokenExchange(token, 'https://mcp-resource.example/aud', ['banking:accounts:read']);
+    // Configure resolveMcpAccessTokenWithEvents to call the exchange mock so the test
+    // can verify the RFC 8693 exchange path without executing the real service.
+    mockResolveMcpAccessTokenWithEvents.mockImplementation(async (_req, _tool) => {
+      const exchanged = await mockPerformTokenExchange(token, 'https://mcp-resource.example/aud', ['banking:accounts:read']);
+      return { token: exchanged, userSub: 'inspector-test-user' };
     });
 
     const res = await request(app)
@@ -178,6 +181,6 @@ describe('MCP Inspector routes', () => {
       'https://mcp-resource.example/aud',
       ['banking:accounts:read']
     );
-    expect(mockCall).toHaveBeenCalledWith('get_my_accounts', {}, `exchanged:${token}`);
+    expect(mockCall).toHaveBeenCalledWith('get_my_accounts', {}, `exchanged:${token}`, 'inspector-test-user');
   });
 });

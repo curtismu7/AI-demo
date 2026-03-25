@@ -237,6 +237,74 @@ describe('nlIntentParser — PingOne Authorize education', () => {
   });
 });
 
+// ── Agent chip commands — all ACTIONS from BankingAgent.js ───────────────────
+// These cover every chip/button in the left-column action list and the
+// suggested prompts shown to customers and admins. If a chip label stops
+// routing to the expected MCP action this suite will catch it first.
+
+describe('nlIntentParser — agent chip / suggestion commands', () => {
+  // Direct action chips
+  it('"my accounts" chip → accounts', () => {
+    expect(bank('My Accounts').banking.action).toBe('accounts');
+  });
+
+  it('"recent transactions" chip → transactions', () => {
+    expect(bank('Recent Transactions').banking.action).toBe('transactions');
+  });
+
+  it('"check balance" chip → balance', () => {
+    expect(bank('Check my account balance').banking.action).toBe('balance');
+  });
+
+  it('"deposit" chip → deposit', () => {
+    expect(bank('Deposit').banking.action).toBe('deposit');
+  });
+
+  it('"withdraw" chip → withdraw', () => {
+    expect(bank('Withdraw').banking.action).toBe('withdraw');
+  });
+
+  it('"transfer" chip → transfer', () => {
+    expect(bank('Transfer').banking.action).toBe('transfer');
+  });
+
+  it('"list mcp tools" chip → mcp_tools', () => {
+    expect(bank('List MCP tools').banking.action).toBe('mcp_tools');
+  });
+
+  it('"show available tools" → mcp_tools', () => {
+    expect(bank('show available tools').banking.action).toBe('mcp_tools');
+  });
+
+  // Suggested prompt chips — customer
+  it('suggestion "Transfer $100 to savings" → transfer', () => {
+    expect(bank('Transfer $100 to savings').banking.action).toBe('transfer');
+  });
+
+  it('suggestion "What are my recent transactions?" → transactions', () => {
+    expect(bank('What are my recent transactions?').banking.action).toBe('transactions');
+  });
+
+  // Education chips triggered from suggestions
+  it('suggestion "What is CIBA?" → ciba education', () => {
+    const r = parseHeuristic('What is CIBA?');
+    expect(r.kind).toBe('education');
+    expect(r.ciba).toBe(true);
+  });
+
+  it('suggestion "How does token exchange work?" → token-exchange education', () => {
+    const r = parseHeuristic('How does token exchange work?');
+    expect(r.kind).toBe('education');
+    expect(r.education && r.education.panel).toBe('token-exchange');
+  });
+
+  it('suggestion "What is MCP?" → mcp-protocol education', () => {
+    const r = parseHeuristic('What is MCP?');
+    expect(r.kind).toBe('education');
+    expect(r.education && r.education.panel).toBe('mcp-protocol');
+  });
+});
+
 // ── Fallback / no match ───────────────────────────────────────────────────────
 
 describe('nlIntentParser — fallback', () => {
