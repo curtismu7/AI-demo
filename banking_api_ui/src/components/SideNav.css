@@ -1,13 +1,13 @@
 /* ─── Side Navigation ─────────────────────────────────────────────────────── */
 
 .sidenav {
-  --sn-bg:          #1a1d27;
-  --sn-bg-hover:    #252836;
-  --sn-bg-active:   #2e3349;
+  --sn-bg:          #252b3b;
+  --sn-bg-hover:    #2e3450;
+  --sn-bg-active:   #363d5f;
   --sn-accent:      #6366f1;
   --sn-text:        #e2e8f0;
-  --sn-muted:       #64748b;
-  --sn-border:      rgba(255,255,255,0.06);
+  --sn-muted:       #8896b3;
+  --sn-border:      rgba(255,255,255,0.10);
   --sn-width:       220px;
   --sn-width-col:   60px;
 
@@ -226,6 +226,7 @@
   cursor: pointer;
   font-family: inherit;
   font-size: inherit;
+  color: #cbd5e1;
   text-align: left;
   width: 100%;
 }
