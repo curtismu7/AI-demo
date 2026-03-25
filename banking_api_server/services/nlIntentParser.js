@@ -33,7 +33,7 @@ function parseEducation(t) {
   if (/\b(ciba|backchannel|push auth|out of band|oob)\b/.test(t)) {
     return { kind: 'education', ciba: true, tab: 'what' };
   }
-  if (/\b(token exchange|rfc\s*8693|8693|delegate.*token|t1.*t2)\b/.test(t)) {
+  if (/\b(token exchange|rfc\s*8693|8693|delegate.*token|user token.*mcp token|transaction token)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.TOKEN_EXCHANGE, tab: 'why' } };
   }
   if (/\b(may_act|may act|act claim|delegation claim)\b/.test(t)) {

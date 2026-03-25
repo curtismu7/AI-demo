@@ -224,7 +224,7 @@
   text-align: center;
 }
 .ba-left-config-btn:hover { background: var(--ba-accent-h); color: #fff; }
-.ba-left-config-btn.configured { border-color: #10b981; color: #10b981; background: rgba(16,185,129,0.08); }
+.ba-left-config-btn.configured { border-color: var(--ba-accent); color: #fff; background: var(--ba-accent); }
 
 /* ─── Right column ────────────────────────────────────────────────────── */
 .ba-right-col {
@@ -848,12 +848,12 @@
   border-radius: 8px; font-size: 12px; font-weight: 600;
   cursor: pointer; text-align: center;
   border: 1px solid var(--ba-border);
-  background: var(--ba-chip-bg); color: var(--ba-text);
+  background: var(--ba-accent); color: #fff;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .ba-auth-btn:hover:not(:disabled) { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
 .ba-auth-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.ba-auth-btn.done { background: rgba(16,185,129,0.12); border-color: #10b981; color: #10b981; }
+.ba-auth-btn.done { background: var(--ba-accent); border-color: var(--ba-accent); color: #fff; }
 
 /* ─── ActionForm ────────────────────────────────────────────────────────── */
 .banking-agent-form {

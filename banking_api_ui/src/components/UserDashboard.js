@@ -8,6 +8,7 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import BankingAgent from './BankingAgent';
 import {
   errorMessageSuggestsLogin,
   navigateToCustomerOAuthLogin,
@@ -332,7 +333,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         setError('You do not have permission to perform transfers. Please contact your administrator.');
       } else {
-        setError(error.response?.data?.error || 'Transfer failed');
+        const d = error.response?.data;
+        setError(d?.message || d?.error || 'Transfer failed');
       }
     }
   };
@@ -370,7 +372,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         setError('You do not have permission to make deposits. Please contact your administrator.');
       } else {
-        setError(error.response?.data?.error || 'Deposit failed');
+        const d = error.response?.data;
+        setError(d?.message || d?.error || 'Deposit failed');
       }
     }
   };
@@ -408,7 +411,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         setError('You do not have permission to make withdrawals. Please contact your administrator.');
       } else {
-        setError(error.response?.data?.error || 'Withdrawal failed');
+        const d = error.response?.data;
+        setError(d?.message || d?.error || 'Withdrawal failed');
       }
     }
   };
@@ -480,7 +484,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const showReauthCta = errorMessageSuggestsLogin(error);
 
   return (
-    <div className="user-dashboard" style={dashboardStyle}>
+    <div
+      className={`user-dashboard${agentUiMode === 'embedded' ? ' user-dashboard--embed-agent' : ''}`}
+      style={dashboardStyle}
+    >
       {error && (
         <div
           className="inline-message inline-message--error"
@@ -642,8 +649,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
       </div>
 
-      <div className="ud-shell ud-shell--floating-only">
-      <div className="dashboard-content ud-body ud-body--floating">
+      <div className={`ud-shell ${agentUiMode === 'embedded' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}>
+      <div className={`dashboard-content ud-body ${agentUiMode === 'floating' ? 'ud-body--floating' : ''}`}>
         <aside className="ud-left">
           <div className="section">
             <TokenChainDisplay />
@@ -944,6 +951,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           </div>
         </main>
       </div>
+
+      {agentUiMode === 'embedded' && (
+        <div className="embedded-agent-dock" role="region" aria-label="AI banking assistant">
+          <div className="embedded-agent-dock__head">
+            <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
+            <p className="embedded-agent-dock__lead">
+              Natural language and MCP tools along the bottom — step chips show what ran.
+            </p>
+          </div>
+          <div className="embedded-banking-agent embedded-banking-agent--bottom">
+            <BankingAgent user={user} onLogout={onLogout} mode="inline" embeddedDockBottom />
+          </div>
+        </div>
+      )}
       </div>
 
       {/* OAuth Token Info Modal */}

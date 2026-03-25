@@ -27,15 +27,20 @@ const { getOAuthRedirectDebugInfo } = require('../services/oauthRedirectUris');
 const { blockInDemoMode } = require('../middleware/demoMode');
 const hosting = require('../config/hosting');
 
+const rateLimitDisabled = ['1', 'true', 'yes'].includes(
+  String(process.env.DISABLE_RATE_LIMIT || '').toLowerCase()
+);
+
 // Rate limit for unauthenticated config reads (GET returns masked data only).
 // Admins must match session shape used elsewhere (session.user.role / oauthType) — oauthUser.role was wrong and forced admins into the same cap as anonymous users behind NAT.
 const configReadLimiter = rateLimit({
   windowMs: 60 * 1000,   // 1 minute window
-  max: 120,               // headroom for SPA + Config page + shared office IPs (masked GET only)
+  max: 400,               // SPA + Config + hot reload; masked GET only
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'too_many_requests', message: 'Too many config requests. Please wait a minute.' },
   skip: (req) =>
+    rateLimitDisabled ||
     isAdminSession(req) ||
     req.session?.oauthType === 'admin',
 });

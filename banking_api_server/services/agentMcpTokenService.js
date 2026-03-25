@@ -145,7 +145,7 @@ function describeMayAct(claims, bffClientId) {
  * Returns { token, tokenEvents, userSub } where:
  *   token       — the JWT to pass to the MCP server (may be exchanged)
  *   tokenEvents — array of TokenEvent objects for the frontend
- *   userSub     — PingOne subject from the user token (T1), for MCP metadata
+ *   userSub     — PingOne subject from the User token, for MCP metadata
  *
  * @param {import('express').Request} req
  * @param {string} tool
@@ -158,7 +158,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     return { token: null, tokenEvents, userSub: null };
   }
 
-  // ── Event 1: User token (T1) ────────────────────────────────────────────────
+  // ── Event 1: User token ──────────────────────────────────────────────────────
   const t1Decoded = decodeJwtClaims(userToken);
   const t1Claims = t1Decoded?.claims;
   const userSub = t1Claims?.sub != null ? String(t1Claims.sub) : null;
@@ -241,7 +241,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     `scope="${toolScopes.join(' ')}". ` +
     (t1Claims?.may_act
       ? `PingOne will validate may_act.client_id="${t1Claims.may_act.client_id}" against the authenticated Backend For Frontend (BFF) client.`
-      : 'PingOne will check exchange policy (may_act not present in T1 — exchange may be rejected).'),
+      : 'PingOne will check exchange policy (may_act not present on User token — exchange may be rejected).'),
     {
       rfc: 'RFC 8693 · RFC 8707 (resource indicator)',
       exchangeRequest: {
@@ -270,7 +270,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       );
     }
 
-    // Decode T2 to show act claim in the UI
+    // Decode MCP token to show act claim in the UI
     const t2Decoded = decodeJwtClaims(exchangedToken);
     const t2Claims = t2Decoded?.claims;
 

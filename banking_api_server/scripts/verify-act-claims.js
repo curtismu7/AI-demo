@@ -82,7 +82,7 @@ async function verifyActClaims() {
     process.exit(1);
   }
 
-  console.log('User Token (T1):');
+  console.log('User token:');
   const t1Decoded = decodeJwt(userToken);
   if (!t1Decoded) {
     console.log('❌ Failed to decode user token. Invalid JWT format.\n');
@@ -150,7 +150,7 @@ async function verifyActClaims() {
         }
 
         if (t2Decoded.claims.may_act) {
-          console.log(`  may_act: ${JSON.stringify(t2Decoded.claims.may_act)} (should not be in T2)`);
+          console.log(`  may_act: ${JSON.stringify(t2Decoded.claims.may_act)} (should not be on MCP token)`);
         }
       }
     } else {

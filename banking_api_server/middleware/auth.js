@@ -45,6 +45,18 @@ function normalizeRouteKey(routeKey) {
   return `${method} ${cleanPath}`;
 }
 
+/**
+ * Banking data (accounts, transactions) is keyed by datastore user id (session.user.id).
+ * PingOne access tokens carry subject = decoded.sub, which usually equals session.user.oauthId
+ * but not session.user.id. Use the datastore id whenever the session matches the token.
+ */
+function canonicalBankingUserId(decodedSub, sessionUser, sessionMatchesSub) {
+  if (sessionMatchesSub && sessionUser && sessionUser.id) {
+    return sessionUser.id;
+  }
+  return decodedSub;
+}
+
 // Get current environment configuration
 const envConfig = getCurrentEnvironmentConfig();
 
@@ -638,8 +650,9 @@ const authenticateToken = async (req, res, next) => {
           );
           const sessionRole = sessionMatchesSub ? su.role : null;
           const derivedRole = (isAdminClient || sessionRole === 'admin') ? 'admin' : 'user';
+          const bankingId = canonicalBankingUserId(decoded.sub, su, sessionMatchesSub);
           req.user = {
-            id: decoded.sub,
+            id: bankingId,
             username: decoded.preferred_username || decoded.sub,
             email: decoded.email,
             firstName: decoded.given_name || null,
@@ -650,7 +663,8 @@ const authenticateToken = async (req, res, next) => {
             tokenType: 'oauth',
             fromSession: true,  // token sourced from BFF server-side session
             acr: decoded.acr || null,
-            scopes: scopes
+            scopes: scopes,
+            oauthSub: decoded.sub,
           };
           logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Session-based token authentication successful (BFF)', {
             ...requestContext,
@@ -739,8 +753,9 @@ const authenticateToken = async (req, res, next) => {
       );
       const sessionRole = sessionMatchesSub ? su.role : null;
       const derivedRole = (isAdminClient || sessionRole === 'admin') ? 'admin' : 'user';
+      const bankingId = canonicalBankingUserId(decoded.sub, su, sessionMatchesSub);
       req.user = {
-        id: decoded.sub,
+        id: bankingId,
         username: decoded.preferred_username || decoded.sub,
         email: decoded.email,
         firstName: decoded.given_name || null,
@@ -750,7 +765,8 @@ const authenticateToken = async (req, res, next) => {
         userType: userType,
         tokenType: 'oauth',
         acr: decoded.acr || null,      // PingOne sets this when acr_values was requested
-        scopes: scopes // Add parsed scopes to user object
+        scopes: scopes, // Add parsed scopes to user object
+        oauthSub: decoded.sub,
       };
       
       return next();

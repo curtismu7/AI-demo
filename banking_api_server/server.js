@@ -204,7 +204,10 @@ if (isVercel || isReplit) {
   });
 }
 
-// Rate limiting
+// Rate limiting — set DISABLE_RATE_LIMIT=true (or 1/yes) to turn off global + auth limits while testing locally or on a preview.
+const rateLimitDisabled = ['1', 'true', 'yes'].includes(
+  String(process.env.DISABLE_RATE_LIMIT || '').toLowerCase()
+);
 const _rateLimitHandler = (req, res) => {
   // Auth routes are browser-driven redirects — send to login page with friendly error.
   // Use an absolute URL so Vercel edge / serverless does not choke on relative redirects.
@@ -218,8 +221,14 @@ const _rateLimitHandler = (req, res) => {
 };
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 1000 : 800,
+  // Generous defaults for demos/testing; override with RATE_LIMIT_MAX. Production can tighten via env.
+  max: (() => {
+    const n = parseInt(process.env.RATE_LIMIT_MAX || '', 10);
+    if (Number.isFinite(n) && n > 0) return n;
+    return process.env.NODE_ENV === 'development' ? 20000 : 8000;
+  })(),
   handler: _rateLimitHandler,
+  skip: () => rateLimitDisabled,
 });
 /**
  * Paths excluded from the global IP limiter — they have their own limits or are safe, hot paths.
@@ -243,8 +252,13 @@ app.use((req, res, next) => (shouldSkipGlobalRateLimit(req) ? next() : limiter(r
 // max=100 in production: enough headroom for demo testing while still preventing abuse.
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 200 : 100,
+  max: (() => {
+    const n = parseInt(process.env.RATE_LIMIT_AUTH_MAX || '', 10);
+    if (Number.isFinite(n) && n > 0) return n;
+    return process.env.NODE_ENV === 'development' ? 500 : 300;
+  })(),
   handler: _rateLimitHandler,
+  skip: () => rateLimitDisabled,
 });
 app.use('/api/auth/oauth/login',         authLimiter);
 app.use('/api/auth/oauth/callback',      authLimiter);
@@ -535,6 +549,38 @@ const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./servi
 const { callToolLocal } = require('./services/mcpLocalTools');
 const { introspectToken } = require('./middleware/tokenIntrospection');
 
+/** True when /status looks "signed in" but OAuth tokens are not on this instance (Vercel + no Redis). */
+function isCookieOnlyBffSession(req) {
+  return (
+    req.session?._restoredFromCookie === true ||
+    req.session?.oauthTokens?.accessToken === '_cookie_session'
+  );
+}
+
+function mcpNoBearerResponse(req, tokenEvents) {
+  if (isCookieOnlyBffSession(req)) {
+    return {
+      status: 401,
+      body: {
+        error: 'session_not_hydrated',
+        message:
+          'Signed-in state was restored from a cookie, not a full server session — the access token is not available on this instance. ' +
+          'On Vercel, set REDIS_URL or add Upstash (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN) so OAuth sessions persist, then sign out and sign in again. ' +
+          '“Refresh access token” cannot fix this until a real session with refresh_token is stored.',
+        tokenEvents,
+      },
+    };
+  }
+  return {
+    status: 401,
+    body: {
+      error: 'authentication_required',
+      message: 'Sign in to use the banking agent.',
+      tokenEvents,
+    },
+  };
+}
+
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), async (req, res) => {
   const { tool, params } = req.body || {};
@@ -557,19 +603,17 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   }
 
   if (!agentToken) {
-    return res.status(401).json({ error: 'authentication_required', message: 'Sign in to use the banking agent.', tokenEvents });
+    const r = mcpNoBearerResponse(req, tokenEvents);
+    return res.status(r.status).json(r.body);
   }
 
   // Introspect session token for zero-trust validation (RFC 7662)
   const sessionAccessToken = getSessionAccessToken(req);
   const introspectionConfigured = !!process.env.PINGONE_INTROSPECTION_ENDPOINT;
   if (introspectionConfigured) {
-    if (!sessionAccessToken) {
-      return res.status(401).json({
-        error: 'authentication_required',
-        message: 'Session access token missing; cannot validate session.',
-        tokenEvents,
-      });
+    if (!sessionAccessToken || sessionAccessToken === '_cookie_session') {
+      const r = mcpNoBearerResponse(req, tokenEvents);
+      return res.status(r.status).json(r.body);
     }
     try {
       const introspectionResult = await introspectToken(sessionAccessToken);
@@ -616,7 +660,8 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     // ── Local fallback ──────────────────────────────────────────────────────
     const sessionUser = req.session?.user;
     if (!sessionUser?.id) {
-      return res.status(401).json({ error: 'authentication_required', message: 'Sign in to use the banking agent.', tokenEvents });
+      const r = mcpNoBearerResponse(req, tokenEvents);
+      return res.status(r.status).json(r.body);
     }
 
     console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);

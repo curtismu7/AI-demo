@@ -339,8 +339,8 @@ function parseLogPrompt(text) {
 
 const TOPIC_MESSAGES = {
   'login-flow': `🔐 Authorization Code + PKCE Flow:\n\n1. App generates code_verifier (random 64 bytes) + code_challenge (SHA-256 hash)\n2. Browser redirects to PingOne /as/authorize with challenge\n3. User authenticates → PingOne redirects back with code\n4. BFF exchanges code + verifier for tokens (server-side only)\n5. Browser never sees the token — only a session cookie\n\nPKCE prevents interception: even if code is stolen, attacker can't exchange it without the verifier.`,
-  'token-exchange': `🔄 RFC 8693 Token Exchange (T1 → T2):\n\nWhy: The browser token (T1) has broad scope. The MCP server needs a narrowly-scoped token (T2) for least-privilege.\n\nHow:\n• BFF holds T1 (user's session token)\n• BFF calls PingOne /as/token with grant_type=urn:ietf:params:oauth:grant-type:token-exchange\n• T1 is subject_token; agent client credentials are actor_token\n• PingOne validates may_act claim in T1 and issues T2\n• T2 has: sub=user, act={client_id=agent}, narrow scope, MCP audience\n\nmay_act in T1 → act in T2 — proving delegation chain.`,
-  'may-act': `📋 may_act / act Claims (RFC 8693 §4.1):\n\nmay_act in T1 (user token): "this client is allowed to act on my behalf"\n  { "sub": "user-uuid", "may_act": { "client_id": "bff-admin-client" } }\n\nact in T2 (exchanged token): "this action was delegated"\n  { "sub": "user-uuid", "act": { "client_id": "bff-admin-client" } }\n\nThe MCP server validates act to confirm the BFF is the authorized actor — not just any client that got a token.`,
+  'token-exchange': `🔄 RFC 8693 Token Exchange (User token → MCP token):\n\nWhy: The user token has broad scope. The MCP server needs a narrowly-scoped MCP token for least-privilege.\n\nHow:\n• BFF holds the User token (session access token)\n• BFF calls PingOne /as/token with grant_type=urn:ietf:params:oauth:grant-type:token-exchange\n• User token is subject_token; agent client credentials are actor_token\n• PingOne validates may_act on the User token and issues an MCP token\n• MCP token has: sub=user, act={client_id=agent}, narrow scope, MCP audience\n\nmay_act on the User token → act on the MCP token — proving delegation chain.`,
+  'may-act': `📋 may_act / act Claims (RFC 8693 §4.1):\n\nmay_act on the User token: "this client is allowed to act on my behalf"\n  { "sub": "user-uuid", "may_act": { "client_id": "bff-admin-client" } }\n\nact on the MCP token (exchanged token): "this action was delegated"\n  { "sub": "user-uuid", "act": { "client_id": "bff-admin-client" } }\n\nThe MCP server validates act to confirm the BFF is the authorized actor — not just any client that got a token.`,
   'mcp-protocol': `⚙️ Model Context Protocol (MCP):\n\nMCP is a JSON-RPC 2.0 protocol over WebSocket (or stdio/SSE) for AI tools.\n\nHandshake:\n  initialize → { protocolVersion, capabilities, serverInfo }\n  → initialized (ACK)\n\nDiscovery:\n  tools/list → [{ name, description, inputSchema }]\n\nExecution:\n  tools/call { name, arguments } → { content: [{ type, text }] }\n\nIn this demo:\n  Browser → BFF (/api/mcp/tool) → MCP Server (WebSocket) → Banking API\n\nToken flow: BFF performs RFC 8693 exchange before forwarding tool calls.`,
   'introspection': `🔍 RFC 7662 Token Introspection:\n\nThe MCP server calls PingOne to validate tokens in real-time:\n  POST /as/introspect\n  { token: "...", token_type_hint: "access_token" }\n  → { active: true, sub, scope, exp, aud }\n\nWhy not just verify the JWT locally?\n• Catches revoked tokens (user logged out, compromised session)\n• Zero-trust: every tool call re-validates the token\n• Results cached 60s to avoid hammering PingOne`,
   'step-up': `⬆️ Step-Up Authentication:\n\nTriggered when a high-value action requires stronger auth:\n• Transfer ≥ $250 → require MFA\n• BFF returns HTTP 428 with WWW-Authenticate: Bearer scope="step_up"\n\nTwo methods:\n1. CIBA: PingOne pushes challenge to user's device (out-of-band)\n2. Redirect: Browser redirects to /api/auth/oauth/user/stepup?acr_values=Multi_factor\n\nAfter approval, PingOne issues new token with higher ACR — BFF stores it and retries the original transaction.`,
@@ -846,17 +846,17 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
         const exchanged = tokenEvents.find(e => e.id === 'exchanged-token');
         const skipped   = tokenEvents.find(e => e.id === 'exchange-skipped');
         const failed    = tokenEvents.find(e => e.id === 'exchange-failed');
-        const t1        = tokenEvents.find(e => e.id === 'user-token');
+        const userTokEv = tokenEvents.find(e => e.id === 'user-token');
 
         let tokenMsg = null;
         if (exchanged) {
-          const mayActStatus = t1?.mayActPresent ? '✅ may_act validated' : '⚠️ no may_act';
+          const mayActStatus = userTokEv?.mayActPresent ? '✅ may_act validated' : '⚠️ no may_act';
           const actStatus    = exchanged.actPresent ? `✅ act: ${exchanged.actDetails}` : '⚠️ no act claim';
-          tokenMsg = `🔐 RFC 8693 Token Exchange\n${mayActStatus} → T2 issued · ${actStatus}\nScope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`;
-          toast.info(`🔐 Token Exchange complete — T2 issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
+          tokenMsg = `🔐 RFC 8693 Token Exchange\n${mayActStatus} → MCP token issued · ${actStatus}\nScope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`;
+          toast.info(`🔐 Token Exchange complete — MCP token issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
         } else if (skipped) {
-          tokenMsg = '🔐 Token Exchange skipped — MCP_RESOURCE_URI not configured. T1 forwarded directly.';
-          toast.warning('⚠️ Token Exchange skipped — T1 forwarded directly', { autoClose: 4000 });
+          tokenMsg = '🔐 Token Exchange skipped — MCP_RESOURCE_URI not configured. User token forwarded directly.';
+          toast.warning('⚠️ Token Exchange skipped — User token forwarded directly', { autoClose: 4000 });
         } else if (failed) {
           tokenMsg = `🔐 Token Exchange failed: ${failed.error || 'unknown error'}`;
           toast.error(`❌ Token Exchange failed: ${failed.error || 'unknown error'}`, { autoClose: 6000 });
@@ -921,6 +921,11 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
 
       if (isConnErr) {
         toast.error('🔌 MCP server unreachable — check your server connection', { autoClose: 8000 });
+      } else if (err?.code === 'session_not_hydrated') {
+        toast.error(
+          'Hosted session has no access token (configure Redis / Upstash for Vercel, then sign in again).',
+          { autoClose: 14000 },
+        );
       } else if (
         err?.statusCode === 401 ||
         err?.code === 'authentication_required' ||
@@ -935,9 +940,11 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       }
 
       const authHint =
-        err?.statusCode === 401 || err?.code === 'authentication_required'
-          ? '\n\nTip: use **Refresh access token** (left column), then retry. Sign in again only if refresh fails.'
-          : '';
+        err?.code === 'session_not_hydrated'
+          ? '\n\n**Hosted / Vercel:** add Redis (REDIS_URL or Upstash env vars) so your OAuth tokens are stored across server instances. Then sign out and sign in again. Refresh token does not help until the BFF holds a real session.'
+          : err?.statusCode === 401 || err?.code === 'authentication_required'
+            ? '\n\nTip: use **Refresh access token** (left column), then retry. Sign in again only if refresh fails.'
+            : '';
       addMessage(
         'error',
         isConnErr
@@ -1051,6 +1058,18 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
 
   /** NL API errors: 401 is session missing on server — not a parse failure. */
   function reportNlFailure(err) {
+    if (err?.code === 'session_not_hydrated') {
+      toast.error(
+        'No access token on this server — add Redis/Upstash for Vercel, then sign in again.',
+        { autoClose: 12000 },
+      );
+      addMessage(
+        'assistant',
+        err?.message ||
+          'Your login is visible to the UI, but this API instance does not hold your OAuth tokens. Configure a persistent session store (REDIS_URL or Upstash) and sign in again.',
+      );
+      return;
+    }
     if (err?.statusCode === 401 || err?.code === 'authentication_required') {
       toast.error(
         'Sign in required — the server has no session for this request. Refresh the page and sign in again.',

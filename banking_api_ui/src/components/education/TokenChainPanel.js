@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react';
 import './TokenChainPanel.css';
 
 /**
- * Illustrative RFC 8693 token chain: T1 (banking) → agent → exchanged MCP tokens → resource.
+ * Illustrative RFC 8693 token chain: User token → agent → MCP / transaction tokens → resource.
  * Rows expand to show decoded JWT-shaped examples; copy is demo-only (no live secrets in the browser).
  */
 const TOKEN_CHAIN_STEPS = [
@@ -38,7 +38,7 @@ const TOKEN_CHAIN_STEPS = [
     id: 'exchanged-mcp',
     label: 'Exchanged Token (MCPServer)',
     status: 'acquiring',
-    summary: 'PingOne returns this after POST /as/token with grant_type=token-exchange (RFC 8693), subject_token=T1, audience=MCP resource.',
+    summary: 'PingOne returns this after POST /as/token with grant_type=token-exchange (RFC 8693), subject_token=User token, audience=MCP resource.',
     payloadPreview: '— Issued when exchange completes —',
   },
   {
@@ -105,8 +105,8 @@ export default function TokenChainPanel() {
         </button>
         {archOpen && (
           <div className="token-chain-acc-body token-chain-acc-body--muted">
-            Browser SPA → Banking BFF (session, <strong>T1</strong>) → optional agent delegation →{' '}
-            <strong>RFC 8693</strong> token exchange at PingOne → MCP-audience token (<strong>T2</strong>) →{' '}
+            Browser SPA → Banking BFF (session, <strong>User token</strong>) → optional agent delegation →{' '}
+            <strong>RFC 8693</strong> token exchange at PingOne → <strong>MCP token</strong> (delegated) →{' '}
             MCP server and Banking API as resource server. Tokens stay on the server; this chain is a
             teaching view of how they relate.
           </div>

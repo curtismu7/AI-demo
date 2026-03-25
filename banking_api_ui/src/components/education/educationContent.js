@@ -448,8 +448,8 @@ export function CibaMcpFlowContent() {
        subject_token=<CIBA access token>
        audience=<MCP resource>
        scope=banking:write
-8. BFF receives MCP-audience token (T2)
-9. BFF → MCP server tools/call create_transfer with T2 as Bearer
+8. BFF receives MCP token (MCP-audience)
+9. BFF → MCP server tools/call create_transfer with MCP token as Bearer (transaction scope → often called Transaction token for transfers)
 10. MCP server → Banking API → confirms transfer
 11. Agent receives success; chat continues uninterrupted`}</pre>
 
@@ -466,7 +466,7 @@ export function CibaMcpFlowContent() {
    │            │──poll /token─▶│              │              │
    │            │◀──200 tokens──│              │              │
    │            │──token-exch──▶│              │              │
-   │            │◀──T2 (MCP)────│              │              │
+   │            │◀──MCP token──│              │              │
    │            │──tools/call──────────────────▶│             │
    │            │                              │──GET /tx────▶│
    │            │                              │◀──200─────────│
@@ -751,7 +751,7 @@ HTTP/1.1 401 Unauthorized
 export function LoginFlowSecurityContent() {
   return (
     <>
-      <h3>Why T1 never touches the browser</h3>
+      <h3>Why the User token never touches the browser</h3>
       <p>
         Access tokens are stored in the BFF session (server memory / Redis / SQLite).
         The browser only holds an <strong>httpOnly, Secure</strong> session cookie. httpOnly
@@ -1141,10 +1141,10 @@ subject_token_type=urn:ietf:params:oauth:token-type:access_token
 audience=<target-mcp-server-url>           ← RFC 8707 resource
 scope=<scopes needed by target tool>
 
-← 200 { "access_token": "<T2 for target MCP server>", ... }
+← 200 { "access_token": "<MCP token for target MCP server>", ... }
 
 WebSocket: ws://target-mcp-server/mcp
-  Authorization: Bearer <T2>
+  Authorization: Bearer <MCP token>
   tools/call { ... }`}</pre>
 
       <h3>RFC 8707 — resource indicators</h3>

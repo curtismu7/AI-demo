@@ -116,7 +116,7 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
           };
           if (agentToken) initParams.agentToken = agentToken;
           // userSub is the user's PingOne sub — passed as trusted metadata so the
-          // MCP server knows whose data to operate on without receiving T1 directly.
+          // MCP server knows whose data to operate on without receiving the User token directly.
           if (userSub) initParams.userSub = userSub;
           if (correlationId) initParams.correlationId = correlationId;
           ws.send(

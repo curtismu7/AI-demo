@@ -270,7 +270,7 @@ export default function DemoDataPage({ onLogout }) {
         </div>
         {agentUiMode === 'embedded' && (
           <p className="demo-data-agent-note" role="status">
-            Embedded strip (if you are an admin) appears only on the admin dashboard. Other routes and the customer dashboard use the floating assistant button.
+            Embedded mode shows the assistant as a bottom strip on your home dashboard only (<strong>/</strong> or <strong>/dashboard</strong> for customers; <strong>/</strong> or <strong>/admin</strong> for admins). Other routes keep the floating assistant button.
           </p>
         )}
       </section>

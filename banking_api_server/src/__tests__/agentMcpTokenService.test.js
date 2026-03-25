@@ -3,8 +3,8 @@
  *
  * Tests for resolveMcpAccessTokenWithEvents — verifying that:
  * 1. Agent client_credentials are used only when USE_AGENT_ACTOR_FOR_MCP and MCP_RESOURCE_URI are set.
- * 2. With no MCP_RESOURCE_URI, T1 passthrough is used and an exchange-skipped event is emitted.
- * 3. userSub is extracted from T1 for MCP metadata.
+ * 2. With no MCP_RESOURCE_URI, User token passthrough is used and an exchange-skipped event is emitted.
+ * 3. userSub is extracted from the User token for MCP metadata.
  * 4. RFC 8693 exchange path works when MCP_RESOURCE_URI is set.
  */
 
@@ -19,7 +19,7 @@ function makeJwt(claims) {
 }
 
 const USER_SUB = 'user-sub-abc123';
-const T1 = makeJwt({
+const MOCK_USER_TOKEN = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
   scope: 'openid profile banking:accounts:read',
@@ -124,35 +124,35 @@ describe('resolveMcpAccessTokenWithEvents — AGENT_OAUTH_CLIENT_ID alone (no MC
     else delete process.env.USE_AGENT_ACTOR_FOR_MCP;
   });
 
-  it('forwards T1 — agent client_credentials run only with USE_AGENT_ACTOR_FOR_MCP and MCP_RESOURCE_URI', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
-    expect(token).toBe(T1);
+  it('forwards User token — agent client_credentials run only with USE_AGENT_ACTOR_FOR_MCP and MCP_RESOURCE_URI', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    expect(token).toBe(MOCK_USER_TOKEN);
   });
 
-  it('returns userSub extracted from T1', async () => {
-    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+  it('returns userSub extracted from User token', async () => {
+    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(userSub).toBe(USER_SUB);
   });
 
   it('does not call getAgentClientCredentialsToken without USE_AGENT_ACTOR_FOR_MCP', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
   });
 
   it('does NOT call performTokenExchange', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
   it('emits exchange-skipped when MCP resource URI is unset', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     const skipped = tokenEvents.find(e => e.id === 'exchange-skipped');
     expect(skipped).toBeDefined();
     expect(String(skipped.explanation)).toContain('MCP_RESOURCE_URI');
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — T1 passthrough (no AGENT_OAUTH_CLIENT_ID, no MCP_RESOURCE_URI)', () => {
+describe('resolveMcpAccessTokenWithEvents — User token passthrough (no AGENT_OAUTH_CLIENT_ID, no MCP_RESOURCE_URI)', () => {
   const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
 
   beforeEach(() => {
@@ -167,20 +167,20 @@ describe('resolveMcpAccessTokenWithEvents — T1 passthrough (no AGENT_OAUTH_CLI
     if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
   });
 
-  it('returns T1 directly', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
-    expect(token).toBe(T1);
+  it('returns User token directly', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    expect(token).toBe(MOCK_USER_TOKEN);
   });
 
-  it('emits an exchange-skipped event documenting direct T1 passthrough', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+  it('emits an exchange-skipped event documenting direct User token passthrough', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     const skipped = tokenEvents.find(e => e.id === 'exchange-skipped');
     expect(skipped).toBeDefined();
     expect(JSON.stringify(skipped)).toContain('MCP_RESOURCE_URI');
   });
 
-  it('still returns userSub from T1', async () => {
-    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+  it('still returns userSub from User token', async () => {
+    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(userSub).toBe(USER_SUB);
   });
 });
@@ -208,40 +208,40 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange (MCP_RESOURCE_UR
     delete process.env.USE_AGENT_ACTOR_FOR_MCP;
   });
 
-  it('returns the exchanged token, not T1', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+  it('returns the exchanged MCP token, not the User token', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(token).toBe(EXCHANGED_TOKEN);
-    expect(token).not.toBe(T1);
+    expect(token).not.toBe(MOCK_USER_TOKEN);
   });
 
-  it('calls performTokenExchange with T1 and the resource URI', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+  it('calls performTokenExchange with User token and the resource URI', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(mockPerformTokenExchange).toHaveBeenCalledWith(
-      T1,
+      MOCK_USER_TOKEN,
       'https://mcp.example.com/api',
       expect.arrayContaining(['banking:accounts:read'])
     );
   });
 
-  it('returns userSub from T1', async () => {
-    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+  it('returns userSub from User token', async () => {
+    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(userSub).toBe(USER_SUB);
   });
 
   it('emits a user-token event and an exchange event', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(tokenEvents.find(e => e.id === 'user-token')).toBeDefined();
     expect(tokenEvents.find(e => e.id === 'exchanged-token')).toBeDefined();
   });
 
   it('includes jwtFullDecode (header + full claims) on user-token and exchanged-token', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     const userEv = tokenEvents.find(e => e.id === 'user-token');
-    const t2Ev = tokenEvents.find(e => e.id === 'exchanged-token');
+    const mcpTokEv = tokenEvents.find(e => e.id === 'exchanged-token');
     expect(userEv.jwtFullDecode.header.alg).toBe('RS256');
     expect(userEv.jwtFullDecode.claims.sub).toBe(USER_SUB);
-    expect(t2Ev.jwtFullDecode.claims.sub).toBe(USER_SUB);
-    expect(t2Ev.jwtFullDecode.claims.aud).toBe('mcp-resource-uri');
-    expect(t2Ev.jwtFullDecode.claims.act).toEqual({ client_id: 'bff-client-id' });
+    expect(mcpTokEv.jwtFullDecode.claims.sub).toBe(USER_SUB);
+    expect(mcpTokEv.jwtFullDecode.claims.aud).toBe('mcp-resource-uri');
+    expect(mcpTokEv.jwtFullDecode.claims.act).toEqual({ client_id: 'bff-client-id' });
   });
 });

@@ -8,12 +8,31 @@ build/
 **/dist/
 **/build/
 
-# Environment files — never commit secrets
+# Environment files — never commit secrets (templates named *.example are tracked)
 .env
 .env.local
 .env.*.local
 **/.env
 **/.env.local
+**/.env.production
+**/.env.development
+**/.env.staging
+.env.vercel
+.env.replit
+.envrc
+**/.env.*
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
+
+# Key material & credential dumps
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials.json
+*-credentials.json
 
 # Logs
 logs/

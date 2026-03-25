@@ -6,9 +6,9 @@
  *
  * Returns { result, tokenEvents } so callers can push events to TokenChainContext.
  * tokenEvents is an array of token lifecycle objects from the BFF:
- *   - User Token (T1) decoded claims + may_act status (+ jwtFullDecode JSON)
+ *   - User Token decoded claims + may_act status (+ jwtFullDecode JSON)
  *   - Token Exchange (RFC 8693) request + result
- *   - Exchanged Token (T2) decoded claims + act status (+ jwtFullDecode JSON)
+ *   - MCP Token (delegated) decoded claims + act status (+ jwtFullDecode JSON)
  */
 
 // ─── Session refresh (RFC 6749 §6) — same endpoints as BFF auto-refresh ───────
