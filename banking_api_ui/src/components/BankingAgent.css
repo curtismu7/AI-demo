@@ -83,7 +83,7 @@
 
   position: fixed;
   bottom: var(--agent-panel-bottom, 24px);
-  right: var(--float-edge, 24px);
+  right: 192px; /* sits to the left of the FAB pill (~148px wide + 16px gap + 28px edge) */
   z-index: 10059;
   width: 820px;
   height: 560px;
