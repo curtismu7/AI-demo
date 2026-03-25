@@ -24,6 +24,11 @@ const ENDUSER_AUDIENCE = process.env.ENDUSER_AUDIENCE || 'banking_jk_enduser';
 const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || 'banking_mcp_01_JK';
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
 const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
+const COOKIE_SESSION_ALLOWED_ROUTES = new Set([
+  'GET /api/accounts/my',
+  'GET /api/transactions/my',
+  'POST /api/accounts/reset-demo'
+]);
 
 // Get current environment configuration
 const envConfig = getCurrentEnvironmentConfig();
@@ -541,6 +546,9 @@ const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
+    const sessionToken = req.session?.oauthTokens?.accessToken;
+    const sessionUser = req.session?.user;
+    const routeKey = `${req.method} ${req.originalUrl?.split('?')[0] || req.path || req.url}`;
 
     logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Starting token authentication', {
       ...requestContext,
@@ -548,11 +556,34 @@ const authenticateToken = async (req, res, next) => {
       has_token: !!token
     });
 
+    // Cookie-restored session fallback: allow low-risk self-service dashboard routes
+    // when we only have the synthetic "_cookie_session" marker token.
+    if (!token && sessionToken === '_cookie_session' && sessionUser && COOKIE_SESSION_ALLOWED_ROUTES.has(routeKey)) {
+      req.user = {
+        id: sessionUser.id,
+        username: sessionUser.username || sessionUser.email || sessionUser.id,
+        email: sessionUser.email || null,
+        role: sessionUser.role || 'user',
+        clientType: req.session?.clientType || 'enduser',
+        userType: sessionUser.role === 'admin' ? 'admin' : 'customer',
+        tokenType: 'oauth',
+        fromSession: true,
+        restoredFromCookie: true,
+        acr: null,
+        scopes: []
+      };
+      logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Cookie-restored session accepted for dashboard route', {
+        ...requestContext,
+        route: routeKey,
+        user_id: sessionUser.id
+      });
+      return next();
+    }
+
     if (!token) {
       // BFF session fallback: if the browser SPA has a valid session (session cookie),
       // use the session-stored token for validation instead of requiring the Authorization header.
       // This prevents token relay — the token never needs to leave the backend.
-      const sessionToken = req.session?.oauthTokens?.accessToken;
       if (sessionToken) {
         logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Using session token as fallback (no Authorization header)', requestContext);
         // Re-use the full validation pipeline below via reassignment
