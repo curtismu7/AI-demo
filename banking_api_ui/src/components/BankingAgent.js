@@ -1268,29 +1268,27 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
               )}
 
               {isLoggedIn && (
-                <div className="ba-session-recovery">
+                <>
                   <div className="ba-left-label">Session</div>
                   <button
                     type="button"
-                    className="ba-left-auth-btn"
+                    className="ba-action-item"
                     onClick={() => void handleSessionRefresh()}
                     disabled={sessionRefreshing || loading}
+                    title="Refresh your access token using PingOne refresh token (no logout)"
                   >
                     {sessionRefreshing ? 'Refreshing…' : '🔄 Refresh access token'}
                   </button>
                   <button
                     type="button"
-                    className="ba-left-auth-btn"
+                    className="ba-action-item"
                     onClick={() => handleLoginAction(effectiveUser?.role === 'admin' ? 'login_admin' : 'login_user')}
                     disabled={loading}
+                    title="Sign in again if refresh fails"
                   >
                     🔐 Sign in again
                   </button>
-                  <p className="ba-session-hint">
-                    If actions fail while you look signed in, the API may need a new access token — refresh uses your
-                    PingOne refresh token (no logout). Sign in again only if refresh fails.
-                  </p>
-                </div>
+                </>
               )}
 
               <div className="ba-left-label">Try asking:</div>

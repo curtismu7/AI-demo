@@ -208,27 +208,6 @@
 .ba-left-auth-btn.primary { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
 .ba-left-auth-btn.primary:hover { background: var(--ba-accent-h); border-color: var(--ba-accent-h); }
 
-.ba-session-recovery {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin: 6px 0 8px;
-  padding: 10px 8px;
-  border: 1px solid var(--ba-border);
-  border-radius: 8px;
-  background: rgba(99, 102, 241, 0.06);
-}
-
-.ba-session-hint {
-  font-size: 10px;
-  line-height: 1.45;
-  color: var(--ba-muted);
-  margin: 0;
-}
-
-.ba-mode-light .ba-session-recovery {
-  background: rgba(99, 102, 241, 0.06);
-}
 
 .ba-left-config-btn {
   display: block;
