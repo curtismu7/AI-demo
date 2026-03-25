@@ -141,6 +141,13 @@ export default function DemoDataPage({ onLogout }) {
       await saveDemoScenario(body);
       toast.success('Demo data saved');
       await load();
+      // Let dashboards refresh their cached account/transaction lists immediately.
+      // (Helps when users switch back without a hard refresh.)
+      try {
+        window.dispatchEvent(new CustomEvent('demoScenarioUpdated'));
+      } catch {
+        // ignore
+      }
     } catch (err) {
       toast.error(err.message || 'Save failed');
       if (err.code === 'stale_demo_accounts') {

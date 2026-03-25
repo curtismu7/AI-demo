@@ -1,22 +1,14 @@
 // banking_api_ui/src/utils/embeddedAgentFabVisibility.js
 
 /**
- * Whether the global corner FAB floating agent should render. On dashboard home in
- * embedded mode the bottom dock hosts BankingAgent instead, so the FAB is hidden.
+ * Whether the global corner FAB floating agent should render.
  *
- * @param {{ user: { role?: string } | null | undefined; agentUiMode: 'floating' | 'embedded'; pathname: string }} p
+ * When the user selects `embedded`, the agent is shown as a bottom dock globally,
+ * so the floating FAB must be hidden everywhere.
+ *
+ * @param {{ user: { role?: string } | null | undefined; agentUiMode: 'floating' | 'embedded'; pathname?: string }} p
  * @returns {boolean}
  */
 export function shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode, pathname }) {
-  const isAdminEmbeddedHome =
-    user?.role === 'admin' &&
-    agentUiMode === 'embedded' &&
-    (pathname === '/' || pathname === '/admin');
-  const isCustomerEmbeddedHome =
-    Boolean(user) &&
-    user.role !== 'admin' &&
-    agentUiMode === 'embedded' &&
-    (pathname === '/' || pathname === '/dashboard');
-  const isEmbeddedHome = isAdminEmbeddedHome || isCustomerEmbeddedHome;
-  return !user || agentUiMode === 'floating' || !isEmbeddedHome;
+  return agentUiMode === 'floating';
 }

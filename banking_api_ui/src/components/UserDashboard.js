@@ -122,6 +122,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     return () => window.removeEventListener('agentDataReady', handleAgentDataReady);
   }, []);
 
+  // Listen for Demo config updates (e.g. new accounts) and refresh silently.
+  useEffect(() => {
+    const handleDemoScenarioUpdated = () => {
+      if (fetchUserDataRef.current) fetchUserDataRef.current(true);
+    };
+    window.addEventListener('demoScenarioUpdated', handleDemoScenarioUpdated);
+    return () => window.removeEventListener('demoScenarioUpdated', handleDemoScenarioUpdated);
+  }, []);
+
   // Auto-dismiss success messages after 4 seconds
   useEffect(() => {
     if (!success) return;
@@ -952,19 +961,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         </main>
       </div>
 
-      {agentUiMode === 'embedded' && (
-        <div className="embedded-agent-dock" role="region" aria-label="AI banking assistant">
-          <div className="embedded-agent-dock__head">
-            <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
-            <p className="embedded-agent-dock__lead">
-              Natural language and MCP tools along the bottom — step chips show what ran.
-            </p>
-          </div>
-          <div className="embedded-banking-agent embedded-banking-agent--bottom">
-            <BankingAgent user={user} onLogout={onLogout} mode="inline" embeddedDockBottom />
-          </div>
-        </div>
-      )}
       </div>
 
       {/* OAuth Token Info Modal */}

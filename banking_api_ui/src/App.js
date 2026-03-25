@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -43,13 +43,8 @@ function devLog(...args) {
   console.log(...args);
 }
 
-/**
- * Corner FAB agent. Hidden on admin home when embedded mode uses the dashboard bottom dock.
- * Uses useLocation so visibility tracks client-side navigations.
- */
 function GlobalFloatingBankingAgent({ user, onLogout, agentUiMode }) {
-  const { pathname } = useLocation();
-  if (!shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode, pathname })) return null;
+  if (!shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode })) return null;
   return <BankingAgent user={user} onLogout={onLogout} mode="float" />;
 }
 
@@ -370,7 +365,7 @@ function AppWithAuth() {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <EducationUIProvider>
       <TokenChainProvider>
-        <div className="App end-user-nano">
+        <div className={`App end-user-nano${agentUiMode === 'embedded' ? ' App--has-embedded-dock' : ''}`}>
           <ToastContainer
             position="bottom-right"
             autoClose={22000}
@@ -418,6 +413,21 @@ function AppWithAuth() {
             } />
           </Routes>
           <GlobalFloatingBankingAgent user={user} onLogout={logout} agentUiMode={agentUiMode} />
+          {agentUiMode === 'embedded' && (
+            <div className="global-embedded-agent-dock-wrap" role="region" aria-label="AI banking assistant">
+              <div className="embedded-agent-dock">
+                <div className="embedded-agent-dock__head">
+                  <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
+                  <p className="embedded-agent-dock__lead">
+                    Natural language and MCP tools along the bottom — step chips show what ran.
+                  </p>
+                </div>
+                <div className="embedded-banking-agent embedded-banking-agent--bottom">
+                  <BankingAgent user={user} onLogout={logout} mode="inline" embeddedDockBottom />
+                </div>
+              </div>
+            </div>
+          )}
           <EducationPanelsHost />
           {!isLogsRoute && <CIBAPanel />}
           {!isLogsRoute && <CimdSimPanel />}

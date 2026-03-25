@@ -545,20 +545,6 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
         </div>
       </div>
 
-      {agentUiMode === 'embedded' && (
-        <div className="embedded-agent-dock" role="region" aria-label="AI banking assistant">
-          <div className="embedded-agent-dock__head">
-            <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
-            <p className="embedded-agent-dock__lead">
-              Natural language and MCP tools along the bottom — step chips show what ran.
-            </p>
-          </div>
-          <div className="embedded-banking-agent embedded-banking-agent--bottom">
-            <BankingAgent user={user} onLogout={onLogout} mode="inline" embeddedDockBottom />
-          </div>
-        </div>
-      )}
-
         </div>
 
       {/* OAuth Token Info Modal */}

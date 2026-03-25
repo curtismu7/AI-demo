@@ -12,6 +12,18 @@ describe('nlIntentSanitize', () => {
     expect(result.banking.action).toBe('accounts');
   });
 
+  it('rewrites plural balance request to accounts when no accountId is provided', () => {
+    const { result, rejected } = sanitizeNlResult(
+      {
+        kind: 'banking',
+        banking: { action: 'balance', params: {} },
+      },
+      'get balances',
+    );
+    expect(rejected).toBe(true);
+    expect(result.banking.action).toBe('accounts');
+  });
+
   it('rejects unknown banking action and falls back to heuristic', () => {
     const { result, rejected } = sanitizeNlResult(
       { kind: 'banking', banking: { action: 'wire_swift' } },

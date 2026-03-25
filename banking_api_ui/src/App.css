@@ -22,6 +22,27 @@
   --stack-fab-top-demo: calc(var(--stack-fab-top-logs) + var(--stack-fab-height) + var(--stack-fab-gap));
 }
 
+/* Reserve space for the fixed embedded agent dock */
+.App--has-embedded-dock {
+  padding-bottom: var(--embedded-dock-reserve, 420px);
+}
+
+/* Global embedded dock (shown when agent UI mode = embedded) */
+.global-embedded-agent-dock-wrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1002;
+  padding: 0 12px 12px;
+  pointer-events: none;
+}
+
+.global-embedded-agent-dock-wrap .embedded-agent-dock {
+  margin-top: 0;
+  pointer-events: auto;
+}
+
 @media (max-width: 420px) {
   .App {
     --float-edge: 16px;

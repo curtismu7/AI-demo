@@ -53,6 +53,23 @@ function sanitizeNlResult(result, originalMessage) {
       const fallback = parseHeuristic(originalMessage);
       return { result: fallback, rejected: true, reason: 'invalid_banking_action' };
     }
+    // Safety: if the user explicitly asks for "balances" (plural) and the LLM
+    // incorrectly routes to "balance" without an accountId, switch to "accounts"
+    // so the UI can show all balances instead of defaulting to checking.
+    if (action === 'balance') {
+      const t = String(originalMessage || '').toLowerCase();
+      const asksForBalances = /\bbalances\b/.test(t) || /account balances/.test(t);
+      const params = result.banking?.params || {};
+      const accountId = params.accountId || params.account_id;
+      if (asksForBalances && !accountId) {
+        return {
+          result: { ...result, banking: { ...result.banking, action: 'accounts', params: {} } },
+          rejected: true,
+          reason: 'balance_plural_without_account_id',
+        };
+      }
+    }
+
     return { result, rejected: false };
   }
 
