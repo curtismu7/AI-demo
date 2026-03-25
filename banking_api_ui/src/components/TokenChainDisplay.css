@@ -4,7 +4,7 @@
   flex-direction: column;
   gap: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 13px;
+  font-size: 15px;
   color: #161616;
 }
 
@@ -15,7 +15,7 @@
 }
 
 .tcd-header-title {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   color: #161616;
   display: flex;
@@ -25,7 +25,7 @@
 }
 
 .tcd-header-sub {
-  font-size: 11px;
+  font-size: 14px;
   color: #6f6f6f;
   margin: 0;
   line-height: 1.4;
@@ -57,7 +57,7 @@
 .tcd-tab {
   flex: 1;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #525252;
   background: none;
@@ -94,7 +94,7 @@
 .tcd-placeholder-note {
   text-align: center;
   color: #8d8d8d;
-  font-size: 11px;
+  font-size: 14px;
   padding: 10px 12px 6px;
   font-style: italic;
 }
@@ -180,7 +180,7 @@
 }
 
 .tcd-event-label {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   color: #161616;
   white-space: nowrap;
@@ -189,7 +189,7 @@
 }
 
 .tcd-event-rfc {
-  font-size: 10px;
+  font-size: 12px;
   color: #8d8d8d;
   white-space: nowrap;
   flex-shrink: 0;
@@ -200,7 +200,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 999px;
@@ -245,13 +245,13 @@
 
 .tcd-explanation {
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
   color: #525252;
   line-height: 1.5;
 }
 
 .tcd-section-title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -263,7 +263,7 @@
 .tcd-pill {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 6px;
@@ -295,7 +295,7 @@
 }
 
 .tcd-exchange-req-title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -308,7 +308,7 @@
 .tcd-exchange-req pre {
   margin: 0;
   padding: 8px 10px;
-  font-size: 10px;
+  font-size: 13px;
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   color: #161616;
   white-space: pre-wrap;
@@ -328,7 +328,7 @@
 }
 
 .tcd-claims-alg {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: #6f6f6f;
   padding: 4px 10px;
@@ -340,7 +340,7 @@
 .tcd-no-claims {
   margin: 0;
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: 13px;
   color: #8d8d8d;
   font-style: italic;
 }
@@ -364,7 +364,7 @@
 .tcd-claim--aud     { background: #defbe6; }
 
 .tcd-claim-key {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: #393939;
   min-width: 80px;
@@ -372,13 +372,13 @@
 }
 
 .tcd-claim-sep {
-  font-size: 10px;
+  font-size: 12px;
   color: #8d8d8d;
   flex-shrink: 0;
 }
 
 .tcd-claim-val {
-  font-size: 10px;
+  font-size: 12px;
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   color: #161616;
   margin: 0;
@@ -433,7 +433,7 @@
   background: #fafafa;
   border: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   text-align: left;
   transition: background 0.1s;
 }
@@ -449,7 +449,7 @@
 }
 
 .tcd-hist-ts {
-  font-size: 10px;
+  font-size: 12px;
   color: #8d8d8d;
   white-space: nowrap;
 }
@@ -475,7 +475,7 @@
 }
 
 .tcd-legend-item {
-  font-size: 10px;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: 6px;
 }

@@ -475,6 +475,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
+  const isCustomerDashboardRoute =
+    (location.pathname === '/' || location.pathname === '/dashboard') &&
+    (effectiveUser?.role === 'customer' || effectiveUser?.role === 'user');
   const isLoggedIn = !!effectiveUser;
   const isConfigured = oauthConfig && (oauthConfig.admin || oauthConfig.user);
 
@@ -1094,13 +1097,14 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   }
 
   // Float mode should return nothing when the dedicated /agent page is active
-  if (!isInline && (isAgentPage || isLogsPage)) return null;
+  if (!isInline && (isAgentPage || isLogsPage || isCustomerDashboardRoute)) return null;
 
   return (
     <>
       {/* FAB - only shown when floating agent is collapsed (not in inline mode) */}
       {!isInline && !isOpen && (
         <button
+          type="button"
           className="banking-agent-fab"
           onClick={() => setIsOpen(true)}
           aria-label="Open AI Banking Agent"
@@ -1151,6 +1155,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                 {/* Expand/restore only available in float mode */}
                 {!isInline && (
                   <button
+                    type="button"
                     className="ba-icon-btn"
                     onClick={() => { setIsExpanded(e => !e); setDragPos(null); }}
                     title={isExpanded ? 'Restore size' : 'Expand to full screen'}
@@ -1159,6 +1164,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                   </button>
                 )}
                 <button
+                  type="button"
                   className="ba-icon-btn"
                   onClick={() => setIsDark(d => !d)}
                   title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -1168,6 +1174,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                 {/* Collapse to FAB only in float mode */}
                 {!isInline && (
                   <button 
+                    type="button"
                     className="ba-icon-btn" 
                     onClick={() => setIsOpen(false)} 
                     aria-label="Collapse agent"

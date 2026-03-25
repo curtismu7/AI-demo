@@ -1,5 +1,5 @@
 .user-dashboard {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
   /* Keep content clear of sticky EducationBar at top */
   padding: 36px 24px 24px;
@@ -343,11 +343,61 @@
   letter-spacing: -0.025em;
 }
 
-/* Accounts Grid */
-.accounts-grid {
+/* Account Summary Table */
+.account-summary-table {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.account-summary-header,
+.account-summary-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: 1.2fr 1.2fr 0.9fr 0.9fr 1.8fr;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.account-summary-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.account-summary-row {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.account-summary-row:last-child {
+  border-bottom: none;
+}
+
+.account-summary-cell {
+  font-size: 0.92rem;
+  color: #111827;
+}
+
+.account-summary-header .account-summary-cell {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+.account-summary-cell--mono {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+}
+
+.account-summary-cell--balance {
+  font-weight: 700;
+}
+
+.account-summary-empty {
+  padding: 16px;
+  font-size: 0.95rem;
+  color: #6b7280;
 }
 
 .account-card {
@@ -438,7 +488,7 @@
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
-  margin-top: 16px;
+  margin-top: 0;
   transition: all 0.2s ease;
 }
 
@@ -448,8 +498,9 @@
 
 .account-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 8px;
+  margin-top: 0;
+  flex-wrap: wrap;
 }
 
 .deposit-btn {
@@ -461,7 +512,7 @@
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
-  margin-top: 16px;
+  margin-top: 0;
   transition: all 0.2s ease;
 }
 
@@ -478,7 +529,7 @@
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
-  margin-top: 16px;
+  margin-top: 0;
   transition: all 0.2s ease;
 }
 
@@ -1410,7 +1461,7 @@
 }
 
 .ud-left {
-  width: 284px;
+  width: 232px;
   flex-shrink: 0;
   background: #fff;
   border-right: 1px solid #e2e8f0;
@@ -1425,7 +1476,7 @@
 }
 
 .ud-right {
-  width: 264px;
+  width: 420px;
   flex-shrink: 0;
   background: #fff;
   border-left: 1px solid #e2e8f0;

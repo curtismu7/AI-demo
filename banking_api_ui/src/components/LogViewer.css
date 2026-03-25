@@ -108,6 +108,33 @@
   gap: 8px;
 }
 
+.runtime-chip-group {
+  margin-right: 4px;
+}
+
+.runtime-chip {
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  color: #d1d5db;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.runtime-chip:hover {
+  border-color: #60a5fa;
+  color: #eff6ff;
+}
+
+.runtime-chip.active {
+  background: #1d4ed8;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
 .control-group label {
   color: #aaa;
   font-size: 14px;

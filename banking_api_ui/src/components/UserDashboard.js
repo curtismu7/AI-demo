@@ -4,6 +4,7 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
 import bffAxios from '../services/bffAxios';
+import { resolveSessionUser } from '../services/sessionResolver';
 import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
@@ -47,26 +48,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const fetchingRef = React.useRef(false);
   const fetchUserDataRef = React.useRef(null);
   const [agentHighlight, setAgentHighlight] = useState(null); // 'accounts' | 'transactions' | null
-
-  /**
-   * Resolve authenticated user from all supported session endpoints.
-   * Keeps dashboard session logic aligned with App.js + BankingAgent.
-   */
-  const resolveSessionUser = async () => {
-    const [admin, endUser, session] = await Promise.allSettled([
-      bffAxios.get('/api/auth/oauth/status'),
-      bffAxios.get('/api/auth/oauth/user/status'),
-      bffAxios.get('/api/auth/session'),
-    ]);
-
-    const adminUser = admin.status === 'fulfilled' && admin.value?.data?.authenticated ? admin.value.data.user : null;
-    if (adminUser) return adminUser;
-    const endUserUser = endUser.status === 'fulfilled' && endUser.value?.data?.authenticated ? endUser.value.data.user : null;
-    if (endUserUser) return endUserUser;
-    const sessionUser = session.status === 'fulfilled' && session.value?.data?.authenticated ? session.value.data.user : null;
-    if (sessionUser) return sessionUser;
-    return null;
-  };
 
   // Listen for full-page agent results dispatched by BankingAgent
   useEffect(() => {
@@ -243,21 +224,22 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setError(null);
 
       // Read via BFF cookie session client (same behavior as BankingAgent/App session checks)
-      const accountsResponse = await bffAxios.get('/api/accounts/my');
-      setAccounts(accountsResponse.data.accounts);
-
-      const transactionsResponse = await bffAxios.get('/api/transactions/my');
-      setTransactions(transactionsResponse.data.transactions);
+      const [accountsResponse, transactionsResponse] = await Promise.all([
+        bffAxios.get('/api/accounts/my'),
+        bffAxios.get('/api/transactions/my'),
+      ]);
+      setAccounts(Array.isArray(accountsResponse.data?.accounts) ? accountsResponse.data.accounts : []);
+      setTransactions(Array.isArray(transactionsResponse.data?.transactions) ? transactionsResponse.data.transactions : []);
 
     } catch (error) {
       console.error('Error fetching user data:', error);
       
       // Check if it's an authentication error
-      if (error.response?.status === 401) {
+      if (error.response?.status === 401 && !silent) {
         setError('Your session has expired. Please log in again.');
       } else if (error.response?.status === 403) {
         setError('You do not have permission to access this information.');
-      } else {
+      } else if (!silent) {
         setError('Failed to load your account information');
       }
     } finally {
@@ -456,6 +438,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
   };
 
+  const pendingTransactionsByAccount = transactions.reduce((acc, transaction) => {
+    const isPending = String(transaction?.status || '').toLowerCase() === 'pending';
+    if (!isPending) return acc;
+    const accountId = transaction?.fromAccountId || transaction?.toAccountId;
+    if (!accountId) return acc;
+    acc[accountId] = (acc[accountId] || 0) + 1;
+    return acc;
+  }, {});
+
   if (loading) {
     return (
       <div className="user-dashboard">
@@ -620,41 +611,32 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           {/* Account Summary */}
           <div className={`section${agentHighlight === 'accounts' ? ' section--agent-updated' : ''}`}>
           <h2>Your Accounts {agentHighlight === 'accounts' && <span className="agent-updated-badge">↻ Updated by Agent</span>}</h2>
-          <div className="accounts-grid">
-            {accounts.map(account => (
-              <div key={account.id} className="account-card">
-                <div className="account-header">
-                  <h3>{account.name}</h3>
-                  <span className={`account-type-badge ${(account.accountType || account.type || 'unknown').toLowerCase()}`}>
-                    {(account.accountType || account.type) ?
-                      (account.accountType || account.type).charAt(0).toUpperCase() + (account.accountType || account.type).slice(1) :
-                      'Unknown'}
-                  </span>
-                </div>
-                <p className="account-number">Account: {account.accountNumber}</p>
-                <p className="balance">Balance: ${account.balance.toFixed(2)}</p>
-                <div className="account-actions">
-                  <button
-                    className="select-account-btn"
-                    onClick={() => setSelectedAccount(account)}
-                  >
-                    Select for Transfer
-                  </button>
-                  <button
-                    className="deposit-btn"
-                    onClick={() => setDepositAccount(account)}
-                  >
-                    Deposit
-                  </button>
-                  <button
-                    className="withdraw-btn"
-                    onClick={() => setWithdrawAccount(account)}
-                  >
-                    Withdraw
-                  </button>
+          <div className="account-summary-table">
+            <div className="account-summary-header">
+              <div className="account-summary-cell">Account number</div>
+              <div className="account-summary-cell">Customer name</div>
+              <div className="account-summary-cell">Balance</div>
+              <div className="account-summary-cell">Pending transactions</div>
+              <div className="account-summary-cell">Actions</div>
+            </div>
+            {accounts.map((account) => (
+              <div key={account.id} className="account-summary-row">
+                <div className="account-summary-cell account-summary-cell--mono">{account.accountNumber || 'N/A'}</div>
+                <div className="account-summary-cell">{`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || 'N/A'}</div>
+                <div className="account-summary-cell account-summary-cell--balance">${Number(account.balance || 0).toFixed(2)}</div>
+                <div className="account-summary-cell">{pendingTransactionsByAccount[account.id] || 0}</div>
+                <div className="account-summary-cell">
+                  <div className="account-actions">
+                    <button className="select-account-btn" onClick={() => setSelectedAccount(account)}>Transfer</button>
+                    <button className="deposit-btn" onClick={() => setDepositAccount(account)}>Deposit</button>
+                    <button className="withdraw-btn" onClick={() => setWithdrawAccount(account)}>Withdraw</button>
+                  </div>
                 </div>
               </div>
             ))}
+            {accounts.length === 0 && (
+              <div className="account-summary-empty">No account data available for this user yet.</div>
+            )}
           </div>
           </div>
 
@@ -874,24 +856,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         </main>
 
         <aside className="ud-right">
-          {agentUiMode === 'embedded' ? (
-            <div className="section embedded-banking-agent-section">
-              <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
-              <p className="embedded-banking-agent-lead">
-                Ask in natural language or use actions in the center panel. Tool steps stream as work runs.
-              </p>
-              <div className="embedded-banking-agent">
-                <BankingAgent user={user} onLogout={onLogout} mode="inline" />
-              </div>
+          <div className="section embedded-banking-agent-section">
+            <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
+            <p className="embedded-banking-agent-lead">
+              Ask in natural language or use actions in the center panel. Tool steps stream as work runs.
+            </p>
+            <div className="embedded-banking-agent">
+              <BankingAgent user={user} onLogout={onLogout} mode="inline" />
             </div>
-          ) : (
-            <div className="section embedded-banking-agent-section">
-              <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
-              <p className="embedded-banking-agent-lead">
-                Agent is set to floating mode. Open the chat bubble to use your assistant on any page.
-              </p>
-            </div>
-          )}
+          </div>
         </aside>
       </div>
 

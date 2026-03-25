@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import { ToastContainer } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import LandingPage from './components/LandingPage';
@@ -50,6 +50,11 @@ function AppWithAuth() {
   const pendingUserEmailRef = useRef(null);
   /** Avoid dispatching userAuthenticated on every repeat check (prevents listener ↔ check loops). */
   const sessionEstablishedRef = useRef(false);
+  const toastPatchedRef = useRef(false);
+
+  const logRuntimeMessage = useCallback((payload) => {
+    axios.post('/api/logs/runtime-message', payload).catch(() => {});
+  }, []);
 
   // Inject userEmail into the first session_init WS message then restore send.
   const injectEmailIntoNextSessionInit = useCallback((email) => {
@@ -164,6 +169,57 @@ function AppWithAuth() {
     };
   }, [checkOAuthSession]);
 
+  useEffect(() => {
+    if (toastPatchedRef.current) return undefined;
+    toastPatchedRef.current = true;
+
+    const DEFAULT_TOAST_MS = 9000;
+
+    const applyDefaultAutoClose = (options = {}) => {
+      if (options.autoClose === false) return options;
+      if (typeof options.autoClose === 'number') {
+        return { ...options, autoClose: Math.max(options.autoClose, DEFAULT_TOAST_MS) };
+      }
+      return { ...options, autoClose: DEFAULT_TOAST_MS };
+    };
+
+    const patchToastMethod = (methodName) => {
+      const original = toast[methodName];
+      if (typeof original !== 'function') return;
+      toast[methodName] = (content, options) => original(content, applyDefaultAutoClose(options));
+    };
+
+    patchToastMethod('success');
+    patchToastMethod('error');
+    patchToastMethod('info');
+    patchToastMethod('warning');
+    patchToastMethod('warn');
+
+    const unsubscribe =
+      typeof toast.onChange === 'function'
+        ? toast.onChange((event) => {
+            if (!event || (event.status !== 'added' && event.status !== 'updated')) return;
+
+            const content =
+              typeof event.content === 'string'
+                ? event.content
+                : event.content?.props?.children || 'toast event';
+
+            logRuntimeMessage({
+              source: 'toast',
+              status: event.status,
+              level: event.type || 'info',
+              toastId: event.id || null,
+              message: String(content),
+            });
+          })
+        : null;
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [logRuntimeMessage]);
+
   // BankingAgent (and tests) may dispatch userAuthenticated to force a server re-check after client-side login hints.
   useEffect(() => {
     const handler = () => {
@@ -217,7 +273,7 @@ function AppWithAuth() {
       <EducationUIProvider>
       <TokenChainProvider>
         <div className="App end-user-nano">
-          <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
+          <ToastContainer position="top-right" autoClose={9000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {/* Config page is always accessible, regardless of auth state */}
           <Routes>
             <Route path="/config" element={<Config />} />

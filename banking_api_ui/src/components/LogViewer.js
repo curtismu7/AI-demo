@@ -15,7 +15,8 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   const [filter, setFilter] = useState({
     level: '',
     search: '',
-    source: 'all' // all, console, app, vercel
+    source: 'all', // all, console, app, vercel
+    category: '' // '' | 'runtime messages'
   });
   const [stats, setStats] = useState(null);
   const logContainerRef = useRef(null);
@@ -32,6 +33,13 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
         ...(filter.search && { search: filter.search })
       };
 
+      const matchesCategory = (log) => {
+        if (filter.category !== 'runtime messages') return true;
+        if (log?.category === 'runtime messages') return true;
+        if (typeof log?.message === 'string' && log.message.toLowerCase().includes('"category":"runtime messages"')) return true;
+        return false;
+      };
+
       if (filter.source === 'all') {
         const sources = ['console', 'app', 'vercel'];
         const results = await Promise.allSettled(
@@ -43,11 +51,15 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
               ? (r.value.data.logs || []).map(l => ({ ...l, _src: sources[i] }))
               : []
           )
+          .filter(matchesCategory)
           .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         setLogs(merged);
       } else {
         const response = await axios.get(`/api/logs/${filter.source}`, { params });
-        setLogs((response.data.logs || []).map(l => ({ ...l, _src: filter.source })));
+        const filtered = (response.data.logs || [])
+          .map(l => ({ ...l, _src: filter.source }))
+          .filter(matchesCategory);
+        setLogs(filtered);
       }
     } catch (err) {
       console.error('Error fetching logs:', err);
@@ -157,6 +169,21 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
         </div>
 
         <div className="log-viewer-controls">
+          <div className="control-group runtime-chip-group">
+            <button
+              type="button"
+              className={`runtime-chip ${filter.category === 'runtime messages' ? 'active' : ''}`}
+              onClick={() =>
+                setFilter((prev) => ({
+                  ...prev,
+                  category: prev.category === 'runtime messages' ? '' : 'runtime messages',
+                }))
+              }
+              title="One-click filter for toast/runtime notifications"
+            >
+              Runtime messages
+            </button>
+          </div>
           <div className="control-group">
             <label>Source:</label>
             <select 

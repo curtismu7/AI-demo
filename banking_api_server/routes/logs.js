@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const { logger } = require('../utils/logger');
 
 /**
  * Get application logs from file system
@@ -239,6 +240,46 @@ router.get('/stats', (req, res) => {
   };
 
   res.json(stats);
+});
+
+/**
+ * Capture frontend runtime messages (for toast notifications and similar UI events).
+ */
+router.post('/runtime-message', (req, res) => {
+  try {
+    const {
+      message = 'runtime event',
+      level = 'info',
+      source = 'ui',
+      status = 'added',
+      toastId = null,
+    } = req.body || {};
+
+    const normalizedLevel = String(level).toLowerCase();
+    const category = 'runtime messages';
+    const metadata = {
+      source,
+      status,
+      toastId,
+      path: req.headers.referer || null,
+      ip: req.ip,
+    };
+
+    if (normalizedLevel === 'error') {
+      logger.error(category, String(message), metadata);
+    } else if (normalizedLevel === 'warn' || normalizedLevel === 'warning') {
+      logger.warn(category, String(message), metadata);
+    } else if (normalizedLevel === 'debug') {
+      logger.debug(category, String(message), metadata);
+    } else {
+      logger.info(category, String(message), metadata);
+    }
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Error capturing runtime message:', error);
+    return res.status(500).json({ ok: false, error: 'Failed to capture runtime message' });
+  }
 });
 
 module.exports = router;
