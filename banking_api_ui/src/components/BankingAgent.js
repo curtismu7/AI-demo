@@ -583,7 +583,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
 
   useEffect(() => {
     if (isOpen) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isOpen]);
+  }, [messages, isOpen, bottomRef]);
 
   useEffect(() => {
     if (!isOpen || !isLoggedIn) return;

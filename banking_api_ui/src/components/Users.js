@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
-import apiClient from '../services/apiClient';
+import bffAxios from '../services/bffAxios';
+import { resolveSessionUser } from '../services/sessionResolver';
 import PageNav from './PageNav';
 
 const Users = ({ user, onLogout }) => {
@@ -17,8 +18,14 @@ const Users = ({ user, onLogout }) => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/api/users');
+      const sessionUser = await resolveSessionUser();
+      if (!sessionUser) {
+        setError('Your session has expired. Please log in again.');
+        return;
+      }
+      const response = await bffAxios.get('/api/users');
       setUsers(response.data.users);
+      setError('');
     } catch (error) {
       console.error('Users error:', error);
       
@@ -42,8 +49,14 @@ const Users = ({ user, onLogout }) => {
 
     try {
       setLoading(true);
-      const response = await apiClient.get(`/api/users/search/${searchQuery}`);
+      const sessionUser = await resolveSessionUser();
+      if (!sessionUser) {
+        setError('Your session has expired. Please log in again.');
+        return;
+      }
+      const response = await bffAxios.get(`/api/users/search/${searchQuery}`);
       setUsers(response.data.users);
+      setError('');
     } catch (error) {
       console.error('Search error:', error);
       
@@ -61,7 +74,12 @@ const Users = ({ user, onLogout }) => {
 
   const toggleUserStatus = async (userId, currentStatus) => {
     try {
-      await apiClient.put(`/api/users/${userId}`, {
+      const sessionUser = await resolveSessionUser();
+      if (!sessionUser) {
+        setError('Your session has expired. Please log in again.');
+        return;
+      }
+      await bffAxios.put(`/api/users/${userId}`, {
         isActive: !currentStatus
       });
       toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
@@ -85,7 +103,12 @@ const Users = ({ user, onLogout }) => {
     }
 
     try {
-      await apiClient.delete(`/api/users/${userId}`);
+      const sessionUser = await resolveSessionUser();
+      if (!sessionUser) {
+        setError('Your session has expired. Please log in again.');
+        return;
+      }
+      await bffAxios.delete(`/api/users/${userId}`);
       toast.success(`User "${userName}" deleted successfully`);
       setError(''); // Clear any previous errors
       fetchUsers(); // Refresh the list

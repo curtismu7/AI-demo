@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import apiClient from '../services/apiClient';
+import bffAxios from '../services/bffAxios';
+import { resolveSessionUser } from '../services/sessionResolver';
 import PageNav from './PageNav';
 
 const Transactions = ({ user, onLogout }) => {
@@ -15,8 +16,14 @@ const Transactions = ({ user, onLogout }) => {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/api/transactions');
+      const sessionUser = await resolveSessionUser();
+      if (!sessionUser) {
+        setError('Your session has expired. Please log in again.');
+        return;
+      }
+      const response = await bffAxios.get('/api/transactions');
       setTransactions(response.data.transactions);
+      setError('');
     } catch (error) {
       console.error('Transactions error:', error);
       

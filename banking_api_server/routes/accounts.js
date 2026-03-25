@@ -67,7 +67,8 @@ async function provisionDemoAccounts(userId) {
 }
 
 // Get user's own accounts — auto-provisions demo accounts on first load
-router.get('/my', authenticateToken, requireScopes(['banking:accounts:read', 'banking:read']), async (req, res) => {
+// Uses authenticated session only (scope-independent) so customer dashboard always hydrates.
+router.get('/my', authenticateToken, async (req, res) => {
   try {
     let userAccounts = dataStore.getAccountsByUserId(req.user.id);
     if (userAccounts.length === 0 && req.user.id) {
@@ -81,7 +82,7 @@ router.get('/my', authenticateToken, requireScopes(['banking:accounts:read', 'ba
 });
 
 // Reset demo — restore accounts to $5,000 starting balances with fresh sample history
-router.post('/reset-demo', authenticateToken, requireScopes(['banking:accounts:read', 'banking:read']), async (req, res) => {
+router.post('/reset-demo', authenticateToken, async (req, res) => {
   try {
     const accounts = await provisionDemoAccounts(req.user.id);
     res.json({ message: 'Demo reset successfully', accounts });
