@@ -5,16 +5,22 @@
 /* ---------- CIBA guide trigger — top-right corner of page ---------- */
 .ciba-fab {
   position: fixed;
-  top: 16px;
+  top: var(--stack-fab-top-base, 16px);
   right: var(--float-edge, 28px);
   z-index: 1001;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.5rem 0.85rem;
-  min-height: 40px;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: var(--stack-fab-width, 220px);
+  min-width: var(--stack-fab-width, 220px);
+  height: var(--stack-fab-height, 44px);
+  min-height: var(--stack-fab-height, 44px);
+  padding: 0 12px;
   background: #1e3a5f;
   color: #fff;
+  -webkit-text-fill-color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   font-size: 0.8125rem;

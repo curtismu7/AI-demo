@@ -12,6 +12,14 @@
   --agent-panel-bottom: calc(
     var(--ciba-bottom) + var(--ciba-action-height) + var(--float-gap)
   );
+  /* Top-right stack: CIBA → CIMD → Logs → Demo config — shared width/height; tops = base + n×(height+gap) */
+  --stack-fab-width: 220px;
+  --stack-fab-height: 44px;
+  --stack-fab-gap: 8px;
+  --stack-fab-top-base: 16px;
+  --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
+  --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
+  --stack-fab-top-demo: calc(var(--stack-fab-top-logs) + var(--stack-fab-height) + var(--stack-fab-gap));
 }
 
 @media (max-width: 420px) {
@@ -78,19 +86,22 @@
   to { transform: rotate(360deg); }
 }
 
-/* Log Viewer Floating Action Button — sits below CIMD button in top-right stack */
+/* Log Viewer FAB — below CIMD in top-right stack (size matches --stack-fab-*) */
 .log-viewer-fab {
   position: fixed;
-  top: 116px; /* CIMD is top:68px (~40px tall) + 8px gap = 116px */
+  top: var(--stack-fab-top-logs, 120px);
   right: var(--float-edge, 28px);
-  width: auto;
-  min-width: 100px;
-  height: 40px;
-  padding: 0 14px;
+  box-sizing: border-box;
+  width: var(--stack-fab-width, 220px);
+  min-width: var(--stack-fab-width, 220px);
+  height: var(--stack-fab-height, 44px);
+  min-height: var(--stack-fab-height, 44px);
+  padding: 0 12px;
   border-radius: 8px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: white;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -101,7 +112,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   user-select: none;
 }
 
@@ -116,27 +127,38 @@
 }
 
 @media (max-width: 768px) {
-  .log-viewer-fab {
-    min-width: 88px;
-    height: 38px;
-    padding: 0 12px;
+  .App {
+    --stack-fab-width: 200px;
+    --stack-fab-height: 42px;
+    --stack-fab-top-base: 14px;
+    --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
+    --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
+    --stack-fab-top-demo: calc(var(--stack-fab-top-logs) + var(--stack-fab-height) + var(--stack-fab-gap));
+  }
+  .ciba-fab,
+  .cimd-fab,
+  .log-viewer-fab,
+  .demo-config-fab {
     font-size: 0.75rem;
   }
 }
 
-/* Global Demo Config button — visible on all authenticated pages */
+/* Global Demo Config FAB — bottom of top-right stack */
 .demo-config-fab {
   position: fixed;
-  top: 164px; /* below Logs FAB in the right stack */
+  top: var(--stack-fab-top-demo, 172px);
   right: var(--float-edge, 28px);
-  width: auto;
-  min-width: 116px;
-  height: 40px;
-  padding: 0 14px;
+  box-sizing: border-box;
+  width: var(--stack-fab-width, 220px);
+  min-width: var(--stack-fab-width, 220px);
+  height: var(--stack-fab-height, 44px);
+  min-height: var(--stack-fab-height, 44px);
+  padding: 0 12px;
   border-radius: 8px;
   background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: white;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -160,11 +182,122 @@
   transform: scale(0.97);
 }
 
-@media (max-width: 768px) {
-  .demo-config-fab {
-    min-width: 98px;
-    height: 38px;
-    padding: 0 12px;
-    font-size: 0.75rem;
-  }
+/*
+ * PingOne end-user-nano (global) styles <a> / buttons with link colors that override our red CTAs.
+ * Keep white labels on every red filled button and router links styled as those buttons.
+ */
+.App.end-user-nano :is(
+  .btn-primary,
+  .btn-primary:hover,
+  .btn-primary:focus,
+  .btn-primary:focus-visible,
+  .btn-primary:active,
+  .btn-primary:visited,
+  .btn-secondary,
+  .btn-secondary:hover,
+  .btn-secondary:focus,
+  .btn-secondary:focus-visible,
+  .btn-secondary:active,
+  .btn-secondary:visited,
+  .btn-danger,
+  .btn-danger:hover,
+  .btn-danger:focus,
+  .btn-danger:focus-visible,
+  .btn-danger:active,
+  .btn-danger:visited,
+  .btn-success,
+  .btn-success:hover,
+  .btn-success:focus,
+  .btn-success:focus-visible,
+  .btn-success:active,
+  .btn-success:visited,
+  .btn-outline-primary,
+  .btn-outline-primary:hover,
+  .btn-outline-primary:focus,
+  .btn-outline-primary:focus-visible,
+  .btn-outline-primary:active,
+  .btn-outline-primary:visited
+) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+.App.end-user-nano a:is(
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-success,
+  .btn-outline-primary
+):any-link {
+  text-decoration: none !important;
+}
+
+.App.end-user-nano a.dashboard-toolbar-btn,
+.App.end-user-nano a.dashboard-toolbar-btn:any-link,
+.App.end-user-nano a.dashboard-toolbar-btn:hover,
+.App.end-user-nano a.dashboard-toolbar-btn:focus-visible,
+.App.end-user-nano a.dashboard-toolbar-btn:active {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-decoration: none !important;
+}
+
+.App.end-user-nano a.app-page-toolbar-btn,
+.App.end-user-nano a.app-page-toolbar-btn:any-link,
+.App.end-user-nano a.app-page-toolbar-btn:hover,
+.App.end-user-nano a.app-page-toolbar-btn:focus-visible,
+.App.end-user-nano a.app-page-toolbar-btn:active {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-decoration: none !important;
+}
+
+.App.end-user-nano a.log-page-nav-btn,
+.App.end-user-nano a.log-page-nav-btn:any-link,
+.App.end-user-nano a.log-page-nav-btn:hover,
+.App.end-user-nano a.log-page-nav-btn:focus-visible,
+.App.end-user-nano a.log-page-nav-btn:active {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-decoration: none !important;
+}
+
+/* Solid / ghost shell CTAs outside the blue hero (e.g. McpInspector, DemoDataPage) */
+.App.end-user-nano a.app-page-shell__btn,
+.App.end-user-nano a.app-page-shell__btn:any-link,
+.App.end-user-nano a.app-page-shell__btn:hover,
+.App.end-user-nano a.app-page-shell__btn:focus-visible,
+.App.end-user-nano a.app-page-shell__btn:active {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-decoration: none !important;
+}
+
+/* Top-right stack FABs — Ping global button/link color must not override labels or currentColor icons */
+.App.end-user-nano :is(
+  .ciba-fab,
+  .ciba-fab:hover,
+  .ciba-fab:focus,
+  .ciba-fab:focus-visible,
+  .ciba-fab:active,
+  .ciba-fab--open,
+  .cimd-fab,
+  .cimd-fab:hover,
+  .cimd-fab:focus,
+  .cimd-fab:focus-visible,
+  .cimd-fab:active,
+  .cimd-fab--open,
+  .log-viewer-fab,
+  .log-viewer-fab:hover,
+  .log-viewer-fab:focus,
+  .log-viewer-fab:focus-visible,
+  .log-viewer-fab:active,
+  .demo-config-fab,
+  .demo-config-fab:hover,
+  .demo-config-fab:focus,
+  .demo-config-fab:focus-visible,
+  .demo-config-fab:active
+) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
 }

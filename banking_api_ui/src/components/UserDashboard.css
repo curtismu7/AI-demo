@@ -124,16 +124,17 @@
 }
 
 .dashboard-toolbar-btn--signin {
-  background: linear-gradient(180deg, #15803d 0%, #166534 100%);
-  border: 1px solid #14532d;
-  box-shadow: 0 1px 3px rgba(22, 101, 52, 0.25);
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border: 1px solid var(--app-primary-red-border);
+  box-shadow: 0 1px 3px rgba(127, 29, 29, 0.22);
+  color: #fff;
 }
 
 .dashboard-toolbar-btn--signin:hover {
-  background: linear-gradient(180deg, #166534 0%, #14532d 100%);
-  border-color: #052e16;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(22, 101, 52, 0.35);
+  box-shadow: 0 2px 8px rgba(127, 29, 29, 0.3);
 }
 
 .dashboard-toolbar-btn--icon {

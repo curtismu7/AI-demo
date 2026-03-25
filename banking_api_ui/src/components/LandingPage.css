@@ -213,9 +213,9 @@
 }
 
 .cta-primary {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  color: white;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   padding: 1rem 2rem;
   border-radius: 12px;
   font-size: 1.1rem;
@@ -226,11 +226,15 @@
   gap: 0.5rem;
   transition: all 0.3s ease;
   text-decoration: none;
+  box-shadow: 0 4px 14px rgba(127, 29, 29, 0.25);
 }
 
 .cta-primary:hover {
   transform: translateY(-3px);
-  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.3);
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
+  color: #fff;
+  box-shadow: 0 20px 40px rgba(127, 29, 29, 0.35);
 }
 
 .cta-secondary {
@@ -559,6 +563,7 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(127, 29, 29, 0.35);
   background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .auth-btn.secondary {

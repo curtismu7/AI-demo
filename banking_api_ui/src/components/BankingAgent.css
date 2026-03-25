@@ -9,14 +9,14 @@
   height: 52px;
   padding: 0 22px 0 18px;
   border-radius: 26px;
-  background: var(--ba-accent);
+  background: #64748b;
   color: #fff;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.01em;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 24px rgba(185,28,28,0.55), 0 1px 6px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 24px rgba(100, 116, 139, 0.45), 0 1px 6px rgba(0, 0, 0, 0.18);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -31,7 +31,7 @@
   inset: -4px;
   border-radius: 30px;
   background: transparent;
-  border: 2px solid rgba(99,102,241,0.5);
+  border: 2px solid rgba(148, 163, 184, 0.55);
   animation: fab-pulse 2.4s ease-out infinite;
   pointer-events: none;
 }
@@ -43,12 +43,12 @@
 }
 
 .banking-agent-fab:hover {
-  background: var(--ba-accent-h);
+  background: #475569;
   transform: scale(1.05);
-  box-shadow: 0 6px 28px rgba(185,28,28,0.65);
+  box-shadow: 0 6px 28px rgba(71, 85, 105, 0.5);
 }
 
-.banking-agent-fab.open { background: var(--ba-accent-h); }
+.banking-agent-fab.open { background: #475569; }
 
 .banking-agent-fab-icon {
   font-size: 20px;
@@ -206,7 +206,7 @@
 .ba-left-auth-btn:hover:not(:disabled) { background: var(--ba-accent-h); color: #fff; border-color: var(--ba-accent-h); }
 .ba-left-auth-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ba-left-auth-btn.primary { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
-.ba-left-auth-btn.primary:hover { background: var(--ba-accent-h); border-color: var(--ba-accent-h); }
+.ba-left-auth-btn.primary:hover { background: var(--ba-accent-h); border-color: var(--ba-accent-h); color: #fff; }
 
 
 .ba-left-config-btn {
@@ -254,6 +254,155 @@
   --ba-chip-bd:   #c7d2fe;
   --ba-chip-txt:  #4338ca;
   --ba-shadow:    0 8px 40px rgba(0,0,0,0.14);
+}
+
+/*
+ * Floating widget only (not dashboard embedded): slate control buttons, softer blues
+ * for chat surfaces / chips / accents.
+ */
+.banking-agent-panel:not(.ba-mode-inline) {
+  --ba-float-btn: #64748b;
+  --ba-float-btn-h: #475569;
+}
+
+.banking-agent-panel:not(.ba-mode-inline).ba-mode-light {
+  --ba-user-bg: #7dd3fc;
+  --ba-user-txt: #0f172a;
+  --ba-agent-bg: #e0f2fe;
+  --ba-agent-txt: #0f172a;
+  --ba-chip-bg: #dbeafe;
+  --ba-chip-bd: #93c5fd;
+  --ba-chip-txt: #1e40af;
+  --ba-accent: #38bdf8;
+  --ba-accent-h: #0ea5e9;
+}
+
+.banking-agent-panel:not(.ba-mode-inline):not(.ba-mode-light) {
+  --ba-user-bg: #818cf8;
+  --ba-user-txt: #ffffff;
+  --ba-chip-bg: rgba(129, 140, 248, 0.2);
+  --ba-chip-bd: #818cf8;
+  --ba-chip-txt: #e0e7ff;
+  --ba-accent: #38bdf8;
+  --ba-accent-h: #22d3ee;
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .ba-suggestion,
+.banking-agent-panel:not(.ba-mode-inline) .ba-action-item {
+  background: var(--ba-float-btn);
+  border-color: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-suggestion:hover,
+.banking-agent-panel:not(.ba-mode-inline) .ba-action-item:hover:not(:disabled) {
+  background: var(--ba-float-btn-h);
+  border-color: var(--ba-float-btn-h);
+  color: #fff;
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .ba-left-auth-btn {
+  background: var(--ba-float-btn);
+  border-color: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-left-auth-btn:hover:not(:disabled) {
+  background: var(--ba-float-btn-h);
+  border-color: var(--ba-float-btn-h);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-left-auth-btn.primary {
+  background: var(--ba-float-btn);
+  border-color: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-left-auth-btn.primary:hover {
+  background: var(--ba-float-btn-h);
+  border-color: var(--ba-float-btn-h);
+  color: #fff;
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .ba-left-config-btn:not(.configured) {
+  background: var(--ba-float-btn);
+  border-color: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-left-config-btn:not(.configured):hover {
+  background: var(--ba-float-btn-h);
+  color: #fff;
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .ba-icon-btn {
+  background: var(--ba-float-btn);
+  border-color: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-icon-btn:hover {
+  background: var(--ba-float-btn-h);
+  border-color: var(--ba-float-btn-h);
+  color: #fff;
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .ba-cmd-btn {
+  background: var(--ba-float-btn);
+  border-color: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-cmd-btn:hover,
+.banking-agent-panel:not(.ba-mode-inline) .ba-cmd-btn.active {
+  background: var(--ba-float-btn-h);
+  border-color: var(--ba-float-btn-h);
+  color: #fff;
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .ba-send-btn {
+  background: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-send-btn:hover:not(:disabled) {
+  background: var(--ba-float-btn-h);
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .ba-chip:hover:not(:disabled) {
+  background: var(--ba-float-btn-h);
+  color: #fff;
+  border-color: var(--ba-float-btn-h);
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-chip--learn:hover {
+  background: var(--ba-float-btn-h);
+  color: #fff;
+  border-color: var(--ba-float-btn-h);
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .ba-auth-btn:hover:not(:disabled) {
+  background: var(--ba-float-btn-h);
+  color: #fff;
+  border-color: var(--ba-float-btn-h);
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .banking-agent-btn-primary {
+  background: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .banking-agent-btn-primary:hover:not(:disabled) {
+  background: var(--ba-float-btn-h);
+}
+
+.banking-agent-panel:not(.ba-mode-inline) .banking-agent-nl-send {
+  background: var(--ba-float-btn);
+  color: #fff;
+}
+.banking-agent-panel:not(.ba-mode-inline) .banking-agent-nl-send:hover:not(:disabled) {
+  background: var(--ba-float-btn-h);
+}
+
+.banking-agent-panel:not(.ba-mode-inline).ba-mode-light .ba-left-auth-notice {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: #7dd3fc;
+}
+
+.banking-agent-panel:not(.ba-mode-inline).ba-mode-light .banking-agent-select:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22);
 }
 
 @keyframes agent-slide-up {
@@ -893,7 +1042,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 11px 16px;
-  background: #1a4f6e;
+  background: #0ea5e9;
   color: #fff;
   flex-shrink: 0;
 }

@@ -1,21 +1,27 @@
 /* =========================================================
    CimdSimPanel.css — styles for the CIMD floating simulator drawer
-   Positioned directly below the CIBA Guide button (top: 68px)
+   Below CIBA in top-right stack (top from --stack-fab-top-cimd on .App)
    ========================================================= */
 
 /* ---------- FAB Button ---------- */
 .cimd-fab {
   position: fixed;
-  top: 68px; /* CIBA is at top:16px (~44px tall) + 8px gap = 68px */
+  top: var(--stack-fab-top-cimd, 68px);
   right: var(--float-edge, 28px);
   z-index: 1001;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.5rem 0.85rem;
-  min-height: 40px;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: var(--stack-fab-width, 220px);
+  min-width: var(--stack-fab-width, 220px);
+  height: var(--stack-fab-height, 44px);
+  min-height: var(--stack-fab-height, 44px);
+  padding: 0 12px;
   background: #0f766e;
   color: #fff;
+  -webkit-text-fill-color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   font-size: 0.8125rem;

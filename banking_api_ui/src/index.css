@@ -318,6 +318,14 @@ body {
   color: #fff;
 }
 
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-danger:focus-visible,
+.btn-success:focus-visible,
+.btn-outline-primary:focus-visible {
+  color: #fff;
+}
+
 .btn-secondary {
   background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;

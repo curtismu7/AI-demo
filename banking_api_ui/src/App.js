@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -39,6 +39,21 @@ function devLog(...args) {
   if (process.env.NODE_ENV === 'production') return;
   // eslint-disable-next-line no-console -- intentional local debugging
   console.log(...args);
+}
+
+/**
+ * Corner FAB agent. Hidden on admin home when embedded mode uses the dashboard bottom dock.
+ * Uses useLocation so visibility tracks client-side navigations.
+ */
+function GlobalFloatingBankingAgent({ user, onLogout, agentUiMode }) {
+  const { pathname } = useLocation();
+  const isAdminEmbeddedHome =
+    user?.role === 'admin' &&
+    agentUiMode === 'embedded' &&
+    (pathname === '/' || pathname === '/admin');
+  const showFab = !user || agentUiMode === 'floating' || !isAdminEmbeddedHome;
+  if (!showFab) return null;
+  return <BankingAgent user={user} onLogout={onLogout} mode="float" />;
 }
 
 function AppWithAuth() {
@@ -372,9 +387,7 @@ function AppWithAuth() {
               )
             } />
           </Routes>
-          {(!user || agentUiMode === 'floating' || agentUiMode === 'embedded') && (
-            <BankingAgent user={user} onLogout={logout} mode="float" />
-          )}
+          <GlobalFloatingBankingAgent user={user} onLogout={logout} agentUiMode={agentUiMode} />
           <EducationPanelsHost />
           {!isLogsRoute && <CIBAPanel />}
           {!isLogsRoute && <CimdSimPanel />}
