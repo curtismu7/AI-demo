@@ -939,10 +939,14 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                           if (result.kind === 'banking' && result.banking?.action) {
                             const { action, params } = result.banking;
                             const p = normalizeBankingParams(action, params);
-                            if (action === 'accounts' || action === 'transactions') {
+                            if (action === 'accounts' || action === 'transactions' || action === 'mcp_tools') {
                               runAction(action, {}, { skipUserLabel: true });
                             } else if (action === 'balance' && p.accountId) {
                               runAction('balance', { accountId: p.accountId }, { skipUserLabel: true });
+                            } else if (['balance', 'transfer', 'deposit', 'withdraw'].includes(action)) {
+                              // Required params missing — show the form pre-populated with any known values
+                              setActiveAction(action);
+                              addMessage('assistant', `Please fill in the details below to complete your ${action}.`);
                             } else {
                               runAction(action, p, { skipUserLabel: true });
                             }

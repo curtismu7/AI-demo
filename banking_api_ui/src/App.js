@@ -21,7 +21,7 @@ import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
-import LogViewer from './components/LogViewer';
+import { openLogViewerWindow } from './components/LogViewer';
 import SideNav from './components/SideNav';
 
 import { savePublicConfig } from './services/configService';
@@ -35,7 +35,6 @@ import './App.css';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [logViewerOpen, setLogViewerOpen] = useState(false);
   const _sessionFoundRef = useRef(false); // prevent userAuthenticated dispatch loop
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
@@ -234,11 +233,10 @@ function App() {
           <EducationPanelsHost />
           <CIBAPanel />
           <CimdSimPanel />
-          <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {/* Floating Log Viewer Button */}
+          {/* Floating Log Viewer Button — opens in popup window */}
           <button
             className="log-viewer-fab"
-            onClick={() => setLogViewerOpen(true)}
+            onClick={openLogViewerWindow}
             title="Open Log Viewer"
             type="button"
           >

@@ -155,26 +155,26 @@ function HistoryEntry({ entry, index }) {
 const PLACEHOLDER_EVENTS = [
   {
     id: 'user-token',
-    label: 'User Token (T1)',
+    label: 'User Token',
     status: 'waiting',
     claims: null,
-    explanation: 'Issued after Authorization Code + PKCE login. Stored in Backend For Frontend (BFF) session. Contains may_act authorising this server to exchange it.',
+    explanation: 'Issued after Authorization Code + PKCE login. Stored in the Backend For Frontend (BFF) session only — never sent to the browser or MCP server directly. Contains may_act authorising the BFF to exchange it.',
     rfc: 'RFC 7519 · RFC 9068',
   },
   {
     id: 'exchange',
-    label: 'RFC 8693 Token Exchange → T2',
+    label: 'MCP Token (acquiring via RFC 8693)',
     status: 'waiting',
     claims: null,
-    explanation: 'Backend For Frontend (BFF) presents T1 to PingOne. PingOne validates may_act, narrows scope to the tool\'s required scopes, and issues T2 with act claim.',
+    explanation: 'Backend For Frontend (BFF) presents the User Token to PingOne. PingOne validates may_act, narrows scope to the tool\'s required scopes, and issues the MCP Token with an act claim.',
     rfc: 'RFC 8693 · RFC 8707',
   },
   {
     id: 'exchanged-token',
-    label: 'Exchanged Token (T2) → MCP Server',
+    label: 'MCP Token (delegated)',
     status: 'waiting',
     claims: null,
-    explanation: 'T2 is scoped to the MCP server audience. Contains act: { client_id: bff } — proves delegation. T1 never leaves the Backend For Frontend (BFF).',
+    explanation: 'The MCP Token is scoped to the MCP server audience. Contains act: { client_id: bff } — proves delegation. The User Token never leaves the Backend For Frontend (BFF).',
     rfc: 'RFC 8693',
   },
 ];
@@ -195,7 +195,7 @@ const TokenChainDisplay = () => {
           {isLive && <span className="tcd-live-dot" title="Live data from last tool call" />}
         </div>
         <p className="tcd-header-sub">
-          RFC 8693 token exchange — Backend For Frontend (BFF) → PingOne → MCP Server → Banking API
+          User Token stays in BFF · Agent Token or MCP Token sent to MCP Server
         </p>
       </div>
 

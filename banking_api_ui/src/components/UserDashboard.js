@@ -6,6 +6,7 @@ import apiClient from '../services/apiClient';
 import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import TokenChainDisplay from './TokenChainDisplay';
 import './UserDashboard.css';
 
 // ── Scope metadata ──────────────────────────────────────────────────────────
@@ -521,6 +522,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {/* LEFT — Token Status Panel */}
         <aside className="ud-left">
           <TokenStatusPanel tokenData={tokenData} onRefresh={fetchTokenData} />
+          <TokenChainDisplay />
         </aside>
 
         {/* CENTER — Banking Content */}

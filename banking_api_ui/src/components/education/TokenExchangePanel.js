@@ -36,6 +36,95 @@ export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
 
   const tabs = [
     {
+      id: 'flow',
+      label: 'Token Flow',
+      content: (
+        <>
+          <h3>Where each token lives and travels</h3>
+          <p style={{ marginBottom: 16, color: '#6b7280', fontSize: '0.9rem' }}>
+            The User Token never crosses the BFF boundary. Depending on your configuration, the BFF
+            sends either an <strong>Agent Token</strong> (M2M) or a scoped <strong>MCP Token</strong> to the MCP server.
+          </p>
+
+          {/* Flow diagram */}
+          <div style={{ fontFamily: 'inherit', fontSize: '0.85rem' }}>
+
+            {/* Row 1: User */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+              <div style={{ background: '#e0f2fe', border: '2px solid #0284c7', borderRadius: 8, padding: '10px 20px', textAlign: 'center', minWidth: 240 }}>
+                <div style={{ fontWeight: 700, color: '#0369a1', marginBottom: 4 }}>🧑 User (Browser)</div>
+                <div style={{ background: '#fff', border: '1px solid #93c5fd', borderRadius: 5, padding: '6px 12px', display: 'inline-block' }}>
+                  <span style={{ fontWeight: 600 }}>User Token</span>
+                  <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>Authorization Code + PKCE</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Arrow down */}
+            <div style={{ textAlign: 'center', color: '#6b7280', lineHeight: 1, marginBottom: 4 }}>
+              <div style={{ fontSize: '1.2rem' }}>↓</div>
+              <div style={{ fontSize: '0.75rem' }}>stored server-side only</div>
+            </div>
+
+            {/* Row 2: BFF */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+              <div style={{ background: '#fef9c3', border: '2px solid #ca8a04', borderRadius: 8, padding: '12px 16px', textAlign: 'center', minWidth: 320 }}>
+                <div style={{ fontWeight: 700, color: '#92400e', marginBottom: 8 }}>🏦 Backend For Frontend (BFF)</div>
+                <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 5, padding: '6px 12px', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600 }}>User Token</span>
+                  <span style={{ marginLeft: 8, background: '#dcfce7', color: '#166534', borderRadius: 4, padding: '1px 6px', fontSize: '0.75rem', fontWeight: 600 }}>STAYS HERE ✓</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                  {/* Path A */}
+                  <div style={{ background: '#ede9fe', border: '1px solid #7c3aed', borderRadius: 6, padding: '8px 10px', flex: 1, textAlign: 'left' }}>
+                    <div style={{ fontWeight: 700, color: '#5b21b6', fontSize: '0.8rem', marginBottom: 4 }}>Path A — M2M</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>Agent Token</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>client_credentials grant</div>
+                    <div style={{ fontSize: '0.72rem', color: '#7c3aed', marginTop: 4 }}>AGENT_OAUTH_CLIENT_ID set</div>
+                  </div>
+                  {/* Path B */}
+                  <div style={{ background: '#ecfdf5', border: '1px solid #059669', borderRadius: 6, padding: '8px 10px', flex: 1, textAlign: 'left' }}>
+                    <div style={{ fontWeight: 700, color: '#065f46', fontSize: '0.8rem', marginBottom: 4 }}>Path B — Delegated</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>MCP Token</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>RFC 8693 exchange</div>
+                    <div style={{ fontSize: '0.72rem', color: '#059669', marginTop: 4 }}>MCP_RESOURCE_URI set</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Arrow down */}
+            <div style={{ textAlign: 'center', color: '#6b7280', lineHeight: 1, marginBottom: 4 }}>
+              <div style={{ fontSize: '1.2rem' }}>↓</div>
+              <div style={{ fontSize: '0.75rem' }}>Agent Token or MCP Token only</div>
+            </div>
+
+            {/* Row 3: MCP Server */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <div style={{ background: '#f0fdf4', border: '2px solid #16a34a', borderRadius: 8, padding: '10px 20px', textAlign: 'center', minWidth: 240 }}>
+                <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 4 }}>🤖 MCP Server</div>
+                <div style={{ fontSize: '0.8rem', color: '#374151' }}>
+                  Validates incoming token · executes banking tool
+                </div>
+                <div style={{ marginTop: 6, background: '#fee2e2', border: '1px solid #f87171', borderRadius: 4, padding: '3px 8px', display: 'inline-block', fontSize: '0.75rem', color: '#b91c1c', fontWeight: 600 }}>
+                  User Token: never arrives here ✗
+                </div>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: '0.78rem', color: '#374151' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 12, background: '#e0f2fe', border: '1px solid #0284c7', borderRadius: 2, display: 'inline-block' }} /> User session</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 12, background: '#fef9c3', border: '1px solid #ca8a04', borderRadius: 2, display: 'inline-block' }} /> BFF (server-side)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 12, background: '#ede9fe', border: '1px solid #7c3aed', borderRadius: 2, display: 'inline-block' }} /> Agent Token (M2M)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 12, background: '#ecfdf5', border: '1px solid #059669', borderRadius: 2, display: 'inline-block' }} /> MCP Token (delegated)</div>
+            </div>
+          </div>
+        </>
+      ),
+    },
+    {
       id: 'why',
       label: 'What & Why',
       content: (
@@ -95,11 +184,12 @@ export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
           <p>
             This happens automatically in the background every time you ask the AI assistant to do something for you.
           </p>
-          <pre className="edu-code">{`Your sign-in pass (T1)
-  → sent to PingOne with a request: "please exchange for an AI tools pass"
-  → PingOne verifies policy allows this
-  → PingOne issues a new, restricted pass (T2)
-  → AI assistant uses T2 to access banking tools`}</pre>
+          <pre className="edu-code">{`User Token (stays in BFF session)
+  → BFF requests exchange from PingOne: "issue an MCP Token for this user"
+  → PingOne verifies may_act policy allows this
+  → PingOne issues a scoped MCP Token (narrowed audience + scope)
+  → AI assistant uses MCP Token to access banking tools
+  (Alternative: BFF uses its own Agent Token when no exchange is configured)`}</pre>
         </>
       ),
     },
@@ -138,10 +228,10 @@ export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
           {live.error && <p style={{ color: '#b91c1c' }}>{live.error}</p>}
           {!live.loading && live.t1?.payload && (
             <>
-              <p><strong>Your sign-in pass (decoded)</strong></p>
+              <p><strong>Your User Token (decoded)</strong></p>
               <pre className="edu-code">{JSON.stringify(live.t1.payload, null, 2)}</pre>
               <p style={{ fontSize: '0.82rem', color: '#6b7280' }}>
-                The AI tools pass is created fresh for each AI request and stays server-side.
+                The Agent Token or MCP Token is created fresh for each AI request and stays server-side only.
                 You can watch it happen in the browser&apos;s Network tab — look for <code>/api/mcp/tool</code>.
               </p>
             </>
