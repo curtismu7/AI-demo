@@ -21,6 +21,10 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   const [stats, setStats] = useState(null);
   const logContainerRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const isRuntimeMessageLog = (log) =>
+    log?.category === 'runtime messages' ||
+    (typeof log?.message === 'string' && log.message.toLowerCase().includes('"category":"runtime messages"'));
+  const runtimeMessagesCount = logs.reduce((count, log) => (isRuntimeMessageLog(log) ? count + 1 : count), 0);
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -35,9 +39,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
 
       const matchesCategory = (log) => {
         if (filter.category !== 'runtime messages') return true;
-        if (log?.category === 'runtime messages') return true;
-        if (typeof log?.message === 'string' && log.message.toLowerCase().includes('"category":"runtime messages"')) return true;
-        return false;
+        return isRuntimeMessageLog(log);
       };
 
       if (filter.source === 'all') {
@@ -182,6 +184,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
               title="One-click filter for toast/runtime notifications"
             >
               Runtime messages
+              <span className="runtime-chip-count">{runtimeMessagesCount}</span>
             </button>
           </div>
           <div className="control-group">

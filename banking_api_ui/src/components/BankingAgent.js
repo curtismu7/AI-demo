@@ -1209,6 +1209,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
               {/* Dashboard navigation button — shown when logged in */}
               {isLoggedIn && (
                 <button
+                  type="button"
                   className="ba-left-auth-btn primary"
                   style={{ marginBottom: 2 }}
                   onClick={() => {
@@ -1224,6 +1225,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
               {(effectiveUser?.role === 'admin' ? SUGGESTIONS_ADMIN : SUGGESTIONS_CUSTOMER).map(s => (
                 <button
                   key={s}
+                  type="button"
                   className="ba-suggestion"
                   onClick={() => {
                     setNlInput(s);
@@ -1250,6 +1252,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                   {ACTIONS.map(a => (
                     <button
                       key={a.id}
+                      type="button"
                       className="ba-action-item"
                       onClick={() => handleActionClick(a.id)}
                       disabled={loading}
@@ -1265,6 +1268,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                   {EDUCATION_COMMANDS.map(cmd => (
                     <button
                       key={cmd.id}
+                      type="button"
                       className="ba-action-item"
                       onClick={() => openEducationCommand(cmd)}
                       title={cmd.label}
@@ -1279,6 +1283,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                     🔐 Sign in required to access AI banking features
                   </div>
                   <button
+                    type="button"
                     className="ba-left-auth-btn primary"
                     onClick={() => handleLoginAction('login_user')}
                     disabled={oauthConfig === null || !oauthConfig?.user}
@@ -1287,6 +1292,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                     👤 Customer Sign In
                   </button>
                   <button
+                    type="button"
                     className="ba-left-auth-btn"
                     onClick={() => handleLoginAction('login_admin')}
                     disabled={oauthConfig === null || !oauthConfig?.admin}

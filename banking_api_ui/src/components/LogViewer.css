@@ -135,6 +135,16 @@
   color: #ffffff;
 }
 
+.runtime-chip-count {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.45);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .control-group label {
   color: #aaa;
   font-size: 14px;

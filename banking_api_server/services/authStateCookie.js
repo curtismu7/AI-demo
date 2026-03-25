@@ -28,6 +28,7 @@
  */
 
 const crypto = require('crypto');
+const dataStore = require('../data/store');
 
 const COOKIE_NAME  = '_auth';
 const COOKIE_PATH  = '/';
@@ -130,14 +131,17 @@ function readAuthCookie(req) {
   if (!payload) return null;
   try {
     const obj = JSON.parse(payload);
-    if (!obj.exp || Date.now() > obj.exp) return null;
+    const expiresAt = obj.exp || obj.expiresAt;
+    if (!expiresAt || Date.now() > expiresAt) return null;
     return {
-      id:        obj.u,
-      email:     obj.e,
-      firstName: obj.fn,
-      lastName:  obj.ln,
-      role:      obj.r,
-      oauthType: obj.t,
+      id:        obj.u || obj.id || null,
+      username:  obj.un || obj.username || null,
+      email:     obj.e || obj.email || null,
+      firstName: obj.fn || obj.firstName || null,
+      lastName:  obj.ln || obj.lastName || null,
+      role:      obj.r || obj.role || 'user',
+      oauthType: obj.t || obj.oauthType || 'user',
+      expiresAt,
     };
   } catch {
     return null;
@@ -169,7 +173,28 @@ function restoreSessionFromCookie(req, _res, next) {
   if (!req.session.user) {
     const auth = readAuthCookie(req);
     if (auth) {
-      req.session.user      = auth;
+      const hydratedUser = (() => {
+        if (auth.id && auth.email) return auth;
+        const users = dataStore.getAllUsers();
+        const matched = users.find((u) =>
+          (auth.email && u.email === auth.email) ||
+          (auth.username && u.username === auth.username) ||
+          (auth.id && (u.id === auth.id || u.oauthId === auth.id))
+        );
+        if (!matched) return auth;
+        return {
+          id: auth.id || matched.id,
+          username: auth.username || matched.username,
+          email: auth.email || matched.email,
+          firstName: auth.firstName || matched.firstName,
+          lastName: auth.lastName || matched.lastName,
+          role: auth.role || matched.role || 'user',
+          oauthType: auth.oauthType || 'user',
+          expiresAt: auth.expiresAt,
+        };
+      })();
+
+      req.session.user      = hydratedUser;
       req.session.oauthType = auth.oauthType;
       req.session._restoredFromCookie = true; // flag so routes can detect it
       // Set a synthetic token stub so /status endpoints that check
@@ -181,7 +206,7 @@ function restoreSessionFromCookie(req, _res, next) {
         tokenType:   'Bearer',
         expiresAt:   auth.expiresAt || (Date.now() + 24 * 60 * 60 * 1000),
       };
-      console.log('[auth-cookie] Session restored from _auth cookie for:', auth.email, '(no Redis session found)');
+      console.log('[auth-cookie] Session restored from _auth cookie for:', hydratedUser.email || hydratedUser.username || hydratedUser.id || 'unknown', '(no Redis session found)');
     }
   }
   next();

@@ -140,20 +140,26 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   // Function to fetch current OAuth tokens
   const fetchTokenData = async () => {
     try {
-      // Try both admin and user status endpoints
+      // Try both user/admin token-claims endpoints first (status endpoints omit raw token).
       let response;
       try {
-        response = await axios.get('/api/auth/oauth/user/status');
+        response = await axios.get('/api/auth/oauth/user/token-claims');
         if (!response.data.authenticated) {
-          response = await axios.get('/api/auth/oauth/status');
+          response = await axios.get('/api/auth/oauth/token-claims');
         }
       } catch (error) {
-        response = await axios.get('/api/auth/oauth/status');
+        response = await axios.get('/api/auth/oauth/token-claims');
       }
       
-      if (response.data.authenticated && response.data.accessToken) {
-        const decodedAccessToken = decodeToken(response.data.accessToken);
-        
+      if (response.data.authenticated) {
+        const decodedAccessToken = response.data.decoded
+          ? {
+              header: response.data.decoded.header || null,
+              payload: response.data.decoded.payload || null,
+              raw: null
+            }
+          : null;
+
         const tokenInfo = {
           accessToken: decodedAccessToken,
           tokenType: response.data.tokenType,
@@ -997,7 +1003,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                   </div>
 
                   {/* Raw token */}
-                  {tokenData.accessToken && (
+                  {tokenData.accessToken?.raw && (
                     <div className="token-section">
                       <h4>Raw User Token (JWT)</h4>
                       <div className="token-raw-display">
