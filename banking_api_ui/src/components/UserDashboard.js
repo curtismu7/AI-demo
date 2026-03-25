@@ -8,7 +8,6 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
-import BankingAgent from './BankingAgent';
 import {
   errorMessageSuggestsLogin,
   navigateToCustomerOAuthLogin,
