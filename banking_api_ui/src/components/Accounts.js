@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
+import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 const Accounts = ({ user, onLogout }) => {
@@ -41,18 +42,17 @@ const Accounts = ({ user, onLogout }) => {
 
   if (loading && accounts.length === 0) {
     return (
-      <div className="loading">
-        <div>Loading accounts...</div>
-      </div>
+      <AdminSubPageShell title="Accounts" lead="View bank accounts in the demo environment.">
+        <div className="loading">
+          <div>Loading accounts...</div>
+        </div>
+      </AdminSubPageShell>
     );
   }
 
   return (
-    <div>
+    <AdminSubPageShell title="Accounts" lead="View bank accounts in the demo environment.">
       <PageNav user={user} onLogout={onLogout} title="Accounts" />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ color: '#1e293b' }}>Accounts</h1>
-      </div>
 
       {error && (
         <div className="alert alert-error">
@@ -60,7 +60,7 @@ const Accounts = ({ user, onLogout }) => {
         </div>
       )}
 
-      <div className="card">
+      <div className="app-page-card">
         <div className="card-header">
           <h2 className="card-title">Account Management</h2>
           <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
@@ -128,7 +128,7 @@ const Accounts = ({ user, onLogout }) => {
           </div>
         )}
       </div>
-    </div>
+    </AdminSubPageShell>
   );
 };
 

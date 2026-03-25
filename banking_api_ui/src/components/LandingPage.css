@@ -550,23 +550,26 @@
 }
 
 .auth-btn.primary {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  color: white;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 
 .auth-btn.primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(127, 29, 29, 0.35);
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
 }
 
 .auth-btn.secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 
 .auth-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .prompt {

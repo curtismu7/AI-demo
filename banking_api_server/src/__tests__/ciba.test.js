@@ -62,6 +62,7 @@ jest.mock('../../utils/logger', () => ({
 
 const cibaService = require('../../services/cibaService');
 const cibaRouter  = require('../../routes/ciba');
+const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../../config/scopes');
 
 // ── Auth headers ──────────────────────────────────────────────────────────────
 
@@ -287,13 +288,13 @@ describe('POST /api/auth/ciba/initiate', () => {
     );
   });
 
-  it('defaults scope to "openid profile email" when not provided', async () => {
+  it('defaults scope to PINGONE_OIDC_DEFAULT_SCOPES_SPACE when not provided', async () => {
     await request(buildApp())
       .post('/api/auth/ciba/initiate')
       .set('x-test-user', USER_HDR)
       .send({});
     const callArgs = cibaService.initiateBackchannelAuth.mock.calls[0];
-    expect(callArgs[2]).toBe('openid profile email');
+    expect(callArgs[2]).toBe(PINGONE_OIDC_DEFAULT_SCOPES_SPACE);
   });
 
   // ── PingOne errors ────────────────────────────────────────────────────────
@@ -564,7 +565,7 @@ describe('CIBA full OTP flow simulation — sequential poll cycle', () => {
 
     expect(poll3.status).toBe(200);
     expect(poll3.body.status).toBe('approved');
-    expect(poll3.body.scope).toBe('openid profile email');
+    expect(poll3.body.scope).toBe(PINGONE_OIDC_DEFAULT_SCOPES_SPACE);
 
     // Tokens never exposed to browser
     expect(poll3.body.access_token).toBeUndefined();

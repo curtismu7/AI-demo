@@ -504,21 +504,24 @@
 }
 
 .cimd-btn--primary {
-  background: #0f766e;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 .cimd-btn--primary:hover {
-  background: #0d9488;
-  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  box-shadow: 0 2px 8px rgba(127, 29, 29, 0.25);
+  color: #fff;
 }
 
 .cimd-btn--secondary {
-  background: #f1f5f9;
-  color: #1e293b;
-  border: 1px solid #cbd5e1;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 .cimd-btn--secondary:hover {
-  background: #e2e8f0;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 /* ---------- Setup step list ---------- */

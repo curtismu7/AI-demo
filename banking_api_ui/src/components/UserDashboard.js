@@ -8,7 +8,6 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
-import BankingAgent from './BankingAgent';
 import './UserDashboard.css';
 
 /**
@@ -24,7 +23,7 @@ function accountSummaryLine(account) {
   return `${type} - ${num}`;
 }
 
-const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
+const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -33,8 +32,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [transferForm, setTransferForm] = useState({
+    fromAccountId: '',
     toAccountId: '',
     amount: '',
     description: ''
@@ -290,14 +290,19 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const handleTransfer = async (e) => {
     e.preventDefault();
 
-    if (!selectedAccount || !transferForm.toAccountId || !transferForm.amount) {
+    if (!transferForm.fromAccountId || !transferForm.toAccountId || !transferForm.amount) {
       setError('Please fill in all transfer details');
+      return;
+    }
+
+    if (transferForm.fromAccountId === transferForm.toAccountId) {
+      setError('From and To accounts must be different');
       return;
     }
 
     try {
       await bffAxios.post('/api/transactions', {
-        fromAccountId: selectedAccount.id,
+        fromAccountId: transferForm.fromAccountId,
         toAccountId: transferForm.toAccountId,
         amount: parseFloat(transferForm.amount),
         type: 'transfer',
@@ -306,8 +311,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       });
 
       // Reset form and refresh data
-      setTransferForm({ toAccountId: '', amount: '', description: '' });
-      setSelectedAccount(null);
+      setTransferForm({ fromAccountId: '', toAccountId: '', amount: '', description: '' });
+      setTransferOpen(false);
       await fetchUserData();
 
       setSuccess('Transfer completed successfully!');
@@ -602,7 +607,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         </div>
       </div>
 
-      <div className={`dashboard-content ud-body ${agentUiMode === 'embedded' ? '' : 'ud-body--floating'}`}>
+      <div className="ud-shell ud-shell--floating-only">
+      <div className="dashboard-content ud-body ud-body--floating">
         <aside className="ud-left">
           <div className="section">
             <TokenChainDisplay />
@@ -629,7 +635,22 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 <div className="account-summary-cell">{pendingTransactionsByAccount[account.id] || 0}</div>
                 <div className="account-summary-cell">
                   <div className="account-actions">
-                    <button className="select-account-btn" onClick={() => setSelectedAccount(account)}>Transfer</button>
+                    <button
+                      type="button"
+                      className="select-account-btn"
+                      onClick={() => {
+                        const others = accounts.filter((a) => a.id !== account.id);
+                        setTransferOpen(true);
+                        setTransferForm({
+                          fromAccountId: account.id,
+                          toAccountId: others[0]?.id || '',
+                          amount: '',
+                          description: ''
+                        });
+                      }}
+                    >
+                      Transfer
+                    </button>
                     <button className="deposit-btn" onClick={() => setDepositAccount(account)}>Deposit</button>
                     <button className="withdraw-btn" onClick={() => setWithdrawAccount(account)}>Withdraw</button>
                   </div>
@@ -643,28 +664,59 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           </div>
 
           {/* Transfer Form */}
-          {selectedAccount && (
+          {transferOpen && (
             <div className="section">
             <h2>Transfer Money</h2>
             <div className="transfer-form">
-              <p>From: {accountSummaryLine(selectedAccount)} (${selectedAccount.balance.toFixed(2)})</p>
               <form onSubmit={handleTransfer}>
+                <div className="form-group">
+                  <label>From Account:</label>
+                  <select
+                    value={transferForm.fromAccountId}
+                    onChange={(e) => {
+                      const fromId = e.target.value;
+                      setTransferForm((prev) => {
+                        let toId = prev.toAccountId;
+                        if (toId === fromId) {
+                          const others = accounts.filter((a) => a.id !== fromId);
+                          toId = others[0]?.id || '';
+                        }
+                        return { ...prev, fromAccountId: fromId, toAccountId: toId };
+                      });
+                    }}
+                    required
+                  >
+                    <option value="">Select source account</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {accountSummaryLine(account)} (${Number(account.balance || 0).toFixed(2)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="form-group">
                   <label>To Account:</label>
                   <select
                     value={transferForm.toAccountId}
-                    onChange={(e) => setTransferForm({ ...transferForm, toAccountId: e.target.value })}
+                    onChange={(e) => {
+                      const toId = e.target.value;
+                      setTransferForm((prev) => {
+                        let fromId = prev.fromAccountId;
+                        if (fromId === toId) {
+                          const others = accounts.filter((a) => a.id !== toId);
+                          fromId = others[0]?.id || '';
+                        }
+                        return { ...prev, fromAccountId: fromId, toAccountId: toId };
+                      });
+                    }}
                     required
                   >
                     <option value="">Select destination account</option>
-                    {accounts
-                      .filter(account => account.id !== selectedAccount.id)
-                      .map(account => (
-                        <option key={account.id} value={account.id}>
-                          {accountSummaryLine(account)} (${account.balance.toFixed(2)})
-                        </option>
-                      ))
-                    }
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {accountSummaryLine(account)} (${Number(account.balance || 0).toFixed(2)})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="form-group">
@@ -693,8 +745,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                     type="button"
                     className="cancel-btn"
                     onClick={() => {
-                      setSelectedAccount(null);
-                      setTransferForm({ toAccountId: '', amount: '', description: '' });
+                      setTransferOpen(false);
+                      setTransferForm({ fromAccountId: '', toAccountId: '', amount: '', description: '' });
                     }}
                   >
                     Cancel
@@ -856,20 +908,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           </div>
           </div>
         </main>
-
-        {agentUiMode === 'embedded' && (
-          <aside className="ud-right">
-            <div className="section embedded-banking-agent-section">
-              <h2 className="embedded-banking-agent-title">AI banking assistant</h2>
-              <p className="embedded-banking-agent-lead">
-                Ask in natural language or use actions in the center panel. Tool steps stream as work runs.
-              </p>
-              <div className="embedded-banking-agent">
-                <BankingAgent user={user} onLogout={onLogout} mode="inline" />
-              </div>
-            </div>
-          </aside>
-        )}
+      </div>
       </div>
 
       {/* OAuth Token Info Modal */}

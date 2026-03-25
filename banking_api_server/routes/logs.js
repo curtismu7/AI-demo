@@ -126,6 +126,7 @@ router.get('/vercel', async (req, res) => {
  */
 const recentLogs = [];
 const MAX_LOGS = 1000;
+let nextConsoleLogId = 1;
 
 // Intercept console methods
 const originalConsoleLog = console.log;
@@ -155,6 +156,7 @@ console.info = function(...args) {
 
 function captureLog(level, args) {
   const logEntry = {
+    id: nextConsoleLogId++,
     timestamp: new Date().toISOString(),
     level,
     message: args.map(arg => 

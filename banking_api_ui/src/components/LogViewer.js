@@ -5,10 +5,45 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { toastLogStore } from '../services/toastLogStore';
 import './LogViewer.css';
+
+/** Stable React key + dedup across sources (id from server when present). */
+function stableLogKey(log) {
+  if (log.id != null && log.id !== '') return `id:${log.id}`;
+  const src = log._src || '';
+  const ts = log.timestamp || '';
+  const lv = log.level || '';
+  const msg =
+    typeof log.message === 'object' ? JSON.stringify(log.message) : String(log.message || '');
+  return `h:${src}|${ts}|${lv}|${msg.slice(0, 240)}`;
+}
+
+function stableTimeCompare(a, b) {
+  const ta = new Date(a.timestamp).getTime();
+  const tb = new Date(b.timestamp).getTime();
+  if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) return ta - tb;
+  return stableLogKey(a).localeCompare(stableLogKey(b));
+}
+
+/** Merge API snapshot into rolling history: dedupe by stable key, keep first-seen row (stable label/source), chronological, cap length. */
+function mergeLogHistory(prev, incoming, maxRows = 2500) {
+  const byKey = new Map();
+  for (const row of prev) {
+    byKey.set(stableLogKey(row), row);
+  }
+  for (const row of incoming) {
+    const k = stableLogKey(row);
+    if (!byKey.has(k)) byKey.set(k, row);
+  }
+  const merged = Array.from(byKey.values()).sort(stableTimeCompare);
+  if (merged.length <= maxRows) return merged;
+  return merged.slice(merged.length - maxRows);
+}
 
 const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   const [logs, setLogs] = useState([]);
+  const [toastLogs, setToastLogs] = useState(() => toastLogStore.getAll() || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -16,19 +51,36 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
     level: '',
     search: '',
     source: 'all', // all, console, app, vercel
-    category: '' // '' | 'runtime messages'
+    category: '', // '' | 'runtime messages' | 'toast messages'
   });
   const [stats, setStats] = useState(null);
   const logContainerRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const replaceLogsOnNextFetchRef = useRef(true);
   const isRuntimeMessageLog = (log) =>
     log?.category === 'runtime messages' ||
     (typeof log?.message === 'string' && log.message.toLowerCase().includes('"category":"runtime messages"'));
+  const isToastMessageLog = (log) => log?.category === 'toast messages';
   const runtimeMessagesCount = logs.reduce((count, log) => (isRuntimeMessageLog(log) ? count + 1 : count), 0);
 
-  const fetchLogs = useCallback(async () => {
+  useEffect(() => {
+    return toastLogStore.subscribe((next) => {
+      setToastLogs(Array.isArray(next) ? next : []);
+    });
+  }, []);
+
+  useEffect(() => {
+    replaceLogsOnNextFetchRef.current = true;
+  }, [filter.source, filter.level, filter.search, filter.category]);
+
+  const fetchLogs = useCallback(async (opts = {}) => {
+    const silent = opts.silent === true;
     try {
-      setLoading(true);
+      if (filter.category === 'toast messages') {
+        setLoading(false);
+        return;
+      }
+      if (!silent) setLoading(true);
       setError(null);
 
       const params = {
@@ -42,73 +94,132 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
         return isRuntimeMessageLog(log);
       };
 
+      const applyMerged = (incomingRows) => {
+        const shouldReplace = replaceLogsOnNextFetchRef.current;
+        if (shouldReplace) replaceLogsOnNextFetchRef.current = false;
+        setLogs((prev) => mergeLogHistory(shouldReplace ? [] : prev, incomingRows, 2500));
+      };
+
       if (filter.source === 'all') {
         const sources = ['console', 'app', 'vercel'];
         const results = await Promise.allSettled(
           sources.map(src => axios.get(`/api/logs/${src}`, { params }))
         );
-        const merged = results
-          .flatMap((r, i) =>
-            r.status === 'fulfilled'
-              ? (r.value.data.logs || []).map(l => ({ ...l, _src: sources[i] }))
-              : []
-          )
-          .filter(matchesCategory)
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        setLogs(merged);
+        const allRejected =
+          results.length > 0 && results.every((r) => r.status === 'rejected');
+        if (allRejected) {
+          const rej = results.find((r) => r.status === 'rejected');
+          const reason = rej?.reason;
+          const msg =
+            reason instanceof Error ? reason.message : String(reason || 'Network error');
+          setError(msg);
+          replaceLogsOnNextFetchRef.current = true;
+          setLogs([]);
+        } else {
+          const merged = results
+            .flatMap((r, i) =>
+              r.status === 'fulfilled'
+                ? (r.value.data.logs || []).map((l) => ({ ...l, _src: sources[i] }))
+                : []
+            )
+            .filter(matchesCategory);
+          applyMerged(merged);
+        }
       } else {
         const response = await axios.get(`/api/logs/${filter.source}`, { params });
         const filtered = (response.data.logs || [])
           .map(l => ({ ...l, _src: filter.source }))
           .filter(matchesCategory);
-        setLogs(filtered);
+        applyMerged(filtered);
       }
     } catch (err) {
       console.error('Error fetching logs:', err);
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [filter]);
 
+  /**
+   * Apply search/level to in-memory toast logs (client-only).
+   */
+  const buildToastDisplayLogs = useCallback(() => {
+    let list = [...toastLogs];
+    if (filter.level) {
+      list = list.filter(l => (l.level || '').toLowerCase() === filter.level.toLowerCase());
+    }
+    if (filter.search) {
+      const q = filter.search.toLowerCase();
+      list = list.filter(
+        l =>
+          (l.message || '').toLowerCase().includes(q) ||
+          (l.detail || '').toLowerCase().includes(q) ||
+          (l.toastType || '').toLowerCase().includes(q)
+      );
+    }
+    return list.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  }, [toastLogs, filter.level, filter.search]);
+
+  useEffect(() => {
+    if (filter.category !== 'toast messages') return;
+    setLogs(buildToastDisplayLogs());
+  }, [filter.category, buildToastDisplayLogs]);
+
   const fetchStats = useCallback(async () => {
+    if (filter.category === 'toast messages') {
+      setStats(null);
+      return;
+    }
     try {
       const response = await axios.get('/api/logs/stats');
       setStats(response.data);
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
-  }, []);
+  }, [filter.category]);
 
   useEffect(() => {
     if (isOpen) {
-      fetchLogs();
+      fetchLogs({ silent: false });
       fetchStats();
     }
   }, [isOpen, fetchLogs, fetchStats]);
 
   useEffect(() => {
     if (!isOpen || !autoRefresh) return;
+    if (filter.category === 'toast messages') return;
 
     const interval = setInterval(() => {
-      fetchLogs();
+      fetchLogs({ silent: true });
       fetchStats();
     }, 2000); // Refresh every 2 seconds
 
     return () => clearInterval(interval);
-  }, [isOpen, autoRefresh, fetchLogs, fetchStats]);
+  }, [isOpen, autoRefresh, fetchLogs, fetchStats, filter.category]);
 
   useEffect(() => {
-    if (autoScroll && logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
+    if (!autoScroll || !logContainerRef.current) return;
+    const el = logContainerRef.current;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight;
+      });
+    });
   }, [logs, autoScroll]);
 
   const clearLogs = async () => {
+    if (filter.category === 'toast messages') {
+      if (!window.confirm('Clear all recorded toast messages from this browser session?')) return;
+      toastLogStore.clear();
+      replaceLogsOnNextFetchRef.current = true;
+      setLogs([]);
+      return;
+    }
     if (!window.confirm('Clear all console logs?')) return;
 
     try {
       await axios.delete('/api/logs/console');
+      replaceLogsOnNextFetchRef.current = true;
       setLogs([]);
       fetchStats();
     } catch (err) {
@@ -186,12 +297,32 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
               Runtime messages
               <span className="runtime-chip-count">{runtimeMessagesCount}</span>
             </button>
+            <button
+              type="button"
+              className={`runtime-chip ${filter.category === 'toast messages' ? 'active' : ''}`}
+              onClick={() =>
+                setFilter((prev) => ({
+                  ...prev,
+                  category: prev.category === 'toast messages' ? '' : 'toast messages',
+                }))
+              }
+              title="In-app toasts (with optional details) — persists after the toast dismisses"
+            >
+              Toast messages
+              <span className="runtime-chip-count">{(toastLogs || []).length}</span>
+            </button>
           </div>
+          {filter.category === 'toast messages' && (
+            <div className="log-viewer-hint" role="status">
+              Client session only — search matches message and details. Toasts stay on screen ~22s; history remains here.
+            </div>
+          )}
           <div className="control-group">
             <label>Source:</label>
             <select 
               value={filter.source} 
               onChange={(e) => setFilter({ ...filter, source: e.target.value })}
+              disabled={filter.category === 'toast messages'}
             >
               <option value="all">All Sources</option>
               <option value="console">Console Logs</option>
@@ -246,7 +377,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
             </label>
           </div>
 
-          <button onClick={fetchLogs} disabled={loading} className="refresh-button">
+          <button onClick={() => fetchLogs({ silent: false })} disabled={loading} className="refresh-button">
             🔄 Refresh
           </button>
 
@@ -254,7 +385,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
             💾 Download
           </button>
 
-          {(filter.source === 'console' || filter.source === 'all') && (
+          {(filter.category === 'toast messages' || filter.source === 'console' || filter.source === 'all') && (
             <button onClick={clearLogs} className="clear-button">
               🗑️ Clear
             </button>
@@ -284,20 +415,21 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
                 <th style={{ width: '80px' }}>Level</th>
                 <th style={{ width: '70px' }}>Source</th>
                 <th>Message</th>
+                <th style={{ minWidth: '140px' }}>Details</th>
               </tr>
             </thead>
             <tbody>
-              {loading && logs.length === 0 ? (
+              {loading && logs.length === 0 && filter.category !== 'toast messages' ? (
                 <tr>
-                  <td colSpan="3" className="loading-cell">Loading logs...</td>
+                  <td colSpan="5" className="loading-cell">Loading logs...</td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="empty-cell">No logs found</td>
+                  <td colSpan="5" className="empty-cell">No logs found</td>
                 </tr>
               ) : (
-                logs.map((log, index) => (
-                  <tr key={index} className={`log-row log-${log.level}`}>
+                logs.map((log) => (
+                  <tr key={stableLogKey(log)} className={`log-row log-${log.level}`}>
                     <td className="log-time">{formatTimestamp(log.timestamp)}</td>
                     <td className="log-level">
                       <span 
@@ -309,6 +441,11 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
                     </td>
                     <td className="log-source" style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{log._src || '—'}</td>
                     <td className="log-message">
+                      {isToastMessageLog(log) && log.toastType && (
+                        <span className="log-toast-type" title="react-toastify type">
+                          [{String(log.toastType)}]{' '}
+                        </span>
+                      )}
                       {typeof log.message === 'object' 
                         ? JSON.stringify(log.message, null, 2)
                         : log.message}
@@ -316,6 +453,13 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
                         <span className="correlation-id">
                           🔗 {log.correlationId}
                         </span>
+                      )}
+                    </td>
+                    <td className="log-details-cell">
+                      {log.detail ? (
+                        <pre className="log-details-pre">{log.detail}</pre>
+                      ) : (
+                        <span className="log-details-empty">—</span>
                       )}
                     </td>
                   </tr>

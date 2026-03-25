@@ -27,6 +27,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const oauthConfig = require('../config/oauth');
 const configStore = require('./configStore');
+const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -66,7 +67,7 @@ function _generateNotificationToken() {
  * @param {string} [acrValues]  ACR values for step-up (e.g. 'Multi_factor')
  * @returns {Promise<{ auth_req_id: string, expires_in: number, interval: number }>}
  */
-async function initiateBackchannelAuth(loginHint, bindingMessage, scope = 'openid profile email', acrValues = '') {
+async function initiateBackchannelAuth(loginHint, bindingMessage, scope = PINGONE_OIDC_DEFAULT_SCOPES_SPACE, acrValues = '') {
   const endpoint = _cibaEndpoint();
   if (!endpoint) {
     throw new Error('PingOne environment not configured — cannot build CIBA endpoint');

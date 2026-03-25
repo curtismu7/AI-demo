@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
+import '../styles/appShellPages.css';
 import './Config.css';
 
 // ─── Region options ───────────────────────────────────────────────────────────
@@ -264,7 +265,7 @@ function AgentLayoutPreferences() {
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Embedded in dashboard</div>
             <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
-              Chat is built into the customer or admin <strong>home</strong> dashboard only — no floating widget while you are signed in.
+              Chat appears as a <strong>full-width bar along the bottom</strong> of the customer or admin <strong>home</strong> dashboard — no floating widget while you are signed in.
               Other routes (e.g. MCP Inspector) do not include the embedded panel.
             </div>
           </div>
@@ -442,20 +443,19 @@ export default function Config() {
   // ── Render ──
   if (loading) {
     return (
-      <div className="config-page config-page--loading">
+      <div className="config-page config-page--loading app-page-shell">
         <div className="loading" />
       </div>
     );
   }
 
   return (
-    <div className="config-page">
-      {/* Page header */}
-      <div className="config-page__hero">
-        <div className="container config-page__hero-inner">
+    <div className="config-page app-page-shell">
+      <header className="app-page-shell__hero config-page__hero-shell">
+        <div className="app-page-shell__hero-top">
           <div>
-            <h1 className="config-page__title">⚙️ Application Configuration</h1>
-            <p className="config-page__subtitle">
+            <h1 className="app-page-shell__title">⚙️ Application Configuration</h1>
+            <p className="app-page-shell__lead">
               {deploymentManaged ? (
                 <><strong>Hosted:</strong> <strong>Two</strong> PingOne OAuth apps (admin + end-user) — client credentials live <strong>on the server</strong> (secrets / KV — not entered by visitors). Use <strong>Admin</strong> and <strong>Customer</strong> sign-in on the login page. Register both redirect URIs below in PingOne.{' '}</>
               ) : (
@@ -463,20 +463,21 @@ export default function Config() {
               )}
             </p>
           </div>
-          <div className="config-page__hero-actions">
+          <div className="app-page-shell__actions config-page__hero-actions">
             {isConfigured && (
               <span className="config-page__badge config-page__badge--ok">✓ Configured</span>
             )}
             {!isConfigured && (
               <span className="config-page__badge config-page__badge--warn">⚠ Not configured</span>
             )}
-            <Link to="/onboarding" className="config-page__link">Setup guide</Link>
-            <Link to="/" className="config-page__link">← Back to app</Link>
+            <Link to="/onboarding" className="app-page-shell__btn app-page-shell__btn--solid">Setup guide</Link>
+            <Link to="/" className="app-page-shell__btn">← Back to app</Link>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="container config-page__main">
+      <div className="app-page-shell__body">
+      <div className="config-page__main">
 
         {/* Read-only banner (hosted serverless, no KV) */}
         {readOnly && (
@@ -607,7 +608,7 @@ export default function Config() {
           </div>
         )}
 
-        <form onSubmit={handleSave}>
+        <form id="config-main-form" onSubmit={handleSave}>
 
           {/* ── Section 1: PingOne Environment ── */}
           <CollapsibleCard
@@ -1001,18 +1002,6 @@ export default function Config() {
             )}
           </CollapsibleCard>
 
-          {/* ── Save button — hidden in read-only mode ── */}
-          {!readOnly && (
-          <div className="config-page__actions">
-            <button type="button" className="btn btn-secondary" onClick={loadConfig}>
-              ↺ Reload from server
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : '💾 Save Configuration'}
-            </button>
-          </div>
-          )}
-
         </form>
 
         {/* ── Display Preferences (localStorage only — no server POST) ── */}
@@ -1158,6 +1147,19 @@ export default function Config() {
           )}
         </div>
 
+        {/* ── Primary actions (page bottom — after all sections) ── */}
+        {!readOnly && (
+          <div className="config-page__actions config-page__actions--footer">
+            <button type="button" className="btn btn-secondary" onClick={loadConfig}>
+              ↺ Reload from server
+            </button>
+            <button type="submit" form="config-main-form" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving…' : '💾 Save Configuration'}
+            </button>
+          </div>
+        )}
+
+      </div>
       </div>
     </div>
   );

@@ -33,6 +33,15 @@ function getSessionAccessToken(req) {
   return t.accessToken || t.access_token || null;
 }
 
+/**
+ * Bearer string suitable for PingOne / MCP — excludes the synthetic cookie-session marker.
+ */
+function getSessionBearerForMcp(req) {
+  const raw = getSessionAccessToken(req);
+  if (!raw || typeof raw !== 'string' || raw === '_cookie_session') return null;
+  return raw;
+}
+
 /** Limit concurrent MCP WebSocket handshakes per process (connection pool / back-pressure). */
 const MCP_WS_MAX_CONCURRENT = Math.max(1, parseInt(process.env.MCP_WS_MAX_CONCURRENT || '8', 10) || 8);
 let mcpWsActiveCount = 0;
@@ -178,6 +187,7 @@ module.exports = {
   MCP_TOOL_SCOPES,
   getMcpServerUrl,
   getSessionAccessToken,
+  getSessionBearerForMcp,
   mcpListTools,
   mcpCallTool,
 };

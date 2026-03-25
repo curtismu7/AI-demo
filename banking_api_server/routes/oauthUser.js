@@ -336,6 +336,12 @@ router.get('/callback', async (req, res) => {
       console.log('Updated user:', user);
     }
     
+    if (!tokenData.refresh_token) {
+      console.warn(
+        '[oauthUser/callback] No refresh_token in token response — enable offline_access on the PingOne '
+        + 'user app and include offline_access in authorized scopes. Session renewal will fail until users sign in again.'
+      );
+    }
     // Pre-capture data before regenerating session to prevent session fixation
     const oauthTokens = {
       accessToken: tokenData.access_token,

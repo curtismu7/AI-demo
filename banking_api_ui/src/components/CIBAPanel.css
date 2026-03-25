@@ -373,25 +373,28 @@
 }
 
 .ciba-btn--primary {
-  background: #1e3a5f;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
   margin-top: 0.4rem;
   align-self: flex-start;
+  border: 1px solid var(--app-primary-red-border);
 }
 
 .ciba-btn--primary:hover {
-  background: #2563eb;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .ciba-btn--secondary {
-  background: #f1f5f9;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   align-self: flex-start;
 }
 
 .ciba-btn--secondary:hover {
-  background: #e2e8f0;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 /* ---------- Live polling view ---------- */

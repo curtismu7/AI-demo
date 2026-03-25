@@ -1,12 +1,11 @@
 /**
  * @file agentMcpTokenService.test.js
  *
- * Tests for resolveMcpAccessTokenWithEvents — specifically verifying that:
- * 1. When AGENT_OAUTH_CLIENT_ID is set and MCP_RESOURCE_URI is not, the M2M
- *    client_credentials token is used and T1 (user token) is NOT passed to MCP.
- * 2. When neither is set, T1 passthrough is used (with a warning event).
- * 3. userSub is always extracted from T1 and returned for metadata use.
- * 4. RFC 8693 exchange path still works when MCP_RESOURCE_URI is set.
+ * Tests for resolveMcpAccessTokenWithEvents — verifying that:
+ * 1. Agent client_credentials are used only when USE_AGENT_ACTOR_FOR_MCP and MCP_RESOURCE_URI are set.
+ * 2. With no MCP_RESOURCE_URI, T1 passthrough is used and an exchange-skipped event is emitted.
+ * 3. userSub is extracted from T1 for MCP metadata.
+ * 4. RFC 8693 exchange path works when MCP_RESOURCE_URI is set.
  */
 
 'use strict';
@@ -67,6 +66,11 @@ jest.mock('../../services/mcpWebSocketClient', () => ({
     create_transfer: ['banking:transactions:write'],
   },
   getSessionAccessToken: (req) => req._mockToken || null,
+  getSessionBearerForMcp: (req) => {
+    const t = req._mockToken || null;
+    if (!t || t === '_cookie_session') return null;
+    return t;
+  },
 }));
 
 jest.mock('../../services/configStore', () => ({
@@ -95,11 +99,13 @@ describe('resolveMcpAccessTokenWithEvents — no session token', () => {
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — M2M path (AGENT_OAUTH_CLIENT_ID set, no MCP_RESOURCE_URI)', () => {
+describe('resolveMcpAccessTokenWithEvents — AGENT_OAUTH_CLIENT_ID alone (no MCP_RESOURCE_URI)', () => {
   const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
   const origSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
+  const origUseActor = process.env.USE_AGENT_ACTOR_FOR_MCP;
 
   beforeEach(() => {
+    delete process.env.USE_AGENT_ACTOR_FOR_MCP;
     process.env.AGENT_OAUTH_CLIENT_ID = 'agent-client-id';
     process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
     configStore.getEffective.mockImplementation((key) => {
@@ -114,12 +120,13 @@ describe('resolveMcpAccessTokenWithEvents — M2M path (AGENT_OAUTH_CLIENT_ID se
     else delete process.env.AGENT_OAUTH_CLIENT_ID;
     if (origSecret !== undefined) process.env.AGENT_OAUTH_CLIENT_SECRET = origSecret;
     else delete process.env.AGENT_OAUTH_CLIENT_SECRET;
+    if (origUseActor !== undefined) process.env.USE_AGENT_ACTOR_FOR_MCP = origUseActor;
+    else delete process.env.USE_AGENT_ACTOR_FOR_MCP;
   });
 
-  it('returns M2M token, NOT T1', async () => {
+  it('forwards T1 — agent client_credentials run only with USE_AGENT_ACTOR_FOR_MCP and MCP_RESOURCE_URI', async () => {
     const { token } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
-    expect(token).toBe(M2M_TOKEN);
-    expect(token).not.toBe(T1);
+    expect(token).toBe(T1);
   });
 
   it('returns userSub extracted from T1', async () => {
@@ -127,22 +134,9 @@ describe('resolveMcpAccessTokenWithEvents — M2M path (AGENT_OAUTH_CLIENT_ID se
     expect(userSub).toBe(USER_SUB);
   });
 
-  it('emits an agent-m2m-token event with status=active', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
-    const m2mEvent = tokenEvents.find(e => e.id === 'agent-m2m-token');
-    expect(m2mEvent).toBeDefined();
-    expect(m2mEvent.status).toBe('active');
-  });
-
-  it('does NOT emit a T1_PASSTHROUGH warning', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
-    const passthrough = tokenEvents.find(e => e.extra?.warning === 'T1_PASSTHROUGH' || e.id === 'exchange-skipped');
-    expect(passthrough).toBeUndefined();
-  });
-
-  it('calls getAgentClientCredentialsToken once', async () => {
+  it('does not call getAgentClientCredentialsToken without USE_AGENT_ACTOR_FOR_MCP', async () => {
     await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
-    expect(mockGetAgentClientCredentialsToken).toHaveBeenCalledTimes(1);
+    expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
   });
 
   it('does NOT call performTokenExchange', async () => {
@@ -150,14 +144,11 @@ describe('resolveMcpAccessTokenWithEvents — M2M path (AGENT_OAUTH_CLIENT_ID se
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
-  it('falls back to T1 passthrough when client_credentials call fails', async () => {
-    mockGetAgentClientCredentialsToken.mockRejectedValueOnce(new Error('credentials refused'));
-    const { token, tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
-    // Falls back to T1
-    expect(token).toBe(T1);
-    // Has a failed m2m event
-    const failedEvent = tokenEvents.find(e => e.id === 'agent-m2m-token' && e.status === 'failed');
-    expect(failedEvent).toBeDefined();
+  it('emits exchange-skipped when MCP resource URI is unset', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+    const skipped = tokenEvents.find(e => e.id === 'exchange-skipped');
+    expect(skipped).toBeDefined();
+    expect(String(skipped.explanation)).toContain('MCP_RESOURCE_URI');
   });
 });
 
@@ -181,12 +172,11 @@ describe('resolveMcpAccessTokenWithEvents — T1 passthrough (no AGENT_OAUTH_CLI
     expect(token).toBe(T1);
   });
 
-  it('emits an exchange-skipped event with T1_PASSTHROUGH warning', async () => {
+  it('emits an exchange-skipped event documenting direct T1 passthrough', async () => {
     const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
     const skipped = tokenEvents.find(e => e.id === 'exchange-skipped');
     expect(skipped).toBeDefined();
-    // Warning field should be present in the event
-    expect(JSON.stringify(skipped)).toContain('T1_PASSTHROUGH');
+    expect(JSON.stringify(skipped)).toContain('MCP_RESOURCE_URI');
   });
 
   it('still returns userSub from T1', async () => {

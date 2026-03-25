@@ -27,8 +27,8 @@ const config = {
   // CIBA — Client-Initiated Backchannel Authentication
   get cibaEndpoint()           { return `${this._base}/bc-authorize`; },
 
-  // Scopes — standard OIDC only
-  scopes: ['openid', 'profile', 'email'],
+  // offline_access: PingOne issues refresh_token for silent session renewal (admin + user flows)
+  scopes: ['openid', 'profile', 'email', 'offline_access'],
 
   get sessionSecret()          { return configStore.getEffective('session_secret'); },
   get adminRole()              { return configStore.getEffective('admin_role') || 'admin'; },

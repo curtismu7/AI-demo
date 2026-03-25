@@ -8,6 +8,7 @@ import {
   createTransfer,
   createDeposit,
   createWithdrawal,
+  refreshOAuthSession,
 } from '../services/bankingAgentService';
 import { loadPublicConfig } from '../services/configService';
 import { useEducationUIOptional } from '../context/EducationUIContext';
@@ -347,8 +348,14 @@ const TOPIC_MESSAGES = {
   'cimd': `📄 Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "▶ Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
 };
 
-export default function BankingAgent({ user, onLogout, mode = 'float' }) {
+/**
+ * @param {object} props
+ * @param {'float' | 'inline'} [props.mode]
+ * @param {boolean} [props.embeddedDockBottom] When inline, stack chat on top and suggestions below (dashboard bottom bar)
+ */
+export default function BankingAgent({ user, onLogout, mode = 'float', embeddedDockBottom = false }) {
   const isInline = mode === 'inline';
+  const isBottomDock = isInline && embeddedDockBottom;
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   // Always open by default, unless user explicitly collapsed it (persisted in localStorage)
@@ -380,6 +387,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
    * agent knows the session even if the parent App.js user prop hasn't resolved yet.
    */
   const [sessionUser, setSessionUser] = useState(null);
+  const [sessionRefreshing, setSessionRefreshing] = useState(false);
 
   const bottomRef = useRef(null);
   const toolProgressIdRef = useRef(null);
@@ -504,6 +512,24 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
       }
     });
   }, []);
+
+  /** RFC 6749 refresh — does not log out; retries server-side session tokens. */
+  const handleSessionRefresh = useCallback(async () => {
+    setSessionRefreshing(true);
+    try {
+      const r = await refreshOAuthSession();
+      if (r.ok) {
+        toast.success('Access token refreshed. You can retry your action.');
+        checkSelfAuth();
+      } else {
+        toast.error('Could not refresh — use Sign in again or reload the page.');
+      }
+    } catch (e) {
+      toast.error(e?.message || 'Refresh failed');
+    } finally {
+      setSessionRefreshing(false);
+    }
+  }, [checkSelfAuth]);
 
   // Check on mount — auto-open if already authenticated (e.g. page refresh after login)
   useEffect(() => {
@@ -895,15 +921,28 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
 
       if (isConnErr) {
         toast.error('🔌 MCP server unreachable — check your server connection', { autoClose: 8000 });
+      } else if (
+        err?.statusCode === 401 ||
+        err?.code === 'authentication_required' ||
+        /sign in to use the banking agent/i.test(String(err?.message || ''))
+      ) {
+        toast.error(
+          'Session missing or expired on the server. Try Refresh access token, or Sign in again.',
+          { autoClose: 9000 },
+        );
       } else {
         toast.error(`❌ ${err.message}`, { autoClose: 6000 });
       }
 
+      const authHint =
+        err?.statusCode === 401 || err?.code === 'authentication_required'
+          ? '\n\nTip: use **Refresh access token** (left column), then retry. Sign in again only if refresh fails.'
+          : '';
       addMessage(
         'error',
         isConnErr
           ? 'Banking Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nHosted: set MCP_SERVER_URL to your reachable MCP server URL (if your platform allows outbound WS).'
-          : `Error: ${err.message}`,
+          : `Error: ${err.message}${authHint}`,
         actionId
       );
     } finally {
@@ -1010,6 +1049,23 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
     addMessage('assistant', result.message || 'Try a banking action or a topic like “token exchange”.');
   }
 
+  /** NL API errors: 401 is session missing on server — not a parse failure. */
+  function reportNlFailure(err) {
+    if (err?.statusCode === 401 || err?.code === 'authentication_required') {
+      toast.error(
+        'Sign in required — the server has no session for this request. Refresh the page and sign in again.',
+        { autoClose: 5000 },
+      );
+      addMessage(
+        'assistant',
+        'You need an active server session to use the agent. If you already signed in, refresh the page (session may have expired or cookies may not have reached the API).',
+      );
+      return;
+    }
+    toast.error(`❌ Could not parse request: ${err.message}`, { autoClose: 5000 });
+    addMessage('assistant', `Could not parse: ${err.message}`);
+  }
+
   async function handleNaturalLanguage() {
     const text = nlInput.trim();
     if (!text || !isLoggedIn) return;
@@ -1078,8 +1134,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
       const { source, result } = await parseNaturalLanguage(text);
       await dispatchNlResult(result, source);
     } catch (err) {
-      toast.error(`❌ Could not parse request: ${err.message}`, { autoClose: 5000 });
-      addMessage('assistant', `Could not parse: ${err.message}`);
+      reportNlFailure(err);
     } finally {
       setNlLoading(false);
     }
@@ -1116,7 +1171,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
       {/* Panel */}
       {effectiveIsOpen && (
         <div
-          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded && !isInline ? ' ba-expanded' : ''}${isInline ? ' ba-mode-inline' : ''}`}
+          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded && !isInline ? ' ba-expanded' : ''}${isInline ? ' ba-mode-inline' : ''}${isBottomDock ? ' ba-embedded-bottom-dock' : ''}`}
           role="dialog"
           aria-label="Banking AI Agent"
           ref={panelRef}
@@ -1212,6 +1267,32 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                 </button>
               )}
 
+              {isLoggedIn && (
+                <div className="ba-session-recovery">
+                  <div className="ba-left-label">Session</div>
+                  <button
+                    type="button"
+                    className="ba-left-auth-btn"
+                    onClick={() => void handleSessionRefresh()}
+                    disabled={sessionRefreshing || loading}
+                  >
+                    {sessionRefreshing ? 'Refreshing…' : '🔄 Refresh access token'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ba-left-auth-btn"
+                    onClick={() => handleLoginAction(effectiveUser?.role === 'admin' ? 'login_admin' : 'login_user')}
+                    disabled={loading}
+                  >
+                    🔐 Sign in again
+                  </button>
+                  <p className="ba-session-hint">
+                    If actions fail while you look signed in, the API may need a new access token — refresh uses your
+                    PingOne refresh token (no logout). Sign in again only if refresh fails.
+                  </p>
+                </div>
+              )}
+
               <div className="ba-left-label">Try asking:</div>
               {(effectiveUser?.role === 'admin' ? SUGGESTIONS_ADMIN : SUGGESTIONS_CUSTOMER).map(s => (
                 <button
@@ -1226,7 +1307,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
                       setNlLoading(true);
                       parseNaturalLanguage(s)
                         .then(({ source, result }) => dispatchNlResult(result, source))
-                        .catch(err => addMessage('assistant', `Could not parse: ${err.message}`))
+                        .catch(err => reportNlFailure(err))
                         .finally(() => setNlLoading(false));
                     }
                   }}
@@ -1427,9 +1508,13 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
             </div>
           </div>
           {/* Resize handles */}
-          <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--se" onMouseDown={(e) => handleResize(e, 'se')} aria-label="Resize southeast" />
-          <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--e" onMouseDown={(e) => handleResize(e, 'e')} aria-label="Resize east" />
-          <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--s" onMouseDown={(e) => handleResize(e, 's')} aria-label="Resize south" />
+          {!isInline && (
+            <>
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--se" onMouseDown={(e) => handleResize(e, 'se')} aria-label="Resize southeast" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--e" onMouseDown={(e) => handleResize(e, 'e')} aria-label="Resize east" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--s" onMouseDown={(e) => handleResize(e, 's')} aria-label="Resize south" />
+            </>
+          )}
         </div>
       )}
     </>

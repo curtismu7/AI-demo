@@ -9,13 +9,73 @@ const express = require('express');
 const dataStore = require('../data/store');
 const runtimeSettings = require('../config/runtimeSettings');
 const demoScenarioStore = require('../services/demoScenarioStore');
-const { authenticateToken, requireScopes } = require('../middleware/auth');
 const accountsRouter = require('./accounts');
 
 const router = express.Router();
 
 const DEFAULT_STEP_UP = () => runtimeSettings.get('stepUpAmountThreshold');
 const BLOCKED_USER_FIELDS = new Set(['id', 'password', 'createdAt']);
+
+/** Shown in Demo config UI only when DB + session have no profile strings (never overwrites real data). */
+const PROFILE_UI_FALLBACK = Object.freeze({
+  firstName: 'Jordan',
+  lastName: 'Demo',
+  email: 'jordan.demo@bxfinance.local',
+  username: 'jordan_demo',
+});
+
+function isBlank(v) {
+  return v == null || (typeof v === 'string' && v.trim() === '');
+}
+
+/**
+ * Merge PingOne/session-backed identity into stored user for the demo-config form.
+ * Anonymous fields stay empty until we fall back to PROFILE_UI_FALLBACK.
+ */
+function buildUserDataForDemoResponse(req, dbUser) {
+  const { password: _pw, ...rest } = dbUser || {};
+  const su = req.session?.user || {};
+  const tu = req.user || {};
+  const out = { ...rest };
+
+  const coalesce = (key, ...tokenKeys) => {
+    const raw = out[key];
+    if (!isBlank(raw)) return String(raw).trim();
+    if (!isBlank(su[key])) return String(su[key]).trim();
+    const tuKeys = tokenKeys.length ? tokenKeys : [key];
+    for (const tk of tuKeys) {
+      if (!isBlank(tu[tk])) return String(tu[tk]).trim();
+    }
+    return '';
+  };
+
+  out.id = out.id || tu.id || su.id || '';
+  out.firstName = coalesce('firstName');
+  out.lastName = coalesce('lastName');
+  out.email = coalesce('email');
+  out.username = coalesce('username');
+  out.role = out.role || su.role || tu.role || '';
+  out.createdAt = out.createdAt || su.createdAt || '';
+  if (out.isActive === undefined || out.isActive === null) {
+    out.isActive = su.isActive !== false;
+  }
+
+  if (!out.username && out.email) {
+    const local = String(out.email).split('@')[0];
+    if (local) out.username = local;
+  }
+
+  const allNamesEmpty =
+    isBlank(out.firstName) && isBlank(out.lastName) && isBlank(out.email) && isBlank(out.username);
+  if (allNamesEmpty) {
+    out.firstName = PROFILE_UI_FALLBACK.firstName;
+    out.lastName = PROFILE_UI_FALLBACK.lastName;
+    out.email = PROFILE_UI_FALLBACK.email;
+    out.username = PROFILE_UI_FALLBACK.username;
+  }
+
+  return out;
+}
 
 /**
  * Returns safe user profile updates from a JSON object.
@@ -43,7 +103,9 @@ function sanitizeUserUpdates(raw) {
   return updates;
 }
 
-router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
+// Auth: server mounts this router with authenticateToken only (same pattern as GET /api/accounts/my).
+// No banking:* scope gate — BFF session users often lack those scopes in the PingOne access token.
+router.get('/', async (req, res) => {
   try {
     let accounts = dataStore.getAccountsByUserId(req.user.id);
     if (accounts.length === 0 && req.user.id && typeof accountsRouter.provisionDemoAccounts === 'function') {
@@ -51,7 +113,7 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
     }
     const scenario = await demoScenarioStore.load(req.user.id);
     const currentUser = dataStore.getUserById(req.user.id) || {};
-    const { password, ...userData } = currentUser;
+    const userData = buildUserDataForDemoResponse(req, currentUser);
     res.json({
       accounts: accounts.map(a => ({
         id: a.id,
@@ -72,6 +134,12 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
         savingsName: 'Savings Account',
         checkingBalance: 3000,
         savingsBalance: 2000,
+        profileForm: {
+          firstName: PROFILE_UI_FALLBACK.firstName,
+          lastName: PROFILE_UI_FALLBACK.lastName,
+          email: PROFILE_UI_FALLBACK.email,
+          username: PROFILE_UI_FALLBACK.username,
+        },
       },
       persistenceNote: process.env.VERCEL && !(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL)
         ? 'KV not configured — threshold override is per server instance only until you add Upstash/KV.'
@@ -84,7 +152,7 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, 
   }
 });
 
-router.put('/', authenticateToken, requireScopes(['banking:write']), async (req, res) => {
+router.put('/', async (req, res) => {
   try {
     const { accounts: bodyAccounts, stepUpAmountThreshold, userData } = req.body || {};
     const uid = req.user.id;

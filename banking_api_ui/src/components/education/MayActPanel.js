@@ -61,7 +61,7 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
     },
     {
       id: 'attacks',
-      label: 'Why it&apos;s secure',
+      label: "Why it's secure",
       content: (
         <>
           <h3>What stops bad actors</h3>

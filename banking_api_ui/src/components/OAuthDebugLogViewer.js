@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
+import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 /**
@@ -52,34 +53,35 @@ export default function OAuthDebugLogViewer({ user, onLogout }) {
   };
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '1.5rem' }}>
+    <AdminSubPageShell
+      title="OAuth debug log"
+      lead={(
+        <>
+          Lines appear when <strong>Debug OAuth logging</strong> is <strong>On</strong> in{' '}
+          <Link to="/config">Configuration</Link> and the API processes OAuth traffic. Storage:{' '}
+          <code style={{ fontSize: '0.8rem' }}>{backend || '—'}</code>
+        </>
+      )}
+    >
       <PageNav user={user} onLogout={onLogout} title="OAuth Debug Log" />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a' }}>OAuth debug log</h1>
-          <p style={{ margin: '0.35rem 0 0', color: '#64748b', fontSize: '0.875rem', maxWidth: 36 * 16 }}>
-            Lines appear when <strong>Debug OAuth logging</strong> is <strong>On</strong> in{' '}
-            <Link to="/config">Configuration</Link> and the API processes OAuth traffic. Storage:{' '}
-            <code style={{ fontSize: '0.8rem' }}>{backend || '—'}</code>
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <Link to="/" className="btn btn-primary" style={{ textDecoration: 'none' }}>← Dashboard</Link>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: '#475569' }}>
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-            />
-            Auto-refresh 5s
-          </label>
-          <button type="button" className="btn btn-primary" onClick={() => fetchLog()}>
-            Refresh
-          </button>
-          <button type="button" className="btn btn-danger" onClick={handleClear}>
-            Clear log
-          </button>
-        </div>
+      <div className="app-page-toolbar app-page-toolbar--start" style={{ flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+        <Link to="/" className="app-page-toolbar-btn app-page-toolbar-btn--accent">
+          ← Dashboard
+        </Link>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: '#475569' }}>
+          <input
+            type="checkbox"
+            checked={autoRefresh}
+            onChange={(e) => setAutoRefresh(e.target.checked)}
+          />
+          Auto-refresh 5s
+        </label>
+        <button type="button" className="btn btn-primary" onClick={() => fetchLog()}>
+          Refresh
+        </button>
+        <button type="button" className="btn btn-danger" onClick={handleClear}>
+          Clear log
+        </button>
       </div>
       <div className="alert alert-info" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
         Verbose mode can include token claims (e.g. subject, email). Only use for troubleshooting; restrict admin access.
@@ -111,6 +113,6 @@ export default function OAuthDebugLogViewer({ user, onLogout }) {
             : '(No lines yet — turn on verbose logging in Config, save, then sign in or call an API so the server emits debug lines.)'}
         </pre>
       )}
-    </div>
+    </AdminSubPageShell>
   );
 }

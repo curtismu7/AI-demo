@@ -49,6 +49,7 @@ jest.mock('../../utils/logger', () => ({
 }));
 
 const pingOneClientService = require('../../services/pingOneClientService');
+const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../../config/scopes');
 const { authenticateToken } = require('../../middleware/auth');
 const { router: clientRegistrationRouter, wellKnownHandler } = require('../../routes/clientRegistration');
 
@@ -226,7 +227,7 @@ describe('POST /api/clients/register', () => {
     const doc = res.body.cimd_document;
     expect(doc.application_type).toBe('web');
     expect(doc.token_endpoint_auth_method).toBe('client_secret_basic');
-    expect(doc.scope).toBe('openid profile email');
+    expect(doc.scope).toBe(PINGONE_OIDC_DEFAULT_SCOPES_SPACE);
     expect(Array.isArray(doc.grant_types)).toBe(true);
   });
 

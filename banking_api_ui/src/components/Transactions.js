@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
+import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 const Transactions = ({ user, onLogout }) => {
@@ -60,18 +61,17 @@ const Transactions = ({ user, onLogout }) => {
 
   if (loading && transactions.length === 0) {
     return (
-      <div className="loading">
-        <div>Loading transactions...</div>
-      </div>
+      <AdminSubPageShell title="Transactions" lead="Review transfers, deposits, and withdrawals.">
+        <div className="loading">
+          <div>Loading transactions...</div>
+        </div>
+      </AdminSubPageShell>
     );
   }
 
   return (
-    <div>
+    <AdminSubPageShell title="Transactions" lead="Review transfers, deposits, and withdrawals.">
       <PageNav user={user} onLogout={onLogout} title="Transactions" />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ color: '#1e293b' }}>Transactions</h1>
-      </div>
 
       {error && (
         <div className="alert alert-error">
@@ -79,7 +79,7 @@ const Transactions = ({ user, onLogout }) => {
         </div>
       )}
 
-      <div className="card">
+      <div className="app-page-card">
         <div className="card-header">
           <h2 className="card-title">Transaction History</h2>
           <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
@@ -166,7 +166,7 @@ const Transactions = ({ user, onLogout }) => {
           </div>
         )}
       </div>
-    </div>
+    </AdminSubPageShell>
   );
 };
 

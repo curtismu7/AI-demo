@@ -11,16 +11,18 @@ const mockCall = jest.fn();
 
 jest.mock('../../services/mcpWebSocketClient', () => {
   const actual = jest.requireActual('../../services/mcpWebSocketClient');
+  const bearerFromReq = (req) => {
+    const auth = req.headers?.authorization;
+    if (auth && auth.startsWith('Bearer ')) {
+      return auth.slice(7).trim();
+    }
+    return null;
+  };
   return {
     ...actual,
     /** Inspector routes use session tokens in production; tests send Bearer only. */
-    getSessionAccessToken: (req) => {
-      const auth = req.headers?.authorization;
-      if (auth && auth.startsWith('Bearer ')) {
-        return auth.slice(7).trim();
-      }
-      return actual.getSessionAccessToken(req);
-    },
+    getSessionAccessToken: (req) => bearerFromReq(req) || actual.getSessionAccessToken(req),
+    getSessionBearerForMcp: (req) => bearerFromReq(req) || actual.getSessionBearerForMcp(req),
     mcpListTools: (...args) => mockList(...args),
     mcpCallTool: (...args) => mockCall(...args),
   };

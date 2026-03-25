@@ -225,6 +225,12 @@ router.get('/callback', async (req, res) => {
 
     // Regenerate session ID before storing OAuth tokens to prevent session fixation.
     // Pre-capture the data we need to store, then assign after regeneration.
+    if (!tokenData.refresh_token) {
+      console.warn(
+        '[oauth/callback] No refresh_token in token response — enable offline_access on the PingOne '
+        + 'admin app and authorized scopes. Admin session renewal will fail until sign-in again.'
+      );
+    }
     const oauthTokens = {
       accessToken: tokenData.access_token,
       idToken: tokenData.id_token || null,

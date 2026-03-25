@@ -3,6 +3,32 @@
 const oauthUserService = require('../services/oauthUserService');
 
 /**
+ * Effective access-token expiry (ms). Uses session.expiresAt when set; otherwise
+ * decodes JWT `exp` so we still refresh when expiresAt was never persisted.
+ */
+function getAccessTokenExpiryMs(tokens) {
+  if (tokens.expiresAt && typeof tokens.expiresAt === 'number') {
+    return tokens.expiresAt;
+  }
+  const at = tokens.accessToken;
+  if (!at || typeof at !== 'string' || at === '_cookie_session') return null;
+  const parts = at.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    let payload;
+    try {
+      payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    } catch {
+      const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      payload = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+    }
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
  * Auto-refresh middleware (RFC 6749 §6).
  * If the session holds an end-user access token that is within 5 minutes of
  * expiry, silently refresh it before forwarding the request.
@@ -17,9 +43,11 @@ async function refreshIfExpiring(req, res, next) {
     if (tokens.accessToken === '_cookie_session') return next();
 
     const MARGIN = 5 * 60 * 1000; // 5 minutes
-    if (!tokens.expiresAt || (Date.now() + MARGIN) < tokens.expiresAt) return next();
+    const effectiveExp = getAccessTokenExpiryMs(tokens);
+    if (!effectiveExp) return next();
+    if ((Date.now() + MARGIN) < effectiveExp) return next();
 
-    console.log('[tokenRefresh] Access token expiring soon, refreshing...');
+    console.log('[tokenRefresh] Access token expiring soon (or expired), refreshing...');
     const tokenData = await oauthUserService.refreshAccessToken(tokens.refreshToken);
 
     req.session.oauthTokens = {

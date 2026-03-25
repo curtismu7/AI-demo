@@ -71,9 +71,9 @@
   line-height: 1;
 }
 .log-action-btn:hover {
-  background: #3b82f6;
+  background: var(--app-primary-red);
   color: #fff;
-  border-color: #3b82f6;
+  border-color: var(--app-primary-red-border);
 }
 
 .close-button {
@@ -110,6 +110,55 @@
 
 .runtime-chip-group {
   margin-right: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.log-viewer-hint {
+  width: 100%;
+  flex-basis: 100%;
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  background: rgba(59, 130, 246, 0.12);
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.log-toast-type {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.log-details-cell {
+  vertical-align: top;
+  max-width: 360px;
+}
+
+.log-details-pre {
+  margin: 0;
+  max-height: 140px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #cbd5e1;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-details-empty {
+  color: #64748b;
+  font-size: 12px;
 }
 
 .runtime-chip {
@@ -130,8 +179,8 @@
 }
 
 .runtime-chip.active {
-  background: #1d4ed8;
-  border-color: #3b82f6;
+  background: var(--app-primary-red);
+  border-color: var(--app-primary-red-border);
   color: #ffffff;
 }
 
@@ -184,8 +233,8 @@
 .download-button,
 .clear-button,
 .copy-button {
-  background: #3b82f6;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border: 1px solid var(--app-primary-red-border);
   color: #fff;
   padding: 6px 16px;
   border-radius: 4px;
@@ -196,7 +245,7 @@
 }
 
 .refresh-button:hover {
-  background: #2563eb;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
 }
 
 .refresh-button:disabled {
@@ -205,28 +254,16 @@
   opacity: 0.5;
 }
 
-.download-button {
-  background: #10b981;
-}
-
 .download-button:hover {
-  background: #059669;
-}
-
-.clear-button {
-  background: #ef4444;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
 }
 
 .clear-button:hover {
-  background: #dc2626;
-}
-
-.copy-button {
-  background: #8b5cf6;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
 }
 
 .copy-button:hover {
-  background: #7c3aed;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
 }
 
 .copy-button:disabled {
@@ -236,19 +273,23 @@
 }
 
 .pause-button {
-  background: #f59e0b;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 
 .pause-button:hover {
-  background: #d97706;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
 }
 
 .resume-button {
-  background: #10b981;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 
 .resume-button:hover {
-  background: #059669;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
 }
 
 .log-stats {
@@ -451,16 +492,17 @@
   height: 34px;
   padding: 0 12px;
   border-radius: 8px;
-  background: #1d4ed8;
-  border: 1px solid #3b82f6;
-  color: #eff6ff;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border: 1px solid var(--app-primary-red-border);
+  color: #fff;
   text-decoration: none;
   font-size: 0.82rem;
   font-weight: 700;
 }
 
 .log-page-nav-btn:hover {
-  background: #2563eb;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 /* Responsive */

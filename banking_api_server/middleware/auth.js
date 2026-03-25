@@ -30,6 +30,9 @@ const COOKIE_SESSION_ALLOWED_ROUTES = new Set([
   'POST /api/accounts/reset-demo',
   'GET /api/demo-scenario',
   'PUT /api/demo-scenario',
+  'GET /api/mcp/inspector/context',
+  'GET /api/mcp/inspector/tools',
+  'POST /api/mcp/inspector/invoke',
 ]);
 
 function normalizeRouteKey(routeKey) {
@@ -576,6 +579,8 @@ const authenticateToken = async (req, res, next) => {
         id: sessionUser.id,
         username: sessionUser.username || sessionUser.email || sessionUser.id,
         email: sessionUser.email || null,
+        firstName: sessionUser.firstName || null,
+        lastName: sessionUser.lastName || null,
         role: sessionUser.role || 'user',
         clientType: req.session?.clientType || 'enduser',
         userType: sessionUser.role === 'admin' ? 'admin' : 'customer',
@@ -635,6 +640,8 @@ const authenticateToken = async (req, res, next) => {
             id: decoded.sub,
             username: decoded.preferred_username || decoded.sub,
             email: decoded.email,
+            firstName: decoded.given_name || null,
+            lastName: decoded.family_name || null,
             role: derivedRole,
             clientType: clientType,
             userType: userType,
@@ -734,6 +741,8 @@ const authenticateToken = async (req, res, next) => {
         id: decoded.sub,
         username: decoded.preferred_username || decoded.sub,
         email: decoded.email,
+        firstName: decoded.given_name || null,
+        lastName: decoded.family_name || null,
         role: derivedRole,
         clientType: clientType,
         userType: userType,

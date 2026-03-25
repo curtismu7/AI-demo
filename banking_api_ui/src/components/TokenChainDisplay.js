@@ -80,12 +80,15 @@ function EventRow({ event, isLast }) {
           {hasDetail ? (open ? '▾' : '▸') : <span style={{ opacity: 0 }}>▸</span>}
         </button>
 
-        <div className="tcd-event-main">
-          <span className="tcd-event-label">{event.label}</span>
-          {event.rfc && <span className="tcd-event-rfc">{event.rfc}</span>}
+        <div className="tcd-event-content">
+          <div className="tcd-event-title-row">
+            <span className="tcd-event-label">{event.label}</span>
+          </div>
+          <div className={`tcd-event-meta-row${event.rfc ? '' : ' tcd-event-meta-row--no-rfc'}`}>
+            {event.rfc ? <span className="tcd-event-rfc">{event.rfc}</span> : null}
+            <StatusBadge status={event.status} />
+          </div>
         </div>
-
-        <StatusBadge status={event.status} />
       </div>
 
       {open && (

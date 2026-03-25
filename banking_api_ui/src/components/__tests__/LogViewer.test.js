@@ -9,6 +9,14 @@ import axios from 'axios';
 import LogViewer from '../LogViewer';
 
 jest.mock('axios');
+jest.mock('../../services/toastLogStore', () => ({
+  toastLogStore: {
+    getAll: jest.fn(() => []),
+    subscribe: jest.fn(() => () => {}),
+    clear: jest.fn(),
+    append: jest.fn(),
+  },
+}));
 
 describe('LogViewer Component', () => {
   const mockLogs = [
@@ -66,9 +74,9 @@ describe('LogViewer Component', () => {
 
     it('should render close button', async () => {
       render(<LogViewer isOpen={true} onClose={jest.fn()} />);
-      
+
       await waitFor(() => {
-        expect(screen.getByTitle('Open Log Viewer')).toBeInTheDocument();
+        expect(screen.getByText('✕')).toBeInTheDocument();
       });
     });
   });
@@ -106,9 +114,9 @@ describe('LogViewer Component', () => {
       render(<LogViewer isOpen={true} onClose={jest.fn()} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Test info message')).toBeInTheDocument();
-        expect(screen.getByText('Test error message')).toBeInTheDocument();
-        expect(screen.getByText('Test warning message')).toBeInTheDocument();
+        expect(screen.getAllByText('Test info message').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Test error message').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Test warning message').length).toBeGreaterThan(0);
       });
     });
 
@@ -128,19 +136,19 @@ describe('LogViewer Component', () => {
       render(<LogViewer isOpen={true} onClose={jest.fn()} />);
 
       await waitFor(() => {
-        const levelSelect = screen.getByLabelText('Level:');
+        const [, levelSelect] = screen.getAllByRole('combobox');
         fireEvent.change(levelSelect, { target: { value: 'error' } });
       });
 
       await waitFor(() => {
-        expect(axios.get).toHaveBeenCalledWith(
-          '/api/logs/console',
-          expect.objectContaining({
-            params: expect.objectContaining({
-              level: 'error'
-            })
+        const levelParams = expect.objectContaining({
+          params: expect.objectContaining({
+            level: 'error'
           })
-        );
+        });
+        expect(axios.get).toHaveBeenCalledWith('/api/logs/console', levelParams);
+        expect(axios.get).toHaveBeenCalledWith('/api/logs/app', levelParams);
+        expect(axios.get).toHaveBeenCalledWith('/api/logs/vercel', levelParams);
       });
     });
 
@@ -153,14 +161,14 @@ describe('LogViewer Component', () => {
       });
 
       await waitFor(() => {
-        expect(axios.get).toHaveBeenCalledWith(
-          '/api/logs/console',
-          expect.objectContaining({
-            params: expect.objectContaining({
-              search: 'test'
-            })
+        const searchParams = expect.objectContaining({
+          params: expect.objectContaining({
+            search: 'test'
           })
-        );
+        });
+        expect(axios.get).toHaveBeenCalledWith('/api/logs/console', searchParams);
+        expect(axios.get).toHaveBeenCalledWith('/api/logs/app', searchParams);
+        expect(axios.get).toHaveBeenCalledWith('/api/logs/vercel', searchParams);
       });
     });
 
@@ -168,7 +176,7 @@ describe('LogViewer Component', () => {
       render(<LogViewer isOpen={true} onClose={jest.fn()} />);
 
       await waitFor(() => {
-        const sourceSelect = screen.getByLabelText('Source:');
+        const [sourceSelect] = screen.getAllByRole('combobox');
         fireEvent.change(sourceSelect, { target: { value: 'vercel' } });
       });
 
@@ -239,12 +247,12 @@ describe('LogViewer Component', () => {
       render(<LogViewer isOpen={true} onClose={jest.fn()} />);
 
       await waitFor(() => {
-        expect(axios.get).toHaveBeenCalled();
+        expect(screen.getAllByText('Test info message').length).toBeGreaterThan(0);
       });
 
       const initialCallCount = axios.get.mock.calls.length;
 
-      const refreshButton = screen.getByText(/Refresh/);
+      const refreshButton = screen.getByRole('button', { name: /Refresh/ });
       fireEvent.click(refreshButton);
 
       await waitFor(() => {
@@ -257,7 +265,8 @@ describe('LogViewer Component', () => {
       global.URL.revokeObjectURL = jest.fn();
       
       const mockClick = jest.fn();
-      jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+      const origCreateElement = document.createElement.bind(document);
+      const createElSpy = jest.spyOn(document, 'createElement').mockImplementation((tag) => {
         if (tag === 'a') {
           return {
             click: mockClick,
@@ -265,7 +274,7 @@ describe('LogViewer Component', () => {
             download: ''
           };
         }
-        return document.createElement(tag);
+        return origCreateElement(tag);
       });
 
       render(<LogViewer isOpen={true} onClose={jest.fn()} />);
@@ -276,6 +285,7 @@ describe('LogViewer Component', () => {
       });
 
       expect(mockClick).toHaveBeenCalled();
+      createElSpy.mockRestore();
     });
 
     it('should clear console logs', async () => {
@@ -329,7 +339,7 @@ describe('LogViewer Component', () => {
       render(<LogViewer isOpen={true} onClose={jest.fn()} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/test-123/)).toBeInTheDocument();
+        expect(screen.getAllByText(/test-123/).length).toBeGreaterThan(0);
       });
     });
 

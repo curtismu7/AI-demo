@@ -1,10 +1,28 @@
-.mcp-inspector {
-  max-width: 960px;
-  margin: 0 auto;
-  /* padding-right leaves room for the fixed CIMD/Logs buttons (~160px wide + 28px edge) */
-  padding: 1.5rem 190px 3rem 1rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+/* Inner content sits under app-page-shell__body (same pattern as Demo config). */
+.mcp-inspector-page .mcp-inspector {
+  margin: 0;
+  padding: 0;
   color: #0f172a;
+}
+
+.mcp-inspector-page .mcp-inspector__edu-toolbar {
+  margin-bottom: 1rem;
+}
+
+.mcp-inspector-page .app-page-card--muted {
+  background: #f8fafc;
+}
+
+.mcp-inspector__hint-tight {
+  margin-bottom: 0 !important;
+}
+
+.mcp-inspector__hint-mb {
+  margin-bottom: 1rem !important;
+}
+
+.mcp-inspector__muted--block {
+  margin-top: 0;
 }
 
 .mcp-inspector__header {
@@ -56,12 +74,18 @@
 }
 
 .mcp-inspector__btn-ghost {
-  background: transparent;
-  border: 1px solid #cbd5e1;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border: 1px solid var(--app-primary-red-border);
+  color: #fff;
   padding: 0.4rem 0.75rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.875rem;
+}
+
+.mcp-inspector__btn-ghost:hover {
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .mcp-inspector__banner {
@@ -89,9 +113,10 @@
   margin-top: 0;
 }
 
-.mcp-inspector__panel h2 {
+.mcp-inspector__panel h2,
+.mcp-inspector-page .app-page-card.demo-data-section > h2 {
   margin: 0 0 0.75rem;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
 }
 
 .mcp-inspector__steps {
@@ -202,10 +227,16 @@
 .mcp-inspector__btn {
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
+  border: 1px solid var(--app-primary-red-border);
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
   cursor: pointer;
   font-size: 0.875rem;
+}
+
+.mcp-inspector__btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .mcp-inspector__btn:disabled {
@@ -214,9 +245,14 @@
 }
 
 .mcp-inspector__btn--primary {
-  background: #1d4ed8;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
-  border-color: #1d4ed8;
+  border-color: var(--app-primary-red-border);
+}
+
+.mcp-inspector__btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .mcp-inspector__pre {

@@ -8,6 +8,7 @@ import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
 import BankingAgent from './BankingAgent';
+import '../styles/appShellPages.css';
 
 const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
   const { open } = useEducationUI();
@@ -265,211 +266,90 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
   }
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-      <div style={{
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
-        color: 'white',
-        padding: '40px',
-        borderRadius: '8px',
-        marginBottom: '32px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gridTemplateRows: '1fr 1fr',
-              gap: '2px',
-              width: '32px',
-              height: '32px',
-              padding: '4px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: '6px',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <div style={{ background: 'white', borderRadius: '2px', opacity: '1' }}></div>
-              <div style={{ background: 'white', borderRadius: '2px', opacity: '0.8' }}></div>
-              <div style={{ background: 'white', borderRadius: '2px', opacity: '0.7' }}></div>
-              <div style={{ background: 'white', borderRadius: '2px', opacity: '0.9' }}></div>
+    <div className="admin-dashboard-page app-page-shell">
+      <header className="app-page-shell__hero">
+        <div className="app-page-shell__hero-top">
+          <div className="admin-dashboard__intro">
+            <div className="admin-dashboard__brand-line">
+              <div className="admin-dashboard__logo-mark" aria-hidden="true">
+                <span /><span /><span /><span />
+              </div>
+              <span className="admin-dashboard__brand-name">BX Finance</span>
             </div>
-            <span style={{ fontSize: '1.5rem', fontWeight: '700', letterSpacing: '-0.025em', color: 'white' }}>
-              BX Finance
-            </span>
-          </div>
-          <div>
-            <h1 style={{ margin: '0 0 8px 0', fontSize: '2rem', fontWeight: '600', letterSpacing: '-0.025em' }}>
-              Admin Dashboard
-            </h1>
-            <p style={{ margin: '0', opacity: '0.85', fontSize: '1rem', fontWeight: '400' }}>
-              Welcome, {user?.firstName} {user?.lastName}
-            </p>
+            <div>
+              <h1 className="app-page-shell__title">Admin Dashboard</h1>
+              <p className="admin-dashboard__welcome">
+                Welcome, {user?.firstName} {user?.lastName}
+              </p>
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+      </header>
+
+      <div
+        className={`app-page-shell__body app-page-shell__body--wide ${agentUiMode === 'embedded' ? 'app-page-shell__body--embed-agent' : ''}`}
+      >
+        <div
+          className={`ud-shell ${agentUiMode === 'embedded' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
+        >
+        <div className="app-page-toolbar" role="toolbar" aria-label="Admin actions">
           <button
             type="button"
+            className="app-page-toolbar-btn"
             onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-            style={{
-              background: 'rgba(255,255,255,0.95)',
-              border: '1px solid rgba(255,255,255,0.85)',
-              color: '#1e40af',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-            }}
           >
             How does login work?
           </button>
           <button
             type="button"
+            className="app-page-toolbar-btn"
             onClick={() => open(EDU.MAY_ACT, 'what')}
-            style={{
-              background: 'rgba(255,255,255,0.95)',
-              border: '1px solid rgba(255,255,255,0.85)',
-              color: '#1e40af',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-            }}
           >
             What is may_act?
           </button>
           <Link
             to="/demo-data"
+            className="app-page-toolbar-btn"
             title="Edit sandbox account names, balances, and MFA threshold"
-            style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              border: '2px solid rgba(255, 255, 255, 0.85)',
-              color: '#1e40af',
-              padding: '10px 18px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              backdropFilter: 'blur(10px)',
-              whiteSpace: 'nowrap',
-            }}
           >
             Demo config
           </Link>
           <Link
             to="/mcp-inspector"
+            className="app-page-toolbar-btn app-page-toolbar-btn--accent"
             title="MCP discovery, tools/list & tools/call via BFF"
-            style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              border: '2px solid rgba(255, 255, 255, 0.85)',
-              color: '#1e40af',
-              padding: '10px 18px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              backdropFilter: 'blur(10px)',
-              whiteSpace: 'nowrap',
-            }}
           >
             MCP Inspector
           </Link>
           <Link
             to="/oauth-debug-logs"
+            className="app-page-toolbar-btn"
             title="OAuth verbose log (Config → Debug OAuth logging)"
-            style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              border: '2px solid rgba(255, 255, 255, 0.85)',
-              color: '#1e40af',
-              padding: '10px 18px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              backdropFilter: 'blur(10px)',
-              whiteSpace: 'nowrap',
-            }}
           >
             OAuth debug log
           </Link>
           <Link
             to="/client-registration"
+            className="app-page-toolbar-btn"
             title="Create OAuth clients in PingOne using the CIMD interface"
-            style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              border: '2px solid rgba(255, 255, 255, 0.85)',
-              color: '#1e40af',
-              padding: '10px 18px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              backdropFilter: 'blur(10px)',
-              whiteSpace: 'nowrap',
-            }}
           >
             Client Registration
           </Link>
-          <button 
+          <button
+            type="button"
             onClick={openTokenModal}
+            className="app-page-toolbar-btn app-page-toolbar-btn--icon"
             title="View OAuth Token Info"
-            style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-              color: 'white',
-              padding: '10px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.3s ease',
-              backdropFilter: 'blur(10px)',
-              minWidth: '40px',
-              height: '40px'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.3)';
-              e.target.style.borderColor = 'rgba(255, 255, 255, 0.5)';
-              e.target.style.transform = 'scale(1.05)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.2)';
-              e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-              e.target.style.transform = 'scale(1)';
-            }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
             </svg>
           </button>
           <button
             type="button"
             onClick={handleDownloadBootstrap}
+            className="app-page-toolbar-btn"
             title="Download current in-memory data as bootstrapData.json for the next deploy"
-            style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-              color: 'white',
-              padding: '12px 20px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              backdropFilter: 'blur(10px)',
-            }}
           >
             Export seed JSON
           </button>
@@ -477,18 +357,8 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
             <button
               type="button"
               onClick={handleWriteBootstrap}
+              className="app-page-toolbar-btn"
               title="Write data/bootstrapData.json on the server (requires ALLOW_BOOTSTRAP_EXPORT_WRITE in production)"
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '2px solid rgba(255, 255, 255, 0.25)',
-                color: 'white',
-                padding: '12px 20px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                backdropFilter: 'blur(10px)',
-              }}
             >
               Save seed on server
             </button>
@@ -497,69 +367,19 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
             type="button"
             onClick={handleResetDemo}
             disabled={resettingDemo}
+            className="app-page-toolbar-btn"
             title="Reset all OAuth demo accounts to $5,000 starting balance"
-            style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-              color: 'white',
-              padding: '12px 20px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              backdropFilter: 'blur(10px)',
-              opacity: resettingDemo ? 0.6 : 1,
-            }}
           >
             {resettingDemo ? 'Resetting…' : '↺ Reset Demo'}
           </button>
-          {resetMsg && (
-            <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.8rem' }}>{resetMsg}</span>
-          )}
-          <button
-            onClick={onLogout}
-            style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-              color: 'white',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              transition: 'all 0.3s ease',
-              backdropFilter: 'blur(10px)'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.3)';
-              e.target.style.borderColor = 'rgba(255, 255, 255, 0.5)';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.2)';
-              e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            Log Out
+          <button type="button" onClick={onLogout} className="app-page-toolbar-btn app-page-toolbar-btn--danger">
+            Log out
           </button>
         </div>
-      </div>
+        {resetMsg && <div className="admin-dashboard__reset-msg">{resetMsg}</div>}
 
       {/* Token Chain Display */}
       <TokenChainDisplay />
-
-      {agentUiMode === 'embedded' && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.25rem' }}>AI banking assistant</h2>
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: '#64748b' }}>
-            Natural language and MCP tools — step chips show what ran.
-          </p>
-          <div className="embedded-banking-agent">
-            <BankingAgent user={user} onLogout={onLogout} mode="inline" />
-          </div>
-        </div>
-      )}
 
       {/* Statistics Cards */}
       <div className="stats-grid">
@@ -698,6 +518,22 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
           </button>
         </div>
       </div>
+
+      {agentUiMode === 'embedded' && (
+        <div className="embedded-agent-dock" role="region" aria-label="AI banking assistant">
+          <div className="embedded-agent-dock__head">
+            <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
+            <p className="embedded-agent-dock__lead">
+              Natural language and MCP tools along the bottom — step chips show what ran.
+            </p>
+          </div>
+          <div className="embedded-banking-agent embedded-banking-agent--bottom">
+            <BankingAgent user={user} onLogout={onLogout} mode="inline" embeddedDockBottom />
+          </div>
+        </div>
+      )}
+
+        </div>
 
       {/* OAuth Token Info Modal */}
       {showTokenModal && (
@@ -946,6 +782,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
         </div>
       )}
 
+      </div>
     </div>
   );
 };

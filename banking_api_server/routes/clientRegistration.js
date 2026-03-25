@@ -17,6 +17,7 @@ const express = require('express');
 const router  = express.Router();
 const { requireAdmin, requireScopes } = require('../middleware/auth');
 const pingOneClientService = require('../services/pingOneClientService');
+const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
 
 // ── In-memory store for CIMD documents ───────────────────────────────────────
 // Key: PingOne application id (the opaque client_id from PingOne)
@@ -74,7 +75,7 @@ router.post('/register', requireAdmin, requireScopes(['banking:admin']), async (
       redirect_uris:              Array.isArray(redirect_uris) ? redirect_uris : [],
       post_logout_redirect_uris:  Array.isArray(post_logout_redirect_uris) ? post_logout_redirect_uris : [],
       token_endpoint_auth_method: token_endpoint_auth_method || 'client_secret_basic',
-      scope:                      typeof scope === 'string' ? scope : 'openid profile email',
+      scope:                      typeof scope === 'string' ? scope : PINGONE_OIDC_DEFAULT_SCOPES_SPACE,
       contacts:                   Array.isArray(contacts) ? contacts : [],
       logo_uri:                   logo_uri || null,
       client_uri:                 client_uri || null,

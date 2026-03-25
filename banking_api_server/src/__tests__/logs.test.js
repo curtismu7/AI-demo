@@ -235,6 +235,8 @@ describe('Log Viewer API', () => {
         expect(log).toHaveProperty('timestamp');
         expect(log).toHaveProperty('level');
         expect(log).toHaveProperty('message');
+        expect(log).toHaveProperty('id');
+        expect(typeof log.id).toBe('number');
       });
     });
 

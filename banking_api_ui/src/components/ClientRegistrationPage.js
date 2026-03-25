@@ -10,6 +10,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -258,36 +259,30 @@ export default function ClientRegistrationPage({ user, onLogout }) {
   }, []);
 
   return (
-    <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 24px' }}>
+    <AdminSubPageShell
+      title="OAuth Client Registration"
+      lead={(
+        <>
+          Fill in client metadata using the <strong>Client ID Metadata Document (CIMD)</strong> format.
+          The backend creates the application in PingOne and hosts the CIMD document for you.
+        </>
+      )}
+      wide={false}
+    >
       <PageNav user={user} onLogout={onLogout} title="Client Registration" />
-      {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-          <div>
-            <h1 style={{ margin: '0 0 6px', fontSize: '24px', fontWeight: 700, color: 'var(--text, #1e293b)' }}>
-              OAuth Client Registration
-            </h1>
-            <p style={{ margin: 0, color: 'var(--muted, #64748b)', fontSize: '14px' }}>
-              Fill in client metadata using the{' '}
-              <strong>Client ID Metadata Document (CIMD)</strong> format.
-              The backend creates the application in PingOne and hosts the CIMD document for you.
-            </p>
-          </div>
-          <button
-            onClick={() => openPanel(EDU.CIMD, 'what')}
-            style={{
-              padding: '8px 14px', background: '#f1f5f9', border: '1px solid #e2e8f0',
-              borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-              color: '#475569', whiteSpace: 'nowrap',
-            }}
-          >
-            📖 Learn: CIMD
-          </button>
-        </div>
+      <div className="app-page-toolbar app-page-toolbar--start">
+        <button
+          type="button"
+          className="app-page-toolbar-btn"
+          onClick={() => openPanel(EDU.CIMD, 'what')}
+        >
+          📖 Learn: CIMD
+        </button>
+      </div>
 
-        {/* Concept banner */}
+      <div style={{ maxWidth: '760px', margin: '0 auto' }}>
         <div style={{
-          marginTop: '16px', padding: '14px 16px', background: '#eef2ff',
+          marginBottom: '32px', padding: '14px 16px', background: '#eef2ff',
           borderLeft: '4px solid #6366f1', borderRadius: '0 6px 6px 0', fontSize: '13px', color: '#3730a3',
         }}>
           <strong>How this works:</strong> You define the metadata below (CIMD format). The server
@@ -295,7 +290,6 @@ export default function ClientRegistrationPage({ user, onLogout }) {
           CIMD document at <code>/.well-known/oauth-client/&#123;app-id&#125;</code>.
           That URL becomes the <code>client_id</code> for any CIMD-aware AS.
         </div>
-      </div>
 
       {/* Result or Form */}
       {result ? (
@@ -402,6 +396,7 @@ export default function ClientRegistrationPage({ user, onLogout }) {
           </div>
         </form>
       )}
-    </div>
+      </div>
+    </AdminSubPageShell>
   );
 }

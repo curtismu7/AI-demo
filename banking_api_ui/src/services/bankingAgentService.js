@@ -11,6 +11,28 @@
  *   - Exchanged Token (T2) decoded claims + act status
  */
 
+// ─── Session refresh (RFC 6749 §6) — same endpoints as BFF auto-refresh ───────
+
+/**
+ * Tries end-user refresh, then admin refresh. Does not log the user out.
+ * @returns {Promise<{ ok: boolean, expiresAt?: number }>}
+ */
+export async function refreshOAuthSession() {
+  const endpoints = ['/api/auth/oauth/user/refresh', '/api/auth/oauth/refresh'];
+  for (const url of endpoints) {
+    const res = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: true, expiresAt: data.expiresAt };
+    }
+  }
+  return { ok: false };
+}
+
 // ─── Low-level MCP tool call ──────────────────────────────────────────────────
 
 /**
@@ -23,17 +45,31 @@
  * @returns {Promise<{ result: any, tokenEvents: Array }>}
  */
 export async function callMcpTool(tool, params = {}) {
-  const response = await fetch('/api/mcp/tool', {
+  const body = JSON.stringify({ tool, params });
+  const fetchOpts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tool, params }),
-  });
+    body,
+    credentials: 'include',
+  };
+
+  let response = await fetch('/api/mcp/tool', fetchOpts);
+  if (response.status === 401) {
+    const refreshed = await refreshOAuthSession();
+    if (refreshed.ok) {
+      response = await fetch('/api/mcp/tool', fetchOpts);
+    }
+  }
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({ message: response.statusText }));
-    // Surface tokenEvents even on error responses (e.g. token_exchange_failed)
     const tokenEvents = err.tokenEvents || [];
-    throw Object.assign(new Error(err.message || `MCP error: ${response.status}`), { tokenEvents });
+    const e = Object.assign(new Error(err.message || `MCP error: ${response.status}`), {
+      tokenEvents,
+      statusCode: response.status,
+      code: err.error,
+    });
+    throw e;
   }
 
   const data = await response.json();

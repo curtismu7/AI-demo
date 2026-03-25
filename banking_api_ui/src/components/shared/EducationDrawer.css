@@ -79,9 +79,9 @@
 }
 
 .edu-drawer-tab--active {
-  background: #1e40af;
+  background: var(--app-primary-red);
   color: #fff;
-  border-color: #1e40af;
+  border-color: var(--app-primary-red-border);
 }
 
 .edu-drawer-body {

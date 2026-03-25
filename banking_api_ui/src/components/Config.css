@@ -3,6 +3,18 @@
  * Primary brand: #277ba5 — matches index.css .btn-primary and Ping One patterns.
  */
 
+/* When paired with appShellPages.css, body column stays centered under the hero */
+.config-page.app-page-shell .app-page-shell__body .config-page__main {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.config-page__hero-actions {
+  justify-content: flex-end;
+}
+
 .config-page {
   --p1-primary: #277ba5;
   --p1-primary-dark: #1e5f82;
@@ -27,57 +39,10 @@
   justify-content: center;
 }
 
-/* ── Hero ───────────────────────────────────────────────── */
-.config-page__hero {
+/* ── Hero (uses app-page-shell__hero from appShellPages.css; tint to PingOne brand) ── */
+.config-page__hero-shell.app-page-shell__hero {
   background: linear-gradient(128deg, #1a5d80 0%, var(--p1-primary) 42%, #236f96 100%);
-  color: #fff;
-  padding: 1.35rem 0 1.5rem;
-  box-shadow: 0 4px 20px rgba(26, 93, 128, 0.38);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.config-page__hero-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.config-page__title {
-  font-size: 1.55rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  margin: 0;
-  line-height: 1.2;
-}
-
-.config-page__subtitle {
-  font-size: 0.9rem;
-  opacity: 0.9;
-  margin-top: 0.4rem;
-  max-width: 44rem;
-  line-height: 1.55;
-}
-
-.config-page__hero-actions {
-  display: flex;
-  gap: 0.65rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.config-page__link {
-  color: rgba(255, 255, 255, 0.94);
-  font-size: 0.875rem;
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.config-page__link:hover {
-  color: #fff;
-  border-bottom-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 8px 24px rgba(26, 93, 128, 0.35);
 }
 
 .config-page__badge {
@@ -439,6 +404,16 @@
   flex-wrap: wrap;
   margin-top: 0.5rem;
   margin-bottom: 2rem;
+}
+
+.config-page__actions--footer {
+  margin-top: 2.5rem;
+  margin-bottom: 0;
+  padding-top: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-top: 1px solid var(--p1-border);
+  background: linear-gradient(180deg, transparent 0%, var(--p1-surface-muted) 100%);
+  border-radius: 0 0 12px 12px;
 }
 
 .config-page__card-subtitle {

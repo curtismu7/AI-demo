@@ -4,6 +4,14 @@
   box-sizing: border-box;
 }
 
+/* App-wide primary actions: red fill, white label (floating FABs use their own classes). */
+:root {
+  --app-primary-red: #b91c1c;
+  --app-primary-red-hover: #991b1b;
+  --app-primary-red-mid: #dc2626;
+  --app-primary-red-border: #7f1d1d;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -298,41 +306,63 @@ body {
 }
 
 .btn-primary {
-  background-color: #277ba5;
-  color: white;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
+  box-shadow: 0 1px 3px rgba(127, 29, 29, 0.28);
 }
 
 .btn-primary:hover {
-  background-color: #21698c;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
+  color: #fff;
 }
 
 .btn-secondary {
-  background-color: #ffffff;
-  color: #277ba5;
-  border: 1px solid #277ba5;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 
 .btn-secondary:hover {
-  background-color: #277ba5;
-  color: #ffffff;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
+  color: #fff;
+}
+
+/* Outline primary — same red treatment as solid (used by EducationBar, end-user-nano). */
+.btn-outline-primary {
+  color: #fff;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border: 1px solid var(--app-primary-red-border);
+}
+
+.btn-outline-primary:hover {
+  color: #fff;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
 }
 
 .btn-danger {
-  background-color: #ef4444;
-  color: white;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 
 .btn-danger:hover {
-  background-color: #dc2626;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .btn-success {
-  background-color: #10b981;
-  color: white;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
 }
 
 .btn-success:hover {
-  background-color: #059669;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .form-group {
@@ -394,9 +424,9 @@ body {
 }
 
 .pagination-btn.active {
-  background-color: #1e40af;
-  color: white;
-  border-color: #1e40af;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border-color: var(--app-primary-red-border);
 }
 
 .pagination-btn:disabled {
@@ -671,7 +701,7 @@ body {
 
 .oauth-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(39, 123, 165, 0.25);
+  box-shadow: 0 10px 15px -3px rgba(185, 28, 28, 0.35);
 }
 
 .login-footer {
@@ -790,31 +820,31 @@ body {
   font-size: 0.9rem;
 }
 
-/* Ping One end-user-nano: avoid flat grey for “secondary” — outline-style primary */
+/* Ping One end-user-nano — align with app red CTAs */
 .end-user-nano .btn.btn-secondary {
-  --bs-btn-color: #277ba5;
-  --bs-btn-bg: #ffffff;
-  --bs-btn-border-color: #277ba5;
-  --bs-btn-hover-color: #ffffff;
-  --bs-btn-hover-bg: #21698c;
-  --bs-btn-hover-border-color: #1f6284;
+  --bs-btn-color: #fff;
+  --bs-btn-bg: #b91c1c;
+  --bs-btn-border-color: #7f1d1d;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #991b1b;
+  --bs-btn-hover-border-color: #7f1d1d;
   --bs-btn-active-color: #ffffff;
-  --bs-btn-active-bg: #1f6284;
-  --bs-btn-active-border-color: #1d5c7c;
-  --bs-btn-focus-shadow-rgb: 39, 123, 165;
-  --bs-btn-disabled-color: #8a9aa8;
-  --bs-btn-disabled-bg: #f1f5f9;
-  --bs-btn-disabled-border-color: #cbd5e1;
+  --bs-btn-active-bg: #991b1b;
+  --bs-btn-active-border-color: #7f1d1d;
+  --bs-btn-focus-shadow-rgb: 185, 28, 28;
+  --bs-btn-disabled-color: #fecaca;
+  --bs-btn-disabled-bg: #fca5a5;
+  --bs-btn-disabled-border-color: #f87171;
 }
 
 .end-user-nano .pagination-btn {
-  color: #277ba5;
-  border-color: #277ba5;
-  background-color: #ffffff;
+  color: var(--app-primary-red-hover);
+  border-color: #fca5a5;
+  background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%);
 }
 
 .end-user-nano .pagination-btn:hover:not(:disabled) {
   color: #ffffff;
-  background-color: #277ba5;
-  border-color: #21698c;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border-color: var(--app-primary-red-border);
 }

@@ -1,6 +1,12 @@
 // OAuth Scope Configuration for Banking API
 // This file defines scope mappings for different environments and user types
 
+/**
+ * Default space-separated OIDC scopes for PingOne (authorize, CIBA, client metadata fallbacks).
+ * Includes offline_access so the app can receive a refresh token when PingOne allows it on the app.
+ */
+const PINGONE_OIDC_DEFAULT_SCOPES_SPACE = 'openid profile email offline_access';
+
 const BANKING_SCOPES = {
   // Read scopes
   ACCOUNTS_READ: 'banking:accounts:read',
@@ -146,7 +152,7 @@ const OAUTH_PROVIDER_SCOPE_CONFIGS = {
   pingone_ai_core: {
     // Admin client scopes
     adminClient: {
-      defaultScopes: ['openid', 'profile', 'email'],
+      defaultScopes: ['openid', 'profile', 'email', 'offline_access'],
       bankingScopes: [
         BANKING_SCOPES.ADMIN,
         BANKING_SCOPES.BANKING_READ,
@@ -171,7 +177,7 @@ const OAUTH_PROVIDER_SCOPE_CONFIGS = {
     
     // AI agent client scopes
     aiAgentClient: {
-      defaultScopes: ['openid', 'profile'],
+      defaultScopes: ['openid', 'profile', 'offline_access'],
       bankingScopes: [
         BANKING_SCOPES.AI_AGENT,
         BANKING_SCOPES.BANKING_READ,
@@ -207,6 +213,7 @@ const getOAuthProviderConfig = (provider = 'pingone_ai_core') => {
 };
 
 module.exports = {
+  PINGONE_OIDC_DEFAULT_SCOPES_SPACE,
   BANKING_SCOPES,
   USER_TYPE_SCOPES,
   ENVIRONMENT_CONFIGS,

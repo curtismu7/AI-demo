@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -187,9 +188,11 @@ const SecuritySettings = ({ user, onLogout }) => {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-        Loading settings…
-      </div>
+      <AdminSubPageShell title="Security Settings" lead="Live configuration — changes take effect immediately, no restart required.">
+        <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+          Loading settings…
+        </div>
+      </AdminSubPageShell>
     );
   }
 
@@ -203,41 +206,31 @@ const SecuritySettings = ({ user, onLogout }) => {
   ];
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+    <AdminSubPageShell title="Security Settings" lead="Live configuration — changes take effect immediately, no restart required.">
       <PageNav user={user} onLogout={onLogout} title="Security Settings" />
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)', color: 'white', padding: '32px 40px', borderRadius: '8px', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontSize: '1.75rem' }}>🔐</span>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: '600' }}>Security Settings</h1>
-            <p style={{ margin: '4px 0 0', opacity: 0.85, fontSize: '0.9rem' }}>
-              Live configuration — changes take effect immediately, no restart required
-            </p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-          <button
-            type="button"
-            onClick={() => open(EDU.STEP_UP, 'what')}
-            style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(255,255,255,0.85)', color: '#1e40af', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-          >
-            What is step-up MFA?
-          </button>
-          <button
-            type="button"
-            onClick={() => open(EDU.PINGONE_AUTHORIZE, 'what')}
-            style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid rgba(255,255,255,0.85)', color: '#1e40af', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-          >
-            What is PingOne Authorize?
-          </button>
-          <button
-            onClick={() => window.location.href = '/admin'}
-            style={{ background: 'rgba(255,255,255,0.2)', border: '2px solid rgba(255,255,255,0.3)', color: 'white', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}
-          >
-            ← Admin Dashboard
-          </button>
-        </div>
+      <div className="app-page-toolbar app-page-toolbar--start" style={{ flexWrap: 'wrap', gap: '8px' }}>
+        <button
+          type="button"
+          className="app-page-toolbar-btn"
+          onClick={() => open(EDU.STEP_UP, 'what')}
+        >
+          What is step-up MFA?
+        </button>
+        <button
+          type="button"
+          className="app-page-toolbar-btn"
+          onClick={() => open(EDU.PINGONE_AUTHORIZE, 'what')}
+        >
+          What is PingOne Authorize?
+        </button>
+        <span className="page-nav__spacer" aria-hidden="true" />
+        <button
+          type="button"
+          className="app-page-toolbar-btn app-page-toolbar-btn--accent"
+          onClick={() => { window.location.href = '/admin'; }}
+        >
+          ← Admin Dashboard
+        </button>
       </div>
 
       {/* Alert messages */}
@@ -367,7 +360,7 @@ const SecuritySettings = ({ user, onLogout }) => {
           </div>
         </div>
       </div>
-    </div>
+    </AdminSubPageShell>
   );
 };
 

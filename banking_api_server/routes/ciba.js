@@ -29,6 +29,7 @@ const router  = express.Router();
 const cibaService = require('../services/cibaService');
 const { authenticateToken } = require('../middleware/auth');
 const configStore = require('../services/configStore');
+const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -70,7 +71,7 @@ router.get('/status', (req, res) => {
 
 /**
  * Body: {
- *   scope?:           'openid profile email banking:write'
+ *   scope?:           default includes offline_access when omitted (PingOne must allow it for refresh_token)
  *   binding_message?: 'Approve $500 transfer'   — shown in email or push (PingOne / DaVinci)
  *   acr_values?:      'Multi_factor'             — for step-up auth
  *   login_hint?:      'user@example.com'         — override from session email
@@ -108,7 +109,7 @@ router.post('/initiate', authenticateToken, async (req, res) => {
     const result = await cibaService.initiateBackchannelAuth(
       loginHint,
       req.body.binding_message,
-      scope || 'openid profile email',
+      scope || PINGONE_OIDC_DEFAULT_SCOPES_SPACE,
       acr_values || '',
     );
 
@@ -126,7 +127,7 @@ router.post('/initiate', authenticateToken, async (req, res) => {
       initiatedAt: Date.now(),
       expiresAt:   Date.now() + result.expires_in * 1000,
       loginHint,
-      scope: scope || 'openid profile email',
+      scope: scope || PINGONE_OIDC_DEFAULT_SCOPES_SPACE,
       acr_values: acr_values || '',
       binding_message: binding_message || '',
     };

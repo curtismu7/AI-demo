@@ -5,6 +5,7 @@
 
 const cibaService = require('./cibaService');
 const logger = require('../utils/logger');
+const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
 
 /**
  * CIBA error types for better error handling
@@ -25,7 +26,7 @@ const CIBAErrorType = {
 async function initiateBackchannelAuthWithRetry(
   loginHint, 
   bindingMessage, 
-  scope = 'openid profile email', 
+  scope = PINGONE_OIDC_DEFAULT_SCOPES_SPACE, 
   acrValues = '',
   maxRetries = 3
 ) {

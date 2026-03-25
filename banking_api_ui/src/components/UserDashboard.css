@@ -1,11 +1,17 @@
 .user-dashboard {
-  max-width: 1440px;
+  width: 100%;
+  max-width: min(1760px, 100%);
   margin: 0 auto;
+  box-sizing: border-box;
   /* Keep content clear of sticky EducationBar at top */
-  padding: 36px 24px 24px;
+  padding: 36px 20px 28px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   background-color: #f8fafc;
   min-height: 100vh;
+}
+
+.ud-shell--floating-only {
+  display: contents;
 }
 
 .embedded-banking-agent-section {
@@ -68,11 +74,11 @@
   font-weight: 600;
   font-family: inherit;
   line-height: 1.25;
-  color: #1e3a8a;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  color: #fff;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border: 1px solid var(--app-primary-red-border);
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 2px rgba(127, 29, 29, 0.2);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
@@ -80,48 +86,48 @@
 }
 
 .dashboard-toolbar-btn:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  box-shadow: 0 2px 5px rgba(30, 64, 175, 0.12);
-  color: #1e40af;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
+  box-shadow: 0 2px 5px rgba(127, 29, 29, 0.28);
+  color: #fff;
 }
 
 .dashboard-toolbar-btn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--app-primary-red-mid);
   outline-offset: 2px;
 }
 
 .dashboard-toolbar-btn--accent {
-  background: #1e40af;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
-  border-color: #1e3a8a;
-  box-shadow: 0 1px 3px rgba(30, 58, 138, 0.25);
+  border-color: var(--app-primary-red-border);
+  box-shadow: 0 1px 3px rgba(127, 29, 29, 0.22);
 }
 
 .dashboard-toolbar-btn--accent:hover {
-  background: #1d4ed8;
-  border-color: #1e40af;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.3);
+  box-shadow: 0 2px 8px rgba(127, 29, 29, 0.3);
 }
 
 .dashboard-toolbar-btn--danger {
-  background: #fff;
-  color: #b91c1c;
-  border-color: #fecaca;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border-color: var(--app-primary-red-border);
 }
 
 .dashboard-toolbar-btn--danger:hover {
-  background: #fef2f2;
-  border-color: #f87171;
-  color: #991b1b;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
+  color: #fff;
 }
 
 .dashboard-toolbar-btn--icon {
   position: relative;
   padding: 9px 12px;
   min-width: 40px;
-  color: #1e3a8a;
+  color: #fff;
 }
 
 .dashboard-toolbar-btn--icon svg {
@@ -355,36 +361,38 @@
   padding: 8px 16px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #1e40af;
-  background: #fff;
-  border: 1px solid #93c5fd;
+  color: #fff;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border: 1px solid var(--app-primary-red-border);
   border-radius: 8px;
   text-decoration: none;
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(30, 64, 175, 0.08);
+  box-shadow: 0 1px 2px rgba(127, 29, 29, 0.2);
 }
 
 .dashboard-header-mcp-btn:hover {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.12);
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  border-color: var(--app-primary-red-hover);
+  box-shadow: 0 2px 6px rgba(127, 29, 29, 0.28);
+  color: #fff;
 }
 
 .dashboard-edu-btn {
   padding: 8px 12px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #1e40af;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  color: #fff;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  border: 1px solid var(--app-primary-red-border);
   border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .dashboard-edu-btn:hover {
-  background: #fff;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .token-payload-heading {
@@ -620,9 +628,9 @@
 }
 
 .select-account-btn {
-  background: #1e40af;
-  color: white;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
@@ -633,7 +641,8 @@
 }
 
 .select-account-btn:hover {
-  background: #1e3a8a;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .account-actions {
@@ -644,9 +653,9 @@
 }
 
 .deposit-btn {
-  background: #1e40af;
-  color: white;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
@@ -657,13 +666,14 @@
 }
 
 .deposit-btn:hover {
-  background: #1e3a8a;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .withdraw-btn {
-  background: #1e40af;
-  color: white;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
@@ -674,7 +684,8 @@
 }
 
 .withdraw-btn:hover {
-  background: #1e3a8a;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 /* Transfer Form */
@@ -778,9 +789,9 @@
 }
 
 .transfer-btn {
-  background: #1e40af;
-  color: white;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   padding: 12px 20px;
   border-radius: 6px;
   cursor: pointer;
@@ -790,9 +801,9 @@
 }
 
 .deposit-submit-btn {
-  background: #1e40af;
-  color: white;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   padding: 12px 20px;
   border-radius: 6px;
   cursor: pointer;
@@ -802,13 +813,14 @@
 }
 
 .deposit-submit-btn:hover {
-  background: #1e3a8a;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .withdraw-submit-btn {
-  background: #1e40af;
-  color: white;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   padding: 12px 20px;
   border-radius: 6px;
   cursor: pointer;
@@ -818,17 +830,19 @@
 }
 
 .withdraw-submit-btn:hover {
-  background: #1e3a8a;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .transfer-btn:hover {
-  background: #1e3a8a;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 .cancel-btn {
-  background: #6b7280;
-  color: white;
-  border: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-red-border);
   padding: 12px 20px;
   border-radius: 6px;
   cursor: pointer;
@@ -838,7 +852,8 @@
 }
 
 .cancel-btn:hover {
-  background: #4b5563;
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
 }
 
 /* Transactions Table */
@@ -1622,17 +1637,27 @@
 }
 
 .ud-left {
-  width: 232px;
+  width: min(340px, 100%);
+  min-width: 280px;
   flex-shrink: 0;
   background: #fff;
   border-right: 1px solid #e2e8f0;
   overflow-y: auto;
 }
 
+/* Token Chain sits here — avoid double card + tight padding */
+.ud-left > .section {
+  padding: 14px 12px 18px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
 .ud-center {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px 28px;
   min-width: 0;
 }
 
@@ -1726,12 +1751,19 @@
   white-space: nowrap;
 }
 
-.ud-sim-btn--orange { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
-.ud-sim-btn--orange:hover { background: #ffedd5; }
-.ud-sim-btn--blue   { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-.ud-sim-btn--blue:hover   { background: #dbeafe; }
-.ud-sim-btn--purple { background: #faf5ff; color: #7c3aed; border-color: #ddd6fe; }
-.ud-sim-btn--purple:hover { background: #f3e8ff; }
+.ud-sim-btn--orange,
+.ud-sim-btn--blue,
+.ud-sim-btn--purple {
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  border-color: var(--app-primary-red-border);
+}
+.ud-sim-btn--orange:hover,
+.ud-sim-btn--blue:hover,
+.ud-sim-btn--purple:hover {
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
+}
 
 .ud-scope-table {
   width: 100%;
@@ -1887,27 +1919,33 @@
   font-size: 0.85rem;
   font-weight: 700;
   border-radius: 8px;
-  border: none;
-  background: #2563eb;
-  color: white;
+  border: 1px solid var(--app-primary-red-border);
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
   cursor: pointer;
   transition: background .15s;
 }
 
-.ud-submit-btn:hover { background: #1d4ed8; }
+.ud-submit-btn:hover {
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
+}
 
 .ud-cancel-btn {
   padding: 9px 18px;
   font-size: 0.85rem;
   font-weight: 600;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #64748b;
+  border: 1px solid var(--app-primary-red-border);
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
   cursor: pointer;
 }
 
-.ud-cancel-btn:hover { background: #f1f5f9; }
+.ud-cancel-btn:hover {
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff;
+}
 
 /* ── Transaction list ────────────────────────────────────────── */
 .ud-txn-section {
@@ -2062,7 +2100,6 @@
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .ud-right { display: none; }
-  .ud-left  { width: 260px; }
 }
 
 @media (max-width: 768px) {

@@ -25,6 +25,7 @@ import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
 
 import { savePublicConfig } from './services/configService';
+import { toastLogStore } from './services/toastLogStore';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
 import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
@@ -122,24 +123,30 @@ function AppWithAuth() {
     }
   }, [injectEmailIntoNextSessionInit]);
 
+  // Masked public config → IndexedDB once per full page load (not tied to checkOAuthSession).
+  // Reduces duplicate GET /api/admin/config and helps avoid 429 on shared IPs / tight rate limits.
+  useEffect(() => {
+    const userLoggedOut = localStorage.getItem('userLoggedOut');
+    if (userLoggedOut === 'true') return;
+
+    const currentPath =
+      typeof window !== 'undefined' && typeof window.location?.pathname === 'string'
+        ? window.location.pathname
+        : '';
+    if (currentPath === '/demo-data') return;
+
+    axios
+      .get('/api/admin/config')
+      .then(({ data }) => savePublicConfig(data.config))
+      .catch(() => {}); // non-fatal
+  }, []);
+
   useEffect(() => {
     const userLoggedOut = localStorage.getItem('userLoggedOut');
     if (userLoggedOut === 'true') {
       localStorage.removeItem('userLoggedOut');
       setLoading(false);
       return;
-    }
-
-    // Sync server config (SQLite) → IndexedDB on startup, except demo-data route.
-    // This avoids unnecessary config calls while editing demo data.
-    const currentPath =
-      typeof window !== 'undefined' && typeof window.location?.pathname === 'string'
-        ? window.location.pathname
-        : '';
-    if (currentPath !== '/demo-data') {
-      axios.get('/api/admin/config')
-        .then(({ data }) => savePublicConfig(data.config))
-        .catch(() => {}); // non-fatal
     }
 
     const oauthSuccess =
@@ -180,7 +187,7 @@ function AppWithAuth() {
     if (toastPatchedRef.current) return undefined;
     toastPatchedRef.current = true;
 
-    const DEFAULT_TOAST_MS = 9000;
+    const DEFAULT_TOAST_MS = 22000;
 
     const applyDefaultAutoClose = (options = {}) => {
       if (options.autoClose === false) return options;
@@ -202,22 +209,72 @@ function AppWithAuth() {
     patchToastMethod('warning');
     patchToastMethod('warn');
 
+    /**
+     * Best-effort text from toast content (string or simple React children).
+     * @param {unknown} content
+     * @returns {string}
+     */
+    const extractToastText = (content) => {
+      if (content == null) return '';
+      if (typeof content === 'string' || typeof content === 'number') return String(content);
+      if (typeof content === 'function') return '[Custom toast]';
+      const ch = content?.props?.children;
+      if (ch == null) return '[Toast]';
+      if (typeof ch === 'string' || typeof ch === 'number') return String(ch);
+      if (Array.isArray(ch)) return ch.map(extractToastText).filter(Boolean).join(' ').trim() || '[Toast]';
+      return String(ch);
+    };
+
+    const toastTypeToLevel = (t) => {
+      switch (t) {
+        case 'error':
+          return 'error';
+        case 'warning':
+        case 'warn':
+          return 'warn';
+        case 'info':
+        case 'success':
+        case 'default':
+        default:
+          return 'info';
+      }
+    };
+
     const unsubscribe =
       typeof toast.onChange === 'function'
         ? toast.onChange((event) => {
-            if (!event || (event.status !== 'added' && event.status !== 'updated')) return;
+            if (!event || event.status !== 'added') return;
 
-            const content =
-              typeof event.content === 'string'
-                ? event.content
-                : event.content?.props?.children || 'toast event';
+            const message = extractToastText(event.content);
+            let detail = '';
+            if (event.data != null) {
+              if (typeof event.data === 'string') detail = event.data;
+              else {
+                try {
+                  detail = JSON.stringify(event.data, null, 2);
+                } catch {
+                  detail = String(event.data);
+                }
+              }
+            }
 
             logRuntimeMessage({
               source: 'toast',
               status: event.status,
               level: event.type || 'info',
               toastId: event.id || null,
-              message: String(content),
+              message,
+            });
+
+            toastLogStore.append({
+              timestamp: new Date().toISOString(),
+              level: toastTypeToLevel(event.type || 'default'),
+              message,
+              detail,
+              toastType: event.type || 'default',
+              toastId: event.id != null ? String(event.id) : '',
+              category: 'toast messages',
+              _src: 'toast',
             });
           })
         : null;
@@ -280,7 +337,7 @@ function AppWithAuth() {
       <EducationUIProvider>
       <TokenChainProvider>
         <div className="App end-user-nano">
-          <ToastContainer position="top-right" autoClose={9000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
+          <ToastContainer position="top-right" autoClose={22000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {/* Config page is always accessible, regardless of auth state */}
           <Routes>
             <Route path="/config" element={<Config />} />
@@ -293,9 +350,9 @@ function AppWithAuth() {
                 <main className="main-content">
                   <EducationBar />
                   <Routes>
-                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <Navigate to="/" replace />} />
-                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/demo-data" element={<DemoDataPage onLogout={logout} />} />
                     <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
@@ -315,7 +372,7 @@ function AppWithAuth() {
               )
             } />
           </Routes>
-          {(!user || agentUiMode === 'floating') && (
+          {(!user || agentUiMode === 'floating' || agentUiMode === 'embedded') && (
             <BankingAgent user={user} onLogout={logout} mode="float" />
           )}
           <EducationPanelsHost />

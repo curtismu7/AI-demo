@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
+import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 const Users = ({ user, onLogout }) => {
@@ -128,32 +129,29 @@ const Users = ({ user, onLogout }) => {
 
   if (loading && users.length === 0) {
     return (
-      <div className="loading">
-        <div>Loading users...</div>
-      </div>
+      <AdminSubPageShell title="Users" lead="Search and manage user accounts.">
+        <div className="loading">
+          <div>Loading users...</div>
+        </div>
+      </AdminSubPageShell>
     );
   }
 
   return (
-    <div>
+    <AdminSubPageShell title="Users" lead="Search and manage user accounts.">
       <PageNav user={user} onLogout={onLogout} title="Users" />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ color: '#1e293b' }}>Users</h1>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '200px' }}
-            />
-            <button onClick={handleSearch} className="btn btn-primary">
-              Search
-            </button>
-          </div>
-        </div>
+      <div className="app-page-toolbar app-page-toolbar--start">
+        <input
+          type="text"
+          className="form-input"
+          placeholder="Search users..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ width: '200px' }}
+        />
+        <button type="button" onClick={handleSearch} className="btn btn-primary">
+          Search
+        </button>
       </div>
 
       {error && (
@@ -162,7 +160,7 @@ const Users = ({ user, onLogout }) => {
         </div>
       )}
 
-      <div className="card">
+      <div className="app-page-card">
         <div className="card-header">
           <h2 className="card-title">User Management</h2>
           <span style={{ color: '#64748b', fontSize: '0.875rem' }}>
@@ -246,7 +244,7 @@ const Users = ({ user, onLogout }) => {
           </div>
         )}
       </div>
-    </div>
+    </AdminSubPageShell>
   );
 };
 

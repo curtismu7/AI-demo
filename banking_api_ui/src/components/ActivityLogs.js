@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 const ActivityLogs = ({ user, onLogout }) => {
@@ -180,33 +181,32 @@ const ActivityLogs = ({ user, onLogout }) => {
 
   if (loading && logs.length === 0) {
     return (
-      <div className="loading">
-        <div>Loading activity logs...</div>
-      </div>
+      <AdminSubPageShell title="Activity Logs" lead="View and filter audit trail of API activity.">
+        <div className="loading">
+          <div>Loading activity logs...</div>
+        </div>
+      </AdminSubPageShell>
     );
   }
 
   return (
-    <div>
+    <AdminSubPageShell title="Activity Logs" lead="View and filter audit trail of API activity.">
       <PageNav user={user} onLogout={onLogout} title="Activity Logs" />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <h1 style={{ color: '#1e293b', margin: 0 }}>Activity Logs</h1>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            style={{ fontSize: '0.85rem' }}
-            onClick={() => open(EDU.INTROSPECTION, 'why')}
-          >
-            How are audit logs created?
-          </button>
-          <button onClick={exportLogs} className="btn btn-secondary">
-            Export CSV
-          </button>
-          <button onClick={clearOldLogs} className="btn btn-danger">
-            Clear Old Logs
-          </button>
-        </div>
+      <div className="app-page-toolbar app-page-toolbar--start">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ fontSize: '0.85rem' }}
+          onClick={() => open(EDU.INTROSPECTION, 'why')}
+        >
+          How are audit logs created?
+        </button>
+        <button type="button" onClick={exportLogs} className="btn btn-secondary">
+          Export CSV
+        </button>
+        <button type="button" onClick={clearOldLogs} className="btn btn-danger">
+          Clear Old Logs
+        </button>
       </div>
 
       {error && (
@@ -540,7 +540,7 @@ const ActivityLogs = ({ user, onLogout }) => {
           </div>
         </div>
       )}
-    </div>
+    </AdminSubPageShell>
   );
 };
 

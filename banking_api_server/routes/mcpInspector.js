@@ -10,10 +10,21 @@ const { resolveMcpAccessTokenWithEvents } = require('../services/agentMcpTokenSe
 const {
   MCP_TOOL_SCOPES,
   getMcpServerUrl,
-  getSessionAccessToken,
+  getSessionBearerForMcp,
   mcpListTools,
   mcpCallTool,
 } = require('../services/mcpWebSocketClient');
+
+const MCP_SESSION_NEEDED_MSG =
+  'MCP discovery needs a real OAuth access token in your BFF session. If you see this after a cold open, sign out and sign in again. Cookie-only restored sessions cannot call the MCP server.';
+
+/** Stable JSON body for 401s (browser often shows only generic status text). */
+function authRequired(res, message = MCP_SESSION_NEEDED_MSG) {
+  return res.status(401).json({
+    error: 'authentication_required',
+    message,
+  });
+}
 
 /** Discovery uses same token resolution as tools/call (scope from a representative tool). */
 async function sessionTokenForDiscovery(req) {
@@ -101,7 +112,7 @@ router.get('/tools', async (req, res) => {
       return res.status(502).json({ error: 'token_resolution_failed', message: err.message });
     }
     if (!agentToken) {
-      return res.status(401).json({ error: 'authentication_required', message: 'Sign in to run MCP discovery.' });
+      return authRequired(res);
     }
     const started = Date.now();
     const result = await mcpListTools(agentToken, userSub);
@@ -126,8 +137,8 @@ router.post('/invoke', express.json(), async (req, res) => {
 
   try {
     await configStore.ensureInitialized();
-    if (!getSessionAccessToken(req)) {
-      return res.status(401).json({ error: 'authentication_required', message: 'Sign in to invoke tools.' });
+    if (!getSessionBearerForMcp(req)) {
+      return authRequired(res);
     }
     const { token: agentToken, userSub } = await resolveMcpAccessTokenWithEvents(req, tool);
 

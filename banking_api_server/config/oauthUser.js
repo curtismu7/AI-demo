@@ -24,7 +24,8 @@ const config = {
   get clientSecret()          { return configStore.getEffective('user_client_secret'); },
   get redirectUri()           { return configStore.getEffective('user_redirect_uri'); },
 
-  scopes: ['openid', 'profile', 'email'],
+  // offline_access: PingOne issues a refresh_token (RFC 6749 §6) — required for BFF auto-refresh and /api/auth/oauth/user/refresh
+  scopes: ['openid', 'profile', 'email', 'offline_access'],
 
   get sessionSecret()         { return configStore.getEffective('session_secret'); },
   get userRole()              { return configStore.getEffective('user_role') || 'customer'; },

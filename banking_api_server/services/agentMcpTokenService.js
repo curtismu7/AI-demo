@@ -10,7 +10,7 @@
 
 const configStore = require('./configStore');
 const oauthService = require('./oauthService');
-const { MCP_TOOL_SCOPES, getSessionAccessToken } = require('./mcpWebSocketClient');
+const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
 
 // ─── JWT decode (no verification — display only) ─────────────────────────────
 
@@ -51,11 +51,11 @@ function sanitizeClaims(claims) {
   if (claims.client_id) result.client_id = claims.client_id;
   if (claims.azp)    result.azp    = claims.azp;
   if (claims.jti)    result.jti    = claims.jti;
-  if (email)  result.email  = email;
-  if (preferred_username) result.preferred_username = preferred_username;
-  if (given_name) result.given_name = given_name;
-  if (family_name) result.family_name = family_name;
-  if (acr)    result.acr    = acr;
+  if (claims.email) result.email = claims.email;
+  if (claims.preferred_username) result.preferred_username = claims.preferred_username;
+  if (claims.given_name) result.given_name = claims.given_name;
+  if (claims.family_name) result.family_name = claims.family_name;
+  if (claims.acr) result.acr = claims.acr;
   return result;
 }
 
@@ -135,24 +135,26 @@ function describeMayAct(claims, bffClientId) {
 /**
  * Resolve the MCP access token and produce tokenEvents for the UI Token Chain panel.
  *
- * Returns { token, tokenEvents } where:
+ * Returns { token, tokenEvents, userSub } where:
  *   token       — the JWT to pass to the MCP server (may be exchanged)
  *   tokenEvents — array of TokenEvent objects for the frontend
+ *   userSub     — PingOne subject from the user token (T1), for MCP metadata
  *
  * @param {import('express').Request} req
  * @param {string} tool
  */
 async function resolveMcpAccessTokenWithEvents(req, tool) {
   const tokenEvents = [];
-  const userToken = getSessionAccessToken(req);
+  const userToken = getSessionBearerForMcp(req);
 
   if (!userToken) {
-    return { token: null, tokenEvents };
+    return { token: null, tokenEvents, userSub: null };
   }
 
   // ── Event 1: User token (T1) ────────────────────────────────────────────────
   const t1Decoded = decodeJwtClaims(userToken);
   const t1Claims = t1Decoded?.claims;
+  const userSub = t1Claims?.sub != null ? String(t1Claims.sub) : null;
   const bffClientId = oauthService.config?.clientId || process.env.PINGONE_CLIENT_ID || null;
   const mayActInfo = describeMayAct(t1Claims, bffClientId);
 
@@ -190,7 +192,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       'the token-exchange grant + may_act policy in PingOne.',
       { rfc: 'RFC 8693 (Token Exchange)' }
     ));
-    return { token: userToken, tokenEvents };
+    return { token: userToken, tokenEvents, userSub };
   }
 
   // ── Event 2a (optional): Agent actor client-credentials token ───────────────
@@ -291,7 +293,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       }
     ));
 
-    return { token: exchangedToken, tokenEvents };
+    return { token: exchangedToken, tokenEvents, userSub };
 
   } catch (err) {
     // Replace in-progress with failure
@@ -324,7 +326,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
           'The MCP Token is still scoped to the MCP audience — the User Token never leaves the BFF.',
           { rfc: 'RFC 8693', exchangeMethod: 'fallback-subject-only' }
         ));
-        return { token: exchangedToken, tokenEvents };
+        return { token: exchangedToken, tokenEvents, userSub };
       } catch (err2) {
         throw err2;
       }
