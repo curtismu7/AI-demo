@@ -28,7 +28,7 @@ function accountSummaryLine(account) {
   return `${type} - ${num}`;
 }
 
-const UserDashboard = ({ user: propUser, onLogout }) => {
+const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
