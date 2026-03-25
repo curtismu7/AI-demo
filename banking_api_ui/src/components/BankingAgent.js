@@ -758,6 +758,42 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
         tokenChain.setTokenEvents(actionId, tokenEvents);
       }
 
+      // Navigate to user dashboard and highlight relevant data for user commands
+      if (effectiveUser?.role === 'customer') {
+        let highlightSection = null;
+        switch (actionId) {
+          case 'accounts':
+            highlightSection = 'accounts';
+            break;
+          case 'transactions':
+            highlightSection = 'transactions';
+            break;
+          case 'balance':
+          case 'deposit':
+          case 'withdraw':
+          case 'transfer':
+            highlightSection = 'accounts';
+            break;
+        }
+        
+        if (highlightSection) {
+          // Dispatch event to UserDashboard to highlight section
+          window.dispatchEvent(new CustomEvent('agentDataReady', { 
+            detail: { 
+              section: highlightSection,
+              action: actionId,
+              result: response.result
+            }
+          }));
+          
+          // Navigate to dashboard after a short delay to show the agent result first
+          setTimeout(() => {
+            navigate('/dashboard');
+            toast.info(`📊 View details in dashboard`, { autoClose: 3000 });
+          }, 1500);
+        }
+      }
+
       // Show inline token event summary in the chat + dedicated toasts
       if (tokenEvents.length > 0) {
         const exchanged = tokenEvents.find(e => e.id === 'exchanged-token');

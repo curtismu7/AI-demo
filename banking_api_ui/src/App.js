@@ -33,6 +33,13 @@ import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import './App.css';
 
+/** Session/auth tracing only in development (production builds stay quiet). */
+function devLog(...args) {
+  if (process.env.NODE_ENV === 'production') return;
+  // eslint-disable-next-line no-console -- intentional local debugging
+  console.log(...args);
+}
+
 function AppWithAuth() {
   const { mode: agentUiMode } = useAgentUiMode();
   const [user, setUser] = useState(null);
@@ -64,8 +71,6 @@ function AppWithAuth() {
   }, []);
 
   const checkOAuthSession = useCallback(async () => {
-    console.log('🔍 checkOAuthSession - Checking for active OAuth sessions...');
-
     function notifyAuthenticatedOnce() {
       if (!sessionEstablishedRef.current) {
         sessionEstablishedRef.current = true;
@@ -86,55 +91,35 @@ function AppWithAuth() {
 
     try {
       // Priority: admin OAuth → end-user OAuth → generic cookie session
-      console.log('👑 Checking admin OAuth session...');
       const adminResponse = await axios.get('/api/auth/oauth/status');
-      console.log('👑 Admin OAuth response:', {
-        authenticated: adminResponse.data.authenticated,
-        user: adminResponse.data.user,
-        expiresAt: adminResponse.data.expiresAt
-      });
 
       if (adminResponse.data.authenticated) {
-        console.log('✅ Admin OAuth session found, logging in user:', adminResponse.data.user);
         return applySessionUser(adminResponse.data.user);
       }
 
-      console.log('👤 Checking end user OAuth session...');
       const userResponse = await axios.get('/api/auth/oauth/user/status');
-      console.log('👤 End user OAuth response:', {
-        authenticated: userResponse.data.authenticated,
-        user: userResponse.data.user,
-        expiresAt: userResponse.data.expiresAt
-      });
 
       if (userResponse.data.authenticated) {
-        console.log('✅ End user OAuth session found, logging in user:', userResponse.data.user);
         return applySessionUser(userResponse.data.user);
       }
 
-      console.log('🍪 Checking generic /api/auth/session (cookie restore)...');
       const sessionResponse = await axios.get('/api/auth/session');
       if (sessionResponse.data.authenticated) {
-        console.log('✅ Generic session found, logging in user:', sessionResponse.data.user);
         return applySessionUser(sessionResponse.data.user);
       }
 
-      console.log('❌ No active OAuth sessions found');
       setLoading(false);
       return false;
     } catch (error) {
-      console.log('❌ Error checking OAuth sessions:', error.message);
+      devLog('[App] Session check failed:', error?.message || error);
       setLoading(false);
       return false;
     }
   }, [injectEmailIntoNextSessionInit]);
 
   useEffect(() => {
-    console.log('🔍 App useEffect - Starting authentication check...');
-
     const userLoggedOut = localStorage.getItem('userLoggedOut');
     if (userLoggedOut === 'true') {
-      console.log('🚪 User explicitly logged out, skipping authentication check');
       localStorage.removeItem('userLoggedOut');
       setLoading(false);
       return;
@@ -189,8 +174,6 @@ function AppWithAuth() {
   }, [checkOAuthSession]);
 
   const logout = () => {
-    console.log('🚪 Starting logout — navigating to /api/auth/logout');
-
     sessionEstablishedRef.current = false;
 
     // Signal that the user intentionally logged out so the startup

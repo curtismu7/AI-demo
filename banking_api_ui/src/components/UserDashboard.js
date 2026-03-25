@@ -72,6 +72,37 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     return () => window.removeEventListener('banking-agent-result', handleAgentResult);
   }, []);
 
+  // Listen for agent data ready events to highlight sections
+  useEffect(() => {
+    const handleAgentDataReady = (e) => {
+      const { section, action, result } = e.detail;
+      setAgentHighlight(section);
+      
+      // Refresh data based on the action
+      if (section === 'accounts' && fetchUserDataRef.current) {
+        fetchUserDataRef.current();
+      } else if (section === 'transactions' && fetchUserDataRef.current) {
+        fetchUserDataRef.current();
+      }
+      
+      // Show success message
+      const actionLabels = {
+        accounts: 'Account data',
+        transactions: 'Transaction data',
+        balance: 'Balance check',
+        deposit: 'Deposit',
+        withdraw: 'Withdrawal',
+        transfer: 'Transfer'
+      };
+      setSuccess(`Agent completed ${actionLabels[action] || action} \u2014 highlighted below`);
+      
+      // Clear highlight after 4 seconds
+      setTimeout(() => setAgentHighlight(null), 4000);
+    };
+    window.addEventListener('agentDataReady', handleAgentDataReady);
+    return () => window.removeEventListener('agentDataReady', handleAgentDataReady);
+  }, []);
+
   // Auto-dismiss success messages after 4 seconds
   useEffect(() => {
     if (!success) return;
