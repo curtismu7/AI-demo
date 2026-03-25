@@ -224,6 +224,13 @@ const McpInspector = ({ user, onLogout }) => {
                   >
                     Open LangChain host JSON ({langchainInspector})
                   </a>
+                  <p className="mcp-inspector__muted mcp-inspector__hint-tight" style={{ marginTop: '12px' }}>
+                    This URL is served only by the Python <strong>langchain_agent</strong> process (health HTTP server), not the
+                    Banking UI or BFF. From repo root: <code>cd langchain_agent && python -m src.main</code> — then wait until
+                    startup finishes so the inspector snapshot is populated. If the port differs, set{' '}
+                    <code>REACT_APP_LANGCHAIN_INSPECTOR_URL</code> (e.g. <code>http://localhost:8081/inspector/mcp-host</code>).
+                    Optional: <code>HEALTH_HTTP_PORT</code> in <code>langchain_agent/.env</code> must match that host/port.
+                  </p>
                 </article>
               </div>
               {context.mcpHosts.shared && (

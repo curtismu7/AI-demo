@@ -32,6 +32,7 @@ import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContex
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
+import { shouldShowGlobalFloatingBankingAgentFab } from './utils/embeddedAgentFabVisibility';
 import './App.css';
 
 /** Session/auth tracing only in development (production builds stay quiet). */
@@ -47,18 +48,7 @@ function devLog(...args) {
  */
 function GlobalFloatingBankingAgent({ user, onLogout, agentUiMode }) {
   const { pathname } = useLocation();
-  const isAdminEmbeddedHome =
-    user?.role === 'admin' &&
-    agentUiMode === 'embedded' &&
-    (pathname === '/' || pathname === '/admin');
-  const isCustomerEmbeddedHome =
-    user &&
-    user.role !== 'admin' &&
-    agentUiMode === 'embedded' &&
-    (pathname === '/' || pathname === '/dashboard');
-  const isEmbeddedHome = isAdminEmbeddedHome || isCustomerEmbeddedHome;
-  const showFab = !user || agentUiMode === 'floating' || !isEmbeddedHome;
-  if (!showFab) return null;
+  if (!shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode, pathname })) return null;
   return <BankingAgent user={user} onLogout={onLogout} mode="float" />;
 }
 

@@ -12,6 +12,7 @@ This module starts the complete application including:
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 from pathlib import Path
@@ -54,9 +55,10 @@ class LangChainMCPApplication:
         logger.info("Initializing LangChain MCP OAuth Agent...")
         
         try:
-            # Start health check server first
-            logger.info("Starting health check server...")
-            self.health_server = HealthCheckServer(port=8081)  # Use different port
+            # Start health check server first (port 8081 by default; override with HEALTH_HTTP_PORT)
+            health_port = int(os.getenv("HEALTH_HTTP_PORT", "8081"))
+            logger.info("Starting health check server on port %s...", health_port)
+            self.health_server = HealthCheckServer(port=health_port)
             self.health_server.start()
             
             # Initialize OAuth manager
@@ -253,7 +255,9 @@ class LangChainMCPApplication:
             logger.info("🚀 LangChain MCP OAuth Agent is running!")
             logger.info(f"📡 WebSocket endpoint: ws://localhost:{self.config.chat.websocket_port}")
             logger.info("🔗 Frontend URL: http://localhost:3030 (if running)")
-            logger.info("📋 Health check: http://localhost:8081/health")
+            hp = self.health_server.port if self.health_server else int(os.getenv("HEALTH_HTTP_PORT", "8081"))
+            logger.info("📋 Health check: http://localhost:%s/health", hp)
+            logger.info("📋 MCP host inspector JSON: http://localhost:%s/inspector/mcp-host", hp)
             logger.info("Press Ctrl+C to stop")
             
             # Wait for shutdown signal

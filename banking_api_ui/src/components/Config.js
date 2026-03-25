@@ -222,7 +222,13 @@ function AgentLayoutPreferences() {
     setMode(next);
     toast.info('Applying agent layout…', { autoClose: 1200 });
     window.setTimeout(() => {
-      window.location.reload();
+      // Embedded dock only mounts on dashboard home routes; staying on /config after
+      // reload looks "broken" (settings show embedded but only the FAB appears).
+      if (next === 'embedded') {
+        window.location.href = '/';
+      } else {
+        window.location.reload();
+      }
     }, 350);
   }
 
@@ -236,7 +242,7 @@ function AgentLayoutPreferences() {
       <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
         Controls whether the banking agent appears as a <strong>floating</strong> panel (FAB) or is <strong>embedded</strong>
         into your dashboard home page. Tool steps (e.g. read/update account, transactions) show in the chat as actions run.
-        The page refreshes after you switch so the new layout loads immediately.
+        Choosing <strong>embedded</strong> sends you to <strong>Home</strong> so the bottom strip appears right away; choosing <strong>floating</strong> reloads this page.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>

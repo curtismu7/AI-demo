@@ -199,7 +199,11 @@ export default function DemoDataPage({ onLogout }) {
     setAgentUiMode(next);
     toast.info('Applying agent layout…', { autoClose: 1200 });
     window.setTimeout(() => {
-      window.location.reload();
+      if (next === 'embedded') {
+        window.location.href = '/';
+      } else {
+        window.location.reload();
+      }
     }, 350);
   };
 
@@ -232,9 +236,9 @@ export default function DemoDataPage({ onLogout }) {
         <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
         <p className="demo-data-hint">
           Choose one layout: <strong>floating</strong> (FAB opens the assistant on any page — default), or <strong>embedded</strong>{' '}
-          (admin home only: full-width chat strip along the bottom of the <strong>admin</strong> dashboard). On the{' '}
-          <strong>customer</strong> dashboard the bottom strip is hidden so accounts stay wide; the assistant still uses the FAB.
-          The page reloads after you switch.
+          (full-width chat strip along the bottom of the <strong>home</strong> dashboard: <strong>/</strong> or <strong>/dashboard</strong>{' '}
+          for customers, <strong>/</strong> or <strong>/admin</strong> for admins). Other routes still use the FAB. Switching to embedded
+          sends you home so the strip appears immediately.
         </p>
         <div className="demo-data-agent-options" role="radiogroup" aria-label="Agent layout">
           <label className="demo-data-agent-option">
@@ -246,9 +250,9 @@ export default function DemoDataPage({ onLogout }) {
               onChange={() => handleAgentLayoutChange('embedded')}
             />
             <span className="demo-data-agent-option-text">
-              <span className="demo-data-agent-option-title">Embedded (admin dashboard)</span>
+              <span className="demo-data-agent-option-title">Embedded (dashboard home)</span>
               <span className="demo-data-agent-option-desc">
-                On <strong>admin</strong> home, the assistant sits in a full-width bottom strip. Customers still use the FAB so the account tables stay full width.
+                On your <strong>home</strong> dashboard, the assistant sits in a full-width bottom strip and the FAB is hidden while signed in.
               </span>
             </span>
           </label>

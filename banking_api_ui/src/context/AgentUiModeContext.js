@@ -1,5 +1,5 @@
 // banking_api_ui/src/context/AgentUiModeContext.js
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'banking_agent_ui_mode';
 
@@ -35,6 +35,17 @@ export function AgentUiModeProvider({ children }) {
     } catch {
       // ignore
     }
+  }, []);
+
+  /** Keep in sync when another tab changes localStorage (storage event does not fire in the writer tab). */
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key !== STORAGE_KEY || e.newValue == null) return;
+      const m = e.newValue === 'embedded' ? 'embedded' : 'floating';
+      setModeState(m);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const value = useMemo(() => ({ mode, setMode }), [mode, setMode]);

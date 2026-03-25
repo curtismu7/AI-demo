@@ -24,7 +24,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     
     def do_GET(self):
         """Handle GET requests."""
-        path = self.path.split("?", 1)[0]
+        path = self.path.split("?", 1)[0].rstrip("/") or "/"
         if path == "/health":
             self._handle_health_check()
         elif path == "/status":
@@ -32,7 +32,11 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         elif path == "/inspector/mcp-host":
             self._handle_mcp_host_inspector()
         else:
-            self._send_response(404, {"error": "Not found"})
+            self._send_response(404, {
+                "error": "Not found",
+                "path": self.path.split("?", 1)[0],
+                "hint": "LangChain agent health server: GET /health, /status, /inspector/mcp-host",
+            })
     
     def _handle_health_check(self):
         """Handle basic health check."""
