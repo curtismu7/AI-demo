@@ -18,3 +18,25 @@ export async function saveDemoScenario(body) {
   if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
   return data;
 }
+
+/**
+ * Persists floating vs embedded agent layout to the signed-in user's demo scenario (KV when configured).
+ * No-op on failure (e.g. 401 on /config while logged out). Does not throw.
+ * @param {'floating' | 'embedded'} mode
+ */
+export async function persistBankingAgentUiMode(mode) {
+  const m = mode === 'embedded' ? 'embedded' : 'floating';
+  try {
+    const res = await fetch('/api/demo-scenario', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bankingAgentUiMode: m }),
+    });
+    if (!res.ok && res.status !== 401) {
+      await res.json().catch(() => ({}));
+    }
+  } catch {
+    // ignore network errors
+  }
+}

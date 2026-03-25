@@ -38,30 +38,23 @@ const ACTIONS = [
 function generateFakeAccounts(user) {
   const userId = user?.sub || user?.id || 'user123';
   
-  // Generate consistent account IDs based on user ID
-  const seed = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  // Match server's account ID pattern: chk-{uid} and sav-{uid}
+  const uid = userId.replace(/-/g, '').slice(0, 10);
   
   const accounts = [
     {
-      id: `acc_${seed}_checking`,
+      id: `chk-${uid}`,
       name: 'Primary Checking',
       type: 'checking',
-      balance: 5234.89 + (seed % 1000),
-      accountNumber: `4872${seed % 10000}`,
+      balance: 3000.00,
+      accountNumber: `CHK-${uid.toUpperCase()}`,
     },
     {
-      id: `acc_${seed}_savings`,
+      id: `sav-${uid}`,
       name: 'Emergency Savings',
       type: 'savings',
-      balance: 12567.43 + (seed % 2000),
-      accountNumber: `5921${seed % 10000}`,
-    },
-    {
-      id: `acc_${seed}_credit`,
-      name: 'Rewards Credit Card',
-      type: 'credit',
-      balance: -892.15 - (seed % 500),
-      accountNumber: `8234${seed % 10000}`,
+      balance: 2000.00,
+      accountNumber: `SAV-${uid.toUpperCase()}`,
     },
   ];
   

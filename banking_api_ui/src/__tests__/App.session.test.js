@@ -80,6 +80,14 @@ jest.mock('../context/AgentUiModeContext', () => ({
 jest.mock('../services/configService', () => ({
   savePublicConfig: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../services/demoScenarioService', () => {
+  const fetchDemoScenario = jest.fn(() => Promise.resolve({ settings: {} }));
+  return {
+    __esModule: true,
+    fetchDemoScenario,
+    persistBankingAgentUiMode: jest.fn(() => Promise.resolve()),
+  };
+});
 jest.mock('react-toastify', () => ({
   ToastContainer: () => null,
   toast: { success: jest.fn(), error: jest.fn() },

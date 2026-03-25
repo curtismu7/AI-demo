@@ -47,6 +47,7 @@ jest.mock('../../config/runtimeSettings', () => ({
 jest.mock('../../routes/accounts', () => ({}));
 
 const dataStore = require('../../data/store');
+const demoScenarioStore = require('../../services/demoScenarioStore');
 const demoScenarioRouter = require('../../routes/demoScenario');
 
 function makeApp(userId = 'u1') {
@@ -182,5 +183,33 @@ describe('Demo scenario API — account create/update', () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('forbidden_account');
+  });
+
+  it('GET includes settings.bankingAgentUiMode when store has it', async () => {
+    demoScenarioStore.load.mockResolvedValueOnce({
+      stepUpAmountThreshold: null,
+      bankingAgentUiMode: 'embedded',
+    });
+    const app = makeApp();
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.body.settings.bankingAgentUiMode).toBe('embedded');
+  });
+
+  it('PUT persists bankingAgentUiMode', async () => {
+    const app = makeApp();
+    const res = await request(app).put('/').send({ bankingAgentUiMode: 'floating' });
+    expect(res.status).toBe(200);
+    expect(demoScenarioStore.save).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ bankingAgentUiMode: 'floating' }),
+    );
+  });
+
+  it('PUT returns 400 for invalid bankingAgentUiMode', async () => {
+    const app = makeApp();
+    const res = await request(app).put('/').send({ bankingAgentUiMode: 'sidebar' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('invalid_banking_agent_ui_mode');
   });
 });

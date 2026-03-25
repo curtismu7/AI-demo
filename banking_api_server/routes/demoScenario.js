@@ -121,6 +121,10 @@ router.get('/', async (req, res) => {
     const scenario = await demoScenarioStore.load(req.user.id);
     const currentUser = dataStore.getUserById(req.user.id) || {};
     const userData = buildUserDataForDemoResponse(req, currentUser);
+    const bankingAgentUiMode =
+      scenario.bankingAgentUiMode === 'embedded' || scenario.bankingAgentUiMode === 'floating'
+        ? scenario.bankingAgentUiMode
+        : null;
     res.json({
       accounts: accounts.map(a => ({
         id: a.id,
@@ -134,6 +138,7 @@ router.get('/', async (req, res) => {
         stepUpAmountThreshold:
           scenario.stepUpAmountThreshold != null ? scenario.stepUpAmountThreshold : DEFAULT_STEP_UP(),
         stepUpAmountThresholdIsDefault: scenario.stepUpAmountThreshold == null,
+        bankingAgentUiMode,
       },
       defaults: {
         stepUpAmountThreshold: DEFAULT_STEP_UP(),
@@ -174,6 +179,20 @@ router.put('/', async (req, res) => {
           return res.status(400).json({ error: 'invalid_threshold', message: 'Threshold must be between 0 and 1,000,000.' });
         }
         await demoScenarioStore.save(uid, { stepUpAmountThreshold: n });
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'bankingAgentUiMode')) {
+      const raw = req.body.bankingAgentUiMode;
+      if (raw === null || raw === '') {
+        await demoScenarioStore.save(uid, { bankingAgentUiMode: null });
+      } else if (raw === 'embedded' || raw === 'floating') {
+        await demoScenarioStore.save(uid, { bankingAgentUiMode: raw });
+      } else {
+        return res.status(400).json({
+          error: 'invalid_banking_agent_ui_mode',
+          message: 'bankingAgentUiMode must be embedded, floating, or null.',
+        });
       }
     }
 
@@ -263,6 +282,10 @@ router.put('/', async (req, res) => {
     const scenario = await demoScenarioStore.load(uid);
     const currentUser = dataStore.getUserById(uid) || {};
     const { password, ...savedUserData } = currentUser;
+    const bankingAgentUiModeOut =
+      scenario.bankingAgentUiMode === 'embedded' || scenario.bankingAgentUiMode === 'floating'
+        ? scenario.bankingAgentUiMode
+        : null;
     res.json({
       ok: true,
       accounts: accounts.map(a => ({
@@ -276,6 +299,7 @@ router.put('/', async (req, res) => {
       settings: {
         stepUpAmountThreshold:
           scenario.stepUpAmountThreshold != null ? scenario.stepUpAmountThreshold : DEFAULT_STEP_UP(),
+        bankingAgentUiMode: bankingAgentUiModeOut,
       },
       userData: savedUserData,
     });

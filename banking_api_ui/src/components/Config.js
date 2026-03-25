@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
+import { persistBankingAgentUiMode } from '../services/demoScenarioService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
 import '../styles/appShellPages.css';
@@ -220,6 +221,7 @@ function AgentLayoutPreferences() {
   function handleModeChange(next) {
     if (next === mode) return;
     setMode(next);
+    void persistBankingAgentUiMode(next);
     toast.info('Applying agent layout…', { autoClose: 1200 });
     window.setTimeout(() => {
       // Embedded dock only mounts on dashboard home routes; staying on /config after
@@ -243,6 +245,7 @@ function AgentLayoutPreferences() {
         Controls whether the banking agent appears as a <strong>floating</strong> panel (FAB) or is <strong>embedded</strong>
         into your dashboard home page. Tool steps (e.g. read/update account, transactions) show in the chat as actions run.
         Choosing <strong>embedded</strong> sends you to <strong>Home</strong> so the bottom strip appears right away; choosing <strong>floating</strong> reloads this page.
+        When signed in, your choice is saved with your demo profile so refresh and new devices pick it up from the server.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>

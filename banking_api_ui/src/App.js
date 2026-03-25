@@ -25,6 +25,7 @@ import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
 
 import { savePublicConfig } from './services/configService';
+import { fetchDemoScenario } from './services/demoScenarioService';
 import { toastLogStore } from './services/toastLogStore';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
@@ -53,7 +54,7 @@ function GlobalFloatingBankingAgent({ user, onLogout, agentUiMode }) {
 }
 
 function AppWithAuth() {
-  const { mode: agentUiMode } = useAgentUiMode();
+  const { mode: agentUiMode, setMode: setAgentUiMode } = useAgentUiMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -133,6 +134,28 @@ function AppWithAuth() {
       return false;
     }
   }, [injectEmailIntoNextSessionInit]);
+
+  /**
+   * After sign-in, apply agent layout from persisted demo scenario when set (server/KV).
+   * Otherwise AgentUiModeProvider keeps the value from localStorage. Unset server value → no change.
+   */
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchDemoScenario();
+        if (cancelled) return;
+        const m = data?.settings?.bankingAgentUiMode;
+        if (m === 'embedded' || m === 'floating') setAgentUiMode(m);
+      } catch {
+        // Missing demo API or network — keep localStorage / context default
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, setAgentUiMode]);
 
   // Masked public config → IndexedDB once per full page load (not tied to checkOAuthSession).
   // Reduces duplicate GET /api/admin/config and helps avoid 429 on shared IPs / tight rate limits.

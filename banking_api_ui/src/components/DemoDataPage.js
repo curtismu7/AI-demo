@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioService';
+import { fetchDemoScenario, saveDemoScenario, persistBankingAgentUiMode } from '../services/demoScenarioService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import '../styles/appShellPages.css';
 import './DemoDataPage.css';
@@ -194,9 +194,10 @@ export default function DemoDataPage({ onLogout }) {
    * Persists floating vs embedded agent; only one layout is active. Reload so App picks up the change.
    * @param {'floating' | 'embedded'} next
    */
-  const handleAgentLayoutChange = next => {
+  const handleAgentLayoutChange = async next => {
     if (next === agentUiMode) return;
     setAgentUiMode(next);
+    await persistBankingAgentUiMode(next);
     toast.info('Applying agent layout…', { autoClose: 1200 });
     window.setTimeout(() => {
       if (next === 'embedded') {
