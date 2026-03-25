@@ -79,10 +79,9 @@ export default function DemoDataPage({ onLogout }) {
 
   /** Appends a new row; it is created on the server when the user saves. */
   const handleAddAccount = () => {
+    const c = typeof window !== 'undefined' ? window.crypto : null;
     const ck =
-      typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
-        ? globalThis.crypto.randomUUID()
-        : `draft-${Date.now()}`;
+      c && typeof c.randomUUID === 'function' ? c.randomUUID() : `draft-${Date.now()}`;
     setAccounts(prev => [
       ...prev,
       {
