@@ -851,7 +851,7 @@
   background: var(--ba-accent); color: #fff;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.ba-auth-btn:hover:not(:disabled) { background: var(--ba-accent); color: #fff; border-color: var(--ba-accent); }
+.ba-auth-btn:hover:not(:disabled) { background: var(--ba-accent-h); color: #fff; border-color: var(--ba-accent-h); }
 .ba-auth-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .ba-auth-btn.done { background: var(--ba-accent); border-color: var(--ba-accent); color: #fff; }
 
