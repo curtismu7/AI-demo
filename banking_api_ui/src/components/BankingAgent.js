@@ -442,6 +442,16 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
     if (isOpen) checkSelfAuth();
   }, [isOpen, checkSelfAuth]);
 
+  // Mutual exclusion: close agent when an education panel opens
+  useEffect(() => {
+    if (edu?.panel) setIsOpen(false);
+  }, [edu?.panel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mutual exclusion: close any open education panel when agent opens
+  useEffect(() => {
+    if (isOpen && edu?.panel) edu.close();
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Check config status from IndexedDB cache whenever panel opens
   useEffect(() => {
     if (isOpen && !isLoggedIn) {
@@ -689,9 +699,13 @@ export default function BankingAgent({ user, onLogout, mode = 'float' }) {
   function openEducationCommand(cmd) {
     if (cmd.ciba && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('education-open-ciba', { detail: { tab: cmd.tab || 'what' } }));
+      setIsOpen(false);
       return;
     }
-    if (cmd.panel) edu?.open(cmd.panel, cmd.tab || null);
+    if (cmd.panel) {
+      edu?.open(cmd.panel, cmd.tab || null);
+      setIsOpen(false);
+    }
   }
 
   async function handleNaturalLanguage() {
