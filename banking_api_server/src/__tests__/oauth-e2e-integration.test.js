@@ -451,13 +451,13 @@ describe('End-to-End OAuth Integration Tests', () => {
 
     // Note: Same session isolation issue — MemoryStore contamination from prior OAuth tests.
     it.skip('should handle session expiration', async () => {
-      // Logout redirects to the PingOne signoff URL (which has post_logout_redirect_uri=.../login)
+      // Logout redirects to the PingOne signoff URL (which has post_logout_redirect_uri=.../logout)
       const logoutResponse = await agent
         .get('/api/auth/oauth/user/logout')
         .expect(302);
 
-      // Redirect URL contains 'login' (either directly or in the post_logout_redirect_uri param)
-      expect(logoutResponse.headers.location).toContain('login');
+      // Redirect URL contains 'logout' (either directly or in the post_logout_redirect_uri param)
+      expect(logoutResponse.headers.location).toContain('logout');
 
       // After logout, status should show not authenticated
       const statusResponse = await agent
@@ -551,14 +551,14 @@ describe('End-to-End OAuth Integration Tests', () => {
       expect(response.headers.location).toContain('post_logout_redirect_uri');
     });
 
-    it('should include the frontend /login URL in the post_logout_redirect_uri', async () => {
+    it('should include the frontend /logout URL in the post_logout_redirect_uri', async () => {
       const response = await agent
         .get('/api/auth/logout')
         .expect(302);
 
       const location = response.headers.location;
       expect(location).toContain('post_logout_redirect_uri');
-      expect(decodeURIComponent(location)).toContain('/login');
+      expect(decodeURIComponent(location)).toContain('/logout');
     });
 
     it('should include id_token_hint when session has an idToken', async () => {

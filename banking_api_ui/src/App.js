@@ -171,7 +171,7 @@ function App() {
     // Navigate the browser directly (NOT via axios) to the unified logout
     // endpoint. Express will destroy the server session, then 302-redirect
     // the browser to PingOne's RP-Initiated Logout → post_logout_redirect_uri
-    // (/login). This ensures the PingOne SSO session is actually terminated
+    // (/logout). This ensures the PingOne SSO session is actually terminated
     // and a subsequent login will prompt for credentials fresh.
     window.location.href = '/api/auth/logout';
   };

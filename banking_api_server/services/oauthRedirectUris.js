@@ -86,6 +86,8 @@ function getOAuthRedirectDebugInfo(req) {
   const canonical = getCanonicalPublicOrigin();
   const admin = getAdminRedirectUri(req, { silent: true });
   const user = getUserRedirectUri(req, { silent: true });
+  const frontendOrigin = getFrontendOrigin(req);
+  const postLogoutUri = `${frontendOrigin}/logout`;
   const warnings = [];
   if (process.env.VERCEL && !canonical) {
     warnings.push(
@@ -96,6 +98,7 @@ function getOAuthRedirectDebugInfo(req) {
     canonicalOrigin: canonical,
     adminRedirectUri: admin,
     userRedirectUri: user,
+    postLogoutUri,
     requestHost: getPublicHost(req),
     pingOneRegisterThese: [...new Set([admin, user])],
     environmentId:    configStore.getEffective('pingone_environment_id') || null,
@@ -105,7 +108,7 @@ function getOAuthRedirectDebugInfo(req) {
     userClientId:     configStore.getEffective('user_client_id')         || null,
     userSecretSet:    !!(configStore.getEffective('user_client_secret')),
     userSecretHint:   (configStore.getEffective('user_client_secret')  || '').slice(0, 4) || null,
-    /** Stable production alias for this repo’s Vercel deployment (allowlist in PingOne). */
+    /** Stable production alias for this repo's Vercel deployment (allowlist in PingOne). */
     stableDemoOrigin: OFFICIAL_DEMO_ORIGIN,
     instructions: {
       summary:
@@ -113,6 +116,7 @@ function getOAuthRedirectDebugInfo(req) {
       steps: [
         'PingOne Admin → Applications → select the Admin (staff) app → Configuration → Redirect URIs → Add URI → paste the Admin redirect URI below.',
         'PingOne Admin → Applications → select the End-user (customer) app → Configuration → Redirect URIs → Add URI → paste the Customer redirect URI below.',
+        'Both apps → Configuration → Sign Off URLs → Add URI → paste the Sign Off (post-logout) URI below. PingOne redirects here after RP-Initiated Logout.',
         'Save both applications. Sign-in uses Authorization Code + PKCE; the callback path is always under /api/auth/oauth/ on this server.',
       ],
     },

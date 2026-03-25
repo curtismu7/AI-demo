@@ -287,10 +287,11 @@ const requireScopes = (requiredScopes, requireAll = false) => {
       // Normalize required scopes to array
       const scopesToCheck = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
 
-      // Role bypass: users authenticated via OAuth whose PingOne token only carries standard
-      // OIDC scopes (openid/profile/email) are trusted for banking endpoints based on role.
-      // Admin and customer OAuth users may not have banking:* scopes provisioned in PingOne.
-      if (req.user.role === 'admin' || (req.user.role === 'user' && req.user.tokenType === 'oauth')) {
+      // Role bypass: users authenticated via the BFF session (PingOne token stored server-side)
+      // may not have banking:* scopes in their PingOne token. Trust them based on role.
+      // Only applies to session-sourced tokens (fromSession:true) — raw Bearer tokens are
+      // still subject to scope enforcement so tests and direct API access behave correctly.
+      if (req.user.role === 'admin' || (req.user.role === 'user' && req.user.tokenType === 'oauth' && req.user.fromSession)) {
         logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — user has trusted OAuth role', {
           ...requestContext,
           required_scopes: scopesToCheck,
@@ -594,6 +595,7 @@ const authenticateToken = async (req, res, next) => {
             clientType: clientType,
             userType: userType,
             tokenType: 'oauth',
+            fromSession: true,  // token sourced from BFF server-side session
             acr: decoded.acr || null,
             scopes: scopes
           };

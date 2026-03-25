@@ -125,10 +125,11 @@ class OAuthService {
       if (codeVerifier) {
         body.set('code_verifier', codeVerifier);
       }
-      // Use CLIENT_SECRET_POST (body param) to match PingOne app configuration.
+      // Use CLIENT_SECRET_BASIC (Authorization header) per RFC 6749 §2.3.1 and PingOne app config.
       const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
       if (this.config.clientSecret) {
-        body.set('client_secret', this.config.clientSecret);
+        const credentials = `${encodeURIComponent(this.config.clientId)}:${encodeURIComponent(this.config.clientSecret)}`;
+        headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`;
       }
       const tokenResponse = await axios.post(this.config.tokenEndpoint, body.toString(), {
         headers,

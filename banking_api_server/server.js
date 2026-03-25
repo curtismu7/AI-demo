@@ -119,7 +119,7 @@ const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
-const { getOAuthRedirectDebugInfo } = require('./services/oauthRedirectUris');
+const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
 
 // Import middleware
@@ -300,14 +300,13 @@ app.get('/api/healthz', (req, res) => {
 });
 
 // Unified logout — destroys whichever session is active and redirects
-// browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/login).
+// browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/logout).
 // Called as a full page navigation (window.location.href), NOT via axios.
 app.get('/api/auth/logout', async (req, res) => {
   const idToken      = req.session.oauthTokens?.idToken       || null;
   const accessToken  = req.session.oauthTokens?.accessToken   || null;
   const refreshToken = req.session.oauthTokens?.refreshToken  || null;
-  const frontendUrl  = process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000';
-  const postLogoutUri = `${frontendUrl}/login`;
+  const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
 
   // RFC 7009 — revoke tokens before destroying the session so they can no
   // longer be used even if intercepted.  Runs in parallel; non-fatal on error.

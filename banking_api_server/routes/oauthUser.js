@@ -389,11 +389,9 @@ router.get('/callback', async (req, res) => {
         }
 
         if (authedUser.role === 'admin') {
-          const adminUrl = process.env.FRONTEND_ADMIN_URL || `${origin}/admin`;
-          res.redirect(`${adminUrl}?oauth=success`);
+          res.redirect(`${origin}/admin?oauth=success`);
         } else {
-          const dashboardUrl = process.env.FRONTEND_DASHBOARD_URL || `${origin}/dashboard`;
-          res.redirect(`${dashboardUrl}?oauth=success&stepup=done`);
+          res.redirect(`${origin}/dashboard?oauth=success`);
         }
       });
     });
@@ -421,9 +419,7 @@ router.get('/callback', async (req, res) => {
 router.get('/stepup', (req, res) => {
   try {
     const acrValue = process.env.STEP_UP_ACR_VALUE || 'Multi_factor';
-    const returnTo = req.query.return_to ||
-      process.env.FRONTEND_DASHBOARD_URL ||
-      'http://localhost:4000/dashboard';
+    const returnTo = req.query.return_to || `${getFrontendOrigin(req)}/dashboard`;
 
     const state = oauthService.generateState();
     const codeVerifier = oauthService.generateCodeVerifier();
@@ -517,7 +513,7 @@ router.get('/logout', (req, res) => {
   const idToken      = req.session.oauthTokens?.idToken      || null;
   const accessToken  = req.session.oauthTokens?.accessToken  || null;
   const refreshToken = req.session.oauthTokens?.refreshToken || null;
-  const postLogoutUri = `${getFrontendOrigin(req)}/login`;
+  const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
 
   // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
   if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');

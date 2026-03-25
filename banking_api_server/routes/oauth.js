@@ -260,8 +260,7 @@ router.get('/callback', async (req, res) => {
           oauthType: 'admin',
           expiresAt: oauthTokens.expiresAt,
         }, _isProd());
-        const adminUrl = process.env.FRONTEND_ADMIN_URL || `${redirectOrigin}/admin`;
-        res.redirect(`${adminUrl}?oauth=success`);
+        res.redirect(`${redirectOrigin}/admin?oauth=success`);
       });
     });
   } catch (error) {
@@ -280,7 +279,7 @@ router.get('/callback', async (req, res) => {
  */
 router.get('/logout', (req, res) => {
   const idToken = req.session.oauthTokens?.idToken || null;
-  const postLogoutUri = `${getFrontendOrigin(req)}/login`;
+  const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
 
   req.session.destroy((err) => {
     if (err) {
