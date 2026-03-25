@@ -4,7 +4,6 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
-import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
@@ -137,8 +136,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     return () => clearTimeout(t);
   }, [success]);
 
-  // Initialize chat widget (configuration is handled in index.html)
-  useChatWidget();
+  // Legacy LangChain widget (`window.bankingWidget`) only initializes on localhost in index.html;
+  // production uses <GlobalFloatingBankingAgent /> / embedded BankingAgent — do not poll for the old widget.
 
   // Function to fetch current OAuth tokens
   const fetchTokenData = async () => {

@@ -315,7 +315,9 @@ router.get('/logout', (req, res) => {
  * Get current OAuth session status
  */
 router.get('/status', (req, res) => {
-  const isAuthenticated = !!(req.session.user && req.session.oauthTokens?.accessToken);
+  const token = req.session.oauthTokens?.accessToken;
+  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  const isAuthenticated = !!(req.session.user && hasOAuthToken);
   
   res.json({
     authenticated: isAuthenticated,

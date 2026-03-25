@@ -38,6 +38,7 @@ jest.mock('../../data/store', () => {
 jest.mock('../../services/demoScenarioStore', () => ({
   load: jest.fn(async () => ({ stepUpAmountThreshold: null })),
   save: jest.fn(async () => {}),
+  isPersistenceConfigured: jest.fn(() => true),
 }));
 
 jest.mock('../../config/runtimeSettings', () => ({

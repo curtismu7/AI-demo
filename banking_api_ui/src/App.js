@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
@@ -30,11 +30,34 @@ import { toastLogStore } from './services/toastLogStore';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
 import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import { shouldShowGlobalFloatingBankingAgentFab } from './utils/embeddedAgentFabVisibility';
 import './App.css';
+
+const EMBEDDED_DOCK_AGENT_HEIGHT_KEY = 'banking_embedded_dock_agent_height_px';
+const DEFAULT_EMBEDDED_AGENT_HEIGHT = 380;
+const MIN_EMBEDDED_AGENT_HEIGHT = 220;
+
+/** Persisted height (px) of the embedded agent chat area (bottom dock). */
+function readEmbeddedAgentHeight() {
+  try {
+    const n = parseInt(localStorage.getItem(EMBEDDED_DOCK_AGENT_HEIGHT_KEY), 10);
+    if (Number.isFinite(n)) {
+      return Math.max(MIN_EMBEDDED_AGENT_HEIGHT, Math.min(720, n));
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_EMBEDDED_AGENT_HEIGHT;
+}
+
+function maxEmbeddedAgentHeight() {
+  if (typeof window === 'undefined') return 720;
+  return Math.min(720, Math.floor(window.innerHeight * 0.82));
+}
 
 /** Session/auth tracing only in development (production builds stay quiet). */
 function devLog(...args) {
@@ -49,7 +72,11 @@ function GlobalFloatingBankingAgent({ user, onLogout, agentUiMode }) {
 }
 
 function AppWithAuth() {
+  const { theme: appTheme, effectiveAgentTheme } = useTheme();
   const { mode: agentUiMode, setMode: setAgentUiMode } = useAgentUiMode();
+  const embeddedDockWrapRef = useRef(null);
+  const [embeddedAgentBodyHeight, setEmbeddedAgentBodyHeight] = useState(readEmbeddedAgentHeight);
+  const [embeddedDockReservePx, setEmbeddedDockReservePx] = useState(420);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -322,6 +349,58 @@ function AppWithAuth() {
     return () => window.removeEventListener('userAuthenticated', handler);
   }, [checkOAuthSession]);
 
+  const updateEmbeddedDockReserve = useCallback(() => {
+    const el = embeddedDockWrapRef.current;
+    if (!el) return;
+    setEmbeddedDockReservePx(Math.ceil(el.getBoundingClientRect().height) + 8);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (agentUiMode !== 'embedded') return undefined;
+    updateEmbeddedDockReserve();
+    const el = embeddedDockWrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => updateEmbeddedDockReserve());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [agentUiMode, embeddedAgentBodyHeight, updateEmbeddedDockReserve]);
+
+  useEffect(() => {
+    if (agentUiMode !== 'embedded') return undefined;
+    const onWinResize = () => {
+      const maxH = maxEmbeddedAgentHeight();
+      setEmbeddedAgentBodyHeight((h) => Math.max(MIN_EMBEDDED_AGENT_HEIGHT, Math.min(maxH, h)));
+    };
+    window.addEventListener('resize', onWinResize);
+    onWinResize();
+    return () => window.removeEventListener('resize', onWinResize);
+  }, [agentUiMode]);
+
+  const onEmbeddedDockResizeMouseDown = useCallback((e) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = embeddedAgentBodyHeight;
+    const maxH = maxEmbeddedAgentHeight();
+    let last = startH;
+    function onMove(ev) {
+      const dy = ev.clientY - startY;
+      const next = Math.round(startH - dy);
+      last = Math.max(MIN_EMBEDDED_AGENT_HEIGHT, Math.min(maxH, next));
+      setEmbeddedAgentBodyHeight(last);
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      try {
+        localStorage.setItem(EMBEDDED_DOCK_AGENT_HEIGHT_KEY, String(last));
+      } catch {
+        // ignore
+      }
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [embeddedAgentBodyHeight]);
+
   const logout = () => {
     sessionEstablishedRef.current = false;
 
@@ -365,8 +444,16 @@ function AppWithAuth() {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <EducationUIProvider>
       <TokenChainProvider>
-        <div className={`App end-user-nano${agentUiMode === 'embedded' ? ' App--has-embedded-dock' : ''}`}>
+        <div
+          className={`App end-user-nano${agentUiMode === 'embedded' ? ' App--has-embedded-dock' : ''}`}
+          style={
+            agentUiMode === 'embedded'
+              ? { '--embedded-dock-reserve': `${embeddedDockReservePx}px` }
+              : undefined
+          }
+        >
           <ToastContainer
+            theme={appTheme === 'dark' ? 'dark' : 'light'}
             position="bottom-right"
             autoClose={22000}
             hideProgressBar={false}
@@ -414,15 +501,40 @@ function AppWithAuth() {
           </Routes>
           <GlobalFloatingBankingAgent user={user} onLogout={logout} agentUiMode={agentUiMode} />
           {agentUiMode === 'embedded' && (
-            <div className="global-embedded-agent-dock-wrap" role="region" aria-label="AI banking assistant">
-              <div className="embedded-agent-dock">
+            <div
+              ref={embeddedDockWrapRef}
+              className="global-embedded-agent-dock-wrap"
+              role="region"
+              aria-label="AI banking assistant"
+            >
+              <div
+                className="embedded-agent-dock"
+                data-agent-theme={effectiveAgentTheme}
+              >
                 <div className="embedded-agent-dock__head">
                   <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
                   <p className="embedded-agent-dock__lead">
                     Natural language and MCP tools along the bottom — step chips show what ran.
                   </p>
                 </div>
-                <div className="embedded-banking-agent embedded-banking-agent--bottom">
+                <button
+                  type="button"
+                  className="embedded-dock-resize-handle"
+                  onMouseDown={onEmbeddedDockResizeMouseDown}
+                  aria-label="Drag up or down to resize assistant panel height"
+                  title="Drag up or down to resize the assistant"
+                >
+                  <span className="embedded-dock-resize-handle__grip" aria-hidden="true">
+                    <span className="embedded-dock-resize-handle__bar" />
+                    <span className="embedded-dock-resize-handle__bar" />
+                    <span className="embedded-dock-resize-handle__bar" />
+                  </span>
+                  <span className="embedded-dock-resize-handle__label">Resize height</span>
+                </button>
+                <div
+                  className="embedded-banking-agent embedded-banking-agent--bottom"
+                  style={{ height: embeddedAgentBodyHeight }}
+                >
                   <BankingAgent user={user} onLogout={logout} mode="inline" embeddedDockBottom />
                 </div>
               </div>
@@ -469,8 +581,10 @@ function AppWithAuth() {
 
 export default function App() {
   return (
-    <AgentUiModeProvider>
-      <AppWithAuth />
-    </AgentUiModeProvider>
+    <ThemeProvider>
+      <AgentUiModeProvider>
+        <AppWithAuth />
+      </AgentUiModeProvider>
+    </ThemeProvider>
   );
 }

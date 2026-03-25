@@ -42,19 +42,33 @@ if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
 
 // ── Optional persistent session store (required for Vercel / multi-instance deployments) ──
 // Resolve Redis URL: explicit REDIS_URL takes priority; fall back to deriving it from
-// Upstash environment variables (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)
-// which are automatically injected when you add the Upstash Vercel integration.
+// Upstash REST variables (UPSTASH_REDIS_REST_* or Vercel KV KV_REST_API_*), which use
+// the same https://…upstash.io host and token as the Redis protocol password.
+/** @type {string | null} Which env keys supplied the Redis URL (for logs /api/auth/debug). */
+let sessionRedisEnvHint = null;
+
 function _resolveRedisUrl() {
-  if (process.env.REDIS_URL) return process.env.REDIS_URL;
-  const restUrl   = process.env.UPSTASH_REDIS_REST_URL;
-  const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (restUrl && restToken) {
-    // REST URL looks like https://<hostname>.upstash.io — convert to Redis protocol URL.
-    // Upstash uses the same token as the Redis password.
-    const host = restUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    return `rediss://default:${restToken}@${host}:6379`;
+  if (process.env.REDIS_URL) {
+    sessionRedisEnvHint = 'REDIS_URL';
+    return process.env.REDIS_URL;
   }
-  return null;
+  const restUrl =
+    process.env.UPSTASH_REDIS_REST_URL ||
+    process.env.KV_REST_API_URL;
+  const restToken =
+    process.env.UPSTASH_REDIS_REST_TOKEN ||
+    process.env.KV_REST_API_TOKEN;
+  if (!restUrl || !restToken) {
+    sessionRedisEnvHint = null;
+    return null;
+  }
+  sessionRedisEnvHint = process.env.UPSTASH_REDIS_REST_URL
+    ? 'UPSTASH_REDIS_REST_*'
+    : 'KV_REST_API_*';
+  // REST URL looks like https://<hostname>.upstash.io — convert to Redis protocol URL.
+  const host = restUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const encToken = encodeURIComponent(restToken);
+  return `rediss://default:${encToken}@${host}:6379`;
 }
 
 let sessionStore;
@@ -86,8 +100,7 @@ if (_redisUrl) {
       }
     });
     sessionStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
-    const src = process.env.REDIS_URL ? 'REDIS_URL' : 'UPSTASH_REDIS_REST_URL';
-    console.log(`[session-store] Using Redis store (${src})`);
+    console.log(`[session-store] Using Redis store (from ${sessionRedisEnvHint})`);
   } catch (err) {
     console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
   }
@@ -98,7 +111,7 @@ if (!sessionStore && (process.env.VERCEL || process.env.REPL_ID || process.env.R
   console.warn(
     `[session-store] WARNING: Running on ${platform} without Redis. ` +
     'Sessions use in-memory store — they will be lost on process restart. ' +
-    'Set REDIS_URL or add the Upstash integration (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN) for persistent sessions.',
+    'Set REDIS_URL, or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN, or Vercel KV (KV_REST_API_URL + KV_REST_API_TOKEN) for persistent sessions.',
   );
 }
 
@@ -389,10 +402,15 @@ app.get('/api/auth/debug', (req, res) => {
     sessionOauthType:  req.session?.oauthType || null,
     sessionRestored:   !!req.session?._restoredFromCookie,
     sessionHasTokens:  !!req.session?.oauthTokens?.accessToken,
+    accessTokenStub:   req.session?.oauthTokens?.accessToken === '_cookie_session',
     cookiesPresent:    cookieNames,
     hasAuthCookie:     cookieNames.includes('_auth'),
     hasPkceCookie:     cookieNames.includes('_pkce'),
     sessionCookieName: cookieNames.includes('connect.sid') ? 'connect.sid present' : 'connect.sid MISSING',
+    /** redis = connect-redis configured; memory = serverless will cookie-restore without tokens */
+    bffSessionStore: sessionStore ? 'redis' : 'memory',
+    /** Which env supplied the resolved Redis URL (null if none). */
+    sessionRedisEnv: sessionRedisEnvHint,
     storageType:       configStore.getStorageType(),
     isConfigured:      configStore.isConfigured(),
     userEmail:         req.session?.user?.email || null,
@@ -565,8 +583,9 @@ function mcpNoBearerResponse(req, tokenEvents) {
         error: 'session_not_hydrated',
         message:
           'Signed-in state was restored from a cookie, not a full server session — the access token is not available on this instance. ' +
-          'On Vercel, set REDIS_URL or add Upstash (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN) so OAuth sessions persist, then sign out and sign in again. ' +
-          '“Refresh access token” cannot fix this until a real session with refresh_token is stored.',
+          'On Vercel: set REDIS_URL, or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN, or Vercel KV (KV_REST_API_URL + KV_REST_API_TOKEN) on this project; redeploy; then sign out and sign in again. ' +
+          'Open GET /api/auth/debug — bffSessionStore should be "redis", sessionRestored false after a fresh login. ' +
+          '“Refresh access token” cannot fix cookie-only sessions until a real Redis session holds refresh_token.',
         tokenEvents,
       },
     };

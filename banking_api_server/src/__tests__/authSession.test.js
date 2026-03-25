@@ -8,6 +8,7 @@
  *   - Returns user info for an OAuth admin session
  *   - Returns user info for an OAuth end-user session
  *   - Returns user info for a cookie-restored session (_restoredFromCookie)
+ *   - cookieOnlyBffSession true only for stub/cookie-restored OAuth marker
  *   - authType field reflects session.oauthType / tokenType
  *   - Does NOT leak the password field
  */
@@ -142,6 +143,11 @@ describe('GET /api/auth/session — local session (username+password)', () => {
     const res = await agent.get('/api/auth/session');
     expect(res.body.authType).toBe('local_session');
   });
+
+  it('returns cookieOnlyBffSession: false for local session', async () => {
+    const res = await agent.get('/api/auth/session');
+    expect(res.body.cookieOnlyBffSession).toBe(false);
+  });
 });
 
 describe('GET /api/auth/session — OAuth admin session', () => {
@@ -172,6 +178,11 @@ describe('GET /api/auth/session — OAuth admin session', () => {
     expect(res.body.user.role).toBe('admin');
     expect(res.body.user.email).toBe('admin@example.com');
   });
+
+  it('returns cookieOnlyBffSession: false when a real OAuth token is present', async () => {
+    const res = await agent.get('/api/auth/session');
+    expect(res.body.cookieOnlyBffSession).toBe(false);
+  });
 });
 
 describe('GET /api/auth/session — OAuth end-user session', () => {
@@ -195,6 +206,11 @@ describe('GET /api/auth/session — OAuth end-user session', () => {
   it('returns authenticated: true', async () => {
     const res = await agent.get('/api/auth/session');
     expect(res.body.authenticated).toBe(true);
+  });
+
+  it('returns cookieOnlyBffSession: false when a real OAuth token is present', async () => {
+    const res = await agent.get('/api/auth/session');
+    expect(res.body.cookieOnlyBffSession).toBe(false);
   });
 });
 
@@ -220,5 +236,10 @@ describe('GET /api/auth/session — cookie-restored session (_restoredFromCookie
   it('returns authType: admin', async () => {
     const res = await agent.get('/api/auth/session');
     expect(res.body.authType).toBe('admin');
+  });
+
+  it('returns cookieOnlyBffSession: true', async () => {
+    const res = await agent.get('/api/auth/session');
+    expect(res.body.cookieOnlyBffSession).toBe(true);
   });
 });

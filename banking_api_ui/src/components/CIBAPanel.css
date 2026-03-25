@@ -11,14 +11,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  box-sizing: border-box;
-  width: var(--stack-fab-width, 220px);
-  min-width: var(--stack-fab-width, 220px);
-  height: var(--stack-fab-height, 44px);
-  min-height: var(--stack-fab-height, 44px);
+  width: 40px;
+  height: 40px;
   padding: 0 12px;
-  background: #1e3a5f;
+  background: var(--app-primary-red);
   color: #fff;
   -webkit-text-fill-color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -32,14 +28,14 @@
 }
 
 .ciba-fab:hover {
-  background: #2563eb;
+  background: var(--app-primary-red-hover);
   border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 4px 12px rgba(127, 29, 29, 0.16);
   transform: translateY(-1px);
 }
 
 .ciba-fab--open {
-  background: #1d4ed8;
+  background: var(--app-primary-red-hover);
   border-color: rgba(255, 255, 255, 0.25);
 }
 

@@ -1,14 +1,12 @@
 // banking_api_server/services/demoScenarioStore.js
 /**
- * Per-user demo scenario: MFA step-up threshold override and optional metadata.
- * Persists to the same KV/Upstash used for config when KV_REST_* / UPSTASH_* is set;
- * otherwise in-memory only (fine for single-instance local dev).
+ * Per-user demo scenario: MFA step-up threshold, bankingAgentUiMode, etc.
  *
- * Vercel: add Upstash from the Vercel Marketplace so KV_REST_API_URL + KV_REST_API_TOKEN
- * (or UPSTASH_REDIS_*) are set — same pattern as configStore. Banking accounts/transactions
- * remain in the in-memory dataStore on serverless (ephemeral); this store only holds small
- * overrides. For durable account/txn data on Vercel, use an external DB (Turso, Neon free tier)
- * or accept reset-on-cold-start for pure demos.
+ * Persists to (first available):
+ *   • Vercel KV REST — KV_REST_API_* or UPSTASH_REDIS_REST_* (@vercel/kv)
+ *   • Redis protocol — REDIS_URL, or same Upstash host derived from REST URL + token
+ *
+ * Without any of the above, data is in-memory only (lost on restart / new serverless instance).
  */
 'use strict';
 
@@ -17,8 +15,23 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST
 
 const memory = new Map();
 
+/** Same derivation as server.js session store so REDIS_URL-only deploys still persist demo settings. */
+function resolveRedisUrl() {
+  if (process.env.REDIS_URL) return process.env.REDIS_URL;
+  const restUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const restToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  if (!restUrl || !restToken) return null;
+  const host = restUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const encToken = encodeURIComponent(restToken);
+  return `rediss://default:${encToken}@${host}:6379`;
+}
+
 function key(userId) {
   return `banking:demo-scenario:${userId}`;
+}
+
+function isPersistenceConfigured() {
+  return !!(KV_URL && KV_TOKEN) || !!resolveRedisUrl();
 }
 
 async function kvGet(k) {
@@ -46,6 +59,81 @@ async function kvSet(k, obj) {
   }
 }
 
+/** Lazy singleton for serverless (one connection per warm instance). */
+let redisClientPromise = null;
+
+async function getRedisClient() {
+  const url = resolveRedisUrl();
+  if (!url) return null;
+  if (!redisClientPromise) {
+    redisClientPromise = (async () => {
+      try {
+        const { createClient } = require('redis');
+        const client = createClient({
+          url,
+          socket: {
+            connectTimeout: 5000,
+            reconnectStrategy: (retries) => {
+              if (retries < 2) return Math.min(retries * 200, 500);
+              return new Error('[demoScenarioStore] Redis reconnect stopped');
+            },
+          },
+        });
+        client.on('error', (err) => {
+          if (!client._demoLoggedErr) {
+            console.warn('[demoScenarioStore] Redis error:', err.message);
+            client._demoLoggedErr = true;
+          }
+        });
+        await client.connect();
+        return client;
+      } catch (e) {
+        console.warn('[demoScenarioStore] Redis connect failed:', e.message);
+        return null;
+      }
+    })();
+  }
+  return redisClientPromise;
+}
+
+async function redisGet(k) {
+  if (!resolveRedisUrl()) return null;
+  try {
+    const client = await getRedisClient();
+    if (!client) return null;
+    const raw = await client.get(k);
+    if (raw == null || raw === '') return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn('[demoScenarioStore] redis get', e.message);
+    return null;
+  }
+}
+
+async function redisSet(k, obj) {
+  if (!resolveRedisUrl()) return;
+  try {
+    const client = await getRedisClient();
+    if (!client) return;
+    await client.set(k, JSON.stringify(obj));
+  } catch (e) {
+    console.warn('[demoScenarioStore] redis set', e.message);
+  }
+}
+
+async function remoteGet(k) {
+  const fromKv = await kvGet(k);
+  if (fromKv && typeof fromKv === 'object') return fromKv;
+  const fromRedis = await redisGet(k);
+  if (fromRedis && typeof fromRedis === 'object') return fromRedis;
+  return null;
+}
+
+async function remoteSet(k, obj) {
+  await kvSet(k, obj);
+  await redisSet(k, obj);
+}
+
 /**
  * Load demo scenario for a user (cached in memory after first read).
  */
@@ -53,11 +141,13 @@ async function load(userId) {
   if (!userId) return { stepUpAmountThreshold: null };
   const cached = memory.get(userId);
   if (cached) return cached;
-  const fromKv = await kvGet(key(userId));
-  if (fromKv && typeof fromKv === 'object') {
-    memory.set(userId, fromKv);
-    return fromKv;
+
+  const data = await remoteGet(key(userId));
+  if (data) {
+    memory.set(userId, data);
+    return data;
   }
+
   const empty = { stepUpAmountThreshold: null };
   memory.set(userId, empty);
   return empty;
@@ -70,7 +160,7 @@ async function save(userId, patch) {
   const prev = await load(userId);
   const next = { ...prev, ...patch, updatedAt: new Date().toISOString() };
   memory.set(userId, next);
-  await kvSet(key(userId), next);
+  await remoteSet(key(userId), next);
   return next;
 }
 
@@ -89,4 +179,5 @@ module.exports = {
   load,
   save,
   getStepUpThreshold,
+  isPersistenceConfigured,
 };

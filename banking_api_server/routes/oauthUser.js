@@ -464,7 +464,9 @@ router.get('/stepup', (req, res) => {
  * Get current OAuth session status for end users
  */
 router.get('/status', (req, res) => {
-  const isAuthenticated = !!(req.session.user && req.session.oauthTokens?.accessToken && req.session.oauthType === 'user');
+  const token = req.session.oauthTokens?.accessToken;
+  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
   
   res.json({
     authenticated: isAuthenticated,

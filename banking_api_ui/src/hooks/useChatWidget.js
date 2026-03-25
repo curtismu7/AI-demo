@@ -4,7 +4,15 @@ const useChatWidget = () => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Check if the global widget is available
+    // index.html only calls initializeChatWidget on localhost; hosted builds use React BankingAgent.
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (!isLocalhost) {
+      setIsInitialized(true);
+      return;
+    }
+
     const checkForWidget = () => {
       if (window.bankingWidget) {
         setIsInitialized(true);
@@ -13,22 +21,19 @@ const useChatWidget = () => {
       return false;
     };
 
-    // Check immediately
     if (checkForWidget()) {
       return;
     }
 
-    // If not available, poll for it
     const interval = setInterval(() => {
       if (checkForWidget()) {
         clearInterval(interval);
       }
     }, 100);
 
-    // Clean up interval after 10 seconds
     const timeout = setTimeout(() => {
       clearInterval(interval);
-      console.warn('Banking chat widget not found after 10 seconds');
+      console.warn('Banking chat widget not found after 10 seconds (localhost only)');
     }, 10000);
 
     return () => {

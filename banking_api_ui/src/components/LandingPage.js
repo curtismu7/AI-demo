@@ -1,8 +1,10 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import './LandingPage.css';
 
 const LandingPage = () => {
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -65,7 +67,7 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="landing-page">
+    <div className={`landing-page${theme === 'light' ? ' landing-page--light' : ''}`}>
       {/* Navigation */}
       <nav className={`navbar ${scrollY > 50 ? 'scrolled' : ''}`}>
         <div className="nav-container">

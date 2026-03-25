@@ -14,6 +14,7 @@ import {
 import { loadPublicConfig } from '../services/configService';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { useTokenChainOptional } from '../context/TokenChainContext';
+import { useTheme } from '../context/ThemeContext';
 import { EDU } from './education/educationIds';
 import { EDUCATION_COMMANDS } from './education/educationCommands';
 import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
@@ -83,6 +84,29 @@ const SUGGESTIONS_ADMIN = [
   'How does token exchange work?',
   'What is step-up auth?',
 ];
+
+/** Chat copy when BFF has cookie but no OAuth tokens (e.g. Vercel without Redis). */
+const SESSION_NOT_HYDRATED_CHAT = [
+  'Your browser is signed in, but this server does not have your OAuth tokens yet.',
+  '',
+  'Hosted (Vercel): set REDIS_URL, or UPSTASH_REDIS_REST_URL + TOKEN, or Vercel KV (KV_REST_API_URL + KV_REST_API_TOKEN) on this same project; redeploy; then use Sign out below and sign in again.',
+  '',
+  'Check GET /api/auth/debug — bffSessionStore should be "redis" after deploy. "Refresh access token" only works once Redis holds a real session.',
+].join('\n');
+
+/**
+ * Picks the signed-in user from BFF status responses and reads cookie-only / Vercel hydration flag from GET /api/auth/session.
+ */
+function resolveSessionFromAuthTrio(admin, endUser, session) {
+  const found = (admin?.authenticated && admin.user)
+    ? admin.user
+    : (endUser?.authenticated && endUser.user)
+      ? endUser.user
+      : (session?.authenticated && session.user)
+        ? session.user
+        : null;
+  return { found, cookieOnlyBffSession: !!session?.cookieOnlyBffSession };
+}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -352,12 +376,20 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   const isBottomDock = isInline && embeddedDockBottom;
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
+  const {
+    theme: appTheme,
+    toggleTheme,
+    agentAppearance,
+    setAgentAppearance,
+    effectiveAgentTheme,
+  } = useTheme();
   // Always open by default, unless user explicitly collapsed it (persisted in localStorage)
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('bankingAgentOpen');
     return saved === null ? true : saved === 'true';
   });
-  const [isDark, setIsDark] = useState(true);
+  /** Panel light/dark: default follows page (`auto`); can override in header. */
+  const isDark = effectiveAgentTheme === 'dark';
   const [isExpanded, setIsExpanded] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
   const [nlInput, setNlInput] = useState('');
@@ -382,8 +414,14 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
    */
   const [sessionUser, setSessionUser] = useState(null);
   const [sessionRefreshing, setSessionRefreshing] = useState(false);
+  /** True when identity came from _auth cookie / stub token — MCP and NL need a Redis-backed session. */
+  const [cookieOnlyBffSession, setCookieOnlyBffSession] = useState(false);
+  /** Avoid repeating the session-fix error bubble after we showed it on load or after a failed action. */
+  const sessionFixBubbleShownRef = useRef(false);
 
   const bottomRef = useRef(null);
+  /** Bottom-dock: scroll transfer/deposit form into view (messages flex used to clip Run). */
+  const actionFormAnchorRef = useRef(null);
   const toolProgressIdRef = useRef(null);
   const panelRef = useRef(null);
   const isDraggingRef = useRef(false);
@@ -430,20 +468,27 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
             fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
           ]);
           const [admin, endUser, session] = result;
-          const found = (admin?.authenticated && admin.user)
-            ? admin.user
-            : (endUser?.authenticated && endUser.user)
-              ? endUser.user
-              : (session?.authenticated && session.user)
-                ? session.user
-                : null;
+          const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
           if (found) {
+            setCookieOnlyBffSession(cookieOnly);
             setSessionUser(found);
-            setMessages(prev =>
-              prev.length === 0
-                ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(found) }]
-                : prev
-            );
+            setMessages(prev => {
+              if (prev.length > 0) return prev;
+              const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found) };
+              if (cookieOnly) {
+                sessionFixBubbleShownRef.current = true;
+                return [
+                  welcome,
+                  {
+                    id: `${Date.now()}-fix`,
+                    role: 'error',
+                    content: SESSION_NOT_HYDRATED_CHAT,
+                    showSessionFixActions: true,
+                  },
+                ];
+              }
+              return [welcome];
+            });
             // Notify App.js once so it can navigate to dashboard routes
             if (i === 0) window.dispatchEvent(new CustomEvent('userAuthenticated'));
             // Cancel remaining retries
@@ -491,13 +536,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([admin, endUser, session]) => {
-      const found = (admin?.authenticated && admin.user)
-        ? admin.user
-        : (endUser?.authenticated && endUser.user)
-          ? endUser.user
-          : (session?.authenticated && session.user)
-            ? session.user
-            : null;
+      const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
+      setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
         // Notify App.js so it sets its own `user` state → shows dashboard routes
@@ -531,20 +571,29 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([admin, endUser, session]) => {
-      const found = (admin?.authenticated && admin.user)
-        ? admin.user
-        : (endUser?.authenticated && endUser.user)
-          ? endUser.user
-          : (session?.authenticated && session.user)
-            ? session.user
-            : null;
+      const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
+      setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
         // Respect explicit user preference — only auto-open if user hasn't collapsed it
         if (localStorage.getItem('bankingAgentOpen') !== 'false') {
           setIsOpen(true);
         }
-        setMessages([{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(found) }]);
+        const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found) };
+        if (cookieOnly) {
+          sessionFixBubbleShownRef.current = true;
+          setMessages([
+            welcome,
+            {
+              id: `${Date.now()}-fix`,
+              role: 'error',
+              content: SESSION_NOT_HYDRATED_CHAT,
+              showSessionFixActions: true,
+            },
+          ]);
+        } else {
+          setMessages([welcome]);
+        }
         window.dispatchEvent(new CustomEvent('userAuthenticated'));
       }
     });
@@ -912,12 +961,26 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
         err.message.includes('Failed to fetch') ||
         err.message.includes('502');
 
+      const mcpToolsUnauthorized =
+        actionId === 'mcp_tools' &&
+        /MCP tools fetch failed:\s*401/i.test(String(err?.message || ''));
+
+      const hydrationAuthFailure =
+        err?.code === 'session_not_hydrated' ||
+        (cookieOnlyBffSession &&
+          (err?.statusCode === 401 ||
+            err?.code === 'authentication_required' ||
+            mcpToolsUnauthorized ||
+            /sign in to use the banking agent/i.test(String(err?.message || ''))));
+
       if (isConnErr) {
         toast.error('🔌 MCP server unreachable — check your server connection', { autoClose: 8000 });
+      } else if (hydrationAuthFailure && cookieOnlyBffSession) {
+        // Inline session-fix banner already shown on load for cookie-only BFF; avoid duplicate toasts.
       } else if (err?.code === 'session_not_hydrated') {
         toast.error(
-          'Hosted session has no access token (configure Redis / Upstash for Vercel, then sign in again).',
-          { autoClose: 14000 },
+          'Sign in again: server session has no tokens (Vercel needs Redis/Upstash + redeploy, then sign out & sign in).',
+          { autoClose: 12000 },
         );
       } else if (
         err?.statusCode === 401 ||
@@ -934,17 +997,33 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
 
       const authHint =
         err?.code === 'session_not_hydrated'
-          ? '\n\n**Hosted / Vercel:** add Redis (REDIS_URL or Upstash env vars) so your OAuth tokens are stored across server instances. Then sign out and sign in again. Refresh token does not help until the BFF holds a real session.'
+          ? ''
           : err?.statusCode === 401 || err?.code === 'authentication_required'
             ? '\n\nTip: use **Refresh access token** (left column), then retry. Sign in again only if refresh fails.'
             : '';
-      addMessage(
-        'error',
-        isConnErr
-          ? 'Banking Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nHosted: set MCP_SERVER_URL to your reachable MCP server URL (if your platform allows outbound WS).'
-          : `Error: ${err.message}${authHint}`,
-        actionId
-      );
+
+      const showSessionFixBubble =
+        err?.code === 'session_not_hydrated' ||
+        (cookieOnlyBffSession &&
+          (err?.statusCode === 401 ||
+            err?.code === 'authentication_required' ||
+            mcpToolsUnauthorized ||
+            /sign in to use the banking agent/i.test(String(err?.message || ''))));
+
+      if (showSessionFixBubble) {
+        if (!sessionFixBubbleShownRef.current) {
+          sessionFixBubbleShownRef.current = true;
+          addMessage('error', SESSION_NOT_HYDRATED_CHAT, actionId, { showSessionFixActions: true });
+        }
+      } else {
+        addMessage(
+          'error',
+          isConnErr
+            ? 'Banking Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nHosted: set MCP_SERVER_URL to your reachable MCP server URL (if your platform allows outbound WS).'
+            : `Error: ${err.message}${authHint}`,
+          actionId
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -1052,18 +1131,26 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   /** NL API errors: 401 is session missing on server — not a parse failure. */
   function reportNlFailure(err) {
     if (err?.code === 'session_not_hydrated') {
-      toast.error(
-        'No access token on this server — add Redis/Upstash for Vercel, then sign in again.',
-        { autoClose: 12000 },
-      );
-      addMessage(
-        'assistant',
-        err?.message ||
-          'Your login is visible to the UI, but this API instance does not hold your OAuth tokens. Configure a persistent session store (REDIS_URL or Upstash) and sign in again.',
-      );
+      if (!cookieOnlyBffSession) {
+        toast.error(
+          'Sign in again: server session has no tokens (Vercel needs Redis/Upstash + redeploy, then sign out & sign in).',
+          { autoClose: 12000 },
+        );
+      }
+      if (!sessionFixBubbleShownRef.current) {
+        sessionFixBubbleShownRef.current = true;
+        addMessage('error', SESSION_NOT_HYDRATED_CHAT, null, { showSessionFixActions: true });
+      }
       return;
     }
     if (err?.statusCode === 401 || err?.code === 'authentication_required') {
+      if (cookieOnlyBffSession) {
+        if (!sessionFixBubbleShownRef.current) {
+          sessionFixBubbleShownRef.current = true;
+          addMessage('error', SESSION_NOT_HYDRATED_CHAT, null, { showSessionFixActions: true });
+        }
+        return;
+      }
       toast.error(
         'Sign in required — the server has no session for this request. Refresh the page and sign in again.',
         { autoClose: 5000 },
@@ -1221,13 +1308,28 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                     {isExpanded ? '⊟' : '⊞'}
                   </button>
                 )}
+                <select
+                  className="ba-agent-appearance-select"
+                  value={agentAppearance}
+                  onChange={(e) => setAgentAppearance(e.target.value)}
+                  aria-label="Agent panel theme"
+                  title="Agent: match page theme, or use its own light/dark"
+                >
+                  <option value="auto">Agent: Match page</option>
+                  <option value="light">Agent: Light</option>
+                  <option value="dark">Agent: Dark</option>
+                </select>
                 <button
                   type="button"
                   className="ba-icon-btn"
-                  onClick={() => setIsDark(d => !d)}
-                  title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                  onClick={() => toggleTheme()}
+                  title={
+                    appTheme === 'dark'
+                      ? 'Page: switch to light mode'
+                      : 'Page: switch to dark mode'
+                  }
                 >
-                  {isDark ? '☀️' : '🌙'}
+                  {appTheme === 'dark' ? '☀️' : '🌙'}
                 </button>
                 {/* Collapse to FAB only in float mode */}
                 {!isInline && (
@@ -1421,6 +1523,22 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                       </div>
                     );
                   }
+                  if (msg.role === 'error' && msg.showSessionFixActions) {
+                    return (
+                      <div key={msg.id} className="banking-agent-msg error">
+                        <div className="banking-agent-msg-bubble banking-agent-msg-bubble--session-fix">
+                          <pre className="banking-agent-msg-text">{msg.content}</pre>
+                          <button
+                            type="button"
+                            className="ba-session-fix-btn"
+                            onClick={() => onLogout?.()}
+                          >
+                            Sign out (then sign in again)
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={msg.id} className={`banking-agent-msg ${msg.role}`}>
                       {msg.role === 'assistant' && <span className="banking-agent-msg-avatar">🏦</span>}
@@ -1463,13 +1581,15 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
 
               {/* Action form (when user selects a transaction action) */}
               {activeAction && (
-                <ActionForm
-                  action={activeAction}
-                  loading={loading}
-                  onSubmit={form => runAction(activeAction, form)}
-                  onCancel={() => setActiveAction(null)}
-                  effectiveUser={effectiveUser}
-                />
+                <div ref={actionFormAnchorRef} className="ba-action-form-anchor">
+                  <ActionForm
+                    action={activeAction}
+                    loading={loading}
+                    onSubmit={form => runAction(activeAction, form)}
+                    onCancel={() => setActiveAction(null)}
+                    effectiveUser={effectiveUser}
+                  />
+                </div>
               )}
 
               {/* Bottom input bar */}

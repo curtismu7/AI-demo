@@ -26,6 +26,9 @@ build/
 !**/.env.example
 !**/.env.*.example
 
+# Local Upstash / KV notes (often contain tokens)
+upstash.md
+
 # Key material & credential dumps
 *.pem
 *.p12

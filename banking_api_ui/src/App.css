@@ -34,13 +34,104 @@
   right: 0;
   bottom: 0;
   z-index: 1002;
-  padding: 0 12px 12px;
+  /* Match dashboard / shell horizontal inset so dock lines up with page toolbars */
+  padding: 0 20px 12px;
   pointer-events: none;
 }
 
 .global-embedded-agent-dock-wrap .embedded-agent-dock {
   margin-top: 0;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Drag handle between dock title and agent (resize height) */
+.embedded-dock-resize-handle {
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 6px 12px 8px;
+  border: none;
+  border-top: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 6px 6px 0 0;
+  cursor: ns-resize;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #475569;
+  background: linear-gradient(
+    180deg,
+    rgba(241, 245, 249, 0.95) 0%,
+    rgba(226, 232, 240, 0.65) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.embedded-dock-resize-handle__grip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.embedded-dock-resize-handle__bar {
+  display: block;
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(71, 85, 105, 0.55);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.embedded-dock-resize-handle__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.embedded-dock-resize-handle:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(239, 246, 255, 0.98) 0%,
+    rgba(219, 234, 254, 0.75) 100%
+  );
+  border-top-color: rgba(65, 105, 225, 0.35);
+  color: #1e40af;
+}
+
+.embedded-dock-resize-handle:hover .embedded-dock-resize-handle__bar {
+  background: rgba(37, 99, 235, 0.65);
+}
+
+.embedded-dock-resize-handle:hover .embedded-dock-resize-handle__label {
+  color: #1d4ed8;
+}
+
+.embedded-dock-resize-handle:active {
+  cursor: ns-resize;
+  background: linear-gradient(
+    180deg,
+    rgba(219, 234, 254, 0.95) 0%,
+    rgba(191, 219, 254, 0.85) 100%
+  );
+}
+
+.embedded-dock-resize-handle:focus-visible {
+  outline: 2px solid #4169e1;
+  outline-offset: 2px;
 }
 
 @media (max-width: 420px) {

@@ -153,9 +153,11 @@ router.get('/', async (req, res) => {
           username: PROFILE_UI_FALLBACK.username,
         },
       },
-      persistenceNote: process.env.VERCEL && !(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL)
-        ? 'KV not configured — threshold override is per server instance only until you add Upstash/KV.'
-        : null,
+      persistenceNote:
+        (process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT) &&
+        !demoScenarioStore.isPersistenceConfigured()
+          ? 'Demo settings (threshold, agent layout) are not persisted — add Vercel KV / Upstash REST env vars or REDIS_URL (same as sessions) so they survive refresh and deploys.'
+          : null,
       userData,
     });
   } catch (e) {

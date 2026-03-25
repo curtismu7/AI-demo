@@ -117,6 +117,9 @@ router.post('/register', async (req, res) => {
 router.get('/session', (req, res) => {
   const u = req.session?.user;
   if (!u) return res.json({ authenticated: false, user: null });
+  const cookieOnlyBffSession =
+    req.session._restoredFromCookie === true ||
+    req.session.oauthTokens?.accessToken === '_cookie_session';
   res.json({
     authenticated: true,
     user: {
@@ -128,6 +131,7 @@ router.get('/session', (req, res) => {
       role:      u.role,
     },
     authType: req.session.oauthType || req.session.tokenType || 'session',
+    cookieOnlyBffSession,
   });
 });
 

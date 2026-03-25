@@ -36,6 +36,25 @@
   text-decoration: none;
   color: #1e3a8a;
 }
+
+.footer-theme-toggle {
+  margin-left: 8px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #1e3a8a;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.footer-theme-toggle:hover {
+  background: #eff6ff;
+  border-color: #4169e1;
+}
 .footer-logo {
   height: 32px;
   width: 32px;
