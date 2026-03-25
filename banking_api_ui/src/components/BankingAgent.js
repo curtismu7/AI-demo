@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
@@ -397,9 +398,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  // On the /agent route the inline instance is shown — hide floating widget entirely
+  // On the /agent route the inline/full-page instance is shown — hide duplicate float
   const isAgentPage = location.pathname === '/agent';
-  const isLogsPage = location.pathname === '/logs';
 
   // Persist isOpen state to localStorage whenever it changes
   useEffect(() => {
@@ -1141,9 +1141,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   }
 
   // Float mode should return nothing when the dedicated /agent page is active
-  if (!isInline && (isAgentPage || isLogsPage)) return null;
+  if (!isInline && isAgentPage) return null;
 
-  return (
+  const floatShell = (
     <>
       {/* FAB - only shown when floating agent is collapsed (not in inline mode) */}
       {!isInline && !isOpen && (
@@ -1517,5 +1517,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       )}
     </>
   );
+
+  // Inline/embed stays in React tree; float mounts on body so position:fixed is never trapped
+  // by .App / shell overflow or theme transforms, and works the same on /logs and app routes.
+  if (isInline) return floatShell;
+  return createPortal(floatShell, document.body);
 }
 

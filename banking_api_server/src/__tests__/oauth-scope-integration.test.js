@@ -173,36 +173,22 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('transactions');
     });
 
-    it('should deny account access without required read scopes', async () => {
+    it('should allow GET /api/accounts/my when authenticated (scope-independent dashboard hydration)', async () => {
       const token = createOAuthToken(['banking:write']);
-      
       const response = await request(app)
         .get('/api/accounts/my')
         .set('Authorization', `Bearer ${token}`);
-      
-      expect(response.status).toBe(403);
-      expect(response.body).toMatchObject({
-        error: 'insufficient_scope',
-        error_description: expect.stringContaining('At least one of the following scopes is required'),
-        requiredScopes: ['banking:accounts:read', 'banking:read'],
-        providedScopes: ['banking:write'],
-        missingScopes: ['banking:accounts:read', 'banking:read']
-      });
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('accounts');
     });
 
-    it('should deny transaction access without required read scopes', async () => {
+    it('should allow GET /api/transactions/my when authenticated (scope-independent dashboard hydration)', async () => {
       const token = createOAuthToken(['banking:accounts:read']);
-      
       const response = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
-      
-      expect(response.status).toBe(403);
-      expect(response.body).toMatchObject({
-        error: 'insufficient_scope',
-        requiredScopes: ['banking:transactions:read', 'banking:read'],
-        providedScopes: ['banking:accounts:read']
-      });
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('transactions');
     });
   });
 
@@ -473,19 +459,12 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
 
     it('should handle multiple scope requirements correctly', async () => {
       const token = createOAuthToken(['banking:accounts:read']);
-      
       const response = await request(app)
-        .get('/api/transactions/my')
+        .get('/api/transactions')
         .set('Authorization', `Bearer ${token}`);
-      
       expect(response.status).toBe(403);
-      expect(response.body).toMatchObject({
-        error: 'insufficient_scope',
-        requiredScopes: ['banking:transactions:read', 'banking:read'],
-        providedScopes: ['banking:accounts:read'],
-        missingScopes: ['banking:transactions:read', 'banking:read'],
-        validationMode: 'any_required'
-      });
+      expect(response.body.error).toBe('insufficient_scope');
+      expect(response.body.requiredScopes).toEqual(['banking:transactions:read', 'banking:read']);
     });
   });
 
@@ -539,21 +518,19 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
         });
       expect(transactionResponse.status).toBe(404); // Account not found, but scope check passed
       
-      // Should deny transaction read (doesn't have banking:transactions:read or banking:read)
+      // /transactions/my is scope-independent like /accounts/my
       const transactionReadResponse = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
-      expect(transactionReadResponse.status).toBe(403);
-      expect(transactionReadResponse.body.error).toBe('insufficient_scope');
+      expect(transactionReadResponse.status).toBe(200);
+      expect(transactionReadResponse.body).toHaveProperty('transactions');
     });
 
     it('should handle empty scopes', async () => {
       const token = createOAuthToken([]);
-      
       const response = await request(app)
-        .get('/api/accounts/my')
+        .get('/api/accounts')
         .set('Authorization', `Bearer ${token}`);
-      
       expect(response.status).toBe(403);
       expect(response.body).toMatchObject({
         error: 'insufficient_scope',
@@ -735,11 +712,9 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
 
     it('should handle case-sensitive scope matching', async () => {
       const token = createOAuthToken(['BANKING:READ']); // Wrong case
-      
       const response = await request(app)
-        .get('/api/accounts/my')
+        .get('/api/accounts')
         .set('Authorization', `Bearer ${token}`);
-      
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
     });

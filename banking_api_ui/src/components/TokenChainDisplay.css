@@ -384,6 +384,10 @@
   overflow-y: auto;
 }
 
+.tcd-exchange-req pre.tcd-jwt-dump {
+  max-height: min(420px, 55vh);
+}
+
 /* ─── Claims panel ───────────────────────────────────────────────────────── */
 .tcd-claims {
   background: #fff;

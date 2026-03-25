@@ -189,10 +189,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     let refreshInterval;
     
     if (autoRefresh) {
-      // Set up auto-refresh every 5 seconds
       refreshInterval = setInterval(() => {
         fetchUserData(true); // Silent refresh - no loading spinner
-      }, 20000); // 20 seconds
+      }, 45000); // 45s — pairs with server rate limits / shared NAT IPs
     }
     
     // Cleanup interval on component unmount or when autoRefresh changes
@@ -223,21 +222,25 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setUser(sessionUser);
       setError(null);
 
-      // Read via BFF cookie session client (same behavior as BankingAgent/App session checks)
-      const [accountsResponse, transactionsResponse] = await Promise.all([
-        bffAxios.get('/api/accounts/my'),
-        bffAxios.get('/api/transactions/my'),
-      ]);
+      // Accounts first: GET /api/accounts/my may provision demo accounts + sample transactions
+      // when the user has none. Running transactions in parallel often finished before
+      // provisioning completed, leaving an empty history until a later refresh (regression).
+      const accountsResponse = await bffAxios.get('/api/accounts/my');
       setAccounts(Array.isArray(accountsResponse.data?.accounts) ? accountsResponse.data.accounts : []);
+      const transactionsResponse = await bffAxios.get('/api/transactions/my');
       setTransactions(Array.isArray(transactionsResponse.data?.transactions) ? transactionsResponse.data.transactions : []);
 
     } catch (error) {
       console.error('Error fetching user data:', error);
       
       // Check if it's an authentication error
-      if (error.response?.status === 429 && silent) {
+      if (error.response?.status === 429) {
         setAutoRefresh(false);
-        setSuccess('Auto-refresh paused due to rate limits.');
+        if (silent) {
+          setSuccess('Auto-refresh paused due to rate limits.');
+        } else {
+          setError('Too many requests from this network. Wait a minute, then refresh. Auto-refresh is off.');
+        }
       } else if (error.response?.status === 401 && !silent) {
         setError('Your session has expired. Please log in again.');
       } else if (error.response?.status === 403) {

@@ -459,18 +459,7 @@ export default function DemoDataPage({ onLogout }) {
         </form>
       )}
 
-      <section className="app-page-card demo-data-section demo-data-docs">
-        <h2>Hosting note (Vercel)</h2>
-        <p>
-          Account rows live in the API server&apos;s in-memory store on serverless (ephemeral unless you add a database).
-          For a <strong>simple free</strong> option on Vercel, pair this app with{' '}
-          <strong>Upstash Redis</strong> (same integration as sessions/KV) — we persist your{' '}
-          <strong>step-up threshold override</strong> there when KV env vars are set. For full durable
-          transaction history at scale, add <strong>Neon</strong> or <strong>Turso</strong> (both have free tiers)
-          and migrate the banking store from memory to SQL.
-        </p>
-      </section>
-      </div>
+            </div>
     </div>
   );
 }

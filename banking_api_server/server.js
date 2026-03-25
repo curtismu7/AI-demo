@@ -218,13 +218,26 @@ const _rateLimitHandler = (req, res) => {
 };
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 1000 : 500,
+  max: process.env.NODE_ENV === 'development' ? 1000 : 800,
   handler: _rateLimitHandler,
 });
-// Exempt log-viewer polling, banking agent, and MCP tool calls from the global rate limit
-app.use((req, res, next) =>
-  (req.path.startsWith('/api/logs') || req.path.startsWith('/api/banking-agent') || req.path.startsWith('/api/agent') || req.path.startsWith('/api/mcp'))
-    ? next() : limiter(req, res, next));
+/**
+ * Paths excluded from the global IP limiter — they have their own limits or are safe, hot paths.
+ * Dashboard + config GETs were tripping 429 on shared IPs (NAT) and breaking transfers after hydration failures.
+ */
+function shouldSkipGlobalRateLimit(req) {
+  const p = req.path || '';
+  return (
+    p.startsWith('/api/logs') ||
+    p.startsWith('/api/banking-agent') ||
+    p.startsWith('/api/agent') ||
+    p.startsWith('/api/mcp') ||
+    p === '/api/accounts/my' ||
+    p === '/api/transactions/my' ||
+    p.startsWith('/api/admin/config')
+  );
+}
+app.use((req, res, next) => (shouldSkipGlobalRateLimit(req) ? next() : limiter(req, res, next)));
 
 // Tighter rate limit for login/callback only — not status polling endpoints.
 // max=100 in production: enough headroom for demo testing while still preventing abuse.

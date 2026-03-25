@@ -64,7 +64,8 @@ function ClaimsPanel({ claims, alg }) {
 
 function EventRow({ event, isLast }) {
   const [open, setOpen] = useState(false);
-  const hasDetail = event.claims || event.explanation || event.exchangeRequest;
+  const hasDetail =
+    event.claims || event.explanation || event.exchangeRequest || event.jwtFullDecode;
 
   return (
     <div className="tcd-event-wrap">
@@ -117,6 +118,13 @@ function EventRow({ event, isLast }) {
             <div className="tcd-exchange-req">
               <div className="tcd-exchange-req-title">Exchange request (RFC 8693)</div>
               <pre>{JSON.stringify(event.exchangeRequest, null, 2)}</pre>
+            </div>
+          )}
+
+          {event.jwtFullDecode && (
+            <div className="tcd-exchange-req">
+              <div className="tcd-exchange-req-title">JWT decode — full JSON (header + claims)</div>
+              <pre className="tcd-jwt-dump">{JSON.stringify(event.jwtFullDecode, null, 2)}</pre>
             </div>
           )}
 

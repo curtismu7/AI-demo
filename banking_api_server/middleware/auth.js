@@ -27,6 +27,8 @@ const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 const COOKIE_SESSION_ALLOWED_ROUTES = new Set([
   'GET /api/accounts/my',
   'GET /api/transactions/my',
+  // BFF POST uses session cookie; _cookie_session marker must not be JWT-validated (Vercel / serverless).
+  'POST /api/transactions',
   'POST /api/accounts/reset-demo',
   'GET /api/demo-scenario',
   'PUT /api/demo-scenario',

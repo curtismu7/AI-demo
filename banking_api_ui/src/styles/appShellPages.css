@@ -295,6 +295,20 @@
   color: #fff;
 }
 
+/*
+ * React Router <Link> renders <a>. PingOne end-user-nano.css (index.html) sets global link colors
+ * that win over a lone .app-page-shell__btn class — hero CTAs looked blue + underlined.
+ */
+.app-page-shell__hero .app-page-shell__actions a.app-page-shell__btn,
+.app-page-shell__hero .app-page-shell__actions a.app-page-shell__btn:link,
+.app-page-shell__hero .app-page-shell__actions a.app-page-shell__btn:visited,
+.app-page-shell__hero .app-page-shell__actions a.app-page-shell__btn:hover,
+.app-page-shell__hero .app-page-shell__actions a.app-page-shell__btn:focus,
+.app-page-shell__hero .app-page-shell__actions a.app-page-shell__btn:active {
+  color: #fff;
+  text-decoration: none;
+}
+
 /* Admin dashboard: stack main content above embedded bottom agent */
 .admin-dashboard-page.app-page-shell:has(.app-page-shell__body--embed-agent) {
   display: flex;

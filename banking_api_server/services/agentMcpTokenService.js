@@ -4,7 +4,8 @@
  * or on-behalf-of (subject = user, actor = agent OAuth client) when USE_AGENT_ACTOR_FOR_MCP=true.
  *
  * Also returns tokenEvents — decoded token metadata for the UI Token Chain panel.
- * No raw tokens are included; events contain only decoded JWT claims (header + payload).
+ * No raw tokens are included. Each event may include jwtFullDecode: { header, claims }
+ * (full JWT payload JSON for dumps) alongside a smaller sanitized `claims` field for tables.
  */
 'use strict';
 
@@ -69,6 +70,11 @@ function sanitizeClaims(claims) {
  * @param {object}  [extra]  Extra fields (exchangeDetails, error, rfc, etc.)
  */
 function buildTokenEvent(id, label, status, decoded, explanation, extra = {}) {
+  /** Full JWT decode (header + payload) for Token Chain JSON dump — never includes the raw token string. */
+  const jwtFullDecode =
+    decoded?.header != null && decoded?.claims != null
+      ? { header: decoded.header, claims: decoded.claims }
+      : null;
   return {
     id,
     label,
@@ -78,6 +84,7 @@ function buildTokenEvent(id, label, status, decoded, explanation, extra = {}) {
     claims: sanitizeClaims(decoded?.claims),
     explanation,
     ...extra,
+    ...(jwtFullDecode ? { jwtFullDecode } : {}),
   };
 }
 

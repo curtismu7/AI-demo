@@ -233,4 +233,15 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange (MCP_RESOURCE_UR
     expect(tokenEvents.find(e => e.id === 'user-token')).toBeDefined();
     expect(tokenEvents.find(e => e.id === 'exchanged-token')).toBeDefined();
   });
+
+  it('includes jwtFullDecode (header + full claims) on user-token and exchanged-token', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(T1), 'get_my_accounts');
+    const userEv = tokenEvents.find(e => e.id === 'user-token');
+    const t2Ev = tokenEvents.find(e => e.id === 'exchanged-token');
+    expect(userEv.jwtFullDecode.header.alg).toBe('RS256');
+    expect(userEv.jwtFullDecode.claims.sub).toBe(USER_SUB);
+    expect(t2Ev.jwtFullDecode.claims.sub).toBe(USER_SUB);
+    expect(t2Ev.jwtFullDecode.claims.aud).toBe('mcp-resource-uri');
+    expect(t2Ev.jwtFullDecode.claims.act).toEqual({ client_id: 'bff-client-id' });
+  });
 });
