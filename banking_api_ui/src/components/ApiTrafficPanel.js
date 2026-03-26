@@ -193,8 +193,8 @@ function HttpEntryDetail({ entry }) {
 
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
-/** Floating draggable API + MCP + Token-Exchange viewer. */
-export default function ApiTrafficPanel({ onClose }) {
+/** Floating draggable API + MCP + Token-Exchange viewer. Also supports pageMode for full-window display. */
+export default function ApiTrafficPanel({ onClose, pageMode = false }) {
   const [entries, setEntries] = useState(() => getAll());
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('All');
@@ -208,14 +208,15 @@ export default function ApiTrafficPanel({ onClose }) {
   useEffect(() => subscribe(setEntries), []);
 
   const handleMouseDown = useCallback((e) => {
-    if (e.button !== 0) return;
+    if (pageMode || e.button !== 0) return;
     const rect = panelRef.current.getBoundingClientRect();
     dragging.current = true;
     dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     e.preventDefault();
-  }, []);
+  }, [pageMode]);
 
   useEffect(() => {
+    if (pageMode) return;
     const handleMouseMove = (e) => {
       if (!dragging.current || !panelRef.current) return;
       panelRef.current.style.left   = `${e.clientX - dragOffset.current.x}px`;
@@ -230,16 +231,17 @@ export default function ApiTrafficPanel({ onClose }) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [pageMode]);
 
   const handleTogglePause = () => { const n = !paused; setPaused(n); setPausedState(n); };
   const handleClear = () => { clearTraffic(); setSelected(null); };
   const handlePopOut = () => window.open('/api-traffic', 'ApiTraffic', 'width=1200,height=800,scrollbars=yes,resizable=yes');
 
   const filtered = entries.filter(e => matchFilter(e, filter, search));
+  const panelClass = ['api-traffic-panel', pageMode ? 'api-traffic-panel--page' : ''].filter(Boolean).join(' ');
 
   return (
-    <div className="api-traffic-panel" ref={panelRef}>
+    <div className={panelClass} ref={panelRef}>
       {/* Header */}
       <div className="api-traffic-header" onMouseDown={handleMouseDown}>
         <div className="api-traffic-title">
@@ -259,8 +261,8 @@ export default function ApiTrafficPanel({ onClose }) {
             {paused ? '▶ Resume' : '⏸ Pause'}
           </button>
           <button type="button" className="api-traffic-btn" onClick={handleClear}>Clear</button>
-          <button type="button" className="api-traffic-btn" onClick={handlePopOut} title="Open in new window">⤢</button>
-          <button type="button" className="api-traffic-btn api-traffic-btn--close" onClick={onClose}>✕</button>
+          {!pageMode && <button type="button" className="api-traffic-btn" onClick={handlePopOut} title="Open in new window">⤢</button>}
+          {onClose && <button type="button" className="api-traffic-btn api-traffic-btn--close" onClick={onClose}>✕</button>}
         </div>
       </div>
 

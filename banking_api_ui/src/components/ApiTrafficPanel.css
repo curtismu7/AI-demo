@@ -25,6 +25,28 @@
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* Full-page mode — when opened in its own browser window via /api-traffic */
+.api-traffic-panel--page {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  bottom: auto;
+  right: auto;
+  border-radius: 0;
+  border: none;
+  resize: none;
+  animation: none;
+  z-index: 1;
+}
+
+.api-traffic-page-host {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #0f172a;
+}
+
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .api-traffic-header {
   display: flex;

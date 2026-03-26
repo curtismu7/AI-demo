@@ -5,10 +5,27 @@
  */
 
 const MAX_ENTRIES = 200;
+const LS_KEY = 'api-traffic-store';
 let entries = [];
 let paused = false;
 const listeners = new Set();
 let seq = 0;
+
+function persistToStorage() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(entries)); } catch (_) {}
+}
+
+/** Seed the in-memory store from localStorage (used by the popup page). */
+export function seedFromLocalStorage() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    if (Array.isArray(stored) && stored.length > 0) {
+      entries = stored;
+      if (stored.length > 0) seq = Math.max(...stored.map(e => e.id || 0));
+      notify();
+    }
+  } catch (_) {}
+}
 
 const REDACT_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token']);
 const REDACT_BODY_KEYS = new Set([
@@ -50,11 +67,13 @@ function notify() {
 export function appendTrafficEntry(entry) {
   if (paused) return;
   entries = [{ ...entry, id: ++seq }, ...entries.slice(0, MAX_ENTRIES - 1)];
+  persistToStorage();
   notify();
 }
 
 export function clearTraffic() {
   entries = [];
+  persistToStorage();
   notify();
 }
 

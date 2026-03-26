@@ -24,6 +24,7 @@ import LogViewer from './components/LogViewer';
 import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
 import ApiTrafficPanel from './components/ApiTrafficPanel';
+import ApiTrafficPage from './components/ApiTrafficPage';
 
 import { savePublicConfig } from './services/configService';
 import { fetchDemoScenario } from './services/demoScenarioService';
@@ -81,15 +82,6 @@ function AppWithAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
-  const [apiTrafficOpen, setApiTrafficOpen] = useState(false);
-
-  // Allow EducationBar (and any other component) to toggle the API Traffic Panel via custom event.
-  useEffect(() => {
-    const handler = () => setApiTrafficOpen((v) => !v);
-    window.addEventListener('toggle-api-traffic', handler);
-    return () => window.removeEventListener('toggle-api-traffic', handler);
-  }, []);
-
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);
@@ -480,6 +472,7 @@ function AppWithAuth() {
             <Route path="/config" element={<Config />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/logs" element={<LogViewerPage />} />
+            <Route path="/api-traffic" element={<ApiTrafficPage />} />
             <Route path="*" element={
               !user ? (
                 <LandingPage />
@@ -554,7 +547,6 @@ function AppWithAuth() {
           {!isLogsRoute && <CIBAPanel />}
           {!isLogsRoute && <CimdSimPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {apiTrafficOpen && <ApiTrafficPanel onClose={() => setApiTrafficOpen(false)} />}
           {/* Floating Log Viewer Button — opens in a new window so it stays visible */}
           {!isLogsRoute && (
             <button
@@ -574,9 +566,9 @@ function AppWithAuth() {
           )}
           {!isLogsRoute && (
             <button
-              className="demo-config-fab"
-              onClick={() => setApiTrafficOpen(v => !v)}
-              title="Toggle API Traffic Viewer"
+              className="log-viewer-fab"
+              onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1200,height=800,scrollbars=yes,resizable=yes')}
+              title="Open API Traffic Viewer in new window"
               type="button"
             >
               🌐 API

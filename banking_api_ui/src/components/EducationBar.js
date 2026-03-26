@@ -35,10 +35,8 @@ export default function EducationBar() {
     setMenuOpen(false);
   };
 
-  const toggleApiTraffic = () => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('toggle-api-traffic'));
-    }
+  const openApiTraffic = () => {
+    window.open('/api-traffic', 'ApiTraffic', 'width=1200,height=800,scrollbars=yes,resizable=yes');
   };
 
   return (
@@ -107,7 +105,7 @@ export default function EducationBar() {
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openCimd}>
           CIMD
         </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={toggleApiTraffic} title="Toggle API Traffic Viewer">
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openApiTraffic} title="Open API Traffic Viewer in new window">
           🌐 API
         </button>
       </div>
