@@ -35,6 +35,11 @@ const COOKIE_SESSION_ALLOWED_ROUTES = new Set([
   'GET /api/mcp/inspector/context',
   'GET /api/mcp/inspector/tools',
   'POST /api/mcp/inspector/invoke',
+  // Token Chain panel: reads session data only — safe with cookie-only session (returns empty events when no real token).
+  'GET /api/tokens/session-preview',
+  // MCP tool proxy: route handler checks for real token via getSessionBearerForMcp and returns
+  // session_not_hydrated (401) with a diagnostic message when only _cookie_session is present.
+  'POST /api/mcp/tool',
 ]);
 
 function normalizeRouteKey(routeKey) {
