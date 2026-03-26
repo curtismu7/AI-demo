@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -546,7 +546,7 @@ function AppWithAuth() {
       <EducationUIProvider>
       <TokenChainProvider>
         <div
-          className={`App end-user-nano${showEmbeddedDock ? ' App--has-embedded-dock' : ''}`}
+          className={`App end-user-nano${showEmbeddedDock ? ' App--has-embedded-dock' : ''}${user ? ' App--has-nav-dash' : ''}`}
           style={
             showEmbeddedDock
               ? { '--embedded-dock-reserve': `${embeddedDockReservePx}px` }
@@ -655,6 +655,34 @@ function AppWithAuth() {
             </div>
           )}
           <EducationPanelsHost />
+          {!isLogsRoute && (
+            <Link
+              className="nav-home-fab"
+              to="/"
+              title="Go to home"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <span>HOME</span>
+            </Link>
+          )}
+          {user && !isLogsRoute && (
+            <Link
+              className="nav-dashboard-fab"
+              to={user.role === 'admin' ? '/admin' : '/dashboard'}
+              title={user.role === 'admin' ? 'Admin dashboard' : 'My dashboard'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect width="7" height="9" x="3" y="3" rx="1" />
+                <rect width="7" height="5" x="14" y="3" rx="1" />
+                <rect width="7" height="9" x="14" y="12" rx="1" />
+                <rect width="7" height="5" x="3" y="16" rx="1" />
+              </svg>
+              <span>{user.role === 'admin' ? 'Admin' : 'Dashboard'}</span>
+            </Link>
+          )}
           {!isLogsRoute && <CIBAPanel />}
           {!isLogsRoute && <CimdSimPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />

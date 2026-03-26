@@ -24,12 +24,8 @@ import {
   AGENT_CONSENT_BLOCK_USER_MESSAGE,
   isAgentBlockedByConsentDecline,
 } from '../services/agentAccessConsent';
+import { isBankingAgentFloatingDefaultOpen } from '../utils/bankingAgentFloatingDefaultOpen';
 import './BankingAgent.css';
-
-/** Floating agent: collapsed on app home `/`; open on other routes (dashboard URL, demo-data, MCP inspector, …). */
-function isBankingAgentOpenByDefaultForPath(_pathname) {
-  return false;
-}
 
 // ─── Action definitions ────────────────────────────────────────────────────────
 
@@ -504,8 +500,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   } = useTheme();
   const [isOpen, setIsOpen] = useState(() =>
     typeof window !== 'undefined'
-      ? isBankingAgentOpenByDefaultForPath(window.location.pathname)
-      : true
+      ? isBankingAgentFloatingDefaultOpen(window.location.pathname)
+      : false
   );
   /** Panel light/dark: default follows page (`auto`); can override in header. */
   const isDark = effectiveAgentTheme === 'dark';
@@ -567,10 +563,11 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
     if (consentBlocked) setActiveAction(null);
   }, [consentBlocked]);
 
-  // Floating mode: follow route — collapsed on `/`, open elsewhere (`?oauth=success` / scrollToAgent effects below may re-open on `/`)
+  // Floating mode: follow **route changes** only — default collapsed on dashboard homes, open on tool routes.
+  // Do not tie this to user/session (see REGRESSION_LOG — auth sync was resetting isOpen and closing the panel).
   useEffect(() => {
     if (isInline) return;
-    setIsOpen(isBankingAgentOpenByDefaultForPath(location.pathname));
+    setIsOpen(isBankingAgentFloatingDefaultOpen(location.pathname));
   }, [location.pathname, isInline]);
 
   // Auto-open when returning from /config (Config.js navigates back with scrollToAgent:true)
@@ -642,17 +639,13 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   // (fires on initial mount when App.js has already resolved the session,
   //  and again if the user changes while the component is mounted)
   useEffect(() => {
-    if (user) {
-      if (!isInline) {
-        setIsOpen(isBankingAgentOpenByDefaultForPath(location.pathname));
-      }
-      setMessages(prev =>
-        prev.length === 0
-          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user) }]
-          : prev
-      );
-    }
-  }, [user, isInline, location.pathname]);
+    if (!user) return;
+    setMessages(prev =>
+      prev.length === 0
+        ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user) }]
+        : prev
+    );
+  }, [user]);
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
@@ -710,9 +703,6 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
-        if (!isInline) {
-          setIsOpen(isBankingAgentOpenByDefaultForPath(window.location.pathname));
-        }
         const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found) };
         if (cookieOnly) {
           sessionFixBubbleShownRef.current = true;
@@ -738,9 +728,6 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   useEffect(() => {
     const onAuth = () => {
       checkSelfAuth();
-      if (!isInline) {
-        setIsOpen(isBankingAgentOpenByDefaultForPath(window.location.pathname));
-      }
       setMessages(prev =>
         prev.length === 0
           ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUserRef.current) }]

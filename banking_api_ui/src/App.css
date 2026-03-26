@@ -12,11 +12,14 @@
   --agent-panel-bottom: calc(
     var(--ciba-bottom) + var(--ciba-action-height) + var(--float-gap)
   );
-  /* Left-side rail: CIBA → CIMD → Logs → API → Demo config — shared width/height; tops = base + n×(height+gap) */
+  /* Left-side rail: HOME → [Dashboard when signed in] → CIBA → … — CIBA top = --stack-fab-top-base */
   --stack-fab-width: 220px;
   --stack-fab-height: 44px;
   --stack-fab-gap: 8px;
-  --stack-fab-top-base: 16px;
+  --stack-fab-top-home: 16px;
+  --stack-fab-top-dash: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
+  /* One slot after HOME when logged out; App--has-nav-dash shifts base below Dashboard */
+  --stack-fab-top-base: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
   --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
   --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
   --stack-fab-top-api:  calc(var(--stack-fab-top-logs)  + var(--stack-fab-height) + var(--stack-fab-gap));
@@ -30,6 +33,11 @@
     )
   );
   --stack-fab-used-width: min(var(--stack-fab-width), var(--stack-fab-viewport-max));
+}
+
+/* Second nav row (Dashboard) present — push CIBA and everything below down one slot */
+.App.App--has-nav-dash {
+  --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
 }
 
 /* Reserve space for the fixed embedded agent dock */
@@ -205,6 +213,90 @@
   to { transform: rotate(360deg); }
 }
 
+/* HOME — top of left-side rail */
+.nav-home-fab {
+  position: fixed;
+  top: var(--stack-fab-top-home, 16px);
+  left: var(--float-edge, 28px);
+  box-sizing: border-box;
+  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
+  max-width: var(--stack-fab-viewport-max, 100vw);
+  min-width: 0;
+  height: var(--stack-fab-height, 44px);
+  min-height: var(--stack-fab-height, 44px);
+  padding: 0 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.22);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
+  z-index: 1001;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+  text-decoration: none;
+}
+
+.nav-home-fab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(71, 85, 105, 0.4);
+  background: linear-gradient(135deg, #334155 0%, #64748b 100%);
+}
+
+.nav-home-fab:active {
+  transform: scale(0.97);
+}
+
+/* Role dashboard — second slot (signed-in only) */
+.nav-dashboard-fab {
+  position: fixed;
+  top: var(--stack-fab-top-dash, 68px);
+  left: var(--float-edge, 28px);
+  box-sizing: border-box;
+  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
+  max-width: var(--stack-fab-viewport-max, 100vw);
+  min-width: 0;
+  height: var(--stack-fab-height, 44px);
+  min-height: var(--stack-fab-height, 44px);
+  padding: 0 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #b45309 0%, #ea580c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.3);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
+  z-index: 1001;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+  text-decoration: none;
+}
+
+.nav-dashboard-fab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.45);
+  background: linear-gradient(135deg, #c2410c 0%, #f97316 100%);
+}
+
+.nav-dashboard-fab:active {
+  transform: scale(0.97);
+}
+
 /* Log Viewer FAB — below CIMD in left-side rail (size matches --stack-fab-*) */
 .log-viewer-fab {
   position: fixed;
@@ -250,14 +342,21 @@
   .App {
     --stack-fab-width: 200px;
     --stack-fab-height: 42px;
-    --stack-fab-top-base: 14px;
+    --stack-fab-top-home: 14px;
+    --stack-fab-top-dash: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
+    --stack-fab-top-base: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
     --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
     --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
     --stack-fab-top-api:  calc(var(--stack-fab-top-logs)  + var(--stack-fab-height) + var(--stack-fab-gap));
     --stack-fab-top-demo: calc(var(--stack-fab-top-api)   + var(--stack-fab-height) + var(--stack-fab-gap));
   }
+  .App.App--has-nav-dash {
+    --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
+  }
   .ciba-fab,
   .cimd-fab,
+  .nav-home-fab,
+  .nav-dashboard-fab,
   .log-viewer-fab,
   .api-traffic-fab,
   .demo-config-fab {
@@ -488,6 +587,16 @@
   .cimd-fab:focus-visible,
   .cimd-fab:active,
   .cimd-fab--open,
+  .nav-home-fab,
+  .nav-home-fab:hover,
+  .nav-home-fab:focus,
+  .nav-home-fab:focus-visible,
+  .nav-home-fab:active,
+  .nav-dashboard-fab,
+  .nav-dashboard-fab:hover,
+  .nav-dashboard-fab:focus,
+  .nav-dashboard-fab:focus-visible,
+  .nav-dashboard-fab:active,
   .log-viewer-fab,
   .log-viewer-fab:hover,
   .log-viewer-fab:focus,
