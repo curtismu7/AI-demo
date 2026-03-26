@@ -433,3 +433,70 @@ describe('revokeToken', () => {
     await expect(svc.revokeToken('some-token', 'access_token')).resolves.not.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 7. createUserFromOAuth — email fallback from idTokenClaims
+//
+// Regression: when PingOne's /userinfo endpoint omitted the email claim
+// (common before attribute mapping is configured), userEmail was null in the
+// session debug even though the user's account had an email in PingOne.
+// Fix: oauthUser.js callback now merges idTokenClaims into userInfo so that
+// createUserFromOAuth receives email from the ID token when userinfo omits it.
+// ---------------------------------------------------------------------------
+describe('createUserFromOAuth — email / name fallbacks', () => {
+  // createUserFromOAuth is a method on the OAuthService singleton.
+  // We access the real implementation directly (no mocking needed).
+  const OAuthServiceClass = (() => {
+    // Re-require to get the constructor, not the singleton
+    jest.isolateModules(() => {});
+    const mod = jest.requireActual('../../services/oauthService');
+    // The module exports a singleton — reach the constructor via its prototype
+    return Object.getPrototypeOf(mod).constructor;
+  })();
+
+  // Use the exported singleton directly — createUserFromOAuth is pure/synchronous
+  const svc = (() => {
+    jest.resetModules();
+    jest.mock('../../config/oauth', () => MOCK_CONFIG);
+    jest.mock('../../utils/oauthDebugFlags', () => ({ isOAuthVerboseDebug: () => false }));
+    jest.mock('../../utils/oauthVerboseLogger', () => ({ verboseOAuthLog: jest.fn() }));
+    return jest.requireActual('../../services/oauthService');
+  })();
+
+  it('picks email from userinfo.email (primary path)', () => {
+    const user = svc.createUserFromOAuth({ sub: 'u1', email: 'alice@example.com', given_name: 'Alice' });
+    expect(user.email).toBe('alice@example.com');
+  });
+
+  it('falls back to email_address when email is missing (PingOne alternate claim)', () => {
+    // Regression: before the fix, email was null when only email_address was present.
+    const user = svc.createUserFromOAuth({ sub: 'u1', email_address: 'bob@example.com' });
+    expect(user.email).toBe('bob@example.com');
+  });
+
+  it('returns null for email when no email claim exists and logs a warning', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const user = svc.createUserFromOAuth({ sub: 'u1' });
+    expect(user.email).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('No email in userinfo'), expect.any(String));
+    warnSpy.mockRestore();
+  });
+
+  it('builds firstName / lastName from given_name and family_name', () => {
+    const user = svc.createUserFromOAuth({ sub: 'u1', given_name: 'Carol', family_name: 'Jones' });
+    expect(user.firstName).toBe('Carol');
+    expect(user.lastName).toBe('Jones');
+  });
+
+  it('falls back to splitting name when given_name / family_name are absent', () => {
+    const user = svc.createUserFromOAuth({ sub: 'u1', name: 'Dave Smith' });
+    expect(user.firstName).toBe('Dave');
+    expect(user.lastName).toBe('Smith');
+  });
+
+  it('id and oauthId are set from sub', () => {
+    const user = svc.createUserFromOAuth({ sub: 'pingone-uuid-123', email: 'e@e.com' });
+    expect(user.id).toBe('pingone-uuid-123');
+    expect(user.oauthId).toBe('pingone-uuid-123');
+  });
+});

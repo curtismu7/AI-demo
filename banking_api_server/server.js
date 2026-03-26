@@ -5,6 +5,7 @@ require('dotenv').config();
 const configStore = require('./services/configStore');
 const { resolveRedisWireUrl } = require('./services/redisWireUrl');
 const { mcpNoBearerResponse } = require('./services/bffSessionGating');
+const { createFaultTolerantStore } = require('./services/faultTolerantStore');
 
 const express = require('express');
 const cors = require('cors');
@@ -124,46 +125,13 @@ if (_redisUrl) {
 
     // ── Fault-tolerant store wrappers ─────────────────────────────────────────
     // Defense-in-depth: even after a successful initial connect, Redis can drop
-    // mid-request (network flap, Upstash restart).  These wrappers ensure store
-    // errors degrade gracefully (empty session / silent write drop) instead of
-    // surfacing as 500 server_error or ?error=session_error redirects.
+    // mid-request (network flap, Upstash restart).  createFaultTolerantStore
+    // ensures errors degrade gracefully (empty session / silent write drop)
+    // instead of surfacing as 500 server_error or ?error=session_error redirects.
     const rawStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
-
-    const _origGet = rawStore.get.bind(rawStore);
-    rawStore.get = (sid, cb) => {
-      _origGet(sid, (err, session) => {
-        if (err) {
-          sessionRedisConnectError = err.message || String(err);
-          console.error('[session-store] Redis get error (returning empty session):', err.message);
-          cb(null, null); // empty session → 401, not 500
-        } else {
-          cb(null, session);
-        }
-      });
-    };
-
-    const _origSet = rawStore.set.bind(rawStore);
-    rawStore.set = (sid, sess, cb) => {
-      _origSet(sid, sess, (err) => {
-        if (err) {
-          sessionRedisConnectError = err.message || String(err);
-          console.error('[session-store] Redis set error (session not persisted):', err.message);
-        }
-        if (cb) cb(null); // don't propagate → prevents ?error=session_error
-      });
-    };
-
-    if (typeof rawStore.destroy === 'function') {
-      const _origDestroy = rawStore.destroy.bind(rawStore);
-      rawStore.destroy = (sid, cb) => {
-        _origDestroy(sid, (err) => {
-          if (err) console.error('[session-store] Redis destroy error (ignored):', err.message);
-          if (cb) cb(null);
-        });
-      };
-    }
-
-    sessionStore = rawStore;
+    sessionStore = createFaultTolerantStore(rawStore, {
+      onError: (method, err) => { sessionRedisConnectError = err.message || String(err); },
+    });
     console.log(`[session-store] Using Redis store (from ${sessionRedisEnvHint}), eager connect initiated`);
   } catch (err) {
     sessionRedisInitError = err.message || String(err);

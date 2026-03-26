@@ -237,30 +237,33 @@ describe('End-to-End OAuth Integration Tests', () => {
 
   describe('Scope-based Access Control in E2E Flow', () => {
     it('should enforce read scope requirements throughout the flow', async () => {
-      // Note: E2E tests with session-based OAuth are complex to test
-      // This test verifies the concept using direct token validation
+      // /api/accounts/my and /api/transactions/my are intentionally scope-free (BFF dashboard
+      // pattern): any authenticated user can see their own data regardless of scopes.
+      // Scope enforcement is tested on the collection endpoints (GET /api/transactions etc.)
+      // that require explicit read scopes.
       const writeOnlyToken = createOAuthToken(['banking:transactions:write']);
-      
-      // Try to access read endpoints with write-only token - should fail
-      const accountsResponse = await agent
+
+      // Dashboard /my routes: scope-free — accessible with any valid token
+      const accountsMyResponse = await agent
         .get('/api/accounts/my')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
-        .expect(403);
+        .expect(200);
+      expect(accountsMyResponse.body).toHaveProperty('accounts');
 
-      expect(accountsResponse.body).toMatchObject({
-        error: 'insufficient_scope',
-        requiredScopes: ['banking:accounts:read', 'banking:read'],
-        providedScopes: ['banking:transactions:write']
-      });
-
-      const transactionsResponse = await agent
+      const transactionsMyResponse = await agent
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
+        .expect(200);
+      expect(transactionsMyResponse.body).toHaveProperty('transactions');
+
+      // Collection endpoint requires banking:transactions:read or banking:read — should block
+      const allTransactionsResponse = await agent
+        .get('/api/transactions')
+        .set('Authorization', `Bearer ${writeOnlyToken}`)
         .expect(403);
+      expect(allTransactionsResponse.body.error).toBe('insufficient_scope');
 
-      expect(transactionsResponse.body.error).toBe('insufficient_scope');
-
-      // But write operations should work (though may fail due to missing data)
+      // Write operation with write-only token — scope check passes (may fail on missing data)
       const writeResponse = await agent
         .post('/api/transactions')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
@@ -271,7 +274,6 @@ describe('End-to-End OAuth Integration Tests', () => {
           description: 'Test deposit'
         })
         .expect(404); // Account not found, but scope check passed
-
       expect(writeResponse.body.error).toBe('To account not found');
       expect(writeResponse.body.error).not.toBe('insufficient_scope');
     });
@@ -387,12 +389,21 @@ describe('End-to-End OAuth Integration Tests', () => {
     });
 
     it('should provide detailed error information for API access failures', async () => {
-      // Test with limited scope token
+      // /api/transactions/my is scope-free (BFF dashboard pattern).
+      // Use the collection endpoint GET /api/transactions which enforces
+      // banking:transactions:read | banking:read to verify detailed error shape.
       const limitedToken = createOAuthToken(['banking:accounts:read']);
 
-      // Try to access endpoint requiring different scope
-      const response = await agent
+      // Dashboard route: scope-free, returns 200
+      const myResponse = await agent
         .get('/api/transactions/my')
+        .set('Authorization', `Bearer ${limitedToken}`)
+        .expect(200);
+      expect(myResponse.body).toHaveProperty('transactions');
+
+      // Collection endpoint enforces scope — detailed error body expected
+      const response = await agent
+        .get('/api/transactions')
         .set('Authorization', `Bearer ${limitedToken}`)
         .expect(403);
 
@@ -405,7 +416,7 @@ describe('End-to-End OAuth Integration Tests', () => {
         validationMode: 'any_required',
         hint: expect.any(String),
         timestamp: expect.any(String),
-        path: '/api/transactions/my',
+        path: '/api/transactions',
         method: 'GET'
       });
     });
