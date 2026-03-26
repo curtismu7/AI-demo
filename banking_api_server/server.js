@@ -64,6 +64,14 @@ let sessionStore;
 let sessionRedisClient = null;
 let sessionRedisInitError = null;
 let sessionRedisConnectError = null;
+/**
+ * Promise that resolves when the initial Redis connect() completes (or fails).
+ * Initiated eagerly at module-load time so the TLS handshake to Upstash runs
+ * in parallel with module loading overhead, not on the first request.
+ * awaitSessionRedisReady awaits this instead of calling connect() itself.
+ */
+let _redisConnectPromise = null;
+
 if (_redisUrl) {
   try {
     // connect-redis v8+ exports { RedisStore } — .default is often undefined in CJS.
@@ -76,55 +84,75 @@ if (_redisUrl) {
     const redisClient = createClient({
       url: _redisUrl,
       // rediss:// URL already enables TLS — do NOT pass socket.tls:true or it double-wraps.
-      // In a Vercel serverless environment each request is a fresh invocation;
-      // disable reconnect strategy so a stale socket doesn't log noisy errors.
       socket: {
-        // Upstash from cold serverless can exceed 5s; avoid false timeouts after RedisStore fix.
-        connectTimeout: 15000,
+        // 8 s is enough for Upstash; keeps cold-start latency under Vercel's 10 s function timeout.
+        connectTimeout: 8000,
+        // After the initial connect, retry briefly on transient drops then give up.
+        // Serverless instances are short-lived so unlimited retries would just burn time.
         reconnectStrategy: (retries) => {
-          if (retries < 2) return Math.min(retries * 200, 500);
-          // Give up after 2 attempts — serverless instances are short-lived.
-          return new Error('[session-store] Redis connection failed after retries');
+          if (retries < 3) return Math.min(retries * 200, 1000);
+          return new Error('[session-store] Redis reconnect exhausted');
         },
       },
     });
     sessionRedisClient = redisClient;
-    // connect() is awaited by awaitSessionRedisReady before express-session runs (cold Vercel starts).
+
     redisClient.on('error', (err) => {
-      // Only log the first error per instance; subsequent socket-closed events are redundant
+      // Only log the first error per instance; subsequent socket-closed events are redundant.
       if (!redisClient._loggedError) {
         sessionRedisConnectError = err.message || String(err);
         console.error('[session-store] Redis error:', err.message);
         redisClient._loggedError = true;
       }
     });
+
+    redisClient.on('ready', () => {
+      console.log('[session-store] Redis connected and ready');
+      redisClient._loggedError = false; // reset so reconnect errors are logged
+    });
+
+    // ── Eager connect ──────────────────────────────────────────────────────────
+    // Kick off the TLS handshake immediately at module-load time rather than
+    // waiting for the first request.  On Vercel cold starts the ~200 ms TLS
+    // round-trip now overlaps with route registration and other setup work, so
+    // Redis is typically ready before the first request is processed.
+    _redisConnectPromise = redisClient.connect().catch((err) => {
+      sessionRedisConnectError = err.message || String(err);
+      console.error('[session-store] Redis initial connect failed:', err.message);
+      // Resolve (not reject) so awaitSessionRedisReady.then() still fires.
+    });
+
+    // ── Fault-tolerant store wrappers ─────────────────────────────────────────
+    // Defense-in-depth: even after a successful initial connect, Redis can drop
+    // mid-request (network flap, Upstash restart).  These wrappers ensure store
+    // errors degrade gracefully (empty session / silent write drop) instead of
+    // surfacing as 500 server_error or ?error=session_error redirects.
     const rawStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
-    // Fault-tolerant wrapper: Redis get/destroy errors return empty session rather than
-    // propagating to next(err) → 500.  A disconnected store yields 401 (no token), not a crash.
+
     const _origGet = rawStore.get.bind(rawStore);
     rawStore.get = (sid, cb) => {
       _origGet(sid, (err, session) => {
         if (err) {
           sessionRedisConnectError = err.message || String(err);
           console.error('[session-store] Redis get error (returning empty session):', err.message);
-          cb(null, null);
+          cb(null, null); // empty session → 401, not 500
         } else {
           cb(null, session);
         }
       });
     };
-    // Wrap set() — session.save() will call cb(null) even on Redis write failure.
-    // This prevents session_error redirects; the _auth cookie provides the fallback.
+
     const _origSet = rawStore.set.bind(rawStore);
-    rawStore.set = (sid, session, cb) => {
-      _origSet(sid, session, (err) => {
+    rawStore.set = (sid, sess, cb) => {
+      _origSet(sid, sess, (err) => {
         if (err) {
           sessionRedisConnectError = err.message || String(err);
-          console.error('[session-store] Redis set error (session not persisted to Redis):', err.message);
+          console.error('[session-store] Redis set error (session not persisted):', err.message);
         }
-        if (cb) cb(null);
+        if (cb) cb(null); // don't propagate → prevents ?error=session_error
       });
     };
+
     if (typeof rawStore.destroy === 'function') {
       const _origDestroy = rawStore.destroy.bind(rawStore);
       rawStore.destroy = (sid, cb) => {
@@ -134,8 +162,9 @@ if (_redisUrl) {
         });
       };
     }
+
     sessionStore = rawStore;
-    console.log(`[session-store] Using Redis store (from ${sessionRedisEnvHint})`);
+    console.log(`[session-store] Using Redis store (from ${sessionRedisEnvHint}), eager connect initiated`);
   } catch (err) {
     sessionRedisInitError = err.message || String(err);
     sessionRedisClient = null;
@@ -318,31 +347,22 @@ app.use('/api/auth/oauth/user/callback', authLimiter);
 // Logging middleware
 app.use(morgan('combined'));
 
-/** Wait for Redis before session load/save so serverless cold starts do not race connect-redis. */
+/**
+ * Ensure the Redis client is ready before express-session runs.
+ * Because connect() is called eagerly at module load, by the time the first
+ * request arrives the TLS handshake is usually already complete.  If it is
+ * not, we simply await the in-flight promise — no second connect() call needed.
+ */
 function awaitSessionRedisReady(req, res, next) {
   if (!sessionRedisClient) return next();
   if (sessionRedisClient.isReady) return next();
-  // If the socket is already opening (connect in progress), wait for 'ready' or 'error'.
-  // Calling connect() again when isOpen would throw "Socket already opened".
-  if (sessionRedisClient.isOpen) {
-    const onReady = () => { cleanup(); next(); };
-    const onError = (err) => { cleanup(); sessionRedisConnectError = err.message || String(err); next(); };
-    const cleanup = () => { sessionRedisClient.removeListener('ready', onReady); sessionRedisClient.removeListener('error', onError); };
-    sessionRedisClient.once('ready', onReady);
-    sessionRedisClient.once('error', onError);
+  // Await the module-level connect promise (already in flight from init).
+  // _redisConnectPromise always resolves (never rejects) so .then() always fires.
+  if (_redisConnectPromise) {
+    _redisConnectPromise.then(() => next());
     return;
   }
-  sessionRedisClient
-    .connect()
-    .then(() => next())
-    .catch((err) => {
-      sessionRedisConnectError = err.message || String(err);
-      if (!sessionRedisClient._awaitLoggedFail) {
-        sessionRedisClient._awaitLoggedFail = true;
-        console.error('[session-store] Redis connect failed before session:', err.message);
-      }
-      next();
-    });
+  next();
 }
 
 app.use(awaitSessionRedisReady);
