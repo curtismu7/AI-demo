@@ -7,6 +7,7 @@ const runtimeSettings = require('../config/runtimeSettings');
 const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 const configStore = require('../services/configStore');
 const { sendTransactionConfirmation } = require('../services/emailService');
+const txConsent = require('../services/transactionConsentChallenge');
 
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -79,6 +80,36 @@ router.get('/my', authenticateToken, requireScopes(['banking:transactions:read',
     res.status(500).json({ error: 'Failed to get your transactions' });
   }
 });
+
+// Session-bound consent challenge for high-value transactions (HITL). Registered before /:id so "consent-challenge" is not captured as an id.
+router.post(
+  '/consent-challenge',
+  authenticateToken,
+  requireScopes(['banking:transactions:write', 'banking:write']),
+  (req, res) => {
+    const result = txConsent.createChallenge(req, req.body);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    return res.status(201).json({
+      challengeId: result.challengeId,
+      expiresAt: result.expiresAt,
+      snapshot: result.snapshot,
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/confirm',
+  authenticateToken,
+  requireScopes(['banking:transactions:write', 'banking:write']),
+  (req, res) => {
+    const result = txConsent.confirmChallenge(req, req.params.challengeId);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    return res.status(200).json({
+      challengeId: result.challengeId,
+      confirmExpiresAt: result.confirmExpiresAt,
+    });
+  },
+);
 
 // Get transaction by ID (admin or transaction owner)
 router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -174,6 +205,19 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       }
       if (fromAccount.balance < amount) {
         return res.status(400).json({ error: 'Insufficient balance' });
+      }
+    }
+
+    // ── High-value HITL consent (session-bound) ─────────────────────────────
+    const hitlAmount = parseFloat(req.body.amount);
+    if (
+      req.user.role !== 'admin' &&
+      ['deposit', 'withdrawal', 'transfer'].includes(type) &&
+      hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD
+    ) {
+      const consumed = txConsent.verifyAndConsumeChallenge(req, req.body.consentChallengeId, req.body);
+      if (!consumed.ok) {
+        return res.status(consumed.status).json(consumed.json);
       }
     }
 

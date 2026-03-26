@@ -12,11 +12,13 @@ npm run test:session
 
 Covers: `authSession` (including BFF store ping contract), `authStateCookie`, `bffSessionGating`, `upstashSessionStore`, `session-store-resilience`, `oauth-e2e-integration`.
 
-Full API suite:
+Full API suite (includes OAuth scope, step-up, and **transaction consent challenge** / HITL flows):
 
 ```bash
 cd banking_api_server && npm test -- --forceExit
 ```
+
+If you only need session + OAuth BFF coverage, use `npm run test:session` (see above). Run the full suite before release when changing **`routes/transactions.js`**, **`transactionConsentChallenge.js`**, or **`middleware/auth`** scope rules.
 
 ## API smoke (server must be running)
 

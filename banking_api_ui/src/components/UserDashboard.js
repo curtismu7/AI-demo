@@ -28,23 +28,96 @@ const DEMO_TRANSACTIONS = [
 const USER_DASH_SOFT_401_TOAST_ID = 'user-dashboard-soft-401';
 const FETCH_MY_DATA_401_DELAYS_MS = [0, 450, 900, 1400];
 
-async function fetchMyAccountsAndTransactionsWith401Retries() {
+function cloneDemoAccounts() {
+  return JSON.parse(JSON.stringify(DEMO_ACCOUNTS));
+}
+
+function cloneDemoTransactions() {
+  return JSON.parse(JSON.stringify(DEMO_TRANSACTIONS));
+}
+
+/** Map API account rows to the shape the dashboard expects (avoids blank / NaN balance). */
+function normalizeAccount(a) {
+  if (!a || typeof a !== 'object') return null;
+  const balance =
+    typeof a.balance === 'number' && !Number.isNaN(a.balance)
+      ? a.balance
+      : parseFloat(a.balance) || 0;
+  return {
+    ...a,
+    id: a.id,
+    name: a.name || a.accountName || 'Account',
+    accountNumber: a.accountNumber || a.account_number || '—',
+    accountType: a.accountType || a.account_type || 'checking',
+    balance,
+  };
+}
+
+/** Map API transaction rows (created_at vs createdAt, etc.). */
+function normalizeTransaction(t) {
+  if (!t || typeof t !== 'object') return null;
+  const rawDate = t.createdAt ?? t.created_at;
+  let createdAt;
+  if (rawDate == null) {
+    createdAt = new Date().toISOString();
+  } else if (typeof rawDate === 'string') {
+    createdAt = rawDate;
+  } else {
+    createdAt = new Date(rawDate).toISOString();
+  }
+  const amount =
+    typeof t.amount === 'number' && !Number.isNaN(t.amount) ? t.amount : parseFloat(t.amount) || 0;
+  return {
+    ...t,
+    id: t.id,
+    createdAt,
+    amount,
+    type: t.type || 'transaction',
+    description: t.description || '',
+    accountInfo: t.accountInfo || '—',
+    clientType: t.clientType || 'enduser',
+    performedBy: t.performedBy || '—',
+  };
+}
+
+async function fetchAccountsMyWith401Retries() {
   let lastErr;
   for (let i = 0; i < FETCH_MY_DATA_401_DELAYS_MS.length; i++) {
     const delayMs = FETCH_MY_DATA_401_DELAYS_MS[i];
     if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
     try {
-      const [ar, tr] = await Promise.all([
-        bffAxios.get('/api/accounts/my'),
-        bffAxios.get('/api/transactions/my'),
-      ]);
+      const res = await bffAxios.get('/api/accounts/my');
+      return { accounts: Array.isArray(res.data?.accounts) ? res.data.accounts : [] };
+    } catch (e) {
+      lastErr = e;
+      const st = e.response?.status;
+      if (st !== 401) throw e;
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Separate from accounts: `/api/transactions/my` requires banking scopes — 403 is common when JWT lags.
+ * Do not fail the whole dashboard when only transactions are forbidden.
+ */
+async function fetchTransactionsMyWith401Retries() {
+  let lastErr;
+  for (let i = 0; i < FETCH_MY_DATA_401_DELAYS_MS.length; i++) {
+    const delayMs = FETCH_MY_DATA_401_DELAYS_MS[i];
+    if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+    try {
+      const res = await bffAxios.get('/api/transactions/my');
       return {
-        accounts: ar.data.accounts,
-        transactions: tr.data.transactions,
+        transactions: Array.isArray(res.data?.transactions) ? res.data.transactions : [],
+        forbidden: false,
       };
     } catch (e) {
       lastErr = e;
       const st = e.response?.status;
+      if (st === 403) {
+        return { transactions: [], forbidden: true };
+      }
       if (st !== 401) throw e;
     }
   }
@@ -217,14 +290,51 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } catch (sessionError) {
         console.error('OAuth session error:', sessionError);
         setError('Please log in to access your account');
+        setAccounts(cloneDemoAccounts());
+        setTransactions(cloneDemoTransactions());
         if (!silent) {
           setLoading(false);
         }
         return;
       }
 
-      const { accounts: nextAccounts, transactions: nextTransactions } =
-        await fetchMyAccountsAndTransactionsWith401Retries();
+      const accRes = await fetchAccountsMyWith401Retries();
+      const txRes = await fetchTransactionsMyWith401Retries();
+
+      let nextAccounts = (accRes.accounts || []).map(normalizeAccount).filter(Boolean);
+      let nextTransactions = (txRes.transactions || []).map(normalizeTransaction).filter(Boolean);
+
+      let usedAccountFallback = false;
+      if (nextAccounts.length === 0) {
+        nextAccounts = cloneDemoAccounts();
+        usedAccountFallback = true;
+        if (!silent) {
+          toast.info('Showing sample accounts until live data loads.', {
+            toastId: 'ud-fallback-accounts',
+            autoClose: 5000,
+          });
+        }
+      }
+
+      if (txRes.forbidden) {
+        nextTransactions = cloneDemoTransactions();
+        if (!silent) {
+          toast.info(
+            'Transaction history needs banking scopes on your token — showing sample activity. Use Refresh access token or sign in again.',
+            { toastId: 'ud-fallback-tx-scope', autoClose: 9000 }
+          );
+        }
+      } else if (nextTransactions.length === 0) {
+        if (usedAccountFallback) {
+          nextTransactions = cloneDemoTransactions();
+        } else if (!silent) {
+          toast.info('No transactions yet for these accounts.', {
+            toastId: 'ud-no-tx-yet',
+            autoClose: 4000,
+          });
+        }
+      }
+
       setAccounts(nextAccounts);
       setTransactions(nextTransactions);
       setError(null);
@@ -238,15 +348,19 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         const still = await resolveSessionUser();
         if (still) {
           setError(null);
+          setAccounts(cloneDemoAccounts());
+          setTransactions(cloneDemoTransactions());
           if (!soft401NotifiedRef.current) {
             soft401NotifiedRef.current = true;
             toast.warn(
-              'Could not load account data yet — authorization may still be catching up. Use Refresh access token in the Banking Agent, or reload the page.',
+              'Could not load live account data — showing sample data. Use Refresh access token in the Banking Agent, or reload the page.',
               { toastId: USER_DASH_SOFT_401_TOAST_ID, autoClose: 10000 }
             );
           }
         } else {
           setError('Your session has expired. Please log in again.');
+          setAccounts(cloneDemoAccounts());
+          setTransactions(cloneDemoTransactions());
           toastCustomerError(
             'Your session has expired. Please log in again.',
             navigateToCustomerOAuthLogin
@@ -254,8 +368,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         }
       } else if (error.response?.status === 403) {
         setError('You do not have permission to access this information.');
+        setAccounts((prev) => (prev?.length ? prev : cloneDemoAccounts()));
+        setTransactions((prev) => (prev?.length ? prev : cloneDemoTransactions()));
       } else {
         setError('Failed to load your account information');
+        setAccounts((prev) => (prev?.length ? prev : cloneDemoAccounts()));
+        setTransactions((prev) => (prev?.length ? prev : cloneDemoTransactions()));
       }
     } finally {
       if (!silent) {
@@ -919,6 +1037,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               <div className="header-cell">User</div>
             </div>
             <div className="transactions-list">
+              {transactions.length === 0 && (
+                <div className="transaction-row" style={{ padding: '1rem', color: '#64748b' }}>
+                  No transactions to show yet.
+                </div>
+              )}
               {transactions
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .slice(0, 20)

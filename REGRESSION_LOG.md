@@ -5,6 +5,30 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-26 — HITL consent HTTP routes missing; scope tests out of sync with GET /api/transactions/my
+
+**Symptom**: `transaction-consent-challenge.test.js` and `step-up-gate.test.js` failed (404 on `/api/transactions/consent-challenge`; high-value `POST /api/transactions` returned **201** without a consent flow). OAuth scope suites expected **200** on **`GET /api/transactions/my`** when the token only had **`banking:accounts:read`** or **`banking:write`**.
+
+**Root cause**: **`transactionConsentChallenge`** existed (and MCP/local tools used it), but **`routes/transactions.js`** did not register **`POST /consent-challenge`** / **`POST /.../confirm`** or call **`verifyAndConsumeChallenge`** on **`POST /`**. Tests assumed **`/transactions/my`** behaved like **`/accounts/my`** (scope-independent).
+
+**Fix**: Register consent routes **before** **`GET /:id`**; after balance checks, require a consumed session challenge for non-admin **deposit** / **withdrawal** / **transfer** when **amount > $500**. Align Jest expectations with **`requireScopes(['banking:transactions:read', 'banking:read'])`** on **`GET /my`**.
+
+**Tests**: `cd banking_api_server && npm test -- --forceExit`; `transaction-consent-challenge.test.js`, `step-up-gate.test.js`, `oauth-scope-integration.test.js`, `scope-integration.test.js`, `oauth-e2e-integration.test.js`.
+
+---
+
+## 2026-03-26 — Customer dashboard blank / no accounts or transactions
+
+**Symptom**: Dashboard looked **empty** or failed to show accounts and activity even when the user was signed in.
+
+**Root cause**: **`GET /api/accounts/my`** and **`GET /api/transactions/my`** were requested together — **`/transactions/my`** requires **banking read scopes**; a **403** failed the **entire** request so accounts never applied. Some API rows used **`created_at`** or missing **`balance`**, which broke rendering. No **fallback** when OAuth session was missing or loads failed.
+
+**Fix**: **Separate** fetches; on transaction **403**, show **sample** activity with an info toast; **normalize** account/transaction fields; **`cloneDemoAccounts` / `cloneDemoTransactions`** when API returns no accounts, on soft **401**, session error, or hard errors; **“No transactions yet”** row when accounts exist but history is empty.
+
+**Tests**: Manual.
+
+---
+
 ## 2026-03-26 — Duplicate “session expired” toasts while still signed in
 
 **Symptom**: Two stacked toasts: “Your session has expired. Please log in again.” with **Sign in**, despite an active session.

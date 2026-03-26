@@ -237,13 +237,10 @@ describe('End-to-End OAuth Integration Tests', () => {
 
   describe('Scope-based Access Control in E2E Flow', () => {
     it('should enforce read scope requirements throughout the flow', async () => {
-      // /api/accounts/my and /api/transactions/my are intentionally scope-free (BFF dashboard
-      // pattern): any authenticated user can see their own data regardless of scopes.
-      // Scope enforcement is tested on the collection endpoints (GET /api/transactions etc.)
-      // that require explicit read scopes.
+      // /api/accounts/my is scope-free (BFF dashboard). /api/transactions/my requires
+      // banking:transactions:read | banking:read (same as collection read semantics).
       const writeOnlyToken = createOAuthToken(['banking:transactions:write']);
 
-      // Dashboard /my routes: scope-free — accessible with any valid token
       const accountsMyResponse = await agent
         .get('/api/accounts/my')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
@@ -253,8 +250,8 @@ describe('End-to-End OAuth Integration Tests', () => {
       const transactionsMyResponse = await agent
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
-        .expect(200);
-      expect(transactionsMyResponse.body).toHaveProperty('transactions');
+        .expect(403);
+      expect(transactionsMyResponse.body.error).toBe('insufficient_scope');
 
       // Collection endpoint requires banking:transactions:read or banking:read — should block
       const allTransactionsResponse = await agent
@@ -389,19 +386,21 @@ describe('End-to-End OAuth Integration Tests', () => {
     });
 
     it('should provide detailed error information for API access failures', async () => {
-      // /api/transactions/my is scope-free (BFF dashboard pattern).
-      // Use the collection endpoint GET /api/transactions which enforces
-      // banking:transactions:read | banking:read to verify detailed error shape.
+      // /api/transactions/my and GET /api/transactions both require
+      // banking:transactions:read | banking:read (not satisfied by banking:accounts:read alone).
       const limitedToken = createOAuthToken(['banking:accounts:read']);
 
-      // Dashboard route: scope-free, returns 200
       const myResponse = await agent
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${limitedToken}`)
-        .expect(200);
-      expect(myResponse.body).toHaveProperty('transactions');
+        .expect(403);
+      expect(myResponse.body).toMatchObject({
+        error: 'insufficient_scope',
+        requiredScopes: ['banking:transactions:read', 'banking:read'],
+        providedScopes: ['banking:accounts:read'],
+      });
 
-      // Collection endpoint enforces scope — detailed error body expected
+      // Collection endpoint — same scope gate, detailed error body
       const response = await agent
         .get('/api/transactions')
         .set('Authorization', `Bearer ${limitedToken}`)

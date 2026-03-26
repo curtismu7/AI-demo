@@ -333,14 +333,13 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('transactions');
     });
 
-    it('should allow GET /api/transactions/my when authenticated without read scopes (Backend-for-Frontend (BFF) /my hydration)', async () => {
+    it('should reject GET /api/transactions/my when token lacks banking:transactions:read or banking:read', async () => {
       const token = createOAuthToken(['banking:write']);
       const response = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('transactions');
-      expect(Array.isArray(response.body.transactions)).toBe(true);
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('insufficient_scope');
     });
 
     it('should allow access to POST /api/transactions with banking:transactions:write scope', async () => {

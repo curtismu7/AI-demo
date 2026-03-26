@@ -182,13 +182,13 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('accounts');
     });
 
-    it('should allow GET /api/transactions/my when authenticated (scope-independent dashboard hydration)', async () => {
+    it('should require transaction read scope for GET /api/transactions/my (accounts read alone is insufficient)', async () => {
       const token = createOAuthToken(['banking:accounts:read']);
       const response = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('transactions');
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('insufficient_scope');
     });
   });
 
@@ -498,7 +498,11 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
     });
 
     it('should work with granular scopes', async () => {
-      const token = createOAuthToken(['banking:accounts:read', 'banking:transactions:write']);
+      const token = createOAuthToken([
+        'banking:accounts:read',
+        'banking:transactions:read',
+        'banking:transactions:write',
+      ]);
       
       // Should allow account read
       const accountResponse = await request(app)
@@ -517,8 +521,7 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
           description: 'Test deposit'
         });
       expect(transactionResponse.status).toBe(404); // Account not found, but scope check passed
-      
-      // /transactions/my is scope-independent like /accounts/my
+
       const transactionReadResponse = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
