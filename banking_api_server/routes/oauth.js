@@ -257,7 +257,9 @@ router.get('/callback', async (req, res) => {
       req.session.save((saveErr) => {
         if (saveErr) {
           // Non-fatal: _auth cookie below lets restore middleware rebuild a basic session.
-          console.warn('[oauth/callback] Session save failed (continuing with cookie fallback):', saveErr.message);
+          console.warn('[oauth/callback] Session save FAILED — user will get cookie-only session:', saveErr.message);
+        } else {
+          console.log('[oauth/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
         }
         // Set a signed auth-state cookie so the session-restore middleware can
         // answer /status and /nl requests even when the session hits a different

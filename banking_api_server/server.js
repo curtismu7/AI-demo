@@ -44,99 +44,108 @@ if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
 }
 
 // ── Optional persistent session store (required for Vercel / multi-instance deployments) ──
-// Resolve Redis URL: explicit REDIS_URL takes priority; fall back to deriving it from
-// Upstash REST variables (UPSTASH_REDIS_REST_* or Vercel KV KV_REST_API_*), which use
-// the same https://…upstash.io host and token as the Redis protocol password.
+//
+// Priority order:
+//   1. Upstash REST (@upstash/redis, HTTP) — preferred for Vercel serverless.
+//      Uses UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (or KV_REST_API_*).
+//      HTTP is stateless — no TCP connection to manage, no cold-start race.
+//
+//   2. node-redis wire protocol (TCP/TLS) — for self-hosted Redis or explicit REDIS_URL / KV_URL.
+//      Requires an active connection; less reliable on Vercel due to cold starts.
+//
+//   3. Memory store — development fallback; sessions lost on restart.
+
+/** @type {import('./services/upstashSessionStore') | null} */
+let upstashSessionStoreInstance = null;
 /** @type {string | null} Which env keys supplied the Redis URL (for logs /api/auth/debug). */
 let sessionRedisEnvHint = null;
-
-const _redisResolved = resolveRedisWireUrl(process.env);
-const _redisUrl = _redisResolved.url;
-sessionRedisEnvHint = _redisResolved.envHint;
-if (_redisResolved.invalidRedisUrlIgnored) {
-  console.warn(
-    '[session-store] REDIS_URL is set but is not redis:// or rediss:// (wrong value or REST URL pasted). ' +
-      'Ignoring it; using KV_URL or REST-derived URL if available.',
-  );
-}
-
-let sessionStore;
-/** node-redis client when Redis session store is configured (exposed for /api/auth/debug only). */
+/** node-redis client when wire-protocol store is used (exposed for /api/auth/debug only). */
 let sessionRedisClient = null;
 let sessionRedisInitError = null;
 let sessionRedisConnectError = null;
-/**
- * Promise that resolves when the initial Redis connect() completes (or fails).
- * Initiated eagerly at module-load time so the TLS handshake to Upstash runs
- * in parallel with module loading overhead, not on the first request.
- * awaitSessionRedisReady awaits this instead of calling connect() itself.
- */
 let _redisConnectPromise = null;
+/** 'upstash-rest' | 'redis-wire' | 'memory' */
+let sessionStoreType = 'memory';
+let sessionStore;
 
-if (_redisUrl) {
+// ── Priority 1: Upstash REST (HTTP — recommended for Vercel) ──────────────
+const _restUrl   = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+const _restToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+if (_restUrl && _restToken) {
   try {
-    // connect-redis v8+ exports { RedisStore } — .default is often undefined in CJS.
-    const connectRedisPkg = require('connect-redis');
-    const RedisStore =
-      connectRedisPkg.RedisStore ||
-      connectRedisPkg.default ||
-      connectRedisPkg;
-    const { createClient } = require('redis');
-    const redisClient = createClient({
-      url: _redisUrl,
-      // rediss:// URL already enables TLS — do NOT pass socket.tls:true or it double-wraps.
-      socket: {
-        // 8 s is enough for Upstash; keeps cold-start latency under Vercel's 10 s function timeout.
-        connectTimeout: 8000,
-        // After the initial connect, retry briefly on transient drops then give up.
-        // Serverless instances are short-lived so unlimited retries would just burn time.
-        reconnectStrategy: (retries) => {
-          if (retries < 3) return Math.min(retries * 200, 1000);
-          return new Error('[session-store] Redis reconnect exhausted');
-        },
-      },
-    });
-    sessionRedisClient = redisClient;
-
-    redisClient.on('error', (err) => {
-      // Only log the first error per instance; subsequent socket-closed events are redundant.
-      if (!redisClient._loggedError) {
-        sessionRedisConnectError = err.message || String(err);
-        console.error('[session-store] Redis error:', err.message);
-        redisClient._loggedError = true;
-      }
-    });
-
-    redisClient.on('ready', () => {
-      console.log('[session-store] Redis connected and ready');
-      redisClient._loggedError = false; // reset so reconnect errors are logged
-    });
-
-    // ── Eager connect ──────────────────────────────────────────────────────────
-    // Kick off the TLS handshake immediately at module-load time rather than
-    // waiting for the first request.  On Vercel cold starts the ~200 ms TLS
-    // round-trip now overlaps with route registration and other setup work, so
-    // Redis is typically ready before the first request is processed.
-    _redisConnectPromise = redisClient.connect().catch((err) => {
-      sessionRedisConnectError = err.message || String(err);
-      console.error('[session-store] Redis initial connect failed:', err.message);
-      // Resolve (not reject) so awaitSessionRedisReady.then() still fires.
-    });
-
-    // ── Fault-tolerant store wrappers ─────────────────────────────────────────
-    // Defense-in-depth: even after a successful initial connect, Redis can drop
-    // mid-request (network flap, Upstash restart).  createFaultTolerantStore
-    // ensures errors degrade gracefully (empty session / silent write drop)
-    // instead of surfacing as 500 server_error or ?error=session_error redirects.
-    const rawStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
-    sessionStore = createFaultTolerantStore(rawStore, {
-      onError: (method, err) => { sessionRedisConnectError = err.message || String(err); },
-    });
-    console.log(`[session-store] Using Redis store (from ${sessionRedisEnvHint}), eager connect initiated`);
+    const UpstashSessionStore = require('./services/upstashSessionStore');
+    upstashSessionStoreInstance = new UpstashSessionStore({ prefix: 'banking:sess:' });
+    sessionStore = upstashSessionStoreInstance;
+    sessionStoreType = 'upstash-rest';
+    sessionRedisEnvHint = process.env.UPSTASH_REDIS_REST_URL ? 'UPSTASH_REDIS_REST_*' : 'KV_REST_API_*';
+    console.log(`[session-store] Using Upstash REST store (${sessionRedisEnvHint}) — HTTP, no TCP connection`);
   } catch (err) {
     sessionRedisInitError = err.message || String(err);
-    sessionRedisClient = null;
-    console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
+    console.warn('[session-store] Upstash REST store init failed, trying wire protocol:', err.message);
+  }
+}
+
+// ── Priority 2: node-redis wire protocol (self-hosted Redis / explicit REDIS_URL) ──
+if (!sessionStore) {
+  const _redisResolved = resolveRedisWireUrl(process.env);
+  const _redisUrl = _redisResolved.url;
+  if (_redisResolved.invalidRedisUrlIgnored) {
+    console.warn(
+      '[session-store] REDIS_URL is set but is not redis:// or rediss:// (wrong value or REST URL pasted). ' +
+        'Ignoring it; using KV_URL or REST-derived URL if available.',
+    );
+  }
+
+  if (_redisUrl) {
+    try {
+      const connectRedisPkg = require('connect-redis');
+      const RedisStore =
+        connectRedisPkg.RedisStore ||
+        connectRedisPkg.default ||
+        connectRedisPkg;
+      const { createClient } = require('redis');
+      const redisClient = createClient({
+        url: _redisUrl,
+        socket: {
+          connectTimeout: 8000,
+          reconnectStrategy: (retries) => {
+            if (retries < 3) return Math.min(retries * 200, 1000);
+            return new Error('[session-store] Redis reconnect exhausted');
+          },
+        },
+      });
+      sessionRedisClient = redisClient;
+      sessionRedisEnvHint = _redisResolved.envHint;
+
+      redisClient.on('error', (err) => {
+        if (!redisClient._loggedError) {
+          sessionRedisConnectError = err.message || String(err);
+          console.error('[session-store] Redis wire error:', err.message);
+          redisClient._loggedError = true;
+        }
+      });
+      redisClient.on('ready', () => {
+        console.log('[session-store] Redis wire connected and ready');
+        redisClient._loggedError = false;
+      });
+
+      _redisConnectPromise = redisClient.connect().catch((err) => {
+        sessionRedisConnectError = err.message || String(err);
+        console.error('[session-store] Redis wire initial connect failed:', err.message);
+      });
+
+      const rawStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
+      sessionStore = createFaultTolerantStore(rawStore, {
+        onError: (method, err) => { sessionRedisConnectError = err.message || String(err); },
+      });
+      sessionStoreType = 'redis-wire';
+      console.log(`[session-store] Using Redis wire store (from ${sessionRedisEnvHint}), eager connect initiated`);
+    } catch (err) {
+      sessionRedisInitError = err.message || String(err);
+      sessionRedisClient = null;
+      console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
+    }
   }
 }
 
@@ -145,7 +154,7 @@ if (!sessionStore && (process.env.VERCEL || process.env.REPL_ID || process.env.R
   console.warn(
     `[session-store] WARNING: Running on ${platform} without Redis. ` +
     'Sessions use in-memory store — they will be lost on process restart. ' +
-    'Set REDIS_URL or KV_URL (rediss://…), or UPSTASH_REDIS_REST_* / KV_REST_API_* for persistent sessions.',
+    'Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN for persistent sessions (HTTP — no TCP required).',
   );
 }
 
@@ -316,16 +325,14 @@ app.use('/api/auth/oauth/user/callback', authLimiter);
 app.use(morgan('combined'));
 
 /**
- * Ensure the Redis client is ready before express-session runs.
- * Because connect() is called eagerly at module load, by the time the first
- * request arrives the TLS handshake is usually already complete.  If it is
- * not, we simply await the in-flight promise — no second connect() call needed.
+ * Ensure the Redis wire-protocol client is ready before express-session runs.
+ * Only relevant when sessionStoreType === 'redis-wire'.  The Upstash REST
+ * store is HTTP — no connection to wait for.
  */
 function awaitSessionRedisReady(req, res, next) {
+  if (sessionStoreType !== 'redis-wire') return next(); // REST/memory need no warm-up
   if (!sessionRedisClient) return next();
   if (sessionRedisClient.isReady) return next();
-  // Await the module-level connect promise (already in flight from init).
-  // _redisConnectPromise always resolves (never rejects) so .then() always fires.
   if (_redisConnectPromise) {
     _redisConnectPromise.then(() => next());
     return;
@@ -442,12 +449,25 @@ app.get('/api/auth/logout', async (req, res) => {
 // Debug endpoint — shows auth state for the current request (Vercel debugging).
 // Returns cookie presence, session state, and platform flags.
 // No secrets are exposed.
-app.get('/api/auth/debug', (req, res) => {
+app.get('/api/auth/debug', async (req, res) => {
   const cookieNames = Object.keys(
     Object.fromEntries(
       (req.headers.cookie || '').split(';').map(p => [p.split('=')[0].trim(), 1])
     )
   ).filter(Boolean);
+
+  // Quick store health check — only for the Upstash REST store (HTTP, fast).
+  // Wire-protocol ping is skipped to avoid adding latency to the debug response.
+  let sessionStoreHealthy = null;
+  if (upstashSessionStoreInstance) {
+    try {
+      sessionStoreHealthy = await upstashSessionStoreInstance.ping();
+    } catch (err) {
+      sessionStoreHealthy = false;
+      console.error('[session-store] Health check failed:', err.message);
+    }
+  }
+
   res.json({
     platform: { vercel: !!process.env.VERCEL, replit: !!process.env.REPL_ID, production: isProduction },
     sessionPresent:    !!req.session,
@@ -461,20 +481,18 @@ app.get('/api/auth/debug', (req, res) => {
     hasAuthCookie:     cookieNames.includes('_auth'),
     hasPkceCookie:     cookieNames.includes('_pkce'),
     sessionCookieName: cookieNames.includes('connect.sid') ? 'connect.sid present' : 'connect.sid MISSING',
-    /** redis = connect-redis configured; memory = serverless will cookie-restore without tokens */
+    /** 'upstash-rest' (HTTP, recommended) | 'redis-wire' (TCP) | 'memory' (no persistence) */
+    sessionStoreType,
+    /** Live health check result for the Upstash REST store (null if wire/memory store). */
+    sessionStoreHealthy,
+    /** Backward-compat: 'redis' when any persistent store is active, 'memory' otherwise. */
     bffSessionStore: sessionStore ? 'redis' : 'memory',
-    /** True if REDIS_URL or REST-derived URL was present at startup (even if Redis store init failed). */
-    sessionRedisUrlConfigured: Boolean(_redisUrl),
-    /** node-redis client socket open (null = no client created). */
-    sessionRedisClientOpen: sessionRedisClient ? !!sessionRedisClient.isOpen : null,
-    /** Client accepted commands (null = no client). */
-    sessionRedisClientReady: sessionRedisClient ? !!sessionRedisClient.isReady : null,
-    /** Sync failure creating Redis client / RedisStore (null if none). */
-    sessionRedisInitError: sessionRedisInitError || null,
-    /** Last async connect/socket error observed (null if none). */
-    sessionRedisConnectError: sessionRedisConnectError || null,
-    /** Which env supplied the resolved Redis URL (null if none). */
+    /** Which env supplied the store credentials. */
     sessionRedisEnv: sessionRedisEnvHint,
+    /** For wire-protocol store only — null when using Upstash REST. */
+    sessionRedisClientReady: sessionRedisClient ? !!sessionRedisClient.isReady : null,
+    sessionRedisInitError:   sessionRedisInitError   || null,
+    sessionRedisConnectError: sessionRedisConnectError || null,
     storageType:       configStore.getStorageType(),
     isConfigured:      configStore.isConfigured(),
     userEmail:         req.session?.user?.email || null,
