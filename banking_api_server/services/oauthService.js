@@ -64,6 +64,19 @@ const logTokenInfo = (token, context = '') => {
   }
 };
 
+/**
+ * Apply admin client credentials for POST /token per PingOne app setting (basic vs post).
+ */
+function applyAdminTokenEndpointClientAuth(config, body, headers) {
+  if (!config.clientSecret) return;
+  if (config.tokenEndpointAuthMethod === 'post') {
+    body.set('client_secret', config.clientSecret);
+    return;
+  }
+  const credentials = `${encodeURIComponent(config.clientId)}:${encodeURIComponent(config.clientSecret)}`;
+  headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`;
+}
+
 class OAuthService {
   constructor() {
     this.config = oauthConfig;
@@ -102,7 +115,7 @@ class OAuthService {
       state: state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
-      login_hint: 'admin'
+      login_hint: 'bankadmin'
     });
 
     if (usePiFlow) {
@@ -132,12 +145,8 @@ class OAuthService {
       if (codeVerifier) {
         body.set('code_verifier', codeVerifier);
       }
-      // Use CLIENT_SECRET_BASIC (Authorization header) per RFC 6749 §2.3.1 and PingOne app config.
       const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
-      if (this.config.clientSecret) {
-        const credentials = `${encodeURIComponent(this.config.clientId)}:${encodeURIComponent(this.config.clientSecret)}`;
-        headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`;
-      }
+      applyAdminTokenEndpointClientAuth(this.config, body, headers);
       const tokenResponse = await axios.post(this.config.tokenEndpoint, body.toString(), {
         headers,
       });
@@ -290,7 +299,7 @@ class OAuthService {
 
   /**
    * RFC 6749 §6 — Refresh an access token using a stored refresh token (admin OAuth client).
-   * Uses CLIENT_SECRET_BASIC when a client secret is configured, matching exchangeCodeForToken.
+   * Client authentication matches exchangeCodeForToken (basic vs post).
    */
   async refreshAccessToken(refreshToken) {
     if (!refreshToken) throw new Error('No refresh token provided');
@@ -300,10 +309,7 @@ class OAuthService {
       client_id: this.config.clientId,
     });
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
-    if (this.config.clientSecret) {
-      const credentials = `${encodeURIComponent(this.config.clientId)}:${encodeURIComponent(this.config.clientSecret)}`;
-      headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`;
-    }
+    applyAdminTokenEndpointClientAuth(this.config, body, headers);
     try {
       const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
         headers,

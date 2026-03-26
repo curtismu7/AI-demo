@@ -6,7 +6,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import ApiTrafficPanel from './ApiTrafficPanel';
-import { seedFromLocalStorage, subscribe } from '../services/apiTrafficStore';
+import { seedFromLocalStorage } from '../services/apiTrafficStore';
 import './ApiTrafficPanel.css';
 
 export default function ApiTrafficPage() {

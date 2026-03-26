@@ -1,8 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
-
-axios.defaults.withCredentials = true;
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -43,6 +41,11 @@ import { shouldShowGlobalFloatingBankingAgentFab } from './utils/embeddedAgentFa
 import LoadingOverlay from './components/shared/LoadingOverlay';
 import { setAgentBlockedByConsentDecline } from './services/agentAccessConsent';
 import './App.css';
+
+axios.defaults.withCredentials = true;
+
+/** Persists across full navigation to /api/auth/logout → PingOne → /logout so the wait overlay can show immediately on landing. */
+const SESSION_LOGOUT_PENDING_KEY = 'banking_logout_pending';
 
 const EMBEDDED_DOCK_AGENT_HEIGHT_KEY = 'banking_embedded_dock_agent_height_px';
 const EMBEDDED_DOCK_COLLAPSED_KEY = 'banking_embedded_dock_collapsed';
@@ -100,7 +103,21 @@ function AppWithAuth() {
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   const [apiTrafficOpen, setApiTrafficOpen] = useState(false);
-  const [loadingOverlay, setLoadingOverlay] = useState({ show: false, message: '', sub: '' });
+  const [loadingOverlay, setLoadingOverlay] = useState(() => {
+    if (typeof window === 'undefined') return { show: false, message: '', sub: '' };
+    try {
+      if (sessionStorage.getItem(SESSION_LOGOUT_PENDING_KEY) === '1') {
+        return {
+          show: true,
+          message: 'Signing you out…',
+          sub: 'Clearing your session',
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return { show: false, message: '', sub: '' };
+  });
 
   // Allow EducationBar to toggle the inline API Traffic panel via custom event.
   useEffect(() => {
@@ -211,13 +228,12 @@ function AppWithAuth() {
   // Masked public config → IndexedDB once per full page load (not tied to checkOAuthSession).
   // Reduces duplicate GET /api/admin/config and helps avoid 429 on shared IPs / tight rate limits.
   useEffect(() => {
-    const userLoggedOut = localStorage.getItem('userLoggedOut');
-    if (userLoggedOut === 'true') return;
-
     const currentPath =
       typeof window !== 'undefined' && typeof window.location?.pathname === 'string'
         ? window.location.pathname
         : '';
+    if (localStorage.getItem('userLoggedOut') === 'true') return;
+    if (currentPath === '/logout' || currentPath.endsWith('/logout')) return;
     if (currentPath === '/demo-data') return;
 
     axios
@@ -227,16 +243,37 @@ function AppWithAuth() {
   }, []);
 
   useEffect(() => {
-    const userLoggedOut = localStorage.getItem('userLoggedOut') === 'true' || _didLogOut;
+    const pathname =
+      typeof window !== 'undefined' && typeof window.location?.pathname === 'string'
+        ? window.location.pathname
+        : '';
+    const isPostLogoutLanding = pathname === '/logout' || pathname.endsWith('/logout');
+
+    const userLoggedOut =
+      localStorage.getItem('userLoggedOut') === 'true' || _didLogOut || isPostLogoutLanding;
+
     if (userLoggedOut) {
       _didLogOut = true; // keep set so re-runs of this effect (checkOAuthSession ref change) skip auth check
-      localStorage.removeItem('userLoggedOut');
-      // Belt-and-suspenders: ensure _auth cookie and server session are cleared
-      // in case the Set-Cookie header on the /api/auth/logout 302 response was
-      // not honoured by the redirect chain (e.g. no id_token_hint for PingOne).
-      fetch('/api/auth/clear-session', { method: 'POST', credentials: 'include' }).catch(() => {});
-      setUser(null);
-      setLoading(false);
+      // Keep userLoggedOut in localStorage until clear-session finishes. Otherwise a second effect run
+      // (e.g. React Strict Mode or checkOAuthSession identity change) can call checkOAuthSession and
+      // restore the session before cookies are cleared — forcing users to click Log out twice.
+      const finishLogout = () => {
+        try {
+          sessionStorage.removeItem(SESSION_LOGOUT_PENDING_KEY);
+        } catch {
+          // ignore
+        }
+        localStorage.removeItem('userLoggedOut');
+        setUser(null);
+        setLoading(false);
+        setLoadingOverlay({ show: false, message: '', sub: '' });
+        if (isPostLogoutLanding && window.history?.replaceState) {
+          window.history.replaceState(null, '', '/');
+        }
+      };
+      fetch('/api/auth/clear-session', { method: 'POST', credentials: 'include' })
+        .catch(() => {})
+        .finally(finishLogout);
       return;
     }
 
@@ -465,20 +502,32 @@ function AppWithAuth() {
     // Notify the chat widget immediately.
     window.dispatchEvent(new CustomEvent('userLoggedOut'));
 
-    // Short delay lets React render the overlay before the page unloads.
+    try {
+      sessionStorage.setItem(SESSION_LOGOUT_PENDING_KEY, '1');
+    } catch {
+      // ignore
+    }
+
+    // Delay lets React paint the full-screen wait overlay before navigation unloads the page.
     // Navigate the browser directly (NOT via axios) to the unified logout
     // endpoint. Express will destroy the server session, then 302-redirect
     // the browser to PingOne's RP-Initiated Logout → post_logout_redirect_uri
-    // (/login). This ensures the PingOne SSO session is actually terminated
-    // and a subsequent login will prompt for credentials fresh.
-    setTimeout(() => { window.location.href = '/api/auth/logout'; }, 150);
+    // (/logout). SESSION_LOGOUT_PENDING_KEY keeps the overlay visible after reload.
+    setTimeout(() => { window.location.href = '/api/auth/logout'; }, 420);
   };
 
   if (loading) {
     return (
-      <div className="loading">
-        <div>Loading...</div>
-      </div>
+      <>
+        <LoadingOverlay
+          show={loadingOverlay.show}
+          message={loadingOverlay.message || 'Please wait…'}
+          sub={loadingOverlay.sub}
+        />
+        <div className="loading">
+          <div>Loading...</div>
+        </div>
+      </>
     );
   }
 

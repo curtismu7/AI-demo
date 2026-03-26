@@ -45,6 +45,8 @@ const FIELD_DEFS = {
   admin_client_id:        { public: true,  default: '' },
   admin_client_secret:    { public: false, default: '' },
   admin_redirect_uri:     { public: true,  default: '' },
+  // 'basic' = client_secret via Authorization header; 'post' = client_secret in form body (match PingOne app).
+  admin_token_endpoint_auth_method: { public: true, default: 'basic' },
 
   // End-user OAuth app
   user_client_id:         { public: true,  default: '' },
@@ -314,6 +316,10 @@ class ConfigStore {
         'PINGONE_AI_CORE_REDIRECT_URI',
         'PINGONE_CORE_REDIRECT_URI',
         'PINGONE_ADMIN_REDIRECT_URI',
+      ],
+      admin_token_endpoint_auth_method: [
+        'PINGONE_ADMIN_TOKEN_ENDPOINT_AUTH',
+        'ADMIN_TOKEN_ENDPOINT_AUTH',
       ],
       user_client_id:         [
         'PINGONE_AI_CORE_USER_CLIENT_ID',

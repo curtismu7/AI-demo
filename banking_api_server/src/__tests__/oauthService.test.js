@@ -37,6 +37,7 @@ const MOCK_CONFIG = {
   sessionSecret:          'test-sess-secret',
   adminRole:              'admin',
   authorizeUsesPiFlow:    false,
+  tokenEndpointAuthMethod: 'basic',
 };
 
 jest.mock('../../config/oauth', () => MOCK_CONFIG);
@@ -137,6 +138,11 @@ describe('generateAuthorizationUrl', () => {
   test('includes the provided state value', () => {
     const url = svc.generateAuthorizationUrl('my-csrf-state', 'cv');
     expect(parse(url).params.state).toBe('my-csrf-state');
+  });
+
+  test('includes login_hint=bankadmin for admin authorize URL', () => {
+    const url = svc.generateAuthorizationUrl('st', 'cv');
+    expect(parse(url).params.login_hint).toBe('bankadmin');
   });
 
   test('includes response_type=code', () => {
@@ -251,6 +257,20 @@ describe('exchangeCodeForToken — request body', () => {
       expect(headers['Authorization']).toMatch(/^Basic /);
       const decoded = Buffer.from(headers['Authorization'].replace('Basic ', ''), 'base64').toString();
       expect(decoded).toBe(`${encodeURIComponent(MOCK_CONFIG.clientId)}:${encodeURIComponent(MOCK_CONFIG.clientSecret)}`);
+    });
+
+    test('sends client_secret in body when tokenEndpointAuthMethod is post', async () => {
+      const prev = MOCK_CONFIG.tokenEndpointAuthMethod;
+      MOCK_CONFIG.tokenEndpointAuthMethod = 'post';
+      try {
+        await svc.exchangeCodeForToken('code', 'my-verifier');
+        const body = getCallBody();
+        const headers = getCallHeaders();
+        expect(body.client_secret).toBe(MOCK_CONFIG.clientSecret);
+        expect(headers.Authorization).toBeUndefined();
+      } finally {
+        MOCK_CONFIG.tokenEndpointAuthMethod = prev;
+      }
     });
   });
 

@@ -387,28 +387,30 @@ describe('App — userAuthenticated event re-triggers check', () => {
 
 describe('App — userLoggedOut localStorage flag skips check', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
     delete window.location;
-    window.location = { search: '', href: '/' };
+    window.location = { search: '', href: '/', pathname: '/' };
     localStorage.setItem('userLoggedOut', 'true');
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true }));
+    window.history.replaceState = jest.fn();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
-    jest.clearAllTimers();
-    jest.useRealTimers();
     localStorage.clear();
   });
 
-  it('clears the userLoggedOut flag and makes no auth endpoint calls', async () => {
+  it('clears the userLoggedOut flag after clear-session and makes no auth endpoint calls', async () => {
     mockAllUnauthenticated();
     render(<App />);
-    await act(async () => { jest.runAllTimers(); });
+    await waitFor(() => {
+      expect(localStorage.getItem('userLoggedOut')).toBeNull();
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/auth/clear-session',
+      expect.objectContaining({ method: 'POST', credentials: 'include' }),
+    );
 
-    // The flag should have been cleared
-    expect(localStorage.getItem('userLoggedOut')).toBeNull();
-
-    // Auth endpoints should NOT have been called
+    // Auth endpoints should NOT have been called (logout path skips checkOAuthSession)
     const authCalls = axios.get.mock.calls.map(c => c[0]).filter(u => u.startsWith('/api/auth'));
     expect(authCalls.length).toBe(0);
   });

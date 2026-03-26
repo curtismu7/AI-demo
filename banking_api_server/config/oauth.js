@@ -39,6 +39,15 @@ const config = {
     return String(v).toLowerCase() === 'true' || v === '1';
   },
 
+  /**
+   * How admin client authenticates at POST /token: 'basic' (Authorization header) or 'post' (client_secret in body).
+   * Must match PingOne application "Token endpoint authentication method".
+   */
+  get tokenEndpointAuthMethod() {
+    const v = String(configStore.getEffective('admin_token_endpoint_auth_method') || 'basic').toLowerCase();
+    return v === 'post' ? 'post' : 'basic';
+  },
+
   get sessionSecret()          { return configStore.getEffective('session_secret'); },
   get adminRole()              { return configStore.getEffective('admin_role') || 'admin'; },
 };
