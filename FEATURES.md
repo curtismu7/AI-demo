@@ -27,15 +27,18 @@ git checkout <last-version-tag> -- <key-file>
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
 | Customer sign-in — Authorization Code + PKCE | active | `banking_api_server/routes/oauthUser.js` | `s:oauth-e2e-integration.test.js`, `s:oauth-login-resilience.test.js` |
-| Admin sign-in — Authorization Code + PKCE | active | `banking_api_server/routes/oauth.js` | `s:oauth-e2e-integration.test.js` |
+| Admin sign-in — Authorization Code + PKCE (`login_hint=bankadmin`) | active | `banking_api_server/routes/oauth.js`, `banking_api_server/services/oauthService.js` | `s:oauth-e2e-integration.test.js`, `s:oauthService.test.js` |
 | CIBA backchannel authentication (customer approval via mobile) | active | `banking_api_server/routes/ciba.js`, `banking_api_server/services/cibaService.js`, `banking_api_server/services/cibaEnhanced.js`, `banking_api_ui/src/components/CIBAPanel.js` | `s:ciba.test.js`, `s:cibaService.test.js` |
 | PKCE state cookie fallback (resilient login on Redis failure) | active | `banking_api_server/services/pkceStateCookie.js` | `s:oauth-login-resilience.test.js` |
 | Session restore from `_auth` cookie (resilient dashboard on Redis failure) | active | `banking_api_server/services/authStateCookie.js` | `s:authStateCookie.test.js` |
 | Token refresh (silent re-auth) | active | `banking_api_server/routes/tokens.js`, `banking_api_server/services/tokenRefresh.js` | `s:tokenRefresh.test.js` |
 | Token revocation on logout | active | `banking_api_server/services/tokenRevocation.js` | `s:tokenRevocation.test.js` |
 | Token introspection debug endpoint | active | `banking_api_server/routes/tokens.js`, `banking_api_server/services/tokenValidationService.js` | `s:tokenIntrospection.test.js` |
-| Unified `/api/auth/logout` (user + admin) | active | `banking_api_server/routes/auth.js` | `s:oauth-e2e-integration.test.js` |
-| Session debug endpoint `/api/auth/debug` | active | `banking_api_server/routes/auth.js` | `s:auth.test.js` |
+| Unified `/api/auth/logout` (user + admin) | active | `banking_api_server/server.js`, `banking_api_server/routes/oauth.js`, `banking_api_server/routes/oauthUser.js` | `s:oauth-e2e-integration.test.js` |
+| Logout — full-screen wait overlay (persists across PingOne redirect to `/logout`) | active | `banking_api_ui/src/App.js`, `banking_api_ui/src/components/shared/LoadingOverlay.js` | `u:__tests__/App.session.test.js` |
+| Admin OAuth — token endpoint client authentication (`basic` or `post`, must match PingOne app) | active | `banking_api_server/config/oauth.js`, `banking_api_server/services/oauthService.js`, `banking_api_server/services/configStore.js` | `s:oauthService.test.js` |
+| `POST /api/auth/clear-session` — belt-and-suspenders cookie clear after logout chain | active | `banking_api_server/server.js` | `s:oauth-e2e-integration.test.js` |
+| Session debug endpoint `/api/auth/debug` | active | `banking_api_server/server.js` | — |
 
 ---
 
