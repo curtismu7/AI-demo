@@ -263,7 +263,14 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
   };
 
-  const fetchUserData = async (silent = false) => {
+  /** Returns true for transient/server errors worth retrying (network, 5xx, timeout). */
+  const isTransientError = (error) => {
+    const status = error.response?.status;
+    if (!status) return true; // network/timeout — no response at all
+    return status >= 500 && status !== 503; // 5xx except 503 rate-limit style
+  };
+
+  const fetchUserData = async (silent = false, _retryCount = 0) => {
     if (fetchingRef.current) {
       pendingRefetchRef.current = true;
       if (!silent) pendingRefetchNonSilentRef.current = true;
@@ -296,19 +303,30 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setTransactions(Array.isArray(transactionsResponse.data?.transactions) ? transactionsResponse.data.transactions : []);
 
     } catch (error) {
+      const status = error.response?.status;
+
+      // Retry transient errors up to 2 times with backoff before showing anything
+      const MAX_RETRIES = 2;
+      if (isTransientError(error) && _retryCount < MAX_RETRIES) {
+        console.warn(`fetchUserData: transient error (attempt ${_retryCount + 1}), retrying…`, error.message);
+        fetchingRef.current = false;
+        await new Promise(r => setTimeout(r, 800 * (_retryCount + 1)));
+        void fetchUserData(silent, _retryCount + 1);
+        return;
+      }
+
       console.error('Error fetching user data:', error);
-      
-      // Check if it's an authentication error
-      if (error.response?.status === 429) {
+
+      if (status === 429) {
         setAutoRefresh(false);
         if (silent) {
           setSuccess('Auto-refresh paused due to rate limits.');
         } else {
           setError('Too many requests from this network. Wait a minute, then refresh. Auto-refresh is off.');
         }
-      } else if (error.response?.status === 401 && !silent) {
+      } else if (status === 401 && !silent) {
         setError('Your session has expired. Please log in again.');
-      } else if (error.response?.status === 403) {
+      } else if (status === 403) {
         setError('You do not have permission to access this information.');
       } else if (!silent) {
         setError('Failed to load your account information');
