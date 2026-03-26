@@ -98,7 +98,31 @@ if (_redisUrl) {
         redisClient._loggedError = true;
       }
     });
-    sessionStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
+    const rawStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
+    // Fault-tolerant wrapper: Redis get/destroy errors return empty session rather than
+    // propagating to next(err) → 500.  A disconnected store yields 401 (no token), not a crash.
+    const _origGet = rawStore.get.bind(rawStore);
+    rawStore.get = (sid, cb) => {
+      _origGet(sid, (err, session) => {
+        if (err) {
+          sessionRedisConnectError = err.message || String(err);
+          console.error('[session-store] Redis get error (returning empty session):', err.message);
+          cb(null, null);
+        } else {
+          cb(null, session);
+        }
+      });
+    };
+    if (typeof rawStore.destroy === 'function') {
+      const _origDestroy = rawStore.destroy.bind(rawStore);
+      rawStore.destroy = (sid, cb) => {
+        _origDestroy(sid, (err) => {
+          if (err) console.error('[session-store] Redis destroy error (ignored):', err.message);
+          if (cb) cb(null);
+        });
+      };
+    }
+    sessionStore = rawStore;
     console.log(`[session-store] Using Redis store (from ${sessionRedisEnvHint})`);
   } catch (err) {
     sessionRedisInitError = err.message || String(err);
@@ -286,6 +310,16 @@ app.use(morgan('combined'));
 function awaitSessionRedisReady(req, res, next) {
   if (!sessionRedisClient) return next();
   if (sessionRedisClient.isReady) return next();
+  // If the socket is already opening (connect in progress), wait for 'ready' or 'error'.
+  // Calling connect() again when isOpen would throw "Socket already opened".
+  if (sessionRedisClient.isOpen) {
+    const onReady = () => { cleanup(); next(); };
+    const onError = (err) => { cleanup(); sessionRedisConnectError = err.message || String(err); next(); };
+    const cleanup = () => { sessionRedisClient.removeListener('ready', onReady); sessionRedisClient.removeListener('error', onError); };
+    sessionRedisClient.once('ready', onReady);
+    sessionRedisClient.once('error', onError);
+    return;
+  }
   sessionRedisClient
     .connect()
     .then(() => next())
