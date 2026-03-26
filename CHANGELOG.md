@@ -26,6 +26,18 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ---
 
+## [2026.03.26-V3]
+
+### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+---
+
 ## [2026.03.26.v2]
 
 ### Added
