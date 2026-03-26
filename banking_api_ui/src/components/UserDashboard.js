@@ -9,13 +9,24 @@ import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
 import './UserDashboard.css';
 
+const DEMO_ACCOUNTS = [
+  { id: 'demo-chk', name: 'Checking Account', accountType: 'checking', accountNumber: 'CHK-DEMO-0001', balance: 4821.50, _demo: true },
+  { id: 'demo-sav', name: 'Savings Account',  accountType: 'savings',  accountNumber: 'SAV-DEMO-0001', balance: 12340.00, _demo: true },
+];
+const DEMO_TRANSACTIONS = [
+  { id: 'd1', type: 'deposit',    amount: 2500.00, description: 'Payroll deposit',         accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*1).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+  { id: 'd2', type: 'withdrawal', amount:  150.00, description: 'ATM withdrawal',           accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*2).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+  { id: 'd3', type: 'transfer',   amount:  500.00, description: 'Transfer to savings',      accountInfo: 'Savings - SAV-DEMO-0001',  createdAt: new Date(Date.now() - 86400000*3).toISOString(), clientType: 'ai_agent', performedBy: 'Demo User', _demo: true },
+  { id: 'd4', type: 'deposit',    amount:   75.00, description: 'Refund — online purchase', accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*5).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+];
+
 const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState(DEMO_ACCOUNTS);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState(DEMO_TRANSACTIONS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -244,11 +255,47 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     return () => clearInterval(interval);
   }, [cibaAuthReqId, cibaStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Demo mode: true when accounts haven't been replaced by real API data
+  const isDemoMode = accounts.length > 0 && accounts.every(a => a._demo);
+
+  // Simulate a transaction locally (demo mode only)
+  const applyDemoTransaction = (type, amount, fromId, toId, description) => {
+    const now = new Date().toISOString();
+    const newTx = {
+      id: `demo-${Date.now()}`,
+      type,
+      amount,
+      description: description || `Demo ${type}`,
+      accountInfo: (() => {
+        const acc = accounts.find(a => a.id === (fromId || toId));
+        return acc ? `${acc.accountType.charAt(0).toUpperCase() + acc.accountType.slice(1)} - ${acc.accountNumber}` : 'Demo Account';
+      })(),
+      createdAt: now,
+      clientType: 'enduser',
+      performedBy: user?.name || user?.username || 'Demo User',
+      _demo: true,
+    };
+    setTransactions(prev => [newTx, ...prev]);
+    setAccounts(prev => prev.map(a => {
+      if (a.id === fromId) return { ...a, balance: Math.max(0, a.balance - amount) };
+      if (a.id === toId)   return { ...a, balance: a.balance + amount };
+      return a;
+    }));
+  };
+
   const handleTransfer = async (e) => {
     e.preventDefault();
 
     if (!selectedAccount || !transferForm.toAccountId || !transferForm.amount) {
       setError('Please fill in all transfer details');
+      return;
+    }
+
+    if (isDemoMode) {
+      applyDemoTransaction('transfer', parseFloat(transferForm.amount), selectedAccount.id, transferForm.toAccountId, transferForm.description || 'Demo transfer');
+      setTransferForm({ toAccountId: '', amount: '', description: '' });
+      setSelectedAccount(null);
+      setSuccess('Demo transfer completed!');
       return;
     }
 
@@ -290,6 +337,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
+    if (isDemoMode) {
+      applyDemoTransaction('deposit', parseFloat(depositForm.amount), null, depositAccount.id, depositForm.description || 'Demo deposit');
+      setDepositForm({ amount: '', description: '' });
+      setDepositAccount(null);
+      setSuccess('Demo deposit completed!');
+      return;
+    }
+
     try {
       await apiClient.post('/api/transactions', {
         fromAccountId: null,
@@ -325,6 +380,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
     if (!withdrawAccount || !withdrawForm.amount) {
       setError('Please fill in all withdrawal details');
+      return;
+    }
+
+    if (isDemoMode) {
+      const amt = parseFloat(withdrawForm.amount);
+      if (amt > withdrawAccount.balance) { setError('Insufficient demo balance'); return; }
+      applyDemoTransaction('withdrawal', amt, withdrawAccount.id, null, withdrawForm.description || 'Demo withdrawal');
+      setWithdrawForm({ amount: '', description: '' });
+      setWithdrawAccount(null);
+      setSuccess('Demo withdrawal completed!');
       return;
     }
 
@@ -555,16 +620,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {/* Account Summary */}
         <div className="section">
           <h2>Your Accounts</h2>
-          {accounts.length === 0 && (
+          {isDemoMode && (
             <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-              ⚠ No account data loaded — showing demo preview
+              Demo mode — sign in to use your real accounts
             </p>
           )}
           <div className="accounts-grid">
-            {(accounts.length > 0 ? accounts : [
-              { id: 'demo-chk', name: 'Checking Account', accountType: 'checking', accountNumber: 'CHK-DEMO-0001', balance: 4821.50, _demo: true },
-              { id: 'demo-sav', name: 'Savings Account',  accountType: 'savings',  accountNumber: 'SAV-DEMO-0001', balance: 12340.00, _demo: true },
-            ]).map(account => (
+            {accounts.map(account => (
               <div key={account.id} className="account-card" style={account._demo ? { opacity: 0.65 } : {}}>
                 <div className="account-header">
                   <h3>{account.name}</h3>
@@ -580,22 +642,19 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                 <div className="account-actions">
                   <button
                     className="select-account-btn"
-                    disabled={!!account._demo}
-                    onClick={() => !account._demo && setSelectedAccount(account)}
+                    onClick={() => setSelectedAccount(account)}
                   >
                     Select for Transfer
                   </button>
                   <button
                     className="deposit-btn"
-                    disabled={!!account._demo}
-                    onClick={() => !account._demo && setDepositAccount(account)}
+                    onClick={() => setDepositAccount(account)}
                   >
                     Deposit
                   </button>
                   <button
                     className="withdraw-btn"
-                    disabled={!!account._demo}
-                    onClick={() => !account._demo && setWithdrawAccount(account)}
+                    onClick={() => setWithdrawAccount(account)}
                   >
                     Withdraw
                   </button>
@@ -761,9 +820,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {/* Recent Transactions */}
         <div className="section">
           <h2>Recent Transactions</h2>
-          {transactions.length === 0 && (
+          {isDemoMode && (
             <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-              ⚠ No transaction data loaded — showing demo preview
+              Demo mode — sign in to see your real transactions
             </p>
           )}
           <div className="transactions-table">
@@ -777,12 +836,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               <div className="header-cell">User</div>
             </div>
             <div className="transactions-list">
-              {(transactions.length > 0 ? transactions : [
-                { id: 'd1', type: 'deposit',    amount: 2500.00, description: 'Payroll deposit',        accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*1).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
-                { id: 'd2', type: 'withdrawal', amount:  150.00, description: 'ATM withdrawal',          accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*2).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
-                { id: 'd3', type: 'transfer',   amount:  500.00, description: 'Transfer to savings',     accountInfo: 'Savings - SAV-DEMO-0001',  createdAt: new Date(Date.now() - 86400000*3).toISOString(), clientType: 'ai_agent', performedBy: 'Demo User', _demo: true },
-                { id: 'd4', type: 'deposit',    amount:   75.00, description: 'Refund — online purchase', accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*5).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
-              ])
+              {transactions
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .slice(0, 20)
                 .map(transaction => {
