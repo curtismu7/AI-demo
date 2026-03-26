@@ -93,19 +93,34 @@ const SUGGESTIONS_ADMIN = [
 
 /**
  * Chat copy when the BFF has a cookie but no live OAuth tokens.
- * Adapts the fix instructions to the actual store error (quota vs. config).
+ * Adapts to store quota/auth errors vs. healthy Redis but missing OAuth tokens in this session.
  */
-function buildSessionNotHydratedChat(storeError) {
+function buildSessionNotHydratedChat(storeError, sessionStoreHealthy = null) {
   const isQuota = storeError && storeError.includes('max requests limit exceeded');
   const isMissingAuth = storeError && (storeError.includes('WRONGPASS') || storeError.includes('unauthorized'));
 
+  let secondLine;
+  if (isQuota) {
+    secondLine =
+      'The Upstash Redis daily request quota is exhausted — the session store cannot save or load tokens until the quota resets.';
+  } else if (isMissingAuth) {
+    secondLine =
+      'The session store rejected credentials (WRONGPASS or unauthorized).';
+  } else if (storeError) {
+    secondLine = `The session store reported an error: ${storeError}`;
+  } else if (sessionStoreHealthy === true) {
+    secondLine =
+      'The session store is healthy, but this browser session does not have OAuth access tokens. The server rebuilt your identity from the signed _auth cookie (sessionRestored / accessTokenStub in session debug).';
+  } else {
+    secondLine =
+      'This session has no OAuth tokens (cookie-only or failed save after login). It is not the same as "Redis is down".';
+  }
+
   const lines = [
-    'Your browser shows you as signed in, but this server instance does not have your OAuth tokens.',
-    isQuota
-      ? 'The Upstash Redis daily request quota is exhausted — the session store cannot save or load tokens until the quota resets.'
-      : 'The session store is unhealthy.',
+    'Your browser shows you as signed in, but the Banking Agent needs OAuth tokens on the server for MCP and NL.',
+    secondLine,
     '',
-    'Diagnose: open "Open session debug" and check sessionStoreHealthy and sessionStoreError.',
+    'Diagnose: use "Open session debug" (uses ?deep=1) — compares Redis row vs req.session; sessionStoreHealthy can be true while accessTokenStub is true.',
     '',
   ];
 
@@ -125,23 +140,30 @@ function buildSessionNotHydratedChat(storeError) {
       '  • KV_REST_API_TOKEN',
       'Apply to Production, redeploy, sign out, sign in again.',
     );
+  } else if (storeError) {
+    lines.push(
+      'Fix: sign out and sign in again after the store error is resolved. Check Vercel logs for session-store or OAuth callback errors.',
+    );
   } else {
     lines.push(
-      'Fix: Sign out and sign in again. If the problem persists, check Vercel logs for session-store errors.',
+      'Fix:',
+      '  1. Sign out completely, then sign in again with PingOne (writes fresh tokens into the server session).',
+      '  2. If it still happens right after login, check Vercel logs for "[oauth/user/callback] Session save FAILED".',
     );
   }
 
   lines.push(
     '',
-    'You want sessionStoreType: "upstash-rest", sessionStoreHealthy: true after a fresh login.',
-    '"Refresh access token" cannot fix this until a healthy session store is backing the session.',
+    sessionStoreHealthy === true
+      ? '"Refresh access token" only helps if the server already holds a refresh token. With a stub token, use Sign out and sign in again.'
+      : 'After a fresh login you want sessionStoreType: "upstash-rest" and sessionStoreHealthy: true. "Refresh access token" cannot fix a missing session store.',
   );
 
   return lines.join('\n');
 }
 
-/** Fallback static copy for places that don't have store error context. */
-const SESSION_NOT_HYDRATED_CHAT = buildSessionNotHydratedChat(null);
+/** Fallback when session response is not available (no healthy flag). */
+const SESSION_NOT_HYDRATED_CHAT = buildSessionNotHydratedChat(null, null);
 
 
 /**
@@ -519,7 +541,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   /** {x,y} when panel has been dragged; null = CSS-anchored default position */
   const [dragPos, setDragPos] = useState(null);
   /** Panel dimensions for resizing */
-  const [panelSize, setPanelSize] = useState({ width: 820, height: 560 });
+  const [panelSize, setPanelSize] = useState({ width: 520, height: 420 });
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
   /** MCP server connection status for header display */
@@ -615,7 +637,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                   {
                     id: `${Date.now()}-fix`,
                     role: 'error',
-                    content: buildSessionNotHydratedChat(session?.sessionStoreError ?? null),
+                    content: buildSessionNotHydratedChat(session?.sessionStoreError ?? null, session?.sessionStoreHealthy ?? null),
                     showSessionFixActions: true,
                   },
                 ];
@@ -711,7 +733,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
             {
               id: `${Date.now()}-fix`,
               role: 'error',
-              content: buildSessionNotHydratedChat(session?.sessionStoreError ?? null),
+              content: buildSessionNotHydratedChat(session?.sessionStoreError ?? null, session?.sessionStoreHealthy ?? null),
               showSessionFixActions: true,
             },
           ]);
@@ -831,10 +853,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       let newHeight = startHeight;
 
       if (direction.includes('e')) {
-        newWidth = Math.min(1200, Math.max(600, startWidth + deltaX));
+        newWidth = Math.min(900, Math.max(360, startWidth + deltaX));
       }
       if (direction.includes('s')) {
-        newHeight = Math.min(800, Math.max(400, startHeight + deltaY));
+        newHeight = Math.min(620, Math.max(280, startHeight + deltaY));
       }
 
       setPanelSize({ width: newWidth, height: newHeight });
@@ -854,13 +876,37 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   const panelStyle = isInline
     ? {}
     : isExpanded
-      ? { left: '16px', top: '16px', bottom: '16px', right: '16px', width: 'auto', height: 'auto' }
-      : dragPos 
-        ? { left: dragPos.x, top: dragPos.y, bottom: 'auto', right: 'auto', width: panelSize.width, height: panelSize.height }
-        : { width: panelSize.width, height: panelSize.height };
-  // Results panel sits to the left of the agent; shifts with it when dragged
+      ? {
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 'min(94vw, 640px)',
+          height: 'min(80vh, 520px)',
+          maxWidth: 640,
+          maxHeight: '80vh',
+          right: 'auto',
+          bottom: 'auto',
+        }
+      : dragPos
+        ? {
+            left: dragPos.x,
+            top: dragPos.y,
+            bottom: 'auto',
+            right: 'auto',
+            width: panelSize.width,
+            height: panelSize.height,
+            transform: 'none',
+          }
+        : { width: panelSize.width, height: panelSize.height, transform: 'none' };
+  /** Results panel width (CSS) — keep gap in sync when dragging */
+  const resultsPanelWidthPx = 440;
   const resultsPanelStyle = dragPos
-    ? { left: Math.max(8, dragPos.x - 528), top: dragPos.y, bottom: 'auto', right: 'auto' }
+    ? {
+        left: Math.max(8, dragPos.x - resultsPanelWidthPx - 16),
+        top: dragPos.y,
+        bottom: 'auto',
+        right: 'auto',
+      }
     : {};
   // In inline mode the panel is always visible; in float mode respect the open/closed state
   const effectiveIsOpen = isInline || isOpen;
@@ -1470,7 +1516,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                     type="button"
                     className="ba-icon-btn"
                     onClick={() => { setIsExpanded(e => !e); setDragPos(null); }}
-                    title={isExpanded ? 'Restore size' : 'Expand to full screen'}
+                    title={isExpanded ? 'Restore size' : 'Expand to larger window'}
                   >
                     {isExpanded ? '⊟' : '⊞'}
                   </button>
@@ -1725,7 +1771,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                             <button
                               type="button"
                               className="ba-session-fix-btn ba-session-fix-btn--secondary"
-                              onClick={() => window.open('/api/auth/debug', '_blank', 'noopener,noreferrer')}
+                              onClick={() => window.open('/api/auth/debug?deep=1', '_blank', 'noopener,noreferrer')}
                             >
                               Open session debug
                             </button>

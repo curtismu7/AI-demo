@@ -45,6 +45,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Changed
 
+- **Floating BankingAgent**: default panel **520×420** (was 820×560); narrower left column; smaller results panel; “expand” is a **centered** ~640×520 window instead of edge-to-edge; resize clamps 360×280–900×620; responsive rules use `!important` so tablet/mobile caps beat inline sizes
 - Admin OAuth `/authorize` `login_hint` set to `bankadmin` (was `admin`) for PingOne username hint
 - Logout: delay before navigating to `/api/auth/logout` increased to 420ms so the wait overlay can paint; `LoadingOverlay` also shown during the initial `loading` gate when logout is in progress
 - Banking agent UI/CSS, education bar and panels (Step-up, RFC index, commands, `EducationPanelsHost`), NL intent parser/sanitize and Gemini wiring, MCP local tools registry

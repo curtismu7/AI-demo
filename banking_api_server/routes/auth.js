@@ -133,6 +133,8 @@ router.get('/session', (req, res) => {
     authType: req.session.oauthType || req.session.tokenType || 'session',
     cookieOnlyBffSession,
     sessionStoreError: req._sessionStoreError ?? null,
+    /** From Upstash ping cache when present; null if no ping yet. */
+    sessionStoreHealthy: req._sessionStoreHealthy ?? null,
   });
 });
 

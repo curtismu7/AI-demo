@@ -125,6 +125,17 @@ class SessionMemoryCache {
 
   del(sid) { this._map.delete(sid); }
 
+  /** True if a non-expired cache entry exists (for /api/auth/debug only). */
+  hasFresh(sid) {
+    const entry = this._map.get(sid);
+    if (!entry) return false;
+    if (Date.now() > entry.exp) {
+      this._map.delete(sid);
+      return false;
+    }
+    return true;
+  }
+
   /** True when the entry exists and has > thresholdMs remaining. */
   isFresh(sid, thresholdMs = 15_000) {
     const entry = this._map.get(sid);
@@ -271,6 +282,66 @@ class UpstashSessionStore extends Store {
     } catch (err) {
       this._circuit.onFailure(err);
       return { healthy: false, error: err.message, circuit: this._circuit.state };
+    }
+  }
+
+  /**
+   * True if this sid is in the 45s in-process cache (no Redis call).
+   */
+  hasInMemorySessionCache(sid) {
+    return !!(sid && this._cache.hasFresh(sid));
+  }
+
+  /**
+   * Debug-only: one Redis GET for this sid — safe booleans only (no tokens).
+   * Compare with req.session to see cookie-restore vs persisted mismatch.
+   */
+  async getPersistenceDebug(sid) {
+    const base = {
+      sidPrefix:       sid ? `${String(sid).slice(0, 8)}…` : null,
+      inMemoryCache:   this.hasInMemorySessionCache(sid),
+      circuitState:    this._circuit.state,
+      circuitBlocking: this._circuit.isOpen,
+    };
+    if (!sid) {
+      return { ...base, redisKeyPresent: null, redisReadSkipped: 'no_session_id' };
+    }
+    if (this._circuit.isOpen) {
+      return {
+        ...base,
+        redisKeyPresent: null,
+        redisReadSkipped: 'circuit_open_reads_bypass_redis',
+      };
+    }
+    try {
+      const data = await this.kv.get(this.prefix + sid);
+      if (data == null) {
+        return {
+          ...base,
+          redisKeyPresent: false,
+          redisHasUser:    null,
+          redisAccessTokenStub: null,
+          redisHasRefreshToken: null,
+          approxPayloadBytes: 0,
+        };
+      }
+      const oauth = data.oauthTokens;
+      const at = oauth && typeof oauth.accessToken === 'string' ? oauth.accessToken : '';
+      return {
+        ...base,
+        redisKeyPresent: true,
+        redisHasUser: !!data.user,
+        redisAccessTokenStub: at === '_cookie_session',
+        redisHasRefreshToken: !!(oauth && oauth.refreshToken && oauth.refreshToken !== '_cookie_session'),
+        redisOauthType: data.oauthType || null,
+        approxPayloadBytes: JSON.stringify(data).length,
+      };
+    } catch (err) {
+      return {
+        ...base,
+        redisKeyPresent: null,
+        redisReadError: err.message || String(err),
+      };
     }
   }
 }

@@ -62,6 +62,11 @@ const Login = () => {
         case 'oauth_init_failed':
           errorMessage = 'Sign-in is temporarily unavailable. Please try again.';
           break;
+        case 'session_persist_failed':
+          errorMessage =
+            'PingOne sign-in succeeded, but the app could not save your session to the server store (for example Upstash Redis quota or misconfigured KV_REST_* env vars). '
+            + 'Fix the session store, then sign in again.';
+          break;
         default:
           errorMessage = 'Something went wrong during sign-in. Please try again.';
       }

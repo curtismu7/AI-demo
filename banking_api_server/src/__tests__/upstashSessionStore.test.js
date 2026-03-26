@@ -185,6 +185,50 @@ describe('UpstashSessionStore', () => {
     });
   });
 
+  // ── getPersistenceDebug() ────────────────────────────────────────────────
+
+  describe('getPersistenceDebug()', () => {
+    it('returns no_session_id when sid is missing', async () => {
+      const r = await store.getPersistenceDebug(null);
+      expect(r.redisReadSkipped).toBe('no_session_id');
+    });
+
+    it('returns redisKeyPresent false when key missing', async () => {
+      mockKv.get.mockResolvedValue(null);
+      const r = await store.getPersistenceDebug('sid-abc');
+      expect(r.redisKeyPresent).toBe(false);
+      expect(mockKv.get).toHaveBeenCalledWith('test:sess:sid-abc');
+    });
+
+    it('summarizes redis session without exposing raw token strings', async () => {
+      mockKv.get.mockResolvedValue({
+        user: { id: '1' },
+        oauthType: 'user',
+        oauthTokens: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIn0.sig',
+          refreshToken: 'rt',
+          expiresAt: Date.now() + 60000,
+        },
+      });
+      const r = await store.getPersistenceDebug('sid1');
+      expect(r.redisKeyPresent).toBe(true);
+      expect(r.redisHasUser).toBe(true);
+      expect(r.redisAccessTokenStub).toBe(false);
+      expect(r.redisHasRefreshToken).toBe(true);
+      expect(r.approxPayloadBytes).toBeGreaterThan(100);
+      expect(JSON.stringify(r)).not.toContain('eyJ');
+    });
+
+    it('detects stub token in redis blob', async () => {
+      mockKv.get.mockResolvedValue({
+        user: { id: '1' },
+        oauthTokens: { accessToken: '_cookie_session' },
+      });
+      const r = await store.getPersistenceDebug('sid1');
+      expect(r.redisAccessTokenStub).toBe(true);
+    });
+  });
+
   // ── ping() ───────────────────────────────────────────────────────────────
 
   describe('ping()', () => {
@@ -192,7 +236,7 @@ describe('UpstashSessionStore', () => {
       mockKv.set.mockResolvedValue('OK');
       mockKv.get.mockResolvedValue('1');
       const result = await store.ping();
-      expect(result).toEqual({ healthy: true, error: null });
+      expect(result).toEqual({ healthy: true, error: null, circuit: 'CLOSED' });
     });
 
     it('returns { healthy: false } with error message when store is unreachable', async () => {

@@ -480,6 +480,93 @@ app.get('/api/auth/logout', async (req, res) => {
   });
 });
 
+/**
+ * Safe OAuth token summary for /api/auth/debug — no secrets or raw JWTs.
+ */
+function summarizeOAuthTokensForDebug(tokens) {
+  if (!tokens || typeof tokens !== 'object') {
+    return { present: false };
+  }
+  const at = typeof tokens.accessToken === 'string' ? tokens.accessToken : '';
+  return {
+    present: true,
+    accessTokenLength: at.length,
+    accessTokenStub: at === '_cookie_session',
+    accessTokenLooksLikeJwt: at.startsWith('eyJ'),
+    hasRefreshToken:
+      typeof tokens.refreshToken === 'string' &&
+      tokens.refreshToken.length > 0 &&
+      tokens.refreshToken !== '_cookie_session',
+    hasIdToken: typeof tokens.idToken === 'string' && tokens.idToken.length > 0,
+    expiresAt: tokens.expiresAt ?? null,
+    expiresInSec:
+      typeof tokens.expiresAt === 'number'
+        ? Math.round((tokens.expiresAt - Date.now()) / 1000)
+        : null,
+  };
+}
+
+/**
+ * High-signal hints for Vercel/session issues (compare with ?deep=1 Redis probe).
+ */
+function buildSessionDiagnosisHints(req, { sessionStoreHealthy, accessTokenStub, redisPersist }) {
+  const hints = [];
+  const stub = accessTokenStub === true;
+
+  if (req.session?._restoredFromCookie) {
+    hints.push(
+      'sessionRestored: express had no user before _auth cookie middleware — identity rebuilt from signed cookie.',
+    );
+  }
+  if (stub) {
+    hints.push(
+      'accessToken is _cookie_session stub — no real OAuth token in req.session (cookie restore, or session save failed after OAuth).',
+    );
+  }
+  if (sessionStoreHealthy === false) {
+    hints.push('Session store ping failed or circuit open — see sessionStoreError and sessionCircuitState.');
+  }
+  if (redisPersist && typeof redisPersist === 'object') {
+    if (redisPersist.redisReadSkipped === 'circuit_open_reads_bypass_redis') {
+      hints.push(
+        'Circuit OPEN: store.get() does not read Redis — you can get an empty session + cookie stub even if Redis has rows for other sids.',
+      );
+    }
+    if (redisPersist.redisKeyPresent === false) {
+      hints.push(
+        'Redis has no session row for this connect.sid — never saved, expired, or sid changed after OAuth. Sign in again.',
+      );
+    }
+    if (
+      redisPersist.redisKeyPresent === true &&
+      redisPersist.redisAccessTokenStub === false &&
+      stub
+    ) {
+      hints.push(
+        'ANOMALY: Redis row has non-stub token for this sid but req.session has stub — investigate cache/session ordering.',
+      );
+    }
+    if (
+      redisPersist.redisKeyPresent === true &&
+      redisPersist.redisAccessTokenStub === true &&
+      stub
+    ) {
+      hints.push('Redis row for this sid also has stub token — persisted cookie-only state.');
+    }
+    if (
+      redisPersist.redisKeyPresent === true &&
+      redisPersist.redisAccessTokenStub === false &&
+      !stub
+    ) {
+      hints.push('Redis row and req.session both have real tokens — OK.');
+    }
+  }
+  if (!stub && req.session?.oauthTokens?.accessToken && String(req.session.oauthTokens.accessToken).startsWith('eyJ')) {
+    hints.push('req.session has JWT-shaped access token — OK for BFF-backed routes.');
+  }
+  return hints;
+}
+
 // Debug endpoint — shows auth state for the current request (Vercel debugging).
 // Returns cookie presence, session state, and platform flags.
 // No secrets are exposed.
@@ -489,6 +576,11 @@ app.get('/api/auth/debug', async (req, res) => {
       (req.headers.cookie || '').split(';').map(p => [p.split('=')[0].trim(), 1])
     )
   ).filter(Boolean);
+
+  const deepProbe =
+    req.query.deep === '1' ||
+    req.query.deep === 'true' ||
+    req.query.deep === '';
 
   // Quick store health check — cached for 60 s to avoid burning Upstash request quota.
   // Wire-protocol ping is skipped to avoid adding latency to the debug response.
@@ -514,15 +606,59 @@ app.get('/api/auth/debug', async (req, res) => {
     }
   }
 
+  const accessTokenStub = req.session?.oauthTokens?.accessToken === '_cookie_session';
+  const cookieOnlyBffSession =
+    req.session?._restoredFromCookie === true || accessTokenStub;
+  const token = req.session?.oauthTokens?.accessToken;
+  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  const oauthUserWouldAuthenticate = !!(
+    req.session?.user &&
+    hasOAuthToken &&
+    req.session.oauthType === 'user'
+  );
+
+  let redisPersist = null;
+  if (deepProbe && upstashSessionStoreInstance && typeof upstashSessionStoreInstance.getPersistenceDebug === 'function') {
+    redisPersist = await upstashSessionStoreInstance.getPersistenceDebug(req.session?.id);
+  }
+
+  const sessionInMemoryCache =
+    upstashSessionStoreInstance &&
+    typeof upstashSessionStoreInstance.hasInMemorySessionCache === 'function'
+      ? upstashSessionStoreInstance.hasInMemorySessionCache(req.session?.id)
+      : null;
+
+  const oauthTokenSummary = summarizeOAuthTokensForDebug(req.session?.oauthTokens);
+  const diagnosisHints = buildSessionDiagnosisHints(req, {
+    sessionStoreHealthy,
+    accessTokenStub,
+    redisPersist,
+  });
+  if (sessionInMemoryCache === true && accessTokenStub) {
+    diagnosisHints.push(
+      'sessionInMemoryCache: true — this instance cached the session blob; it still has stub tokens (not a simple cold-cache miss).',
+    );
+  }
+
   res.json({
     platform: { vercel: !!process.env.VERCEL, replit: !!process.env.REPL_ID, production: isProduction },
+    request: {
+      vercelId: req.get('x-vercel-id') || null,
+      vercelDeploymentId: req.get('x-vercel-deployment-id') || null,
+      forwardedFor: (req.get('x-forwarded-for') || '').split(',')[0]?.trim() || null,
+    },
     sessionPresent:    !!req.session,
     sessionId:         req.session?.id ? req.session.id.slice(0, 8) + '...' : null,
+    sessionIdLength:   req.session?.id ? String(req.session.id).length : null,
     sessionHasUser:    !!req.session?.user,
     sessionOauthType:  req.session?.oauthType || null,
+    sessionClientType: req.session?.clientType || null,
     sessionRestored:   !!req.session?._restoredFromCookie,
     sessionHasTokens:  !!req.session?.oauthTokens?.accessToken,
-    accessTokenStub:   req.session?.oauthTokens?.accessToken === '_cookie_session',
+    accessTokenStub,
+    oauthTokenSummary,
+    cookieOnlyBffSession,
+    oauthUserWouldAuthenticate,
     cookiesPresent:    cookieNames,
     hasAuthCookie:     cookieNames.includes('_auth'),
     hasPkceCookie:     cookieNames.includes('_pkce'),
@@ -535,6 +671,13 @@ app.get('/api/auth/debug', async (req, res) => {
     sessionStoreError,
     /** Circuit breaker state: CLOSED (normal) | OPEN (bypassing Redis) | HALF_OPEN (probing) */
     sessionCircuitState: upstashSessionStoreInstance?._circuit?.state ?? null,
+    sessionCircuitLastError: upstashSessionStoreInstance?._circuit?.lastError ?? null,
+    /** Age of cached ping result (ms); null if not yet pinged. */
+    sessionPingCacheAgeMs: upstashSessionStoreInstance?._pingCache
+      ? Date.now() - upstashSessionStoreInstance._pingCache.ts
+      : null,
+    /** Warm Lambda: session blob served from 45s in-process cache (Upstash only). */
+    sessionInMemoryCache,
     /** Backward-compat: 'redis' when any persistent store is active, 'memory' otherwise. */
     bffSessionStore: sessionStore ? 'redis' : 'memory',
     /** Which env supplied the store credentials. */
@@ -547,6 +690,14 @@ app.get('/api/auth/debug', async (req, res) => {
     isConfigured:      configStore.isConfigured(),
     userEmail:         req.session?.user?.email || null,
     userRole:          req.session?.user?.role || null,
+    diagnosisHints,
+    /** One Redis GET for current sid — pass ?deep=1. Omitted unless deep probe ran. */
+    redisPersist,
+    debugHelp: {
+      deepQuery:
+        'Add ?deep=1 to run one Upstash GET for this session id and compare redis row vs req.session (extra read quota).',
+      deepProbeUsed: !!(deepProbe && upstashSessionStoreInstance),
+    },
   });
 });
 
@@ -568,7 +719,9 @@ app.get('/api/auth/oauth/redirect-info', (req, res) => {
 
 // Attach cached session-store health to req so /api/auth/session can include it.
 app.use('/api/auth', (req, _res, next) => {
-  req._sessionStoreError = upstashSessionStoreInstance?._pingCache?.result?.error ?? null;
+  const ping = upstashSessionStoreInstance?._pingCache?.result;
+  req._sessionStoreError = ping?.error ?? null;
+  req._sessionStoreHealthy = typeof ping?.healthy === 'boolean' ? ping.healthy : null;
   next();
 });
 app.use('/api/auth', authRoutes);

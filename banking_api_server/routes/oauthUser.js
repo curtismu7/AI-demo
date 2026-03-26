@@ -388,13 +388,16 @@ router.get('/callback', async (req, res) => {
 
       req.session.save((saveErr) => {
         if (saveErr) {
-          // Non-fatal: log and continue. The _auth cookie below lets the restore
-          // middleware rebuild a basic session on Vercel instances without this session.
-          // Tokens may be lost (cookie-only session) but user lands on the dashboard.
-          console.warn('[oauth/user/callback] Session save FAILED — user will get cookie-only session:', saveErr.message);
-        } else {
-          console.log('[oauth/user/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
+          console.error('[oauth/user/callback] Session save FAILED — aborting login (no _auth cookie):', saveErr.message);
+          return req.session.destroy((destroyErr) => {
+            if (destroyErr) {
+              console.error('[oauth/user/callback] session.destroy after failed save:', destroyErr.message);
+            }
+            clearAuthCookie(res, _isProd());
+            return res.redirect(`${origin}/login?error=session_persist_failed`);
+          });
         }
+        console.log('[oauth/user/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
 
         // Set a signed auth-state cookie so the session-restore middleware can
         // answer /status and /nl requests even when the session hits a different
