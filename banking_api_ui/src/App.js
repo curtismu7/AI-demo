@@ -566,7 +566,7 @@ function AppWithAuth() {
           )}
           {!isLogsRoute && (
             <button
-              className="log-viewer-fab"
+              className="api-traffic-fab"
               onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1200,height=800,scrollbars=yes,resizable=yes')}
               title="Open API Traffic Viewer in new window"
               type="button"

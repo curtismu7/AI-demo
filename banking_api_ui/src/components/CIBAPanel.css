@@ -2,11 +2,11 @@
    CIBAPanel.css — styles for the floating CIBA drawer
    ========================================================= */
 
-/* ---------- CIBA guide trigger — top of top-right stack (same width/height as CIMD / Logs / Demo config) ---------- */
+/* ---------- CIBA guide trigger — top of left-side rail (same width/height as CIMD / Logs / Demo config) ---------- */
 .ciba-fab {
   position: fixed;
   top: var(--stack-fab-top-base, 16px);
-  right: var(--float-edge, 28px);
+  left: var(--float-edge, 28px);
   z-index: 1001;
   box-sizing: border-box;
   display: inline-flex;

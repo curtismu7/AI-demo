@@ -7,7 +7,7 @@
 .cimd-fab {
   position: fixed;
   top: var(--stack-fab-top-cimd, 68px);
-  right: var(--float-edge, 28px);
+  left: var(--float-edge, 28px);
   z-index: 1001;
   display: inline-flex;
   align-items: center;

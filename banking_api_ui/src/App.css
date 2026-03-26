@@ -12,15 +12,16 @@
   --agent-panel-bottom: calc(
     var(--ciba-bottom) + var(--ciba-action-height) + var(--float-gap)
   );
-  /* Top-right stack: CIBA → CIMD → Logs → Demo config — shared width/height; tops = base + n×(height+gap) */
+  /* Left-side rail: CIBA → CIMD → Logs → API → Demo config — shared width/height; tops = base + n×(height+gap) */
   --stack-fab-width: 220px;
   --stack-fab-height: 44px;
   --stack-fab-gap: 8px;
   --stack-fab-top-base: 16px;
   --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
   --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-demo: calc(var(--stack-fab-top-logs) + var(--stack-fab-height) + var(--stack-fab-gap));
-  /* Keep fixed top-right FABs inside the viewport (narrow widths, safe area, scrollbar) */
+  --stack-fab-top-api:  calc(var(--stack-fab-top-logs)  + var(--stack-fab-height) + var(--stack-fab-gap));
+  --stack-fab-top-demo: calc(var(--stack-fab-top-api)   + var(--stack-fab-height) + var(--stack-fab-gap));
+  /* Keep left-side FABs inside the viewport */
   --stack-fab-viewport-max: max(
     0px,
     calc(
@@ -207,11 +208,11 @@
   to { transform: rotate(360deg); }
 }
 
-/* Log Viewer FAB — below CIMD in top-right stack (size matches --stack-fab-*) */
+/* Log Viewer FAB — below CIMD in left-side rail (size matches --stack-fab-*) */
 .log-viewer-fab {
   position: fixed;
   top: var(--stack-fab-top-logs, 120px);
-  right: var(--float-edge, 28px);
+  left: var(--float-edge, 28px);
   box-sizing: border-box;
   width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
   max-width: var(--stack-fab-viewport-max, 100vw);
@@ -255,21 +256,64 @@
     --stack-fab-top-base: 14px;
     --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
     --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-demo: calc(var(--stack-fab-top-logs) + var(--stack-fab-height) + var(--stack-fab-gap));
+    --stack-fab-top-api:  calc(var(--stack-fab-top-logs)  + var(--stack-fab-height) + var(--stack-fab-gap));
+    --stack-fab-top-demo: calc(var(--stack-fab-top-api)   + var(--stack-fab-height) + var(--stack-fab-gap));
   }
   .ciba-fab,
   .cimd-fab,
   .log-viewer-fab,
+  .api-traffic-fab,
   .demo-config-fab {
     font-size: 0.75rem;
   }
 }
 
-/* Global Demo Config FAB — bottom of top-right stack */
+/* API Traffic FAB — 4th slot in left-side rail */
+.api-traffic-fab {
+  position: fixed;
+  top: var(--stack-fab-top-api, 172px);
+  left: var(--float-edge, 28px);
+  box-sizing: border-box;
+  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
+  max-width: var(--stack-fab-viewport-max, 100vw);
+  min-width: 0;
+  height: var(--stack-fab-height, 44px);
+  min-height: var(--stack-fab-height, 44px);
+  padding: 0 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.25);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
+  z-index: 1001;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.api-traffic-fab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
+}
+
+.api-traffic-fab:active {
+  transform: scale(0.97);
+}
+
+/* Global Demo Config FAB — bottom of left-side rail */
 .demo-config-fab {
   position: fixed;
-  top: var(--stack-fab-top-demo, 172px);
-  right: var(--float-edge, 28px);
+  top: var(--stack-fab-top-demo, 224px);
+  left: var(--float-edge, 28px);
   box-sizing: border-box;
   width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
   max-width: var(--stack-fab-viewport-max, 100vw);
@@ -452,6 +496,11 @@
   .log-viewer-fab:focus,
   .log-viewer-fab:focus-visible,
   .log-viewer-fab:active,
+  .api-traffic-fab,
+  .api-traffic-fab:hover,
+  .api-traffic-fab:focus,
+  .api-traffic-fab:focus-visible,
+  .api-traffic-fab:active,
   .demo-config-fab,
   .demo-config-fab:hover,
   .demo-config-fab:focus,
