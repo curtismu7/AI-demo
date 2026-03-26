@@ -82,6 +82,14 @@ function AppWithAuth() {
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   const [apiTrafficOpen, setApiTrafficOpen] = useState(false);
+
+  // Allow EducationBar (and any other component) to toggle the API Traffic Panel via custom event.
+  useEffect(() => {
+    const handler = () => setApiTrafficOpen((v) => !v);
+    window.addEventListener('toggle-api-traffic', handler);
+    return () => window.removeEventListener('toggle-api-traffic', handler);
+  }, []);
+
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);

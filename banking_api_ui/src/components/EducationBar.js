@@ -35,6 +35,12 @@ export default function EducationBar() {
     setMenuOpen(false);
   };
 
+  const toggleApiTraffic = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('toggle-api-traffic'));
+    }
+  };
+
   return (
     <div className="edu-bar" role="navigation" aria-label="Learn topics">
       <div className="edu-bar-inner">
@@ -100,6 +106,9 @@ export default function EducationBar() {
         </button>
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openCimd}>
           CIMD
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={toggleApiTraffic} title="Toggle API Traffic Viewer">
+          🌐 API
         </button>
       </div>
     </div>
