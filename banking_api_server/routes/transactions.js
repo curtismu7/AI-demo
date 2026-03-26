@@ -6,8 +6,7 @@ const { blockInDemoMode } = require('../middleware/demoMode');
 const runtimeSettings = require('../config/runtimeSettings');
 const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 const configStore = require('../services/configStore');
-const demoScenarioStore = require('../services/demoScenarioStore');
-const txConsent = require('../services/transactionConsentChallenge');
+const { sendTransactionConfirmation } = require('../services/emailService');
 
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -35,12 +34,12 @@ router.get('/', authenticateToken, requireScopes(['banking:transactions:read', '
 
 
 // Get user's own transactions (end users)
-// Authenticated user's own transactions — scope-independent for stable dashboard hydration.
-router.get('/my', authenticateToken, async (req, res) => {
+router.get('/my', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
   try {
-    // Do not cache in the browser — deposits/transfers from the agent must show on the next GET.
+    // Add cache headers for frequent polling
     res.set({
-      'Cache-Control': 'private, no-store',
+      'Cache-Control': 'private, max-age=10', // Cache for 10 seconds
+      'ETag': `"transactions-${req.user.id}-${Date.now()}"`,
     });
     
     const userTransactions = dataStore.getTransactionsByUserId(req.user.id);
@@ -81,53 +80,6 @@ router.get('/my', authenticateToken, async (req, res) => {
   }
 });
 
-// ── HITL: consent challenges (must be registered before GET /:id) ─────────────
-router.post(
-  '/consent-challenge',
-  authenticateToken,
-  requireScopes(['banking:transactions:write', 'banking:write']),
-  async (req, res) => {
-    const out = txConsent.createChallenge(req, req.body);
-    if (!out.ok) return res.status(out.status).json(out.json);
-    res.status(201).json({
-      challengeId: out.challengeId,
-      expiresAt: new Date(out.expiresAt).toISOString(),
-      snapshot: out.snapshot,
-    });
-  },
-);
-
-router.get(
-  '/consent-challenge/:challengeId',
-  authenticateToken,
-  requireScopes(['banking:transactions:write', 'banking:write']),
-  async (req, res) => {
-    const out = txConsent.getChallenge(req, req.params.challengeId);
-    if (!out.ok) return res.status(out.status).json(out.json);
-    res.json({
-      challengeId: out.challengeId,
-      snapshot: out.snapshot,
-      status: out.status,
-      expiresAt: new Date(out.expiresAt).toISOString(),
-    });
-  },
-);
-
-router.post(
-  '/consent-challenge/:challengeId/confirm',
-  authenticateToken,
-  requireScopes(['banking:transactions:write', 'banking:write']),
-  async (req, res) => {
-    const out = txConsent.confirmChallenge(req, req.params.challengeId);
-    if (!out.ok) return res.status(out.status).json(out.json);
-    res.json({
-      challengeId: out.challengeId,
-      status: 'confirmed',
-      confirmExpiresAt: new Date(out.confirmExpiresAt).toISOString(),
-    });
-  },
-);
-
 // Get transaction by ID (admin or transaction owner)
 router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
   try {
@@ -151,7 +103,7 @@ router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read'
 // Create new transaction (admin or end user)
 router.post('/', authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
   try {
-    const { fromAccountId, toAccountId, amount, type, description, userId, consentChallengeId } = req.body;
+    const { fromAccountId, toAccountId, amount, type, description, userId } = req.body;
 
     // Validate amount
     const parsedAmount = parseFloat(req.body.amount);
@@ -161,7 +113,6 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
     if (parsedAmount > 1_000_000) {
       return res.status(400).json({ error: 'amount_exceeds_limit', message: 'Transaction amount cannot exceed $1,000,000.' });
     }
-    // Transfers use the same positive-amount rule as deposits/withdrawals (no extra $50 floor — that blocked small transfers and drained savings)
     // Round to 2 decimal places to prevent floating-point manipulation
     req.body.amount = Math.round(parsedAmount * 100) / 100;
 
@@ -226,26 +177,10 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       }
     }
 
-    // ── High-value server-bound consent (HITL challenge consumed here) ───────
-    if (
-      req.user.role !== 'admin' &&
-      ['transfer', 'withdrawal', 'deposit'].includes(type) &&
-      parseFloat(amount) > txConsent.HIGH_VALUE_CONSENT_USD
-    ) {
-      const consumed = txConsent.verifyAndConsumeChallenge(req, consentChallengeId, req.body);
-      if (!consumed.ok) {
-        return res.status(consumed.status).json(consumed.json);
-      }
-    }
-    // ── End high-value consent ──────────────────────────────────────────────
-
     // ── Step-up MFA gate ─────────────────────────────────────────────────────
     // Transfers and withdrawals above the threshold require a fresh MFA token.
     // All values are read from runtimeSettings (configurable via admin UI at /settings).
-    const STEP_UP_THRESHOLD = await demoScenarioStore.getStepUpThreshold(
-      req.user.id,
-      runtimeSettings.get('stepUpAmountThreshold'),
-    );
+    const STEP_UP_THRESHOLD = runtimeSettings.get('stepUpAmountThreshold');
     const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue');
     const STEP_UP_TYPES = runtimeSettings.get('stepUpTransactionTypes');
     const STEP_UP_ENABLED = runtimeSettings.get('stepUpEnabled');
@@ -361,9 +296,25 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       
       // Log transaction creation with client type
       console.log(`💰 [Transaction] Transfer created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
-      
-      res.status(201).json({ 
-        message: 'Transfer completed successfully', 
+
+      // Send confirmation email (fire-and-forget)
+      if (req.user.email) {
+        const fromAcc = dataStore.getAccountById(fromAccountId);
+        const toAcc   = dataStore.getAccountById(toAccountId);
+        const userName = req.user.firstName || req.user.name || req.user.username;
+        sendTransactionConfirmation(req.user.email, {
+          type: 'transfer',
+          amount,
+          fromAccount: fromAcc ? `${fromAcc.accountType} — ${fromAcc.accountNumber}` : fromAccountId,
+          toAccount:   toAcc   ? `${toAcc.accountType} — ${toAcc.accountNumber}`     : toAccountId,
+          newBalance:  fromAcc ? dataStore.getAccountById(fromAccountId)?.balance : undefined,
+          transactionId: withdrawalTransaction.id,
+          userName,
+        });
+      }
+
+      res.status(201).json({
+        message: 'Transfer completed successfully',
         withdrawalTransaction,
         depositTransaction
       });
@@ -391,10 +342,26 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       
       // Log transaction creation with client type
       console.log(`💰 [Transaction] ${type} created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
-      
-      res.status(201).json({ 
-        message: 'Transaction created successfully', 
-        transaction 
+
+      // Send confirmation email (fire-and-forget)
+      if (req.user.email) {
+        const accountId = toAccountId || fromAccountId;
+        const account   = accountId ? dataStore.getAccountById(accountId) : null;
+        const userName  = req.user.firstName || req.user.name || req.user.username;
+        sendTransactionConfirmation(req.user.email, {
+          type: type === 'withdrawal' ? 'withdrawal' : 'deposit',
+          amount,
+          fromAccount: fromAccountId ? (account ? `${account.accountType} — ${account.accountNumber}` : fromAccountId) : undefined,
+          toAccount:   toAccountId   ? (account ? `${account.accountType} — ${account.accountNumber}` : toAccountId)   : undefined,
+          newBalance:  account?.balance,
+          transactionId: transaction.id,
+          userName,
+        });
+      }
+
+      res.status(201).json({
+        message: 'Transaction created successfully',
+        transaction
       });
     }
   } catch (error) {

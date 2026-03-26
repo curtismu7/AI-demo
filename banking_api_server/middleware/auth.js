@@ -1,10 +1,12 @@
 const bcrypt = require('bcryptjs');
 const oauthConfig = require('../config/oauth');
 const { validateToken: validatePingOneToken } = require('../services/tokenValidationService');
-const {
-  BANKING_SCOPES,
+const { 
+  BANKING_SCOPES, 
+  USER_TYPE_SCOPES, 
   ROUTE_SCOPE_MAP,
   getCurrentEnvironmentConfig,
+  getScopesForUserType,
   isValidScope
 } = require('../config/scopes');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
@@ -17,41 +19,11 @@ const {
 // Environment configuration
 const SKIP_TOKEN_SIGNATURE_VALIDATION = process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true';
 const DEBUG_TOKENS = process.env.DEBUG_TOKENS === 'true';
+const DEBUG_SCOPES = process.env.DEBUG_SCOPES === 'true';
 const ENDUSER_AUDIENCE = process.env.ENDUSER_AUDIENCE || 'banking_jk_enduser';
 const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || 'banking_mcp_01_JK';
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
 const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
-// Routes intentionally NOT accessible with a cookie-only (_cookie_session) session.
-// All other routes allow cookie-only sessions through — identity is confirmed by the
-// signed _auth cookie and the session.user record.  Routes that need a real bearer
-// token (MCP tool calls, token exchange) check for '_cookie_session' themselves and
-// return a diagnostic session_not_hydrated error instead of a generic 401.
-// requireScopes() bypasses scope validation for fromSession:true users (role-based trust).
-// requireAdmin() uses the role stored in session.user (preserved in the _auth cookie).
-const COOKIE_SESSION_BLOCKED_ROUTES = new Set([
-  // Nothing currently blocked — all routes are accessible in degraded (cookie-only) mode.
-  // Add entries here ONLY for routes that must never be reachable without a real bearer token.
-]);
-
-function normalizeRouteKey(routeKey) {
-  if (!routeKey || typeof routeKey !== 'string') return '';
-  const [method, rawPath] = routeKey.split(' ');
-  if (!method || !rawPath) return routeKey;
-  const cleanPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, '') : rawPath;
-  return `${method} ${cleanPath}`;
-}
-
-/**
- * Banking data (accounts, transactions) is keyed by datastore user id (session.user.id).
- * PingOne access tokens carry subject = decoded.sub, which usually equals session.user.oauthId
- * but not session.user.id. Use the datastore id whenever the session matches the token.
- */
-function canonicalBankingUserId(decodedSub, sessionUser, sessionMatchesSub) {
-  if (sessionMatchesSub && sessionUser && sessionUser.id) {
-    return sessionUser.id;
-  }
-  return decodedSub;
-}
 
 // Get current environment configuration
 const envConfig = getCurrentEnvironmentConfig();
@@ -315,18 +287,14 @@ const requireScopes = (requiredScopes, requireAll = false) => {
       // Normalize required scopes to array
       const scopesToCheck = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
 
-      // Role bypass: users authenticated via the Backend-for-Frontend (BFF) session (PingOne token stored server-side)
-      // may not have banking:* scopes in their PingOne token. Trust them based on role.
-      // Only applies to session-sourced tokens (fromSession:true) — raw Bearer tokens are
-      // still subject to scope enforcement so tests and direct API access behave correctly.
-      const isTrustedSessionOAuthUser = req.user.tokenType === 'oauth'
-        && req.user.fromSession
-        && ['user', 'customer', 'readonly', 'admin'].includes(req.user.role);
-      if (isTrustedSessionOAuthUser) {
-        logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — user has trusted OAuth role', {
+      // Admin role bypass: users with role=admin are trusted as having all banking scopes.
+      // This allows OAuth users whose PingOne token only carries standard OIDC scopes
+      // (openid/profile/email) to still access admin-gated routes without requiring
+      // custom banking:* scopes to be provisioned in PingOne.
+      if (req.user.role === 'admin') {
+        logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — user has admin role', {
           ...requestContext,
-          required_scopes: scopesToCheck,
-          user_role: req.user.role
+          required_scopes: scopesToCheck
         });
         return next();
       }
@@ -572,9 +540,6 @@ const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    const sessionToken = req.session?.oauthTokens?.accessToken;
-    const sessionUser = req.session?.user;
-    const routeKey = normalizeRouteKey(`${req.method} ${req.originalUrl?.split('?')[0] || req.path || req.url}`);
 
     logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Starting token authentication', {
       ...requestContext,
@@ -582,42 +547,11 @@ const authenticateToken = async (req, res, next) => {
       has_token: !!token
     });
 
-    // Cookie-restored session: user's identity is confirmed by the signed _auth cookie
-    // and the session.user record even when the session store is unhealthy (Vercel cold
-    // start, Upstash outage, etc.).  Allow ALL routes through — routes that specifically
-    // require a real bearer token (MCP tool proxy, token exchange) detect '_cookie_session'
-    // themselves and return a diagnostic session_not_hydrated 401 with fix instructions.
-    // requireScopes() bypasses scope checks for fromSession:true users; requireAdmin()
-    // reads role from session.user which is preserved in the signed _auth cookie.
-    if (!token && sessionToken === '_cookie_session' && sessionUser
-        && !COOKIE_SESSION_BLOCKED_ROUTES.has(routeKey)) {
-      req.user = {
-        id: sessionUser.id,
-        username: sessionUser.username || sessionUser.email || sessionUser.id,
-        email: sessionUser.email || null,
-        firstName: sessionUser.firstName || null,
-        lastName: sessionUser.lastName || null,
-        role: sessionUser.role || 'user',
-        clientType: req.session?.clientType || 'enduser',
-        userType: sessionUser.role === 'admin' ? 'admin' : 'customer',
-        tokenType: 'oauth',
-        fromSession: true,
-        restoredFromCookie: true,
-        acr: null,
-        scopes: []
-      };
-      logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Cookie-restored session accepted (degraded mode — no real bearer token)', {
-        ...requestContext,
-        route: routeKey,
-        user_id: sessionUser.id
-      });
-      return next();
-    }
-
     if (!token) {
       // Backend-for-Frontend (BFF) session fallback: if the browser SPA has a valid session (session cookie),
       // use the session-stored token for validation instead of requiring the Authorization header.
       // This prevents token relay — the token never needs to leave the backend.
+      const sessionToken = req.session?.oauthTokens?.accessToken;
       if (sessionToken) {
         logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Using session token as fallback (no Authorization header)', requestContext);
         // Re-use the full validation pipeline below via reassignment
@@ -652,23 +586,21 @@ const authenticateToken = async (req, res, next) => {
           );
           const sessionRole = sessionMatchesSub ? su.role : null;
           const derivedRole = (isAdminClient || sessionRole === 'admin') ? 'admin' : 'user';
-          const bankingId = canonicalBankingUserId(decoded.sub, su, sessionMatchesSub);
           req.user = {
-            id: bankingId,
+            id: decoded.sub,
             username: decoded.preferred_username || decoded.sub,
             email: decoded.email,
             firstName: decoded.given_name || null,
             lastName: decoded.family_name || null,
+            name: decoded.name || null,
             role: derivedRole,
             clientType: clientType,
             userType: userType,
             tokenType: 'oauth',
-            fromSession: true,  // token sourced from Backend-for-Frontend (BFF) server-side session
             acr: decoded.acr || null,
-            scopes: scopes,
-            oauthSub: decoded.sub,
+            scopes: scopes
           };
-          logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Session-based token authentication successful (Backend-for-Frontend (BFF))', {
+          logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Session-based token authentication successful (BFF)', {
             ...requestContext,
             subject: decoded.sub,
             client_type: clientType,
@@ -680,32 +612,6 @@ const authenticateToken = async (req, res, next) => {
             ...requestContext,
             error_message: sessionAuthError.message
           });
-          // Expired or malformed JWT in session is common while the BFF session cookie is still valid.
-          // Same trust model as `_cookie_session`: identity comes from session.user + signed _auth cookie.
-          if (sessionUser && !COOKIE_SESSION_BLOCKED_ROUTES.has(routeKey)) {
-            logger.warn(LOG_CATEGORIES.AUTHENTICATION, 'Accepting session.user after session access token validation failed (BFF session still valid)', {
-              ...requestContext,
-              route: routeKey,
-              user_id: sessionUser.id,
-            });
-            req.user = {
-              id: sessionUser.id,
-              username: sessionUser.username || sessionUser.email || sessionUser.id,
-              email: sessionUser.email || null,
-              firstName: sessionUser.firstName || null,
-              lastName: sessionUser.lastName || null,
-              role: sessionUser.role || 'user',
-              clientType: req.session?.clientType || 'enduser',
-              userType: sessionUser.role === 'admin' ? 'admin' : 'customer',
-              tokenType: 'oauth',
-              fromSession: true,
-              restoredFromCookie: false,
-              sessionAccessTokenInvalid: true,
-              acr: null,
-              scopes: [],
-            };
-            return next();
-          }
           if (sessionAuthError instanceof OAuthError) throw sessionAuthError;
           throw new OAuthError(OAUTH_ERROR_TYPES.INVALID_TOKEN, 'Session token validation failed', 401);
         }
@@ -781,20 +687,19 @@ const authenticateToken = async (req, res, next) => {
       );
       const sessionRole = sessionMatchesSub ? su.role : null;
       const derivedRole = (isAdminClient || sessionRole === 'admin') ? 'admin' : 'user';
-      const bankingId = canonicalBankingUserId(decoded.sub, su, sessionMatchesSub);
       req.user = {
-        id: bankingId,
+        id: decoded.sub,
         username: decoded.preferred_username || decoded.sub,
         email: decoded.email,
         firstName: decoded.given_name || null,
         lastName: decoded.family_name || null,
+        name: decoded.name || null,
         role: derivedRole,
         clientType: clientType,
         userType: userType,
         tokenType: 'oauth',
         acr: decoded.acr || null,      // PingOne sets this when acr_values was requested
-        scopes: scopes, // Add parsed scopes to user object
-        oauthSub: decoded.sub,
+        scopes: scopes // Add parsed scopes to user object
       };
       
       return next();
