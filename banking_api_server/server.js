@@ -3,6 +3,8 @@ require('dotenv').config();
 
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
+const { resolveRedisWireUrl } = require('./services/redisWireUrl');
+const { mcpNoBearerResponse } = require('./services/bffSessionGating');
 
 const express = require('express');
 const cors = require('cors');
@@ -47,28 +49,14 @@ if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
 /** @type {string | null} Which env keys supplied the Redis URL (for logs /api/auth/debug). */
 let sessionRedisEnvHint = null;
 
-function _resolveRedisUrl() {
-  if (process.env.REDIS_URL) {
-    sessionRedisEnvHint = 'REDIS_URL';
-    return process.env.REDIS_URL;
-  }
-  const restUrl =
-    process.env.UPSTASH_REDIS_REST_URL ||
-    process.env.KV_REST_API_URL;
-  const restToken =
-    process.env.UPSTASH_REDIS_REST_TOKEN ||
-    process.env.KV_REST_API_TOKEN;
-  if (!restUrl || !restToken) {
-    sessionRedisEnvHint = null;
-    return null;
-  }
-  sessionRedisEnvHint = process.env.UPSTASH_REDIS_REST_URL
-    ? 'UPSTASH_REDIS_REST_*'
-    : 'KV_REST_API_*';
-  // REST URL looks like https://<hostname>.upstash.io — convert to Redis protocol URL.
-  const host = restUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const encToken = encodeURIComponent(restToken);
-  return `rediss://default:${encToken}@${host}:6379`;
+const _redisResolved = resolveRedisWireUrl(process.env);
+const _redisUrl = _redisResolved.url;
+sessionRedisEnvHint = _redisResolved.envHint;
+if (_redisResolved.invalidRedisUrlIgnored) {
+  console.warn(
+    '[session-store] REDIS_URL is set but is not redis:// or rediss:// (wrong value or REST URL pasted). ' +
+      'Ignoring it; using KV_URL or REST-derived URL if available.',
+  );
 }
 
 let sessionStore;
@@ -76,7 +64,6 @@ let sessionStore;
 let sessionRedisClient = null;
 let sessionRedisInitError = null;
 let sessionRedisConnectError = null;
-const _redisUrl = _resolveRedisUrl();
 if (_redisUrl) {
   try {
     // connect-redis v8+ exports { RedisStore } — .default is often undefined in CJS.
@@ -102,10 +89,7 @@ if (_redisUrl) {
       },
     });
     sessionRedisClient = redisClient;
-    redisClient.connect().catch((err) => {
-      sessionRedisConnectError = err.message || String(err);
-      console.error('[session-store] Redis connect error:', err.message);
-    });
+    // connect() is awaited by awaitSessionRedisReady before express-session runs (cold Vercel starts).
     redisClient.on('error', (err) => {
       // Only log the first error per instance; subsequent socket-closed events are redundant
       if (!redisClient._loggedError) {
@@ -128,7 +112,7 @@ if (!sessionStore && (process.env.VERCEL || process.env.REPL_ID || process.env.R
   console.warn(
     `[session-store] WARNING: Running on ${platform} without Redis. ` +
     'Sessions use in-memory store — they will be lost on process restart. ' +
-    'Set REDIS_URL, or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN, or Vercel KV (KV_REST_API_URL + KV_REST_API_TOKEN) for persistent sessions.',
+    'Set REDIS_URL or KV_URL (rediss://…), or UPSTASH_REDIS_REST_* / KV_REST_API_* for persistent sessions.',
   );
 }
 
@@ -297,6 +281,25 @@ app.use('/api/auth/oauth/user/callback', authLimiter);
 
 // Logging middleware
 app.use(morgan('combined'));
+
+/** Wait for Redis before session load/save so serverless cold starts do not race connect-redis. */
+function awaitSessionRedisReady(req, res, next) {
+  if (!sessionRedisClient) return next();
+  if (sessionRedisClient.isReady) return next();
+  sessionRedisClient
+    .connect()
+    .then(() => next())
+    .catch((err) => {
+      sessionRedisConnectError = err.message || String(err);
+      if (!sessionRedisClient._awaitLoggedFail) {
+        sessionRedisClient._awaitLoggedFail = true;
+        console.error('[session-store] Redis connect failed before session:', err.message);
+      }
+      next();
+    });
+}
+
+app.use(awaitSessionRedisReady);
 
 // Session middleware
 app.use(session({
@@ -593,39 +596,6 @@ const { resolveMcpAccessTokenWithEvents } = require('./services/agentMcpTokenSer
 const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./services/mcpWebSocketClient');
 const { callToolLocal } = require('./services/mcpLocalTools');
 const { introspectToken } = require('./middleware/tokenIntrospection');
-
-/** True when /status looks "signed in" but OAuth tokens are not on this instance (Vercel + no Redis). */
-function isCookieOnlyBffSession(req) {
-  return (
-    req.session?._restoredFromCookie === true ||
-    req.session?.oauthTokens?.accessToken === '_cookie_session'
-  );
-}
-
-function mcpNoBearerResponse(req, tokenEvents) {
-  if (isCookieOnlyBffSession(req)) {
-    return {
-      status: 401,
-      body: {
-        error: 'session_not_hydrated',
-        message:
-          'Signed-in state was restored from a cookie, not a full server session — the access token is not available on this instance. ' +
-          'On Vercel: set REDIS_URL, or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN, or Vercel KV (KV_REST_API_URL + KV_REST_API_TOKEN) on this project; redeploy; then sign out and sign in again. ' +
-          'Open GET /api/auth/debug — bffSessionStore should be "redis", sessionRestored false after a fresh login. ' +
-          '“Refresh access token” cannot fix cookie-only sessions until a real Redis session holds refresh_token.',
-        tokenEvents,
-      },
-    };
-  }
-  return {
-    status: 401,
-    body: {
-      error: 'authentication_required',
-      message: 'Sign in to use the banking agent.',
-      tokenEvents,
-    },
-  };
-}
 
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), async (req, res) => {

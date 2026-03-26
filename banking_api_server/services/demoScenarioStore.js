@@ -10,20 +10,16 @@
  */
 'use strict';
 
+const { resolveRedisWireUrl } = require('./redisWireUrl');
+
 const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
 const memory = new Map();
 
-/** Same derivation as server.js session store so REDIS_URL-only deploys still persist demo settings. */
+/** Same derivation as server.js session store (REDIS_URL / KV_URL / REST). */
 function resolveRedisUrl() {
-  if (process.env.REDIS_URL) return process.env.REDIS_URL;
-  const restUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const restToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  if (!restUrl || !restToken) return null;
-  const host = restUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const encToken = encodeURIComponent(restToken);
-  return `rediss://default:${encToken}@${host}:6379`;
+  return resolveRedisWireUrl(process.env).url;
 }
 
 function key(userId) {

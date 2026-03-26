@@ -17,6 +17,7 @@
     "test:oauth-scope": "jest --testPathPattern=oauth-scope-integration.test.js --verbose --forceExit",
     "test:oauth-e2e": "jest --testPathPattern=oauth-e2e-integration.test.js --verbose --forceExit",
     "test:mcp-inspector": "jest --testPathPattern=mcp-inspector --forceExit --verbose",
+    "test:bff-tokens": "jest --testPathPattern='redisWireUrl|bffSessionGating' --forceExit --verbose",
     "verify:token-exchange": "node scripts/verify-token-exchange.js",
     "test:pingone-token-integration": "jest --testPathPattern=token-exchange-pingone --forceExit",
     "test:scope-assignments": "node test-scope-assignments.js",
