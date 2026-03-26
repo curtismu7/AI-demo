@@ -113,6 +113,18 @@ if (_redisUrl) {
         }
       });
     };
+    // Wrap set() — session.save() will call cb(null) even on Redis write failure.
+    // This prevents session_error redirects; the _auth cookie provides the fallback.
+    const _origSet = rawStore.set.bind(rawStore);
+    rawStore.set = (sid, session, cb) => {
+      _origSet(sid, session, (err) => {
+        if (err) {
+          sessionRedisConnectError = err.message || String(err);
+          console.error('[session-store] Redis set error (session not persisted to Redis):', err.message);
+        }
+        if (cb) cb(null);
+      });
+    };
     if (typeof rawStore.destroy === 'function') {
       const _origDestroy = rawStore.destroy.bind(rawStore);
       rawStore.destroy = (sid, cb) => {

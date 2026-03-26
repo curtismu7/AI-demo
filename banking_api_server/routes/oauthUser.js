@@ -173,12 +173,12 @@ router.get('/login', (req, res) => {
     // callback can recover it when the in-memory session is on a different instance.
     setPkceCookie(res, { state, codeVerifier, redirectUri, nonce }, _isProd());
 
-    // Explicitly save before redirecting — required with async stores (Redis/Upstash)
-    // so the state/verifier are persisted before PingOne sends the callback.
+    // Persist PKCE state before redirecting so the callback can validate.
+    // Non-fatal: state/verifier are already in the signed PKCE cookie (setPkceCookie above),
+    // so the callback can recover even when the Redis session write fails (Vercel cold start).
     req.session.save((err) => {
       if (err) {
-        console.error('[oauth/user] Session save error before redirect:', err);
-        return res.redirect(`${getFrontendOrigin(req)}/login?error=session_error`);
+        console.warn('[oauth/user] Session save failed before PingOne redirect (PKCE cookie is fallback):', err.message);
       }
       console.log('Redirecting end user to PingOne Core:', url);
       res.redirect(url);
@@ -371,11 +371,11 @@ router.get('/callback', async (req, res) => {
 
     console.log('End user OAuth login successful for:', authedUser.username);
 
-    // Regenerate session before storing credentials to prevent session fixation
+    // Regenerate session before storing credentials to prevent session fixation.
+    // Non-fatal on Vercel: if regenerate fails we continue with the existing session.
     req.session.regenerate((regenErr) => {
       if (regenErr) {
-        console.error('Session regenerate error:', regenErr);
-        return res.redirect(`${origin}/login?error=session_error`);
+        console.warn('[oauth/user/callback] Session regenerate failed (continuing with existing session):', regenErr.message);
       }
 
       req.session.oauthTokens = oauthTokens;
@@ -388,8 +388,10 @@ router.get('/callback', async (req, res) => {
 
       req.session.save((saveErr) => {
         if (saveErr) {
-          console.error('Session save error:', saveErr);
-          return res.redirect(`${origin}/login?error=session_error`);
+          // Non-fatal: log and continue. The _auth cookie below lets the restore
+          // middleware rebuild a basic session on Vercel instances without this session.
+          // Tokens may be lost (cookie-only session) but user lands on the dashboard.
+          console.warn('[oauth/user/callback] Session save failed (continuing with cookie fallback):', saveErr.message);
         }
 
         // Set a signed auth-state cookie so the session-restore middleware can

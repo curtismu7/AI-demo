@@ -243,10 +243,10 @@ router.get('/callback', async (req, res) => {
     const authedUser = user;
     const redirectOrigin = getFrontendOrigin(req);
 
+    // Non-fatal: if regenerate fails, continue with existing session (Vercel cold start).
     req.session.regenerate((regenErr) => {
       if (regenErr) {
-        console.error('Session regeneration error during OAuth callback:', regenErr);
-        return res.redirect(`${redirectOrigin}/login?error=session_error`);
+        console.warn('[oauth/callback] Session regenerate failed (continuing):', regenErr.message);
       }
       req.session.oauthTokens = oauthTokens;
       req.session.user = authedUser;
@@ -256,8 +256,8 @@ router.get('/callback', async (req, res) => {
       // endpoint runs before session is persisted to the store
       req.session.save((saveErr) => {
         if (saveErr) {
-          console.error('Session save error:', saveErr);
-          return res.redirect(`${redirectOrigin}/login?error=session_error`);
+          // Non-fatal: _auth cookie below lets restore middleware rebuild a basic session.
+          console.warn('[oauth/callback] Session save failed (continuing with cookie fallback):', saveErr.message);
         }
         // Set a signed auth-state cookie so the session-restore middleware can
         // answer /status and /nl requests even when the session hits a different
