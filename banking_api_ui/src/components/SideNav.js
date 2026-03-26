@@ -18,6 +18,7 @@ const ADMIN_NAV = [
       { to: '/activity',     label: 'Activity Logs',   icon: '📋' },
       { to: '/users',        label: 'Users',           icon: '👥' },
       { to: '/accounts',     label: 'Accounts',        icon: '🏦' },
+      { to: '/admin/banking', label: 'Banking admin',   icon: '🏧' },
       { to: '/transactions', label: 'Transactions',    icon: '↔' },
     ],
   },

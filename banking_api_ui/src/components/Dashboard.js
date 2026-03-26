@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import axios from 'axios';
@@ -87,30 +87,33 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
+  const fetchDashboardData = useCallback(async (attempt = 0) => {
+    if (fetchingRef.current && attempt === 0) return;
+    if (attempt === 0) fetchingRef.current = true;
     try {
       setLoading(true);
-      setError('');
+      if (attempt === 0) setError('');
       const [statsResult, activityResult] = await Promise.allSettled([
         bffAxios.get('/api/admin/stats'),
         bffAxios.get('/api/admin/activity/recent?hours=24'),
       ]);
 
       if (statsResult.status === 'rejected') {
-        const error = statsResult.reason;
-        console.error('Dashboard stats error:', error?.response?.data || error?.message || error);
-        const status = error.response?.status;
+        const err = statsResult.reason;
+        console.error('Dashboard stats error:', err?.response?.data || err?.message || err);
+        const status = err.response?.status;
         const detail =
-          error.response?.data?.error_description ||
-          error.response?.data?.message ||
-          error.message ||
+          err.response?.data?.error_description ||
+          err.response?.data?.message ||
+          err.message ||
           '';
+        if (status === 401 && user?.role === 'admin' && attempt < 3) {
+          const delays = [600, 1400, 2200];
+          setForbidden403(false);
+          setError('Reconnecting to admin API…');
+          await new Promise((r) => setTimeout(r, delays[attempt]));
+          return fetchDashboardData(attempt + 1);
+        }
         if (status === 401) {
           setForbidden403(false);
           setError('Your session has expired. Please log in again.');
@@ -143,15 +146,19 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
         console.error('Dashboard activity error:', activityResult.reason?.response?.data || activityResult.reason?.message);
         setRecentActivity([]);
       }
-    } catch (error) {
-      console.error('Dashboard error:', error);
+    } catch (err) {
+      console.error('Dashboard error:', err);
       setForbidden403(false);
-      setError(error.message || 'Failed to load dashboard data');
+      setError(err.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
       fetchingRef.current = false;
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Function to decode JWT token
   const decodeToken = (token) => {
@@ -259,6 +266,9 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
             <button type="button" className="btn btn-secondary" onClick={onLogout}>
               Log out
             </button>
+            <Link to="/admin/banking" className="btn btn-secondary">
+              Banking admin tools
+            </Link>
           </div>
         )}
         {forbidden403 && (

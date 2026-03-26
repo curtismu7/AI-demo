@@ -11,6 +11,7 @@ import UserDashboard from './components/UserDashboard';
 import ActivityLogs from './components/ActivityLogs';
 import Users from './components/Users';
 import Accounts from './components/Accounts';
+import BankingAdminOps from './components/BankingAdminOps';
 import Transactions from './components/Transactions';
 import SecuritySettings from './components/SecuritySettings';
 import Config from './components/Config';
@@ -583,6 +584,7 @@ function AppWithAuth() {
                     <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                    <Route path="/admin/banking" element={user?.role === 'admin' ? <BankingAdminOps user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />

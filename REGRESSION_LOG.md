@@ -5,6 +5,28 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-26 — Customer dashboard: no account rows after login
+
+**Symptom**: After customer login, the dashboard showed “No account data” / empty table even though the demo should auto-provision accounts.
+
+**Root causes (combined)**:
+
+- **401 / session drift** — OAuth status could show authenticated before `GET /api/accounts/my` accepted the token (partially addressed elsewhere by `refreshIfExpiring` on `/api/auth/oauth`).
+- **Transient 5xx / 503** — the UI retried some 5xx but **excluded 503**, so cold-start style responses were not retried.
+- **Empty list** — no client-side retry when the first response returned **200 with `accounts: []`** (provision race).
+
+**Fix**:
+
+- `banking_api_ui/src/services/accountsHydration.js` — `fetchMyAccountsWithResilience`: bounded retries with backoff for **401**, **5xx including 503**, and **empty** lists; respects `userLoggedOut`.
+- `UserDashboard.js` — uses the helper for hydration; empty-state copy + **Retry loading accounts** button.
+- Transient classification for this flow: **429** is not retried in the helper (rate-limit UX unchanged).
+
+**Tests**: `banking_api_ui/src/__tests__/accountsHydration.test.js`
+
+**Ops**: `docs/runbooks/customer-account-hydration.md`
+
+---
+
 ## 2026-03-26 — Had to log out twice
 
 **Symptom**: After clicking Log out, the app still behaved as signed in (or session came back) until logging out again.

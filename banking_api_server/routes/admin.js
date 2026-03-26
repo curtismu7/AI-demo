@@ -419,4 +419,94 @@ router.post('/bootstrap/export', requireAdmin, requireScopes(['banking:admin']),
   }
 });
 
+/**
+ * GET /banking/lookup?q= — find accounts whose number/id matches (substring + digit-only match).
+ * Returns accounts and recent transactions touching those accounts (newest first).
+ */
+router.get('/banking/lookup', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+  try {
+    const raw = String(req.query.q || '').trim();
+    if (!raw) {
+      return res.status(400).json({ error: 'invalid_query', message: 'Query parameter q is required.' });
+    }
+    const qLower = raw.toLowerCase();
+    const qDigits = raw.replace(/\D/g, '');
+    const allAccounts = dataStore.getAllAccounts();
+    const accounts = allAccounts.filter((a) => {
+      if (String(a.accountNumber).toLowerCase().includes(qLower)) return true;
+      if (String(a.id).toLowerCase().includes(qLower)) return true;
+      if (qDigits.length > 0) {
+        const acctDigits = String(a.accountNumber).replace(/\D/g, '');
+        if (acctDigits.includes(qDigits)) return true;
+      }
+      return false;
+    });
+
+    const txns = [];
+    for (const acct of accounts) {
+      for (const t of dataStore.getTransactionsByAccountId(acct.id)) {
+        txns.push({
+          ...t,
+          _accountId: acct.id,
+          _accountNumber: acct.accountNumber,
+        });
+      }
+    }
+    txns.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({
+      accounts,
+      transactions: txns.slice(0, 200),
+    });
+  } catch (error) {
+    console.error('banking lookup error:', error);
+    res.status(500).json({ error: 'lookup_failed', message: error.message });
+  }
+});
+
+/**
+ * POST /banking/accounts/:accountId/seed-charges — add synthetic withdrawal rows (demo / QA).
+ */
+router.post('/banking/accounts/:accountId/seed-charges', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+  try {
+    const account = dataStore.getAccountById(req.params.accountId);
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+    const uid = account.userId;
+    const samples = [
+      { amount: 12.99, description: 'Card purchase — Retail' },
+      { amount: 45.0, description: 'Debit — Fuel' },
+      { amount: 8.25, description: 'Foreign transaction fee' },
+      { amount: 2.5, description: 'ATM surcharge' },
+    ];
+    const created = [];
+    for (const s of samples) {
+      const t = await dataStore.createTransaction({
+        fromAccountId: account.id,
+        toAccountId: null,
+        amount: s.amount,
+        type: 'withdrawal',
+        description: s.description,
+        userId: uid,
+        status: 'completed',
+        performedBy: 'Admin seed',
+        clientType: 'admin',
+        tokenType: 'oauth',
+      });
+      await dataStore.updateAccountBalance(account.id, -s.amount);
+      created.push(t);
+    }
+    const refreshed = dataStore.getAccountById(account.id);
+    res.status(201).json({
+      message: 'Fake bank charges added to account history',
+      transactions: created,
+      account: refreshed,
+    });
+  } catch (error) {
+    console.error('seed-charges error:', error);
+    res.status(500).json({ error: 'seed_failed', message: error.message });
+  }
+});
+
 module.exports = router;

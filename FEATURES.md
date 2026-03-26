@@ -48,7 +48,7 @@ git checkout <last-version-tag> -- <key-file>
 |---|---|---|---|
 | Account overview (`/my` — scope-free BFF dashboard) | active | `banking_api_server/routes/accounts.js`, `banking_api_ui/src/components/Accounts.js` | `s:integration/completeFlow.test.js` |
 | Transaction history (`/my` — scope-free BFF dashboard) | active | `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/Transactions.js` | `s:transaction-flows.test.js` |
-| Customer dashboard page | active | `banking_api_ui/src/components/UserDashboard.js` | — |
+| Customer dashboard page | active | `banking_api_ui/src/components/UserDashboard.js`, `banking_api_ui/src/services/accountsHydration.js` | `accountsHydration.test.js` |
 | Step-up authentication gate (high-value transactions) | active | `banking_api_server/middleware/authorizeGate.js`, `banking_api_server/middleware/stepUpGate.js` | `s:step-up-gate.test.js`, `s:authorize-gate.test.js` |
 | Transaction consent challenge (high-value transfers — PingOne-style consent) | active | `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/TransactionConsentPage.js` | `s:transaction-consent-challenge.test.js` |
 | Agent blocked after consent decline (until re-auth) | active | `banking_api_ui/src/services/agentAccessConsent.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
@@ -60,6 +60,7 @@ git checkout <last-version-tag> -- <key-file>
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
 | Admin dashboard / stats | active | `banking_api_server/routes/admin.js`, `banking_api_ui/src/components/Dashboard.js` | — |
+| Banking admin — account lookup, seed fake charges, delete account/tx | active | `banking_api_server/routes/admin.js` (`/banking/lookup`, `/banking/accounts/:id/seed-charges`), `banking_api_ui/src/components/BankingAdminOps.js` | — |
 | User management (list, create, update, delete) | active | `banking_api_server/routes/users.js`, `banking_api_ui/src/components/Users.js` | `s:auth.test.js` |
 | Activity log viewer | active | `banking_api_server/routes/admin.js`, `banking_api_ui/src/components/ActivityLogs.js`, `banking_api_ui/src/components/LogViewerPage.js` | `s:logs.test.js`, `u:components/__tests__/LogViewer.test.js` |
 | OAuth verbose debug log | active | `banking_api_server/routes/admin.js`, `banking_api_server/services/oauthVerboseLogStore.js`, `banking_api_ui/src/components/OAuthDebugLogViewer.js` | — |

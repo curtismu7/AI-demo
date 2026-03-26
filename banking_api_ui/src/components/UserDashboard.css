@@ -595,6 +595,19 @@
   color: #6b7280;
 }
 
+.account-summary-empty--actionable p {
+  margin: 0 0 12px;
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
+.account-summary-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .account-card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);

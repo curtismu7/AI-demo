@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
 import bffAxios from '../services/bffAxios';
+import { fetchMyAccountsWithResilience, isAccountsHydrationTransientError } from '../services/accountsHydration';
 import { resolveSessionUser } from '../services/sessionResolver';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
@@ -302,12 +303,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
   };
 
-  /** Returns true for transient/server errors worth retrying (network, 5xx, timeout). */
-  const isTransientError = (error) => {
-    const status = error.response?.status;
-    if (!status) return true; // network/timeout — no response at all
-    return status >= 500 && status !== 503; // 5xx except 503 rate-limit style
-  };
+  /** Transient errors for full dashboard fetch (accounts hydration uses the same rules). */
+  const isTransientError = isAccountsHydrationTransientError;
 
   const fetchUserData = async (silent = false, _retryCount = 0) => {
     if (fetchingRef.current) {
@@ -337,8 +334,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       // Accounts first: GET /api/accounts/my may provision demo accounts + sample transactions
       // when the user has none. Running transactions in parallel often finished before
       // provisioning completed, leaving an empty history until a later refresh (regression).
-      const accountsResponse = await bffAxios.get('/api/accounts/my');
-      setAccounts(Array.isArray(accountsResponse.data?.accounts) ? accountsResponse.data.accounts : []);
+      // Retries cover OAuth session/JWT lag (401), cold 5xx, and empty body after provision race.
+      const accountList = await fetchMyAccountsWithResilience(bffAxios);
+      setAccounts(accountList);
       const transactionsResponse = await bffAxios.get('/api/transactions/my');
       setTransactions(Array.isArray(transactionsResponse.data?.transactions) ? transactionsResponse.data.transactions : []);
 
@@ -929,7 +927,19 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
               </div>
             ))}
             {accounts.length === 0 && (
-              <div className="account-summary-empty">No account data available for this user yet.</div>
+              <div className="account-summary-empty account-summary-empty--actionable" role="status" aria-live="polite">
+                <p>No account data loaded yet. This can happen briefly right after sign-in while your session and demo accounts are prepared.</p>
+                <div className="account-summary-empty__actions">
+                  <button
+                    type="button"
+                    className="select-account-btn"
+                    onClick={() => fetchUserData(false)}
+                    disabled={loading}
+                  >
+                    Retry loading accounts
+                  </button>
+                </div>
+              </div>
             )}
           </div>
           </div>
