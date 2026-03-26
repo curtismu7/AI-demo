@@ -23,9 +23,8 @@ import LoadingOverlay from './shared/LoadingOverlay';
 import './BankingAgent.css';
 
 /** Floating agent: collapsed on app home `/`; open on other routes (dashboard URL, demo-data, MCP inspector, …). */
-function isBankingAgentOpenByDefaultForPath(pathname) {
-  const p = pathname && pathname !== '' ? pathname : '/';
-  return p !== '/';
+function isBankingAgentOpenByDefaultForPath(_pathname) {
+  return false;
 }
 
 // ─── Action definitions ────────────────────────────────────────────────────────

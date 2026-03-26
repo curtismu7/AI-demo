@@ -60,6 +60,31 @@
   min-height: 0;
 }
 
+/* Collapsed state — only the header bar is visible */
+.global-embedded-agent-dock-wrap .embedded-agent-dock--collapsed {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Collapse / expand toggle button in the dock header */
+.embedded-dock-collapse-btn {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 5px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1;
+  padding: 3px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: background 0.15s, color 0.15s;
+}
+.embedded-dock-collapse-btn:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
 /* Drag handle between dock title and agent (resize height) */
 .embedded-dock-resize-handle {
   flex-shrink: 0;

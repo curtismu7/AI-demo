@@ -64,7 +64,7 @@
 .api-traffic-header:active { cursor: grabbing; }
 
 .api-traffic-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: #f1f5f9;
   display: flex;
@@ -75,7 +75,7 @@
 }
 
 .api-traffic-count {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: #94a3b8;
   background: #334155;
@@ -94,7 +94,7 @@
   border: 1px solid #334155;
   border-radius: 5px;
   color: #e2e8f0;
-  font-size: 12px;
+  font-size: 13px;
   padding: 3px 8px;
   width: 160px;
   outline: none;
@@ -107,7 +107,7 @@
   border: 1px solid #334155;
   border-radius: 5px;
   color: #94a3b8;
-  font-size: 11px;
+  font-size: 13px;
   padding: 3px 9px;
   cursor: pointer;
   white-space: nowrap;
@@ -135,8 +135,8 @@
 }
 
 .api-traffic-chip {
-  font-size: 11px;
-  padding: 2px 10px;
+  font-size: 13px;
+  padding: 3px 11px;
   border-radius: 20px;
   border: 1px solid #334155;
   background: transparent;
@@ -168,7 +168,7 @@
   padding: 24px 16px;
   text-align: center;
   color: #475569;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -186,13 +186,13 @@
 .api-traffic-entry--error { border-left: 3px solid #ef4444; }
 
 .api-method-badge {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 2px 5px;
+  padding: 2px 6px;
   border-radius: 3px;
   flex-shrink: 0;
-  min-width: 38px;
+  min-width: 42px;
   text-align: center;
 }
 .api-method-badge--GET    { background: #14532d; color: #86efac; }
@@ -210,9 +210,9 @@
 .api-method-badge--TOKEN-T2   { background: #0c4a6e; color: #93c5fd; min-width: 28px; }
 
 .api-status-badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -223,7 +223,7 @@
 .api-status-badge--skip { background: #451a03; color: #fde68a; }
 
 .api-entry-url {
-  font-size: 11px;
+  font-size: 13px;
   color: #94a3b8;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -232,7 +232,7 @@
 }
 
 .api-entry-dur {
-  font-size: 10px;
+  font-size: 12px;
   color: #475569;
   flex-shrink: 0;
 }
@@ -252,7 +252,7 @@
   justify-content: center;
   flex: 1;
   color: #334155;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .api-detail-tabs {
@@ -263,9 +263,9 @@
 }
 
 .api-detail-tab {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
-  padding: 6px 14px;
+  padding: 7px 16px;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -283,7 +283,7 @@
 }
 
 .api-detail-url {
-  font-size: 11px;
+  font-size: 13px;
   color: #64748b;
   word-break: break-all;
   margin-bottom: 10px;
@@ -292,7 +292,7 @@
 
 pre.api-json {
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
   color: #e2e8f0;
   white-space: pre-wrap;
@@ -310,14 +310,14 @@ pre.api-json {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 2px 12px;
-  font-size: 11px;
+  font-size: 13px;
   font-family: monospace;
 }
 .api-detail-kv-key   { color: #93c5fd; padding: 2px 0; white-space: nowrap; }
 .api-detail-kv-val   { color: #e2e8f0; padding: 2px 0; word-break: break-all; }
 
 .api-detail-err {
-  font-size: 12px;
+  font-size: 13px;
   color: #f87171;
   background: #1c0a0a;
   border: 1px solid #7f1d1d;
@@ -343,12 +343,12 @@ pre.api-json {
   flex-wrap: wrap;
 }
 .api-token-event-label {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: #c4b5fd;
 }
 .api-token-event-status {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 10px;
@@ -363,23 +363,23 @@ pre.api-json {
 .api-token-event-status--acquiring { background: #1e293b; color: #94a3b8; }
 
 .api-token-event-alg {
-  font-size: 10px;
+  font-size: 12px;
   color: #64748b;
   font-family: monospace;
   margin-left: auto;
 }
 .api-token-event-rfc {
-  font-size: 11px;
+  font-size: 13px;
   color: #7dd3fc;
   margin: 0 0 8px;
 }
 .api-token-event-may-act {
-  font-size: 11px;
+  font-size: 13px;
   color: #94a3b8;
   margin: 0 0 10px;
 }
 .api-token-event-explanation {
-  font-size: 11px;
+  font-size: 13px;
   color: #94a3b8;
   line-height: 1.6;
   margin: 0;

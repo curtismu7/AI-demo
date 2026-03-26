@@ -41,6 +41,7 @@ import LoadingOverlay from './components/shared/LoadingOverlay';
 import './App.css';
 
 const EMBEDDED_DOCK_AGENT_HEIGHT_KEY = 'banking_embedded_dock_agent_height_px';
+const EMBEDDED_DOCK_COLLAPSED_KEY = 'banking_embedded_dock_collapsed';
 const DEFAULT_EMBEDDED_AGENT_HEIGHT = 380;
 const MIN_EMBEDDED_AGENT_HEIGHT = 220;
 
@@ -80,6 +81,9 @@ function AppWithAuth() {
   const embeddedDockWrapRef = useRef(null);
   const [embeddedAgentBodyHeight, setEmbeddedAgentBodyHeight] = useState(readEmbeddedAgentHeight);
   const [embeddedDockReservePx, setEmbeddedDockReservePx] = useState(420);
+  const [embeddedDockCollapsed, setEmbeddedDockCollapsed] = useState(() => {
+    try { return localStorage.getItem(EMBEDDED_DOCK_COLLAPSED_KEY) === 'true'; } catch { return false; }
+  });
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -362,6 +366,14 @@ function AppWithAuth() {
     return () => window.removeEventListener('userAuthenticated', handler);
   }, [checkOAuthSession]);
 
+  const handleToggleEmbeddedDock = useCallback(() => {
+    setEmbeddedDockCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem(EMBEDDED_DOCK_COLLAPSED_KEY, String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   const updateEmbeddedDockReserve = useCallback(() => {
     const el = embeddedDockWrapRef.current;
     if (!el) return;
@@ -525,7 +537,7 @@ function AppWithAuth() {
               aria-label="AI banking assistant"
             >
               <div
-                className="embedded-agent-dock"
+                className={`embedded-agent-dock${embeddedDockCollapsed ? ' embedded-agent-dock--collapsed' : ''}`}
                 data-agent-theme={effectiveAgentTheme}
               >
                 <div className="embedded-agent-dock__head">
@@ -533,24 +545,37 @@ function AppWithAuth() {
                   <p className="embedded-agent-dock__lead">
                     Natural language and MCP tools along the bottom — step chips show what ran.
                   </p>
+                  <button
+                    type="button"
+                    className="embedded-dock-collapse-btn"
+                    onClick={handleToggleEmbeddedDock}
+                    aria-label={embeddedDockCollapsed ? 'Expand assistant panel' : 'Collapse assistant panel'}
+                    title={embeddedDockCollapsed ? 'Expand' : 'Collapse'}
+                  >
+                    {embeddedDockCollapsed ? '▲' : '▼'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="embedded-dock-resize-handle"
-                  onMouseDown={onEmbeddedDockResizeMouseDown}
-                  aria-label="Drag up or down to resize assistant panel height"
-                  title="Drag up or down to resize the assistant"
-                >
-                  <span className="embedded-dock-resize-handle__grip" aria-hidden="true">
-                    <span className="embedded-dock-resize-handle__bar" />
-                  </span>
-                </button>
-                <div
-                  className="embedded-banking-agent embedded-banking-agent--bottom"
-                  style={{ height: embeddedAgentBodyHeight }}
-                >
-                  <BankingAgent user={user} onLogout={logout} mode="inline" embeddedDockBottom />
-                </div>
+                {!embeddedDockCollapsed && (
+                  <>
+                    <button
+                      type="button"
+                      className="embedded-dock-resize-handle"
+                      onMouseDown={onEmbeddedDockResizeMouseDown}
+                      aria-label="Drag up or down to resize assistant panel height"
+                      title="Drag up or down to resize the assistant"
+                    >
+                      <span className="embedded-dock-resize-handle__grip" aria-hidden="true">
+                        <span className="embedded-dock-resize-handle__bar" />
+                      </span>
+                    </button>
+                    <div
+                      className="embedded-banking-agent embedded-banking-agent--bottom"
+                      style={{ height: embeddedAgentBodyHeight }}
+                    >
+                      <BankingAgent user={user} onLogout={logout} mode="inline" embeddedDockBottom />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
