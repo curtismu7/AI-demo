@@ -548,7 +548,7 @@ const authenticateToken = async (req, res, next) => {
     });
 
     if (!token) {
-      // BFF session fallback: if the browser SPA has a valid session (session cookie),
+      // Backend-for-Frontend (BFF) session fallback: if the browser SPA has a valid session (session cookie),
       // use the session-stored token for validation instead of requiring the Authorization header.
       // This prevents token relay — the token never needs to leave the backend.
       const sessionToken = req.session?.oauthTokens?.accessToken;
@@ -590,6 +590,9 @@ const authenticateToken = async (req, res, next) => {
             id: decoded.sub,
             username: decoded.preferred_username || decoded.sub,
             email: decoded.email,
+            firstName: decoded.given_name || null,
+            lastName: decoded.family_name || null,
+            name: decoded.name || null,
             role: derivedRole,
             clientType: clientType,
             userType: userType,
@@ -688,6 +691,9 @@ const authenticateToken = async (req, res, next) => {
         id: decoded.sub,
         username: decoded.preferred_username || decoded.sub,
         email: decoded.email,
+        firstName: decoded.given_name || null,
+        lastName: decoded.family_name || null,
+        name: decoded.name || null,
         role: derivedRole,
         clientType: clientType,
         userType: userType,

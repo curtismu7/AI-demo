@@ -6,6 +6,7 @@ const { blockInDemoMode } = require('../middleware/demoMode');
 const runtimeSettings = require('../config/runtimeSettings');
 const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 const configStore = require('../services/configStore');
+const { sendTransactionConfirmation } = require('../services/emailService');
 
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -295,9 +296,25 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       
       // Log transaction creation with client type
       console.log(`💰 [Transaction] Transfer created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
-      
-      res.status(201).json({ 
-        message: 'Transfer completed successfully', 
+
+      // Send confirmation email (fire-and-forget)
+      if (req.user.email) {
+        const fromAcc = dataStore.getAccountById(fromAccountId);
+        const toAcc   = dataStore.getAccountById(toAccountId);
+        const userName = req.user.firstName || req.user.name || req.user.username;
+        sendTransactionConfirmation(req.user.email, {
+          type: 'transfer',
+          amount,
+          fromAccount: fromAcc ? `${fromAcc.accountType} — ${fromAcc.accountNumber}` : fromAccountId,
+          toAccount:   toAcc   ? `${toAcc.accountType} — ${toAcc.accountNumber}`     : toAccountId,
+          newBalance:  fromAcc ? dataStore.getAccountById(fromAccountId)?.balance : undefined,
+          transactionId: withdrawalTransaction.id,
+          userName,
+        });
+      }
+
+      res.status(201).json({
+        message: 'Transfer completed successfully',
         withdrawalTransaction,
         depositTransaction
       });
@@ -325,10 +342,26 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       
       // Log transaction creation with client type
       console.log(`💰 [Transaction] ${type} created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
-      
-      res.status(201).json({ 
-        message: 'Transaction created successfully', 
-        transaction 
+
+      // Send confirmation email (fire-and-forget)
+      if (req.user.email) {
+        const accountId = toAccountId || fromAccountId;
+        const account   = accountId ? dataStore.getAccountById(accountId) : null;
+        const userName  = req.user.firstName || req.user.name || req.user.username;
+        sendTransactionConfirmation(req.user.email, {
+          type: type === 'withdrawal' ? 'withdrawal' : 'deposit',
+          amount,
+          fromAccount: fromAccountId ? (account ? `${account.accountType} — ${account.accountNumber}` : fromAccountId) : undefined,
+          toAccount:   toAccountId   ? (account ? `${account.accountType} — ${account.accountNumber}` : toAccountId)   : undefined,
+          newBalance:  account?.balance,
+          transactionId: transaction.id,
+          userName,
+        });
+      }
+
+      res.status(201).json({
+        message: 'Transaction created successfully',
+        transaction
       });
     }
   } catch (error) {
