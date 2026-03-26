@@ -72,6 +72,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
 
   // Listen for full-page agent results dispatched by BankingAgent
   useEffect(() => {
+    const refreshBothDelayed = () => {
+      setTimeout(() => {
+        fetchAccountsOnlyRef.current?.();
+        fetchTransactionsOnlyRef.current?.();
+      }, 300);
+      setTimeout(() => {
+        fetchAccountsOnlyRef.current?.();
+        fetchTransactionsOnlyRef.current?.();
+      }, 1500);
+    };
+
     const handleAgentResult = (e) => {
       const { type, data, label } = e.detail;
       const labelSuffix = label ? ` \u2014 ${label}` : '';
@@ -81,14 +92,12 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setSuccess(`Agent updated accounts${labelSuffix}`);
       } else if (type === 'transactions' && Array.isArray(data)) {
         // Transactions changed — refresh both list AND balances (balance changes on writes)
-        fetchTransactionsOnlyRef.current?.();
-        fetchAccountsOnlyRef.current?.();
+        refreshBothDelayed();
         setAgentHighlight('both');
         setSuccess(`Agent updated transactions${labelSuffix}`);
       } else if (type === 'balance' || type === 'confirm') {
         // Write completed — partial-refresh both silently, no loading spinner
-        fetchAccountsOnlyRef.current?.();
-        fetchTransactionsOnlyRef.current?.();
+        refreshBothDelayed();
         setAgentHighlight('both');
         setSuccess(`Agent completed \u2014 balances & transactions refreshed`);
       }
@@ -100,15 +109,22 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
 
   // Listen for agent data ready events — partial-refresh only what changed, no page reload
   useEffect(() => {
+    const refreshBoth = () => {
+      fetchAccountsOnlyRef.current?.();
+      fetchTransactionsOnlyRef.current?.();
+    };
+
     const handleAgentDataReady = (e) => {
       const { action } = e.detail;
       const isWrite = ['deposit', 'withdraw', 'transfer'].includes(action);
 
       if (isWrite) {
-        // Write: refresh BOTH accounts (balance updated) AND transactions (new entry) in parallel
+        // Write: refresh BOTH accounts (balance updated) AND transactions (new entry).
+        // Short delay lets the server-side write commit before the next read.
         setAgentHighlight('both');
-        fetchAccountsOnlyRef.current?.();
-        fetchTransactionsOnlyRef.current?.();
+        setTimeout(refreshBoth, 300);
+        // Second pass after 1.5s in case the first hit a stale response.
+        setTimeout(refreshBoth, 1500);
       } else if (action === 'accounts' || action === 'balance') {
         setAgentHighlight('accounts');
         fetchAccountsOnlyRef.current?.();

@@ -228,6 +228,32 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
   const [form, setForm] = useState(defaultForm);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Keep select defaults in sync when effectiveUser resolves after mount (async session check)
+  React.useEffect(() => {
+    setForm(f => {
+      const updated = { ...f };
+      for (const field of fields[action] || []) {
+        if (field.type === 'select' && field.options.length > 0) {
+          const isValid = field.options.some(o => o.id === f[field.key]);
+          if (!f[field.key] || !isValid) updated[field.key] = field.options[0].id;
+        }
+      }
+      return updated;
+    });
+  }, [effectiveUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Build a normalized submit payload — resolve any missing select values to the displayed default. */
+  const handleSubmit = () => {
+    const payload = { ...form };
+    for (const field of fields[action] || []) {
+      if (field.type === 'select') {
+        const hasValid = field.options.some(o => o.id === payload[field.key]);
+        if (!payload[field.key] || !hasValid) payload[field.key] = field.options[0]?.id;
+      }
+    }
+    onSubmit(payload);
+  };
+
   return (
     <div className="banking-agent-form">
       {(fields[action] || []).map(f => (
@@ -258,7 +284,7 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
         </div>
       ))}
       <div className="banking-agent-form-actions">
-        <button type="button" className="banking-agent-btn-primary" disabled={loading} onClick={() => onSubmit(form)}>
+        <button type="button" className="banking-agent-btn-primary" disabled={loading} onClick={handleSubmit}>
           {loading ? '…' : 'Run'}
         </button>
         <button type="button" className="banking-agent-btn-ghost" onClick={onCancel}>Cancel</button>

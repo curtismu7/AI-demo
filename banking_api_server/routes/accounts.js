@@ -69,6 +69,7 @@ async function provisionDemoAccounts(userId) {
 // Get user's own accounts — auto-provisions demo accounts on first load
 // Uses authenticated session only (scope-independent) so customer dashboard always hydrates.
 router.get('/my', authenticateToken, async (req, res) => {
+  res.set({ 'Cache-Control': 'private, no-store' });
   try {
     let userAccounts = dataStore.getAccountsByUserId(req.user.id);
     if (userAccounts.length === 0 && req.user.id) {
