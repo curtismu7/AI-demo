@@ -98,7 +98,7 @@ git checkout <last-version-tag> -- <key-file>
 | MCP server WebSocket client | active | `banking_api_server/services/mcpWebSocketClient.js` | — |
 | MCP local tools (fallback when external MCP unavailable) | active | `banking_api_server/services/mcpLocalTools.js` | `s:mcp-local-hitl.test.js` |
 | MCP inspector UI (test MCP tools in-browser) | active | `banking_api_server/routes/mcpInspector.js`, `banking_api_ui/src/components/McpInspector.js`, `banking_api_ui/src/components/McpInspectorSetupWizard.js` | `s:mcp-inspector.test.js` |
-| Agent MCP token service (token exchange for MCP) | active | `banking_api_server/services/agentMcpTokenService.js` | `s:agentMcpTokenService.test.js` |
+| Agent MCP token service (RFC 8693 — requires `mcp_resource_uri`, min user scopes; no user-token passthrough) | active | `banking_api_server/services/agentMcpTokenService.js` | `s:agentMcpTokenService.test.js` |
 | BFF session gating (MCP no-bearer response) | active | `banking_api_server/services/bffSessionGating.js` | `s:bffSessionGating.test.js` |
 | CIMD simulator panel | active | `banking_api_ui/src/components/CimdSimPanel.js` | `u:components/__tests__/CimdSimPanel.test.js` |
 
