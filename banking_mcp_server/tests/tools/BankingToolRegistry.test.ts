@@ -192,6 +192,7 @@ describe('BankingToolRegistry', () => {
       expect(tool?.inputSchema.properties).toHaveProperty('amount');
       expect(tool?.inputSchema.properties).toHaveProperty('description');
       expect(tool?.inputSchema.required).toEqual(['from_account_id', 'to_account_id', 'amount']);
+      expect(tool?.inputSchema.properties?.amount?.minimum).toBe(0.01);
     });
   });
 

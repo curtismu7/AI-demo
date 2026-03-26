@@ -73,9 +73,6 @@ function validateIntent(req, rawBody) {
   if (parsedAmount > 1_000_000) {
     return { ok: false, status: 400, json: { error: 'amount_exceeds_limit', message: 'Transaction amount cannot exceed $1,000,000.' } };
   }
-  if (type === 'transfer' && parsedAmount < 50) {
-    return { ok: false, status: 400, json: { error: 'below_minimum', message: 'Transfer amount must be at least $50.' } };
-  }
 
   const rounded = Math.round(parsedAmount * 100) / 100;
   if (!type) {

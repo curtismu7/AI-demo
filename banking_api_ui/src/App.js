@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -38,7 +38,10 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
-import { shouldShowGlobalFloatingBankingAgentFab } from './utils/embeddedAgentFabVisibility';
+import {
+  isBankingAgentDashboardRoute,
+  shouldShowGlobalFloatingBankingAgentFab,
+} from './utils/embeddedAgentFabVisibility';
 import LoadingOverlay from './components/shared/LoadingOverlay';
 import { setAgentBlockedByConsentDecline } from './services/agentAccessConsent';
 import './App.css';
@@ -86,12 +89,14 @@ function devLog(...args) {
  */
 let _didLogOut = false;
 
-function GlobalFloatingBankingAgent({ user, onLogout, agentUiMode }) {
-  if (!shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode })) return null;
+function GlobalFloatingBankingAgent({ user, onLogout, agentUiMode, pathname }) {
+  if (!shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode, pathname })) return null;
   return <BankingAgent user={user} onLogout={onLogout} mode="float" />;
 }
 
 function AppWithAuth() {
+  const location = useLocation();
+  const pathname = location.pathname || '';
   const { theme: appTheme, effectiveAgentTheme } = useTheme();
   const { mode: agentUiMode, setMode: setAgentUiMode } = useAgentUiMode();
   const embeddedDockWrapRef = useRef(null);
@@ -436,18 +441,20 @@ function AppWithAuth() {
     setEmbeddedDockReservePx(Math.ceil(el.getBoundingClientRect().height) + 8);
   }, []);
 
+  const showEmbeddedDock = agentUiMode === 'embedded' && isBankingAgentDashboardRoute(pathname);
+
   useLayoutEffect(() => {
-    if (agentUiMode !== 'embedded') return undefined;
+    if (!showEmbeddedDock) return undefined;
     updateEmbeddedDockReserve();
     const el = embeddedDockWrapRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(() => updateEmbeddedDockReserve());
     ro.observe(el);
     return () => ro.disconnect();
-  }, [agentUiMode, embeddedAgentBodyHeight, updateEmbeddedDockReserve]);
+  }, [showEmbeddedDock, embeddedAgentBodyHeight, updateEmbeddedDockReserve]);
 
   useEffect(() => {
-    if (agentUiMode !== 'embedded') return undefined;
+    if (!showEmbeddedDock) return undefined;
     const onWinResize = () => {
       const maxH = maxEmbeddedAgentHeight();
       setEmbeddedAgentBodyHeight((h) => Math.max(MIN_EMBEDDED_AGENT_HEIGHT, Math.min(maxH, h)));
@@ -455,7 +462,7 @@ function AppWithAuth() {
     window.addEventListener('resize', onWinResize);
     onWinResize();
     return () => window.removeEventListener('resize', onWinResize);
-  }, [agentUiMode]);
+  }, [showEmbeddedDock]);
 
   const onEmbeddedDockResizeMouseDown = useCallback((e) => {
     e.preventDefault();
@@ -532,20 +539,16 @@ function AppWithAuth() {
     );
   }
 
-  const currentPath =
-    typeof window !== 'undefined' && typeof window.location?.pathname === 'string'
-      ? window.location.pathname
-      : '';
-  const isLogsRoute = currentPath === '/logs' || currentPath.startsWith('/logs/');
+  const isLogsRoute = pathname === '/logs' || pathname.startsWith('/logs/');
 
   return (
-    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <>
       <EducationUIProvider>
       <TokenChainProvider>
         <div
-          className={`App end-user-nano${agentUiMode === 'embedded' ? ' App--has-embedded-dock' : ''}`}
+          className={`App end-user-nano${showEmbeddedDock ? ' App--has-embedded-dock' : ''}`}
           style={
-            agentUiMode === 'embedded'
+            showEmbeddedDock
               ? { '--embedded-dock-reserve': `${embeddedDockReservePx}px` }
               : undefined
           }
@@ -600,8 +603,8 @@ function AppWithAuth() {
               )
             } />
           </Routes>
-          <GlobalFloatingBankingAgent user={user} onLogout={logout} agentUiMode={agentUiMode} />
-          {agentUiMode === 'embedded' && (
+          <GlobalFloatingBankingAgent user={user} onLogout={logout} agentUiMode={agentUiMode} pathname={pathname} />
+          {showEmbeddedDock && (
             <div
               ref={embeddedDockWrapRef}
               className="global-embedded-agent-dock-wrap"
@@ -683,7 +686,7 @@ function AppWithAuth() {
               🌐 API
             </button>
           )}
-          {user && !isLogsRoute && (
+          {user && !isLogsRoute && pathname !== '/demo-data' && (
             <button
               className="demo-config-fab"
               onClick={() => { window.location.href = '/demo-data'; }}
@@ -702,7 +705,7 @@ function AppWithAuth() {
         message={loadingOverlay.message}
         sub={loadingOverlay.sub}
       />
-    </Router>
+    </>
   );
 }
 
@@ -710,7 +713,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AgentUiModeProvider>
-        <AppWithAuth />
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AppWithAuth />
+        </Router>
       </AgentUiModeProvider>
     </ThemeProvider>
   );

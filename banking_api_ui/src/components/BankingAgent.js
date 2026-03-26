@@ -533,6 +533,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
    * agent knows the session even if the parent App.js user prop hasn't resolved yet.
    */
   const [sessionUser, setSessionUser] = useState(null);
+  const sessionUserRef = useRef(null);
+  sessionUserRef.current = sessionUser;
   const [sessionRefreshing, setSessionRefreshing] = useState(false);
   /** True when identity came from _auth cookie / stub token — MCP and NL need a Redis-backed session. */
   const [cookieOnlyBffSession, setCookieOnlyBffSession] = useState(false);
@@ -661,7 +663,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
    * Independently check auth endpoints.  Called on mount, on panel open, and
    * when the 'userAuthenticated' event fires (App.js dispatches this after login).
    * Checks all three session types: admin OAuth, end-user OAuth, and basic auth.
-   * When a session is found, also dispatches 'userAuthenticated' so App.js syncs.
+   * Does NOT dispatch userAuthenticated — that caused an infinite loop with App.js
+   * (App listens → checkOAuthSession → agent listener → checkSelfAuth → dispatch → …).
+   * Mount / OAuth-retry paths dispatch once when they first discover a session.
    */
   const checkSelfAuth = useCallback(() => {
     Promise.all([
@@ -673,8 +677,6 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
-        // Notify App.js so it sets its own `user` state → shows dashboard routes
-        window.dispatchEvent(new CustomEvent('userAuthenticated'));
       }
     });
   }, []);
@@ -741,14 +743,13 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       }
       setMessages(prev =>
         prev.length === 0
-          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUser) }]
+          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUserRef.current) }]
           : prev
       );
     };
     window.addEventListener('userAuthenticated', onAuth);
     return () => window.removeEventListener('userAuthenticated', onAuth);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkSelfAuth, user, sessionUser, isInline]);
+  }, [checkSelfAuth, user, isInline]);
 
   // Re-check when panel opens (catches sessions established after mount)
   useEffect(() => {

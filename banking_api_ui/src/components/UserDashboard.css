@@ -4,7 +4,7 @@
   margin: 0 auto;
   box-sizing: border-box;
   /* Keep content clear of sticky EducationBar at top */
-  padding: 36px 20px 28px;
+  padding: clamp(20px, 3vw, 36px) clamp(12px, 3.5vw, 20px) 28px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   background-color: #f8fafc;
   min-height: 100vh;
@@ -78,9 +78,9 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
-  row-gap: 12px;
-  padding: 16px 22px;
+  gap: clamp(8px, 1.5vw, 14px);
+  row-gap: clamp(8px, 1.2vw, 12px);
+  padding: clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 22px);
   background: #ffffff;
   border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
@@ -91,8 +91,8 @@
   justify-content: center;
   gap: 6px;
   min-height: 38px;
-  padding: 10px 16px;
-  font-size: 0.84rem;
+  padding: clamp(8px, 1.2vw, 10px) clamp(10px, 1.8vw, 16px);
+  font-size: clamp(0.75rem, 0.5vw + 0.68rem, 0.84rem);
   font-weight: 600;
   font-family: inherit;
   line-height: 1.25;
@@ -276,7 +276,7 @@
 }
 
 .bank-name {
-  font-size: 1.5rem;
+  font-size: clamp(1.05rem, 1.8vw + 0.45rem, 1.5rem);
   font-weight: 700;
   letter-spacing: -0.025em;
   color: white;
@@ -385,7 +385,7 @@
 }
 
 .user-greeting {
-  font-size: 1rem;
+  font-size: clamp(0.85rem, 0.9vw + 0.65rem, 1rem);
   font-weight: 500;
   color: white;
   margin: 0;
@@ -393,11 +393,12 @@
 }
 
 .user-email {
-  font-size: 0.875rem;
+  font-size: clamp(0.75rem, 0.65vw + 0.58rem, 0.875rem);
   opacity: 0.75;
   color: white;
   margin: 0;
   line-height: 1.2;
+  word-break: break-word;
 }
 
 /* MCP Inspector — top header (first in header-actions) */
@@ -525,15 +526,15 @@
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 8px;
-  padding: 32px;
+  padding: clamp(18px, 3vw, 32px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(229, 231, 235, 0.8);
 }
 
 .section h2 {
-  margin: 0 0 24px 0;
+  margin: 0 0 clamp(16px, 2.5vw, 24px) 0;
   color: #111827;
-  font-size: 1.25rem;
+  font-size: clamp(1.05rem, 1vw + 0.75rem, 1.25rem);
   font-weight: 600;
   letter-spacing: -0.025em;
 }
@@ -542,17 +543,19 @@
 .account-summary-table {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   background: #fff;
 }
 
 .account-summary-header,
 .account-summary-row {
   display: grid;
-  grid-template-columns: 1.2fr 1.2fr 0.9fr 0.9fr 1.8fr;
-  gap: 14px;
+  grid-template-columns: minmax(72px, 1.2fr) minmax(88px, 1.2fr) minmax(56px, 0.9fr) minmax(52px, 0.9fr) minmax(140px, 1.8fr);
+  gap: clamp(6px, 1.5vw, 14px);
   align-items: center;
-  padding: 12px 14px;
+  padding: clamp(8px, 1.5vw, 12px) clamp(8px, 2vw, 14px);
 }
 
 .account-summary-header {
@@ -569,14 +572,14 @@
 }
 
 .account-summary-cell {
-  font-size: 0.92rem;
+  font-size: clamp(0.8rem, 0.6vw + 0.68rem, 0.92rem);
   color: #111827;
 }
 
 .account-summary-header .account-summary-cell {
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  font-size: 0.74rem;
+  font-size: clamp(0.65rem, 0.45vw + 0.55rem, 0.74rem);
   font-weight: 700;
   color: #4b5563;
 }
@@ -840,6 +843,13 @@
 
 .form-group select option {
   padding: 8px;
+}
+
+.form-hint.transfer-amount-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.35;
 }
 
 .form-actions {
@@ -1746,7 +1756,7 @@
 /* Token Chain + future sidebar widgets — wide enough for RFC labels and flow text */
 .ud-left {
   width: min(480px, 100%);
-  min-width: 300px;
+  min-width: min(300px, 34vw);
   flex-shrink: 0;
   background: #fff;
   border-right: 1px solid #e2e8f0;
@@ -1765,7 +1775,7 @@
 .ud-center {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 28px;
+  padding: clamp(14px, 2vw, 20px) clamp(14px, 2.5vw, 28px);
   min-width: 0;
 }
 
@@ -2206,8 +2216,18 @@
 }
 
 /* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .ud-left {
+    min-width: min(260px, 32vw);
+  }
+}
+
 @media (max-width: 1024px) {
   .ud-right { display: none; }
+  .ud-left {
+    min-width: 0;
+    width: min(420px, 100%);
+  }
 }
 
 @media (max-width: 768px) {

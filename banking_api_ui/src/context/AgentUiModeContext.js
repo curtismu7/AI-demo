@@ -9,8 +9,8 @@ const AgentUiModeContext = createContext({
 });
 
 /**
- * floating — FAB + overlay panel (default).
- * embedded — inline chat on dashboard home only (not shown with floating).
+ * floating — FAB + overlay panel (default); hidden on Demo config (`/demo-data`).
+ * embedded — bottom dock only on `/`, `/admin`, `/dashboard`; no FAB on other routes (logs, MCP, etc.).
  */
 export function AgentUiModeProvider({ children }) {
   const [mode, setModeState] = useState(() => {

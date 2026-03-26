@@ -275,10 +275,10 @@ export default function DemoDataPage({ user, onLogout }) {
       <section className="app-page-card demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
         <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
         <p className="demo-data-hint">
-          Choose one layout: <strong>floating</strong> (FAB opens the assistant on any page — default), or <strong>embedded</strong>{' '}
-          (full-width chat strip along the bottom of the <strong>home</strong> dashboard: <strong>/</strong> or <strong>/dashboard</strong>{' '}
-          for customers, <strong>/</strong> or <strong>/admin</strong> for admins). Other routes still use the FAB. Switching to embedded
-          sends you home so the strip appears immediately.
+          Choose one layout: <strong>floating</strong> (FAB opens the assistant on most pages — default), or <strong>embedded</strong>{' '}
+          (full-width chat strip along the bottom of <strong>home</strong> only: <strong>/</strong> or <strong>/dashboard</strong> for customers,{' '}
+          <strong>/</strong> or <strong>/admin</strong> for admins). On this page there is no chat widget — use the assistant icon (bottom-right) to open your dashboard.
+          With floating layout, other pages keep the FAB; with embedded, the assistant exists only on home — not on logs, MCP, or Demo config. Switching to embedded sends you home so the strip appears immediately.
         </p>
         <div className="demo-data-agent-options" role="radiogroup" aria-label="Agent layout">
           <label className="demo-data-agent-option">
@@ -314,10 +314,26 @@ export default function DemoDataPage({ user, onLogout }) {
         </div>
         {agentUiMode === 'embedded' && (
           <p className="demo-data-agent-note" role="status">
-            Embedded mode shows the assistant as a bottom strip on your home dashboard only (<strong>/</strong> or <strong>/dashboard</strong> for customers; <strong>/</strong> or <strong>/admin</strong> for admins). Other routes keep the floating assistant button.
+            Embedded mode shows the assistant as a bottom strip on your home dashboard only (<strong>/</strong> or <strong>/dashboard</strong> for customers; <strong>/</strong> or <strong>/admin</strong> for admins). Other routes have no assistant until you return home. Demo config has no widget — use the icon to go home.
           </p>
         )}
       </section>
+
+      <Link
+        to={dashboardPath}
+        className="demo-data-agent-open-icon"
+        title="Open AI banking assistant on your dashboard"
+        aria-label="Open AI banking assistant on your dashboard"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 8V4H8" />
+          <rect width="16" height="12" x="4" y="8" rx="2" />
+          <path d="M2 14h2" />
+          <path d="M20 14h2" />
+          <path d="M15 13v2" />
+          <path d="M9 13v2" />
+        </svg>
+      </Link>
 
       {loading ? (
         <div className="app-page-card">

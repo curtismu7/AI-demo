@@ -266,8 +266,6 @@ async function create_transfer(params, userId) {
   const parsedAmount = parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0)
     return { error: 'amount must be a positive number' };
-  if (parsedAmount < 50)
-    return { error: 'Transfer amount must be at least $50' };
   if (parsedAmount > 1_000_000)
     return { error: 'amount cannot exceed $1,000,000' };
 
@@ -419,7 +417,7 @@ const LOCAL_INSPECTOR_TOOLS = [
             'Destination account ID (UUID format, not account number) - use the "id" field from get_my_accounts response',
           minLength: 1,
         },
-        amount: { type: 'number', description: 'Amount to transfer (minimum $50)', minimum: 50, multipleOf: 0.01 },
+        amount: { type: 'number', description: 'Amount to transfer (minimum $0.01)', minimum: 0.01, multipleOf: 0.01 },
         description: { type: 'string', description: 'Transfer description', maxLength: 255 },
       },
       required: ['from_account_id', 'to_account_id', 'amount'],

@@ -178,7 +178,7 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 clamp(12px, 3vw, 20px);
 }
 
 .loading {
@@ -506,4 +506,34 @@
 ) {
   color: #fff !important;
   -webkit-text-fill-color: #fff !important;
+}
+
+/* Session-style error toasts (dashboardToast.js) — message + Sign in */
+.dashboard-toast-error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.dashboard-toast-error__text {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.dashboard-toast-error__btn {
+  align-self: flex-end;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  cursor: pointer;
+}
+
+.dashboard-toast-error__btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

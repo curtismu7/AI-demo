@@ -28,13 +28,19 @@ async function provisionDemoAccounts(userId) {
 
   // Remove existing accounts for this user so we can reset balances cleanly
   const existing = dataStore.getAccountsByUserId(userId);
+  const deletedAccountIds = new Set(existing.map((a) => a.id));
   for (const acct of existing) {
     await dataStore.deleteAccount(acct.id);
   }
-  // Remove existing transactions for this user
+  // Remove only transactions tied to deleted accounts (do not wipe all user txns when existing.length === 0)
   const existingTxns = dataStore.getTransactionsByUserId(userId);
   for (const txn of existingTxns) {
-    await dataStore.deleteTransaction(txn.id);
+    const touchesDeleted =
+      (txn.fromAccountId && deletedAccountIds.has(txn.fromAccountId)) ||
+      (txn.toAccountId && deletedAccountIds.has(txn.toAccountId));
+    if (touchesDeleted) {
+      await dataStore.deleteTransaction(txn.id);
+    }
   }
 
   const checking = await dataStore.createAccount({

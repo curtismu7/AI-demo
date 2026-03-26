@@ -150,8 +150,8 @@ export class BankingToolRegistry {
           },
           amount: {
             type: 'number',
-            description: 'Amount to transfer (minimum $50)',
-            minimum: 50,
+            description: 'Amount to transfer (minimum $0.01)',
+            minimum: 0.01,
             multipleOf: 0.01
           },
           description: {

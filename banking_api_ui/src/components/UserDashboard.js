@@ -2,16 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
+import { toast } from 'react-toastify';
 import bffAxios from '../services/bffAxios';
 import { fetchMyAccountsWithResilience, isAccountsHydrationTransientError } from '../services/accountsHydration';
 import { resolveSessionUser } from '../services/sessionResolver';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
-import {
-  errorMessageSuggestsLogin,
-  navigateToCustomerOAuthLogin,
-} from '../utils/authUi';
+import { navigateToCustomerOAuthLogin } from '../utils/authUi';
+import { toastCustomerError } from '../utils/dashboardToast';
 import './UserDashboard.css';
 import { HIGH_VALUE_CONSENT_USD } from '../constants/transactionThresholds';
 import { AGENT_CONSENT_BLOCK_USER_MESSAGE, isAgentBlockedByConsentDecline } from '../services/agentAccessConsent';
@@ -39,7 +38,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const [tokenData, setTokenData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferForm, setTransferForm] = useState({
     fromAccountId: '',
@@ -58,7 +56,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   });
   const [withdrawAccount, setWithdrawAccount] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [success, setSuccess] = useState(null);
   const [consentAgentBanner, setConsentAgentBanner] = useState(null);
   const [stepUpRequired, setStepUpRequired] = useState(false);
   // 'ciba' | 'email' — set from the 428 response step_up_method field
@@ -95,17 +92,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       if (type === 'accounts' && Array.isArray(data)) {
         setAccounts(data);
         setAgentHighlight('accounts');
-        setSuccess(`Agent updated accounts${labelSuffix}`);
+        toast.success(`Agent updated accounts${labelSuffix}`);
       } else if (type === 'transactions' && Array.isArray(data)) {
         // Transactions changed — refresh both list AND balances (balance changes on writes)
         refreshBothDelayed();
         setAgentHighlight('both');
-        setSuccess(`Agent updated transactions${labelSuffix}`);
+        toast.success(`Agent updated transactions${labelSuffix}`);
       } else if (type === 'balance' || type === 'confirm') {
         // Write completed — partial-refresh both silently, no loading spinner
         refreshBothDelayed();
         setAgentHighlight('both');
-        setSuccess(`Agent completed \u2014 balances & transactions refreshed`);
+        toast.success(`Agent completed \u2014 balances & transactions refreshed`);
       }
       setTimeout(() => setAgentHighlight(null), 3000);
     };
@@ -147,7 +144,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         withdraw: 'Withdrawal',
         transfer: 'Transfer',
       };
-      setSuccess(`${actionLabels[action] || action} \u2014 updated`);
+      toast.success(`${actionLabels[action] || action} \u2014 updated`);
       setTimeout(() => setAgentHighlight(null), 4000);
     };
     window.addEventListener('agentDataReady', handleAgentDataReady);
@@ -162,13 +159,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     window.addEventListener('demoScenarioUpdated', handleDemoScenarioUpdated);
     return () => window.removeEventListener('demoScenarioUpdated', handleDemoScenarioUpdated);
   }, []);
-
-  // Auto-dismiss success messages after 4 seconds
-  useEffect(() => {
-    if (!success) return;
-    const t = setTimeout(() => setSuccess(null), 4000);
-    return () => clearTimeout(t);
-  }, [success]);
 
   // Legacy LangChain widget (`window.bankingWidget`) only initializes on localhost in index.html;
   // production uses <GlobalFloatingBankingAgent /> / embedded BankingAgent — do not poll for the old widget.
@@ -229,6 +219,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   useEffect(() => {
     const st = location.state;
     if (!st || (!st.restore && !st.transactionSuccess && !st.consentDeclined)) return;
+    let refreshAfterConsentTimer;
     if (st.restore) {
       const r = st.restore;
       if (r.transferForm) {
@@ -245,12 +236,19 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       }
     }
     if (st.transactionSuccess) {
-      setSuccess(st.transactionSuccess);
+      toast.success(st.transactionSuccess);
+      refreshAfterConsentTimer = setTimeout(() => {
+        fetchAccountsOnlyRef.current?.();
+        fetchTransactionsOnlyRef.current?.();
+      }, 0);
     }
     if (st.consentDeclined) {
       setConsentAgentBanner(AGENT_CONSENT_BLOCK_USER_MESSAGE);
     }
     navigate(location.pathname + (location.search || ''), { replace: true, state: {} });
+    return () => {
+      if (refreshAfterConsentTimer) clearTimeout(refreshAfterConsentTimer);
+    };
   }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -287,7 +285,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const fetchTransactionsOnly = async () => {
     try {
       const res = await bffAxios.get('/api/transactions/my');
-      setTransactions(Array.isArray(res.data?.transactions) ? res.data.transactions : []);
+      const tx = res.data?.transactions;
+      if (Array.isArray(tx)) {
+        setTransactions(tx);
+      }
     } catch (e) {
       console.error('Error refreshing transactions:', e);
     }
@@ -297,7 +298,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const fetchAccountsOnly = async () => {
     try {
       const res = await bffAxios.get('/api/accounts/my');
-      setAccounts(Array.isArray(res.data?.accounts) ? res.data.accounts : []);
+      const list = res.data?.accounts;
+      if (Array.isArray(list)) {
+        setAccounts(list);
+      }
     } catch (e) {
       console.error('Error refreshing accounts:', e);
     }
@@ -322,14 +326,13 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
 
       const sessionUser = await resolveSessionUser();
       if (!sessionUser) {
-        setError('Please log in to access your account');
+        toastCustomerError('Please log in to access your account', navigateToCustomerOAuthLogin);
         if (!silent) {
           setLoading(false);
         }
         return;
       }
       setUser(sessionUser);
-      setError(null);
 
       // Accounts first: GET /api/accounts/my may provision demo accounts + sample transactions
       // when the user has none. Running transactions in parallel often finished before
@@ -338,7 +341,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       const accountList = await fetchMyAccountsWithResilience(bffAxios);
       setAccounts(accountList);
       const transactionsResponse = await bffAxios.get('/api/transactions/my');
-      setTransactions(Array.isArray(transactionsResponse.data?.transactions) ? transactionsResponse.data.transactions : []);
+      const tx = transactionsResponse.data?.transactions;
+      if (Array.isArray(tx)) {
+        setTransactions(tx);
+      }
 
     } catch (error) {
       caughtError = error;
@@ -359,20 +365,20 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       if (status === 429) {
         setAutoRefresh(false);
         if (silent) {
-          setSuccess('Auto-refresh paused due to rate limits.');
+          toast.success('Auto-refresh paused due to rate limits.');
         } else {
-          setError('Too many requests from this network. Wait a minute, then refresh. Auto-refresh is off.');
+          toast.error('Too many requests from this network. Wait a minute, then refresh. Auto-refresh is off.');
         }
       } else if (status === 401) {
         if (localStorage.getItem('userLoggedOut') === 'true') return;
         setAutoRefresh(false);
         if (!silent) {
-          setError('Your session has expired. Please log in again.');
+          toastCustomerError('Your session has expired. Please log in again.', navigateToCustomerOAuthLogin);
         }
       } else if (status === 403) {
-        setError('You do not have permission to access this information.');
+        toast.error('You do not have permission to access this information.');
       } else if (!silent) {
-        setError('Failed to load your account information');
+        toast.error('Failed to load your account information');
       }
     } finally {
       if (!silent) {
@@ -394,7 +400,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
 
   // ── CIBA step-up: initiate back-channel authentication ──
   const handleCibaStepUp = async () => {
-    if (!user?.email) { setError('Cannot initiate CIBA: no email on session.'); return; }
+    if (!user?.email) {
+      toast.error('Cannot initiate CIBA: no email on session.');
+      return;
+    }
     try {
       const { data } = await axios.post('/api/auth/ciba/initiate', {
         loginHint: user.email,
@@ -404,7 +413,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setCibaAuthReqId(data.authReqId);
       setCibaStatus('pending');
     } catch (err) {
-      setError('CIBA initiation failed: ' + (err.response?.data?.message || err.message));
+      toast.error('CIBA initiation failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -419,11 +428,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           setCibaAuthReqId(null);
           setStepUpRequired(false);
           await fetchUserData(true);
-          setSuccess('Identity verified — please retry your transaction.');
+          toast.success('Identity verified — please retry your transaction.');
         } else if (data.status === 'failed' || data.status === 'expired' || data.status === 'error') {
           setCibaStatus('error');
           setCibaAuthReqId(null);
-          setError(`CIBA verification ${data.status}. Please try again.`);
+          toast.error(`CIBA verification ${data.status}. Please try again.`);
         }
       } catch (_) { /* keep polling */ }
     }, 5000);
@@ -434,12 +443,12 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     e.preventDefault();
 
     if (!transferForm.fromAccountId || !transferForm.toAccountId || !transferForm.amount) {
-      setError('Please fill in all transfer details');
+      toast.error('Please fill in all transfer details');
       return;
     }
 
     if (transferForm.fromAccountId === transferForm.toAccountId) {
-      setError('From and To accounts must be different');
+      toast.error('From and To accounts must be different');
       return;
     }
 
@@ -458,7 +467,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         });
       } catch (err) {
         const d = err.response?.data;
-        setError(d?.message || d?.error || 'Could not start high-value consent. Try again.');
+        toast.error(d?.message || d?.error || 'Could not start high-value consent. Try again.');
       }
       return;
     }
@@ -476,9 +485,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       // Reset form and refresh data
       setTransferForm({ fromAccountId: '', toAccountId: '', amount: '', description: '' });
       setTransferOpen(false);
-      await fetchUserData();
+      await Promise.all([fetchAccountsOnly(), fetchTransactionsOnly()]);
 
-      setSuccess('Transfer completed successfully!');
+      toast.success('Transfer completed successfully!');
     } catch (error) {
       console.error('Transfer error:', error);
       if (error.response?.status === 428) {
@@ -486,10 +495,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to perform transfers. Please contact your administrator.');
+        toast.error('You do not have permission to perform transfers. Please contact your administrator.');
       } else {
         const d = error.response?.data;
-        setError(d?.message || d?.error || 'Transfer failed');
+        toast.error(d?.message || d?.error || 'Transfer failed');
       }
     }
   };
@@ -498,7 +507,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     e.preventDefault();
 
     if (!depositAccount || !depositForm.amount) {
-      setError('Please fill in all deposit details');
+      toast.error('Please fill in all deposit details');
       return;
     }
 
@@ -517,7 +526,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         });
       } catch (err) {
         const d = err.response?.data;
-        setError(d?.message || d?.error || 'Could not start high-value consent. Try again.');
+        toast.error(d?.message || d?.error || 'Could not start high-value consent. Try again.');
       }
       return;
     }
@@ -535,9 +544,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       // Reset form and refresh data
       setDepositForm({ amount: '', description: '' });
       setDepositAccount(null);
-      await fetchUserData();
+      await Promise.all([fetchAccountsOnly(), fetchTransactionsOnly()]);
 
-      setSuccess('Deposit completed successfully!');
+      toast.success('Deposit completed successfully!');
     } catch (error) {
       console.error('Deposit error:', error);
       if (error.response?.status === 428) {
@@ -545,10 +554,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to make deposits. Please contact your administrator.');
+        toast.error('You do not have permission to make deposits. Please contact your administrator.');
       } else {
         const d = error.response?.data;
-        setError(d?.message || d?.error || 'Deposit failed');
+        toast.error(d?.message || d?.error || 'Deposit failed');
       }
     }
   };
@@ -557,7 +566,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     e.preventDefault();
 
     if (!withdrawAccount || !withdrawForm.amount) {
-      setError('Please fill in all withdrawal details');
+      toast.error('Please fill in all withdrawal details');
       return;
     }
 
@@ -576,7 +585,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         });
       } catch (err) {
         const d = err.response?.data;
-        setError(d?.message || d?.error || 'Could not start high-value consent. Try again.');
+        toast.error(d?.message || d?.error || 'Could not start high-value consent. Try again.');
       }
       return;
     }
@@ -594,9 +603,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       // Reset form and refresh data
       setWithdrawForm({ amount: '', description: '' });
       setWithdrawAccount(null);
-      await fetchUserData();
+      await Promise.all([fetchAccountsOnly(), fetchTransactionsOnly()]);
 
-      setSuccess('Withdrawal completed successfully!');
+      toast.success('Withdrawal completed successfully!');
     } catch (error) {
       console.error('Withdrawal error:', error);
       if (error.response?.status === 428) {
@@ -604,10 +613,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to make withdrawals. Please contact your administrator.');
+        toast.error('You do not have permission to make withdrawals. Please contact your administrator.');
       } else {
         const d = error.response?.data;
-        setError(d?.message || d?.error || 'Withdrawal failed');
+        toast.error(d?.message || d?.error || 'Withdrawal failed');
       }
     }
   };
@@ -676,40 +685,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     backgroundRepeat: 'no-repeat'
   };
 
-  const showReauthCta = errorMessageSuggestsLogin(error);
-
   return (
     <div
       className={`user-dashboard${agentUiMode === 'embedded' ? ' user-dashboard--embed-agent' : ''}`}
       style={dashboardStyle}
     >
-      {error && (
-        <div
-          className="inline-message inline-message--error"
-          role="alert"
-          onClick={() => setError(null)}
-        >
-          <span className="inline-message__text">{error}</span>
-          {showReauthCta && (
-            <button
-              type="button"
-              className="inline-message__login-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigateToCustomerOAuthLogin();
-              }}
-            >
-              Sign in
-            </button>
-          )}
-          <span className="inline-message__dismiss">✕</span>
-        </div>
-      )}
-      {success && (
-        <div className="inline-message inline-message--success" onClick={() => setSuccess(null)}>
-          {success} <span className="inline-message__dismiss">✕</span>
-        </div>
-      )}
       {consentAgentBanner && (
         <div className="inline-message inline-message--warning" role="alert">
           <span className="inline-message__text">{consentAgentBanner}</span>
@@ -861,15 +841,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
             </svg>
             <span className="dashboard-toolbar-btn__sr">Token info</span>
           </button>
-          {showReauthCta && (
-            <button
-              type="button"
-              className="dashboard-toolbar-btn dashboard-toolbar-btn--signin"
-              onClick={navigateToCustomerOAuthLogin}
-            >
-              Sign in
-            </button>
-          )}
           <button type="button" onClick={onLogout} className="dashboard-toolbar-btn dashboard-toolbar-btn--danger">
             Log out
           </button>
@@ -1005,11 +976,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                   <input
                     type="number"
                     step="0.01"
+                    min="0.01"
                     value={transferForm.amount}
                     onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
                     placeholder="Enter amount"
                     required
                   />
+                  <p className="form-hint transfer-amount-hint">
+                    Transfer any amount from $0.01 up to the source account balance (same as deposits and withdrawals).
+                  </p>
                 </div>
                 <div className="form-group">
                   <label>Description:</label>

@@ -7,10 +7,8 @@ import bffAxios from '../services/bffAxios';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
-import {
-  errorMessageSuggestsLogin,
-  navigateToAdminOAuthLogin,
-} from '../utils/authUi';
+import { navigateToAdminOAuthLogin } from '../utils/authUi';
+import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 
 const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
@@ -18,7 +16,6 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
   const [stats, setStats] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [forbidden403, setForbidden403] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
@@ -92,7 +89,6 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
     if (attempt === 0) fetchingRef.current = true;
     try {
       setLoading(true);
-      if (attempt === 0) setError('');
       const [statsResult, activityResult] = await Promise.allSettled([
         bffAxios.get('/api/admin/stats'),
         bffAxios.get('/api/admin/activity/recent?hours=24'),
@@ -110,33 +106,40 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
         if (status === 401 && user?.role === 'admin' && attempt < 3) {
           const delays = [600, 1400, 2200];
           setForbidden403(false);
-          setError('Reconnecting to admin API…');
+          if (attempt === 0) {
+            toast.info('Reconnecting to admin API…', { toastId: 'admin-dash-reconnect', autoClose: 3000 });
+          }
           await new Promise((r) => setTimeout(r, delays[attempt]));
           return fetchDashboardData(attempt + 1);
         }
+        toast.dismiss('admin-dash-reconnect');
         if (status === 401) {
           setForbidden403(false);
-          setError('Your session has expired. Please log in again.');
+          toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
         } else if (status === 403) {
           setForbidden403(true);
-          setError('You do not have permission to access the admin dashboard.');
+          toast.error('You do not have permission to access the admin dashboard.');
         } else {
           setForbidden403(false);
-          setError(
+          toast.error(
             detail
               ? `Failed to load dashboard data (${status || 'error'}): ${detail}`
               : `Failed to load dashboard data${status ? ` (HTTP ${status})` : ''}. Try refreshing the page.`
           );
         }
+        setStats(null);
         return;
       }
 
       const nextStats = statsResult.value.data?.stats;
       if (!nextStats || typeof nextStats !== 'object') {
+        toast.dismiss('admin-dash-reconnect');
         setForbidden403(false);
-        setError('Failed to load dashboard data: invalid response from server.');
+        toast.error('Failed to load dashboard data: invalid response from server.');
+        setStats(null);
         return;
       }
+      toast.dismiss('admin-dash-reconnect');
       setStats(nextStats);
       setForbidden403(false);
 
@@ -148,8 +151,10 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
       }
     } catch (err) {
       console.error('Dashboard error:', err);
+      toast.dismiss('admin-dash-reconnect');
       setForbidden403(false);
-      setError(err.message || 'Failed to load dashboard data');
+      toast.error(err.message || 'Failed to load dashboard data');
+      setStats(null);
     } finally {
       setLoading(false);
       fetchingRef.current = false;
@@ -238,64 +243,6 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
     return (
       <div className="loading">
         <div>Loading dashboard...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    const showReauth = errorMessageSuggestsLogin(error);
-    return (
-      <div style={{ maxWidth: '960px', margin: '2rem auto', padding: '0 1.25rem' }}>
-        <div className="alert alert-error" role="alert">
-          {error}
-        </div>
-        {showReauth && (
-          <div
-            className="admin-dashboard-error-actions"
-            style={{
-              marginTop: '1rem',
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: '0.65rem',
-            }}
-          >
-            <button type="button" className="btn btn-primary" onClick={navigateToAdminOAuthLogin}>
-              Admin sign in
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={onLogout}>
-              Log out
-            </button>
-            <Link to="/admin/banking" className="btn btn-secondary">
-              Banking admin tools
-            </Link>
-          </div>
-        )}
-        {forbidden403 && (
-          <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#374151', lineHeight: 1.5 }}>
-            <p style={{ marginTop: 0 }}>
-              The API rejected this request. Common causes: the access token was issued to the <strong>end-user</strong> PingOne
-              app but the admin dashboard requires the <strong>admin</strong> app; or hosted env vars
-              (<code>PINGONE_ENVIRONMENT_ID</code>, <strong>admin</strong> and <strong>user</strong> client IDs/secrets, redirect URIs) do not match the PingOne apps
-              that issued the token.
-            </p>
-            <p>
-              <strong>Shared hosted URL:</strong> everyone uses the same env vars in the deployment — set{' '}
-              <code>PINGONE_AI_CORE_CLIENT_ID</code> (or <code>PINGONE_CORE_CLIENT_ID</code>) to your <strong>admin</strong> PingOne
-              application ID, and register this site&apos;s redirect URIs in that app.
-            </p>
-            <p>
-              <strong>Serverless / multi-instance:</strong> set <code>REDIS_URL</code> (or Vercel KV / Replit Redis) so OAuth session/state survives across
-              instances — otherwise <strong>Admin Sign in</strong> may fail before you reach PingOne.
-            </p>
-            <p style={{ marginBottom: 0 }}>
-              <button type="button" className="btn btn-primary" onClick={onLogout}>
-                Sign out
-              </button>
-              <span style={{ marginLeft: '0.5rem' }}>then open <strong>Admin Sign in</strong> again on the login page.</span>
-            </p>
-          </div>
-        )}
       </div>
     );
   }
@@ -417,32 +364,66 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
       <TokenChainDisplay />
 
       {/* Statistics Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-value">{stats.totalUsers}</div>
-          <div className="stat-label">Total Users</div>
+      {stats ? (
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalUsers}</div>
+            <div className="stat-label">Total Users</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{stats.activeUsers}</div>
+            <div className="stat-label">Active Users</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalAccounts}</div>
+            <div className="stat-label">Total Accounts</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalTransactions}</div>
+            <div className="stat-label">Total Transactions</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">${stats.totalBalance.toLocaleString()}</div>
+            <div className="stat-label">Total Balance</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">${stats.averageBalance.toLocaleString()}</div>
+            <div className="stat-label">Average Balance</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-value">{stats.activeUsers}</div>
-          <div className="stat-label">Active Users</div>
+      ) : (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <p style={{ marginTop: 0 }}>Could not load admin statistics. Check the toast for details.</p>
+          <button type="button" className="btn btn-primary" onClick={() => fetchDashboardData(0)}>
+            Retry
+          </button>
+          {forbidden403 && (
+            <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#374151', lineHeight: 1.5 }}>
+              <p style={{ marginTop: 0 }}>
+                The API rejected this request. Common causes: the access token was issued to the <strong>end-user</strong> PingOne
+                app but the admin dashboard requires the <strong>admin</strong> app; or hosted env vars
+                (<code>PINGONE_ENVIRONMENT_ID</code>, <strong>admin</strong> and <strong>user</strong> client IDs/secrets, redirect URIs) do not match the PingOne apps
+                that issued the token.
+              </p>
+              <p>
+                <strong>Shared hosted URL:</strong> everyone uses the same env vars in the deployment — set{' '}
+                <code>PINGONE_AI_CORE_CLIENT_ID</code> (or <code>PINGONE_CORE_CLIENT_ID</code>) to your <strong>admin</strong> PingOne
+                application ID, and register this site&apos;s redirect URIs in that app.
+              </p>
+              <p>
+                <strong>Serverless / multi-instance:</strong> set <code>REDIS_URL</code> (or Vercel KV / Replit Redis) so OAuth session/state survives across
+                instances — otherwise <strong>Admin Sign in</strong> may fail before you reach PingOne.
+              </p>
+              <p style={{ marginBottom: 0 }}>
+                <button type="button" className="btn btn-primary" onClick={onLogout}>
+                  Sign out
+                </button>
+                <span style={{ marginLeft: '0.5rem' }}>then open <strong>Admin Sign in</strong> again on the login page.</span>
+              </p>
+            </div>
+          )}
         </div>
-        <div className="stat-card">
-          <div className="stat-value">{stats.totalAccounts}</div>
-          <div className="stat-label">Total Accounts</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{stats.totalTransactions}</div>
-          <div className="stat-label">Total Transactions</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">${stats.totalBalance.toLocaleString()}</div>
-          <div className="stat-label">Total Balance</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">${stats.averageBalance.toLocaleString()}</div>
-          <div className="stat-label">Average Balance</div>
-        </div>
-      </div>
+      )}
 
       {/* Recent Activity */}
       <div className="card">

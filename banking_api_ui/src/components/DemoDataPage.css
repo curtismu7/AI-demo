@@ -299,3 +299,32 @@
   color: #1d4ed8;
   line-height: 1.45;
 }
+
+/* Icon-only shortcut to home dashboard (no BankingAgent widget on this page) */
+.demo-data-agent-open-icon {
+  position: fixed;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  right: calc(28px + env(safe-area-inset-right, 0px));
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.demo-data-agent-open-icon:hover {
+  transform: scale(1.05);
+  color: #fff;
+}
+
+.demo-data-agent-open-icon:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 3px;
+}
