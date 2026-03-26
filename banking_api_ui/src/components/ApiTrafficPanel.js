@@ -56,11 +56,12 @@ function MethodBadge({ entry }) {
   if (entry.kind === 'token-event') {
     // Show a distinct badge per token event type
     const icons = {
-      'user-token':       { label: 'T1', cls: 'TOKEN-T1' },
-      'exchanged-token':  { label: 'XCHG', cls: 'TOKEN-XCHG' },
-      'exchange-skipped': { label: 'SKIP', cls: 'TOKEN-SKIP' },
-      'exchange-failed':  { label: 'FAIL', cls: 'TOKEN-FAIL' },
-      'mcp-token-reused': { label: 'T2↩', cls: 'TOKEN-T2' },
+      'user-token':               { label: 'T1', cls: 'TOKEN-T1' },
+      'exchanged-token':          { label: 'XCHG', cls: 'TOKEN-XCHG' },
+      'exchange-required':        { label: '8693', cls: 'TOKEN-FAIL' },
+      'user-scopes-insufficient': { label: 'SCP', cls: 'TOKEN-FAIL' },
+      'exchange-failed':          { label: 'FAIL', cls: 'TOKEN-FAIL' },
+      'mcp-token-reused':         { label: 'T2↩', cls: 'TOKEN-T2' },
     };
     const { label, cls } = icons[entry.eventId] || { label: 'TOK', cls: 'TOKEN-T1' };
     return <span className={`api-method-badge api-method-badge--${cls}`}>{label}</span>;

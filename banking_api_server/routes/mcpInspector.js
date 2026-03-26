@@ -222,7 +222,12 @@ router.post('/invoke', express.json(), async (req, res) => {
     try {
       ({ token: agentToken, userSub } = await resolveMcpAccessTokenWithEvents(req, tool));
     } catch (err) {
-      return res.status(502).json({ error: 'token_resolution_failed', message: err.message });
+      const status = err.httpStatus || 502;
+      return res.status(status).json({
+        error: err.code || 'token_resolution_failed',
+        message: err.message,
+        tokenEvents: err.tokenEvents || [],
+      });
     }
     if (!agentToken) {
       return await respondLocalInvoke();

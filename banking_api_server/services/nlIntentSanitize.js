@@ -59,7 +59,7 @@ function sanitizeNlResult(result, originalMessage) {
     if (action === 'balance') {
       const t = String(originalMessage || '').toLowerCase();
       const asksForBalances = /\bbalances\b/.test(t) || /account balances/.test(t);
-      const params = result.banking?.params || {};
+      let params = { ...(result.banking?.params || {}) };
       const accountId = params.accountId || params.account_id;
       if (asksForBalances && !accountId) {
         return {
@@ -67,6 +67,14 @@ function sanitizeNlResult(result, originalMessage) {
           rejected: true,
           reason: 'balance_plural_without_account_id',
         };
+      }
+      // LLM prompts used to show accountId:"optional" as schema docs — models copy the literal "optional"
+      const badPlaceholderAccountId = (v) =>
+        typeof v === 'string' && /^(optional|omit|n\/a|none|unknown)$/i.test(v.trim());
+      if (badPlaceholderAccountId(accountId)) {
+        delete params.accountId;
+        delete params.account_id;
+        return { result: { ...result, banking: { ...result.banking, params } }, rejected: false };
       }
     }
 

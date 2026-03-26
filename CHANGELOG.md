@@ -32,6 +32,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **RFC 8693 MCP token exchange**: **no** forwarding the user access token to MCP when `mcp_resource_uri` is unset — **503** `mcp_resource_uri_required`; **≥5** distinct OAuth scopes on the user JWT (configurable `MIN_USER_SCOPES_FOR_MCP_EXCHANGE`) before exchange — **403**; admin + end-user **authorize** scopes now include **PingOne banking scopes** from `getScopesForUserType` so tokens can be narrowed for MCP
+- **NL `get_account_balance` “Account optional not found”**: LLM prompts no longer use **`accountId":"optional"`**; **`nlIntentSanitize`** strips placeholder **`optional`**; **`mcpLocalTools.get_account_balance`** treats it as missing account id
+- **Floating Banking Agent**: **scroll** chat / left rail (flex **`min-height: 0`**, **`touch-action: pan-y`**); **expand (⊞)** results panel **repositioned** beside the centered expanded agent (`useMemo` + `calc(50vw)`)
+- **HOME rail**: signed-in users go to **`/welcome`** (marketing **LandingPage**); **Admin** / **Dashboard** FABs still open app dashboards
 - **Demo config save / `invalid_token` toast**: when the OAuth access token stored in the BFF session is expired or fails JWKS validation but the session cookie and `session.user` are still valid, **`authenticateToken`** now falls back to **`session.user`** (same trust model as `_cookie_session`) instead of returning **401 `invalid_token`**
 - **False “session expired” toast**: customer dashboard retries HTTP **401** a few times (JWT/session lag), then calls **`resolveSessionUser()`** — if the BFF still has a user, shows a short **warning** instead of the red session-expired toast; admin dashboard does the same for **admin** sessions
 - **API Traffic viewer**: 🌐 **API** FAB and education bar open `/api-traffic` in a **new browser window** (same pattern as Logs) so the tracker can be moved to another monitor; removed the in-page overlay that was stuck to the main window

@@ -875,7 +875,13 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     userSub = resolved.userSub || null;
   } catch (err) {
     console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
-    return res.status(502).json({ error: 'token_exchange_failed', message: err.message, tokenEvents });
+    const status = err.httpStatus || 502;
+    const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+    return res.status(status).json({
+      error: err.code || 'token_exchange_failed',
+      message: err.message,
+      tokenEvents: events,
+    });
   }
 
   if (!agentToken) {

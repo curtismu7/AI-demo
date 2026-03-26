@@ -104,7 +104,13 @@ async function get_my_accounts(params, userId) {
 }
 
 async function get_account_balance(params, userId) {
-  const { account_id } = params;
+  const raw = params.account_id;
+  const account_id =
+    raw &&
+    typeof raw === 'string' &&
+    !/^(optional|omit|n\/a|none|unknown)$/i.test(String(raw).trim())
+      ? raw
+      : undefined;
   let account = null;
   if (account_id) {
     account = dataStore.getAccountById(account_id);

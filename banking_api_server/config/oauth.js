@@ -6,6 +6,7 @@
 
 'use strict';
 const configStore = require('../services/configStore');
+const { getScopesForUserType } = require('./scopes');
 
 const config = {
   get environmentId()          { return configStore.getEffective('pingone_environment_id'); },
@@ -27,8 +28,12 @@ const config = {
   // CIBA — Client-Initiated Backchannel Authentication
   get cibaEndpoint()           { return `${this._base}/bc-authorize`; },
 
-  // offline_access: PingOne issues refresh_token for silent session renewal (admin + user flows)
-  scopes: ['openid', 'profile', 'email', 'offline_access'],
+  /** OIDC + banking scopes — enough distinct scopes for RFC 8693 MCP token narrowing. */
+  get scopes() {
+    const banking = getScopesForUserType('admin');
+    const base = ['openid', 'profile', 'email', 'offline_access'];
+    return [...new Set([...base, ...banking])];
+  },
 
   /**
    * When true, /authorize uses response_type=pi.flow and response_mode=pi.flow (PingOne non-redirect / DaVinci).

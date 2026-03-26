@@ -516,8 +516,8 @@ function AppWithAuth() {
 
   const isLogsRoute = pathname === '/logs' || pathname.startsWith('/logs/');
 
-  /** Signed-in home matches SideNav / dashboard FAB (`/admin` | `/dashboard`), not only `/`, so HOME navigates reliably under nested splat routing. */
-  const homeFabPath = !user ? '/' : user.role === 'admin' ? '/admin' : '/dashboard';
+  /** Marketing home: logged-out `/`, signed-in `/welcome` (dashboard stays on Admin / Dashboard FABs). */
+  const homeFabPath = !user ? '/' : '/welcome';
 
   /** Scroll to top when going home (same dashboard component may stay mounted across `/` vs `/dashboard`). */
   function handleHomeFabClick() {
@@ -556,6 +556,11 @@ function AppWithAuth() {
               !user ? (
                 <LandingPage />
               ) : (
+                <Routes>
+                  <Route path="/welcome" element={<LandingPage />} />
+                  <Route
+                    path="*"
+                    element={(
                 <main
                   className={`main-content${showEmbeddedDock ? ' main-content--embedded-dock' : ''}`}
                 >
@@ -661,6 +666,9 @@ function AppWithAuth() {
                     </>
                   )}
                 </main>
+                    )}
+                  />
+                </Routes>
               )
             } />
           </Routes>
@@ -670,7 +678,7 @@ function AppWithAuth() {
             <Link
               className="nav-home-fab"
               to={homeFabPath}
-              title={user ? 'Go to home dashboard' : 'Go to home'}
+              title={user ? 'Go to marketing home' : 'Go to home'}
               onClick={handleHomeFabClick}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

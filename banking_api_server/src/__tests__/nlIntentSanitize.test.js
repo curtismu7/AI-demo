@@ -52,4 +52,18 @@ describe('nlIntentSanitize', () => {
     expect(rejected).toBe(false);
     expect(result.ciba).toBe(true);
   });
+
+  it('strips LLM-copied placeholder accountId "optional" from balance intent', () => {
+    const { result, rejected } = sanitizeNlResult(
+      {
+        kind: 'banking',
+        banking: { action: 'balance', params: { accountId: 'optional' } },
+      },
+      'Check my account balance',
+    );
+    expect(rejected).toBe(false);
+    expect(result.banking.action).toBe('balance');
+    expect(result.banking.params.accountId).toBeUndefined();
+    expect(result.banking.params.account_id).toBeUndefined();
+  });
 });

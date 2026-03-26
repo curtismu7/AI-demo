@@ -23,6 +23,7 @@
     "setup:vercel:check": "node scripts/setup-vercel-env.js --check"
   },
   "dependencies": {
-    "@upstash/redis": "^1.37.0"
+    "@upstash/redis": "^1.37.0",
+    "nodemailer": "^8.0.4"
   }
 }

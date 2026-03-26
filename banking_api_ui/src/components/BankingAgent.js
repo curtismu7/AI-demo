@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
@@ -898,16 +898,36 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
             transform: 'none',
           }
         : { width: panelSize.width, height: panelSize.height, transform: 'none' };
-  /** Results panel width (CSS) — keep gap in sync when dragging */
+  /** Results panel width (CSS) — keep gap in sync when dragging / expanded layout */
   const resultsPanelWidthPx = 220;
-  const resultsPanelStyle = dragPos
-    ? {
-        left: Math.max(8, dragPos.x - resultsPanelWidthPx - 16),
+  const resultsPanelStyle = useMemo(() => {
+    const gap = 16;
+    const rpW = resultsPanelWidthPx;
+    if (isInline) return undefined;
+    if (dragPos) {
+      return {
+        position: 'fixed',
+        left: Math.max(8, dragPos.x - rpW - gap),
         top: dragPos.y,
         bottom: 'auto',
         right: 'auto',
-      }
-    : {};
+        zIndex: 10058,
+      };
+    }
+    /* Expanded (⊞): agent is centered — anchor results to the left of it (default CSS assumed 260px-wide docked agent). */
+    if (isExpanded) {
+      return {
+        position: 'fixed',
+        left: `max(8px, calc(50vw - min(94vw, 320px) / 2 - ${gap}px - ${rpW}px))`,
+        top: '50vh',
+        transform: 'translateY(-50%)',
+        bottom: 'auto',
+        right: 'auto',
+        zIndex: 10058,
+      };
+    }
+    return undefined;
+  }, [dragPos, isExpanded, isInline, resultsPanelWidthPx]);
   // In inline mode the panel is always visible; in float mode respect the open/closed state
   const effectiveIsOpen = isInline || isOpen;
 
@@ -1079,7 +1099,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       // Show inline token event summary in the chat + dedicated toasts
       if (tokenEvents.length > 0) {
         const exchanged = tokenEvents.find(e => e.id === 'exchanged-token');
-        const skipped   = tokenEvents.find(e => e.id === 'exchange-skipped');
+        const required  = tokenEvents.find(e => e.id === 'exchange-required');
+        const badScopes = tokenEvents.find(e => e.id === 'user-scopes-insufficient');
         const failed    = tokenEvents.find(e => e.id === 'exchange-failed');
         const userTokEv = tokenEvents.find(e => e.id === 'user-token');
 
@@ -1089,9 +1110,12 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
           const actStatus    = exchanged.actPresent ? `✅ act: ${exchanged.actDetails}` : '⚠️ no act claim';
           tokenMsg = `🔐 RFC 8693 Token Exchange\n${mayActStatus} → MCP token issued · ${actStatus}\nScope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`;
           toast.info(`🔐 Token Exchange complete — MCP token issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
-        } else if (skipped) {
-          tokenMsg = '🔐 Token Exchange skipped — MCP_RESOURCE_URI not configured. User token forwarded directly.';
-          toast.warning('⚠️ Token Exchange skipped — User token forwarded directly', { autoClose: 4000 });
+        } else if (required) {
+          tokenMsg = '🔐 RFC 8693 token exchange is required — set mcp_resource_uri / MCP_RESOURCE_URI (MCP audience). User token is not sent to MCP without exchange.';
+          toast.error('❌ MCP resource URI missing — token exchange required', { autoClose: 6000 });
+        } else if (badScopes) {
+          tokenMsg = `🔐 User token needs more OAuth scopes for MCP exchange (${badScopes.explanation || 'see Token Chain'})`;
+          toast.error('❌ Sign in again with broader scopes (at least 5) for MCP token exchange', { autoClose: 7000 });
         } else if (failed) {
           tokenMsg = `🔐 Token Exchange failed: ${failed.error || 'unknown error'}`;
           toast.error(`❌ Token Exchange failed: ${failed.error || 'unknown error'}`, { autoClose: 6000 });

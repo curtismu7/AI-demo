@@ -13,11 +13,16 @@ const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown) with one of:
-{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|human-in-loop","tab":"optional tab id"}}
+{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|human-in-loop","tab":"what"}}
 {"kind":"education","ciba":true,"tab":"what"}
-{"kind":"banking","banking":{"action":"accounts|transactions|balance|deposit|withdraw|transfer|logout|mcp_tools","params":{"accountId":"optional","fromId":"checking|savings","toId":"checking|savings","amount":0,"note":""}}}
+{"kind":"banking","banking":{"action":"accounts","params":{}}}
+{"kind":"banking","banking":{"action":"balance","params":{}}}
+{"kind":"banking","banking":{"action":"balance","params":{"accountId":"chk-xxxxxxxx"}}}
+{"kind":"banking","banking":{"action":"deposit","params":{"toId":"checking","amount":100}}}
 {"kind":"none","message":"short hint"}
 
+Pipes in examples (accounts|balance) mean "pick one action" — never output pipe characters or the word "optional" as a field value.
+For "check my balance" / "my account balance" use {"action":"balance","params":{}} with empty params — omit accountId unless the user gave a real account id (e.g. chk-…).
 For transfer/deposit/withdraw: always extract amount as a number and account types as "checking" or "savings" (never use account IDs or numbers).
 Examples:
   "transfer 400 from checking to savings" → {"kind":"banking","banking":{"action":"transfer","params":{"fromId":"checking","toId":"savings","amount":400}}}

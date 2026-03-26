@@ -109,15 +109,21 @@
 .ba-body {
   display: flex;
   flex-wrap: wrap;
-  flex: 1;
+  /* 1 1 0% + min-height:0 so this row gets a definite height from the panel; children can shrink */
+  flex: 1 1 0%;
   overflow: hidden;
   min-height: 0;
+  align-items: stretch;
+  align-content: stretch;
 }
 
 /* ─── Left column ─────────────────────────────────────────────────────── */
 .ba-left-col {
   width: 112px;
   flex-shrink: 0;
+  /* Allow column to shrink below tall button stacks so the row height follows the panel, not min-content */
+  min-height: 0;
+  align-self: stretch;
   border-right: 1px solid var(--ba-border);
   padding: 14px 12px;
   overflow-y: auto;
@@ -230,12 +236,13 @@
 
 /* ─── Right column ────────────────────────────────────────────────────── */
 .ba-right-col {
-  flex: 1;
+  flex: 1 1 0%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
   min-height: 0;
+  align-self: stretch;
 }
 
 /* Light mode override */
@@ -560,6 +567,10 @@
   /* Allow shrinking in short embedded dock so form + Run stay above overflow: hidden */
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   padding: 14px 14px 8px;
   display: flex;
   flex-direction: column;
@@ -1074,12 +1085,18 @@
   }
   .ba-body {
     flex-direction: column;
+    flex-wrap: nowrap;
   }
   .ba-left-col {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--ba-border);
     max-height: 180px;
+    flex: 0 0 auto;
+  }
+  .ba-right-col {
+    flex: 1 1 0%;
+    min-height: 0;
   }
 }
 

@@ -11,11 +11,15 @@ const MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown, no explanation) with one of:
-{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd","tab":"optional tab id"}}
+{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd","tab":"what"}}
 {"kind":"education","ciba":true,"tab":"what"}
-{"kind":"banking","banking":{"action":"accounts|transactions|balance|deposit|withdraw|transfer|logout|mcp_tools","params":{"accountId":"optional","fromId":"checking|savings","toId":"checking|savings","amount":0,"note":""}}}
+{"kind":"banking","banking":{"action":"balance","params":{}}}
+{"kind":"banking","banking":{"action":"accounts","params":{}}}
+{"kind":"banking","banking":{"action":"deposit","params":{"toId":"savings","amount":100}}}
 {"kind":"none","message":"short hint"}
 
+Pipes in panel names mean alternatives — never output "optional" or pipe-separated text as a JSON field value.
+For "check balance" / "my account balance" use {"action":"balance","params":{}} — omit accountId unless the user stated a real id like chk-….
 For transfer/deposit/withdraw: always extract amount as a number and account types as "checking" or "savings" (never use account IDs or numbers).
 Examples:
   "transfer 400 from checking to savings" → {"kind":"banking","banking":{"action":"transfer","params":{"fromId":"checking","toId":"savings","amount":400}}}

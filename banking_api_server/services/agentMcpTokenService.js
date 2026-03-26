@@ -13,6 +13,39 @@ const configStore = require('./configStore');
 const oauthService = require('./oauthService');
 const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
 
+/** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
+const MIN_USER_SCOPES_FOR_MCP = Math.max(
+  1,
+  parseInt(process.env.MIN_USER_SCOPES_FOR_MCP_EXCHANGE || '5', 10) || 5
+);
+
+/**
+ * Count space-separated OAuth scopes on JWT claims (PingOne access tokens).
+ * @param {object|null|undefined} claims
+ * @returns {number}
+ */
+function countJwtScopes(claims) {
+  if (!claims || claims.scope == null) return 0;
+  const s = String(claims.scope).trim();
+  if (!s) return 0;
+  return s.split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * Attach tokenEvents for the UI and throw with HTTP status + machine code.
+ * @param {Array} tokenEvents
+ * @param {string} code
+ * @param {string} message
+ * @param {number} [httpStatus]
+ */
+function throwTokenResolutionError(tokenEvents, code, message, httpStatus = 502) {
+  const err = new Error(message);
+  err.code = code;
+  err.tokenEvents = tokenEvents;
+  err.httpStatus = httpStatus;
+  throw err;
+}
+
 // ─── JWT decode (no verification — display only) ─────────────────────────────
 
 /**
@@ -186,14 +219,30 @@ function buildSessionPreviewTokenEvents(req) {
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
-      'exchange-skipped',
-      'Token Exchange (RFC 8693)',
-      'skipped',
+      'exchange-required',
+      'Token Exchange (RFC 8693) — Required',
+      'failed',
       null,
-      'MCP_RESOURCE_URI is not configured — the User Token is forwarded directly to the MCP server. ' +
-      'To enable delegation: set MCP_RESOURCE_URI to the MCP server\'s audience URI and configure ' +
-      'the token-exchange grant + may_act policy in PingOne.',
-      { rfc: 'RFC 8693 (Token Exchange)' }
+      'RFC 8693 token exchange is mandatory for MCP: set mcp_resource_uri (Config UI or MCP_RESOURCE_URI env) ' +
+        'to the MCP resource audience URI. The User Token must never be sent to the MCP server without exchange.',
+      { rfc: 'RFC 8693 · RFC 8707' }
+    ));
+    return { tokenEvents };
+  }
+
+  const t1Decoded = decodeJwtClaims(userToken);
+  const t1Claims = t1Decoded?.claims;
+  const scopeCount = countJwtScopes(t1Claims);
+  if (scopeCount < MIN_USER_SCOPES_FOR_MCP) {
+    tokenEvents.push(buildTokenEvent(
+      'user-scopes-insufficient',
+      'User Token — insufficient scopes for MCP exchange',
+      'failed',
+      t1Decoded,
+      `User access token has ${scopeCount} scope(s); at least ${MIN_USER_SCOPES_FOR_MCP} distinct scopes are required ` +
+        'so PingOne can issue a delegated MCP token with a narrower audience and reduced scopes. ' +
+        'Request additional scopes at login (PingOne app) and sign in again.',
+      { rfc: 'RFC 8693', scopeCount, minRequired: MIN_USER_SCOPES_FOR_MCP }
     ));
     return { tokenEvents };
   }
@@ -246,19 +295,43 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const toolScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
   const useActor = process.env.USE_AGENT_ACTOR_FOR_MCP === 'true' && process.env.AGENT_OAUTH_CLIENT_ID;
 
-  // ── No exchange configured ──────────────────────────────────────────────────
+  // ── MCP resource audience required — never forward user token to MCP without RFC 8693 ──
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
-      'exchange-skipped',
-      'Token Exchange (RFC 8693)',
-      'skipped',
+      'exchange-required',
+      'Token Exchange (RFC 8693) — Required',
+      'failed',
       null,
-      'MCP_RESOURCE_URI is not configured — the User Token is forwarded directly to the MCP server. ' +
-      'To enable delegation: set MCP_RESOURCE_URI to the MCP server\'s audience URI and configure ' +
-      'the token-exchange grant + may_act policy in PingOne.',
-      { rfc: 'RFC 8693 (Token Exchange)' }
+      'RFC 8693 token exchange is mandatory. Set mcp_resource_uri in the admin Config UI (or MCP_RESOURCE_URI env) ' +
+        'to the MCP server resource / audience URI. Configure token-exchange grant + may_act in PingOne. ' +
+        'The User Token is not sent to the MCP server.',
+      { rfc: 'RFC 8693 · RFC 8707' }
     ));
-    return { token: userToken, tokenEvents, userSub };
+    throwTokenResolutionError(
+      tokenEvents,
+      'mcp_resource_uri_required',
+      'MCP resource URI is not configured — RFC 8693 token exchange cannot run. Set mcp_resource_uri / MCP_RESOURCE_URI.',
+      503
+    );
+  }
+
+  const scopeCount = countJwtScopes(t1Claims);
+  if (scopeCount < MIN_USER_SCOPES_FOR_MCP) {
+    tokenEvents.push(buildTokenEvent(
+      'user-scopes-insufficient',
+      'User Token — insufficient scopes for MCP exchange',
+      'failed',
+      decodeJwtClaims(userToken),
+      `User access token has ${scopeCount} scope(s); at least ${MIN_USER_SCOPES_FOR_MCP} are required. ` +
+        'Request a broader scope set at login so PingOne can narrow to MCP-only scopes after exchange.',
+      { rfc: 'RFC 8693', scopeCount, minRequired: MIN_USER_SCOPES_FOR_MCP }
+    ));
+    throwTokenResolutionError(
+      tokenEvents,
+      'user_token_insufficient_scopes',
+      `User token must include at least ${MIN_USER_SCOPES_FOR_MCP} distinct OAuth scopes (found ${scopeCount}). Re-authorize with more scopes.`,
+      403
+    );
   }
 
   // ── Event 2a (optional): Agent actor client-credentials token ───────────────
@@ -415,4 +488,6 @@ module.exports = {
   buildSessionPreviewTokenEvents,
   decodeJwtClaims,
   sanitizeClaims,
+  countJwtScopes,
+  MIN_USER_SCOPES_FOR_MCP,
 };
