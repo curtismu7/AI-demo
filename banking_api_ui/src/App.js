@@ -538,10 +538,7 @@ function AppWithAuth() {
                 >
                   <span className="embedded-dock-resize-handle__grip" aria-hidden="true">
                     <span className="embedded-dock-resize-handle__bar" />
-                    <span className="embedded-dock-resize-handle__bar" />
-                    <span className="embedded-dock-resize-handle__bar" />
                   </span>
-                  <span className="embedded-dock-resize-handle__label">Resize height</span>
                 </button>
                 <div
                   className="embedded-banking-agent embedded-banking-agent--bottom"

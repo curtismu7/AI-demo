@@ -463,7 +463,7 @@ app.get('/api/auth/debug', async (req, res) => {
   if (upstashSessionStoreInstance) {
     const now = Date.now();
     if (!upstashSessionStoreInstance._pingCache ||
-        now - upstashSessionStoreInstance._pingCache.ts > 60_000) {
+        now - upstashSessionStoreInstance._pingCache.ts > 300_000) { // 5-minute cache
       const pingResult = await upstashSessionStoreInstance.ping();
       upstashSessionStoreInstance._pingCache = { ts: now, result: pingResult };
       if (!pingResult.healthy) {
