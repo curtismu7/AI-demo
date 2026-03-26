@@ -309,11 +309,11 @@
   text-decoration: none;
 }
 
-/* Admin dashboard: stack main content above embedded bottom agent */
+/* Admin dashboard: embedded agent is below this page in App <main> (single outer scroll) */
 .admin-dashboard-page.app-page-shell:has(.app-page-shell__body--embed-agent) {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 48px);
+  min-height: min-content;
 }
 
 .admin-dashboard-page.app-page-shell .app-page-shell__body--embed-agent {

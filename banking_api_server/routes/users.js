@@ -31,7 +31,7 @@ router.get('/query/by-email/:email', authenticateToken, requireAIAgent, (req, re
     }
 
     // Remove sensitive information from response
-    const { password, ...userWithoutPassword } = user;
+    const { password: _password, ...userWithoutPassword } = user;
 
     // Log the AI agent query for audit purposes
     console.log(`🤖 [AI Agent Query] User lookup by email: ${email} - Found: ${user.username} (${user.role}) - Agent: ${req.user.username}`);
@@ -56,7 +56,7 @@ router.get('/', authenticateToken, requireScopes(['banking:read']), requireAdmin
     
     // Remove passwords from response
     const usersWithoutPasswords = users.map(user => {
-      const { password, ...userWithoutPassword } = user;
+      const { password: _password, ...userWithoutPassword } = user;
       return userWithoutPassword;
     });
 
@@ -79,7 +79,7 @@ router.get('/:userId', authenticateToken, requireScopes(['banking:read']), requi
     }
 
     // Remove password from response
-    const { password, ...userWithoutPassword } = user;
+    const { password: _password, ...userWithoutPassword } = user;
 
     res.json({ user: userWithoutPassword });
 
@@ -129,7 +129,7 @@ router.post('/', blockInDemoMode('user creation'), authenticateToken, requireSco
     const newUser = await dataStore.createUser(userData);
     
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = newUser;
+    const { password: _passwordOut, ...userWithoutPassword } = newUser;
 
     res.status(201).json({
       message: 'User created successfully',
@@ -194,7 +194,7 @@ router.put('/:userId', authenticateToken, requireScopes(['banking:write']), requ
     const updatedUser = await dataStore.updateUser(userId, updates);
     
     // Remove password from response
-    const { password, ...userWithoutPassword } = updatedUser;
+    const { password: _passwordOut, ...userWithoutPassword } = updatedUser;
 
     res.json({
       message: 'User updated successfully',
@@ -243,7 +243,7 @@ router.get('/search/:query', authenticateToken, requireScopes(['banking:read']),
     
     // Remove passwords from response
     const usersWithoutPasswords = users.map(user => {
-      const { password, ...userWithoutPassword } = user;
+      const { password: _password, ...userWithoutPassword } = user;
       return userWithoutPassword;
     });
 

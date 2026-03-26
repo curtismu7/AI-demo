@@ -997,7 +997,7 @@ if (!process.env.VERCEL) {
 app.use(oauthErrorHandler);
 
 // General error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('Error occurred for path:', req.path);
   console.error('Error details:', err.message);
   if (process.env.NODE_ENV !== 'production') {

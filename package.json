@@ -17,6 +17,7 @@
     "test:agent-ui": "cd langchain_agent/frontend && npm run test:ci",
     "test:mcp-inspector": "cd banking_api_server && npm test -- --testPathPattern=mcp-inspector --forceExit",
     "test:bff-tokens": "cd banking_api_server && npm test -- --testPathPattern='redisWireUrl|bffSessionGating' --forceExit --verbose",
+    "test:session": "cd banking_api_server && npm run test:session",
     "release": "node scripts/release.js",
     "setup:vercel": "node scripts/setup-vercel-env.js",
     "setup:vercel:check": "node scripts/setup-vercel-env.js --check"

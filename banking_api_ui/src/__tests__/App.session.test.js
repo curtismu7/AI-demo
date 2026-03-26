@@ -42,6 +42,7 @@ jest.mock('react-router-dom', () => ({
   Routes:        ({ children }) => children,
   Route:         () => null,
   Navigate:      () => null,
+  Link:          ({ children, to, ...rest }) => <a href={typeof to === 'string' ? to : ''} {...rest}>{children}</a>,
   useNavigate:   () => jest.fn(),
   useLocation:   () => ({ pathname: '/', search: '' }),
 }));

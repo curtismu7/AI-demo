@@ -205,7 +205,7 @@ router.get('/', async (req, res) => {
 
 router.put('/', async (req, res) => {
   try {
-    const { accounts: bodyAccounts, stepUpAmountThreshold, userData } = req.body || {};
+    const { accounts: bodyAccounts, userData } = req.body || {};
     const uid = req.user.id;
     let staleAccountIds = [];
 
@@ -346,7 +346,7 @@ router.put('/', async (req, res) => {
     const accounts = dataStore.getAccountsByUserId(uid);
     const scenario = await demoScenarioStore.load(uid);
     const currentUser = dataStore.getUserById(uid) || {};
-    const { password, ...savedUserData } = currentUser;
+    const { password: _password, ...savedUserData } = currentUser;
     const bankingAgentUiModeOut =
       scenario.bankingAgentUiMode === 'embedded' || scenario.bankingAgentUiMode === 'floating'
         ? scenario.bankingAgentUiMode

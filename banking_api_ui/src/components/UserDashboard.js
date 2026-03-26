@@ -318,6 +318,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
     fetchingRef.current = true;
     let caughtError = null;
+    let sessionStillValidAfter401 = false;
     try {
       // Only show loading spinner for initial load, not auto-refreshes
       if (!silent) {
@@ -347,8 +348,21 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       }
 
     } catch (error) {
-      caughtError = error;
       const status = error.response?.status;
+
+      // OAuth/resource 401s often clear after a short wait (JWT lag, cold BFF) — same as accounts hydration
+      const MAX_401_RETRIES = 3;
+      if (
+        status === 401 &&
+        localStorage.getItem('userLoggedOut') !== 'true' &&
+        _retryCount < MAX_401_RETRIES
+      ) {
+        console.warn(`fetchUserData: HTTP 401 (attempt ${_retryCount + 1}), retrying…`);
+        fetchingRef.current = false;
+        await new Promise((r) => setTimeout(r, 500 * (_retryCount + 1)));
+        void fetchUserData(silent, _retryCount + 1);
+        return;
+      }
 
       // Retry transient errors up to 2 times with backoff before showing anything
       const MAX_RETRIES = 2;
@@ -360,6 +374,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         return;
       }
 
+      caughtError = error;
       console.error('Error fetching user data:', error);
 
       if (status === 429) {
@@ -372,8 +387,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       } else if (status === 401) {
         if (localStorage.getItem('userLoggedOut') === 'true') return;
         setAutoRefresh(false);
+        const still = await resolveSessionUser();
+        sessionStillValidAfter401 = Boolean(still);
         if (!silent) {
-          toastCustomerError('Your session has expired. Please log in again.', navigateToCustomerOAuthLogin);
+          if (still) {
+            toast.warn(
+              'Could not load your account data yet. Wait a moment and refresh, or use Refresh access token in the Banking Agent.',
+              { autoClose: 14000 }
+            );
+          } else {
+            toastCustomerError('Your session has expired. Please log in again.', navigateToCustomerOAuthLogin);
+          }
         }
       } else if (status === 403) {
         toast.error('You do not have permission to access this information.');
@@ -385,7 +409,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setLoading(false);
       }
       fetchingRef.current = false;
-      const authFailed = caughtError?.response?.status === 401;
+      const authFailed =
+        caughtError?.response?.status === 401 && !sessionStillValidAfter401;
       if (pendingRefetchRef.current && !authFailed) {
         pendingRefetchRef.current = false;
         const loud = pendingRefetchNonSilentRef.current;

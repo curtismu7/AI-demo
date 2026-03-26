@@ -240,7 +240,7 @@ describe('Demo scenario API — account create/update', () => {
     expect(row.balance).toBe(123.45);
   });
 
-  it('PUT returns 409 when account id is missing from server (stale client / serverless)', async () => {
+  it('PUT returns 200 with staleAccountIds when account id is missing from server (stale client / serverless)', async () => {
     const app = makeApp();
     const res = await request(app)
       .put('/')
@@ -248,8 +248,9 @@ describe('Demo scenario API — account create/update', () => {
         accounts: [{ id: 'no-such-account-in-store', name: 'X', balance: 1 }],
       });
 
-    expect(res.status).toBe(409);
-    expect(res.body.error).toBe('stale_demo_accounts');
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.staleAccountIds).toContain('no-such-account-in-store');
   });
 
   it('PUT returns 403 when updating another user account id', async () => {

@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Session regression tooling**: `npm run test:session` from repo root or `banking_api_server` (focused Jest subset); `npm run test:e2e:session` in `banking_api_ui` (Playwright `request` smoke only); `GET /api/auth/session` contract tests for `sessionStoreHealthy` / `sessionStoreError` with production-shaped middleware; Playwright API smoke `session-regression.spec.js`; runbook `docs/runbooks/session-regression.md`
 - **Session debugging**: expanded `GET /api/auth/debug` (`oauthTokenSummary`, `diagnosisHints`, optional `?deep=1` Redis vs `req.session`, `sessionInMemoryCache`); `GET /api/auth/session` includes `sessionStoreHealthy`; Banking Agent session-fix copy + deep debug link — see `REGRESSION_LOG.md`, `FEATURES.md`
 - Left-side rail: **HOME** (`/`) and role-based **Admin** (`/admin`) / **Dashboard** (`/dashboard`) links (signed-in dashboard button); stack positions use `App--has-nav-dash` when both rows show
 - **Banking admin** page (`/admin/banking`): account lookup by number fragment (default `123`), latest activity, seed fake charges, delete account/transaction; API `GET/POST /api/admin/banking/*`
@@ -31,6 +32,11 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Demo config save / `invalid_token` toast**: when the OAuth access token stored in the BFF session is expired or fails JWKS validation but the session cookie and `session.user` are still valid, **`authenticateToken`** now falls back to **`session.user`** (same trust model as `_cookie_session`) instead of returning **401 `invalid_token`**
+- **False “session expired” toast**: customer dashboard retries HTTP **401** a few times (JWT/session lag), then calls **`resolveSessionUser()`** — if the BFF still has a user, shows a short **warning** instead of the red session-expired toast; admin dashboard does the same for **admin** sessions
+- **API Traffic viewer**: 🌐 **API** FAB and education bar open `/api-traffic` in a **new browser window** (same pattern as Logs) so the tracker can be moved to another monitor; removed the in-page overlay that was stuck to the main window
+- **HOME rail button**: navigates to role home (`/admin` or `/dashboard` when signed in) and scrolls to top so “home” matches the main dashboard and the first screen is visible
+- **Code quality (API server)**: removed dead `OAuthUserService.validateToken` (broken `jwt` reference); `GET /api/tokens/:tokenId` now returns the matching chain entry from shared `buildTokenChain` (with `knownIds` on 404); cleaned unused imports/vars across `auth.js`, `users.js`, `demoScenario`, `activityLogger`, `sampleData`, `upstashSessionStore`, `adminConfig`, `oauthService`, `pingOneAgentUserService`, `test-admin-scopes`, `server.js`, `oauthErrorHandler`
 - **BankingAgent / Api Traffic**: stopped infinite `userAuthenticated` ↔ `checkSelfAuth` loop that hammered `/api/auth/oauth/*` and `/api/auth/session` (see `REGRESSION_LOG.md`)
 - **Transfers**: removed the extra **$50 minimum** on `POST /api/transactions` (and consent-challenge validation, MCP/local inspector tools) so savings and other accounts can send **any amount ≥ $0.01** up to balance — the old rule blocked a second transfer when savings fell below $50 or small amounts from savings
 - **Transfer / deposit / withdraw**: refresh accounts + transactions without full-page loading; do not clear transaction list on malformed API payload; `provisionDemoAccounts` no longer deletes all user transactions when no accounts were removed (prevents wiped history on edge-case provision)
@@ -47,7 +53,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Changed
 
-- **Floating BankingAgent**: default panel **520×420** (was 820×560); narrower left column; smaller results panel; “expand” is a **centered** ~640×520 window instead of edge-to-edge; resize clamps 360×280–900×620; responsive rules use `!important` so tablet/mobile caps beat inline sizes
+- **Embedded Banking Agent**: dock is **in the page layout** at the bottom of `<main>` (scrollable dashboard above, assistant strip below) instead of `position: fixed` over the viewport; full-width bar, no floating card inset; default chat area height **280px** (resizable)
+- **Floating BankingAgent**: default panel **260×210** (~half prior 520×420); left column **112px**; results panel **220px** wide; expanded mode **320×260**; resize clamps **180×140–450×310**
 - Admin OAuth `/authorize` `login_hint` set to `bankadmin` (was `admin`) for PingOne username hint
 - Logout: delay before navigating to `/api/auth/logout` increased to 420ms so the wait overlay can paint; `LoadingOverlay` also shown during the initial `loading` gate when logout is in progress
 - Banking agent UI/CSS, education bar and panels (Step-up, RFC index, commands, `EducationPanelsHost`), NL intent parser/sanitize and Gemini wiring, MCP local tools registry

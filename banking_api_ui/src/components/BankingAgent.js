@@ -541,7 +541,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   /** {x,y} when panel has been dragged; null = CSS-anchored default position */
   const [dragPos, setDragPos] = useState(null);
   /** Panel dimensions for resizing */
-  const [panelSize, setPanelSize] = useState({ width: 520, height: 420 });
+  const [panelSize, setPanelSize] = useState({ width: 260, height: 210 });
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
   /** MCP server connection status for header display */
@@ -853,10 +853,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       let newHeight = startHeight;
 
       if (direction.includes('e')) {
-        newWidth = Math.min(900, Math.max(360, startWidth + deltaX));
+        newWidth = Math.min(450, Math.max(180, startWidth + deltaX));
       }
       if (direction.includes('s')) {
-        newHeight = Math.min(620, Math.max(280, startHeight + deltaY));
+        newHeight = Math.min(310, Math.max(140, startHeight + deltaY));
       }
 
       setPanelSize({ width: newWidth, height: newHeight });
@@ -880,9 +880,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
           left: '50%',
           top: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 'min(94vw, 640px)',
-          height: 'min(80vh, 520px)',
-          maxWidth: 640,
+          width: 'min(94vw, 320px)',
+          height: 'min(80vh, 260px)',
+          maxWidth: 320,
           maxHeight: '80vh',
           right: 'auto',
           bottom: 'auto',
@@ -899,7 +899,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
           }
         : { width: panelSize.width, height: panelSize.height, transform: 'none' };
   /** Results panel width (CSS) — keep gap in sync when dragging */
-  const resultsPanelWidthPx = 440;
+  const resultsPanelWidthPx = 220;
   const resultsPanelStyle = dragPos
     ? {
         left: Math.max(8, dragPos.x - resultsPanelWidthPx - 16),

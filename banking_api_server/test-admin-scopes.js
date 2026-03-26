@@ -74,10 +74,10 @@ async function testAdminAccess() {
       roles: ['user']
     });
     
-    const response = await axios.get(`${BASE_URL}/api/admin/stats`, {
+    await axios.get(`${BASE_URL}/api/admin/stats`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    
+
     console.log('   ❌ UNEXPECTED: Should have been denied access');
   } catch (error) {
     if (error.response?.status === 403 && error.response?.data?.error === 'insufficient_scope') {
@@ -116,10 +116,10 @@ async function testAdminAccess() {
       role: 'user'
     });
     
-    const response = await axios.get(`${BASE_URL}/api/admin/stats`, {
+    await axios.get(`${BASE_URL}/api/admin/stats`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    
+
     console.log('   ❌ UNEXPECTED: Should have been denied access');
   } catch (error) {
     if (error.response?.status === 403 && error.response?.data?.error === 'Admin access required') {
@@ -138,10 +138,10 @@ async function testAdminAccess() {
       roles: ['admin'] // Has admin role but not banking:admin scope
     });
     
-    const response = await axios.get(`${BASE_URL}/api/admin/stats`, {
+    await axios.get(`${BASE_URL}/api/admin/stats`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    
+
     console.log('   ❌ UNEXPECTED: Should have been denied access');
   } catch (error) {
     if (error.response?.status === 403 && error.response?.data?.error === 'insufficient_scope') {

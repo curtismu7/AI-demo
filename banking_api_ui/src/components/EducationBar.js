@@ -36,7 +36,7 @@ export default function EducationBar() {
   };
 
   const openApiTraffic = () => {
-    window.dispatchEvent(new CustomEvent('toggle-api-traffic'));
+    window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes');
   };
 
   return (

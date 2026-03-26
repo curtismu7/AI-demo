@@ -235,7 +235,8 @@ export default function ApiTrafficPanel({ onClose, pageMode = false }) {
 
   const handleTogglePause = () => { const n = !paused; setPaused(n); setPausedState(n); };
   const handleClear = () => { clearTraffic(); setSelected(null); };
-  const handlePopOut = () => window.open('/api-traffic', 'ApiTraffic', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+  const handlePopOut = () =>
+    window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes');
 
   const filtered = entries.filter(e => matchFilter(e, filter, search));
   const panelClass = ['api-traffic-panel', pageMode ? 'api-traffic-panel--page' : ''].filter(Boolean).join(' ');

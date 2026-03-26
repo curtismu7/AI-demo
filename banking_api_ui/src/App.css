@@ -40,32 +40,29 @@
   --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
 }
 
-/* Reserve space for the fixed embedded agent dock */
-.App--has-embedded-dock {
-  padding-bottom: var(--embedded-dock-reserve, 420px);
-}
-
-/* Global embedded dock (shown when agent UI mode = embedded) */
+/* Embedded dock sits in normal document flow at the bottom of <main> (see App.js) */
 .global-embedded-agent-dock-wrap {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1002;
-  /* Match dashboard / shell horizontal inset so dock lines up with page toolbars */
-  padding: 0 20px 12px;
-  pointer-events: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  z-index: 2;
+  pointer-events: auto;
+  border-top: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
 }
 
 .global-embedded-agent-dock-wrap .embedded-agent-dock {
-  margin-top: 0;
-  margin-left: auto;
-  margin-right: auto;
-  max-width: 1100px;
-  pointer-events: auto;
+  margin: 0;
+  max-width: none;
+  width: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  border-radius: 0;
+  border-top: none;
+  box-shadow: none;
+  background: transparent;
+  padding-top: 0;
 }
 
 /* Collapsed state — only the header bar is visible */
@@ -157,6 +154,21 @@
 
 .main-content {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Embedded agent: page scrolls above; assistant is part of the layout at the bottom (not fixed over the page) */
+.main-content.main-content--embedded-dock {
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content--embedded-dock .main-content__primary {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Two-column layout: side nav + scrollable content */

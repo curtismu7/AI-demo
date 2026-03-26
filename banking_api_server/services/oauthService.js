@@ -345,7 +345,7 @@ class OAuthService {
   /**
    * Check if user has admin role (deprecated - now handled in local user management)
    */
-  hasAdminRole(userInfo) {
+  hasAdminRole(_userInfo) {
     // This method is kept for backward compatibility but is no longer used
     // Admin role checking is now handled in the local user management system
     console.log('hasAdminRole called but deprecated - using local user management instead');

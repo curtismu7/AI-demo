@@ -81,7 +81,6 @@ router.post('/identity/bootstrap', express.json(), async (req, res) => {
     provision = await pingOneAgentUserService.createAgentRepresentativeUser({
       principalSub: sub,
       principalEmail: u.email,
-      principalUsername: u.username,
     });
   }
 

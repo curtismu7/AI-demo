@@ -139,3 +139,5 @@ git checkout <last-version-tag> -- <key-file>
 | Onboarding wizard | active | `banking_api_ui/src/components/Onboarding.js` | — |
 | Security settings page | active | `banking_api_ui/src/components/SecuritySettings.js` | — |
 | GitHub Actions CI | active | `.github/workflows/test.yml` | — |
+| Session regression — `npm run test:session` (API Jest subset) | active | root `package.json`, `banking_api_server/package.json` | `authSession.test.js` (+ pattern in `test:session` script) |
+| Session API smoke (Playwright `request`) — `npm run test:e2e:session` | active | `banking_api_ui/tests/e2e/session-regression.spec.js`, `banking_api_ui/package.json` | `session-regression.spec.js` |

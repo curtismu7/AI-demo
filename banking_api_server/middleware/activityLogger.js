@@ -40,7 +40,6 @@ const logActivity = (req, res, next) => {
 
       // Determine action based on HTTP method and endpoint
       const method = req.method;
-      const path = req.path;
       const fullPath = req.originalUrl;
 
       if ((fullPath.includes('/auth/login') || fullPath === '/login') && method === 'POST') {

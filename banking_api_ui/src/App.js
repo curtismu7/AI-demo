@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
@@ -24,7 +24,6 @@ import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
 import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
-import ApiTrafficPanel from './components/ApiTrafficPanel';
 import ApiTrafficPage from './components/ApiTrafficPage';
 import TransactionConsentPage from './components/TransactionConsentPage';
 
@@ -53,15 +52,16 @@ const SESSION_LOGOUT_PENDING_KEY = 'banking_logout_pending';
 
 const EMBEDDED_DOCK_AGENT_HEIGHT_KEY = 'banking_embedded_dock_agent_height_px';
 const EMBEDDED_DOCK_COLLAPSED_KEY = 'banking_embedded_dock_collapsed';
-const DEFAULT_EMBEDDED_AGENT_HEIGHT = 380;
-const MIN_EMBEDDED_AGENT_HEIGHT = 220;
+/** Default height for the chat area in the bottom-integrated dock (user can resize). */
+const DEFAULT_EMBEDDED_AGENT_HEIGHT = 280;
+const MIN_EMBEDDED_AGENT_HEIGHT = 140;
 
 /** Persisted height (px) of the embedded agent chat area (bottom dock). */
 function readEmbeddedAgentHeight() {
   try {
     const n = parseInt(localStorage.getItem(EMBEDDED_DOCK_AGENT_HEIGHT_KEY), 10);
     if (Number.isFinite(n)) {
-      return Math.max(MIN_EMBEDDED_AGENT_HEIGHT, Math.min(720, n));
+      return Math.max(MIN_EMBEDDED_AGENT_HEIGHT, Math.min(360, n));
     }
   } catch {
     // ignore
@@ -70,8 +70,8 @@ function readEmbeddedAgentHeight() {
 }
 
 function maxEmbeddedAgentHeight() {
-  if (typeof window === 'undefined') return 720;
-  return Math.min(720, Math.floor(window.innerHeight * 0.82));
+  if (typeof window === 'undefined') return 360;
+  return Math.min(360, Math.floor(window.innerHeight * 0.41));
 }
 
 /** Session/auth tracing only in development (production builds stay quiet). */
@@ -101,14 +101,12 @@ function AppWithAuth() {
   const { mode: agentUiMode, setMode: setAgentUiMode } = useAgentUiMode();
   const embeddedDockWrapRef = useRef(null);
   const [embeddedAgentBodyHeight, setEmbeddedAgentBodyHeight] = useState(readEmbeddedAgentHeight);
-  const [embeddedDockReservePx, setEmbeddedDockReservePx] = useState(420);
   const [embeddedDockCollapsed, setEmbeddedDockCollapsed] = useState(() => {
     try { return localStorage.getItem(EMBEDDED_DOCK_COLLAPSED_KEY) === 'true'; } catch { return false; }
   });
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
-  const [apiTrafficOpen, setApiTrafficOpen] = useState(false);
   const [loadingOverlay, setLoadingOverlay] = useState(() => {
     if (typeof window === 'undefined') return { show: false, message: '', sub: '' };
     try {
@@ -124,13 +122,6 @@ function AppWithAuth() {
     }
     return { show: false, message: '', sub: '' };
   });
-
-  // Allow EducationBar to toggle the inline API Traffic panel via custom event.
-  useEffect(() => {
-    const handler = () => setApiTrafficOpen((v) => !v);
-    window.addEventListener('toggle-api-traffic', handler);
-    return () => window.removeEventListener('toggle-api-traffic', handler);
-  }, []);
 
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
@@ -435,23 +426,7 @@ function AppWithAuth() {
     });
   }, []);
 
-  const updateEmbeddedDockReserve = useCallback(() => {
-    const el = embeddedDockWrapRef.current;
-    if (!el) return;
-    setEmbeddedDockReservePx(Math.ceil(el.getBoundingClientRect().height) + 8);
-  }, []);
-
   const showEmbeddedDock = agentUiMode === 'embedded' && isBankingAgentDashboardRoute(pathname);
-
-  useLayoutEffect(() => {
-    if (!showEmbeddedDock) return undefined;
-    updateEmbeddedDockReserve();
-    const el = embeddedDockWrapRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(() => updateEmbeddedDockReserve());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [showEmbeddedDock, embeddedAgentBodyHeight, updateEmbeddedDockReserve]);
 
   useEffect(() => {
     if (!showEmbeddedDock) return undefined;
@@ -541,17 +516,22 @@ function AppWithAuth() {
 
   const isLogsRoute = pathname === '/logs' || pathname.startsWith('/logs/');
 
+  /** Signed-in home matches SideNav / dashboard FAB (`/admin` | `/dashboard`), not only `/`, so HOME navigates reliably under nested splat routing. */
+  const homeFabPath = !user ? '/' : user.role === 'admin' ? '/admin' : '/dashboard';
+
+  /** Scroll to top when going home (same dashboard component may stay mounted across `/` vs `/dashboard`). */
+  function handleHomeFabClick() {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    const inner = document.querySelector('.dashboard-content.ud-body');
+    if (inner) inner.scrollTop = 0;
+  }
+
   return (
     <>
       <EducationUIProvider>
       <TokenChainProvider>
         <div
-          className={`App end-user-nano${showEmbeddedDock ? ' App--has-embedded-dock' : ''}${user ? ' App--has-nav-dash' : ''}`}
-          style={
-            showEmbeddedDock
-              ? { '--embedded-dock-reserve': `${embeddedDockReservePx}px` }
-              : undefined
-          }
+          className={`App end-user-nano${user ? ' App--has-nav-dash' : ''}`}
         >
           <ToastContainer
             theme={appTheme === 'dark' ? 'dark' : 'light'}
@@ -576,90 +556,122 @@ function AppWithAuth() {
               !user ? (
                 <LandingPage />
               ) : (
-                <main className="main-content">
-                  <EducationBar />
-                  <Routes>
-                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
-                    <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <Navigate to="/" replace />} />
-                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
-                    <Route path="/demo-data" element={<DemoDataPage user={user} onLogout={logout} />} />
-                    <Route path="/transaction-consent" element={<TransactionConsentPage user={user} onLogout={logout} />} />
-                    <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/admin/banking" element={user?.role === 'admin' ? <BankingAdminOps user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
-                    <Route path="/oauth-debug-logs"
-                      element={user?.role === 'admin' ? <OAuthDebugLogViewer /> : <Navigate to="/" replace />}
-                    />
-                    <Route path="/client-registration"
-                      element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
-                    />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
+                <main
+                  className={`main-content${showEmbeddedDock ? ' main-content--embedded-dock' : ''}`}
+                >
+                  {showEmbeddedDock ? (
+                    <>
+                      <div className="main-content__primary">
+                        <EducationBar />
+                        <Routes>
+                          <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                          <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <Navigate to="/" replace />} />
+                          <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                          <Route path="/demo-data" element={<DemoDataPage user={user} onLogout={logout} />} />
+                          <Route path="/transaction-consent" element={<TransactionConsentPage user={user} onLogout={logout} />} />
+                          <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                          <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                          <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                          <Route path="/admin/banking" element={user?.role === 'admin' ? <BankingAdminOps user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                          <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                          <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                          <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
+                          <Route path="/oauth-debug-logs"
+                            element={user?.role === 'admin' ? <OAuthDebugLogViewer /> : <Navigate to="/" replace />}
+                          />
+                          <Route path="/client-registration"
+                            element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
+                          />
+                          <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                      </div>
+                      <div
+                        ref={embeddedDockWrapRef}
+                        className="global-embedded-agent-dock-wrap"
+                        role="region"
+                        aria-label="AI banking assistant"
+                      >
+                        <div
+                          className={`embedded-agent-dock${embeddedDockCollapsed ? ' embedded-agent-dock--collapsed' : ''}`}
+                          data-agent-theme={effectiveAgentTheme}
+                        >
+                          <div className="embedded-agent-dock__head">
+                            <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
+                            <p className="embedded-agent-dock__lead">
+                              Natural language and MCP tools — step chips show what ran.
+                            </p>
+                            <button
+                              type="button"
+                              className="embedded-dock-collapse-btn"
+                              onClick={handleToggleEmbeddedDock}
+                              aria-label={embeddedDockCollapsed ? 'Expand assistant panel' : 'Collapse assistant panel'}
+                              title={embeddedDockCollapsed ? 'Expand' : 'Collapse'}
+                            >
+                              {embeddedDockCollapsed ? '▲' : '▼'}
+                            </button>
+                          </div>
+                          {!embeddedDockCollapsed && (
+                            <>
+                              <button
+                                type="button"
+                                className="embedded-dock-resize-handle"
+                                onMouseDown={onEmbeddedDockResizeMouseDown}
+                                aria-label="Drag up or down to resize assistant panel height"
+                                title="Drag up or down to resize the assistant"
+                              >
+                                <span className="embedded-dock-resize-handle__grip" aria-hidden="true">
+                                  <span className="embedded-dock-resize-handle__bar" />
+                                </span>
+                              </button>
+                              <div
+                                className="embedded-banking-agent embedded-banking-agent--bottom"
+                                style={{ height: embeddedAgentBodyHeight }}
+                              >
+                                <BankingAgent user={user} onLogout={logout} mode="inline" embeddedDockBottom />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <EducationBar />
+                      <Routes>
+                        <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                        <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <Navigate to="/" replace />} />
+                        <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                        <Route path="/demo-data" element={<DemoDataPage user={user} onLogout={logout} />} />
+                        <Route path="/transaction-consent" element={<TransactionConsentPage user={user} onLogout={logout} />} />
+                        <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                        <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                        <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                        <Route path="/admin/banking" element={user?.role === 'admin' ? <BankingAdminOps user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                        <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                        <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                        <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
+                        <Route path="/oauth-debug-logs"
+                          element={user?.role === 'admin' ? <OAuthDebugLogViewer /> : <Navigate to="/" replace />}
+                        />
+                        <Route path="/client-registration"
+                          element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
+                        />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </>
+                  )}
                 </main>
               )
             } />
           </Routes>
           <GlobalFloatingBankingAgent user={user} onLogout={logout} agentUiMode={agentUiMode} pathname={pathname} />
-          {showEmbeddedDock && (
-            <div
-              ref={embeddedDockWrapRef}
-              className="global-embedded-agent-dock-wrap"
-              role="region"
-              aria-label="AI banking assistant"
-            >
-              <div
-                className={`embedded-agent-dock${embeddedDockCollapsed ? ' embedded-agent-dock--collapsed' : ''}`}
-                data-agent-theme={effectiveAgentTheme}
-              >
-                <div className="embedded-agent-dock__head">
-                  <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
-                  <p className="embedded-agent-dock__lead">
-                    Natural language and MCP tools along the bottom — step chips show what ran.
-                  </p>
-                  <button
-                    type="button"
-                    className="embedded-dock-collapse-btn"
-                    onClick={handleToggleEmbeddedDock}
-                    aria-label={embeddedDockCollapsed ? 'Expand assistant panel' : 'Collapse assistant panel'}
-                    title={embeddedDockCollapsed ? 'Expand' : 'Collapse'}
-                  >
-                    {embeddedDockCollapsed ? '▲' : '▼'}
-                  </button>
-                </div>
-                {!embeddedDockCollapsed && (
-                  <>
-                    <button
-                      type="button"
-                      className="embedded-dock-resize-handle"
-                      onMouseDown={onEmbeddedDockResizeMouseDown}
-                      aria-label="Drag up or down to resize assistant panel height"
-                      title="Drag up or down to resize the assistant"
-                    >
-                      <span className="embedded-dock-resize-handle__grip" aria-hidden="true">
-                        <span className="embedded-dock-resize-handle__bar" />
-                      </span>
-                    </button>
-                    <div
-                      className="embedded-banking-agent embedded-banking-agent--bottom"
-                      style={{ height: embeddedAgentBodyHeight }}
-                    >
-                      <BankingAgent user={user} onLogout={logout} mode="inline" embeddedDockBottom />
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
           <EducationPanelsHost />
           {!isLogsRoute && (
             <Link
               className="nav-home-fab"
-              to="/"
-              title="Go to home"
+              to={homeFabPath}
+              title={user ? 'Go to home dashboard' : 'Go to home'}
+              onClick={handleHomeFabClick}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -686,7 +698,6 @@ function AppWithAuth() {
           {!isLogsRoute && <CIBAPanel />}
           {!isLogsRoute && <CimdSimPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {apiTrafficOpen && <ApiTrafficPanel onClose={() => setApiTrafficOpen(false)} />}
           {/* Floating Log Viewer Button — opens in a new window so it stays visible */}
           {!isLogsRoute && (
             <button
@@ -707,9 +718,11 @@ function AppWithAuth() {
           {!isLogsRoute && (
             <button
               className="api-traffic-fab"
-              onClick={() => setApiTrafficOpen((v) => !v)}
-              title="Toggle API Traffic Viewer (drag to move, ⤢ to pop out)"
               type="button"
+              onClick={() =>
+                window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')
+              }
+              title="Open API Traffic in a new window — move to another monitor like Logs"
             >
               🌐 API
             </button>

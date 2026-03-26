@@ -30,6 +30,7 @@
     "test:e2e:ci:vercel": "CI=true PLAYWRIGHT_BASE_URL=https://banking-demo-puce.vercel.app playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:api": "playwright test --config=playwright.api.config.js --reporter=list",
+    "test:e2e:session": "playwright test tests/e2e/session-regression.spec.js --config=playwright.api.config.js --reporter=list",
     "test:e2e:admin": "playwright test tests/e2e/admin-dashboard.spec.js --reporter=list",
     "test:e2e:security": "playwright test tests/e2e/security-settings.spec.js --reporter=list",
     "test:e2e:agent": "playwright test tests/e2e/banking-agent.spec.js --reporter=list"

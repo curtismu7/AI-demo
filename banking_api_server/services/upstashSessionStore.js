@@ -27,8 +27,6 @@
 const { Store } = require('express-session');
 const { createClient } = require('@vercel/kv');
 
-const DEFAULT_TTL_SECONDS = 24 * 60 * 60; // 24 hours
-
 /**
  * Circuit breaker — prevents hammering Upstash when it is over-quota or down.
  *

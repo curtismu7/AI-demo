@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import bffAxios from '../services/bffAxios';
+import { resolveSessionUser } from '../services/sessionResolver';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
@@ -115,7 +116,15 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
         toast.dismiss('admin-dash-reconnect');
         if (status === 401) {
           setForbidden403(false);
-          toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
+          const still = await resolveSessionUser();
+          if (still?.role === 'admin') {
+            toast.warn(
+              'Could not load admin data yet. Try refreshing the page, or use Refresh access token in the Banking Agent.',
+              { autoClose: 14000 }
+            );
+          } else {
+            toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
+          }
         } else if (status === 403) {
           setForbidden403(true);
           toast.error('You do not have permission to access the admin dashboard.');

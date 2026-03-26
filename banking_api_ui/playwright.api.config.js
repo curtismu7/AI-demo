@@ -10,7 +10,7 @@
  *   # or
  *   npx playwright test --config=playwright.api.config.js
  *
- * Matches: health.spec.js, banking-operations.spec.js (API must be running).
+ * Matches: health.spec.js, banking-operations.spec.js, session-regression.spec.js (API must be running).
  *
  * Env vars:
  *   BANKING_API_BASE  — override API host:port (default http://localhost:3002; use 3001 for plain start)
@@ -20,7 +20,7 @@ const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './tests/e2e',
-  testMatch: ['banking-operations.spec.js', 'health.spec.js'],
+  testMatch: ['banking-operations.spec.js', 'health.spec.js', 'session-regression.spec.js'],
 
   retries: process.env.CI ? 2 : 0,
   workers: 2,

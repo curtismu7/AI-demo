@@ -18,7 +18,6 @@ const CUSTOM_ATTR = process.env.PINGONE_AGENT_MAPPING_ATTR_NAME || 'bankingPrinc
 async function createAgentRepresentativeUser({
   principalSub,
   principalEmail,
-  principalUsername,
 }) {
   const token = process.env.PINGONE_MANAGEMENT_API_TOKEN || process.env.PINGONE_WORKER_ACCESS_TOKEN;
   const populationId = process.env.PINGONE_AGENT_POPULATION_ID;

@@ -10,11 +10,11 @@
   min-height: 100vh;
 }
 
-/* Stack main column above embedded bottom agent (matches admin dashboard embed layout) */
+/* Embedded agent lives in App <main> below this page — single scroll via .main-content__primary */
 .user-dashboard--embed-agent {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 48px);
+  min-height: min-content;
   padding-bottom: 12px;
 }
 
@@ -28,7 +28,7 @@
 .user-dashboard--embed-agent .dashboard-content.ud-body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
 }
 
 .ud-shell--floating-only {

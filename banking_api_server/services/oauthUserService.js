@@ -255,22 +255,6 @@ class OAuthUserService {
   }
 
   /**
-   * Validate JWT token
-   */
-  validateToken(token) {
-    try {
-      const decoded = jwt.verify(token, this.config.tokenValidation.issuer, {
-        issuer: this.config.tokenValidation.issuer,
-        audience: this.config.tokenValidation.audience
-      });
-      return decoded;
-    } catch (error) {
-      console.error('Token validation error:', error.message);
-      return null;
-    }
-  }
-
-  /**
    * Create a user object from PingOne Core user info (end users get customer role)
    */
   createUserFromOAuth(userInfo) {

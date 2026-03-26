@@ -25,6 +25,7 @@ jobs:
         working-directory: banking_api_server
         run: npm ci
 
+      # Full suite includes session tests; for a faster local session-only check: npm run test:session
       - name: Run tests
         working-directory: banking_api_server
         run: npm test -- --forceExit --passWithNoTests

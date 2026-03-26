@@ -519,7 +519,7 @@ const validateScopesWithErrorHandling = (userScopes, requiredScopes, requireAll 
 };
 
 // Enhanced OAuth error handling middleware with comprehensive logging
-const oauthErrorHandler = (error, req, res, next) => {
+const oauthErrorHandler = (error, req, res, _next) => {
   const requestContext = {
     method: req.method,
     path: req.path || req.url,

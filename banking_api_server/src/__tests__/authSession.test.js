@@ -66,6 +66,38 @@ function agentWith(app) {
   return request.agent(app);
 }
 
+/**
+ * Same order as server.js: session → attach req._sessionStore* → set-session helper → /api/auth routes.
+ * Mirrors production middleware that exposes Upstash ping cache to GET /api/auth/session.
+ */
+function buildAppWithSessionAndStorePing(ping = { healthy: true, error: null }) {
+  const app = express();
+  app.use(express.json());
+  app.use(
+    session({
+      secret: 'test-session-secret',
+      resave: false,
+      saveUninitialized: false,
+    })
+  );
+
+  app.use('/api/auth', (req, res, next) => {
+    req._sessionStoreError = ping.error ?? null;
+    req._sessionStoreHealthy = typeof ping.healthy === 'boolean' ? ping.healthy : null;
+    next();
+  });
+
+  app.post('/__set-session', (req, res) => {
+    Object.assign(req.session, req.body);
+    req.session.save(() => res.json({ ok: true }));
+  });
+
+  const authRoutes = require('../../routes/auth');
+  app.use('/api/auth', authRoutes);
+
+  return app;
+}
+
 // ── sample user objects ────────────────────────────────────────────────────────
 
 const LOCAL_USER = {
@@ -241,5 +273,55 @@ describe('GET /api/auth/session — cookie-restored session (_restoredFromCookie
   it('returns cookieOnlyBffSession: true', async () => {
     const res = await agent.get('/api/auth/session');
     expect(res.body.cookieOnlyBffSession).toBe(true);
+  });
+});
+
+/**
+ * Regression: server.js sets req._sessionStoreError / req._sessionStoreHealthy before auth routes;
+ * GET /api/auth/session must surface them so BankingAgent can distinguish quota vs stub token.
+ */
+describe('GET /api/auth/session — session store ping contract (production middleware shape)', () => {
+  it('includes sessionStoreHealthy and sessionStoreError when ping middleware runs (healthy)', async () => {
+    const app = buildAppWithSessionAndStorePing({ healthy: true, error: null });
+    const agent = agentWith(app);
+    await agent.post('/__set-session').send({
+      user: LOCAL_USER,
+      oauthType: 'user',
+      oauthTokens: { accessToken: 'eyJ-real-shaped-token', tokenType: 'Bearer' },
+    });
+    const res = await agent.get('/api/auth/session');
+    expect(res.status).toBe(200);
+    expect(res.body.authenticated).toBe(true);
+    expect(res.body.sessionStoreHealthy).toBe(true);
+    expect(res.body.sessionStoreError).toBeNull();
+    expect(res.body.cookieOnlyBffSession).toBe(false);
+  });
+
+  it('surfaces unhealthy store + error string from ping middleware', async () => {
+    const app = buildAppWithSessionAndStorePing({
+      healthy: false,
+      error: 'max requests limit exceeded',
+    });
+    const agent = agentWith(app);
+    await agent.post('/__set-session').send({
+      user: LOCAL_USER,
+      oauthType: 'user',
+      oauthTokens: { accessToken: 'tok', tokenType: 'Bearer' },
+    });
+    const res = await agent.get('/api/auth/session');
+    expect(res.body.sessionStoreHealthy).toBe(false);
+    expect(res.body.sessionStoreError).toBe('max requests limit exceeded');
+  });
+
+  it('without ping middleware sessionStore fields are null (no fake healthy flag)', async () => {
+    const app = buildAppWithSession();
+    const agent = agentWith(app);
+    await agent.post('/__set-session').send({
+      user: LOCAL_USER,
+      tokenType: 'local_session',
+    });
+    const res = await agent.get('/api/auth/session');
+    expect(res.body.sessionStoreHealthy).toBeNull();
+    expect(res.body.sessionStoreError).toBeNull();
   });
 });

@@ -86,12 +86,12 @@
   bottom: var(--agent-panel-bottom, 24px);
   right: 192px; /* sits to the left of the FAB pill (~148px wide + 16px gap + 28px edge) */
   z-index: 10059;
-  width: 520px;
-  height: 420px;
-  min-width: 360px;
-  min-height: 280px;
-  max-width: 900px;
-  max-height: 620px;
+  width: 260px;
+  height: 210px;
+  min-width: 180px;
+  min-height: 140px;
+  max-width: 450px;
+  max-height: 310px;
   display: flex;
   flex-direction: column;
   background: var(--ba-bg);
@@ -116,7 +116,7 @@
 
 /* ─── Left column ─────────────────────────────────────────────────────── */
 .ba-left-col {
-  width: 200px;
+  width: 112px;
   flex-shrink: 0;
   border-right: 1px solid var(--ba-border);
   padding: 14px 12px;
@@ -1058,7 +1058,7 @@
     border-radius: 14px 14px 0 0;
   }
   .ba-left-col {
-    width: 180px;
+    width: 112px;
   }
 }
 
@@ -1068,7 +1068,7 @@
     left: 0 !important;
     bottom: 0;
     width: 100% !important;
-    height: min(76vh, 520px) !important;
+    height: min(76vh, 260px) !important;
     max-height: 76vh !important;
     border-radius: 14px 14px 0 0;
   }
@@ -1155,16 +1155,16 @@
 
 /* ═══════════════════════════════════════════════════════════════════════
    Results Panel — slides in to the LEFT of the agent panel, wider
-   Default position: right-anchored just left of the agent (~520px default + 16px gap)
+   Default position: right-anchored just left of the agent (~260px default + 16px gap)
    When dragged: follows the agent via inline styles
    ═══════════════════════════════════════════════════════════════════════ */
 .banking-agent-results-panel {
   position: fixed;
-  right: calc(var(--float-edge, 28px) + 520px + 16px);
+  right: calc(var(--float-edge, 28px) + 260px + 16px);
   bottom: var(--agent-panel-bottom, 96px);
   z-index: 10058; /* just below the agent */
-  width: 440px;
-  max-height: 520px;
+  width: 220px;
+  max-height: 260px;
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -1326,9 +1326,9 @@
   transform: translate(-50%, -50%);
   right: auto;
   bottom: auto;
-  width: min(94vw, 640px);
-  height: min(80vh, 520px);
-  max-width: 640px;
+  width: min(94vw, 320px);
+  height: min(80vh, 260px);
+  max-width: 320px;
   max-height: 80vh;
   border-radius: 12px;
 }
@@ -1471,8 +1471,8 @@
 
 .embedded-banking-agent {
   margin-top: 1rem;
-  min-height: 520px;
-  height: min(70vh, 720px);
+  min-height: 260px;
+  height: min(70vh, 360px);
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   overflow: hidden;
@@ -1480,21 +1480,21 @@
 }
 
 .embedded-banking-agent .banking-agent-panel.ba-mode-inline {
-  min-height: 520px;
+  min-height: 260px;
   height: 100%;
 }
 
-/* Full-width bottom dock (dashboard embedded mode — Claude-style bar) */
+/* Bottom-of-page strip (embedded mode — flows with <main>, not a floating card) */
 .embedded-agent-dock {
   flex-shrink: 0;
   width: 100%;
   max-width: 100%;
-  padding: 12px 0 0;
-  margin-top: 4px;
-  border-top: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, #fff 12%);
-  box-shadow: 0 -12px 36px rgba(15, 23, 42, 0.06);
-  border-radius: 16px 16px 0 0;
+  padding: 8px 0 0;
+  margin-top: 0;
+  border-top: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

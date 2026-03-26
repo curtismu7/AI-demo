@@ -193,10 +193,15 @@ html[data-theme='dark'] .embedded-banking-agent {
   border-color: #334155;
 }
 
-html[data-theme='dark'] .embedded-agent-dock {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, #1e293b 12%);
+html[data-theme='dark'] .global-embedded-agent-dock-wrap {
   border-top-color: #334155;
-  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+}
+
+html[data-theme='dark'] .embedded-agent-dock {
+  background: transparent;
+  border-top: none;
+  box-shadow: none;
 }
 
 html[data-theme='dark'] .embedded-agent-dock__title {
@@ -269,9 +274,9 @@ html[data-theme='dark'] .embedded-dock-resize-handle:hover .embedded-dock-resize
  * dark and it looks like the agent "reverted" even though .ba-mode-light is set.
  */
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] {
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, #fff 12%);
-  border-top-color: #e2e8f0;
-  box-shadow: 0 -12px 36px rgba(15, 23, 42, 0.06);
+  background: transparent;
+  border-top: none;
+  box-shadow: none;
 }
 
 html[data-theme='dark'] .embedded-agent-dock[data-agent-theme='light'] .embedded-agent-dock__title {

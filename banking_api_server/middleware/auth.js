@@ -1,12 +1,10 @@
 const bcrypt = require('bcryptjs');
 const oauthConfig = require('../config/oauth');
 const { validateToken: validatePingOneToken } = require('../services/tokenValidationService');
-const { 
-  BANKING_SCOPES, 
-  USER_TYPE_SCOPES, 
+const {
+  BANKING_SCOPES,
   ROUTE_SCOPE_MAP,
   getCurrentEnvironmentConfig,
-  getScopesForUserType,
   isValidScope
 } = require('../config/scopes');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
@@ -19,7 +17,6 @@ const {
 // Environment configuration
 const SKIP_TOKEN_SIGNATURE_VALIDATION = process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true';
 const DEBUG_TOKENS = process.env.DEBUG_TOKENS === 'true';
-const DEBUG_SCOPES = process.env.DEBUG_SCOPES === 'true';
 const ENDUSER_AUDIENCE = process.env.ENDUSER_AUDIENCE || 'banking_jk_enduser';
 const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || 'banking_mcp_01_JK';
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
@@ -683,6 +680,32 @@ const authenticateToken = async (req, res, next) => {
             ...requestContext,
             error_message: sessionAuthError.message
           });
+          // Expired or malformed JWT in session is common while the BFF session cookie is still valid.
+          // Same trust model as `_cookie_session`: identity comes from session.user + signed _auth cookie.
+          if (sessionUser && !COOKIE_SESSION_BLOCKED_ROUTES.has(routeKey)) {
+            logger.warn(LOG_CATEGORIES.AUTHENTICATION, 'Accepting session.user after session access token validation failed (BFF session still valid)', {
+              ...requestContext,
+              route: routeKey,
+              user_id: sessionUser.id,
+            });
+            req.user = {
+              id: sessionUser.id,
+              username: sessionUser.username || sessionUser.email || sessionUser.id,
+              email: sessionUser.email || null,
+              firstName: sessionUser.firstName || null,
+              lastName: sessionUser.lastName || null,
+              role: sessionUser.role || 'user',
+              clientType: req.session?.clientType || 'enduser',
+              userType: sessionUser.role === 'admin' ? 'admin' : 'customer',
+              tokenType: 'oauth',
+              fromSession: true,
+              restoredFromCookie: false,
+              sessionAccessTokenInvalid: true,
+              acr: null,
+              scopes: [],
+            };
+            return next();
+          }
           if (sessionAuthError instanceof OAuthError) throw sessionAuthError;
           throw new OAuthError(OAUTH_ERROR_TYPES.INVALID_TOKEN, 'Session token validation failed', 401);
         }

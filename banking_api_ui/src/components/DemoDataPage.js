@@ -169,7 +169,11 @@ export default function DemoDataPage({ user, onLogout }) {
             'These account IDs are no longer on this server (common after a deploy or new instance). The form was reloaded — review accounts and save again.'
         );
       } else {
-        toast.error(err.message || 'Save failed');
+        const msg =
+          err.code === 'invalid_token'
+            ? 'Could not validate your sign-in token. Use Refresh access token in the Banking Agent, or sign in again.'
+            : err.message || 'Save failed';
+        toast.error(msg);
       }
     } finally {
       setSaving(false);
