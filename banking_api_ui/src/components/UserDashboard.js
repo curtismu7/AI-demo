@@ -1,36 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { toast } from 'react-toastify';
-import bffAxios from '../services/bffAxios';
-import { fetchMyAccountsWithResilience, isAccountsHydrationTransientError } from '../services/accountsHydration';
-import { resolveSessionUser } from '../services/sessionResolver';
+import apiClient from '../services/apiClient';
+import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
-import { navigateToCustomerOAuthLogin } from '../utils/authUi';
-import { toastCustomerError } from '../utils/dashboardToast';
 import './UserDashboard.css';
-import { HIGH_VALUE_CONSENT_USD } from '../constants/transactionThresholds';
-import { AGENT_CONSENT_BLOCK_USER_MESSAGE, isAgentBlockedByConsentDecline } from '../services/agentAccessConsent';
 
-/**
- * Human-readable account label; uses demo "account name" when set on Demo config.
- * @param {{ name?: string; accountType?: string; accountNumber?: string }} account
- * @returns {string}
- */
-function accountSummaryLine(account) {
-  const num = account.accountNumber || 'N/A';
-  const type = account.accountType || 'Account';
-  const nick = typeof account.name === 'string' && account.name.trim() ? account.name.trim() : '';
-  if (nick) return `${nick} · ${type} - ${num}`;
-  return `${type} - ${num}`;
-}
-
-const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
+const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -38,9 +17,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const [tokenData, setTokenData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [transferOpen, setTransferOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedAccount, setSelectedAccount] = useState(null);
   const [transferForm, setTransferForm] = useState({
-    fromAccountId: '',
     toAccountId: '',
     amount: '',
     description: ''
@@ -56,7 +35,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   });
   const [withdrawAccount, setWithdrawAccount] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [consentAgentBanner, setConsentAgentBanner] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [stepUpRequired, setStepUpRequired] = useState(false);
   // 'ciba' | 'email' — set from the 428 response step_up_method field
   const [stepUpMethod, setStepUpMethod] = useState('email');
@@ -64,128 +43,58 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const fetchingRef = React.useRef(false);
-  /** When true, run fetchUserData again as soon as the in-flight request finishes (avoids dropped agent/interval refreshes). */
-  const pendingRefetchRef = React.useRef(false);
-  /** If any queued refetch wanted a non-silent run (loading UI), honor that on the follow-up. */
-  const pendingRefetchNonSilentRef = React.useRef(false);
-  const fetchUserDataRef = React.useRef(null);
-  const fetchTransactionsOnlyRef = React.useRef(null);
-  const fetchAccountsOnlyRef = React.useRef(null);
-  const [agentHighlight, setAgentHighlight] = useState(null); // 'accounts' | 'transactions' | 'both' | null
 
-  // Listen for full-page agent results dispatched by BankingAgent
+  // Auto-dismiss success messages after 4 seconds
   useEffect(() => {
-    const refreshBothDelayed = () => {
-      setTimeout(() => {
-        fetchAccountsOnlyRef.current?.();
-        fetchTransactionsOnlyRef.current?.();
-      }, 300);
-      setTimeout(() => {
-        fetchAccountsOnlyRef.current?.();
-        fetchTransactionsOnlyRef.current?.();
-      }, 1500);
-    };
+    if (!success) return;
+    const t = setTimeout(() => setSuccess(null), 4000);
+    return () => clearTimeout(t);
+  }, [success]);
 
-    const handleAgentResult = (e) => {
-      const { type, data, label } = e.detail;
-      const labelSuffix = label ? ` \u2014 ${label}` : '';
-      if (type === 'accounts' && Array.isArray(data)) {
-        setAccounts(data);
-        setAgentHighlight('accounts');
-        toast.success(`Agent updated accounts${labelSuffix}`);
-      } else if (type === 'transactions' && Array.isArray(data)) {
-        // Transactions changed — refresh both list AND balances (balance changes on writes)
-        refreshBothDelayed();
-        setAgentHighlight('both');
-        toast.success(`Agent updated transactions${labelSuffix}`);
-      } else if (type === 'balance' || type === 'confirm') {
-        // Write completed — partial-refresh both silently, no loading spinner
-        refreshBothDelayed();
-        setAgentHighlight('both');
-        toast.success(`Agent completed \u2014 balances & transactions refreshed`);
-      }
-      setTimeout(() => setAgentHighlight(null), 3000);
-    };
-    window.addEventListener('banking-agent-result', handleAgentResult);
-    return () => window.removeEventListener('banking-agent-result', handleAgentResult);
-  }, []);
+  // Initialize chat widget (configuration is handled in index.html)
+  useChatWidget();
 
-  // Listen for agent data ready events — partial-refresh only what changed, no page reload
-  useEffect(() => {
-    const refreshBoth = () => {
-      fetchAccountsOnlyRef.current?.();
-      fetchTransactionsOnlyRef.current?.();
-    };
-
-    const handleAgentDataReady = (e) => {
-      const { action } = e.detail;
-      const isWrite = ['deposit', 'withdraw', 'transfer'].includes(action);
-
-      if (isWrite) {
-        // Write: refresh BOTH accounts (balance updated) AND transactions (new entry).
-        // Short delay lets the server-side write commit before the next read.
-        setAgentHighlight('both');
-        setTimeout(refreshBoth, 300);
-        // Second pass after 1.5s in case the first hit a stale response.
-        setTimeout(refreshBoth, 1500);
-      } else if (action === 'accounts' || action === 'balance') {
-        setAgentHighlight('accounts');
-        fetchAccountsOnlyRef.current?.();
-      } else if (action === 'transactions') {
-        setAgentHighlight('transactions');
-        fetchTransactionsOnlyRef.current?.();
-      }
-
-      const actionLabels = {
-        accounts: 'Account data',
-        transactions: 'Transaction data',
-        balance: 'Balance',
-        deposit: 'Deposit',
-        withdraw: 'Withdrawal',
-        transfer: 'Transfer',
+  // Function to decode JWT token
+  const decodeToken = (token) => {
+    try {
+      if (!token) return null;
+      
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      
+      const header = JSON.parse(atob(parts[0]));
+      const payload = JSON.parse(atob(parts[1]));
+      
+      return {
+        header,
+        payload,
+        raw: token
       };
-      toast.success(`${actionLabels[action] || action} \u2014 updated`);
-      setTimeout(() => setAgentHighlight(null), 4000);
-    };
-    window.addEventListener('agentDataReady', handleAgentDataReady);
-    return () => window.removeEventListener('agentDataReady', handleAgentDataReady);
-  }, []);
-
-  // Listen for Demo config updates (e.g. new accounts) and refresh silently.
-  useEffect(() => {
-    const handleDemoScenarioUpdated = () => {
-      if (fetchUserDataRef.current) fetchUserDataRef.current(true);
-    };
-    window.addEventListener('demoScenarioUpdated', handleDemoScenarioUpdated);
-    return () => window.removeEventListener('demoScenarioUpdated', handleDemoScenarioUpdated);
-  }, []);
-
-  // Legacy LangChain widget (`window.bankingWidget`) only initializes on localhost in index.html;
-  // production uses <GlobalFloatingBankingAgent /> / embedded BankingAgent — do not poll for the old widget.
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  };
 
   // Function to fetch current OAuth tokens
   const fetchTokenData = async () => {
     try {
-      // Try both user/admin token-claims endpoints first (status endpoints omit raw token).
+      console.log('🔍 Fetching current OAuth token data...');
+      
+      // Try both admin and user status endpoints
       let response;
       try {
-        response = await axios.get('/api/auth/oauth/user/token-claims');
+        response = await axios.get('/api/auth/oauth/user/status');
         if (!response.data.authenticated) {
-          response = await axios.get('/api/auth/oauth/token-claims');
+          response = await axios.get('/api/auth/oauth/status');
         }
       } catch (error) {
-        response = await axios.get('/api/auth/oauth/token-claims');
+        response = await axios.get('/api/auth/oauth/status');
       }
       
-      if (response.data.authenticated) {
-        const decodedAccessToken = response.data.decoded
-          ? {
-              header: response.data.decoded.header || null,
-              payload: response.data.decoded.payload || null,
-              raw: null
-            }
-          : null;
-
+      if (response.data.authenticated && response.data.accessToken) {
+        const decodedAccessToken = decodeToken(response.data.accessToken);
+        
         const tokenInfo = {
           accessToken: decodedAccessToken,
           tokenType: response.data.tokenType,
@@ -195,12 +104,14 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           user: response.data.user
         };
         
+        console.log('✅ Token data fetched:', tokenInfo);
         setTokenData(tokenInfo);
       } else {
+        console.log('❌ No authenticated session found');
         setTokenData(null);
       }
     } catch (error) {
-      console.error('Error fetching token data:', error);
+      console.error('❌ Error fetching token data:', error);
       setTokenData(null);
     }
   };
@@ -212,65 +123,19 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   };
 
   useEffect(() => {
+    // Initial data fetch
     fetchUserData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /** Restore forms after cancel on /transaction-consent; show success after agreement submit. */
-  useEffect(() => {
-    const st = location.state;
-    if (!st || (!st.restore && !st.transactionSuccess && !st.consentDeclined)) return;
-    let refreshAfterConsentTimer;
-    if (st.restore) {
-      const r = st.restore;
-      if (r.transferForm) {
-        setTransferOpen(true);
-        setTransferForm(r.transferForm);
-      }
-      if (r.depositAccount) {
-        setDepositAccount(r.depositAccount);
-        setDepositForm(r.depositForm || { amount: '', description: '' });
-      }
-      if (r.withdrawAccount) {
-        setWithdrawAccount(r.withdrawAccount);
-        setWithdrawForm(r.withdrawForm || { amount: '', description: '' });
-      }
-    }
-    if (st.transactionSuccess) {
-      toast.success(st.transactionSuccess);
-      refreshAfterConsentTimer = setTimeout(() => {
-        fetchAccountsOnlyRef.current?.();
-        fetchTransactionsOnlyRef.current?.();
-      }, 0);
-    }
-    if (st.consentDeclined) {
-      setConsentAgentBanner(AGENT_CONSENT_BLOCK_USER_MESSAGE);
-    }
-    navigate(location.pathname + (location.search || ''), { replace: true, state: {} });
-    return () => {
-      if (refreshAfterConsentTimer) clearTimeout(refreshAfterConsentTimer);
-    };
-  }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (isAgentBlockedByConsentDecline()) {
-      setConsentAgentBanner(AGENT_CONSENT_BLOCK_USER_MESSAGE);
-    }
   }, []);
-
-  // Keep refs on latest fetch functions (event listeners capture stale closures otherwise).
-  useEffect(() => {
-    fetchUserDataRef.current = fetchUserData;
-    fetchTransactionsOnlyRef.current = fetchTransactionsOnly;
-    fetchAccountsOnlyRef.current = fetchAccountsOnly;
-  });
 
   useEffect(() => {
     let refreshInterval;
     
     if (autoRefresh) {
+      // Set up auto-refresh every 5 seconds
       refreshInterval = setInterval(() => {
-        fetchUserDataRef.current(true); // Silent refresh - no loading spinner
-      }, 45000); // 45s — pairs with server rate limits / shared NAT IPs
+        console.log('🔄 Auto-refreshing dashboard data...');
+        fetchUserData(true); // Silent refresh - no loading spinner
+      }, 5000); // 5 seconds
     }
     
     // Cleanup interval on component unmount or when autoRefresh changes
@@ -281,154 +146,69 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     };
   }, [autoRefresh]);
 
-  /** Partial refresh — only transactions list, no loading spinner, no lock. */
-  const fetchTransactionsOnly = async () => {
-    try {
-      const res = await bffAxios.get('/api/transactions/my');
-      const tx = res.data?.transactions;
-      if (Array.isArray(tx)) {
-        setTransactions(tx);
-      }
-    } catch (e) {
-      console.error('Error refreshing transactions:', e);
-    }
-  };
-
-  /** Partial refresh — only accounts/balances, no loading spinner, no lock. */
-  const fetchAccountsOnly = async () => {
-    try {
-      const res = await bffAxios.get('/api/accounts/my');
-      const list = res.data?.accounts;
-      if (Array.isArray(list)) {
-        setAccounts(list);
-      }
-    } catch (e) {
-      console.error('Error refreshing accounts:', e);
-    }
-  };
-
-  /** Transient errors for full dashboard fetch (accounts hydration uses the same rules). */
-  const isTransientError = isAccountsHydrationTransientError;
-
-  const fetchUserData = async (silent = false, _retryCount = 0) => {
-    if (fetchingRef.current) {
-      pendingRefetchRef.current = true;
-      if (!silent) pendingRefetchNonSilentRef.current = true;
-      return;
-    }
+  const fetchUserData = async (silent = false) => {
+    if (fetchingRef.current) return;
     fetchingRef.current = true;
-    let caughtError = null;
-    let sessionStillValidAfter401 = false;
     try {
       // Only show loading spinner for initial load, not auto-refreshes
       if (!silent) {
         setLoading(true);
       }
 
-      const sessionUser = await resolveSessionUser();
-      if (!sessionUser) {
-        toastCustomerError('Please log in to access your account', navigateToCustomerOAuthLogin);
+      // Check for OAuth session and get user info
+      try {
+        // Try end user OAuth session first
+        const userSessionResponse = await axios.get('/api/auth/oauth/user/status');
+        if (userSessionResponse.data.authenticated) {
+          setUser(userSessionResponse.data.user);
+        } else {
+          // Try admin OAuth session as fallback
+          const adminSessionResponse = await axios.get('/api/auth/oauth/status');
+          if (adminSessionResponse.data.authenticated) {
+            setUser(adminSessionResponse.data.user);
+          } else {
+            throw new Error('No valid OAuth session found');
+          }
+        }
+      } catch (sessionError) {
+        console.error('OAuth session error:', sessionError);
+        setError('Please log in to access your account');
         if (!silent) {
           setLoading(false);
         }
         return;
       }
-      setUser(sessionUser);
 
-      // Accounts first: GET /api/accounts/my may provision demo accounts + sample transactions
-      // when the user has none. Running transactions in parallel often finished before
-      // provisioning completed, leaving an empty history until a later refresh (regression).
-      // Retries cover OAuth session/JWT lag (401), cold 5xx, and empty body after provision race.
-      const accountList = await fetchMyAccountsWithResilience(bffAxios);
-      setAccounts(accountList);
-      const transactionsResponse = await bffAxios.get('/api/transactions/my');
-      const tx = transactionsResponse.data?.transactions;
-      if (Array.isArray(tx)) {
-        setTransactions(tx);
-      }
+      // Get user's accounts using the new API client
+      const accountsResponse = await apiClient.get('/api/accounts/my');
+      setAccounts(accountsResponse.data.accounts);
+
+      // Get user's transactions using the new API client
+      const transactionsResponse = await apiClient.get('/api/transactions/my');
+      setTransactions(transactionsResponse.data.transactions);
 
     } catch (error) {
-      const status = error.response?.status;
-
-      // OAuth/resource 401s often clear after a short wait (JWT lag, cold BFF) — same as accounts hydration
-      const MAX_401_RETRIES = 3;
-      if (
-        status === 401 &&
-        localStorage.getItem('userLoggedOut') !== 'true' &&
-        _retryCount < MAX_401_RETRIES
-      ) {
-        console.warn(`fetchUserData: HTTP 401 (attempt ${_retryCount + 1}), retrying…`);
-        fetchingRef.current = false;
-        await new Promise((r) => setTimeout(r, 500 * (_retryCount + 1)));
-        void fetchUserData(silent, _retryCount + 1);
-        return;
-      }
-
-      // Retry transient errors up to 2 times with backoff before showing anything
-      const MAX_RETRIES = 2;
-      if (isTransientError(error) && _retryCount < MAX_RETRIES) {
-        console.warn(`fetchUserData: transient error (attempt ${_retryCount + 1}), retrying…`, error.message);
-        fetchingRef.current = false;
-        await new Promise(r => setTimeout(r, 800 * (_retryCount + 1)));
-        void fetchUserData(silent, _retryCount + 1);
-        return;
-      }
-
-      caughtError = error;
       console.error('Error fetching user data:', error);
-
-      if (status === 429) {
-        setAutoRefresh(false);
-        if (silent) {
-          toast.success('Auto-refresh paused due to rate limits.');
-        } else {
-          toast.error('Too many requests from this network. Wait a minute, then refresh. Auto-refresh is off.');
-        }
-      } else if (status === 401) {
-        if (localStorage.getItem('userLoggedOut') === 'true') return;
-        setAutoRefresh(false);
-        const still = await resolveSessionUser();
-        sessionStillValidAfter401 = Boolean(still);
-        if (!silent) {
-          if (still) {
-            toast.warn(
-              'Could not load your account data yet. Wait a moment and refresh, or use Refresh access token in the Banking Agent.',
-              { autoClose: 14000 }
-            );
-          } else {
-            toastCustomerError('Your session has expired. Please log in again.', navigateToCustomerOAuthLogin);
-          }
-        }
-      } else if (status === 403) {
-        toast.error('You do not have permission to access this information.');
-      } else if (!silent) {
-        toast.error('Failed to load your account information');
+      
+      // Check if it's an authentication error
+      if (error.response?.status === 401) {
+        setError('Your session has expired. Please log in again.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to access this information.');
+      } else {
+        setError('Failed to load your account information');
       }
     } finally {
       if (!silent) {
         setLoading(false);
       }
       fetchingRef.current = false;
-      const authFailed =
-        caughtError?.response?.status === 401 && !sessionStillValidAfter401;
-      if (pendingRefetchRef.current && !authFailed) {
-        pendingRefetchRef.current = false;
-        const loud = pendingRefetchNonSilentRef.current;
-        pendingRefetchNonSilentRef.current = false;
-        void fetchUserData(!loud);
-      } else if (authFailed) {
-        pendingRefetchRef.current = false;
-        pendingRefetchNonSilentRef.current = false;
-      }
     }
   };
 
   // ── CIBA step-up: initiate back-channel authentication ──
   const handleCibaStepUp = async () => {
-    if (!user?.email) {
-      toast.error('Cannot initiate CIBA: no email on session.');
-      return;
-    }
+    if (!user?.email) { setError('Cannot initiate CIBA: no email on session.'); return; }
     try {
       const { data } = await axios.post('/api/auth/ciba/initiate', {
         loginHint: user.email,
@@ -438,7 +218,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setCibaAuthReqId(data.authReqId);
       setCibaStatus('pending');
     } catch (err) {
-      toast.error('CIBA initiation failed: ' + (err.response?.data?.message || err.message));
+      setError('CIBA initiation failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -453,11 +233,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           setCibaAuthReqId(null);
           setStepUpRequired(false);
           await fetchUserData(true);
-          toast.success('Identity verified — please retry your transaction.');
+          setSuccess('Identity verified — please retry your transaction.');
         } else if (data.status === 'failed' || data.status === 'expired' || data.status === 'error') {
           setCibaStatus('error');
           setCibaAuthReqId(null);
-          toast.error(`CIBA verification ${data.status}. Please try again.`);
+          setError(`CIBA verification ${data.status}. Please try again.`);
         }
       } catch (_) { /* keep polling */ }
     }, 5000);
@@ -467,52 +247,27 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const handleTransfer = async (e) => {
     e.preventDefault();
 
-    if (!transferForm.fromAccountId || !transferForm.toAccountId || !transferForm.amount) {
-      toast.error('Please fill in all transfer details');
-      return;
-    }
-
-    if (transferForm.fromAccountId === transferForm.toAccountId) {
-      toast.error('From and To accounts must be different');
-      return;
-    }
-
-    const amt = parseFloat(transferForm.amount);
-    if (Number.isFinite(amt) && amt > HIGH_VALUE_CONSENT_USD) {
-      try {
-        const { data } = await bffAxios.post('/api/transactions/consent-challenge', {
-          fromAccountId: transferForm.fromAccountId,
-          toAccountId: transferForm.toAccountId,
-          amount: amt,
-          type: 'transfer',
-          description: transferForm.description || 'Transfer between accounts',
-        });
-        navigate(`/transaction-consent?challenge=${encodeURIComponent(data.challengeId)}`, {
-          state: { restore: { transferForm: { ...transferForm } } },
-        });
-      } catch (err) {
-        const d = err.response?.data;
-        toast.error(d?.message || d?.error || 'Could not start high-value consent. Try again.');
-      }
+    if (!selectedAccount || !transferForm.toAccountId || !transferForm.amount) {
+      setError('Please fill in all transfer details');
       return;
     }
 
     try {
-      await bffAxios.post('/api/transactions', {
-        fromAccountId: transferForm.fromAccountId,
+      await apiClient.post('/api/transactions', {
+        fromAccountId: selectedAccount.id,
         toAccountId: transferForm.toAccountId,
-        amount: amt,
+        amount: parseFloat(transferForm.amount),
         type: 'transfer',
         description: transferForm.description || 'Transfer between accounts',
         userId: user.id
       });
 
       // Reset form and refresh data
-      setTransferForm({ fromAccountId: '', toAccountId: '', amount: '', description: '' });
-      setTransferOpen(false);
-      await Promise.all([fetchAccountsOnly(), fetchTransactionsOnly()]);
+      setTransferForm({ toAccountId: '', amount: '', description: '' });
+      setSelectedAccount(null);
+      await fetchUserData();
 
-      toast.success('Transfer completed successfully!');
+      setSuccess('Transfer completed successfully!');
     } catch (error) {
       console.error('Transfer error:', error);
       if (error.response?.status === 428) {
@@ -520,10 +275,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        toast.error('You do not have permission to perform transfers. Please contact your administrator.');
+        setError('You do not have permission to perform transfers. Please contact your administrator.');
       } else {
-        const d = error.response?.data;
-        toast.error(d?.message || d?.error || 'Transfer failed');
+        setError(error.response?.data?.error || 'Transfer failed');
       }
     }
   };
@@ -532,35 +286,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     e.preventDefault();
 
     if (!depositAccount || !depositForm.amount) {
-      toast.error('Please fill in all deposit details');
-      return;
-    }
-
-    const amt = parseFloat(depositForm.amount);
-    if (Number.isFinite(amt) && amt > HIGH_VALUE_CONSENT_USD) {
-      try {
-        const { data } = await bffAxios.post('/api/transactions/consent-challenge', {
-          fromAccountId: null,
-          toAccountId: depositAccount.id,
-          amount: amt,
-          type: 'deposit',
-          description: depositForm.description || 'Deposit to account',
-        });
-        navigate(`/transaction-consent?challenge=${encodeURIComponent(data.challengeId)}`, {
-          state: { restore: { depositAccount, depositForm: { ...depositForm } } },
-        });
-      } catch (err) {
-        const d = err.response?.data;
-        toast.error(d?.message || d?.error || 'Could not start high-value consent. Try again.');
-      }
+      setError('Please fill in all deposit details');
       return;
     }
 
     try {
-      await bffAxios.post('/api/transactions', {
+      await apiClient.post('/api/transactions', {
         fromAccountId: null,
         toAccountId: depositAccount.id,
-        amount: amt,
+        amount: parseFloat(depositForm.amount),
         type: 'deposit',
         description: depositForm.description || 'Deposit to account',
         userId: user.id
@@ -569,9 +303,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       // Reset form and refresh data
       setDepositForm({ amount: '', description: '' });
       setDepositAccount(null);
-      await Promise.all([fetchAccountsOnly(), fetchTransactionsOnly()]);
+      await fetchUserData();
 
-      toast.success('Deposit completed successfully!');
+      setSuccess('Deposit completed successfully!');
     } catch (error) {
       console.error('Deposit error:', error);
       if (error.response?.status === 428) {
@@ -579,10 +313,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        toast.error('You do not have permission to make deposits. Please contact your administrator.');
+        setError('You do not have permission to make deposits. Please contact your administrator.');
       } else {
-        const d = error.response?.data;
-        toast.error(d?.message || d?.error || 'Deposit failed');
+        setError(error.response?.data?.error || 'Deposit failed');
       }
     }
   };
@@ -591,35 +324,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     e.preventDefault();
 
     if (!withdrawAccount || !withdrawForm.amount) {
-      toast.error('Please fill in all withdrawal details');
-      return;
-    }
-
-    const amt = parseFloat(withdrawForm.amount);
-    if (Number.isFinite(amt) && amt > HIGH_VALUE_CONSENT_USD) {
-      try {
-        const { data } = await bffAxios.post('/api/transactions/consent-challenge', {
-          fromAccountId: withdrawAccount.id,
-          toAccountId: null,
-          amount: amt,
-          type: 'withdrawal',
-          description: withdrawForm.description || 'Withdrawal from account',
-        });
-        navigate(`/transaction-consent?challenge=${encodeURIComponent(data.challengeId)}`, {
-          state: { restore: { withdrawAccount, withdrawForm: { ...withdrawForm } } },
-        });
-      } catch (err) {
-        const d = err.response?.data;
-        toast.error(d?.message || d?.error || 'Could not start high-value consent. Try again.');
-      }
+      setError('Please fill in all withdrawal details');
       return;
     }
 
     try {
-      await bffAxios.post('/api/transactions', {
+      await apiClient.post('/api/transactions', {
         fromAccountId: withdrawAccount.id,
         toAccountId: null,
-        amount: amt,
+        amount: parseFloat(withdrawForm.amount),
         type: 'withdrawal',
         description: withdrawForm.description || 'Withdrawal from account',
         userId: user.id
@@ -628,9 +341,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       // Reset form and refresh data
       setWithdrawForm({ amount: '', description: '' });
       setWithdrawAccount(null);
-      await Promise.all([fetchAccountsOnly(), fetchTransactionsOnly()]);
+      await fetchUserData();
 
-      toast.success('Withdrawal completed successfully!');
+      setSuccess('Withdrawal completed successfully!');
     } catch (error) {
       console.error('Withdrawal error:', error);
       if (error.response?.status === 428) {
@@ -638,10 +351,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        toast.error('You do not have permission to make withdrawals. Please contact your administrator.');
+        setError('You do not have permission to make withdrawals. Please contact your administrator.');
       } else {
-        const d = error.response?.data;
-        toast.error(d?.message || d?.error || 'Withdrawal failed');
+        setError(error.response?.data?.error || 'Withdrawal failed');
       }
     }
   };
@@ -682,15 +394,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
   };
 
-  const pendingTransactionsByAccount = transactions.reduce((acc, transaction) => {
-    const isPending = String(transaction?.status || '').toLowerCase() === 'pending';
-    if (!isPending) return acc;
-    const accountId = transaction?.fromAccountId || transaction?.toAccountId;
-    if (!accountId) return acc;
-    acc[accountId] = (acc[accountId] || 0) + 1;
-    return acc;
-  }, {});
-
   if (loading) {
     return (
       <div className="user-dashboard">
@@ -711,32 +414,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   };
 
   return (
-    <div
-      className={`user-dashboard${agentUiMode === 'embedded' ? ' user-dashboard--embed-agent' : ''}`}
-      style={dashboardStyle}
-    >
-      {consentAgentBanner && (
-        <div className="inline-message inline-message--warning" role="alert">
-          <span className="inline-message__text">{consentAgentBanner}</span>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            style={{ marginLeft: 10, flexShrink: 0 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              open(EDU.HUMAN_IN_LOOP, 'decline');
-            }}
-          >
-            Learn: Human-in-the-loop
-          </button>
-          <span
-            className="inline-message__dismiss"
-            title="Dismiss"
-            onClick={() => setConsentAgentBanner(null)}
-            role="button"
-          >
-            ✕
-          </span>
+    <div className="user-dashboard" style={dashboardStyle}>
+      {error && (
+        <div className="inline-message inline-message--error" onClick={() => setError(null)}>
+          {error} <span className="inline-message__dismiss">✕</span>
+        </div>
+      )}
+      {success && (
+        <div className="inline-message inline-message--success" onClick={() => setSuccess(null)}>
+          {success} <span className="inline-message__dismiss">✕</span>
         </div>
       )}
       {stepUpRequired && (
@@ -789,211 +475,159 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           </span>
         </div>
       )}
-      <div className="dashboard-header-stack">
-        <div className="dashboard-header">
-          <div className="bank-branding">
-            <div className="bank-logo">
-              <div className="logo-icon">
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-              </div>
-              <span className="bank-name">BX Finance</span>
+      <div className="dashboard-header">
+        <div className="bank-branding">
+          <div className="bank-logo">
+            <div className="logo-icon">
+              <div className="logo-square"></div>
+              <div className="logo-square"></div>
+              <div className="logo-square"></div>
+              <div className="logo-square"></div>
             </div>
-          </div>
-          <div className="header-user">
-            <div className="user-info">
-              <span className="user-greeting">Hello, {user?.firstName} {user?.lastName}</span>
-              <span className="user-email">{user?.email}</span>
-            </div>
+            <span className="bank-name">BX Finance</span>
           </div>
         </div>
-        <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-          >
-            How does login work?
-          </button>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.MAY_ACT, 'what')}
-          >
-            What is may_act?
-          </button>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.HUMAN_IN_LOOP, 'what')}
-            title="Why the agent requires your approval for high-value moves"
-          >
-            Human-in-the-loop
-          </button>
-          <Link
-            to="/demo-data"
-            className="dashboard-toolbar-btn"
-            title="Edit sandbox account names, balances, and MFA threshold"
-          >
-            Demo config
-          </Link>
-          <Link
-            to="/mcp-inspector"
-            className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
-            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
-          >
-            MCP Inspector
-          </Link>
-          <div className="dashboard-toolbar-toggle">
-            <label className="toggle-label toggle-label--toolbar">
-              <span className="toggle-text">Auto-refresh</span>
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={autoRefresh}
-                  onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="toggle-input"
-                />
-                <span className="toggle-slider"></span>
-              </div>
-            </label>
+        <div className="header-right">
+          <div className="user-info">
+            <span className="user-greeting">
+              Hello, {
+                (user?.firstName || user?.lastName)
+                  ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                  : user?.name || user?.username || user?.email?.split('@')[0] || 'there'
+              }
+            </span>
+            <span className="user-email">{user?.email || user?.username}</span>
           </div>
-          <button type="button" onClick={openTokenModal} className="dashboard-toolbar-btn dashboard-toolbar-btn--icon" title="View OAuth Token Info">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
-            </svg>
-            <span className="dashboard-toolbar-btn__sr">Token info</span>
-          </button>
-          <button type="button" onClick={onLogout} className="dashboard-toolbar-btn dashboard-toolbar-btn--danger">
-            Log out
-          </button>
+          <div className="header-actions">
+            <button
+              type="button"
+              className="dashboard-edu-btn"
+              onClick={() => open(EDU.LOGIN_FLOW, 'what')}
+            >
+              How does login work?
+            </button>
+            <button
+              type="button"
+              className="dashboard-edu-btn"
+              onClick={() => open(EDU.MAY_ACT, 'what')}
+            >
+              What is may_act?
+            </button>
+            <Link
+              to="/mcp-inspector"
+              className="dashboard-header-mcp-btn"
+              title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
+            >
+              MCP Inspector
+            </Link>
+            <div className="auto-refresh-toggle">
+              <label className="toggle-label">
+                <span className="toggle-text">Auto-refresh</span>
+                <div className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    className="toggle-input"
+                  />
+                  <span className="toggle-slider"></span>
+                </div>
+              </label>
+            </div>
+            <button onClick={openTokenModal} className="token-info-btn" title="View OAuth Token Info">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+              </svg>
+            </button>
+            <button onClick={onLogout} className="logout-btn">
+              Log Out
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className={`ud-shell ${agentUiMode === 'embedded' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}>
-      <div className={`dashboard-content ud-body ${agentUiMode === 'floating' ? 'ud-body--floating' : ''}`}>
-        <aside className="ud-left">
-          <div className="section">
-            <TokenChainDisplay />
-          </div>
-        </aside>
+      <div className="dashboard-content">
+        {/* Token Chain Display */}
+        <div className="section">
+          <TokenChainDisplay />
+        </div>
 
-        <main className="ud-center">
-          {/* Account Summary */}
-          <div className={`section${(agentHighlight === 'accounts' || agentHighlight === 'both') ? ' section--agent-updated' : ''}`}>
-          <h2>Your Accounts {(agentHighlight === 'accounts' || agentHighlight === 'both') && <span className="agent-updated-badge">↻ Updated</span>}</h2>
-          <div className="account-summary-table">
-            <div className="account-summary-header">
-              <div className="account-summary-cell">Account number</div>
-              <div className="account-summary-cell">Account name</div>
-              <div className="account-summary-cell">Balance</div>
-              <div className="account-summary-cell">Pending transactions</div>
-              <div className="account-summary-cell">Actions</div>
-            </div>
-            {accounts.map((account) => (
-              <div key={account.id} className="account-summary-row">
-                <div className="account-summary-cell account-summary-cell--mono">{account.accountNumber || 'N/A'}</div>
-                <div className="account-summary-cell">{accountSummaryLine(account)}</div>
-                <div className="account-summary-cell account-summary-cell--balance">${Number(account.balance || 0).toFixed(2)}</div>
-                <div className="account-summary-cell">{pendingTransactionsByAccount[account.id] || 0}</div>
-                <div className="account-summary-cell">
-                  <div className="account-actions">
-                    <button
-                      type="button"
-                      className="select-account-btn"
-                      onClick={() => {
-                        const others = accounts.filter((a) => a.id !== account.id);
-                        setTransferOpen(true);
-                        setTransferForm({
-                          fromAccountId: account.id,
-                          toAccountId: others[0]?.id || '',
-                          amount: '',
-                          description: ''
-                        });
-                      }}
-                    >
-                      Transfer
-                    </button>
-                    <button className="deposit-btn" onClick={() => setDepositAccount(account)}>Deposit</button>
-                    <button className="withdraw-btn" onClick={() => setWithdrawAccount(account)}>Withdraw</button>
-                  </div>
+        {/* Account Summary */}
+        <div className="section">
+          <h2>Your Accounts</h2>
+          {accounts.length === 0 && (
+            <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+              ⚠ No account data loaded — showing demo preview
+            </p>
+          )}
+          <div className="accounts-grid">
+            {(accounts.length > 0 ? accounts : [
+              { id: 'demo-chk', name: 'Checking Account', accountType: 'checking', accountNumber: 'CHK-DEMO-0001', balance: 4821.50, _demo: true },
+              { id: 'demo-sav', name: 'Savings Account',  accountType: 'savings',  accountNumber: 'SAV-DEMO-0001', balance: 12340.00, _demo: true },
+            ]).map(account => (
+              <div key={account.id} className="account-card" style={account._demo ? { opacity: 0.65 } : {}}>
+                <div className="account-header">
+                  <h3>{account.name}</h3>
+                  <span className={`account-type-badge ${(account.accountType || account.type || 'unknown').toLowerCase()}`}>
+                    {(account.accountType || account.type) ?
+                      (account.accountType || account.type).charAt(0).toUpperCase() + (account.accountType || account.type).slice(1) :
+                      'Unknown'}
+                  </span>
+                  {account._demo && <span style={{ marginLeft: 6, fontSize: '0.7rem', background: '#e5e7eb', color: '#6b7280', borderRadius: 4, padding: '1px 5px' }}>demo</span>}
                 </div>
-              </div>
-            ))}
-            {accounts.length === 0 && (
-              <div className="account-summary-empty account-summary-empty--actionable" role="status" aria-live="polite">
-                <p>No account data loaded yet. This can happen briefly right after sign-in while your session and demo accounts are prepared.</p>
-                <div className="account-summary-empty__actions">
+                <p className="account-number">Account: {account.accountNumber}</p>
+                <p className="balance">Balance: ${account.balance.toFixed(2)}</p>
+                <div className="account-actions">
                   <button
-                    type="button"
                     className="select-account-btn"
-                    onClick={() => fetchUserData(false)}
-                    disabled={loading}
+                    disabled={!!account._demo}
+                    onClick={() => !account._demo && setSelectedAccount(account)}
                   >
-                    Retry loading accounts
+                    Select for Transfer
+                  </button>
+                  <button
+                    className="deposit-btn"
+                    disabled={!!account._demo}
+                    onClick={() => !account._demo && setDepositAccount(account)}
+                  >
+                    Deposit
+                  </button>
+                  <button
+                    className="withdraw-btn"
+                    disabled={!!account._demo}
+                    onClick={() => !account._demo && setWithdrawAccount(account)}
+                  >
+                    Withdraw
                   </button>
                 </div>
               </div>
-            )}
+            ))}
           </div>
-          </div>
+        </div>
 
-          {/* Transfer Form */}
-          {transferOpen && (
-            <div className="section">
+        {/* Transfer Form */}
+        {selectedAccount && (
+          <div className="section">
             <h2>Transfer Money</h2>
             <div className="transfer-form">
+              <p>From: {selectedAccount.accountType} - {selectedAccount.accountNumber} (${selectedAccount.balance.toFixed(2)})</p>
               <form onSubmit={handleTransfer}>
-                <div className="form-group">
-                  <label>From Account:</label>
-                  <select
-                    value={transferForm.fromAccountId}
-                    onChange={(e) => {
-                      const fromId = e.target.value;
-                      setTransferForm((prev) => {
-                        let toId = prev.toAccountId;
-                        if (toId === fromId) {
-                          const others = accounts.filter((a) => a.id !== fromId);
-                          toId = others[0]?.id || '';
-                        }
-                        return { ...prev, fromAccountId: fromId, toAccountId: toId };
-                      });
-                    }}
-                    required
-                  >
-                    <option value="">Select source account</option>
-                    {accounts.map((account) => (
-                      <option key={account.id} value={account.id}>
-                        {accountSummaryLine(account)} (${Number(account.balance || 0).toFixed(2)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div className="form-group">
                   <label>To Account:</label>
                   <select
                     value={transferForm.toAccountId}
-                    onChange={(e) => {
-                      const toId = e.target.value;
-                      setTransferForm((prev) => {
-                        let fromId = prev.fromAccountId;
-                        if (fromId === toId) {
-                          const others = accounts.filter((a) => a.id !== toId);
-                          fromId = others[0]?.id || '';
-                        }
-                        return { ...prev, fromAccountId: fromId, toAccountId: toId };
-                      });
-                    }}
+                    onChange={(e) => setTransferForm({ ...transferForm, toAccountId: e.target.value })}
                     required
                   >
                     <option value="">Select destination account</option>
-                    {accounts.map((account) => (
-                      <option key={account.id} value={account.id}>
-                        {accountSummaryLine(account)} (${Number(account.balance || 0).toFixed(2)})
-                      </option>
-                    ))}
+                    {accounts
+                      .filter(account => account.id !== selectedAccount.id)
+                      .map(account => (
+                        <option key={account.id} value={account.id}>
+                          {account.accountType} - {account.accountNumber} (${account.balance.toFixed(2)})
+                        </option>
+                      ))
+                    }
                   </select>
                 </div>
                 <div className="form-group">
@@ -1001,15 +635,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                   <input
                     type="number"
                     step="0.01"
-                    min="0.01"
                     value={transferForm.amount}
                     onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
                     placeholder="Enter amount"
                     required
                   />
-                  <p className="form-hint transfer-amount-hint">
-                    Transfer any amount from $0.01 up to the source account balance (same as deposits and withdrawals).
-                  </p>
                 </div>
                 <div className="form-group">
                   <label>Description:</label>
@@ -1026,8 +656,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                     type="button"
                     className="cancel-btn"
                     onClick={() => {
-                      setTransferOpen(false);
-                      setTransferForm({ fromAccountId: '', toAccountId: '', amount: '', description: '' });
+                      setSelectedAccount(null);
+                      setTransferForm({ toAccountId: '', amount: '', description: '' });
                     }}
                   >
                     Cancel
@@ -1035,15 +665,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 </div>
               </form>
             </div>
-            </div>
-          )}
+          </div>
+        )}
 
-          {/* Deposit Form */}
-          {depositAccount && (
-            <div className="section">
+        {/* Deposit Form */}
+        {depositAccount && (
+          <div className="section">
             <h2>Deposit Money</h2>
             <div className="deposit-form">
-              <p>To: {accountSummaryLine(depositAccount)} (${depositAccount.balance.toFixed(2)})</p>
+              <p>To: {depositAccount.accountType} - {depositAccount.accountNumber} (${depositAccount.balance.toFixed(2)})</p>
               <form onSubmit={handleDeposit}>
                 <div className="form-group">
                   <label>Amount:</label>
@@ -1080,15 +710,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 </div>
               </form>
             </div>
-            </div>
-          )}
+          </div>
+        )}
 
-          {/* Withdraw Form */}
-          {withdrawAccount && (
-            <div className="section">
+        {/* Withdraw Form */}
+        {withdrawAccount && (
+          <div className="section">
             <h2>Withdraw Money</h2>
             <div className="withdraw-form">
-              <p>From: {accountSummaryLine(withdrawAccount)} (${withdrawAccount.balance.toFixed(2)})</p>
+              <p>From: {withdrawAccount.accountType} - {withdrawAccount.accountNumber} (${withdrawAccount.balance.toFixed(2)})</p>
               <form onSubmit={handleWithdraw}>
                 <div className="form-group">
                   <label>Amount:</label>
@@ -1125,12 +755,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 </div>
               </form>
             </div>
-            </div>
-          )}
+          </div>
+        )}
 
-          {/* Recent Transactions */}
-          <div className={`section${(agentHighlight === 'transactions' || agentHighlight === 'both') ? ' section--agent-updated' : ''}`}>
-          <h2>Recent Transactions {(agentHighlight === 'transactions' || agentHighlight === 'both') && <span className="agent-updated-badge">↻ Updated</span>}</h2>
+        {/* Recent Transactions */}
+        <div className="section">
+          <h2>Recent Transactions</h2>
+          {transactions.length === 0 && (
+            <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+              ⚠ No transaction data loaded — showing demo preview
+            </p>
+          )}
           <div className="transactions-table">
             <div className="transaction-header">
               <div className="header-cell">Date</div>
@@ -1142,13 +777,18 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
               <div className="header-cell">User</div>
             </div>
             <div className="transactions-list">
-              {transactions
+              {(transactions.length > 0 ? transactions : [
+                { id: 'd1', type: 'deposit',    amount: 2500.00, description: 'Payroll deposit',        accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*1).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+                { id: 'd2', type: 'withdrawal', amount:  150.00, description: 'ATM withdrawal',          accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*2).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+                { id: 'd3', type: 'transfer',   amount:  500.00, description: 'Transfer to savings',     accountInfo: 'Savings - SAV-DEMO-0001',  createdAt: new Date(Date.now() - 86400000*3).toISOString(), clientType: 'ai_agent', performedBy: 'Demo User', _demo: true },
+                { id: 'd4', type: 'deposit',    amount:   75.00, description: 'Refund — online purchase', accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*5).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+              ])
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .slice(0, 20)
                 .map(transaction => {
                   const clientInfo = getClientTypeIcon(transaction.clientType);
                   return (
-                    <div key={transaction.id} className="transaction-row">
+                    <div key={transaction.id} className="transaction-row" style={transaction._demo ? { opacity: 0.55 } : {}}>
                       <div className="transaction-cell">
                         <span className="transaction-date">
                           {format(new Date(transaction.createdAt), 'MMM dd, yyyy HH:mm')}
@@ -1187,10 +827,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 })}
             </div>
           </div>
-          </div>
-        </main>
-      </div>
-
+        </div>
       </div>
 
       {/* OAuth Token Info Modal */}
@@ -1322,7 +959,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                   </div>
 
                   {/* Raw token */}
-                  {tokenData.accessToken?.raw && (
+                  {tokenData.accessToken && (
                     <div className="token-section">
                       <h4>Raw User Token (JWT)</h4>
                       <div className="token-raw-display">
