@@ -456,17 +456,23 @@ app.get('/api/auth/debug', async (req, res) => {
     )
   ).filter(Boolean);
 
-  // Quick store health check — only for the Upstash REST store (HTTP, fast).
+  // Quick store health check — cached for 60 s to avoid burning Upstash request quota.
   // Wire-protocol ping is skipped to avoid adding latency to the debug response.
   let sessionStoreHealthy = null;
   let sessionStoreError   = null;
   if (upstashSessionStoreInstance) {
-    const pingResult     = await upstashSessionStoreInstance.ping();
-    sessionStoreHealthy  = pingResult.healthy;
-    sessionStoreError    = pingResult.error;
-    if (!pingResult.healthy) {
-      console.error('[session-store] Health check failed:', pingResult.error);
+    const now = Date.now();
+    if (!upstashSessionStoreInstance._pingCache ||
+        now - upstashSessionStoreInstance._pingCache.ts > 60_000) {
+      const pingResult = await upstashSessionStoreInstance.ping();
+      upstashSessionStoreInstance._pingCache = { ts: now, result: pingResult };
+      if (!pingResult.healthy) {
+        console.error('[session-store] Health check failed:', pingResult.error);
+      }
     }
+    const { result } = upstashSessionStoreInstance._pingCache;
+    sessionStoreHealthy = result.healthy;
+    sessionStoreError   = result.error;
   }
 
   res.json({
@@ -519,6 +525,11 @@ app.get('/api/auth/oauth/redirect-info', (req, res) => {
   }
 });
 
+// Attach cached session-store health to req so /api/auth/session can include it.
+app.use('/api/auth', (req, _res, next) => {
+  req._sessionStoreError = upstashSessionStoreInstance?._pingCache?.result?.error ?? null;
+  next();
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/auth/oauth/user', oauthUserRoutes);

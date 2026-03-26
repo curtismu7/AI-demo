@@ -91,21 +91,57 @@ const SUGGESTIONS_ADMIN = [
   'What is step-up auth?',
 ];
 
-/** Chat copy when Backend-for-Frontend (BFF) has cookie but no OAuth tokens (e.g. Vercel session store unhealthy). */
-const SESSION_NOT_HYDRATED_CHAT = [
-  'Your browser shows you as signed in, but this server instance does not have your OAuth tokens.',
-  'The session store is unhealthy.',
-  '',
-  'Diagnose: open "Open session debug" and check sessionStoreHealthy and sessionStoreError.',
-  '',
-  'Fix: In Vercel → Settings → Environment Variables, confirm these are set and correct:',
-  '  • UPSTASH_REDIS_REST_URL',
-  '  • UPSTASH_REDIS_REST_TOKEN',
-  'Apply to Production, redeploy, sign out, sign in again.',
-  '',
-  'You want sessionStoreType: "upstash-rest", sessionStoreHealthy: true, sessionRestored: false after a fresh login.',
-  '"Refresh access token" cannot fix this until a healthy session store is backing the session.',
-].join('\n');
+/**
+ * Chat copy when the BFF has a cookie but no live OAuth tokens.
+ * Adapts the fix instructions to the actual store error (quota vs. config).
+ */
+function buildSessionNotHydratedChat(storeError) {
+  const isQuota = storeError && storeError.includes('max requests limit exceeded');
+  const isMissingAuth = storeError && (storeError.includes('WRONGPASS') || storeError.includes('unauthorized'));
+
+  const lines = [
+    'Your browser shows you as signed in, but this server instance does not have your OAuth tokens.',
+    isQuota
+      ? 'The Upstash Redis daily request quota is exhausted — the session store cannot save or load tokens until the quota resets.'
+      : 'The session store is unhealthy.',
+    '',
+    'Diagnose: open "Open session debug" and check sessionStoreHealthy and sessionStoreError.',
+    '',
+  ];
+
+  if (isQuota) {
+    lines.push(
+      'Fix options:',
+      '  1. Wait — Upstash free-tier quota resets at midnight UTC automatically.',
+      '  2. Upgrade — go to console.upstash.com and upgrade the database to Pay-As-You-Go.',
+      '  3. Recreate — create a new Upstash database and update KV_REST_API_URL + KV_REST_API_TOKEN in Vercel.',
+      '',
+      'After the quota resets or the database is replaced, sign out and sign in again.',
+    );
+  } else if (isMissingAuth) {
+    lines.push(
+      'Fix: In Vercel → Settings → Environment Variables, confirm these are set and correct:',
+      '  • KV_REST_API_URL',
+      '  • KV_REST_API_TOKEN',
+      'Apply to Production, redeploy, sign out, sign in again.',
+    );
+  } else {
+    lines.push(
+      'Fix: Sign out and sign in again. If the problem persists, check Vercel logs for session-store errors.',
+    );
+  }
+
+  lines.push(
+    '',
+    'You want sessionStoreType: "upstash-rest", sessionStoreHealthy: true after a fresh login.',
+    '"Refresh access token" cannot fix this until a healthy session store is backing the session.',
+  );
+
+  return lines.join('\n');
+}
+
+/** Fallback static copy for places that don't have store error context. */
+const SESSION_NOT_HYDRATED_CHAT = buildSessionNotHydratedChat(null);
 
 
 /**
@@ -507,7 +543,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                   {
                     id: `${Date.now()}-fix`,
                     role: 'error',
-                    content: SESSION_NOT_HYDRATED_CHAT,
+                    content: buildSessionNotHydratedChat(session?.sessionStoreError ?? null),
                     showSessionFixActions: true,
                   },
                 ];
@@ -610,7 +646,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
             {
               id: `${Date.now()}-fix`,
               role: 'error',
-              content: SESSION_NOT_HYDRATED_CHAT,
+              content: buildSessionNotHydratedChat(session?.sessionStoreError ?? null),
               showSessionFixActions: true,
             },
           ]);

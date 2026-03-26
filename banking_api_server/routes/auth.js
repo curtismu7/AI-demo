@@ -132,6 +132,7 @@ router.get('/session', (req, res) => {
     },
     authType: req.session.oauthType || req.session.tokenType || 'session',
     cookieOnlyBffSession,
+    sessionStoreError: req._sessionStoreError ?? null,
   });
 });
 
