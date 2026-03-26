@@ -489,8 +489,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
         <div className="header-right">
           <div className="user-info">
-            <span className="user-greeting">Hello, {user?.firstName} {user?.lastName}</span>
-            <span className="user-email">{user?.email}</span>
+            <span className="user-greeting">
+              Hello, {
+                (user?.firstName || user?.lastName)
+                  ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                  : user?.name || user?.username || user?.email?.split('@')[0] || 'there'
+              }
+            </span>
+            <span className="user-email">{user?.email || user?.username}</span>
           </div>
           <div className="header-actions">
             <button
@@ -510,7 +516,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             <Link
               to="/mcp-inspector"
               className="dashboard-header-mcp-btn"
-              title="MCP discovery, tools/list & tools/call via BFF"
+              title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
             >
               MCP Inspector
             </Link>
@@ -549,9 +555,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {/* Account Summary */}
         <div className="section">
           <h2>Your Accounts</h2>
+          {accounts.length === 0 && (
+            <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+              ⚠ No account data loaded — showing demo preview
+            </p>
+          )}
           <div className="accounts-grid">
-            {accounts.map(account => (
-              <div key={account.id} className="account-card">
+            {(accounts.length > 0 ? accounts : [
+              { id: 'demo-chk', name: 'Checking Account', accountType: 'checking', accountNumber: 'CHK-DEMO-0001', balance: 4821.50, _demo: true },
+              { id: 'demo-sav', name: 'Savings Account',  accountType: 'savings',  accountNumber: 'SAV-DEMO-0001', balance: 12340.00, _demo: true },
+            ]).map(account => (
+              <div key={account.id} className="account-card" style={account._demo ? { opacity: 0.65 } : {}}>
                 <div className="account-header">
                   <h3>{account.name}</h3>
                   <span className={`account-type-badge ${(account.accountType || account.type || 'unknown').toLowerCase()}`}>
@@ -559,25 +573,29 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       (account.accountType || account.type).charAt(0).toUpperCase() + (account.accountType || account.type).slice(1) :
                       'Unknown'}
                   </span>
+                  {account._demo && <span style={{ marginLeft: 6, fontSize: '0.7rem', background: '#e5e7eb', color: '#6b7280', borderRadius: 4, padding: '1px 5px' }}>demo</span>}
                 </div>
                 <p className="account-number">Account: {account.accountNumber}</p>
                 <p className="balance">Balance: ${account.balance.toFixed(2)}</p>
                 <div className="account-actions">
                   <button
                     className="select-account-btn"
-                    onClick={() => setSelectedAccount(account)}
+                    disabled={!!account._demo}
+                    onClick={() => !account._demo && setSelectedAccount(account)}
                   >
                     Select for Transfer
                   </button>
                   <button
                     className="deposit-btn"
-                    onClick={() => setDepositAccount(account)}
+                    disabled={!!account._demo}
+                    onClick={() => !account._demo && setDepositAccount(account)}
                   >
                     Deposit
                   </button>
                   <button
                     className="withdraw-btn"
-                    onClick={() => setWithdrawAccount(account)}
+                    disabled={!!account._demo}
+                    onClick={() => !account._demo && setWithdrawAccount(account)}
                   >
                     Withdraw
                   </button>
@@ -743,6 +761,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {/* Recent Transactions */}
         <div className="section">
           <h2>Recent Transactions</h2>
+          {transactions.length === 0 && (
+            <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+              ⚠ No transaction data loaded — showing demo preview
+            </p>
+          )}
           <div className="transactions-table">
             <div className="transaction-header">
               <div className="header-cell">Date</div>
@@ -754,13 +777,18 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               <div className="header-cell">User</div>
             </div>
             <div className="transactions-list">
-              {transactions
+              {(transactions.length > 0 ? transactions : [
+                { id: 'd1', type: 'deposit',    amount: 2500.00, description: 'Payroll deposit',        accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*1).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+                { id: 'd2', type: 'withdrawal', amount:  150.00, description: 'ATM withdrawal',          accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*2).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+                { id: 'd3', type: 'transfer',   amount:  500.00, description: 'Transfer to savings',     accountInfo: 'Savings - SAV-DEMO-0001',  createdAt: new Date(Date.now() - 86400000*3).toISOString(), clientType: 'ai_agent', performedBy: 'Demo User', _demo: true },
+                { id: 'd4', type: 'deposit',    amount:   75.00, description: 'Refund — online purchase', accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*5).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
+              ])
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .slice(0, 20)
                 .map(transaction => {
                   const clientInfo = getClientTypeIcon(transaction.clientType);
                   return (
-                    <div key={transaction.id} className="transaction-row">
+                    <div key={transaction.id} className="transaction-row" style={transaction._demo ? { opacity: 0.55 } : {}}>
                       <div className="transaction-cell">
                         <span className="transaction-date">
                           {format(new Date(transaction.createdAt), 'MMM dd, yyyy HH:mm')}
@@ -839,7 +867,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                     <div className="token-section">
                       <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#93c5fd' }}>👤 User Token</span>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 'normal' }}>— stays in BFF session, never forwarded to MCP</span>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 'normal' }}>— stays in Backend-for-Frontend (BFF) session, never forwarded to MCP</span>
                         <button type="button" className="token-payload-hint" title="Learn about token exchange" onClick={() => open(EDU.MAY_ACT, 'lifecycle')}>ⓘ</button>
                       </h4>
                       <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '10px 14px', fontSize: '0.78rem', marginBottom: '8px' }}>
@@ -857,7 +885,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       </div>
                       {tokenData.accessToken.payload?.may_act && (
                         <div style={{ background: '#1e3a5f', borderRadius: '6px', padding: '8px 12px', fontSize: '0.8rem', color: '#93c5fd', marginBottom: '8px' }}>
-                          ✅ <strong>may_act present</strong> — PingOne will allow the BFF to exchange this User Token.
+                          ✅ <strong>may_act present</strong> — PingOne will allow the Backend-for-Frontend (BFF) to exchange this User Token.
                           <pre style={{ margin: '4px 0 0', background: 'none', fontSize: '0.75rem' }}>{JSON.stringify(tokenData.accessToken.payload.may_act, null, 2)}</pre>
                         </div>
                       )}
@@ -876,7 +904,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       <span style={{ background: '#2d1b69', border: '1px solid #8b5cf6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#c4b5fd' }}>Token Exchange (RFC 8693)</span>
                     </h4>
                     <div style={{ background: '#0f172a', border: '1px solid #2d1b69', borderRadius: '6px', padding: '10px 14px', fontSize: '0.82rem' }}>
-                      <p style={{ margin: '0 0 8px', color: '#c4b5fd' }}>What changes when the BFF exchanges the User Token for an MCP Token:</p>
+                      <p style={{ margin: '0 0 8px', color: '#c4b5fd' }}>What changes when the Backend-for-Frontend (BFF) exchanges the User Token for an MCP Token:</p>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid #334155' }}>
@@ -888,7 +916,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                         <tbody>
                           <tr>
                             <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>aud</code></td>
-                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.aud ? (Array.isArray(tokenData.accessToken.payload.aud) ? tokenData.accessToken.payload.aud.join(', ') : String(tokenData.accessToken.payload.aud)).substring(0, 40) + '…' : 'BFF / PingOne client'}</td>
+                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.aud ? (Array.isArray(tokenData.accessToken.payload.aud) ? tokenData.accessToken.payload.aud.join(', ') : String(tokenData.accessToken.payload.aud)).substring(0, 40) + '…' : 'Backend-for-Frontend (BFF) / PingOne client'}</td>
                             <td style={{ padding: '4px 8px', color: '#34d399' }}>MCP Server Resource URI (narrowed)</td>
                           </tr>
                           <tr>
