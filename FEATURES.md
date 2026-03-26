@@ -38,7 +38,9 @@ git checkout <last-version-tag> -- <key-file>
 | Logout — full-screen wait overlay (persists across PingOne redirect to `/logout`) | active | `banking_api_ui/src/App.js`, `banking_api_ui/src/components/shared/LoadingOverlay.js` | `u:__tests__/App.session.test.js` |
 | Admin OAuth — token endpoint client authentication (`basic` or `post`, must match PingOne app) | active | `banking_api_server/config/oauth.js`, `banking_api_server/services/oauthService.js`, `banking_api_server/services/configStore.js` | `s:oauthService.test.js` |
 | `POST /api/auth/clear-session` — belt-and-suspenders cookie clear after logout chain | active | `banking_api_server/server.js` | `s:oauth-e2e-integration.test.js` |
-| Session debug endpoint `/api/auth/debug` | active | `banking_api_server/server.js` | — |
+| Session debug `GET /api/auth/debug` (diagnosis hints, optional `?deep=1` Redis probe vs `req.session`) | active | `banking_api_server/server.js`, `banking_api_server/services/upstashSessionStore.js` (`getPersistenceDebug`) | `s:upstashSessionStore.test.js` |
+| BFF `GET /api/auth/session` includes `sessionStoreHealthy` + `cookieOnlyBffSession` | active | `banking_api_server/server.js`, `banking_api_server/routes/auth.js` | — |
+| Login — `error=session_persist_failed` when OAuth callback cannot persist session | active | `banking_api_ui/src/components/Login.js`, `banking_api_server/routes/oauthUser.js`, `banking_api_server/routes/oauth.js` | — |
 
 ---
 
@@ -85,6 +87,7 @@ git checkout <last-version-tag> -- <key-file>
 | Gemini NL backend | active | `banking_api_server/services/geminiNlIntent.js` | `s:nlIntentParser.test.js` |
 | Groq NL backend | active | `banking_api_server/services/groqNlIntent.js` | `s:nlIntentParser.test.js` |
 | Agent identity / impersonation (act-as) | active | `banking_api_server/routes/agentIdentity.js`, `banking_api_server/services/agentIdentityStore.js` | — |
+| Cookie-only / stub-token session messaging + deep session debug link (`/api/auth/debug?deep=1`) | active | `banking_api_ui/src/components/BankingAgent.js` | — |
 
 ---
 
