@@ -47,6 +47,8 @@ git checkout <last-version-tag> -- <key-file>
 | Transaction history (`/my` — scope-free BFF dashboard) | active | `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/Transactions.js` | `s:transaction-flows.test.js` |
 | Customer dashboard page | active | `banking_api_ui/src/components/UserDashboard.js` | — |
 | Step-up authentication gate (high-value transactions) | active | `banking_api_server/middleware/authorizeGate.js`, `banking_api_server/middleware/stepUpGate.js` | `s:step-up-gate.test.js`, `s:authorize-gate.test.js` |
+| Transaction consent challenge (high-value transfers — PingOne-style consent) | active | `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/TransactionConsentPage.js` | `s:transaction-consent-challenge.test.js` |
+| Agent blocked after consent decline (until re-auth) | active | `banking_api_ui/src/services/agentAccessConsent.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
 
 ---
 
@@ -87,7 +89,7 @@ git checkout <last-version-tag> -- <key-file>
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
 | MCP server WebSocket client | active | `banking_api_server/services/mcpWebSocketClient.js` | — |
-| MCP local tools (fallback when external MCP unavailable) | active | `banking_api_server/services/mcpLocalTools.js` | — |
+| MCP local tools (fallback when external MCP unavailable) | active | `banking_api_server/services/mcpLocalTools.js` | `s:mcp-local-hitl.test.js` |
 | MCP inspector UI (test MCP tools in-browser) | active | `banking_api_server/routes/mcpInspector.js`, `banking_api_ui/src/components/McpInspector.js`, `banking_api_ui/src/components/McpInspectorSetupWizard.js` | `s:mcp-inspector.test.js` |
 | Agent MCP token service (token exchange for MCP) | active | `banking_api_server/services/agentMcpTokenService.js` | `s:agentMcpTokenService.test.js` |
 | BFF session gating (MCP no-bearer response) | active | `banking_api_server/services/bffSessionGating.js` | `s:bffSessionGating.test.js` |
@@ -112,6 +114,7 @@ git checkout <last-version-tag> -- <key-file>
 | may_act / act claims guide | active | `banking_api_ui/src/components/education/MayActPanel.js` | — |
 | PingOne Authorize guide | active | `banking_api_ui/src/components/education/PingOneAuthorizePanel.js` | — |
 | RFC index guide | active | `banking_api_ui/src/components/education/RFCIndexPanel.js` | — |
+| Human-in-the-loop (HITL) / consent education | active | `banking_api_ui/src/components/education/HumanInLoopPanel.js` | — |
 
 ---
 
@@ -121,6 +124,7 @@ git checkout <last-version-tag> -- <key-file>
 |---|---|---|---|
 | Upstash Redis session store with eager connect | active | `banking_api_server/server.js`, `banking_api_server/services/redisWireUrl.js`, `banking_api_server/services/faultTolerantStore.js` | `s:session-store-resilience.test.js`, `s:redisWireUrl.test.js` |
 | Vercel serverless deployment | active | `api/handler.js`, `vercel.json` | — |
+| Global rate limit — BFF dashboard paths excluded (demo-scenario, tokens, OAuth status, session) | active | `banking_api_server/server.js` (`shouldSkipGlobalRateLimit`) | — |
 | Demo scenario / user preference store (Redis-backed) | active | `banking_api_server/services/demoScenarioStore.js`, `banking_api_server/routes/demoScenario.js` | `s:demo-scenario-api.test.js` |
 | Runtime config store (PingOne env vars overrideable at runtime) | active | `banking_api_server/services/configStore.js` | `s:configStore-saas.test.js` |
 | Audit logger | active | `banking_api_server/services/auditLogger.js` | `s:auditLogger.test.js` |
