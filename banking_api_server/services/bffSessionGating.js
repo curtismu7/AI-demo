@@ -14,11 +14,11 @@ function isCookieOnlyBffSession(req) {
 }
 
 const SESSION_NOT_HYDRATED_MESSAGE =
-  'Signed-in state was restored from a cookie, not a full server session — the access token is not available on this instance. ' +
-  'On Vercel: use a wire-protocol Redis URL (REDIS_URL or KV_URL as rediss://…), or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN, or KV_REST_API_URL + KV_REST_API_TOKEN. ' +
-  'If REDIS_URL is https:// (REST), remove or replace it — connect-redis needs redis(s)://. Redeploy; sign out; sign in again. ' +
-  'Open GET /api/auth/debug — bffSessionStore should be "redis", sessionRestored false after a fresh login. ' +
-  '“Refresh access token” cannot fix cookie-only sessions until a real Redis session holds refresh_token.';
+  'Your browser shows you as signed in, but this server instance does not have your OAuth tokens. ' +
+  'The session store is unhealthy -- check GET /api/auth/debug and read sessionStoreError for the exact cause. ' +
+  'Required env vars: UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (or KV_REST_API_URL + KV_REST_API_TOKEN). ' +
+  'Apply to Production in Vercel -> Settings -> Environment Variables, redeploy, sign out, sign in again. ' +
+  '"Refresh access token" cannot fix this until a real session-store-backed session holds refresh_token.';
 
 /**
  * 401 body for MCP/BFF routes when there is no bearer-equivalent session token.

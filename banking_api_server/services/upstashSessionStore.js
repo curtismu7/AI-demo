@@ -2,24 +2,24 @@
 'use strict';
 
 /**
- * express-session compatible store backed by Upstash Redis REST API.
+ * express-session compatible store backed by Upstash Redis REST API via @vercel/kv.
  *
  * WHY: node-redis (TCP/TLS wire protocol) is unreliable on Vercel serverless
  * because connections are killed between function invocations.  Every cold
  * start incurs a full TLS handshake that races against the session read/write
- * window.  @upstash/redis uses HTTP — stateless, no connection to re-establish,
- * no cold-start race.
+ * window.  @vercel/kv uses HTTP — stateless, no connection to re-establish,
+ * no cold-start race, and is already a confirmed dependency of this package.
  *
- * Requires: @upstash/redis (already in package.json)
+ * @vercel/kv is in banking_api_server/package.json and confirmed working
+ * (configStore uses it).  @upstash/redis is NOT a direct dependency here —
+ * using @vercel/kv avoids version-mismatch issues.
+ *
  * Env vars: UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
  *           (or KV_REST_API_URL + KV_REST_API_TOKEN)
- *
- * Both the session store and the Upstash REST endpoint share the same key
- * namespace, so switching from node-redis wire to this store (or back) is
- * transparent — existing sessions survive the switch.
  */
 
 const { Store } = require('express-session');
+const { createClient } = require('@vercel/kv');
 
 const DEFAULT_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 
@@ -33,7 +33,6 @@ class UpstashSessionStore extends Store {
    */
   constructor(opts = {}) {
     super();
-    const { Redis } = require('@upstash/redis');
 
     const url   = opts.url   || process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
     const token = opts.token || process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
@@ -45,7 +44,7 @@ class UpstashSessionStore extends Store {
       );
     }
 
-    this.redis       = new Redis({ url, token });
+    this.kv          = createClient({ url, token });
     this.prefix      = opts.prefix     || 'banking:sess:';
     this.defaultTtl  = opts.ttlSeconds || DEFAULT_TTL_SECONDS;
     this.storeType   = 'upstash-rest';
@@ -59,7 +58,7 @@ class UpstashSessionStore extends Store {
 
   /** Read session from Upstash. Returns null on miss or error (graceful). */
   get(sid, cb) {
-    this.redis
+    this.kv
       .get(this.prefix + sid)
       .then((data) => cb(null, data || null))
       .catch((err) => {
@@ -76,7 +75,7 @@ class UpstashSessionStore extends Store {
    */
   set(sid, session, cb) {
     const ttl = this._ttl(session);
-    this.redis
+    this.kv
       .set(this.prefix + sid, session, { ex: ttl })
       .then(() => {
         console.log(`[session-store] Upstash SET ok sid=${sid.slice(0, 8)}… ttl=${ttl}s`);
@@ -90,7 +89,7 @@ class UpstashSessionStore extends Store {
 
   /** Delete session from Upstash. Non-fatal. */
   destroy(sid, cb) {
-    this.redis
+    this.kv
       .del(this.prefix + sid)
       .then(() => cb && cb(null))
       .catch((err) => {
@@ -102,7 +101,7 @@ class UpstashSessionStore extends Store {
   /** Refresh TTL without rewriting the full session body. */
   touch(sid, session, cb) {
     const ttl = this._ttl(session);
-    this.redis
+    this.kv
       .expire(this.prefix + sid, ttl)
       .then(() => cb && cb(null))
       .catch(() => cb && cb(null));
@@ -111,13 +110,18 @@ class UpstashSessionStore extends Store {
   /**
    * Health check: write + read a sentinel key.
    * Used by /api/auth/debug to verify the store is functional.
-   * @returns {Promise<boolean>}
+   * @returns {Promise<{ healthy: boolean, error: string|null }>}
    */
   async ping() {
     const key = `${this.prefix}health:ping`;
-    await this.redis.set(key, '1', { ex: 30 });
-    const val = await this.redis.get(key);
-    return val === '1' || val === 1;
+    try {
+      await this.kv.set(key, '1', { ex: 30 });
+      const val = await this.kv.get(key);
+      const healthy = val === '1' || val === 1 || val === true;
+      return { healthy, error: healthy ? null : `unexpected ping value: ${JSON.stringify(val)}` };
+    } catch (err) {
+      return { healthy: false, error: err.message };
+    }
   }
 }
 

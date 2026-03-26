@@ -91,6 +91,114 @@ const SUGGESTIONS_ADMIN = [
   'What is step-up auth?',
 ];
 
+/** Chat copy when Backend-for-Frontend (BFF) has cookie but no OAuth tokens (e.g. Vercel session store unhealthy). */
+const SESSION_NOT_HYDRATED_CHAT = [
+  'Your browser shows you as signed in, but this server instance does not have your OAuth tokens.',
+  'The session store is unhealthy.',
+  '',
+  'Diagnose: open "Open session debug" and check sessionStoreHealthy and sessionStoreError.',
+  '',
+  'Fix: In Vercel → Settings → Environment Variables, confirm these are set and correct:',
+  '  • UPSTASH_REDIS_REST_URL',
+  '  • UPSTASH_REDIS_REST_TOKEN',
+  'Apply to Production, redeploy, sign out, sign in again.',
+  '',
+  'You want sessionStoreType: "upstash-rest", sessionStoreHealthy: true, sessionRestored: false after a fresh login.',
+  '"Refresh access token" cannot fix this until a healthy session store is backing the session.',
+].join('
+');t, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { toast } from 'react-toastify';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import {
+  getMyAccounts,
+  getAccountBalance,
+  getMyTransactions,
+  createTransfer,
+  createDeposit,
+  createWithdrawal,
+  refreshOAuthSession,
+} from '../services/bankingAgentService';
+import { loadPublicConfig } from '../services/configService';
+import { useEducationUIOptional } from '../context/EducationUIContext';
+import { useTokenChainOptional } from '../context/TokenChainContext';
+import { useTheme } from '../context/ThemeContext';
+import { EDU } from './education/educationIds';
+import { EDUCATION_COMMANDS } from './education/educationCommands';
+import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
+import { getToolStepsForAction } from '../utils/agentToolSteps';
+import './BankingAgent.css';
+
+/** Floating agent: collapsed on app home `/`; open on other routes (dashboard URL, demo-data, MCP inspector, …). */
+function isBankingAgentOpenByDefaultForPath(pathname) {
+  const p = pathname && pathname !== '' ? pathname : '/';
+  return p !== '/';
+}
+
+// ─── Action definitions ────────────────────────────────────────────────────────
+
+const ACTIONS = [
+  { id: 'accounts',     label: '🏦 My Accounts',       desc: 'List all your accounts' },
+  { id: 'transactions', label: '📋 Recent Transactions', desc: 'View recent activity' },
+  { id: 'balance',      label: '💰 Check Balance',      desc: 'Balance for an account' },
+  { id: 'deposit',      label: '⬇ Deposit',             desc: 'Deposit into an account' },
+  { id: 'withdraw',     label: '⬆ Withdraw',            desc: 'Withdraw from an account' },
+  { id: 'transfer',     label: '↔ Transfer',            desc: 'Transfer between accounts' },
+  { id: 'mcp_tools',   label: '🔧 MCP Tools',           desc: 'List all available MCP banking tools' },
+  { id: 'logout',       label: '🚪 Log Out',             desc: 'Sign out of your account' },
+];
+
+// ─── Fake account data generator ────────────────────────────────────────────────
+
+function generateFakeAccounts(user) {
+  const userId = user?.sub || user?.id || 'user123';
+  
+  // Match server's account ID pattern: chk-{uid} and sav-{uid}
+  const uid = userId.replace(/-/g, '').slice(0, 10);
+  
+  const accounts = [
+    {
+      id: `chk-${uid}`,
+      name: 'Primary Checking',
+      type: 'checking',
+      balance: 3000.00,
+      accountNumber: `CHK-${uid.toUpperCase()}`,
+    },
+    {
+      id: `sav-${uid}`,
+      name: 'Emergency Savings',
+      type: 'savings',
+      balance: 2000.00,
+      accountNumber: `SAV-${uid.toUpperCase()}`,
+    },
+  ];
+  
+  return accounts;
+}
+
+// ─── Suggested prompts — role-aware ──────────────────────────────────────────
+
+const SUGGESTIONS_CUSTOMER = [
+  'Check my account balance',
+  'Transfer $100 to savings',
+  'What are my recent transactions?',
+  'List MCP tools',
+  'What is CIBA?',
+  'How does token exchange work?',
+  'What is MCP?',
+];
+
+const SUGGESTIONS_ADMIN = [
+  'Show all customer accounts',
+  'List recent system transactions',
+  'Show me last 5 errors',
+  'Show last success login for bankuser',
+  'List MCP tools',
+  'What is CIBA?',
+  'How does token exchange work?',
+  'What is step-up auth?',
+];
+
 /** Chat copy when Backend-for-Frontend (BFF) has cookie but no OAuth tokens (e.g. Vercel without Redis). */
 const SESSION_NOT_HYDRATED_CHAT = [
   'Your browser shows you as signed in, but this server instance does not have your OAuth tokens. On Vercel that almost always means sessions are not shared in Redis (each request can hit a different instance).',

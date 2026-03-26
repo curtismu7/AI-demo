@@ -459,12 +459,13 @@ app.get('/api/auth/debug', async (req, res) => {
   // Quick store health check — only for the Upstash REST store (HTTP, fast).
   // Wire-protocol ping is skipped to avoid adding latency to the debug response.
   let sessionStoreHealthy = null;
+  let sessionStoreError   = null;
   if (upstashSessionStoreInstance) {
-    try {
-      sessionStoreHealthy = await upstashSessionStoreInstance.ping();
-    } catch (err) {
-      sessionStoreHealthy = false;
-      console.error('[session-store] Health check failed:', err.message);
+    const pingResult     = await upstashSessionStoreInstance.ping();
+    sessionStoreHealthy  = pingResult.healthy;
+    sessionStoreError    = pingResult.error;
+    if (!pingResult.healthy) {
+      console.error('[session-store] Health check failed:', pingResult.error);
     }
   }
 
@@ -485,6 +486,8 @@ app.get('/api/auth/debug', async (req, res) => {
     sessionStoreType,
     /** Live health check result for the Upstash REST store (null if wire/memory store). */
     sessionStoreHealthy,
+    /** Non-null when sessionStoreHealthy is false — the actual error message for debugging. */
+    sessionStoreError,
     /** Backward-compat: 'redis' when any persistent store is active, 'memory' otherwise. */
     bffSessionStore: sessionStore ? 'redis' : 'memory',
     /** Which env supplied the store credentials. */
