@@ -201,6 +201,29 @@ function normalizeAgentToolResult(result) {
   return result;
 }
 
+/** Maps MCP JSON (including deposit/transfer/withdraw shapes) to results panel + dashboard event types. */
+function inferAgentResultTypeAndData(normalized) {
+  if (!normalized || typeof normalized !== 'object') return { resultType: null, resultData: null };
+  if (normalized.accounts) return { resultType: 'accounts', resultData: normalized.accounts };
+  if (normalized.transactions) return { resultType: 'transactions', resultData: normalized.transactions };
+  if (normalized.balance !== undefined && normalized.error === undefined) {
+    return { resultType: 'balance', resultData: normalized.balance };
+  }
+  if (normalized.transaction_id || normalized.transactionId || normalized.id) {
+    return { resultType: 'confirm', resultData: normalized };
+  }
+  if (normalized.transaction?.id) return { resultType: 'confirm', resultData: normalized };
+  if (
+    normalized.success === true &&
+    (normalized.operation === 'transfer' ||
+      normalized.operation === 'deposit' ||
+      normalized.operation === 'withdrawal')
+  ) {
+    return { resultType: 'confirm', resultData: normalized };
+  }
+  return { resultType: null, resultData: null };
+}
+
 /** True when the tool returned an error object (local MCP or consent JSON), not a data payload. */
 function isAgentToolErrorResult(normalized) {
   if (!normalized || typeof normalized !== 'object') return false;
@@ -1064,38 +1087,6 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
         tokenChain.setTokenEvents(actionId, tokenEvents);
       }
 
-      // Navigate to user dashboard and highlight relevant data for user commands
-      if (effectiveUser?.role === 'customer') {
-        let highlightSection = null;
-        switch (actionId) {
-          case 'accounts':
-            highlightSection = 'accounts';
-            break;
-          case 'transactions':
-            highlightSection = 'transactions';
-            break;
-          case 'balance':
-            highlightSection = 'accounts';
-            break;
-          case 'deposit':
-          case 'withdraw':
-          case 'transfer':
-            // Writes append to history — highlight Recent transactions after refresh
-            highlightSection = 'transactions';
-            break;
-          default:
-            // No highlighting for other actions
-            break;
-        }
-        
-        if (highlightSection) {
-          // Dispatch event to UserDashboard — partial refresh (no page reload)
-          window.dispatchEvent(new CustomEvent('agentDataReady', {
-            detail: { section: highlightSection, action: actionId, result: response.result },
-          }));
-        }
-      }
-
       // Show inline token event summary in the chat + dedicated toasts
       if (tokenEvents.length > 0) {
         const exchanged = tokenEvents.find(e => e.id === 'exchanged-token');
@@ -1125,29 +1116,28 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
         }
       }
 
-      // Populate results — side panel or full-page depending on user preference
-      const result = response.result;
-      const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
-
-      let resultType = null;
-      let resultData = null;
-      if (result?.accounts) {
-        resultType = 'accounts'; resultData = result.accounts;
-      } else if (result?.transactions) {
-        resultType = 'transactions'; resultData = result.transactions;
-      } else if (result?.balance !== undefined) {
-        resultType = 'balance'; resultData = result.balance;
-      } else if (result?.transaction_id || result?.transactionId || result?.id) {
-        resultType = 'confirm'; resultData = result;
+      // Populate results panel + notify hosting dashboard (same CustomEvent in both display modes)
+      let displayNormalized = normalizeAgentToolResult(response.result);
+      if (['transfer', 'deposit', 'withdraw'].includes(actionId)) {
+        try {
+          const txRes = await getMyTransactions(30);
+          const txNorm = normalizeAgentToolResult(txRes.result);
+          if (Array.isArray(txNorm?.transactions)) {
+            displayNormalized = txNorm;
+          }
+        } catch {
+          // keep write payload for inferAgentResultTypeAndData
+        }
       }
 
+      const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
+      const { resultType, resultData } = inferAgentResultTypeAndData(displayNormalized);
+
       if (resultType) {
-        if (displayMode === 'fullpage') {
-          // Push result to the main dashboard via custom event
-          window.dispatchEvent(new CustomEvent('banking-agent-result', {
-            detail: { type: resultType, data: resultData, label },
-          }));
-        } else {
+        window.dispatchEvent(new CustomEvent('banking-agent-result', {
+          detail: { type: resultType, data: resultData, label },
+        }));
+        if (displayMode === 'panel') {
           const titleMap = {
             accounts: '🏦 Accounts',
             transactions: '📋 Recent Transactions',

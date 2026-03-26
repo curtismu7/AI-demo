@@ -18,7 +18,7 @@ export function toastCustomerError(message, onSignIn) {
           Sign in
         </button>
       </div>,
-      { autoClose: 20000 }
+      { autoClose: 20000, toastId: 'customer-auth-required' }
     );
     return;
   }
@@ -40,7 +40,7 @@ export function toastAdminSessionError(message, onAdminSignIn) {
           Admin sign in
         </button>
       </div>,
-      { autoClose: 20000 }
+      { autoClose: 20000, toastId: 'admin-auth-required' }
     );
     return;
   }

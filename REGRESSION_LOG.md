@@ -5,6 +5,30 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-26 — Duplicate “session expired” toasts while still signed in
+
+**Symptom**: Two stacked toasts: “Your session has expired. Please log in again.” with **Sign in**, despite an active session.
+
+**Root cause**: **`/api/accounts/my`** / **`/api/transactions/my`** can return **401** while **`/api/auth/oauth/*/status`** still shows authenticated (JWT/session lag, rate limits, or races). The UI treated every **401** as hard expiry. **Parallel** agent refreshes and **react-toastify** without a stable **`toastId`** could stack identical session toasts.
+
+**Fix**: **Retry** banking GETs on **401** with backoff; **`resolveSessionUser()`** — if a user still exists, **one** soft **`toast.warn`** (`toastId`) instead of expiry; only when no user: **`toastCustomerError`** + **`toastId: customer-auth-required`**. Agent refresh: **single** delayed fetch.
+
+**Tests**: Manual.
+
+---
+
+## 2026-03-26 — Dashboard did not update after agent transfer (hosting window + agent results)
+
+**Symptom**: After a transfer (or deposit/withdraw) via the Banking Agent, **Recent Transactions** on the main dashboard and the agent results panel did not show the new activity.
+
+**Root cause**: **`UserDashboard`** had **no** `window` listener for **`banking-agent-result`**, so nothing refetched **`/api/accounts/my`** / **`/api/transactions/my`**. **`BankingAgent`** only dispatched that event in **full-page** display mode, and MCP write responses use **`success` / `operation` / nested `transaction`** shapes without top-level **`transaction_id`**, so the results panel often skipped updates until a manual “Recent Transactions” run.
+
+**Fix**: **`UserDashboard`**: listen for **`banking-agent-result`**, apply optimistic row updates where applicable, and **silent `fetchUserData`** on a short delay; allow overlapping **silent** refreshes so agent double-fire is not dropped. **`BankingAgent`**: **`inferAgentResultTypeAndData`**, always dispatch **`banking-agent-result`** for panel + full page, and after **transfer/deposit/withdraw** call **`get_my_transactions`** so the side panel lists fresh rows.
+
+**Tests**: Manual (agent transfer while on `/` or `/dashboard`).
+
+---
+
 ## 2026-03-26 — MCP token exchange “skipped”; `get_account_balance` “Account optional not found”; floating agent scroll / expand layout
 
 **Symptom**: Token Chain / toasts said token exchange was **skipped** (`MCP_RESOURCE_URI` unset) and the user token was forwarded; NL “Check my account balance” failed with **`Account optional not found`**; floating Banking Agent could not scroll chat; clicking **expand (⊞)** left the **Recent Transactions** results panel in the wrong place (still bottom-right while the agent centered).

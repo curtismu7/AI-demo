@@ -50,7 +50,7 @@ git checkout <last-version-tag> -- <key-file>
 |---|---|---|---|
 | Account overview (`/my` — scope-free BFF dashboard) | active | `banking_api_server/routes/accounts.js`, `banking_api_ui/src/components/Accounts.js` | `s:integration/completeFlow.test.js` |
 | Transaction history (`/my` — scope-free BFF dashboard) | active | `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/Transactions.js` | `s:transaction-flows.test.js` |
-| Customer dashboard page | active | `banking_api_ui/src/components/UserDashboard.js`, `banking_api_ui/src/services/accountsHydration.js` | `accountsHydration.test.js` |
+| Customer dashboard page (Banking Agent **`banking-agent-result`** refresh; 401 retry + soft session warning; **`dashboardToast`** dedupe) | active | `banking_api_ui/src/components/UserDashboard.js`, `banking_api_ui/src/services/accountsHydration.js`, `banking_api_ui/src/utils/dashboardToast.js` | `accountsHydration.test.js` |
 | Step-up authentication gate (high-value transactions) | active | `banking_api_server/middleware/authorizeGate.js`, `banking_api_server/middleware/stepUpGate.js` | `s:step-up-gate.test.js`, `s:authorize-gate.test.js` |
 | Transaction consent challenge (high-value transfers — PingOne-style consent) | active | `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/TransactionConsentPage.js` | `s:transaction-consent-challenge.test.js` |
 | Agent blocked after consent decline (until re-auth) | active | `banking_api_ui/src/services/agentAccessConsent.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
@@ -81,6 +81,7 @@ git checkout <last-version-tag> -- <key-file>
 |---|---|---|---|
 | Floating agent button | active | `banking_api_ui/src/components/BankingAgent.js` | `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
 | Embedded agent mode (side panel) | active | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/Config.js`, `banking_api_ui/src/components/DemoDataPage.js` | `u:components/__tests__/DemoDataPage.test.js`, `u:context/__tests__/AgentUiModeContext.test.js` |
+| Agent ↔ customer dashboard sync (`banking-agent-result`; post-write **`get_my_transactions`**) | active | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/UserDashboard.js` | — |
 | Agent layout preference persisted to server | active | `banking_api_ui/src/services/demoScenarioService.js`, `banking_api_server/routes/demoScenario.js` | `s:demo-scenario-api.test.js` |
 | Natural-language banking intents (NL → API) | active | `banking_api_server/routes/bankingAgentNl.js`, `banking_api_server/services/nlIntentParser.js`, `banking_api_ui/src/services/bankingAgentNlService.js` | `s:bankingAgentNl.test.js`, `s:nlIntentParser.test.js` |
 | NL intent sanitization | active | `banking_api_server/services/nlIntentSanitize.js` | `s:nlIntentSanitize.test.js` |
