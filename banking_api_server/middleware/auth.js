@@ -24,22 +24,16 @@ const ENDUSER_AUDIENCE = process.env.ENDUSER_AUDIENCE || 'banking_jk_enduser';
 const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || 'banking_mcp_01_JK';
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
 const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
-const COOKIE_SESSION_ALLOWED_ROUTES = new Set([
-  'GET /api/accounts/my',
-  'GET /api/transactions/my',
-  // Backend-for-Frontend (BFF) POST uses session cookie; _cookie_session marker must not be JWT-validated (Vercel / serverless).
-  'POST /api/transactions',
-  'POST /api/accounts/reset-demo',
-  'GET /api/demo-scenario',
-  'PUT /api/demo-scenario',
-  'GET /api/mcp/inspector/context',
-  'GET /api/mcp/inspector/tools',
-  'POST /api/mcp/inspector/invoke',
-  // Token Chain panel: reads session data only — safe with cookie-only session (returns empty events when no real token).
-  'GET /api/tokens/session-preview',
-  // MCP tool proxy: route handler checks for real token via getSessionBearerForMcp and returns
-  // session_not_hydrated (401) with a diagnostic message when only _cookie_session is present.
-  'POST /api/mcp/tool',
+// Routes intentionally NOT accessible with a cookie-only (_cookie_session) session.
+// All other routes allow cookie-only sessions through — identity is confirmed by the
+// signed _auth cookie and the session.user record.  Routes that need a real bearer
+// token (MCP tool calls, token exchange) check for '_cookie_session' themselves and
+// return a diagnostic session_not_hydrated error instead of a generic 401.
+// requireScopes() bypasses scope validation for fromSession:true users (role-based trust).
+// requireAdmin() uses the role stored in session.user (preserved in the _auth cookie).
+const COOKIE_SESSION_BLOCKED_ROUTES = new Set([
+  // Nothing currently blocked — all routes are accessible in degraded (cookie-only) mode.
+  // Add entries here ONLY for routes that must never be reachable without a real bearer token.
 ]);
 
 function normalizeRouteKey(routeKey) {
@@ -591,9 +585,15 @@ const authenticateToken = async (req, res, next) => {
       has_token: !!token
     });
 
-    // Cookie-restored session fallback: allow low-risk self-service dashboard routes
-    // when we only have the synthetic "_cookie_session" marker token.
-    if (!token && sessionToken === '_cookie_session' && sessionUser && COOKIE_SESSION_ALLOWED_ROUTES.has(routeKey)) {
+    // Cookie-restored session: user's identity is confirmed by the signed _auth cookie
+    // and the session.user record even when the session store is unhealthy (Vercel cold
+    // start, Upstash outage, etc.).  Allow ALL routes through — routes that specifically
+    // require a real bearer token (MCP tool proxy, token exchange) detect '_cookie_session'
+    // themselves and return a diagnostic session_not_hydrated 401 with fix instructions.
+    // requireScopes() bypasses scope checks for fromSession:true users; requireAdmin()
+    // reads role from session.user which is preserved in the signed _auth cookie.
+    if (!token && sessionToken === '_cookie_session' && sessionUser
+        && !COOKIE_SESSION_BLOCKED_ROUTES.has(routeKey)) {
       req.user = {
         id: sessionUser.id,
         username: sessionUser.username || sessionUser.email || sessionUser.id,
@@ -609,7 +609,7 @@ const authenticateToken = async (req, res, next) => {
         acr: null,
         scopes: []
       };
-      logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Cookie-restored session accepted for dashboard route', {
+      logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Cookie-restored session accepted (degraded mode — no real bearer token)', {
         ...requestContext,
         route: routeKey,
         user_id: sessionUser.id
