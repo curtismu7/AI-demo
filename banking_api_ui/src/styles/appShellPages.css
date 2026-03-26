@@ -10,7 +10,7 @@
 }
 
 .app-page-shell__hero {
-  max-width: 960px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 1.75rem 1.5rem 1.5rem;
   background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
@@ -61,7 +61,7 @@
 }
 
 .app-page-shell__body {
-  max-width: 960px;
+  max-width: 1400px;
   margin: -0.5rem auto 0;
   padding-top: 0.5rem;
 }
@@ -73,7 +73,7 @@
 
 /* Extra horizontal room for dense admin toolbars (Sign in + Log out, many links) */
 .app-page-shell--toolbar-room .app-page-shell__hero {
-  max-width: 1280px;
+  max-width: 1400px;
 }
 
 .app-page-shell--toolbar-room .app-page-shell__body--wide {
