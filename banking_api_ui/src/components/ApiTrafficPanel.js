@@ -261,7 +261,7 @@ export default function ApiTrafficPanel({ onClose, pageMode = false }) {
             {paused ? '▶ Resume' : '⏸ Pause'}
           </button>
           <button type="button" className="api-traffic-btn" onClick={handleClear}>Clear</button>
-          {!pageMode && <button type="button" className="api-traffic-btn" onClick={handlePopOut} title="Open in new window">⤢</button>}
+          {!pageMode && <button type="button" className="api-traffic-btn" onClick={handlePopOut} title="Pop out to separate window — drag that window to another monitor">⤢ Pop out</button>}
           {onClose && <button type="button" className="api-traffic-btn api-traffic-btn--close" onClick={onClose}>✕</button>}
         </div>
       </div>

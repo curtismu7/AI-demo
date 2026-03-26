@@ -82,6 +82,15 @@ function AppWithAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
+  const [apiTrafficOpen, setApiTrafficOpen] = useState(false);
+
+  // Allow EducationBar to toggle the inline API Traffic panel via custom event.
+  useEffect(() => {
+    const handler = () => setApiTrafficOpen((v) => !v);
+    window.addEventListener('toggle-api-traffic', handler);
+    return () => window.removeEventListener('toggle-api-traffic', handler);
+  }, []);
+
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);
@@ -547,6 +556,7 @@ function AppWithAuth() {
           {!isLogsRoute && <CIBAPanel />}
           {!isLogsRoute && <CimdSimPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
+          {apiTrafficOpen && <ApiTrafficPanel onClose={() => setApiTrafficOpen(false)} />}
           {/* Floating Log Viewer Button — opens in a new window so it stays visible */}
           {!isLogsRoute && (
             <button
@@ -567,8 +577,8 @@ function AppWithAuth() {
           {!isLogsRoute && (
             <button
               className="api-traffic-fab"
-              onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1200,height=800,scrollbars=yes,resizable=yes')}
-              title="Open API Traffic Viewer in new window"
+              onClick={() => setApiTrafficOpen((v) => !v)}
+              title="Toggle API Traffic Viewer (drag to move, ⤢ to pop out)"
               type="button"
             >
               🌐 API
