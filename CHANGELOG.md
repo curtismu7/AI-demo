@@ -57,6 +57,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Changed
 
+- **`FEATURES.md`**: Agent MCP token service row now documents **RFC 8693** requirements (`mcp_resource_uri`, min user scopes, no user-token passthrough)
 - **Embedded Banking Agent**: dock is **in the page layout** at the bottom of `<main>` (scrollable dashboard above, assistant strip below) instead of `position: fixed` over the viewport; full-width bar, no floating card inset; default chat area height **280px** (resizable)
 - **Floating BankingAgent**: default panel **260×210** (~half prior 520×420); left column **112px**; results panel **220px** wide; expanded mode **320×260**; resize clamps **180×140–450×310**
 - Admin OAuth `/authorize` `login_hint` set to `bankadmin` (was `admin`) for PingOne username hint
