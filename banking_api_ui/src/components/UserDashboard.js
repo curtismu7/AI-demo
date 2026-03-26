@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
+import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
+import bffAxios from '../services/bffAxios';
+import { resolveSessionUser } from '../services/sessionResolver';
+import { navigateToCustomerOAuthLogin } from '../utils/authUi';
+import { toastCustomerError } from '../utils/dashboardToast';
 import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
@@ -19,6 +24,32 @@ const DEMO_TRANSACTIONS = [
   { id: 'd3', type: 'transfer',   amount:  500.00, description: 'Transfer to savings',      accountInfo: 'Savings - SAV-DEMO-0001',  createdAt: new Date(Date.now() - 86400000*3).toISOString(), clientType: 'ai_agent', performedBy: 'Demo User', _demo: true },
   { id: 'd4', type: 'deposit',    amount:   75.00, description: 'Refund — online purchase', accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*5).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
 ];
+
+const USER_DASH_SOFT_401_TOAST_ID = 'user-dashboard-soft-401';
+const FETCH_MY_DATA_401_DELAYS_MS = [0, 450, 900, 1400];
+
+async function fetchMyAccountsAndTransactionsWith401Retries() {
+  let lastErr;
+  for (let i = 0; i < FETCH_MY_DATA_401_DELAYS_MS.length; i++) {
+    const delayMs = FETCH_MY_DATA_401_DELAYS_MS[i];
+    if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+    try {
+      const [ar, tr] = await Promise.all([
+        bffAxios.get('/api/accounts/my'),
+        bffAxios.get('/api/transactions/my'),
+      ]);
+      return {
+        accounts: ar.data.accounts,
+        transactions: tr.data.transactions,
+      };
+    } catch (e) {
+      lastErr = e;
+      const st = e.response?.status;
+      if (st !== 401) throw e;
+    }
+  }
+  throw lastErr;
+}
 
 const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
@@ -54,6 +85,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const fetchingRef = React.useRef(false);
+  const fetchUserDataRef = React.useRef(null);
+  const soft401NotifiedRef = React.useRef(false);
 
   // Auto-dismiss success messages after 4 seconds
   useEffect(() => {
@@ -158,7 +191,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   }, [autoRefresh]);
 
   const fetchUserData = async (silent = false) => {
-    if (fetchingRef.current) return;
+    if (fetchingRef.current && !silent) return;
     fetchingRef.current = true;
     try {
       // Only show loading spinner for initial load, not auto-refreshes
@@ -190,20 +223,35 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         return;
       }
 
-      // Get user's accounts using the new API client
-      const accountsResponse = await apiClient.get('/api/accounts/my');
-      setAccounts(accountsResponse.data.accounts);
-
-      // Get user's transactions using the new API client
-      const transactionsResponse = await apiClient.get('/api/transactions/my');
-      setTransactions(transactionsResponse.data.transactions);
+      const { accounts: nextAccounts, transactions: nextTransactions } =
+        await fetchMyAccountsAndTransactionsWith401Retries();
+      setAccounts(nextAccounts);
+      setTransactions(nextTransactions);
+      setError(null);
+      soft401NotifiedRef.current = false;
+      toast.dismiss(USER_DASH_SOFT_401_TOAST_ID);
 
     } catch (error) {
       console.error('Error fetching user data:', error);
-      
-      // Check if it's an authentication error
+
       if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
+        const still = await resolveSessionUser();
+        if (still) {
+          setError(null);
+          if (!soft401NotifiedRef.current) {
+            soft401NotifiedRef.current = true;
+            toast.warn(
+              'Could not load account data yet — authorization may still be catching up. Use Refresh access token in the Banking Agent, or reload the page.',
+              { toastId: USER_DASH_SOFT_401_TOAST_ID, autoClose: 10000 }
+            );
+          }
+        } else {
+          setError('Your session has expired. Please log in again.');
+          toastCustomerError(
+            'Your session has expired. Please log in again.',
+            navigateToCustomerOAuthLogin
+          );
+        }
       } else if (error.response?.status === 403) {
         setError('You do not have permission to access this information.');
       } else {
@@ -216,6 +264,41 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       fetchingRef.current = false;
     }
   };
+
+  useEffect(() => {
+    fetchUserDataRef.current = fetchUserData;
+  });
+
+  useEffect(() => {
+    const refreshDelayed = () => {
+      setTimeout(() => fetchUserDataRef.current?.(true), 600);
+    };
+
+    const handleBankingAgentResult = (e) => {
+      const { type, data, label } = e.detail || {};
+      const suffix = label ? ` — ${label}` : '';
+      if (type === 'accounts' && Array.isArray(data)) {
+        setAccounts(data);
+        toast.success(`Agent updated accounts${suffix}`);
+        return;
+      }
+      if (type === 'transactions' && Array.isArray(data)) {
+        setTransactions(data);
+        refreshDelayed();
+        toast.success(`Agent updated activity${suffix}`);
+        return;
+      }
+      if (type === 'balance' || type === 'confirm') {
+        refreshDelayed();
+        toast.success(`Dashboard refreshed after agent action${suffix}`);
+      }
+    };
+
+    window.addEventListener('banking-agent-result', handleBankingAgentResult);
+    return () => {
+      window.removeEventListener('banking-agent-result', handleBankingAgentResult);
+    };
+  }, []);
 
   // ── CIBA step-up: initiate back-channel authentication ──
   const handleCibaStepUp = async () => {
