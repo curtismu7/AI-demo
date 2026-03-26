@@ -473,6 +473,11 @@ app.get('/api/auth/debug', async (req, res) => {
     const { result } = upstashSessionStoreInstance._pingCache;
     sessionStoreHealthy = result.healthy;
     sessionStoreError   = result.error;
+    // If circuit is currently open, override healthy to false without calling ping again
+    if (upstashSessionStoreInstance._circuit?.isOpen) {
+      sessionStoreHealthy = false;
+      sessionStoreError   = upstashSessionStoreInstance._circuit.lastError || 'circuit open — Upstash bypassed';
+    }
   }
 
   res.json({
@@ -494,6 +499,8 @@ app.get('/api/auth/debug', async (req, res) => {
     sessionStoreHealthy,
     /** Non-null when sessionStoreHealthy is false — the actual error message for debugging. */
     sessionStoreError,
+    /** Circuit breaker state: CLOSED (normal) | OPEN (bypassing Redis) | HALF_OPEN (probing) */
+    sessionCircuitState: upstashSessionStoreInstance?._circuit?.state ?? null,
     /** Backward-compat: 'redis' when any persistent store is active, 'memory' otherwise. */
     bffSessionStore: sessionStore ? 'redis' : 'memory',
     /** Which env supplied the store credentials. */
