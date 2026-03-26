@@ -297,17 +297,17 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       // Log transaction creation with client type
       console.log(`💰 [Transaction] Transfer created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
 
-      // Send confirmation email (fire-and-forget)
-      if (req.user.email) {
-        const fromAcc = dataStore.getAccountById(fromAccountId);
-        const toAcc   = dataStore.getAccountById(toAccountId);
+      // Send confirmation email via PingOne Notifications (fire-and-forget)
+      {
+        const fromAcc  = dataStore.getAccountById(fromAccountId);
+        const toAcc    = dataStore.getAccountById(toAccountId);
         const userName = req.user.firstName || req.user.name || req.user.username;
-        sendTransactionConfirmation(req.user.email, {
+        sendTransactionConfirmation(req.user.id, {
           type: 'transfer',
           amount,
           fromAccount: fromAcc ? `${fromAcc.accountType} — ${fromAcc.accountNumber}` : fromAccountId,
           toAccount:   toAcc   ? `${toAcc.accountType} — ${toAcc.accountNumber}`     : toAccountId,
-          newBalance:  fromAcc ? dataStore.getAccountById(fromAccountId)?.balance : undefined,
+          newBalance:  dataStore.getAccountById(fromAccountId)?.balance,
           transactionId: withdrawalTransaction.id,
           userName,
         });
@@ -343,12 +343,12 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       // Log transaction creation with client type
       console.log(`💰 [Transaction] ${type} created by ${req.user.username} (${req.user.clientType || 'unknown'} via ${req.user.tokenType || 'unknown'}) - Amount: $${amount}`);
 
-      // Send confirmation email (fire-and-forget)
-      if (req.user.email) {
+      // Send confirmation email via PingOne Notifications (fire-and-forget)
+      {
         const accountId = toAccountId || fromAccountId;
         const account   = accountId ? dataStore.getAccountById(accountId) : null;
         const userName  = req.user.firstName || req.user.name || req.user.username;
-        sendTransactionConfirmation(req.user.email, {
+        sendTransactionConfirmation(req.user.id, {
           type: type === 'withdrawal' ? 'withdrawal' : 'deposit',
           amount,
           fromAccount: fromAccountId ? (account ? `${account.accountType} — ${account.accountNumber}` : fromAccountId) : undefined,
