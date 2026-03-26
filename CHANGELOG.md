@@ -17,6 +17,18 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+---
+
+## [2026.03.26.v2]
+
+### Added
 - `scripts/setup-vercel-env.js` — interactive Vercel environment wizard: detects conflicts, validates Upstash connectivity, generates SESSION_SECRET, and optionally pushes to Vercel CLI
 - `npm run setup:vercel` and `npm run setup:vercel:check` scripts
 - README.md Vercel Deployment section covering setup wizard, required vars, common issues, and post-deploy verification checklist
