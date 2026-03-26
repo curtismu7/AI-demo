@@ -70,6 +70,14 @@ function devLog(...args) {
   console.log(...args);
 }
 
+/**
+ * Module-level logout guard — persists for the lifetime of the JS runtime
+ * (i.e. until a full page reload).  Set to true the moment logout is triggered
+ * so that any re-run of the startup useEffect (caused by checkOAuthSession
+ * reference changing) cannot call checkOAuthSession and re-authenticate.
+ */
+let _didLogOut = false;
+
 function GlobalFloatingBankingAgent({ user, onLogout, agentUiMode }) {
   if (!shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode })) return null;
   return <BankingAgent user={user} onLogout={onLogout} mode="float" />;
@@ -215,9 +223,15 @@ function AppWithAuth() {
   }, []);
 
   useEffect(() => {
-    const userLoggedOut = localStorage.getItem('userLoggedOut');
-    if (userLoggedOut === 'true') {
+    const userLoggedOut = localStorage.getItem('userLoggedOut') === 'true' || _didLogOut;
+    if (userLoggedOut) {
+      _didLogOut = true; // keep set so re-runs of this effect (checkOAuthSession ref change) skip auth check
       localStorage.removeItem('userLoggedOut');
+      // Belt-and-suspenders: ensure _auth cookie and server session are cleared
+      // in case the Set-Cookie header on the /api/auth/logout 302 response was
+      // not honoured by the redirect chain (e.g. no id_token_hint for PingOne).
+      fetch('/api/auth/clear-session', { method: 'POST', credentials: 'include' }).catch(() => {});
+      setUser(null);
       setLoading(false);
       return;
     }
@@ -428,6 +442,7 @@ function AppWithAuth() {
 
   const logout = () => {
     sessionEstablishedRef.current = false;
+    _didLogOut = true;
 
     setLoadingOverlay({ show: true, message: 'Signing you out…', sub: 'Ending your PingOne session' });
 

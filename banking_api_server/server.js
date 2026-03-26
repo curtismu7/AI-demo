@@ -406,6 +406,18 @@ app.get('/api/healthz', (req, res) => {
   });
 });
 
+// Belt-and-suspenders cookie/session clear — called by the SPA after it detects
+// that the user just returned from the logout redirect chain.  Ensures the _auth
+// cookie is cleared even if the 302-redirect Set-Cookie header was not honoured
+// by an intermediate redirect (e.g. PingOne signoff without id_token_hint).
+app.post('/api/auth/clear-session', (req, res) => {
+  clearAuthCookie(res, isProduction);
+  if (req.session) {
+    req.session.destroy(() => {});
+  }
+  res.json({ ok: true });
+});
+
 // Unified logout — destroys whichever session is active and redirects
 // browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/logout).
 // Called as a full page navigation (window.location.href), NOT via axios.

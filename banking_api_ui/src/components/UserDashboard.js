@@ -325,6 +325,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           setError('Too many requests from this network. Wait a minute, then refresh. Auto-refresh is off.');
         }
       } else if (status === 401 && !silent) {
+        // Suppress "session expired" when the user intentionally logged out
+        if (localStorage.getItem('userLoggedOut') === 'true') return;
         setError('Your session has expired. Please log in again.');
       } else if (status === 403) {
         setError('You do not have permission to access this information.');
