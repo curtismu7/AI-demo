@@ -17,8 +17,15 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- `scripts/setup-vercel-env.js` — interactive Vercel environment wizard: detects conflicts, validates Upstash connectivity, generates SESSION_SECRET, and optionally pushes to Vercel CLI
+- `npm run setup:vercel` and `npm run setup:vercel:check` scripts
+- README.md Vercel Deployment section covering setup wizard, required vars, common issues, and post-deploy verification checklist
 
 ### Fixed
+- Session store switched from `@upstash/redis` to `@vercel/kv` (confirmed direct dep); resolves `sessionStoreHealthy: false` caused by version mismatch
+- `ping()` now returns `{ healthy, error }` — actual error message visible in `/api/auth/debug` as `sessionStoreError`
+- Pre-existing `useEffect` missing-dependency lint error in `UserDashboard.js` (blocked Vercel build)
+- `SESSION_NOT_HYDRATED_CHAT` UI message updated to point at `sessionStoreError` for diagnosis
 
 ### Changed
 
