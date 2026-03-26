@@ -342,29 +342,47 @@ export class BankingToolProvider {
     params: { to_account_id: string; amount: number; description?: string }
   ): Promise<BankingToolResult> {
     console.log(`[BankingToolProvider] Calling Banking API: createDeposit - Amount: ${params.amount}, Account: ${params.to_account_id}`);
-    const response = await this.apiClient.createDeposit(
-      userToken,
-      params.to_account_id,
-      params.amount,
-      params.description
-    );
-    console.log(`[BankingToolProvider] Banking API response: Deposit successful - ${response.message}`);
+    try {
+      const response = await this.apiClient.createDeposit(
+        userToken,
+        params.to_account_id,
+        params.amount,
+        params.description
+      );
+      console.log(`[BankingToolProvider] Banking API response: Deposit successful - ${response.message}`);
 
-    const result = {
-      success: true,
-      operation: 'deposit',
-      message: response.message,
-      transaction: response.transaction ? {
-        id: response.transaction.id,
+      const result = {
+        success: true,
+        operation: 'deposit',
+        message: response.message,
+        transaction: response.transaction ? {
+          id: response.transaction.id,
+          amount: params.amount,
+          toAccountId: params.to_account_id,
+          description: params.description || null
+        } : null,
         amount: params.amount,
-        toAccountId: params.to_account_id,
-        description: params.description || null
-      } : null,
-      amount: params.amount,
-      accountId: params.to_account_id
-    };
+        accountId: params.to_account_id
+      };
 
-    return this.createSuccessResult(JSON.stringify(result, null, 2));
+      return this.createSuccessResult(JSON.stringify(result, null, 2));
+    } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'consent_challenge_required',
+              message: error.message,
+              consent_challenge_required: true,
+              hitl_threshold_usd: 500,
+            },
+            null,
+            2
+          )
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -374,28 +392,46 @@ export class BankingToolProvider {
     userToken: string,
     params: { from_account_id: string; amount: number; description?: string }
   ): Promise<BankingToolResult> {
-    const response = await this.apiClient.createWithdrawal(
-      userToken,
-      params.from_account_id,
-      params.amount,
-      params.description
-    );
+    try {
+      const response = await this.apiClient.createWithdrawal(
+        userToken,
+        params.from_account_id,
+        params.amount,
+        params.description
+      );
 
-    const result = {
-      success: true,
-      operation: 'withdrawal',
-      message: response.message,
-      transaction: response.transaction ? {
-        id: response.transaction.id,
+      const result = {
+        success: true,
+        operation: 'withdrawal',
+        message: response.message,
+        transaction: response.transaction ? {
+          id: response.transaction.id,
+          amount: params.amount,
+          fromAccountId: params.from_account_id,
+          description: params.description || null
+        } : null,
         amount: params.amount,
-        fromAccountId: params.from_account_id,
-        description: params.description || null
-      } : null,
-      amount: params.amount,
-      accountId: params.from_account_id
-    };
+        accountId: params.from_account_id
+      };
 
-    return this.createSuccessResult(JSON.stringify(result, null, 2));
+      return this.createSuccessResult(JSON.stringify(result, null, 2));
+    } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'consent_challenge_required',
+              message: error.message,
+              consent_challenge_required: true,
+              hitl_threshold_usd: 500,
+            },
+            null,
+            2
+          )
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -405,35 +441,53 @@ export class BankingToolProvider {
     userToken: string,
     params: { from_account_id: string; to_account_id: string; amount: number; description?: string }
   ): Promise<BankingToolResult> {
-    const response = await this.apiClient.createTransfer(
-      userToken,
-      params.from_account_id,
-      params.to_account_id,
-      params.amount,
-      params.description
-    );
+    try {
+      const response = await this.apiClient.createTransfer(
+        userToken,
+        params.from_account_id,
+        params.to_account_id,
+        params.amount,
+        params.description
+      );
 
-    const result = {
-      success: true,
-      operation: 'transfer',
-      message: response.message,
-      withdrawalTransaction: response.withdrawalTransaction ? {
-        id: response.withdrawalTransaction.id,
+      const result = {
+        success: true,
+        operation: 'transfer',
+        message: response.message,
+        withdrawalTransaction: response.withdrawalTransaction ? {
+          id: response.withdrawalTransaction.id,
+          amount: params.amount,
+          fromAccountId: params.from_account_id
+        } : null,
+        depositTransaction: response.depositTransaction ? {
+          id: response.depositTransaction.id,
+          amount: params.amount,
+          toAccountId: params.to_account_id
+        } : null,
         amount: params.amount,
-        fromAccountId: params.from_account_id
-      } : null,
-      depositTransaction: response.depositTransaction ? {
-        id: response.depositTransaction.id,
-        amount: params.amount,
-        toAccountId: params.to_account_id
-      } : null,
-      amount: params.amount,
-      fromAccountId: params.from_account_id,
-      toAccountId: params.to_account_id,
-      description: params.description || null
-    };
+        fromAccountId: params.from_account_id,
+        toAccountId: params.to_account_id,
+        description: params.description || null
+      };
 
-    return this.createSuccessResult(JSON.stringify(result, null, 2));
+      return this.createSuccessResult(JSON.stringify(result, null, 2));
+    } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'consent_challenge_required',
+              message: error.message,
+              consent_challenge_required: true,
+              hitl_threshold_usd: 500,
+            },
+            null,
+            2
+          )
+        );
+      }
+      throw error;
+    }
   }
 
   /**

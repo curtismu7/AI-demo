@@ -69,7 +69,7 @@ export class BankingToolRegistry {
 
     create_deposit: {
       name: 'create_deposit',
-      description: 'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response.',
+      description: 'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard first (returns consent_challenge_required if attempted without it).',
       requiresUserAuth: true,
       requiredScopes: ['banking:transactions:write'],
       handler: 'executeCreateDeposit',
@@ -100,7 +100,7 @@ export class BankingToolRegistry {
 
     create_withdrawal: {
       name: 'create_withdrawal',
-      description: 'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response.',
+      description: 'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard first (returns consent_challenge_required if attempted without it).',
       requiresUserAuth: true,
       requiredScopes: ['banking:transactions:write'],
       handler: 'executeCreateWithdrawal',
@@ -131,7 +131,7 @@ export class BankingToolRegistry {
 
     create_transfer: {
       name: 'create_transfer',
-      description: 'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response.',
+      description: 'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard first (returns consent_challenge_required if attempted without it).',
       requiresUserAuth: true,
       requiredScopes: ['banking:transactions:write'],
       handler: 'executeCreateTransfer',

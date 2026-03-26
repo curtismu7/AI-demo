@@ -13,7 +13,7 @@ const VALID_BANKING_ACTIONS = new Set([
 
 const VALID_EDU_PANELS = new Set([
   'login-flow', 'token-exchange', 'may-act', 'mcp-protocol', 'introspection',
-  'agent-gateway', 'rfc-index', 'step-up', 'pingone-authorize', 'cimd',
+  'agent-gateway', 'rfc-index', 'step-up', 'pingone-authorize', 'cimd', 'human-in-loop',
 ]);
 
 /**

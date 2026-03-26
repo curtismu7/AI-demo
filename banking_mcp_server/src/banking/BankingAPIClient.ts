@@ -80,7 +80,9 @@ export class BankingAPIClient {
     // Add response interceptor for error handling
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`Banking API Response: ${response.status} ${response.config.url}`);
+        if (response != null) {
+          console.log(`Banking API Response: ${response.status} ${response.config.url}`);
+        }
         return response;
       },
       (error) => {
@@ -398,13 +400,22 @@ export class BankingAPIClient {
       }
     }
 
+    // Raw axios errors (before mapError wraps them) — don't retry typical client errors
+    if (this.isAxiosLikeError(error) && error.response) {
+      const status = error.response.status;
+      if (status >= 400 && status < 500 && status !== 429) {
+        return false;
+      }
+    }
+
     // Don't retry client validation errors
     if (error instanceof BankingAPIError) {
       const nonRetryableCodes = [
         'INVALID_AMOUNT',
         'INVALID_ACCOUNT_ID',
         'SAME_ACCOUNT_TRANSFER',
-        'INVALID_AMOUNT_PRECISION'
+        'INVALID_AMOUNT_PRECISION',
+        'consent_challenge_required',
       ];
       if (nonRetryableCodes.includes(error.errorCode || '')) {
         return false;
@@ -416,6 +427,20 @@ export class BankingAPIClient {
   }
 
   /**
+   * Detect axios-shaped errors; jest's axios mock may omit `axios.isAxiosError`, so we also check `isAxiosError`.
+   */
+  private isAxiosLikeError(error: unknown): error is AxiosError {
+    if (typeof axios.isAxiosError === 'function' && axios.isAxiosError(error)) {
+      return true;
+    }
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      (error as { isAxiosError?: boolean }).isAxiosError === true
+    );
+  }
+
+  /**
    * Map axios errors to BankingAPIError
    */
   private mapError(error: any): BankingAPIError {
@@ -423,20 +448,25 @@ export class BankingAPIClient {
       return error;
     }
 
-    if (axios.isAxiosError(error)) {
+    if (this.isAxiosLikeError(error)) {
       const axiosError = error as AxiosError;
       
       if (axiosError.response) {
         // Server responded with error status
         const { status, data } = axiosError.response;
         const errorData = data as any;
-        
-        return new BankingAPIError(
-          errorData?.error || errorData?.message || 'Banking API error',
-          status,
-          errorData?.code || errorData?.errorCode,
-          axiosError
-        );
+        const apiErr = typeof errorData?.error === 'string' ? errorData.error : '';
+        const message =
+          (typeof errorData?.message === 'string' && errorData.message.trim()) ||
+          apiErr ||
+          'Banking API error';
+        /** Prefer explicit `code`; else `error` when it looks like a machine code (e.g. consent_challenge_required). */
+        const code =
+          errorData?.code ||
+          errorData?.errorCode ||
+          (apiErr && (apiErr.includes('_') || /^[a-z][a-z0-9_]*$/i.test(apiErr)) ? apiErr : undefined);
+
+        return new BankingAPIError(message, status, code, axiosError);
       } else if (axiosError.request) {
         // Request was made but no response received
         return new BankingAPIError(

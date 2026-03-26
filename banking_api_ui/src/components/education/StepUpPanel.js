@@ -18,6 +18,10 @@ export default function StepUpPanel({ isOpen, onClose, initialTabId }) {
             PingOne delivers approval <strong>out-of-band</strong> — by <strong>email</strong> or <strong>device push</strong> depending on your DaVinci setup
             (email-only avoids MFA push). See <strong>Learn → Login flow → CIBA (OOB)</strong> or the floating <strong>CIBA guide</strong>.
           </p>
+          <p>
+            For <strong>mandatory human approval</strong> before large money movement (separate from MFA), see{' '}
+            <strong>Learn → Human-in-the-loop</strong> — it explains how the consent page and the AI agent interact.
+          </p>
         </>
       ),
     },

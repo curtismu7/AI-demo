@@ -13,7 +13,7 @@ const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown) with one of:
-{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd","tab":"optional tab id"}}
+{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|human-in-loop","tab":"optional tab id"}}
 {"kind":"education","ciba":true,"tab":"what"}
 {"kind":"banking","banking":{"action":"accounts|transactions|balance|deposit|withdraw|transfer|logout|mcp_tools","params":{"accountId":"optional","fromId":"checking|savings","toId":"checking|savings","amount":0,"note":""}}}
 {"kind":"none","message":"short hint"}

@@ -16,6 +16,7 @@ const EDU = {
   STEP_UP: 'step-up',
   PINGONE_AUTHORIZE: 'pingone-authorize',
   CIMD: 'cimd',
+  HUMAN_IN_LOOP: 'human-in-loop',
 };
 
 function norm(s) {
@@ -32,6 +33,11 @@ function norm(s) {
 function parseEducation(t) {
   if (/\b(ciba|backchannel|push auth|out of band|oob)\b/.test(t)) {
     return { kind: 'education', ciba: true, tab: 'what' };
+  }
+  if (
+    /\b(human[- ]in[- ]the[- ]loop|human[- ]in[- ]the[- ]middle|hitl|high[- ]value consent|agent consent|consent.*\bagent\b)\b/.test(t)
+  ) {
+    return { kind: 'education', education: { panel: EDU.HUMAN_IN_LOOP, tab: 'what' } };
   }
   if (/\b(token exchange|rfc\s*8693|8693|delegate.*token|user token.*mcp token|transaction token)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.TOKEN_EXCHANGE, tab: 'why' } };

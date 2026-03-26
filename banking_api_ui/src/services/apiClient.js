@@ -1,10 +1,11 @@
 import axios from 'axios';
+import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl';
 import { appendTrafficEntry, redactHeaders, redactBody, tryParseJson } from './apiTrafficStore';
 
 class ApiClient {
   constructor() {
     this.client = axios.create({
-      baseURL: process.env.REACT_APP_API_URL || '',
+      baseURL: resolveApiBaseUrl(),
       timeout: 10000,
       withCredentials: true,
     });

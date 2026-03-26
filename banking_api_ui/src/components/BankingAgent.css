@@ -108,6 +108,7 @@
 /* ─── Two-column body ─────────────────────────────────────────────────── */
 .ba-body {
   display: flex;
+  flex-wrap: wrap;
   flex: 1;
   overflow: hidden;
   min-height: 0;
@@ -1670,4 +1671,61 @@
 
 .ba-mode-light .banking-agent-select:focus {
   border-color: #4169e1;
+}
+
+/* High-value consent declined — full-width notice above agent body */
+.ba-consent-denied-banner {
+  flex: 0 0 100%;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  margin: 0 0 0.35rem;
+  background: linear-gradient(90deg, #fef2f2 0%, #fff7ed 100%);
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #7f1d1d;
+}
+
+.ba-consent-denied-banner__text {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.ba-consent-denied-banner__btn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #b91c1c;
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ba-consent-denied-banner__btn:hover {
+  background: #991b1b;
+}
+
+.ba-consent-denied-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ba-consent-denied-banner__btn--secondary {
+  border-color: #64748b;
+  background: #fff;
+  color: #334155;
+}
+
+.ba-consent-denied-banner__btn--secondary:hover {
+  background: #f1f5f9;
 }

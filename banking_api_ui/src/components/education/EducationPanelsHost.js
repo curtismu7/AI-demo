@@ -12,6 +12,7 @@ import RFCIndexPanel from './RFCIndexPanel';
 import StepUpPanel from './StepUpPanel';
 import PingOneAuthorizePanel from './PingOneAuthorizePanel';
 import CimdPanel from './CimdPanel';
+import HumanInLoopPanel from './HumanInLoopPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -31,6 +32,7 @@ export default function EducationPanelsHost() {
       <StepUpPanel isOpen={panel === EDU.STEP_UP} onClose={close} initialTabId={tab} />
       <PingOneAuthorizePanel isOpen={panel === EDU.PINGONE_AUTHORIZE} onClose={close} initialTabId={tab} />
       <CimdPanel isOpen={panel === EDU.CIMD} onClose={close} initialTabId={tab} />
+      <HumanInLoopPanel isOpen={panel === EDU.HUMAN_IN_LOOP} onClose={close} initialTabId={tab} />
     </>
   );
 }

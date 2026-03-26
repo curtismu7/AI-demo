@@ -1,0 +1,213 @@
+/* banking_api_ui/src/components/TransactionConsentPage.css */
+.transaction-consent-page__hero {
+  margin-bottom: 0.5rem;
+}
+
+.transaction-consent-page__learn {
+  margin: 0.75rem 0 0;
+}
+
+.transaction-consent-learn-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.transaction-consent-learn-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.transaction-consent-card__loading {
+  padding: 1rem 0;
+  color: #475569;
+}
+
+.transaction-consent-learn-btn--inline {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  background: #1e3a8a;
+  color: #fff !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.transaction-consent-learn-btn--inline:hover {
+  background: #1e40af;
+}
+
+.transaction-consent-card {
+  max-width: 36rem;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.transaction-consent-card__h2 {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.transaction-consent-card__summary {
+  margin: 0 0 1.25rem;
+  padding-left: 1.25rem;
+  color: #334155;
+  line-height: 1.55;
+}
+
+.transaction-consent-card__summary li {
+  margin-bottom: 0.35rem;
+}
+
+.transaction-consent-card__legal {
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.55;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.transaction-consent-card__legal p {
+  margin: 0;
+}
+
+.transaction-consent-card__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #1e293b;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+}
+
+.transaction-consent-card__check input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.transaction-consent-card__error {
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.transaction-consent-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.transaction-consent-btn {
+  padding: 0.55rem 1.15rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.transaction-consent-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.transaction-consent-btn--ghost {
+  background: #fff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.transaction-consent-btn--ghost:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.transaction-consent-btn--primary {
+  background: #1e3a8a;
+  color: #fff;
+}
+
+.transaction-consent-btn--primary:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.transaction-consent-btn--danger {
+  background: #b91c1c;
+  color: #fff;
+}
+
+.transaction-consent-btn--danger:hover:not(:disabled) {
+  background: #991b1b;
+}
+
+.transaction-consent-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.transaction-consent-modal {
+  max-width: 26rem;
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem 1.5rem 1.25rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid #e2e8f0;
+}
+
+.transaction-consent-modal__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.transaction-consent-modal__body {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.transaction-consent-modal__body--emphasis {
+  font-weight: 600;
+  color: #7f1d1d;
+  background: #fef2f2;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+}
+
+.transaction-consent-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}

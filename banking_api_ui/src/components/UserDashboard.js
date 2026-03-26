@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
 import bffAxios from '../services/bffAxios';
@@ -12,6 +12,8 @@ import {
   navigateToCustomerOAuthLogin,
 } from '../utils/authUi';
 import './UserDashboard.css';
+import { HIGH_VALUE_CONSENT_USD } from '../constants/transactionThresholds';
+import { AGENT_CONSENT_BLOCK_USER_MESSAGE, isAgentBlockedByConsentDecline } from '../services/agentAccessConsent';
 
 /**
  * Human-readable account label; uses demo "account name" when set on Demo config.
@@ -27,6 +29,8 @@ function accountSummaryLine(account) {
 }
 
 const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -54,6 +58,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const [withdrawAccount, setWithdrawAccount] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [success, setSuccess] = useState(null);
+  const [consentAgentBanner, setConsentAgentBanner] = useState(null);
   const [stepUpRequired, setStepUpRequired] = useState(false);
   // 'ciba' | 'email' — set from the 428 response step_up_method field
   const [stepUpMethod, setStepUpMethod] = useState('email');
@@ -219,6 +224,40 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     fetchUserData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Restore forms after cancel on /transaction-consent; show success after agreement submit. */
+  useEffect(() => {
+    const st = location.state;
+    if (!st || (!st.restore && !st.transactionSuccess && !st.consentDeclined)) return;
+    if (st.restore) {
+      const r = st.restore;
+      if (r.transferForm) {
+        setTransferOpen(true);
+        setTransferForm(r.transferForm);
+      }
+      if (r.depositAccount) {
+        setDepositAccount(r.depositAccount);
+        setDepositForm(r.depositForm || { amount: '', description: '' });
+      }
+      if (r.withdrawAccount) {
+        setWithdrawAccount(r.withdrawAccount);
+        setWithdrawForm(r.withdrawForm || { amount: '', description: '' });
+      }
+    }
+    if (st.transactionSuccess) {
+      setSuccess(st.transactionSuccess);
+    }
+    if (st.consentDeclined) {
+      setConsentAgentBanner(AGENT_CONSENT_BLOCK_USER_MESSAGE);
+    }
+    navigate(location.pathname + (location.search || ''), { replace: true, state: {} });
+  }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isAgentBlockedByConsentDecline()) {
+      setConsentAgentBanner(AGENT_CONSENT_BLOCK_USER_MESSAGE);
+    }
+  }, []);
+
   // Keep refs on latest fetch functions (event listeners capture stale closures otherwise).
   useEffect(() => {
     fetchUserDataRef.current = fetchUserData;
@@ -277,6 +316,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       return;
     }
     fetchingRef.current = true;
+    let caughtError = null;
     try {
       // Only show loading spinner for initial load, not auto-refreshes
       if (!silent) {
@@ -303,6 +343,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setTransactions(Array.isArray(transactionsResponse.data?.transactions) ? transactionsResponse.data.transactions : []);
 
     } catch (error) {
+      caughtError = error;
       const status = error.response?.status;
 
       // Retry transient errors up to 2 times with backoff before showing anything
@@ -324,10 +365,12 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         } else {
           setError('Too many requests from this network. Wait a minute, then refresh. Auto-refresh is off.');
         }
-      } else if (status === 401 && !silent) {
-        // Suppress "session expired" when the user intentionally logged out
+      } else if (status === 401) {
         if (localStorage.getItem('userLoggedOut') === 'true') return;
-        setError('Your session has expired. Please log in again.');
+        setAutoRefresh(false);
+        if (!silent) {
+          setError('Your session has expired. Please log in again.');
+        }
       } else if (status === 403) {
         setError('You do not have permission to access this information.');
       } else if (!silent) {
@@ -338,11 +381,15 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setLoading(false);
       }
       fetchingRef.current = false;
-      if (pendingRefetchRef.current) {
+      const authFailed = caughtError?.response?.status === 401;
+      if (pendingRefetchRef.current && !authFailed) {
         pendingRefetchRef.current = false;
         const loud = pendingRefetchNonSilentRef.current;
         pendingRefetchNonSilentRef.current = false;
         void fetchUserData(!loud);
+      } else if (authFailed) {
+        pendingRefetchRef.current = false;
+        pendingRefetchNonSilentRef.current = false;
       }
     }
   };
@@ -398,11 +445,31 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       return;
     }
 
+    const amt = parseFloat(transferForm.amount);
+    if (Number.isFinite(amt) && amt > HIGH_VALUE_CONSENT_USD) {
+      try {
+        const { data } = await bffAxios.post('/api/transactions/consent-challenge', {
+          fromAccountId: transferForm.fromAccountId,
+          toAccountId: transferForm.toAccountId,
+          amount: amt,
+          type: 'transfer',
+          description: transferForm.description || 'Transfer between accounts',
+        });
+        navigate(`/transaction-consent?challenge=${encodeURIComponent(data.challengeId)}`, {
+          state: { restore: { transferForm: { ...transferForm } } },
+        });
+      } catch (err) {
+        const d = err.response?.data;
+        setError(d?.message || d?.error || 'Could not start high-value consent. Try again.');
+      }
+      return;
+    }
+
     try {
       await bffAxios.post('/api/transactions', {
         fromAccountId: transferForm.fromAccountId,
         toAccountId: transferForm.toAccountId,
-        amount: parseFloat(transferForm.amount),
+        amount: amt,
         type: 'transfer',
         description: transferForm.description || 'Transfer between accounts',
         userId: user.id
@@ -437,11 +504,31 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       return;
     }
 
+    const amt = parseFloat(depositForm.amount);
+    if (Number.isFinite(amt) && amt > HIGH_VALUE_CONSENT_USD) {
+      try {
+        const { data } = await bffAxios.post('/api/transactions/consent-challenge', {
+          fromAccountId: null,
+          toAccountId: depositAccount.id,
+          amount: amt,
+          type: 'deposit',
+          description: depositForm.description || 'Deposit to account',
+        });
+        navigate(`/transaction-consent?challenge=${encodeURIComponent(data.challengeId)}`, {
+          state: { restore: { depositAccount, depositForm: { ...depositForm } } },
+        });
+      } catch (err) {
+        const d = err.response?.data;
+        setError(d?.message || d?.error || 'Could not start high-value consent. Try again.');
+      }
+      return;
+    }
+
     try {
       await bffAxios.post('/api/transactions', {
         fromAccountId: null,
         toAccountId: depositAccount.id,
-        amount: parseFloat(depositForm.amount),
+        amount: amt,
         type: 'deposit',
         description: depositForm.description || 'Deposit to account',
         userId: user.id
@@ -476,11 +563,31 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       return;
     }
 
+    const amt = parseFloat(withdrawForm.amount);
+    if (Number.isFinite(amt) && amt > HIGH_VALUE_CONSENT_USD) {
+      try {
+        const { data } = await bffAxios.post('/api/transactions/consent-challenge', {
+          fromAccountId: withdrawAccount.id,
+          toAccountId: null,
+          amount: amt,
+          type: 'withdrawal',
+          description: withdrawForm.description || 'Withdrawal from account',
+        });
+        navigate(`/transaction-consent?challenge=${encodeURIComponent(data.challengeId)}`, {
+          state: { restore: { withdrawAccount, withdrawForm: { ...withdrawForm } } },
+        });
+      } catch (err) {
+        const d = err.response?.data;
+        setError(d?.message || d?.error || 'Could not start high-value consent. Try again.');
+      }
+      return;
+    }
+
     try {
       await bffAxios.post('/api/transactions', {
         fromAccountId: withdrawAccount.id,
         toAccountId: null,
-        amount: parseFloat(withdrawForm.amount),
+        amount: amt,
         type: 'withdrawal',
         description: withdrawForm.description || 'Withdrawal from account',
         userId: user.id
@@ -605,6 +712,30 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           {success} <span className="inline-message__dismiss">✕</span>
         </div>
       )}
+      {consentAgentBanner && (
+        <div className="inline-message inline-message--warning" role="alert">
+          <span className="inline-message__text">{consentAgentBanner}</span>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            style={{ marginLeft: 10, flexShrink: 0 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              open(EDU.HUMAN_IN_LOOP, 'decline');
+            }}
+          >
+            Learn: Human-in-the-loop
+          </button>
+          <span
+            className="inline-message__dismiss"
+            title="Dismiss"
+            onClick={() => setConsentAgentBanner(null)}
+            role="button"
+          >
+            ✕
+          </span>
+        </div>
+      )}
       {stepUpRequired && (
         <div className="inline-message inline-message--warning">
           <strong>🔐 Additional verification required</strong>
@@ -689,6 +820,14 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
             onClick={() => open(EDU.MAY_ACT, 'what')}
           >
             What is may_act?
+          </button>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.HUMAN_IN_LOOP, 'what')}
+            title="Why the agent requires your approval for high-value moves"
+          >
+            Human-in-the-loop
           </button>
           <Link
             to="/demo-data"

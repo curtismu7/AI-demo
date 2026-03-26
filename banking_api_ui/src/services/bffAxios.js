@@ -1,5 +1,6 @@
 // banking_api_ui/src/services/bffAxios.js
 import axios from 'axios';
+import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl';
 
 /**
  * Same-origin API calls that rely on the Backend-for-Frontend (BFF) session cookie only.
@@ -8,7 +9,7 @@ import axios from 'axios';
  * admin routes when the SPA does not send Bearer tokens (session fallback).
  */
 const bffAxios = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '',
+  baseURL: resolveApiBaseUrl(),
   withCredentials: true,
   timeout: 30000,
 });

@@ -1,6 +1,8 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
+
+axios.defaults.withCredentials = true;
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -25,6 +27,7 @@ import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
 import ApiTrafficPanel from './components/ApiTrafficPanel';
 import ApiTrafficPage from './components/ApiTrafficPage';
+import TransactionConsentPage from './components/TransactionConsentPage';
 
 import { savePublicConfig } from './services/configService';
 import { fetchDemoScenario } from './services/demoScenarioService';
@@ -38,6 +41,7 @@ import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import { shouldShowGlobalFloatingBankingAgentFab } from './utils/embeddedAgentFabVisibility';
 import LoadingOverlay from './components/shared/LoadingOverlay';
+import { setAgentBlockedByConsentDecline } from './services/agentAccessConsent';
 import './App.css';
 
 const EMBEDDED_DOCK_AGENT_HEIGHT_KEY = 'banking_embedded_dock_agent_height_px';
@@ -455,6 +459,7 @@ function AppWithAuth() {
     localStorage.removeItem('user');
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
+    setAgentBlockedByConsentDecline(false);
     sessionStorage.clear();
 
     // Notify the chat widget immediately.
@@ -525,6 +530,7 @@ function AppWithAuth() {
                     <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <Navigate to="/" replace />} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
                     <Route path="/demo-data" element={<DemoDataPage user={user} onLogout={logout} />} />
+                    <Route path="/transaction-consent" element={<TransactionConsentPage user={user} onLogout={logout} />} />
                     <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />

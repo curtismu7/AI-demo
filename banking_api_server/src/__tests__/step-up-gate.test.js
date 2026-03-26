@@ -140,6 +140,27 @@ const depositBody = (amount = 500) => ({
   description: 'Test deposit',
 });
 
+/**
+ * High-value writes require a session-bound consent challenge + confirm before POST /transactions.
+ * Uses supertest agent so Set-Cookie session is preserved across requests.
+ */
+async function postTransactionAfterConsent(agent, body) {
+  const cr = await agent
+    .post('/api/transactions/consent-challenge')
+    .set('x-test-user', customerUser())
+    .send(body);
+  expect(cr.status).toBe(201);
+  const { challengeId } = cr.body;
+  const cf = await agent
+    .post(`/api/transactions/consent-challenge/${challengeId}/confirm`)
+    .set('x-test-user', customerUser());
+  expect(cf.status).toBe(200);
+  return agent
+    .post('/api/transactions')
+    .set('x-test-user', customerUser())
+    .send({ ...body, consentChallengeId: challengeId });
+}
+
 // ─── Save + restore settings around each test ─────────────────────────────────
 let originalSettings;
 beforeAll(() => {
@@ -165,10 +186,8 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
     it('should allow high-value withdrawal without MFA', async () => {
       runtimeSettings.update({ stepUpEnabled: false }, 'test');
 
-      const res = await request(app)
-        .post('/api/transactions')
-        .set('x-test-user', customerUser())
-        .send(highValueWithdrawal(1000));
+      const agent = request.agent(app);
+      const res = await postTransactionAfterConsent(agent, highValueWithdrawal(1000));
 
       expect(res.status).not.toBe(428);
     });
@@ -179,10 +198,8 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
     it('should allow high-value deposit without MFA', async () => {
       runtimeSettings.update({ stepUpEnabled: true, stepUpTransactionTypes: ['transfer', 'withdrawal'] }, 'test');
 
-      const res = await request(app)
-        .post('/api/transactions')
-        .set('x-test-user', customerUser())
-        .send(depositBody(5000));
+      const agent = request.agent(app);
+      const res = await postTransactionAfterConsent(agent, depositBody(5000));
 
       expect(res.status).not.toBe(428);
     });

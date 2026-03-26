@@ -17,6 +17,7 @@ const ROWS = [
   { rfc: 'RFC 7523', name: 'JWT Client Auth', app: 'client_assertion in exchange', href: 'https://datatracker.ietf.org/doc/html/rfc7523', panel: EDU.TOKEN_EXCHANGE, tab: 'after' },
   { rfc: 'OIDC Core 1.0', name: 'OpenID Connect', app: 'openid scope, /userinfo', href: 'https://openid.net/specs/openid-connect-core-1_0.html', panel: EDU.LOGIN_FLOW, tab: 'what' },
   { rfc: 'OIDC CIBA', name: 'Backchannel Auth', app: 'bc-authorize, poll /token; OOB email or push', href: 'https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html', panel: null, tab: null, ciba: true },
+  { rfc: 'Pattern', name: 'Human-in-the-loop (HITL)', app: 'High-value consent; agent lockout if declined', href: 'https://en.wikipedia.org/wiki/Human-in-the-loop', panel: EDU.HUMAN_IN_LOOP, tab: 'what' },
 ];
 
 export default function RFCIndexPanel({ isOpen, onClose, initialTabId }) {

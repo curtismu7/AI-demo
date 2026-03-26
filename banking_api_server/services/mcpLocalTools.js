@@ -12,6 +12,23 @@
 'use strict';
 
 const dataStore = require('../data/store');
+const txConsent = require('./transactionConsentChallenge');
+
+/**
+ * Mirrors POST /api/transactions: non-admin writes over HIGH_VALUE_CONSENT_USD require a browser consent challenge.
+ * Local MCP tools cannot complete that flow (no session challenge), so we refuse instead of bypassing HITL.
+ */
+function hitlBlocksLocalWrite(userId, amount, type) {
+  const user = dataStore.getUserById(userId);
+  if (user && user.role === 'admin') return false;
+  const rounded = Math.round(parseFloat(amount) * 100) / 100;
+  if (!Number.isFinite(rounded)) return false;
+  if (!['transfer', 'withdrawal', 'deposit'].includes(type)) return false;
+  return rounded > txConsent.HIGH_VALUE_CONSENT_USD;
+}
+
+const HITL_LOCAL_AGENT_MESSAGE =
+  'Transfers, deposits, and withdrawals over $500 require human approval in the browser. Use the main dashboard to start the transaction and complete the consent screen. The banking assistant cannot complete this amount without that flow.';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 // Return structured data objects directly so BankingAgent.js result panel
@@ -148,6 +165,15 @@ async function create_deposit(params, userId) {
   const targetAccountId = account.id;
 
   const rounded = Math.round(parsedAmount * 100) / 100;
+  if (hitlBlocksLocalWrite(userId, rounded, 'deposit')) {
+    return {
+      error: 'consent_challenge_required',
+      message: HITL_LOCAL_AGENT_MESSAGE,
+      consent_challenge_required: true,
+      hitl_threshold_usd: txConsent.HIGH_VALUE_CONSENT_USD,
+    };
+  }
+
   await dataStore.updateAccountBalance(targetAccountId, rounded);
 
   const txn = await dataStore.createTransaction({
@@ -196,6 +222,15 @@ async function create_withdrawal(params, userId) {
   const rounded = Math.round(parsedAmount * 100) / 100;
   if (account.balance < rounded)
     return { error: `Insufficient balance (current: $${account.balance.toFixed(2)}, requested: $${rounded.toFixed(2)})` };
+
+  if (hitlBlocksLocalWrite(userId, rounded, 'withdrawal')) {
+    return {
+      error: 'consent_challenge_required',
+      message: HITL_LOCAL_AGENT_MESSAGE,
+      consent_challenge_required: true,
+      hitl_threshold_usd: txConsent.HIGH_VALUE_CONSENT_USD,
+    };
+  }
 
   await dataStore.updateAccountBalance(targetAccountId, -rounded);
 
@@ -246,6 +281,15 @@ async function create_transfer(params, userId) {
   const rounded = Math.round(parsedAmount * 100) / 100;
   if (fromAccount.balance < rounded)
     return { error: `Insufficient balance (current: $${fromAccount.balance.toFixed(2)}, requested: $${rounded.toFixed(2)})` };
+
+  if (hitlBlocksLocalWrite(userId, rounded, 'transfer')) {
+    return {
+      error: 'consent_challenge_required',
+      message: HITL_LOCAL_AGENT_MESSAGE,
+      consent_challenge_required: true,
+      hitl_threshold_usd: txConsent.HIGH_VALUE_CONSENT_USD,
+    };
+  }
 
   await dataStore.updateAccountBalance(from_account_id, -rounded);
   await dataStore.updateAccountBalance(to_account_id,   rounded);
@@ -313,7 +357,7 @@ const LOCAL_INSPECTOR_TOOLS = [
   {
     name: 'create_deposit',
     description:
-      'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response.',
+      'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard (not available via this tool).',
     requiresUserAuth: true,
     requiredScopes: ['banking:transactions:write'],
     inputSchema: {
@@ -335,7 +379,7 @@ const LOCAL_INSPECTOR_TOOLS = [
   {
     name: 'create_withdrawal',
     description:
-      'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response.',
+      'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard (not available via this tool).',
     requiresUserAuth: true,
     requiredScopes: ['banking:transactions:write'],
     inputSchema: {
@@ -357,7 +401,7 @@ const LOCAL_INSPECTOR_TOOLS = [
   {
     name: 'create_transfer',
     description:
-      'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response.',
+      'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response. Amounts over $500 require human consent on the web dashboard (not available via this tool).',
     requiresUserAuth: true,
     requiredScopes: ['banking:transactions:write'],
     inputSchema: {

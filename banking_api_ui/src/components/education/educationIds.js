@@ -10,4 +10,6 @@ export const EDU = {
   STEP_UP: 'step-up',
   PINGONE_AUTHORIZE: 'pingone-authorize',
   CIMD: 'cimd',
+  /** Human-in-the-loop: mandatory human approval before high-impact agent-related actions */
+  HUMAN_IN_LOOP: 'human-in-loop',
 };

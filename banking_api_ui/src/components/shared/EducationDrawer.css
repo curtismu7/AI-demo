@@ -113,9 +113,14 @@
   margin-top: 0;
 }
 
-.edu-drawer-body ul {
+.edu-drawer-body ul,
+.edu-drawer-body ol {
   margin: 0.5rem 0;
   padding-left: 1.25rem;
+}
+
+.edu-drawer-body ol {
+  list-style-type: decimal;
 }
 
 .edu-drawer-body p {

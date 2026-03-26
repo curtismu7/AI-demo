@@ -40,8 +40,8 @@ const sharedPost = mockClient.post;
 const axiosCreateOptions = axios.create.mock.calls[0][0];
 
 const requestInterceptorFn =
-  mockClient.interceptors.request.use.mock.calls[0] &&
-  mockClient.interceptors.request.use.mock.calls[0][0];
+  mockClient.interceptors.request.use.mock.calls[1] &&
+  mockClient.interceptors.request.use.mock.calls[1][0];
 
 const responseInterceptorFn =
   mockClient.interceptors.response.use.mock.calls[0] &&

@@ -7,6 +7,7 @@ const runtimeSettings = require('../config/runtimeSettings');
 const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 const configStore = require('../services/configStore');
 const demoScenarioStore = require('../services/demoScenarioStore');
+const txConsent = require('../services/transactionConsentChallenge');
 
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -80,6 +81,53 @@ router.get('/my', authenticateToken, async (req, res) => {
   }
 });
 
+// ── HITL: consent challenges (must be registered before GET /:id) ─────────────
+router.post(
+  '/consent-challenge',
+  authenticateToken,
+  requireScopes(['banking:transactions:write', 'banking:write']),
+  async (req, res) => {
+    const out = txConsent.createChallenge(req, req.body);
+    if (!out.ok) return res.status(out.status).json(out.json);
+    res.status(201).json({
+      challengeId: out.challengeId,
+      expiresAt: new Date(out.expiresAt).toISOString(),
+      snapshot: out.snapshot,
+    });
+  },
+);
+
+router.get(
+  '/consent-challenge/:challengeId',
+  authenticateToken,
+  requireScopes(['banking:transactions:write', 'banking:write']),
+  async (req, res) => {
+    const out = txConsent.getChallenge(req, req.params.challengeId);
+    if (!out.ok) return res.status(out.status).json(out.json);
+    res.json({
+      challengeId: out.challengeId,
+      snapshot: out.snapshot,
+      status: out.status,
+      expiresAt: new Date(out.expiresAt).toISOString(),
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/confirm',
+  authenticateToken,
+  requireScopes(['banking:transactions:write', 'banking:write']),
+  async (req, res) => {
+    const out = txConsent.confirmChallenge(req, req.params.challengeId);
+    if (!out.ok) return res.status(out.status).json(out.json);
+    res.json({
+      challengeId: out.challengeId,
+      status: 'confirmed',
+      confirmExpiresAt: new Date(out.confirmExpiresAt).toISOString(),
+    });
+  },
+);
+
 // Get transaction by ID (admin or transaction owner)
 router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
   try {
@@ -103,7 +151,7 @@ router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read'
 // Create new transaction (admin or end user)
 router.post('/', authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
   try {
-    const { fromAccountId, toAccountId, amount, type, description, userId } = req.body;
+    const { fromAccountId, toAccountId, amount, type, description, userId, consentChallengeId } = req.body;
 
     // Validate amount
     const parsedAmount = parseFloat(req.body.amount);
@@ -179,6 +227,19 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
         return res.status(400).json({ error: 'Insufficient balance' });
       }
     }
+
+    // ── High-value server-bound consent (HITL challenge consumed here) ───────
+    if (
+      req.user.role !== 'admin' &&
+      ['transfer', 'withdrawal', 'deposit'].includes(type) &&
+      parseFloat(amount) > txConsent.HIGH_VALUE_CONSENT_USD
+    ) {
+      const consumed = txConsent.verifyAndConsumeChallenge(req, consentChallengeId, req.body);
+      if (!consumed.ok) {
+        return res.status(consumed.status).json(consumed.json);
+      }
+    }
+    // ── End high-value consent ──────────────────────────────────────────────
 
     // ── Step-up MFA gate ─────────────────────────────────────────────────────
     // Transfers and withdrawals above the threshold require a fresh MFA token.

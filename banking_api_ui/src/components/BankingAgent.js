@@ -20,6 +20,10 @@ import { EDUCATION_COMMANDS } from './education/educationCommands';
 import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
 import { getToolStepsForAction } from '../utils/agentToolSteps';
 import LoadingOverlay from './shared/LoadingOverlay';
+import {
+  AGENT_CONSENT_BLOCK_USER_MESSAGE,
+  isAgentBlockedByConsentDecline,
+} from '../services/agentAccessConsent';
 import './BankingAgent.css';
 
 /** Floating agent: collapsed on app home `/`; open on other routes (dashboard URL, demo-data, MCP inspector, …). */
@@ -166,29 +170,59 @@ function formatCurrency(n) {
     : n;
 }
 
+/** Unwrap MCP `tools/call` shape `{ content: [{ text: "<json>" }] }` for display logic. */
+function normalizeAgentToolResult(result) {
+  if (!result) return result;
+  if (result.content && Array.isArray(result.content) && result.content[0]?.text) {
+    try {
+      return JSON.parse(result.content[0].text);
+    } catch {
+      return result;
+    }
+  }
+  return result;
+}
+
+/** True when the tool returned an error object (local MCP or consent JSON), not a data payload. */
+function isAgentToolErrorResult(normalized) {
+  if (!normalized || typeof normalized !== 'object') return false;
+  if (normalized.accounts || normalized.transactions) return false;
+  if (normalized.transaction_id || normalized.transactionId || normalized.id) return false;
+  if (normalized.balance !== undefined && normalized.error === undefined) return false;
+  return Boolean(normalized.error);
+}
+
 function formatResult(result) {
-  if (!result) return 'No data returned.';
+  const r = normalizeAgentToolResult(result);
+  if (!r) return 'No data returned.';
+  if (r.consent_challenge_required || r.error === 'consent_challenge_required') {
+    const t = r.hitl_threshold_usd ?? 500;
+    return `${r.message || 'Human approval is required for this amount.'}\n\nUse the main dashboard to complete the consent flow for amounts over $${t}. The assistant cannot supply a browser consent challenge.`;
+  }
+  if (isAgentToolErrorResult(r)) {
+    return `❌ ${typeof r.message === 'string' ? r.message : r.error}`;
+  }
   // Accounts list
-  if (result.accounts) {
-    return result.accounts.map(a =>
+  if (r.accounts) {
+    return r.accounts.map(a =>
       `${a.account_type || a.type || 'Account'}: ${a.account_number || a.id}\n  Balance: ${formatCurrency(a.balance)}`
     ).join('\n\n');
   }
   // Transactions list
-  if (result.transactions) {
-    return result.transactions.slice(0, 10).map(t =>
+  if (r.transactions) {
+    return r.transactions.slice(0, 10).map(t =>
       `${t.type}: ${formatCurrency(t.amount)} — ${t.description || ''}\n  ${new Date(t.created_at || t.createdAt).toLocaleDateString()}`
     ).join('\n\n');
   }
   // Balance response
-  if (result.balance !== undefined) {
-    return `Balance: ${formatCurrency(result.balance)}`;
+  if (r.balance !== undefined) {
+    return `Balance: ${formatCurrency(r.balance)}`;
   }
   // Transaction confirmation
-  if (result.transaction_id || result.transactionId || result.id) {
-    return `✅ Success\nTransaction ID: ${result.transaction_id || result.transactionId || result.id}\nAmount: ${formatCurrency(result.amount)}`;
+  if (r.transaction_id || r.transactionId || r.id) {
+    return `✅ Success\nTransaction ID: ${r.transaction_id || r.transactionId || r.id}\nAmount: ${formatCurrency(r.amount)}`;
   }
-  return JSON.stringify(result, null, 2);
+  return JSON.stringify(r, null, 2);
 }
 
 // ─── Input form for actions that need parameters ──────────────────────────────
@@ -448,6 +482,7 @@ const TOPIC_MESSAGES = {
   'agent-gateway': `🌐 Agent Gateway / Resource Indicators (RFC 8707):\n\nRFC 8707: client specifies the resource URI when requesting a token\n  /as/token?resource=https://mcp.example.com\n  → token aud = "https://mcp.example.com"\n\nRFC 9728: Protected Resource Metadata\n  GET https://mcp.example.com/.well-known/oauth-protected-resource\n  → { resource, authorization_servers, scopes_supported }\n\nThis lets a dynamic AI agent discover what auth is needed before attempting a tool call — no hardcoded configuration.`,
   'pingone-authorize': `🔐 PingOne Authorize (DaVinci):\n\nPingOne Authorize evaluates access policies at runtime using DaVinci flows.\n\nIn this demo it drives:\n• Step-up MFA triggers (ACR values like "Multi_factor")\n• CIBA push notifications to the user's device\n• Dynamic consent for high-value transactions\n\nThe acr_values parameter in /as/authorize tells PingOne which DaVinci policy to run.`,
   'cimd': `📄 Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "▶ Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
+  'human-in-loop': `👤 Human-in-the-loop (HITL) for the banking agent:\n\n• Over $500 the server issues a consent challenge in your session; after you confirm on the consent page, POST /transactions must include matching consentChallengeId (one-time use).\n• The agent cannot complete that path without your browser session.\n• If you decline, this demo disables the assistant until you sign out and sign in again.\n• HITL ≠ MITM (attack). Open the drawer: What is HITL · Patterns & best practices · This app and the agent · Declining and lockout.`,
 };
 
 /**
@@ -503,6 +538,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   const [cookieOnlyBffSession, setCookieOnlyBffSession] = useState(false);
   /** Avoid repeating the session-fix error bubble after we showed it on load or after a failed action. */
   const sessionFixBubbleShownRef = useRef(false);
+  /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
+  const [consentBlocked, setConsentBlocked] = useState(() => isAgentBlockedByConsentDecline());
 
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -517,6 +554,16 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   const [searchParams] = useSearchParams();
   // On the /agent route the inline/full-page instance is shown — hide duplicate float
   const isAgentPage = location.pathname === '/agent';
+
+  useEffect(() => {
+    const sync = () => setConsentBlocked(isAgentBlockedByConsentDecline());
+    window.addEventListener('bankingAgentConsentBlockChanged', sync);
+    return () => window.removeEventListener('bankingAgentConsentBlockChanged', sync);
+  }, []);
+
+  useEffect(() => {
+    if (consentBlocked) setActiveAction(null);
+  }, [consentBlocked]);
 
   // Floating mode: follow route — collapsed on `/`, open elsewhere (`?oauth=success` / scrollToAgent effects below may re-open on `/`)
   useEffect(() => {
@@ -858,6 +905,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
    * Runs a banking tool. When fromNl is true, skips the extra user bubble (NL already echoed the ask).
    */
   async function runAction(actionId, form, opts = {}) {
+    if (isAgentBlockedByConsentDecline()) {
+      addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
+      return;
+    }
     const { skipUserLabel = false } = opts;
     setActiveAction(null);
     const label = ACTIONS.find(a => a.id === actionId)?.label || actionId;
@@ -927,6 +978,28 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
         }
         default:
           throw new Error(`Unknown action: ${actionId}`);
+      }
+
+      const normalized = normalizeAgentToolResult(response.result);
+      if (isAgentToolErrorResult(normalized)) {
+        markToolProgressOutcome(false);
+        const tokenEventsErr = response.tokenEvents || [];
+        if (tokenChain && tokenEventsErr.length > 0) {
+          tokenChain.setTokenEvents(actionId, tokenEventsErr);
+        }
+        const consent =
+          normalized.consent_challenge_required === true || normalized.error === 'consent_challenge_required';
+        addMessage('assistant', formatResult(response.result), actionId);
+        toast.dismiss(toastId);
+        if (consent) {
+          toast.info('👤 Amount over $500 — complete consent on the dashboard (human-in-the-loop)', {
+            autoClose: 7000,
+          });
+        } else {
+          toast.error(`❌ ${normalized.message || normalized.error || 'Request failed'}`, { autoClose: 5000 });
+        }
+        setLoading(false);
+        return;
       }
 
       markToolProgressOutcome(true);
@@ -1116,6 +1189,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   }
 
   function handleActionClick(actionId) {
+    if (actionId !== 'logout' && isAgentBlockedByConsentDecline()) {
+      addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
+      return;
+    }
     if (actionId === 'logout') {
       onLogout?.();
       return;
@@ -1129,6 +1206,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   }
 
   function openEducationCommand(cmd) {
+    if (isAgentBlockedByConsentDecline()) {
+      addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
+      return;
+    }
     if (cmd.ciba && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('education-open-ciba', { detail: { tab: cmd.tab || 'what' } }));
       setIsOpen(false);
@@ -1262,6 +1343,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   async function handleNaturalLanguage() {
     const text = nlInput.trim();
     if (!text || !isLoggedIn) return;
+    if (isAgentBlockedByConsentDecline()) {
+      addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
+      return;
+    }
     setNlLoading(true);
     addMessage('user', text);
     setNlInput('');
@@ -1457,6 +1542,26 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
 
           {/* Two-column body */}
           <div className="ba-body">
+            {isLoggedIn && consentBlocked && (
+              <div className="ba-consent-denied-banner" role="alert">
+                <div className="ba-consent-denied-banner__text">
+                  <strong>Access denied.</strong> You declined a high-value transaction. The AI banking assistant
+                  is not available for this session. Sign out and sign in again to restore it.
+                </div>
+                <div className="ba-consent-denied-banner__actions">
+                  <button
+                    type="button"
+                    className="ba-consent-denied-banner__btn ba-consent-denied-banner__btn--secondary"
+                    onClick={() => edu?.open(EDU.HUMAN_IN_LOOP, 'decline')}
+                  >
+                    Learn: Human-in-the-loop
+                  </button>
+                  <button type="button" className="ba-consent-denied-banner__btn" onClick={() => onLogout?.()}>
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">
@@ -1482,7 +1587,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                     type="button"
                     className="ba-action-item"
                     onClick={() => void handleSessionRefresh()}
-                    disabled={sessionRefreshing || loading}
+                    disabled={sessionRefreshing || loading || consentBlocked}
                     title="Refresh your access token using PingOne refresh token (no logout)"
                   >
                     {sessionRefreshing ? 'Refreshing…' : '🔄 Refresh access token'}
@@ -1491,7 +1596,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                     type="button"
                     className="ba-action-item"
                     onClick={() => handleLoginAction(effectiveUser?.role === 'admin' ? 'login_admin' : 'login_user')}
-                    disabled={loading}
+                    disabled={loading || consentBlocked}
                     title="Sign in again if refresh fails"
                   >
                     🔐 Sign in again
@@ -1505,7 +1610,12 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                   key={s}
                   type="button"
                   className="ba-suggestion"
+                  disabled={consentBlocked}
                   onClick={() => {
+                    if (isAgentBlockedByConsentDecline()) {
+                      addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
+                      return;
+                    }
                     setNlInput(s);
                     if (isLoggedIn) {
                       setNlInput('');
@@ -1533,7 +1643,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                       type="button"
                       className="ba-action-item"
                       onClick={() => handleActionClick(a.id)}
-                      disabled={loading}
+                      disabled={loading || (consentBlocked && a.id !== 'logout')}
                       title={a.desc}
                     >
                       {a.label}
@@ -1549,6 +1659,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                       type="button"
                       className="ba-action-item"
                       onClick={() => openEducationCommand(cmd)}
+                      disabled={consentBlocked}
                       title={cmd.label}
                     >
                       {cmd.label}
@@ -1664,7 +1775,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
               </div>
 
               {/* Learn popup (⚡ button) */}
-              {showCommands && isLoggedIn && !activeAction && (
+              {showCommands && isLoggedIn && !activeAction && !consentBlocked && (
                 <div className="ba-commands-popup">
                   <div className="ba-commands-section">Learn &amp; Explore</div>
                   <div className="ba-chips">
@@ -1705,6 +1816,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                       onClick={() => setShowCommands(s => !s)}
                       title="Learn &amp; Explore topics"
                       aria-expanded={showCommands}
+                      disabled={consentBlocked}
                     >
                       ⚡
                     </button>
@@ -1720,13 +1832,13 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                         }
                       }}
                       placeholder={nlMeta?.groqConfigured ? 'Message BX Finance AI… (Groq AI)' : 'Message BX Finance AI…'}
-                      disabled={nlLoading}
+                      disabled={nlLoading || consentBlocked}
                     />
                     <button
                       type="button"
                       className="ba-send-btn"
                       onClick={() => { handleNaturalLanguage(); setShowCommands(false); }}
-                      disabled={nlLoading || !nlInput.trim()}
+                      disabled={nlLoading || !nlInput.trim() || consentBlocked}
                       aria-label="Send"
                     >
                       {nlLoading ? '…' : '↑'}

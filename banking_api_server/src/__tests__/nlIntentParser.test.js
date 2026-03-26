@@ -166,6 +166,20 @@ describe('nlIntentParser — PKCE / login flow education', () => {
 
 // ── Education intents: step-up ────────────────────────────────────────────────
 
+describe('nlIntentParser — human-in-the-loop education', () => {
+  it('routes "human in the loop" → human-in-loop panel', () => {
+    expect(edu('what is human in the loop').education.panel).toBe('human-in-loop');
+  });
+
+  it('routes "human in the middle" → human-in-loop panel (same demo topic)', () => {
+    expect(edu('explain human in the middle for the agent').education.panel).toBe('human-in-loop');
+  });
+
+  it('routes HITL → human-in-loop panel', () => {
+    expect(edu('what is hitl').education.panel).toBe('human-in-loop');
+  });
+});
+
 describe('nlIntentParser — step-up education', () => {
   it('routes "step-up" → step-up panel', () => {
     expect(edu('what is step up auth').education.panel).toBe('step-up');

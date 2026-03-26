@@ -99,6 +99,9 @@ export default function EducationBar() {
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.AGENT_GATEWAY, 'overview')}>
           Agent Gateway
         </button>
+        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.HUMAN_IN_LOOP, 'what')}>
+          Human-in-the-loop
+        </button>
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.RFC_INDEX, 'index')}>
           RFC Index
         </button>

@@ -18,4 +18,5 @@ export const EDUCATION_COMMANDS = [
   { id: 'step-up', label: 'Step-up MFA', panel: EDU.STEP_UP, tab: 'what' },
   { id: 'authorize', label: 'PingOne Authorize', panel: EDU.PINGONE_AUTHORIZE, tab: 'what' },
   { id: 'cimd', label: 'OAuth: Client ID Metadata Doc (CIMD)', panel: EDU.CIMD, tab: 'what' },
+  { id: 'human-in-loop', label: 'Human-in-the-loop (agent)', panel: EDU.HUMAN_IN_LOOP, tab: 'what' },
 ];

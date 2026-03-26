@@ -7,11 +7,24 @@ function apiError(res, data) {
   return err;
 }
 
+/** Coalesce concurrent GETs (React Strict Mode double-mount, multiple listeners). */
+let fetchDemoScenarioInflight = null;
+
 export async function fetchDemoScenario() {
-  const res = await fetch('/api/demo-scenario', { credentials: 'include' });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw apiError(res, data);
-  return data;
+  if (fetchDemoScenarioInflight) {
+    return fetchDemoScenarioInflight;
+  }
+  fetchDemoScenarioInflight = (async () => {
+    try {
+      const res = await fetch('/api/demo-scenario', { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw apiError(res, data);
+      return data;
+    } finally {
+      fetchDemoScenarioInflight = null;
+    }
+  })();
+  return fetchDemoScenarioInflight;
 }
 
 export async function saveDemoScenario(body) {

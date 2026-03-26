@@ -289,6 +289,8 @@ const limiter = rateLimit({
 /**
  * Paths excluded from the global IP limiter — they have their own limits or are safe, hot paths.
  * Dashboard + config GETs were tripping 429 on shared IPs (NAT) and breaking transfers after hydration failures.
+ * demo-scenario + tokens/* load with the dashboard (same burst as accounts/my); counting them toward the
+ * global bucket caused 429 before auth-heavy routes could succeed.
  */
 function shouldSkipGlobalRateLimit(req) {
   const p = req.path || '';
@@ -299,6 +301,11 @@ function shouldSkipGlobalRateLimit(req) {
     p.startsWith('/api/mcp') ||
     p === '/api/accounts/my' ||
     p === '/api/transactions/my' ||
+    p.startsWith('/api/demo-scenario') ||
+    p.startsWith('/api/tokens') ||
+    p === '/api/auth/session' ||
+    p === '/api/auth/oauth/status' ||
+    p === '/api/auth/oauth/user/status' ||
     p.startsWith('/api/admin/config')
   );
 }
@@ -395,7 +402,22 @@ app.use(restoreSessionFromCookie);
 
 // RFC 6749 §6 — silently refresh near-expired end-user access tokens on
 // authenticated API routes so UIs never serve stale tokens to downstream services.
-app.use(['/api/users', '/api/accounts', '/api/transactions', '/api/mcp', '/api/banking-agent', '/api/tokens', '/api/demo-scenario'], refreshIfExpiring);
+// Include /api/auth/oauth so GET /api/auth/oauth/user/status (and admin /status) run
+// refresh before the handler — otherwise the SPA sees authenticated:true while
+// /api/accounts/my still gets 401 from validatePingOneCoreToken on an expired JWT.
+app.use(
+  [
+    '/api/users',
+    '/api/accounts',
+    '/api/transactions',
+    '/api/mcp',
+    '/api/banking-agent',
+    '/api/tokens',
+    '/api/demo-scenario',
+    '/api/auth/oauth',
+  ],
+  refreshIfExpiring,
+);
 
 // Health check endpoint
 app.get('/api/healthz', (req, res) => {
