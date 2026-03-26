@@ -37,6 +37,7 @@ import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import { shouldShowGlobalFloatingBankingAgentFab } from './utils/embeddedAgentFabVisibility';
+import LoadingOverlay from './components/shared/LoadingOverlay';
 import './App.css';
 
 const EMBEDDED_DOCK_AGENT_HEIGHT_KEY = 'banking_embedded_dock_agent_height_px';
@@ -83,6 +84,7 @@ function AppWithAuth() {
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   const [apiTrafficOpen, setApiTrafficOpen] = useState(false);
+  const [loadingOverlay, setLoadingOverlay] = useState({ show: false, message: '', sub: '' });
 
   // Allow EducationBar to toggle the inline API Traffic panel via custom event.
   useEffect(() => {
@@ -415,6 +417,8 @@ function AppWithAuth() {
   const logout = () => {
     sessionEstablishedRef.current = false;
 
+    setLoadingOverlay({ show: true, message: 'Signing you out…', sub: 'Ending your PingOne session' });
+
     // Signal that the user intentionally logged out so the startup
     // session-check in useEffect skips auto-login on return to /login.
     localStorage.setItem('userLoggedOut', 'true');
@@ -429,12 +433,13 @@ function AppWithAuth() {
     // Notify the chat widget immediately.
     window.dispatchEvent(new CustomEvent('userLoggedOut'));
 
+    // Short delay lets React render the overlay before the page unloads.
     // Navigate the browser directly (NOT via axios) to the unified logout
     // endpoint. Express will destroy the server session, then 302-redirect
     // the browser to PingOne's RP-Initiated Logout → post_logout_redirect_uri
     // (/login). This ensures the PingOne SSO session is actually terminated
     // and a subsequent login will prompt for credentials fresh.
-    window.location.href = '/api/auth/logout';
+    setTimeout(() => { window.location.href = '/api/auth/logout'; }, 150);
   };
 
   if (loading) {
@@ -595,6 +600,11 @@ function AppWithAuth() {
         </div>
       </TokenChainProvider>
       </EducationUIProvider>
+      <LoadingOverlay
+        show={loadingOverlay.show}
+        message={loadingOverlay.message}
+        sub={loadingOverlay.sub}
+      />
     </Router>
   );
 }

@@ -19,6 +19,7 @@ import { EDU } from './education/educationIds';
 import { EDUCATION_COMMANDS } from './education/educationCommands';
 import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
 import { getToolStepsForAction } from '../utils/agentToolSteps';
+import LoadingOverlay from './shared/LoadingOverlay';
 import './BankingAgent.css';
 
 /** Floating agent: collapsed on app home `/`; open on other routes (dashboard URL, demo-data, MCP inspector, …). */
@@ -395,13 +396,12 @@ function welcomeMessage(u) {
   return `👋 Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
 }
 
-function handleLoginAction(actionId) {
+/** Module-level stub — replaced by the in-component handleLoginAction below. */
+function _handleLoginActionDirect(actionId) {
   const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-  if (actionId === 'login_admin') {
-    window.location.href = `${apiUrl}/api/auth/oauth/login`;
-  } else {
-    window.location.href = `${apiUrl}/api/auth/oauth/user/login`;
-  }
+  window.location.href = actionId === 'login_admin'
+    ? `${apiUrl}/api/auth/oauth/login`
+    : `${apiUrl}/api/auth/oauth/user/login`;
 }
 
 function normalizeBankingParams(params) {
@@ -481,6 +481,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
+  const [loginOverlay, setLoginOverlay] = useState({ show: false, message: '', sub: '' });
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   /** null = loading; which OAuth flows have client IDs + environment */
@@ -845,6 +846,13 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
         ? { ...m, steps: (m.steps || []).map(s => ({ ...s, status: success ? 'success' : 'error' })) }
         : m
     ));
+  }
+
+  /** Show overlay then redirect to PingOne login. */
+  function handleLoginAction(actionId) {
+    const label = actionId === 'login_admin' ? 'Admin' : 'Customer';
+    setLoginOverlay({ show: true, message: `Signing in as ${label}…`, sub: 'Redirecting to PingOne' });
+    setTimeout(() => _handleLoginActionDirect(actionId), 150);
   }
 
   /**
@@ -1746,9 +1754,18 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
     </>
   );
 
+  const overlay = (
+    <LoadingOverlay show={loginOverlay.show} message={loginOverlay.message} sub={loginOverlay.sub} />
+  );
+
   // Inline/embed stays in React tree; float mounts on body so position:fixed is never trapped
   // by .App / shell overflow or theme transforms, and works the same on /logs and app routes.
-  if (isInline) return floatShell;
-  return createPortal(floatShell, document.body);
+  if (isInline) return <>{floatShell}{overlay}</>;
+  return (
+    <>
+      {createPortal(floatShell, document.body)}
+      {createPortal(overlay, document.body)}
+    </>
+  );
 }
 

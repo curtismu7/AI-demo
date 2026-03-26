@@ -1,0 +1,78 @@
+/* banking_api_ui/src/components/shared/LoadingOverlay.css */
+
+.lo-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: lo-fade-in 0.15s ease;
+}
+
+@keyframes lo-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.lo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 48px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  min-width: 220px;
+  text-align: center;
+  animation: lo-slide-up 0.2s ease;
+}
+
+@keyframes lo-slide-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.lo-spinner {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: lo-spin 0.8s linear infinite;
+}
+
+@keyframes lo-spin {
+  to { transform: rotate(360deg); }
+}
+
+.lo-message {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.lo-sub {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Dark-mode aware */
+@media (prefers-color-scheme: dark) {
+  .lo-card {
+    background: #1e293b;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  }
+  .lo-message { color: #f1f5f9; }
+  .lo-sub     { color: #94a3b8; }
+  .lo-spinner { border-color: #334155; border-top-color: #60a5fa; }
+}

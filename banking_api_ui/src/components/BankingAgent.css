@@ -1539,55 +1539,55 @@
   border-radius: 12px;
 }
 
+/* Bottom-dock: messages fill left, chips panel on the right */
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-body {
-  flex-direction: column;
+  flex-direction: row;
   flex: 1;
   min-height: 0;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-right-col {
-  order: -1;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col {
-  width: 100%;
+  width: 220px;
   flex-shrink: 0;
   border-right: none;
-  border-top: 1px solid var(--ba-border);
-  max-height: 180px;
+  border-left: 1px solid var(--ba-border);
+  border-top: none;
+  max-height: none;
   overflow-y: auto;
-  flex-direction: row;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   align-content: flex-start;
-  align-items: flex-start;
-  gap: 6px 8px;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  align-items: stretch;
+  gap: 4px;
+  padding: 10px 10px 10px 12px;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col > .ba-left-auth-btn.primary:first-of-type {
   width: 100%;
-  flex-basis: 100%;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-label {
   width: 100%;
-  flex-basis: 100%;
-  margin-bottom: 0;
+  margin-bottom: 2px;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-suggestion,
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-action-item {
-  width: auto;
+  width: 100%;
   max-width: 100%;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  text-align: left;
+  white-space: normal;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-divider {
   width: 100%;
-  flex-basis: 100%;
   margin: 4px 0;
 }
 

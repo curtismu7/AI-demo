@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import LoadingOverlay from './shared/LoadingOverlay';
 import './LandingPage.css';
 
 const LandingPage = () => {
@@ -8,6 +9,7 @@ const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('personal');
   const [scrollY, setScrollY] = React.useState(0);
+  const [loginOverlay, setLoginOverlay] = React.useState({ show: false, message: '', sub: '' });
 
   React.useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -23,12 +25,13 @@ const LandingPage = () => {
   }, [location.state]);
 
   const handleOAuthLogin = (userType = 'user') => {
+    const label = userType === 'admin' ? 'Admin' : 'Customer';
+    setLoginOverlay({ show: true, message: `Signing in as ${label}…`, sub: 'Redirecting to PingOne' });
     const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-    if (userType === 'admin') {
-      window.location.href = `${apiUrl}/api/auth/oauth/login`;
-    } else {
-      window.location.href = `${apiUrl}/api/auth/oauth/user/login`;
-    }
+    const url = userType === 'admin'
+      ? `${apiUrl}/api/auth/oauth/login`
+      : `${apiUrl}/api/auth/oauth/user/login`;
+    setTimeout(() => { window.location.href = url; }, 150);
   };
 
   const features = [
@@ -401,6 +404,7 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+      <LoadingOverlay show={loginOverlay.show} message={loginOverlay.message} sub={loginOverlay.sub} />
     </div>
   );
 };
