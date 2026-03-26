@@ -203,7 +203,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     
     if (autoRefresh) {
       refreshInterval = setInterval(() => {
-        fetchUserData(true); // Silent refresh - no loading spinner
+        fetchUserDataRef.current(true); // Silent refresh - no loading spinner
       }, 45000); // 45s — pairs with server rate limits / shared NAT IPs
     }
     
