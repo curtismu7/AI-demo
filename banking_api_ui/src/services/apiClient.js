@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { appendTrafficEntry, redactHeaders, redactBody, tryParseJson } from './apiTrafficStore';
 
 class ApiClient {
   constructor() {
@@ -12,6 +13,12 @@ class ApiClient {
   }
 
   setupInterceptors() {
+    // ── Traffic capture — stamp request start time ────────────────────────────
+    this.client.interceptors.request.use(
+      (config) => { config._trafficStart = Date.now(); return config; },
+      (error) => Promise.reject(error)
+    );
+
     // Request interceptor to add OAuth token
     this.client.interceptors.request.use(
       async (config) => {
@@ -21,28 +28,61 @@ class ApiClient {
         }
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
 
-    // Response interceptor to handle token expiration
+    // ── Traffic capture — record response (success + error) ───────────────────
     this.client.interceptors.response.use(
       (response) => {
+        const cfg = response.config || {};
+        const url = cfg.url || '';
+        if (url.startsWith('/api/')) {
+          let reqBody = cfg.data;
+          if (typeof reqBody === 'string') reqBody = tryParseJson(reqBody) ?? reqBody;
+          if (reqBody && typeof reqBody === 'object') reqBody = redactBody(reqBody);
+          appendTrafficEntry({
+            method: (cfg.method || 'GET').toUpperCase(),
+            url,
+            status: response.status,
+            duration: cfg._trafficStart ? Date.now() - cfg._trafficStart : null,
+            requestHeaders: redactHeaders(cfg.headers || {}),
+            requestBody: reqBody ?? null,
+            responseHeaders: response.headers || {},
+            responseBody: response.data ?? null,
+            source: 'axios',
+            timestamp: new Date().toISOString(),
+          });
+        }
         return response;
       },
       async (error) => {
+        const cfg = error.config || {};
+        const url = cfg.url || '';
+        if (url.startsWith('/api/')) {
+          appendTrafficEntry({
+            method: (cfg.method || 'GET').toUpperCase(),
+            url,
+            status: error.response?.status ?? 0,
+            duration: cfg._trafficStart ? Date.now() - cfg._trafficStart : null,
+            requestHeaders: redactHeaders(cfg.headers || {}),
+            requestBody: cfg.data ? (tryParseJson(cfg.data) ?? cfg.data) : null,
+            responseHeaders: error.response?.headers || {},
+            responseBody: error.response?.data ?? null,
+            error: error.message,
+            source: 'axios',
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        // ── Original error handling ──────────────────────────────────────────
         const originalRequest = error.config;
 
         // Check if error is due to token expiration (401) and we haven't already tried to refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
-
           try {
-            // Try to refresh the token
             const newToken = await this.refreshToken();
             if (newToken) {
-              // Update the authorization header and retry the request
               originalRequest.headers.Authorization = `Bearer ${newToken}`;
               return this.client(originalRequest);
             }
@@ -57,8 +97,6 @@ class ApiClient {
         // Check for insufficient scope errors (403)
         if (error.response?.status === 403) {
           console.error('Insufficient scope for request:', error.response.data);
-          
-          // Add more detailed error information for scope issues
           if (error.response.data?.error === 'insufficient_scope') {
             const scopeError = new Error('Insufficient permissions for this operation');
             scopeError.response = error.response;
@@ -118,7 +156,6 @@ class ApiClient {
         }
       } catch (userRefreshError) {
         console.log('End user token refresh failed:', userRefreshError.response?.data?.error || userRefreshError.message);
-        
         // If refresh is not implemented (501) or no refresh token (401), don't try admin refresh
         if (userRefreshError.response?.status === 501 || userRefreshError.response?.status === 401) {
           throw userRefreshError;
@@ -140,55 +177,29 @@ class ApiClient {
       throw new Error('All token refresh attempts failed');
     } catch (error) {
       console.error('Token refresh failed:', error);
-      
       if (error.response?.status === 501) {
         console.log('Token refresh not implemented');
       } else if (error.response?.status === 401) {
         console.log('No refresh token available');
       }
-      
       throw error;
     }
   }
 
   handleAuthFailure() {
     console.log('Authentication failed, redirecting to login');
-    
-    // Set logout flag to prevent auto-login attempts
     localStorage.setItem('userLoggedOut', 'true');
-    
-    // Clear any cached tokens
     delete axios.defaults.headers.common['Authorization'];
-    
-    // Dispatch logout event for other components
     window.dispatchEvent(new CustomEvent('userLoggedOut'));
-    
-    // Redirect to login
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 100);
+    setTimeout(() => { window.location.href = '/'; }, 100);
   }
 
   // Convenience methods that use the configured client
-  get(url, config) {
-    return this.client.get(url, config);
-  }
-
-  post(url, data, config) {
-    return this.client.post(url, data, config);
-  }
-
-  put(url, data, config) {
-    return this.client.put(url, data, config);
-  }
-
-  delete(url, config) {
-    return this.client.delete(url, config);
-  }
-
-  patch(url, data, config) {
-    return this.client.patch(url, data, config);
-  }
+  get(url, config) { return this.client.get(url, config); }
+  post(url, data, config) { return this.client.post(url, data, config); }
+  put(url, data, config) { return this.client.put(url, data, config); }
+  delete(url, config) { return this.client.delete(url, config); }
+  patch(url, data, config) { return this.client.patch(url, data, config); }
 }
 
 // Create and export a singleton instance

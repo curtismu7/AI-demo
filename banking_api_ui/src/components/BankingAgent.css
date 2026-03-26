@@ -1494,22 +1494,23 @@
 }
 
 .embedded-agent-dock__head {
-  /* Horizontal gutter comes from .global-embedded-agent-dock-wrap — keep title/lead full dock width */
-  padding: 0 0 10px;
+  padding: 4px 0 6px;
+  text-align: center;
 }
 
 .embedded-agent-dock__title {
-  margin: 0 0 6px;
-  font-size: 1.05rem;
-  font-weight: 700;
+  margin: 0 0 2px;
+  font-size: 0.92rem;
+  font-weight: 800;
   color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
 .embedded-agent-dock__lead {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   color: #64748b;
-  line-height: 1.45;
+  line-height: 1.35;
 }
 
 .embedded-banking-agent.embedded-banking-agent--bottom {

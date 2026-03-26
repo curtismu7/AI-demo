@@ -207,6 +207,7 @@ router.put('/', async (req, res) => {
   try {
     const { accounts: bodyAccounts, stepUpAmountThreshold, userData } = req.body || {};
     const uid = req.user.id;
+    let staleAccountIds = [];
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'stepUpAmountThreshold')) {
       const raw = req.body.stepUpAmountThreshold;
@@ -252,6 +253,7 @@ router.put('/', async (req, res) => {
         if (!row || typeof row !== 'object') continue;
 
         if (!isExistingAccountId(row.id)) {
+          // New account — create it regardless of whether existing accounts are stale
           const accountType = normalizeDemoAccountType(row.accountType);
           let name = typeof row.name === 'string' ? row.name.trim().slice(0, 120) : '';
           if (!name) {
@@ -284,11 +286,10 @@ router.put('/', async (req, res) => {
 
         const acct = dataStore.getAccountById(row.id);
         if (!acct) {
-          return res.status(409).json({
-            error: 'stale_demo_accounts',
-            message:
-              'These account IDs are not on this server instance anymore (typical on cloud demo hosts after idle or a new deploy). Reload the Demo config page to fetch fresh accounts, then save again.',
-          });
+          // Stale ID (serverless instance rotation) — skip the update but keep going so
+          // new accounts in the same save are still created.
+          staleAccountIds.push(row.id);
+          continue;
         }
         if (acct.userId !== uid) {
           return res.status(403).json({ error: 'forbidden_account', message: 'You can only edit your own accounts.' });
@@ -309,6 +310,11 @@ router.put('/', async (req, res) => {
         if (Object.keys(updates).length > 0) {
           await dataStore.updateAccount(row.id, updates);
         }
+      }
+      // Stale IDs are skipped (not an error) but surfaced in the response so the UI
+      // can show a soft warning without discarding the user's just-created accounts.
+      if (staleAccountIds.length > 0) {
+        console.warn(`[demoScenario] PUT: ${staleAccountIds.length} stale account IDs skipped for user ${uid}:`, staleAccountIds);
       }
     }
 
@@ -347,6 +353,7 @@ router.put('/', async (req, res) => {
         : null;
     res.json({
       ok: true,
+      staleAccountIds: staleAccountIds?.length ? staleAccountIds : undefined,
       accounts: accounts.map(a => ({
         id: a.id,
         name: a.name || '',

@@ -10,6 +10,7 @@
  *   - Token Exchange (RFC 8693) request + result
  *   - MCP Token (delegated) decoded claims + act status (+ jwtFullDecode JSON)
  */
+import { appendTokenEvents } from './apiTrafficStore';
 
 // ─── Session refresh (RFC 6749 §6) — same endpoints as Backend-for-Frontend (BFF) auto-refresh ───────
 
@@ -68,6 +69,8 @@ export async function callMcpTool(tool, params = {}) {
   if (!response.ok) {
     const err = await response.json().catch(() => ({ message: response.statusText }));
     const tokenEvents = err.tokenEvents || [];
+    // Surface any partial token events (e.g. exchange-failed) in the API Traffic viewer
+    appendTokenEvents(tool, tokenEvents);
     const e = Object.assign(new Error(err.message || `MCP error: ${response.status}`), {
       tokenEvents,
       statusCode: response.status,
@@ -77,6 +80,8 @@ export async function callMcpTool(tool, params = {}) {
   }
 
   const data = await response.json();
+  // Push token-event entries (user token, RFC 8693 exchange, MCP token) to API Traffic viewer
+  appendTokenEvents(tool, data.tokenEvents || []);
   return {
     result: data.result,
     tokenEvents: data.tokenEvents || [],

@@ -23,6 +23,7 @@ import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
 import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
+import ApiTrafficPanel from './components/ApiTrafficPanel';
 
 import { savePublicConfig } from './services/configService';
 import { fetchDemoScenario } from './services/demoScenarioService';
@@ -80,6 +81,7 @@ function AppWithAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
+  const [apiTrafficOpen, setApiTrafficOpen] = useState(false);
   // Module-scoped ref for injecting user email into the WebSocket session_init message.
   // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);
@@ -544,6 +546,7 @@ function AppWithAuth() {
           {!isLogsRoute && <CIBAPanel />}
           {!isLogsRoute && <CimdSimPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
+          {apiTrafficOpen && <ApiTrafficPanel onClose={() => setApiTrafficOpen(false)} />}
           {/* Floating Log Viewer Button — opens in a new window so it stays visible */}
           {!isLogsRoute && (
             <button
@@ -559,6 +562,16 @@ function AppWithAuth() {
                 <line x1="9" y1="17" x2="13" y2="17"/>
               </svg>
               <span>Logs</span>
+            </button>
+          )}
+          {!isLogsRoute && (
+            <button
+              className="demo-config-fab"
+              onClick={() => setApiTrafficOpen(v => !v)}
+              title="Toggle API Traffic Viewer"
+              type="button"
+            >
+              🌐 API
             </button>
           )}
           {user && !isLogsRoute && (

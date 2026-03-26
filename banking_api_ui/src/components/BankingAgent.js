@@ -158,11 +158,9 @@ function formatResult(result) {
 // ─── Input form for actions that need parameters ──────────────────────────────
 
 function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
-  const [form, setForm] = useState({});
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
   const fakeAccounts = generateFakeAccounts(effectiveUser);
-  
+  const toAccounts = fakeAccounts.filter(a => a.id !== fakeAccounts[0]?.id);
+
   const fields = {
     balance:  [{ key: 'accountId', label: 'Account', type: 'select', options: fakeAccounts }],
     deposit:  [
@@ -177,11 +175,22 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
     ],
     transfer: [
       { key: 'fromId',    label: 'From Account', type: 'select', options: fakeAccounts },
-      { key: 'toId',      label: 'To Account',   type: 'select', options: fakeAccounts.filter(a => a.id !== fakeAccounts[0]?.id) },
+      { key: 'toId',      label: 'To Account',   type: 'select', options: toAccounts },
       { key: 'amount',    label: 'Amount ($)',        placeholder: '0.00', type: 'number' },
       { key: 'note',      label: 'Note',              placeholder: 'optional' },
     ],
   };
+
+  // Pre-populate selects with their visible default so submitting without touching dropdowns works
+  const defaultForm = {
+    balance:  { accountId: fakeAccounts[0]?.id },
+    deposit:  { accountId: fakeAccounts[0]?.id },
+    withdraw: { accountId: fakeAccounts[0]?.id },
+    transfer: { fromId: fakeAccounts[0]?.id, toId: toAccounts[0]?.id },
+  }[action] || {};
+
+  const [form, setForm] = useState(defaultForm);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   return (
     <div className="banking-agent-form">
@@ -434,6 +443,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   const sessionFixBubbleShownRef = useRef(false);
 
   const bottomRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   /** Bottom-dock: scroll transfer/deposit form into view (messages flex used to clip Run). */
   const actionFormAnchorRef = useRef(null);
   const toolProgressIdRef = useRef(null);
@@ -662,7 +672,9 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   }, [isOpen, isLoggedIn]);
 
   useEffect(() => {
-    if (isOpen) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!isOpen) return;
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages, isOpen]);
 
   useEffect(() => {
@@ -881,20 +893,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
         }
         
         if (highlightSection) {
-          // Dispatch event to UserDashboard to highlight section
-          window.dispatchEvent(new CustomEvent('agentDataReady', { 
-            detail: { 
-              section: highlightSection,
-              action: actionId,
-              result: response.result
-            }
+          // Dispatch event to UserDashboard — partial refresh (no page reload)
+          window.dispatchEvent(new CustomEvent('agentDataReady', {
+            detail: { section: highlightSection, action: actionId, result: response.result },
           }));
-          
-          // Navigate to dashboard after a short delay to show the agent result first
-          setTimeout(() => {
-            navigate('/dashboard');
-            toast.info(`📊 View details in dashboard`, { autoClose: 3000 });
-          }, 1500);
         }
       }
 
@@ -1521,7 +1523,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
             {/* ── Right column: chat messages + input ── */}
             <div className="ba-right-col">
               {/* Messages */}
-              <div className="banking-agent-messages">
+              <div className="banking-agent-messages" ref={messagesContainerRef}>
                 {messages.length === 0 && (
                   <div className="ba-welcome">
                     <p>

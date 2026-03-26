@@ -66,26 +66,31 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   /** If any queued refetch wanted a non-silent run (loading UI), honor that on the follow-up. */
   const pendingRefetchNonSilentRef = React.useRef(false);
   const fetchUserDataRef = React.useRef(null);
-  const [agentHighlight, setAgentHighlight] = useState(null); // 'accounts' | 'transactions' | null
+  const fetchTransactionsOnlyRef = React.useRef(null);
+  const fetchAccountsOnlyRef = React.useRef(null);
+  const [agentHighlight, setAgentHighlight] = useState(null); // 'accounts' | 'transactions' | 'both' | null
 
   // Listen for full-page agent results dispatched by BankingAgent
   useEffect(() => {
     const handleAgentResult = (e) => {
       const { type, data, label } = e.detail;
       const labelSuffix = label ? ` \u2014 ${label}` : '';
-      const labelColon = label ? `: ${label}` : '';
       if (type === 'accounts' && Array.isArray(data)) {
         setAccounts(data);
         setAgentHighlight('accounts');
         setSuccess(`Agent updated accounts${labelSuffix}`);
       } else if (type === 'transactions' && Array.isArray(data)) {
-        setTransactions(data);
-        setAgentHighlight('transactions');
+        // Transactions changed — refresh both list AND balances (balance changes on writes)
+        fetchTransactionsOnlyRef.current?.();
+        fetchAccountsOnlyRef.current?.();
+        setAgentHighlight('both');
         setSuccess(`Agent updated transactions${labelSuffix}`);
       } else if (type === 'balance' || type === 'confirm') {
-        if (fetchUserDataRef.current) fetchUserDataRef.current(true);
-        setAgentHighlight('accounts');
-        setSuccess(`Agent completed${labelColon} \u2014 balances refreshed`);
+        // Write completed — partial-refresh both silently, no loading spinner
+        fetchAccountsOnlyRef.current?.();
+        fetchTransactionsOnlyRef.current?.();
+        setAgentHighlight('both');
+        setSuccess(`Agent completed \u2014 balances & transactions refreshed`);
       }
       setTimeout(() => setAgentHighlight(null), 3000);
     };
@@ -93,29 +98,34 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     return () => window.removeEventListener('banking-agent-result', handleAgentResult);
   }, []);
 
-  // Listen for agent data ready events to highlight sections
+  // Listen for agent data ready events — partial-refresh only what changed, no page reload
   useEffect(() => {
     const handleAgentDataReady = (e) => {
-      const { section, action } = e.detail;
-      setAgentHighlight(section);
-      
-      // Silent refresh: reload accounts + transactions (writes must show in Recent transactions)
-      if ((section === 'accounts' || section === 'transactions') && fetchUserDataRef.current) {
-        fetchUserDataRef.current(true);
+      const { action } = e.detail;
+      const isWrite = ['deposit', 'withdraw', 'transfer'].includes(action);
+
+      if (isWrite) {
+        // Write: refresh BOTH accounts (balance updated) AND transactions (new entry) in parallel
+        setAgentHighlight('both');
+        fetchAccountsOnlyRef.current?.();
+        fetchTransactionsOnlyRef.current?.();
+      } else if (action === 'accounts' || action === 'balance') {
+        setAgentHighlight('accounts');
+        fetchAccountsOnlyRef.current?.();
+      } else if (action === 'transactions') {
+        setAgentHighlight('transactions');
+        fetchTransactionsOnlyRef.current?.();
       }
-      
-      // Show success message
+
       const actionLabels = {
         accounts: 'Account data',
         transactions: 'Transaction data',
-        balance: 'Balance check',
+        balance: 'Balance',
         deposit: 'Deposit',
         withdraw: 'Withdrawal',
-        transfer: 'Transfer'
+        transfer: 'Transfer',
       };
-      setSuccess(`Agent completed ${actionLabels[action] || action} \u2014 highlighted below`);
-      
-      // Clear highlight after 4 seconds
+      setSuccess(`${actionLabels[action] || action} \u2014 updated`);
       setTimeout(() => setAgentHighlight(null), 4000);
     };
     window.addEventListener('agentDataReady', handleAgentDataReady);
@@ -193,9 +203,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     fetchUserData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep ref on latest fetchUserData (queued refetch + silent flags live on current closure).
+  // Keep refs on latest fetch functions (event listeners capture stale closures otherwise).
   useEffect(() => {
     fetchUserDataRef.current = fetchUserData;
+    fetchTransactionsOnlyRef.current = fetchTransactionsOnly;
+    fetchAccountsOnlyRef.current = fetchAccountsOnly;
   });
 
   useEffect(() => {
@@ -214,6 +226,26 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       }
     };
   }, [autoRefresh]);
+
+  /** Partial refresh — only transactions list, no loading spinner, no lock. */
+  const fetchTransactionsOnly = async () => {
+    try {
+      const res = await bffAxios.get('/api/transactions/my');
+      setTransactions(Array.isArray(res.data?.transactions) ? res.data.transactions : []);
+    } catch (e) {
+      console.error('Error refreshing transactions:', e);
+    }
+  };
+
+  /** Partial refresh — only accounts/balances, no loading spinner, no lock. */
+  const fetchAccountsOnly = async () => {
+    try {
+      const res = await bffAxios.get('/api/accounts/my');
+      setAccounts(Array.isArray(res.data?.accounts) ? res.data.accounts : []);
+    } catch (e) {
+      console.error('Error refreshing accounts:', e);
+    }
+  };
 
   const fetchUserData = async (silent = false) => {
     if (fetchingRef.current) {
@@ -681,8 +713,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
 
         <main className="ud-center">
           {/* Account Summary */}
-          <div className={`section${agentHighlight === 'accounts' ? ' section--agent-updated' : ''}`}>
-          <h2>Your Accounts {agentHighlight === 'accounts' && <span className="agent-updated-badge">↻ Updated by Agent</span>}</h2>
+          <div className={`section${(agentHighlight === 'accounts' || agentHighlight === 'both') ? ' section--agent-updated' : ''}`}>
+          <h2>Your Accounts {(agentHighlight === 'accounts' || agentHighlight === 'both') && <span className="agent-updated-badge">↻ Updated</span>}</h2>
           <div className="account-summary-table">
             <div className="account-summary-header">
               <div className="account-summary-cell">Account number</div>
@@ -912,8 +944,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           )}
 
           {/* Recent Transactions */}
-          <div className={`section${agentHighlight === 'transactions' ? ' section--agent-updated' : ''}`}>
-          <h2>Recent Transactions {agentHighlight === 'transactions' && <span className="agent-updated-badge">↻ Updated by Agent</span>}</h2>
+          <div className={`section${(agentHighlight === 'transactions' || agentHighlight === 'both') ? ' section--agent-updated' : ''}`}>
+          <h2>Recent Transactions {(agentHighlight === 'transactions' || agentHighlight === 'both') && <span className="agent-updated-badge">↻ Updated</span>}</h2>
           <div className="transactions-table">
             <div className="transaction-header">
               <div className="header-cell">Date</div>
