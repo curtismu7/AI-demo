@@ -296,7 +296,7 @@ router.get('/api/resource', (req, res) => {
 
 ### Cross-Service Propagation
 ```javascript
-// BFF → MCP Server
+// Backend-for-Frontend (BFF) → MCP Server
 const mcpResponse = await axios.post('http://mcp-server/tool', data, {
   headers: {
     'X-Correlation-ID': req.correlationId,
@@ -314,7 +314,7 @@ const apiResponse = await axios.get('http://banking-api/accounts', {
 ```
 
 **Operational Impact:**
-- **End-to-end tracing**: Follow requests across BFF → MCP → Banking API
+- **End-to-end tracing**: Follow requests across Backend-for-Frontend (BFF) → MCP → Banking API
 - **Debugging efficiency**: Quickly find all logs for a single request
 - **Incident response**: Trace failures through entire stack
 - **Performance analysis**: Measure latency across services

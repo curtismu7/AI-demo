@@ -41,7 +41,7 @@ Each entry below specifies: trigger label · component name · panel type · tab
 
 | Tab | Content |
 |-----|---------|
-| **What happens** | Plain English 10-step walkthrough: click Login → BFF generates PKCE → redirect to PingOne → credentials → auth code → /callback → POST /token → T1 issued with `may_act` → session stored → dashboard |
+| **What happens** | Plain English 10-step walkthrough: click Login → Backend-for-Frontend (BFF) generates PKCE → redirect to PingOne → credentials → auth code → /callback → POST /token → T1 issued with `may_act` → session stored → dashboard |
 | **PKCE deep dive** | What `code_verifier` and `code_challenge` are, why SHA-256, why it prevents interception even on public clients. Show the two requests side by side |
 | **The Tokens** | Show an annotated example T1 JWT payload: `sub`, `aud`, `scope`, `may_act`, `exp`, `iss` — every field explained |
 | **Security notes** | Why T1 never touches the browser. httpOnly cookie. Session fixation prevention (`session.regenerate()`). State = CSRF token |
@@ -57,8 +57,8 @@ Each entry below specifies: trigger label · component name · panel type · tab
 
 | Tab | Content |
 |-----|---------|
-| **What & Why** | Plain English: T1 is user's full token scoped for the BFF. MCP Server needs a token scoped for itself. Token Exchange is how BFF swaps T1 → T2 without the user re-authenticating |
-| **BEFORE (no exchange)** | The broken pattern — BFF passes T1 directly to MCP. Problems: wrong `aud`, no `act` claim, no audit trail, T1 leaks at MCP layer |
+| **What & Why** | Plain English: T1 is user's full token scoped for the Backend-for-Frontend (BFF). MCP Server needs a token scoped for itself. Token Exchange is how Backend-for-Frontend (BFF) swaps T1 → T2 without the user re-authenticating |
+| **BEFORE (no exchange)** | The broken pattern — Backend-for-Frontend (BFF) passes T1 directly to MCP. Problems: wrong `aud`, no `act` claim, no audit trail, T1 leaks at MCP layer |
 | **AFTER (RFC 8693)** | The correct flow — annotated HTTP request/response. Show the exact `POST /token` body fields: `grant_type`, `subject_token`, `subject_token_type`, `audience`, `scope`. Show T2 response with `act` claim |
 | **may_act check** | The 6-step PingOne validation: T1 signature → `may_act` exists → caller matches → audience allowed → scope ⊆ original → issue T2. What happens on each failure |
 | **Live tokens** | If user is authenticated: fetch and display the current T1 from session status endpoint. Show what T2 would look like if exchange were triggered now |
@@ -105,8 +105,8 @@ Each entry below specifies: trigger label · component name · panel type · tab
 | **What is MCP** | Plain English: MCP = Model Context Protocol. JSON-RPC 2.0 over WebSocket. LLM calls `tools/list` to discover what tools exist, then `tools/call` to invoke one. The Banking app exposes 7 tools |
 | **Tool catalog** | List all 7 tools: `get_my_accounts`, `get_account_balance`, `get_my_transactions`, `create_transfer`, `create_deposit`, `create_withdrawal`, `query_user_by_email`. For each: description, required scopes, what it returns |
 | **Auth flow** | How the MCP Server validates the token: WS initialize → introspect T2 → check `aud`, `act`, scope → run tool → call Banking API with Bearer T2. Show the JSON-RPC message shapes |
-| **Two hosts** | BFF path (session cookie → T1 → RFC 8693 → T2 → MCP) vs LangChain Agent path (CIBA → T_ciba → RFC 8693 → T3 → MCP). Same MCP Server, different token origin |
-| **MCP Inspector** | Link to `/mcp-inspector` page. Explain: test tools without a full agent, see raw JSON-RPC, compare BFF vs agent tokens |
+| **Two hosts** | Backend-for-Frontend (BFF) path (session cookie → T1 → RFC 8693 → T2 → MCP) vs LangChain Agent path (CIBA → T_ciba → RFC 8693 → T3 → MCP). Same MCP Server, different token origin |
+| **MCP Inspector** | Link to `/mcp-inspector` page. Explain: test tools without a full agent, see raw JSON-RPC, compare Backend-for-Frontend (BFF) vs agent tokens |
 
 **Where to also add trigger:**
 - `McpInspector.js` page header — "What is MCP?" button
@@ -172,7 +172,7 @@ Each entry below specifies: trigger label · component name · panel type · tab
 | RFC 7519 | JWT | All tokens T1, T2, T3, T_ciba | spec link |
 | RFC 7517 | JWK | JWKS endpoint for Banking API token validation | spec link |
 | RFC 7662 | Token Introspection | MCP Server introspects T2 to get `act` claim | spec link |
-| RFC 8693 | Token Exchange | BFF swaps T1 → T2, Agent swaps T_ciba → T3 | spec link |
+| RFC 8693 | Token Exchange | Backend-for-Frontend (BFF) swaps T1 → T2, Agent swaps T_ciba → T3 | spec link |
 | RFC 8707 | Resource Indicators | Binds token `aud` to RS URL at issuance | spec link |
 | RFC 9449 | DPoP | Optional binding (egress token exchange) | spec link |
 | RFC 9728 | OAuth for MCP | MCP authorization server discovery | spec link |

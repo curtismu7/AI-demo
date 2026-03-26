@@ -11,7 +11,7 @@ const TOKEN_CHAIN_STEPS = [
     id: 'banking-app',
     label: 'Banking Application Token',
     status: 'active',
-    summary: 'User access token after Authorization Code + PKCE — stored in the BFF session (httpOnly cookie). Used for Banking REST calls.',
+    summary: 'User access token after Authorization Code + PKCE — stored in the Backend-for-Frontend (BFF) session (httpOnly cookie). Used for Banking REST calls.',
     payloadPreview: `{
   "sub": "user-uuid",
   "scope": "openid banking:read banking:write",
@@ -105,7 +105,7 @@ export default function TokenChainPanel() {
         </button>
         {archOpen && (
           <div className="token-chain-acc-body token-chain-acc-body--muted">
-            Browser SPA → Banking BFF (session, <strong>User token</strong>) → optional agent delegation →{' '}
+            Browser SPA → Banking Backend-for-Frontend (BFF) (session, <strong>User token</strong>) → optional agent delegation →{' '}
             <strong>RFC 8693</strong> token exchange at PingOne → <strong>MCP token</strong> (delegated) →{' '}
             MCP server and Banking API as resource server. Tokens stay on the server; this chain is a
             teaching view of how they relate.
@@ -122,7 +122,7 @@ export default function TokenChainPanel() {
         >
           <div>
             <div className="token-chain-card-title">Token Chain</div>
-            <div className="token-chain-card-sub">Acquiring tokens along the BFF → MCP → resource path</div>
+            <div className="token-chain-card-sub">Acquiring tokens along the Backend-for-Frontend (BFF) → MCP → resource path</div>
           </div>
           <span className="token-chain-chev" aria-hidden>{chainOpen ? '▾' : '▸'}</span>
         </button>

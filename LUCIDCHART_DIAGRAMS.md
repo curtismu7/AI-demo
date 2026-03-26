@@ -4,7 +4,7 @@ Source of truth for the diagrams below. Open in **diagrams.net (draw.io)** with 
 
 **Reference Visio:** `Agent Gateway demo architecture.vsdx` (repo root) — swimlanes, security/RFC strips, MCP ingress & egress gateway behavior, Baseline vs Gateway, 401 → OAuth → Bearer retry, and phased OAuth with **resource** (RFC 8707). The diagram below mirrors that **pattern** and labels; ports and hosts match this banking repo.
 
-**Terminology — BFF:** **BFF** means **Backend for Frontend**: a backend owned by the same app as the SPA, which holds **httpOnly session cookies**, stores **OAuth tokens on the server** (never in browser JavaScript), and proxies or orchestrates calls to the authorization server and APIs. In this repo the BFF is **`banking_api_server`** (Express — local port **3001**, production **same origin** as the UI with `/api` routes on Vercel).
+**Terminology — Backend-for-Frontend (BFF):** **Backend-for-Frontend (BFF)** means **Backend for Frontend**: a backend owned by the same app as the SPA, which holds **httpOnly session cookies**, stores **OAuth tokens on the server** (never in browser JavaScript), and proxies or orchestrates calls to the authorization server and APIs. In this repo the Backend-for-Frontend (BFF) is **`banking_api_server`** (Express — local port **3001**, production **same origin** as the UI with `/api` routes on Vercel).
 
 ---
 
@@ -29,7 +29,7 @@ flowchart TB
     INTRO["/introspect RFC 7662 · JWKS"]
   end
 
-  subgraph INGRESS["MCP ingress — BFF gateway behavior"]
+  subgraph INGRESS["MCP ingress — Backend-for-Frontend (BFF) gateway behavior"]
     I1["Introspection + scope enforcement\non behalf of downstream tools"]
     I2["MCP authorization RFC 9728\nMCP spec requires RFC 8707"]
   end
@@ -80,7 +80,7 @@ flowchart TB
         CHAT["Chat Interface\n(AI)"]
     end
 
-    subgraph BFF["Banking BFF — Port 3001 (Vercel: same domain)"]
+    subgraph Backend-for-Frontend (BFF)["Banking Backend-for-Frontend (BFF) — Port 3001 (Vercel: same domain)"]
         OAUTH["OAuth Routes\n/api/auth/oauth/*\n/api/auth/ciba/*"]
         SESSION["Session Store\n{ accessToken T1\n  refreshToken\n  idToken }"]
         MCPPROXY["MCP Proxy\nPOST /api/mcp/tool\n→ Token Exchange RFC 8693\n→ WS to MCP Server"]
@@ -164,16 +164,16 @@ flowchart TB
 sequenceDiagram
     autonumber
     participant U as User / Browser
-    participant BFF as Banking BFF
+    participant Backend-for-Frontend (BFF) as Banking Backend-for-Frontend (BFF)
     participant P1 as PingOne
     participant MCP as MCP Server
     participant API as Banking API
 
     rect rgb(220, 235, 255)
         Note over U,P1: PHASE 1 — Authorization Code Flow (User Login)
-        U->>BFF: Click Login
-        BFF->>BFF: Generate state (CSRF protection)\nGenerate PKCE code_verifier (random 64 bytes)\nCompute code_challenge = base64url(sha256(verifier))\nDerive redirect_uri from request host
-        BFF-->>U: 302 → PingOne /authorize\n?response_type=code\n&client_id=bff-client\n&redirect_uri=https://domain/callback\n&scope=openid profile email banking:*\n&code_challenge=ABC123\n&code_challenge_method=S256\n&state=CSRF_TOKEN
+        U->>Backend-for-Frontend (BFF): Click Login
+        Backend-for-Frontend (BFF)->>Backend-for-Frontend (BFF): Generate state (CSRF protection)\nGenerate PKCE code_verifier (random 64 bytes)\nCompute code_challenge = base64url(sha256(verifier))\nDerive redirect_uri from request host
+        Backend-for-Frontend (BFF)-->>U: 302 → PingOne /authorize\n?response_type=code\n&client_id=bff-client\n&redirect_uri=https://domain/callback\n&scope=openid profile email banking:*\n&code_challenge=ABC123\n&code_challenge_method=S256\n&state=CSRF_TOKEN
         U->>P1: GET /authorize (browser follows redirect)
         P1-->>U: Login page
         U->>P1: Enter credentials + submit
@@ -183,46 +183,46 @@ sequenceDiagram
 
     rect rgb(220, 255, 220)
         Note over U,P1: PHASE 2 — Code Exchange + PingOne Issues Token WITH may_act
-        U->>BFF: GET /callback?code=AUTH_CODE&state=CSRF_TOKEN
-        BFF->>BFF: Validate state = CSRF_TOKEN ✅\nRetrieve code_verifier from session
-        BFF->>P1: POST /token\ngrant_type=authorization_code\ncode=AUTH_CODE\ncode_verifier=PKCE_VERIFIER\nclient_id=bff-client\nclient_secret=...
+        U->>Backend-for-Frontend (BFF): GET /callback?code=AUTH_CODE&state=CSRF_TOKEN
+        Backend-for-Frontend (BFF)->>Backend-for-Frontend (BFF): Validate state = CSRF_TOKEN ✅\nRetrieve code_verifier from session
+        Backend-for-Frontend (BFF)->>P1: POST /token\ngrant_type=authorization_code\ncode=AUTH_CODE\ncode_verifier=PKCE_VERIFIER\nclient_id=bff-client\nclient_secret=...
         P1->>P1: Verify code_verifier matches challenge ✅\nIssue T1 with may_act claim\n(PingOne policy: bff-client may act for users)
-        P1-->>BFF: T1 = JWT { sub: user123\n  aud: bff-client\n  scope: banking:*\n  may_act: { client_id: bff-client }\n  exp, iat, iss }
-        Note over BFF: may_act says:\n"bff-client is ALLOWED to\nexchange this token later"
-        BFF->>BFF: session.regenerate() ← prevent session fixation\nStore T1 in session (server-side only)\nNever send T1 to browser
-        BFF-->>U: 302 → /dashboard\nSet-Cookie: session=XYZ (httpOnly, secure)
+        P1-->>Backend-for-Frontend (BFF): T1 = JWT { sub: user123\n  aud: bff-client\n  scope: banking:*\n  may_act: { client_id: bff-client }\n  exp, iat, iss }
+        Note over Backend-for-Frontend (BFF): may_act says:\n"bff-client is ALLOWED to\nexchange this token later"
+        Backend-for-Frontend (BFF)->>Backend-for-Frontend (BFF): session.regenerate() ← prevent session fixation\nStore T1 in session (server-side only)\nNever send T1 to browser
+        Backend-for-Frontend (BFF)-->>U: 302 → /dashboard\nSet-Cookie: session=XYZ (httpOnly, secure)
     end
 
     rect rgb(255, 245, 220)
         Note over U,API: PHASE 3 — User Asks AI Agent for Account Data
-        U->>BFF: POST /api/mcp/tool\n{ tool: get_my_accounts }\nCookie: session=XYZ
-        BFF->>BFF: Read T1 from session\nLook up tool scopes:\nget_my_accounts → banking:accounts:read
+        U->>Backend-for-Frontend (BFF): POST /api/mcp/tool\n{ tool: get_my_accounts }\nCookie: session=XYZ
+        Backend-for-Frontend (BFF)->>Backend-for-Frontend (BFF): Read T1 from session\nLook up tool scopes:\nget_my_accounts → banking:accounts:read
     end
 
     rect rgb(255, 220, 220)
-        Note over BFF,P1: PHASE 4 — RFC 8693 Token Exchange (BFF presents may_act, gets act)
-        BFF->>P1: POST /token\ngrant_type=urn:ietf:params:oauth:grant-type:token-exchange\nsubject_token=T1\nsubject_token_type=access_token\naudience=https://mcp.banking.internal\nscope=banking:accounts:read\nclient_id=bff-client\nclient_secret=...
+        Note over Backend-for-Frontend (BFF),P1: PHASE 4 — RFC 8693 Token Exchange (Backend-for-Frontend (BFF) presents may_act, gets act)
+        Backend-for-Frontend (BFF)->>P1: POST /token\ngrant_type=urn:ietf:params:oauth:grant-type:token-exchange\nsubject_token=T1\nsubject_token_type=access_token\naudience=https://mcp.banking.internal\nscope=banking:accounts:read\nclient_id=bff-client\nclient_secret=...
 
         Note over P1: PingOne validates may_act (WHY this matters ↓):\n1. Verify T1 signature + not expired\n2. Extract may_act: { client_id: bff-client }\n3. Check authenticated caller = bff-client\n4. caller matches may_act.client_id ✅\n5. Requested audience allowed by policy ✅\n6. Requested scope ⊆ original scope ✅\n→ Without may_act, exchange is REJECTED\n→ Prevents any rogue service from\n   exchanging user tokens it shouldn't have
 
-        P1-->>BFF: T2 = JWT { sub: user123\n  aud: https://mcp.banking.internal\n  scope: banking:accounts:read\n  act: { client_id: bff-client }\n  exp: shorter lifetime }
-        Note over BFF: act says:\n"bff-client IS ACTING\nright now for user123"\nT1 never leaves the BFF
+        P1-->>Backend-for-Frontend (BFF): T2 = JWT { sub: user123\n  aud: https://mcp.banking.internal\n  scope: banking:accounts:read\n  act: { client_id: bff-client }\n  exp: shorter lifetime }
+        Note over Backend-for-Frontend (BFF): act says:\n"bff-client IS ACTING\nright now for user123"\nT1 never leaves the Backend-for-Frontend (BFF)
     end
 
     rect rgb(220, 255, 245)
-        Note over BFF,API: PHASE 5 — MCP Server Validates Delegation + Executes Tool
-        BFF->>MCP: WS initialize\n{ agentToken: T2 }
+        Note over Backend-for-Frontend (BFF),API: PHASE 5 — MCP Server Validates Delegation + Executes Tool
+        Backend-for-Frontend (BFF)->>MCP: WS initialize\n{ agentToken: T2 }
         MCP->>P1: POST /introspect token=T2
         P1-->>MCP: { active: true\n  sub: user123\n  aud: https://mcp.banking.internal\n  act: { client_id: bff-client }\n  scope: banking:accounts:read }
-        MCP->>MCP: aud = mcp resource URI ✅\nact.client_id = known BFF client ✅\nscope sufficient for get_my_accounts ✅\nLog: "user123 delegated via bff-client"
-        MCP-->>BFF: handshake OK
+        MCP->>MCP: aud = mcp resource URI ✅\nact.client_id = known Backend-for-Frontend (BFF) client ✅\nscope sufficient for get_my_accounts ✅\nLog: "user123 delegated via bff-client"
+        MCP-->>Backend-for-Frontend (BFF): handshake OK
 
-        BFF->>MCP: tools/call { get_my_accounts }
+        Backend-for-Frontend (BFF)->>MCP: tools/call { get_my_accounts }
         MCP->>API: GET /api/accounts\nAuthorization: Bearer T2
         API->>API: Validate T2 (JWKS)\nCheck banking:accounts:read scope ✅\nFilter accounts for sub=user123
         API-->>MCP: [ { id, type, balance }, ... ]
-        MCP-->>BFF: tool result
-        BFF-->>U: 200 { result: [ accounts ] }
+        MCP-->>Backend-for-Frontend (BFF): tool result
+        Backend-for-Frontend (BFF)-->>U: 200 { result: [ accounts ] }
     end
 ```
 
@@ -236,8 +236,8 @@ flowchart TD
         T1BOX["T1 — User Access Token\n─────────────────────────\nsub:      user123\naud:      bff-client\nscope:    banking:accounts:read\n          banking:transactions:write\niss:      https://auth.pingone.com/env\nexp:      now + 1h\n─────────────────────────\nmay_act: {\n  client_id: bff-client\n}\n─────────────────────────\nMeaning: bff-client is ALLOWED\nto exchange this token later.\nThis is prospective — nobody\nis acting yet."]
     end
 
-    subgraph EXCHANGE["Step 2 · EXCHANGE — BFF presents T1 to get T2"]
-        REQ["BFF → POST /token\n────────────────────────────\ngrant_type  = token-exchange\nsubject_token = T1\naudience    = mcp-server-uri\nscope       = banking:accounts:read\nclient_id   = bff-client\nclient_secret = ****"]
+    subgraph EXCHANGE["Step 2 · EXCHANGE — Backend-for-Frontend (BFF) presents T1 to get T2"]
+        REQ["Backend-for-Frontend (BFF) → POST /token\n────────────────────────────\ngrant_type  = token-exchange\nsubject_token = T1\naudience    = mcp-server-uri\nscope       = banking:accounts:read\nclient_id   = bff-client\nclient_secret = ****"]
 
         subgraph CHECK["PingOne Validation — may_act check"]
             C1["① Verify T1 signature\n   and not expired"]
@@ -257,7 +257,7 @@ flowchart TD
         INTRO["MCP → POST /introspect T2\nPingOne returns full claims including act"]
         V1["✅ active = true"]
         V2["✅ aud matches MCP_SERVER_RESOURCE_URI\n   (configured in MCP server env)"]
-        V3["✅ act.client_id = bff-client\n   (proves BFF performed exchange,\n    not a rogue caller)"]
+        V3["✅ act.client_id = bff-client\n   (proves Backend-for-Frontend (BFF) performed exchange,\n    not a rogue caller)"]
         V4["✅ scope covers required tool scopes"]
         V5["📋 Audit log:\n   user123 accessed via bff-client delegation\n   tool: get_my_accounts\n   time: 2026-03-22T..."]
         INTRO-->V1-->V2-->V3-->V4-->V5
@@ -287,29 +287,29 @@ flowchart TD
 sequenceDiagram
     autonumber
     participant B as Browser
-    participant BFF as BFF (3001)
+    participant Backend-for-Frontend (BFF) as Backend-for-Frontend (BFF) (3001)
     participant MCP as MCP Server (8080)
     participant API as Banking API
     participant P1 as PingOne
 
     Note over B,P1: ❌ BEFORE — Raw user token passed by reference, no delegation
 
-    B->>BFF: POST /api/mcp/tool (session cookie)
-    BFF->>BFF: Extract T1 from session\n(user's raw access token, aud=BFF)
+    B->>Backend-for-Frontend (BFF): POST /api/mcp/tool (session cookie)
+    Backend-for-Frontend (BFF)->>Backend-for-Frontend (BFF): Extract T1 from session\n(user's raw access token, aud=Backend-for-Frontend (BFF))
 
-    Note over BFF,MCP: T1 passed directly — same token the browser flow issued
-    BFF->>MCP: WS initialize { agentToken: T1 }
+    Note over Backend-for-Frontend (BFF),MCP: T1 passed directly — same token the browser flow issued
+    Backend-for-Frontend (BFF)->>MCP: WS initialize { agentToken: T1 }
     MCP->>P1: POST /introspect token=T1
     P1-->>MCP: { active, sub=user123, aud=bff ← wrong audience }
     Note over MCP: ⚠️ aud=bff-client, not mcp-server-uri\n❌ no act claim — cannot verify who sent token\n❌ no delegation record for audit\n❌ scope not narrowed for this tool
-    MCP-->>BFF: handshake OK (no aud enforcement)
-    BFF->>MCP: tools/call { get_my_accounts }
+    MCP-->>Backend-for-Frontend (BFF): handshake OK (no aud enforcement)
+    Backend-for-Frontend (BFF)->>MCP: tools/call { get_my_accounts }
     MCP->>API: GET /api/accounts Bearer T1
     API-->>MCP: accounts data
-    MCP-->>BFF: tool result
-    BFF-->>B: 200 { result }
+    MCP-->>Backend-for-Frontend (BFF): tool result
+    Backend-for-Frontend (BFF)-->>B: 200 { result }
 
-    Note over B,P1: Problems — T1 scoped for BFF, used for MCP (audience mismatch)\nMCP cannot verify BFF sent it (no act claim)\nNo audit trail — just a raw user token\nIf T1 leaks in MCP layer, attacker has the full user token
+    Note over B,P1: Problems — T1 scoped for Backend-for-Frontend (BFF), used for MCP (audience mismatch)\nMCP cannot verify Backend-for-Frontend (BFF) sent it (no act claim)\nNo audit trail — just a raw user token\nIf T1 leaks in MCP layer, attacker has the full user token
 ```
 
 ---
@@ -320,31 +320,31 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant B as Browser
-    participant BFF as BFF (3001)
+    participant Backend-for-Frontend (BFF) as Backend-for-Frontend (BFF) (3001)
     participant P1 as PingOne
     participant MCP as MCP Server (8080)
     participant API as Banking API
 
     Note over B,API: ✅ AFTER — RFC 8693 Token Exchange with may_act validation and act claim
 
-    B->>BFF: POST /api/mcp/tool { tool: get_my_accounts } (session cookie)
-    BFF->>BFF: Read T1 from session\nT1 contains may_act: { client_id: bff-client }\nTool scope: banking:accounts:read
+    B->>Backend-for-Frontend (BFF): POST /api/mcp/tool { tool: get_my_accounts } (session cookie)
+    Backend-for-Frontend (BFF)->>Backend-for-Frontend (BFF): Read T1 from session\nT1 contains may_act: { client_id: bff-client }\nTool scope: banking:accounts:read
 
-    BFF->>P1: POST /token\ngrant_type=token-exchange\nsubject_token=T1\naudience=https://mcp.banking.internal\nscope=banking:accounts:read\nclient_id=bff-client
+    Backend-for-Frontend (BFF)->>P1: POST /token\ngrant_type=token-exchange\nsubject_token=T1\naudience=https://mcp.banking.internal\nscope=banking:accounts:read\nclient_id=bff-client
     Note over P1: Validates may_act:\nmay_act.client_id=bff-client == caller ✅\nDownscope scope ✅\nIssue T2 with act claim
-    P1-->>BFF: T2 = { sub:user123, aud:mcp-uri\nscope:accounts:read\nact:{ client_id:bff-client } }
+    P1-->>Backend-for-Frontend (BFF): T2 = { sub:user123, aud:mcp-uri\nscope:accounts:read\nact:{ client_id:bff-client } }
 
-    BFF->>MCP: WS initialize { agentToken: T2 }
+    Backend-for-Frontend (BFF)->>MCP: WS initialize { agentToken: T2 }
     MCP->>P1: POST /introspect T2
     P1-->>MCP: { active, sub, aud=mcp-uri, act={ client_id:bff-client } }
     MCP->>MCP: aud=mcp-server-uri ✅\nact.client_id=bff-client ✅\nscope=accounts:read ✅\nAudit: user123 via bff delegation
-    MCP-->>BFF: handshake OK
-    BFF->>MCP: tools/call { get_my_accounts }
+    MCP-->>Backend-for-Frontend (BFF): handshake OK
+    Backend-for-Frontend (BFF)->>MCP: tools/call { get_my_accounts }
     MCP->>API: GET /api/accounts Bearer T2
     API->>API: Validate T2 — aud, scope, exp ✅
     API-->>MCP: accounts
-    MCP-->>BFF: tool result
-    BFF-->>B: 200 { result }
+    MCP-->>Backend-for-Frontend (BFF): tool result
+    Backend-for-Frontend (BFF)-->>B: 200 { result }
 ```
 
 ---
@@ -412,7 +412,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant SRV as BFF or MCP Server
+    participant SRV as Backend-for-Frontend (BFF) or MCP Server
     participant P1 as PingOne
     participant DV as DaVinci Flow
     participant U as User Email
@@ -470,39 +470,39 @@ flowchart LR
 
 ---
 
-## Diagram 9: MCP Inspector — dual hosts (BFF vs LangChain)
+## Diagram 9: MCP Inspector — dual hosts (Backend-for-Frontend (BFF) vs LangChain)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant U as Browser (logged-in user)
     participant UI as React /mcp-inspector
-    participant BFF as Banking BFF :3001
+    participant Backend-for-Frontend (BFF) as Banking Backend-for-Frontend (BFF) :3001
     participant P1 as PingOne (optional RFC 8693)
     participant MCP as MCP Server :8080 WS
     participant AG as LangChain :8081 /inspector/mcp-host
 
-    Note over U,AG: Compare two MCP hosts: BFF session token path vs agent-issued token path.
+    Note over U,AG: Compare two MCP hosts: Backend-for-Frontend (BFF) session token path vs agent-issued token path.
 
     U->>UI: Open MCP Inspector (session cookie)
-    UI->>BFF: GET /api/mcp/inspector/context
-    BFF-->>UI: mcpHosts: banking_bff · langchain_agent · shared_mcp_server
+    UI->>Backend-for-Frontend (BFF): GET /api/mcp/inspector/context
+    Backend-for-Frontend (BFF)-->>UI: mcpHosts: banking_bff · langchain_agent · shared_mcp_server
 
-    UI->>BFF: GET /api/mcp/inspector/tools
-    BFF->>BFF: getSessionAccessToken()
+    UI->>Backend-for-Frontend (BFF): GET /api/mcp/inspector/tools
+    Backend-for-Frontend (BFF)->>Backend-for-Frontend (BFF): getSessionAccessToken()
     opt mcp_resource_uri configured
-        BFF->>P1: POST /token (RFC 8693 token exchange)
-        P1-->>BFF: MCP-audience access token
+        Backend-for-Frontend (BFF)->>P1: POST /token (RFC 8693 token exchange)
+        P1-->>Backend-for-Frontend (BFF): MCP-audience access token
     end
-    BFF->>MCP: WS initialize → tools/list
-    MCP-->>BFF: tool catalog
-    BFF-->>UI: tools + source: bff_session
+    Backend-for-Frontend (BFF)->>MCP: WS initialize → tools/list
+    MCP-->>Backend-for-Frontend (BFF): tool catalog
+    Backend-for-Frontend (BFF)-->>UI: tools + source: bff_session
 
     U->>UI: Invoke tool (demo)
-    UI->>BFF: POST /api/mcp/inspector/invoke
-    BFF->>MCP: tools/call
-    MCP-->>BFF: result
-    BFF-->>UI: JSON result
+    UI->>Backend-for-Frontend (BFF): POST /api/mcp/inspector/invoke
+    Backend-for-Frontend (BFF)->>MCP: tools/call
+    MCP-->>Backend-for-Frontend (BFF): result
+    Backend-for-Frontend (BFF)-->>UI: JSON result
 
     UI->>AG: GET /inspector/mcp-host (agent health port)
     AG-->>UI: langchain_tools_exposed_to_llm · mcp_client_registry snapshot

@@ -49,7 +49,7 @@ class ApiClient {
           } catch (refreshError) {
             console.error('Token refresh failed:', refreshError);
             // Do not redirect: refresh often returns 501 (not implemented) or 401 while the
-            // BFF session cookie is still valid. Let the caller surface the original 401.
+            // Backend-for-Frontend (BFF) session cookie is still valid. Let the caller surface the original 401.
             return Promise.reject(error);
           }
         }
@@ -74,7 +74,7 @@ class ApiClient {
   }
 
   async getValidToken() {
-    // BFF pattern: same-origin /api/* calls use the session cookie; the server reads the
+    // Backend-for-Frontend (BFF) pattern: same-origin /api/* calls use the session cookie; the server reads the
     // access token from req.session. Do not send Authorization: Bearer from a JWT copy
     // exposed via /oauth/status — it can be expired while the session token is still valid,
     // causing 401 and a broken refresh flow that redirected to home.
@@ -103,7 +103,7 @@ class ApiClient {
   }
 
   isTokenExpired(_token) {
-    // OAuth access tokens are opaque here; rely on the BFF/session for validity.
+    // OAuth access tokens are opaque here; rely on the Backend-for-Frontend (BFF)/session for validity.
     return false;
   }
 

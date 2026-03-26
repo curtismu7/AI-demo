@@ -92,7 +92,7 @@ npx ${INSPECTOR_NPM}@latest
 # ${INSPECTOR_REPO}
 
 # This repo’s banking_mcp_server speaks WebSocket MCP, not stdio. The in-app
-# inspector at /mcp-inspector proxies through the BFF with your session cookie.
+# inspector at /mcp-inspector proxies through the Backend-for-Frontend (BFF) with your session cookie.
 # For the npm package, follow the inspector README for connecting to your transport.`;
 
   return (
@@ -212,7 +212,7 @@ npx ${INSPECTOR_NPM}@latest
                   </pre>
                   {isHostedCloud && (
                     <p style={{ fontSize: '0.75rem', color: '#92400e', marginBottom: '0.75rem' }}>
-                      On a hosted deployment you must be logged in on the same domain; the BFF forwards MCP calls with token exchange.
+                      On a hosted deployment you must be logged in on the same domain; the Backend-for-Frontend (BFF) forwards MCP calls with token exchange.
                     </p>
                   )}
                   <p style={{ fontSize: '0.85rem', marginBottom: '0.35rem' }}>

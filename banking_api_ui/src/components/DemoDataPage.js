@@ -4,14 +4,27 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { fetchDemoScenario, saveDemoScenario, persistBankingAgentUiMode } from '../services/demoScenarioService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import PageNav from './PageNav';
 import '../styles/appShellPages.css';
 import './DemoDataPage.css';
+
+/** Account types for new rows (values stored lowercase; labels for the dropdown). */
+const ACCOUNT_TYPE_OPTIONS = [
+  { value: 'checking', label: 'Checking' },
+  { value: 'savings', label: 'Savings' },
+  { value: 'investment', label: 'Investment' },
+  { value: 'money_market', label: 'Money market' },
+  { value: 'credit', label: 'Credit card' },
+  { value: 'car_loan', label: 'Car loan' },
+  { value: 'mortgage', label: 'Mortgage (home loan)' },
+];
 
 /**
  * Lets demo users edit account labels, balances, and MFA step-up threshold for their sandbox data.
  */
-export default function DemoDataPage({ onLogout }) {
+export default function DemoDataPage({ user, onLogout }) {
   const { mode: agentUiMode, setMode: setAgentUiMode } = useAgentUiMode();
+  const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState([]);
@@ -149,10 +162,14 @@ export default function DemoDataPage({ onLogout }) {
         // ignore
       }
     } catch (err) {
-      toast.error(err.message || 'Save failed');
       if (err.code === 'stale_demo_accounts') {
         await load();
-        toast.info('Reloaded account list from the server — review the form and save again.');
+        toast.warning(
+          err.message ||
+            'These account IDs are no longer on this server (common after a deploy or new instance). The form was reloaded — review accounts and save again.'
+        );
+      } else {
+        toast.error(err.message || 'Save failed');
       }
     } finally {
       setSaving(false);
@@ -208,7 +225,13 @@ export default function DemoDataPage({ onLogout }) {
   const handleAgentLayoutChange = async next => {
     if (next === agentUiMode) return;
     setAgentUiMode(next);
-    await persistBankingAgentUiMode(next);
+    const saved = await persistBankingAgentUiMode(next);
+    if (!saved) {
+      toast.warn(
+        'Agent layout could not be saved on the server yet. It stays on this browser; refresh may revert if the server still has the old value.',
+        { autoClose: 4500 }
+      );
+    }
     toast.info('Applying agent layout…', { autoClose: 1200 });
     window.setTimeout(() => {
       if (next === 'embedded') {
@@ -231,13 +254,18 @@ export default function DemoDataPage({ onLogout }) {
             </p>
           </div>
           <div className="app-page-shell__actions">
-            <Link to="/dashboard" className="app-page-shell__btn app-page-shell__btn--solid">← Dashboard</Link>
-            <button type="button" className="app-page-shell__btn" onClick={onLogout}>Log out</button>
+            <Link to={dashboardPath} className="app-page-shell__btn app-page-shell__btn--solid">
+              ← Dashboard
+            </Link>
+            <button type="button" className="app-page-shell__btn" onClick={onLogout}>
+              Log out
+            </button>
           </div>
         </div>
       </header>
 
       <div className="app-page-shell__body">
+        <PageNav user={user} onLogout={onLogout} title="Demo config" />
       {persistenceNote && (
         <div className="demo-data-banner" role="status">
           {persistenceNote}
@@ -419,8 +447,11 @@ export default function DemoDataPage({ onLogout }) {
                             value={a.accountType || 'checking'}
                             onChange={e => handleAccountChange(rowKey, 'accountType', e.target.value)}
                           >
-                            <option value="checking">Checking</option>
-                            <option value="savings">Savings</option>
+                            {ACCOUNT_TYPE_OPTIONS.map(opt => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
                           </select>
                         ) : (
                           <span className="demo-data-type">{a.accountType}</span>

@@ -10,7 +10,7 @@
  *
  * GET  /api/auth/ciba/poll/:authReqId
  *   Single poll — returns { status: 'pending' | 'approved' | 'denied' }.
- *   When approved, tokens are stored in the server-side session (BFF pattern)
+ *   When approved, tokens are stored in the server-side session (Backend-for-Frontend (BFF) pattern)
  *   and never sent to the browser.
  *
  * GET  /api/auth/ciba/status
@@ -176,7 +176,7 @@ router.get('/poll/:authReqId', authenticateToken, async (req, res) => {
   try {
     const tokens = await cibaService.pollForTokens(authReqId);
 
-    // Store tokens server-side (BFF pattern — never expose raw tokens to browser)
+    // Store tokens server-side (Backend-for-Frontend (BFF) pattern — never expose raw tokens to browser)
     req.session.oauthTokens = {
       accessToken:  tokens.access_token,
       idToken:      tokens.id_token,

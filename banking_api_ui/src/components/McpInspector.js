@@ -28,13 +28,14 @@ function formatAxiosError(err, fallback) {
 }
 
 /**
- * Demo MCP Inspector: live tools/list + tools/call via BFF (MCP Host proxy).
+ * Demo MCP Inspector: live tools/list + tools/call via the Backend-for-Frontend (BFF) MCP Host proxy.
  * Complements LangChain MCP Host JSON at REACT_APP_LANGCHAIN_INSPECTOR_URL (default :8081/inspector/mcp-host).
  */
 const McpInspector = ({ user, onLogout }) => {
   const { open } = useEducationUI();
   const [context, setContext] = useState(null);
   const [tools, setTools] = useState([]);
+  const [toolsSourceInfo, setToolsSourceInfo] = useState(null);
   const [loadingTools, setLoadingTools] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
   const [paramsJson, setParamsJson] = useState('{}');
@@ -63,9 +64,17 @@ const McpInspector = ({ user, onLogout }) => {
     try {
       const { data } = await apiClient.get('/api/mcp/inspector/tools');
       setTools(data.tools || []);
+      setToolsSourceInfo(
+        data._source === 'local_catalog'
+          ? { local: true, reason: data._localCatalogReason || '' }
+          : data._source === 'mcp_server'
+            ? { local: false }
+            : null
+      );
     } catch (e) {
       setError(formatAxiosError(e, 'tools/list failed'));
       setTools([]);
+      setToolsSourceInfo(null);
     } finally {
       setLoadingTools(false);
     }
@@ -114,7 +123,7 @@ const McpInspector = ({ user, onLogout }) => {
           <div>
             <h1 className="app-page-shell__title">MCP Inspector</h1>
             <div className="app-page-shell__lead">
-              This page exercises the <strong>BFF</strong> MCP host (session + optional token exchange). The same MCP server and
+              This page exercises the <strong>Backend-for-Frontend (BFF)</strong> MCP host (session + optional token exchange). The same MCP server and
               Banking API are also used by the <strong>LangChain</strong> MCP host — compare both below.
             </div>
           </div>
@@ -160,7 +169,7 @@ const McpInspector = ({ user, onLogout }) => {
             <h2>How MCP tools work (this demo)</h2>
             <p className="demo-data-hint mcp-inspector__hint-tight">
               Use the education buttons above for deep dives: <strong>MCP protocol</strong>, <strong>token exchange</strong>,{' '}
-              <strong>introspection</strong>, and <strong>Agent Gateway</strong>. Short version: the BFF holds your session and may
+              <strong>introspection</strong>, and <strong>Agent Gateway</strong>. Short version: the Backend-for-Frontend (BFF) holds your session and may
               RFC 8693 exchange before <code>tools/call</code>; the MCP server calls the Banking API with Bearer tokens.
             </p>
           </section>
@@ -169,7 +178,7 @@ const McpInspector = ({ user, onLogout }) => {
             <section className="app-page-card demo-data-section">
               <h2 className="mcp-inspector__h2-tight">Two MCP hosts — one MCP server — one protected Banking API</h2>
               <p className="demo-data-hint mcp-inspector__hint-mb">
-                Demo best practice: show <strong>human</strong> access (BFF) and <strong>agent</strong> access (LangChain) without
+                Demo best practice: show <strong>human</strong> access (Backend-for-Frontend (BFF)) and <strong>agent</strong> access (LangChain) without
                 bypassing PingOne, scopes, or MCP.
               </p>
               <div className="mcp-inspector__host-grid">
@@ -189,7 +198,7 @@ const McpInspector = ({ user, onLogout }) => {
                   </dl>
                   {context.flow?.length > 0 && (
                     <>
-                      <h4 className="mcp-inspector__h4">BFF flow (this inspector)</h4>
+                      <h4 className="mcp-inspector__h4">Backend-for-Frontend (BFF) flow (this inspector)</h4>
                       <ul className="mcp-inspector__flow mcp-inspector__flow--tight">
                         {context.flow.map((line, i) => (
                           <li key={i}>{line}</li>
@@ -224,9 +233,9 @@ const McpInspector = ({ user, onLogout }) => {
                   >
                     Open LangChain host JSON ({langchainInspector})
                   </a>
-                  <p className="mcp-inspector__muted mcp-inspector__hint-tight" style={{ marginTop: '12px' }}>
+                  <p className="mcp-inspector__muted mcp-inspector__hint-tight">
                     This URL is served only by the Python <strong>langchain_agent</strong> process (health HTTP server), not the
-                    Banking UI or BFF. From repo root: <code>cd langchain_agent && python -m src.main</code> — then wait until
+                    Banking UI or Backend-for-Frontend (BFF). From repo root: <code>cd langchain_agent && python -m src.main</code> — then wait until
                     startup finishes so the inspector snapshot is populated. If the port differs, set{' '}
                     <code>REACT_APP_LANGCHAIN_INSPECTOR_URL</code> (e.g. <code>http://localhost:8081/inspector/mcp-host</code>).
                     Optional: <code>HEALTH_HTTP_PORT</code> in <code>langchain_agent/.env</code> must match that host/port.
@@ -251,6 +260,20 @@ const McpInspector = ({ user, onLogout }) => {
               </button>
             </div>
             <div className="mcp-inspector__tools">
+              {toolsSourceInfo?.local && (
+                <p className="mcp-inspector__muted mcp-inspector__muted--block">
+                  Showing the <strong>local</strong> tool catalog (same tools as the in-process fallback when MCP WebSocket is
+                  unavailable or your session has no OAuth bearer for MCP). Invoke uses the local handler too. For a live{' '}
+                  <code>tools/list</code> from <code>banking_mcp_server</code>, use Redis-backed sessions and sign in again so the
+                  Backend-for-Frontend (BFF) holds a real access token.
+                  {toolsSourceInfo.reason ? (
+                    <>
+                      {' '}
+                      <span className="mcp-inspector__muted">({toolsSourceInfo.reason})</span>
+                    </>
+                  ) : null}
+                </p>
+              )}
               {tools.length === 0 && !loadingTools && (
                 <p className="mcp-inspector__muted">No tools returned (is MCP server up?)</p>
               )}
@@ -286,7 +309,7 @@ const McpInspector = ({ user, onLogout }) => {
                 spellCheck={false}
               />
               <button type="button" className="mcp-inspector__btn mcp-inspector__btn--primary" onClick={handleInvoke} disabled={busy}>
-                {busy ? 'Calling tools/call…' : 'Run tools/call via BFF'}
+                {busy ? 'Calling tools/call…' : 'Run tools/call via Backend-for-Frontend (BFF)'}
               </button>
             </section>
           )}
@@ -302,7 +325,7 @@ const McpInspector = ({ user, onLogout }) => {
             <h2>LangChain chat (separate from MCP WebSocket)</h2>
             <p className="mcp-inspector__muted mcp-inspector__muted--block">
               User messages go to the agent over the chat WebSocket (typically port {context?.langchain_chat_websocket_port || '…'}).
-              The agent then calls MCP tools over its own MCP client connection — same server as the BFF, different host process.
+              The agent then calls MCP tools over its own MCP client connection — same server as the Backend-for-Frontend (BFF), different host process.
             </p>
           </section>
         </div>

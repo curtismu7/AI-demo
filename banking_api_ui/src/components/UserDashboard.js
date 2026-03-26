@@ -61,6 +61,10 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const fetchingRef = React.useRef(false);
+  /** When true, run fetchUserData again as soon as the in-flight request finishes (avoids dropped agent/interval refreshes). */
+  const pendingRefetchRef = React.useRef(false);
+  /** If any queued refetch wanted a non-silent run (loading UI), honor that on the follow-up. */
+  const pendingRefetchNonSilentRef = React.useRef(false);
   const fetchUserDataRef = React.useRef(null);
   const [agentHighlight, setAgentHighlight] = useState(null); // 'accounts' | 'transactions' | null
 
@@ -79,7 +83,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setAgentHighlight('transactions');
         setSuccess(`Agent updated transactions${labelSuffix}`);
       } else if (type === 'balance' || type === 'confirm') {
-        if (fetchUserDataRef.current) fetchUserDataRef.current();
+        if (fetchUserDataRef.current) fetchUserDataRef.current(true);
         setAgentHighlight('accounts');
         setSuccess(`Agent completed${labelColon} \u2014 balances refreshed`);
       }
@@ -95,11 +99,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       const { section, action } = e.detail;
       setAgentHighlight(section);
       
-      // Refresh data based on the action
-      if (section === 'accounts' && fetchUserDataRef.current) {
-        fetchUserDataRef.current();
-      } else if (section === 'transactions' && fetchUserDataRef.current) {
-        fetchUserDataRef.current();
+      // Silent refresh: reload accounts + transactions (writes must show in Recent transactions)
+      if ((section === 'accounts' || section === 'transactions') && fetchUserDataRef.current) {
+        fetchUserDataRef.current(true);
       }
       
       // Show success message
@@ -188,10 +190,13 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   };
 
   useEffect(() => {
-    // Initial data fetch
     fetchUserData();
-    fetchUserDataRef.current = fetchUserData;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep ref on latest fetchUserData (queued refetch + silent flags live on current closure).
+  useEffect(() => {
+    fetchUserDataRef.current = fetchUserData;
+  });
 
   useEffect(() => {
     let refreshInterval;
@@ -211,7 +216,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   }, [autoRefresh]);
 
   const fetchUserData = async (silent = false) => {
-    if (fetchingRef.current) return;
+    if (fetchingRef.current) {
+      pendingRefetchRef.current = true;
+      if (!silent) pendingRefetchNonSilentRef.current = true;
+      return;
+    }
     fetchingRef.current = true;
     try {
       // Only show loading spinner for initial load, not auto-refreshes
@@ -261,6 +270,12 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setLoading(false);
       }
       fetchingRef.current = false;
+      if (pendingRefetchRef.current) {
+        pendingRefetchRef.current = false;
+        const loud = pendingRefetchNonSilentRef.current;
+        pendingRefetchNonSilentRef.current = false;
+        void fetchUserData(!loud);
+      }
     }
   };
 
@@ -617,7 +632,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           <Link
             to="/mcp-inspector"
             className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
-            title="MCP discovery, tools/list & tools/call via BFF"
+            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
           >
             MCP Inspector
           </Link>
@@ -998,7 +1013,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                     <div className="token-section">
                       <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#93c5fd' }}>👤 User Token</span>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 'normal' }}>— stays in BFF session, never forwarded to MCP</span>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 'normal' }}>— stays in Backend-for-Frontend (BFF) session, never forwarded to MCP</span>
                         <button type="button" className="token-payload-hint" title="Learn about token exchange" onClick={() => open(EDU.MAY_ACT, 'lifecycle')}>ⓘ</button>
                       </h4>
                       <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '10px 14px', fontSize: '0.78rem', marginBottom: '8px' }}>
@@ -1016,7 +1031,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                       </div>
                       {tokenData.accessToken.payload?.may_act && (
                         <div style={{ background: '#1e3a5f', borderRadius: '6px', padding: '8px 12px', fontSize: '0.8rem', color: '#93c5fd', marginBottom: '8px' }}>
-                          ✅ <strong>may_act present</strong> — PingOne will allow the BFF to exchange this User Token.
+                          ✅ <strong>may_act present</strong> — PingOne will allow the Backend-for-Frontend (BFF) to exchange this User Token.
                           <pre style={{ margin: '4px 0 0', background: 'none', fontSize: '0.75rem' }}>{JSON.stringify(tokenData.accessToken.payload.may_act, null, 2)}</pre>
                         </div>
                       )}
@@ -1035,7 +1050,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                       <span style={{ background: '#2d1b69', border: '1px solid #8b5cf6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#c4b5fd' }}>Token Exchange (RFC 8693)</span>
                     </h4>
                     <div style={{ background: '#0f172a', border: '1px solid #2d1b69', borderRadius: '6px', padding: '10px 14px', fontSize: '0.82rem' }}>
-                      <p style={{ margin: '0 0 8px', color: '#c4b5fd' }}>What changes when the BFF exchanges the User Token for an MCP Token:</p>
+                      <p style={{ margin: '0 0 8px', color: '#c4b5fd' }}>What changes when the Backend-for-Frontend (BFF) exchanges the User Token for an MCP Token:</p>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid #334155' }}>
@@ -1047,7 +1062,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                         <tbody>
                           <tr>
                             <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>aud</code></td>
-                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.aud ? (Array.isArray(tokenData.accessToken.payload.aud) ? tokenData.accessToken.payload.aud.join(', ') : String(tokenData.accessToken.payload.aud)).substring(0, 40) + '…' : 'BFF / PingOne client'}</td>
+                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.aud ? (Array.isArray(tokenData.accessToken.payload.aud) ? tokenData.accessToken.payload.aud.join(', ') : String(tokenData.accessToken.payload.aud)).substring(0, 40) + '…' : 'Backend-for-Frontend (BFF) / PingOne client'}</td>
                             <td style={{ padding: '4px 8px', color: '#34d399' }}>MCP Server Resource URI (narrowed)</td>
                           </tr>
                           <tr>

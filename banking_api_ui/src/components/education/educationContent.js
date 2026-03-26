@@ -100,7 +100,7 @@ const FULL_STACK_DIAGRAM = `
 │   │ LLM │    │ memory │    │ business logic │   (+ Sidecar / SDK where used)  │
 │   └─────┘    └────────┘    └────────────────┘                                 │
 └──────────────────────────────────────────────────────────────────────────────┘
-       │ REST / WebSocket to BFF                         │
+       │ REST / WebSocket to Backend-for-Frontend (BFF)                         │
        │                                                 │
        ▼                                                 ▼
 ┌──────────────────────────────┐            ┌──────────────────────────────────┐
@@ -130,7 +130,7 @@ const FULL_STACK_DIAGRAM = `
 
   Tool call without acceptable token:
        HTTP/1.1 401 Unauthorized  →  "attempt run tool"
-       → OAuth flows (PKCE in browser, or CIBA, or token exchange on BFF)
+       → OAuth flows (PKCE in browser, or CIBA, or token exchange on Backend-for-Frontend (BFF))
        → "attempt again with bearer token"
 
   MCP spec: clients MUST support Resource Indicators (RFC 8707) for OAuth —
@@ -145,7 +145,7 @@ const FULL_STACK_DIAGRAM = `
 ── Optional: ID-JAG / XAA (draft) — identity assertion authorization grant ──
   https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/
 
-── This banking demo maps: Web SPA → Banking BFF → PingOne AS → MCP server → Banking RS ──
+── This banking demo maps: Web SPA → Banking Backend-for-Frontend (BFF) → PingOne AS → MCP server → Banking RS ──
    CIBA: POST /bc-authorize + poll /token  (parallel track; email or push per PingOne)
 `;
 
@@ -158,9 +158,9 @@ Server-only (after login):
   GET  /api/auth/oauth/status             Admin session + userinfo
   GET  /api/auth/oauth/user/status        End-user session
 MCP / agent:
-  POST /api/mcp/tool                      BFF → optional token exchange → MCP tools/call
-  GET  /api/mcp/inspector/tools           BFF MCP inspector: tools/list
-  POST /api/mcp/inspector/invoke          BFF MCP inspector: tools/call
+  POST /api/mcp/tool                      Backend-for-Frontend (BFF) → optional token exchange → MCP tools/call
+  GET  /api/mcp/inspector/tools           Backend-for-Frontend (BFF) MCP inspector: tools/list
+  POST /api/mcp/inspector/invoke          Backend-for-Frontend (BFF) MCP inspector: tools/call
 Agent identity (optional "on behalf of"):
   GET  /api/agent/identity/status         Actor bootstrap / mapping status
   POST /api/agent/identity/bootstrap      Optional ROPC + PingOne user for agent client
@@ -219,8 +219,8 @@ export function CibaWhatContent() {
           (requires a publicly reachable callback URL). This demo uses Poll mode.
         </li>
         <li>
-          <strong>BFF pattern — tokens never reach the browser</strong> — tokens are stored in
-          the server-side session. The browser only receives approval status updates via the BFF
+          <strong>Backend-for-Frontend (BFF) pattern — tokens never reach the browser</strong> — tokens are stored in
+          the server-side session. The browser only receives approval status updates via the Backend-for-Frontend (BFF)
           poll API. XSS cannot steal them.
         </li>
         <li>
@@ -253,7 +253,7 @@ export function CibaFullStackContent() {
         Agent (security strip: OAuth 2.1, RFC 8707, 9728, 7523, 8693) → MCP ingress / egress →
         MCP Server / Tool → Resource Server; 401 → OAuth flows → Bearer retry; phased OAuth with{' '}
         <strong>resource</strong> indicator (RFC 8707). This app maps that pattern onto{' '}
-        <strong>PingOne</strong>, the <strong>Banking BFF</strong>, and{' '}
+        <strong>PingOne</strong>, the <strong>Banking Backend-for-Frontend (BFF)</strong>, and{' '}
         <strong>banking_mcp_server</strong>.
       </p>
 
@@ -263,12 +263,12 @@ export function CibaFullStackContent() {
       <h3>How this demo maps to the diagram</h3>
       <ul>
         <li><strong>Web Browser SPA</strong> — React UI; session cookie only (no raw AT/RT in JavaScript).</li>
-        <li><strong>Agent / LLM</strong> — LangChain agent + chat widget (separate process); same MCP server as the BFF.</li>
-        <li><strong>MCP ingress (gateway role)</strong> — Banking BFF: scope checks, session, <code>/api/mcp/tool</code>, optional introspection.</li>
-        <li><strong>MCP egress</strong> — BFF performs RFC 8693 token exchange + WebSocket MCP to the server; RFC 8707 resource for MCP audience when configured.</li>
+        <li><strong>Agent / LLM</strong> — LangChain agent + chat widget (separate process); same MCP server as the Backend-for-Frontend (BFF).</li>
+        <li><strong>MCP ingress (gateway role)</strong> — Banking Backend-for-Frontend (BFF): scope checks, session, <code>/api/mcp/tool</code>, optional introspection.</li>
+        <li><strong>MCP egress</strong> — Backend-for-Frontend (BFF) performs RFC 8693 token exchange + WebSocket MCP to the server; RFC 8707 resource for MCP audience when configured.</li>
         <li><strong>IDP / AS</strong> — PingOne (<code>/authorize</code>, <code>/token</code>, introspection).</li>
         <li><strong>MCP Server + Tool</strong> — <code>banking_mcp_server</code>; tools call the Banking API with Bearer + scopes.</li>
-        <li><strong>Resource Server (RS)</strong> — Banking REST API (same host as BFF in this deployment).</li>
+        <li><strong>Resource Server (RS)</strong> — Banking REST API (same host as Backend-for-Frontend (BFF) in this deployment).</li>
       </ul>
 
       <h3>Phased OAuth — resource indicator (RFC 8707)</h3>
@@ -319,24 +319,24 @@ export function CibaVsLoginContent() {
       </p>
 
       <h3>Authorization Code + PKCE (this app's login)</h3>
-      <pre className="edu-code">{`1. BFF generates code_verifier + code_challenge (S256)
+      <pre className="edu-code">{`1. Backend-for-Frontend (BFF) generates code_verifier + code_challenge (S256)
 2. Browser → GET /as/authorize?response_type=code&code_challenge=...
    ↳ PingOne shows login UI in the BROWSER
 3. User enters credentials, MFA if required
 4. PingOne → 302 to redirect_uri?code=ABC&state=XYZ
-5. BFF validates state, POST /as/token with code + code_verifier
-6. Tokens → BFF session; browser gets httpOnly cookie
+5. Backend-for-Frontend (BFF) validates state, POST /as/token with code + code_verifier
+6. Tokens → Backend-for-Frontend (BFF) session; browser gets httpOnly cookie
 7. Page loads at /admin or /dashboard`}</pre>
       <p><strong>Key property:</strong> the user <em>must</em> be at a browser to click through the redirect. The page navigates away and back — disruptive in agent/chat contexts.</p>
 
       <h3>CIBA (backchannel)</h3>
-      <pre className="edu-code">{`1. BFF → POST /as/bc-authorize (login_hint, binding_message)
+      <pre className="edu-code">{`1. Backend-for-Frontend (BFF) → POST /as/bc-authorize (login_hint, binding_message)
 2. PingOne → { auth_req_id, expires_in, interval }
    ↳ PingOne delivers approval OUT-OF-BAND (email or push per your DaVinci config)
-3. BFF polls POST /as/token every ~5s
+3. Backend-for-Frontend (BFF) polls POST /as/token every ~5s
    → authorization_pending until user acts
 4. User approves in email inbox OR on registered device
-5. Next poll returns tokens; BFF stores them server-side
+5. Next poll returns tokens; Backend-for-Frontend (BFF) stores them server-side
 6. Chat / agent / dashboard continues with no page load`}</pre>
       <p><strong>Key property:</strong> the user does <em>not</em> navigate away. No <code>redirect_uri</code> is needed for the approval step — user stays on the same page or chat the whole time.</p>
 
@@ -351,12 +351,12 @@ redirect_uri required    YES                        NO (for approval step)
 PingOne setup            Standard PKCE app          CIBA grant + DaVinci flow
 Session established      Immediately on callback    After poll succeeds
 binding_message          N/A                        Shown to user on approval
-Token location           BFF session (httpOnly)     BFF session (httpOnly)`}</pre>
+Token location           Backend-for-Frontend (BFF) session (httpOnly)     Backend-for-Frontend (BFF) session (httpOnly)`}</pre>
 
       <h3>Email vs push — who decides?</h3>
       <p>
         The delivery channel is controlled by your <strong>PingOne / DaVinci flow</strong>, not
-        by this app. The BFF sends <code>login_hint</code> and <code>binding_message</code>;
+        by this app. The Backend-for-Frontend (BFF) sends <code>login_hint</code> and <code>binding_message</code>;
         PingOne decides whether to send an email link or a push notification based on your
         DaVinci configuration and the user's registered authenticators.
       </p>
@@ -413,7 +413,7 @@ export function CibaMcpFlowContent() {
 
       <h3>Step-up auth for high-value transactions</h3>
       <p>
-        When a high-risk action requires re-authentication, the BFF triggers step-up by calling{' '}
+        When a high-risk action requires re-authentication, the Backend-for-Frontend (BFF) triggers step-up by calling{' '}
         <code>POST /api/auth/oauth/user/stepup</code> with <code>acr_values=<strong>STEP_UP_ACR_VALUE</strong></code>{' '}
         (env var, default <code>Multi_factor</code> — must match a PingOne Sign-On Policy name).
         CIBA makes this seamless — no page reload required.
@@ -438,23 +438,23 @@ export function CibaMcpFlowContent() {
       <h3>CIBA + token exchange together</h3>
       <pre className="edu-code">{`Agent needs to call Banking API:
 
-1. Agent → BFF: "create_transfer $500"
-2. BFF checks session tokens — insufficient scope or step-up needed
-3. BFF → POST /as/bc-authorize  (login_hint, binding_message="Approve $500 transfer")
-4. BFF polls /as/token every 5s
+1. Agent → Backend-for-Frontend (BFF): "create_transfer $500"
+2. Backend-for-Frontend (BFF) checks session tokens — insufficient scope or step-up needed
+3. Backend-for-Frontend (BFF) → POST /as/bc-authorize  (login_hint, binding_message="Approve $500 transfer")
+4. Backend-for-Frontend (BFF) polls /as/token every 5s
 5. User approves in email / push (out-of-band)
-6. BFF receives CIBA tokens (subject=user, scopes updated)
-7. BFF → POST /as/token  grant_type=token-exchange (RFC 8693)
+6. Backend-for-Frontend (BFF) receives CIBA tokens (subject=user, scopes updated)
+7. Backend-for-Frontend (BFF) → POST /as/token  grant_type=token-exchange (RFC 8693)
        subject_token=<CIBA access token>
        audience=<MCP resource>
        scope=banking:write
-8. BFF receives MCP token (MCP-audience)
-9. BFF → MCP server tools/call create_transfer with MCP token as Bearer (transaction scope → often called Transaction token for transfers)
+8. Backend-for-Frontend (BFF) receives MCP token (MCP-audience)
+9. Backend-for-Frontend (BFF) → MCP server tools/call create_transfer with MCP token as Bearer (transaction scope → often called Transaction token for transfers)
 10. MCP server → Banking API → confirms transfer
 11. Agent receives success; chat continues uninterrupted`}</pre>
 
       <h3>Sequence diagram: step-up with CIBA + MCP</h3>
-      <pre className="edu-code">{`Browser      BFF          PingOne       MCP Server    Banking API
+      <pre className="edu-code">{`Browser      Backend-for-Frontend (BFF)          PingOne       MCP Server    Banking API
    │            │               │              │              │
    │──POST tx──▶│               │              │              │
    │            │──bc-authorize▶│              │              │
@@ -488,7 +488,7 @@ export function TokenExchangeContent() {
       <p>
         This demo keeps OAuth tokens on the <strong>server</strong>. When the MCP layer needs an
         access token with the right <strong>audience</strong> for tools or delegation, the Banking
-        BFF calls PingOne's <code>POST …/as/token</code> with{' '}
+        Backend-for-Frontend (BFF) calls PingOne's <code>POST …/as/token</code> with{' '}
         <code>grant_type=token-exchange</code>. Below: what happens{' '}
         <em>before</em> and <em>after</em> that call, typical HTTP status codes, and
         success/error JSON shapes.
@@ -503,7 +503,7 @@ export function TokenExchangeContent() {
         PingOne's <code>POST …/as/token</code> endpoint (same host as your issuer).
       </p>
 
-      <h3>Before the exchange — inputs the BFF already has</h3>
+      <h3>Before the exchange — inputs the Backend-for-Frontend (BFF) already has</h3>
       <ul>
         <li>
           <strong>Session cookie</strong> — identifies the signed-in user (admin or customer).
@@ -514,13 +514,13 @@ export function TokenExchangeContent() {
         </li>
         <li>
           <strong>Optional "on behalf of" path</strong> — <code>USE_AGENT_ACTOR_FOR_MCP=true</code>{' '}
-          and MCP resource URI set → the BFF may use <code>subject_token</code> (user) +{' '}
+          and MCP resource URI set → the Backend-for-Frontend (BFF) may use <code>subject_token</code> (user) +{' '}
           <code>actor_token</code> (agent client-credentials token) so PingOne can mint a
           delegated token (JWT may include an <code>act</code> claim per your AS policy).
         </li>
       </ul>
 
-      <h3>The token request (BFF → PingOne, not visible in browser DevTools)</h3>
+      <h3>The token request (Backend-for-Frontend (BFF) → PingOne, not visible in browser DevTools)</h3>
       <pre className="edu-code">{`POST {issuer}/as/token
 Content-Type: application/x-www-form-urlencoded
 
@@ -536,7 +536,7 @@ actor_token=<token from agent client credentials>
 actor_token_type=urn:ietf:params:oauth:token-type:access_token
 # (PingOne policy must allow this exchange.)`}</pre>
 
-      <h3>After a successful exchange — what the BFF receives</h3>
+      <h3>After a successful exchange — what the Backend-for-Frontend (BFF) receives</h3>
       <pre className="edu-code">{`HTTP/1.1 200 OK
 Content-Type: application/json
 
@@ -548,7 +548,7 @@ Content-Type: application/json
   "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
 }`}</pre>
       <p>
-        The BFF then opens or reuses the WebSocket to <code>banking_mcp_server</code> and sends
+        The Backend-for-Frontend (BFF) then opens or reuses the WebSocket to <code>banking_mcp_server</code> and sends
         MCP messages that carry this token. Downstream Banking REST calls still use RS
         audience/scopes as configured.
       </p>
@@ -559,23 +559,23 @@ Content-Type: application/json
         <li><strong>400</strong> — invalid grant, wrong token type, audience not allowed, malformed request. Body often: <code>{`{"error":"invalid_grant","error_description":"…"}`}</code></li>
         <li><strong>401</strong> — client authentication failed (wrong <code>client_id</code>/secret or auth method).</li>
         <li><strong>403</strong> — policy or consent blocks the exchange.</li>
-        <li><strong>502/503</strong> — BFF could not reach PingOne (network/DNS).</li>
+        <li><strong>502/503</strong> — Backend-for-Frontend (BFF) could not reach PingOne (network/DNS).</li>
       </ul>
 
-      <h3>BFF API responses you may see in the browser</h3>
+      <h3>Backend-for-Frontend (BFF) API responses you may see in the browser</h3>
       <ul>
         <li><code>POST /api/mcp/tool</code> — 200 with MCP tool result JSON; 401 if no session or no usable token; 5xx if MCP server or PingOne is unreachable.</li>
         <li><code>GET /api/mcp/inspector/tools</code> — 200 with tools list; 401 if not authenticated.</li>
         <li><code>POST /api/mcp/inspector/invoke</code> — same pattern as tool calls.</li>
       </ul>
 
-      <h3>Error JSON shape (OAuth-style, from PingOne through BFF)</h3>
+      <h3>Error JSON shape (OAuth-style, from PingOne through Backend-for-Frontend (BFF))</h3>
       <pre className="edu-code">{`{ "error": "invalid_grant" | "invalid_client" | …, "error_description": "human-readable" }`}</pre>
 
       <h3>Mental model</h3>
       <ol>
         <li>User completes OAuth (authorization code) → session has subject token.</li>
-        <li>User invokes MCP tool → BFF may exchange subject token for MCP-audience token (RFC 8693).</li>
+        <li>User invokes MCP tool → Backend-for-Frontend (BFF) may exchange subject token for MCP-audience token (RFC 8693).</li>
         <li>Only after step 2 does the MCP layer see a Bearer suited to the tool/RS chain.</li>
       </ol>
       <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
@@ -638,7 +638,7 @@ export function LoginFlowPkceContent() {
       </p>
       <p>
         PKCE also makes <em>public clients</em> (apps that cannot store a client secret) safe to
-        use with the authorization code flow. Even for confidential clients (like this BFF), PKCE
+        use with the authorization code flow. Even for confidential clients (like this Backend-for-Frontend (BFF)), PKCE
         is required by OAuth 2.1.
       </p>
 
@@ -669,13 +669,13 @@ Attack scenario:
   HTTP/1.1 302 Found
   Location: https://auth.pingone.com/.../as/authorize?... (PingOne login UI)`}</pre>
 
-      <h3>Step 2 — Authorization callback (PingOne → BFF)</h3>
+      <h3>Step 2 — Authorization callback (PingOne → Backend-for-Frontend (BFF))</h3>
       <pre className="edu-code">{`GET /api/auth/oauth/callback
   ?code=<authorization-code>               ← short-lived, one-use
-  &state=<same-random-token-from-step-1>   ← BFF validates: must match session
+  &state=<same-random-token-from-step-1>   ← Backend-for-Frontend (BFF) validates: must match session
   &iss=https://auth.pingone.com/...        ← issuer identifier (RFC 9207)
 
-  BFF validation:
+  Backend-for-Frontend (BFF) validation:
     1. state matches → CSRF check passes
     2. code is present
     3. Proceed to token exchange`}</pre>
@@ -713,8 +713,8 @@ HTTP/1.1 400 Bad Request
 HTTP/1.1 400 Bad Request
 { "error": "invalid_grant", "error_description": "Authorization code already used" }
 
-── State mismatch (BFF-side check, never reaches PingOne) ──
-HTTP/1.1 400 Bad Request (from BFF)
+── State mismatch (Backend-for-Frontend (BFF)-side check, never reaches PingOne) ──
+HTTP/1.1 400 Bad Request (from Backend-for-Frontend (BFF))
 { "error": "invalid_state", "message": "OAuth state mismatch" }
 
 ── Client auth failure ──
@@ -731,14 +731,14 @@ HTTP/1.1 401 Unauthorized
 
       <h3>Why the tokens are stored server-side</h3>
       <p>
-        After step 3, the BFF stores <code>access_token</code> and <code>refresh_token</code>{' '}
+        After step 3, the Backend-for-Frontend (BFF) stores <code>access_token</code> and <code>refresh_token</code>{' '}
         in the <strong>server session</strong> and issues an <strong>httpOnly cookie</strong> to
         the browser. This means:
       </p>
       <ul>
         <li>XSS in the SPA cannot read the access token from JavaScript.</li>
         <li>The token is never in <code>localStorage</code>, <code>sessionStorage</code>, or any JS variable.</li>
-        <li>Subsequent API calls use the session cookie; the BFF attaches the Bearer token server-side.</li>
+        <li>Subsequent API calls use the session cookie; the Backend-for-Frontend (BFF) attaches the Bearer token server-side.</li>
       </ul>
     </>
   );
@@ -753,7 +753,7 @@ export function LoginFlowSecurityContent() {
     <>
       <h3>Why the User token never touches the browser</h3>
       <p>
-        Access tokens are stored in the BFF session (server memory / Redis / SQLite).
+        Access tokens are stored in the Backend-for-Frontend (BFF) session (server memory / Redis / SQLite).
         The browser only holds an <strong>httpOnly, Secure</strong> session cookie. httpOnly
         means JavaScript cannot read it — <code>document.cookie</code> does not include it.
         This defeats a large class of XSS-based token theft.
@@ -815,7 +815,7 @@ Authorization Code + PKCE (current best practice):
 
       <h3>Scope minimisation</h3>
       <p>
-        Request only the scopes needed for the current flow. The BFF requests{' '}
+        Request only the scopes needed for the current flow. The Backend-for-Frontend (BFF) requests{' '}
         <code>openid profile email</code> for login, and adds <code>banking:read</code> or{' '}
         <code>banking:write</code> only when the session requires it. Wider scopes increase
         blast radius if tokens are ever compromised.
@@ -825,8 +825,8 @@ Authorization Code + PKCE (current best practice):
       <pre className="edu-code">{`Access token:  typically 1h (expires_in=3600)
 Refresh token: 24h or longer (depends on PingOne policy)
 
-BFF refresh flow:
-  access_token expired → BFF calls POST /as/token
+Backend-for-Frontend (BFF) refresh flow:
+  access_token expired → Backend-for-Frontend (BFF) calls POST /as/token
     grant_type=refresh_token
     &refresh_token=<stored RT>
     &client_id=...
@@ -1057,7 +1057,7 @@ Best for                 MCP / proxy validation,    High-throughput RS,
       <p>
         The <code>banking_mcp_server</code> can call PingOne's introspection endpoint with the
         Bearer token presented on WebSocket connection. It checks <code>active</code>,{' '}
-        <code>aud</code>, <code>act</code> (delegation from BFF), and <code>scope</code> before
+        <code>aud</code>, <code>act</code> (delegation from Backend-for-Frontend (BFF)), and <code>scope</code> before
         allowing tool calls. The Banking REST API uses JWKS local validation for performance.
       </p>
     </>
@@ -1085,7 +1085,7 @@ export function AgentGatewayContent() {
        │ HTTPS (session cookie only — no OAuth tokens in JS)
        ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ Agent / BFF — security strip                                  │
+│ Agent / Backend-for-Frontend (BFF) — security strip                                  │
 │  OAuth 2.1 · RFC 8707 · RFC 9728 · RFC 8693 · RFC 7523       │
 │  ┌─────┐  ┌────────┐  ┌────────────────┐                     │
 │  │ LLM │  │ memory │  │ business logic │                     │
@@ -1205,7 +1205,7 @@ MCP spec reference:
 
       <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
         See the <strong>Full stack</strong> tab in the CIBA Guide for how this demo maps
-        these RFCs to PingOne, the Banking BFF, and <code>banking_mcp_server</code>.
+        these RFCs to PingOne, the Banking Backend-for-Frontend (BFF), and <code>banking_mcp_server</code>.
       </p>
     </>
   );

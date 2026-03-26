@@ -197,10 +197,8 @@ function restoreSessionFromCookie(req, _res, next) {
       req.session.user      = hydratedUser;
       req.session.oauthType = auth.oauthType;
       req.session._restoredFromCookie = true; // flag so routes can detect it
-      // Set a synthetic token stub so /status endpoints that check
-      // req.session.oauthTokens?.accessToken return authenticated:true.
-      // Routes that need the actual token will receive it from the real session
-      // (same Vercel instance) or will fail gracefully with a 401.
+      // Synthetic stub so generic session checks see a token-shaped object; OAuth /status
+      // endpoints treat _cookie_session as not authenticated. MCP/NL still need Redis session.
       req.session.oauthTokens = req.session.oauthTokens || {
         accessToken: '_cookie_session',
         tokenType:   'Bearer',

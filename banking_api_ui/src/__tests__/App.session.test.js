@@ -85,7 +85,7 @@ jest.mock('../services/demoScenarioService', () => {
   return {
     __esModule: true,
     fetchDemoScenario,
-    persistBankingAgentUiMode: jest.fn(() => Promise.resolve()),
+    persistBankingAgentUiMode: jest.fn(() => Promise.resolve(true)),
   };
 });
 jest.mock('react-toastify', () => ({

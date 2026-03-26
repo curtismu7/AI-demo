@@ -206,7 +206,7 @@ router.post('/transfer', authenticateToken, async (req, res) => {
 });
 ```
 
-### Session / BFF Pattern
+### Session / Backend-for-Frontend (BFF) Pattern
 
 Tokens stored **only** in `req.session` — never sent to the browser:
 

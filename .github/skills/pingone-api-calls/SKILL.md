@@ -12,7 +12,7 @@ argument-hint: 'Describe the PingOne API call you need to make (e.g. read user, 
 Browser / UI
     │  (cookies only, no tokens)
     ▼
-banking_api_server  ← BFF: holds all tokens server-side
+banking_api_server  ← Backend-for-Frontend (BFF): holds all tokens server-side
     │
     ├─ /api/auth/*        → PingOne AS  (auth.pingone.{region}/{envId}/as/*)
     ├─ /api/auth/ciba/*   → PingOne CIBA (bc-authorize, token polling)

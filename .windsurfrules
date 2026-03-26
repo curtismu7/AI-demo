@@ -6,7 +6,7 @@ Full-stack banking demo built on PingOne. Three packages:
 
 | Package | Language | Role |
 |---|---|---|
-| `banking_api_server` | JavaScript (CJS, Node 18+) | BFF — Express API server, holds all tokens server-side |
+| `banking_api_server` | JavaScript (CJS, Node 18+) | Backend-for-Frontend (BFF) — Express API server, holds all tokens server-side |
 | `banking_api_ui` | JavaScript + JSX (React 18, CRA) | SPA — session cookies only, never raw tokens |
 | `banking_mcp_server` | TypeScript (strict, Node 18+) | MCP WebSocket server — NOT on Vercel |
 
@@ -16,7 +16,7 @@ Deployed on Vercel (api + UI). MCP server deployed separately on Railway/Render/
 
 ## 1. PingOne OAuth 2.0 / OIDC
 
-### Pattern: Always BFF (Backend For Frontend)
+### Pattern: Always Backend-for-Frontend (BFF)
 
 The `banking_api_server` is the confidential OAuth client. It holds tokens in `req.session.oauthTokens`. The React SPA never sees raw tokens.
 
@@ -445,7 +445,7 @@ const router = express.Router();
 // Never: import/export — CommonJS only (require/module.exports)
 ```
 
-Session / BFF:
+Session / Backend-for-Frontend (BFF):
 ```javascript
 req.session.oauthTokens = tokens;  // ✅ tokens in session
 res.json({ access_token: ... });   // ❌ never expose tokens

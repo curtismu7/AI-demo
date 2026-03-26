@@ -218,10 +218,16 @@ function DisplayPreferences() {
 function AgentLayoutPreferences() {
   const { mode, setMode } = useAgentUiMode();
 
-  function handleModeChange(next) {
+  async function handleModeChange(next) {
     if (next === mode) return;
     setMode(next);
-    void persistBankingAgentUiMode(next);
+    const saved = await persistBankingAgentUiMode(next);
+    if (!saved) {
+      toast.warn(
+        'Agent layout could not be saved on the server yet. It stays on this browser; refresh may revert if the server still has the old value.',
+        { autoClose: 4500 }
+      );
+    }
     toast.info('Applying agent layout…', { autoClose: 1200 });
     window.setTimeout(() => {
       // Embedded dock only mounts on dashboard home routes; staying on /config after

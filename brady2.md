@@ -8,12 +8,12 @@
 
 **Overall Alignment: 72%**
 
-This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 7636 (PKCE), RFC 8693 (token exchange including actor delegation), RFC 7662 (introspection), and RFC 7591 (dynamic client registration) all meaningfully implemented. The BFF pattern is hardened for serverless with HMAC-signed state cookies. The primary gaps are RFC 7009 token revocation (structurally absent), automatic token refresh (stored but not wired), distributed tracing (non-existent), and an MCP security gateway that exists only as a diagram. The implementation is architecturally sound for a demo but has three production-blocking gaps: no revocation, no refresh automation, and no actual MCP security gateway between BFF and MCP server.
+This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 7636 (PKCE), RFC 8693 (token exchange including actor delegation), RFC 7662 (introspection), and RFC 7591 (dynamic client registration) all meaningfully implemented. The Backend-for-Frontend (BFF) pattern is hardened for serverless with HMAC-signed state cookies. The primary gaps are RFC 7009 token revocation (structurally absent), automatic token refresh (stored but not wired), distributed tracing (non-existent), and an MCP security gateway that exists only as a diagram. The implementation is architecturally sound for a demo but has three production-blocking gaps: no revocation, no refresh automation, and no actual MCP security gateway between Backend-for-Frontend (BFF) and MCP server.
 
 **Top Strengths:**
 - RFC 7636 PKCE S256 fully implemented and hardened for Vercel serverless with fallback cookie
 - RFC 8693 token exchange implemented with both subject-only and actor (on-behalf-of) variants, including `act`/`may_act` claim parsing
-- BFF pattern is correctly realized — tokens never reach the browser; session-restore cookie prevents cross-instance identity loss
+- Backend-for-Frontend (BFF) pattern is correctly realized — tokens never reach the browser; session-restore cookie prevents cross-instance identity loss
 
 **Top Risks:**
 - No RFC 7009 revocation — logging out leaves access tokens valid at PingOne until natural expiry
@@ -56,13 +56,13 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 - Standards: RFC 8693 §4.1
 
 #### `act` / `may_act` Claim Parsing and Display
-- BFF: `sanitizeClaims()` explicitly extracts both `may_act` and `act` from decoded tokens. `describeMayAct()` validates `may_act.client_id` matches BFF client. Token events exposed to frontend for educational display.
+- Backend-for-Frontend (BFF): `sanitizeClaims()` explicitly extracts both `may_act` and `act` from decoded tokens. `describeMayAct()` validates `may_act.client_id` matches Backend-for-Frontend (BFF) client. Token events exposed to frontend for educational display.
 - MCP server: `TokenIntrospector.ts` logs actor/subject pair when `act` claim present.
 - Evidence: `services/agentMcpTokenService.js` lines 45–130, `banking_mcp_server/src/auth/TokenIntrospector.ts` lines 100–120
 - Standards: RFC 8693 §4.1, §4.2
 
 #### Token Introspection (RFC 7662)
-- BFF calls PingOne introspection endpoint (derived from token endpoint URL) with `token`, `client_id`, `client_secret`. Retry logic with exponential backoff (3 attempts). Circuit breaker pattern returns 503 when provider is down. Active check (`active: true`) and expiry check performed.
+- Backend-for-Frontend (BFF) calls PingOne introspection endpoint (derived from token endpoint URL) with `token`, `client_id`, `client_secret`. Retry logic with exponential backoff (3 attempts). Circuit breaker pattern returns 503 when provider is down. Active check (`active: true`) and expiry check performed.
 - MCP server independently introspects tokens, checks audience against `MCP_SERVER_RESOURCE_URI`.
 - Evidence: `middleware/oauthErrorHandler.js` lines 327–400, `banking_mcp_server/src/auth/TokenIntrospector.ts` lines 28–130
 - Standards: RFC 7662 §2
@@ -77,7 +77,7 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 - Evidence: `banking_api_server/routes/ciba.js`
 - Standards: OIDC CIBA 1.0
 
-#### BFF Pattern / Session Management
+#### Backend-for-Frontend (BFF) Pattern / Session Management
 - Tokens stored exclusively server-side. HMAC-signed `_auth` cookie restores user identity across Vercel serverless instances. Session regenerated after OAuth callback (prevents fixation). Optional Redis/Upstash persistent store.
 - Evidence: `services/authStateCookie.js`, `server.js` lines 170–215
 
@@ -86,7 +86,7 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 - Evidence: `middleware/activityLogger.js`, `middleware/oauthErrorHandler.js` lines 521–560
 
 #### MCP Protocol Integration (WebSocket JSON-RPC)
-- BFF connects to MCP server via WebSocket. Tool proxy at `/api/mcp/tool` accepts tool name + params, exchanges token if configured, forwards to MCP server. Protocol version `2024-11-05`.
+- Backend-for-Frontend (BFF) connects to MCP server via WebSocket. Tool proxy at `/api/mcp/tool` accepts tool name + params, exchanges token if configured, forwards to MCP server. Protocol version `2024-11-05`.
 - Evidence: `routes/mcpInspector.js`, `services/mcpWebSocketClient.js`
 
 ---
@@ -102,7 +102,7 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 
 #### Correlation ID / Request Tracing
 - **What exists:** `generateRequestId()` in `oauthErrorHandler.js` creates random IDs included in error responses.
-- **What is missing:** No `X-Request-ID` or `X-Correlation-ID` header injected at ingress; IDs not propagated to MCP server, Banking API, or PingOne calls; no structured logging field linking BFF → MCP → Banking API request chains.
+- **What is missing:** No `X-Request-ID` or `X-Correlation-ID` header injected at ingress; IDs not propagated to MCP server, Banking API, or PingOne calls; no structured logging field linking Backend-for-Frontend (BFF) → MCP → Banking API request chains.
 - **Why partial:** IDs exist in isolation — they cannot be used to trace a user action end-to-end across systems.
 - **Evidence:** `middleware/oauthErrorHandler.js` lines 81–85
 - **Risk:** Debugging production incidents requires manual log correlation.
@@ -135,14 +135,14 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 - **Recommended implementation:** Add a `refreshIfNeeded()` middleware that runs before `/api/mcp/*` routes, compares `oauthTokens.expiresAt` against `Date.now() + 5min`, and calls the refresh grant. Set `NO_REFRESH_TOKEN` flag if PingOne client is public-only.
 
 #### MCP Security Gateway
-- **Why missing:** `mcp-security-gateway.mmd` is a Mermaid diagram sketch of a theoretical APIM proxy. No actual gateway, API Management instance, or reverse proxy sits between the BFF and MCP server. The MCP WebSocket connection is direct, not gated.
-- **Impact:** No centralized rate limiting, request logging, or policy enforcement layer between BFF and MCP server. If MCP server URL is known, direct calls bypass BFF token exchange entirely (depends on MCP server's own introspection enforcement).
-- **Recommended implementation:** Deploy APIM, Envoy, or a lightweight Express proxy between BFF and MCP server that validates the Bearer token before forwarding. Alternatively document explicitly that MCP server introspection IS the enforcement layer.
+- **Why missing:** `mcp-security-gateway.mmd` is a Mermaid diagram sketch of a theoretical APIM proxy. No actual gateway, API Management instance, or reverse proxy sits between the Backend-for-Frontend (BFF) and MCP server. The MCP WebSocket connection is direct, not gated.
+- **Impact:** No centralized rate limiting, request logging, or policy enforcement layer between Backend-for-Frontend (BFF) and MCP server. If MCP server URL is known, direct calls bypass Backend-for-Frontend (BFF) token exchange entirely (depends on MCP server's own introspection enforcement).
+- **Recommended implementation:** Deploy APIM, Envoy, or a lightweight Express proxy between Backend-for-Frontend (BFF) and MCP server that validates the Bearer token before forwarding. Alternatively document explicitly that MCP server introspection IS the enforcement layer.
 
 #### Distributed Tracing / OpenTelemetry
 - **Why missing:** No trace context propagation exists. Activity logger writes to a local store; MCP server logs separately. No OpenTelemetry SDK, no W3C `traceparent` header injection.
-- **Impact:** Cannot reconstruct any user action sequence across BFF → MCP → Banking API from logs alone. Critical for incident response in production.
-- **Recommended implementation:** Add `@opentelemetry/sdk-node` to the BFF, instrument Express middleware, propagate `traceparent` header to MCP server and all downstream PingOne calls.
+- **Impact:** Cannot reconstruct any user action sequence across Backend-for-Frontend (BFF) → MCP → Banking API from logs alone. Critical for incident response in production.
+- **Recommended implementation:** Add `@opentelemetry/sdk-node` to the Backend-for-Frontend (BFF), instrument Express middleware, propagate `traceparent` header to MCP server and all downstream PingOne calls.
 
 ---
 
@@ -178,7 +178,7 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 ## Operational Assessment
 
 **Reliability Gaps:**
-- No health monitoring on the MCP WebSocket connection — if the connection drops, BFF silently returns errors
+- No health monitoring on the MCP WebSocket connection — if the connection drops, Backend-for-Frontend (BFF) silently returns errors
 - Vercel in-memory session fallback (no Redis) means concurrent requests from the same user may land on different cold-start instances and get inconsistent session state despite the `_auth` cookie fallback
 
 **Refresh / Revocation Gaps:**
@@ -199,23 +199,23 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 ## Audit and Observability Assessment
 
 **Delegation-Chain Traceability:**
-- The BFF captures T1 `may_act` claim and T2 `act` claim in token event objects that are sent to the frontend for display. This is educational but not a persistent audit trail — it lives in the UI event stream, not in a durable log store.
+- The Backend-for-Frontend (BFF) captures T1 `may_act` claim and T2 `act` claim in token event objects that are sent to the frontend for display. This is educational but not a persistent audit trail — it lives in the UI event stream, not in a durable log store.
 - The MCP `TokenIntrospector.ts` logs `actor: ${actorClientId}, subject: ${tokenInfo.sub}` — present in MCP server stdout but not in a structured, queryable store.
 
 **`act` Claim Visibility:**
 - Present in token events exposed to the UI via `agentMcpTokenService.js`. Frontend displays act claim details in the BankingAgent panel. This is demo-grade visibility only.
 
 **Correlation IDs:**
-- Generated per error response but not injected as request context at ingress. Cannot correlate a UI action (e.g., "transfer $500") to a specific BFF log entry, token exchange call, and MCP tool invocation.
+- Generated per error response but not injected as request context at ingress. Cannot correlate a UI action (e.g., "transfer $500") to a specific Backend-for-Frontend (BFF) log entry, token exchange call, and MCP tool invocation.
 
 **Structured Audit Logging:**
-- `activityLogger.js` produces structured records with user ID, action type, status, timing. This is genuinely good for a BFF audit log.
+- `activityLogger.js` produces structured records with user ID, action type, status, timing. This is genuinely good for a Backend-for-Frontend (BFF) audit log.
 - Missing: structured log entries for token exchange (RFC 8693 grant) with T1 `jti`, T2 `jti`, actor client, subject user, scopes granted/narrowed.
 
 **Missing Evidence Trails:**
 - No persistent record of which agent (by DCR client ID) performed a banking tool call on behalf of which user
 - No immutable audit event model — logs are console/SQLite, overwritable
-- No log correlation between BFF `activityLogger` and MCP server `TokenIntrospector` for the same user action
+- No log correlation between Backend-for-Frontend (BFF) `activityLogger` and MCP server `TokenIntrospector` for the same user action
 
 ---
 
@@ -250,13 +250,13 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 - **Implementation:** Add `refreshIfNeeded` async middleware applied to `/api/mcp/*` and `/api/banking/*`. Checks `req.session.oauthTokens.expiresAt - Date.now() < 300000`. If true, calls PingOne token endpoint with `grant_type: refresh_token`. Stores new tokens. 40–60 lines.
 
 #### 3. `may_act` Enforcement Gate at MCP Server
-- **Why it matters:** The entire delegation story is undermined if the claim is display-only. The MCP server should reject tokens where `may_act.client_id` does not match the known BFF client ID.
+- **Why it matters:** The entire delegation story is undermined if the claim is display-only. The MCP server should reject tokens where `may_act.client_id` does not match the known Backend-for-Frontend (BFF) client ID.
 - **Expected impact:** Correct security semantics for the demo — shows that `may_act` is an authorization, not just metadata.
 - **Implementation:** In `TokenIntrospector.ts`, add check: if `requireMayAct` config is true and `tokenInfo.may_act?.client_id !== KNOWN_BFF_CLIENT_ID`, throw `403 Forbidden`. Environment variable to toggle for backward compat.
 
 #### 4. Correlation ID Propagation
-- **Why it matters:** Unable to trace any user action across BFF, MCP, and Banking API. Demo debugging is painful; production would be untenable.
-- **Expected impact:** Full request chain traceable from browser → BFF → token exchange → MCP tool call.
+- **Why it matters:** Unable to trace any user action across Backend-for-Frontend (BFF), MCP, and Banking API. Demo debugging is painful; production would be untenable.
+- **Expected impact:** Full request chain traceable from browser → Backend-for-Frontend (BFF) → token exchange → MCP tool call.
 - **Implementation:** Add Express middleware that reads or generates `X-Request-ID`, stores in `req.requestId`, injects as header in all outgoing axios/fetch calls. Inject into MCP WebSocket tool call payload as `correlationId`.
 
 ---
@@ -307,7 +307,7 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 | RFC 7591 | Dynamic Client Reg | ✅ Yes (Agent) | `langchain_agent/oauth_manager.py` #L40 |
 | RFC 7009 | Token Revocation | ❌ No | Logout only clears session |
 | RFC 6749 §6 | Token Refresh | ⚠️ Partial | Tokens stored, no auto-refresh |
-| BFF Pattern | Session / Token Isolation | ✅ Yes | `services/authStateCookie.js` |
+| Backend-for-Frontend (BFF) Pattern | Session / Token Isolation | ✅ Yes | `services/authStateCookie.js` |
 | MCP 2024-11-05 | MCP Protocol | ✅ Yes | `routes/mcpInspector.js` |
 | W3C TraceContext | Distributed Tracing | ❌ No | Not implemented |
 
@@ -315,7 +315,7 @@ This implementation demonstrates strong OAuth 2.0/OIDC fundamentals with RFC 763
 
 ## Final Conclusion
 
-The implementation is **architecturally sound for its stated purpose** — a banking demo showcasing OAuth 2.0, token exchange, CIBA, and MCP agent patterns with PingOne. The core flows — Authorization Code + PKCE, token exchange with actor delegation, CIBA step-up, BFF pattern with session hardening — are correctly implemented and standards-aligned. The PKCE serverless resilience work is notably well-engineered.
+The implementation is **architecturally sound for its stated purpose** — a banking demo showcasing OAuth 2.0, token exchange, CIBA, and MCP agent patterns with PingOne. The core flows — Authorization Code + PKCE, token exchange with actor delegation, CIBA step-up, Backend-for-Frontend (BFF) pattern with session hardening — are correctly implemented and standards-aligned. The PKCE serverless resilience work is notably well-engineered.
 
 **It is not production-ready** for the following reasons: token revocation on logout is absent (RFC 7009), refresh automation does not exist (sessions expire silently), the MCP security gateway is a diagram rather than deployed infrastructure, and there is no distributed trace context making incident response difficult.
 

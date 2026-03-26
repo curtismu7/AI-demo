@@ -1,7 +1,7 @@
 // banking_api_ui/src/utils/agentToolSteps.js
 /**
- * Maps a BankingAgent action to a short list of logical tool steps (for UI chips).
- * Mirrors backend behavior (reads, balance updates, ledger rows) without extra round-trips.
+ * One UI chip per real Backend-for-Frontend (BFF) → MCP tool call.
+ * (Previously showed multiple fictional ledger steps; one 401 then marked every chip Failed and looked like many broken tools.)
  */
 
 /**
@@ -12,21 +12,17 @@ export function getToolStepsForAction(actionId) {
   const row = (name) => ({ name });
   switch (actionId) {
     case 'accounts':
-      return [row('read_bankaccount')];
+      return [row('get_my_accounts')];
     case 'transactions':
-      return [row('read_banktransaction')];
+      return [row('get_my_transactions')];
     case 'balance':
-      return [row('read_bankaccount')];
+      return [row('get_account_balance')];
     case 'deposit':
+      return [row('create_deposit')];
     case 'withdraw':
-      return [row('read_bankaccount'), row('update_bankaccount'), row('create_banktransaction')];
+      return [row('create_withdrawal')];
     case 'transfer':
-      return [
-        row('update_bankaccount'),
-        row('create_banktransaction'),
-        row('update_bankaccount'),
-        row('create_banktransaction'),
-      ];
+      return [row('create_transfer')];
     case 'mcp_tools':
       return [];
     default:

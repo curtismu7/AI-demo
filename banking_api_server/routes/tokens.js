@@ -154,6 +154,20 @@ router.get('/chain', async (req, res) => {
 });
 
 /**
+ * Token Chain dashboard preview: User Token from session + waiting/skipped rows (no exchange call).
+ * GET /api/tokens/session-preview
+ */
+router.get('/session-preview', (req, res) => {
+  try {
+    const { tokenEvents } = agentMcpTokenService.buildSessionPreviewTokenEvents(req);
+    res.json({ tokenEvents });
+  } catch (error) {
+    console.error('Token session-preview error:', error);
+    res.status(500).json({ error: 'Failed to load session token preview' });
+  }
+});
+
+/**
  * Parse token content for display
  * @param {string} token - JWT token or other token string
  * @returns {Promise<Object>} Parsed token content

@@ -9,7 +9,7 @@ This is a **completely standalone** project — it can be handed to anyone and r
 | Component | Port | Description |
 |---|---|---|
 | `banking_api_ui` | 3000 | React frontend (admin + end-user dashboards) |
-| `banking_api_server` | 3001 | Express REST API — **BFF (Backend for Frontend)** with PingOne OAuth; tokens stay server-side |
+| `banking_api_server` | 3001 | Express REST API — **Backend-for-Frontend (BFF)** with PingOne OAuth; tokens stay server-side |
 | `banking_mcp_server` | 8080 | MCP tool server for the AI agent |
 | `langchain_agent` | 8000 | LangChain + OpenAI AI banking agent |
 
@@ -101,7 +101,7 @@ or Vercel KV in production — **no `.env` file required**.
 
 ## Token Exchange Flow (RFC 8693)
 
-The **BFF (Backend for Frontend)** — the `banking_api_server` — performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
+The **Backend-for-Frontend (BFF)** — the `banking_api_server` — performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
 
 ```
 1. Retrieve user's access token (T1) from server-side session
@@ -112,7 +112,7 @@ The **BFF (Backend for Frontend)** — the `banking_api_server` — performs RFC
      audience = <MCP_RESOURCE_URI>          ← binds audience to MCP server
      scope = <tool-specific scopes>         ← e.g. banking:accounts:read
 3. PingOne validates may_act claim on T1, issues T2 (MCP-audience token)
-4. BFF (Backend for Frontend) opens WebSocket to banking_mcp_server with T2 as Bearer
+4. Backend-for-Frontend (BFF) opens WebSocket to banking_mcp_server with T2 as Bearer
 ```
 
 Optional delegation path (`USE_AGENT_ACTOR_FOR_MCP=true`):
@@ -130,7 +130,7 @@ The exchange is **dormant until configured** — if `MCP_RESOURCE_URI` is not se
 | `USE_AGENT_ACTOR_FOR_MCP` | `true` to add `actor_token` (adds `act` claim to T2) |
 | `AGENT_OAUTH_CLIENT_ID` | Agent OAuth client ID (required when actor path is on) |
 
-Required in PingOne: enable the token-exchange grant type on the BFF client and configure a `may_act` / actor policy so PingOne will accept the exchange.
+Required in PingOne: enable the token-exchange grant type on the Backend-for-Frontend (BFF) client and configure a `may_act` / actor policy so PingOne will accept the exchange.
 
 ## PingOne Configuration Required
 
@@ -142,10 +142,10 @@ In your PingOne environment (`b9817c16-9910-4415-b67e-4ac687da74d9`), you need:
 2. **Web Application** (auth_code + PKCE) — for user login
    - Already configured: `a4f963ea-0736-456a-be72-b1fa4f63f81f`
 
-3. **Token Exchange** policy on the BFF client — allows the BFF to exchange user tokens for MCP-audience tokens
-   - In PingOne: Applications → your BFF app → Grant Types → enable **Token Exchange**
+3. **Token Exchange** policy on the Backend-for-Frontend (BFF) client — allows the Backend-for-Frontend (BFF) to exchange user tokens for MCP-audience tokens
+   - In PingOne: Applications → your Backend-for-Frontend (BFF) app → Grant Types → enable **Token Exchange**
    - Add a Token Exchange policy: subject token issuer = this PingOne environment; allowed audience = value of `MCP_RESOURCE_URI`
-   - Add a `may_act` claim to tokens issued to end-users (Attribute Mappings) so the BFF's client_id appears in `may_act.client_id`
+   - Add a `may_act` claim to tokens issued to end-users (Attribute Mappings) so the Backend-for-Frontend (BFF)'s client_id appears in `may_act.client_id`
 
 ## MCP Security Gateway — Potential Architecture
 

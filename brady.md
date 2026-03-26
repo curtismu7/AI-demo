@@ -14,7 +14,7 @@ Assess alignment across these areas:
 4. Token acquisition and token exchange
 5. MCP gateway integration
 6. LLM tool-calling flow
-7. Session management / BFF behavior
+7. Session management / Backend-for-Frontend (BFF) behavior
 8. Token introspection and validation
 9. Delegation claims such as `act` and `may_act`
 10. Token lifecycle management, including refresh and revocation
@@ -165,7 +165,7 @@ Explicitly assess:
 - token introspection
 - MCP gateway flows
 - LLM tool calling
-- BFF/session handling
+- Backend-for-Frontend (BFF)/session handling
 - `act` / `may_act` delegation claims
 - token refresh
 - token revocation
@@ -202,13 +202,13 @@ For every finding include:
 
 **Overall Alignment: 78%**
 
-The implementation demonstrates solid OAuth 2.0/OIDC fundamentals with RFC-compliant auth code + PKCE flows, functional token exchange (RFC 8693), and a working MCP gateway. The BFF pattern is correctly implemented with session-based token management. However, critical operational gaps exist: token revocation is absent, refresh logic is incomplete, and `act`/`may_act` delegation claims depend entirely on unverified PingOne policy configuration. Audit logging lacks delegation-chain extraction, and the UX does not distinguish deterministic from non-deterministic agent flows.
+The implementation demonstrates solid OAuth 2.0/OIDC fundamentals with RFC-compliant auth code + PKCE flows, functional token exchange (RFC 8693), and a working MCP gateway. The Backend-for-Frontend (BFF) pattern is correctly implemented with session-based token management. However, critical operational gaps exist: token revocation is absent, refresh logic is incomplete, and `act`/`may_act` delegation claims depend entirely on unverified PingOne policy configuration. Audit logging lacks delegation-chain extraction, and the UX does not distinguish deterministic from non-deterministic agent flows.
 
 **Top Strengths:**
 - OAuth 2.0 auth code + PKCE (RFC 7636) fully implemented with proper state/nonce handling
 - RFC 8693 token exchange correctly structured with audience and scope downscoping
 - MCP protocol (2024-11-05) gateway with JSON-RPC 2.0 over WebSocket
-- BFF session pattern prevents token exposure to browser
+- Backend-for-Frontend (BFF) session pattern prevents token exposure to browser
 
 **Top Risks:**
 - No token revocation on logout (RFC 7009) — tokens remain valid until expiry
@@ -232,7 +232,7 @@ The implementation demonstrates solid OAuth 2.0/OIDC fundamentals with RFC-compl
 
 **Standards:** RFC 6749 (OAuth 2.0), RFC 7636 (PKCE), OIDC Core 1.0
 
-#### 2. BFF Session Pattern
+#### 2. Backend-for-Frontend (BFF) Session Pattern
 **Why it qualifies:** Tokens stored server-side in session; browser receives only session cookie. No tokens in localStorage or JavaScript scope.
 
 **Evidence:**
@@ -241,7 +241,7 @@ The implementation demonstrates solid OAuth 2.0/OIDC fundamentals with RFC-compl
 - No client-side token storage in React app
 - Session-based authentication middleware in all API routes
 
-**Standards:** BFF pattern (IETF draft), OWASP session management
+**Standards:** Backend-for-Frontend (BFF) pattern (IETF draft), OWASP session management
 
 #### 3. JWKS-based Token Validation
 **Why it qualifies:** Tokens validated using PingOne's public JWKS endpoint with signature verification.
@@ -281,14 +281,14 @@ The implementation demonstrates solid OAuth 2.0/OIDC fundamentals with RFC-compl
 
 **What is missing:** No verification that PingOne actually issues `act` or `may_act` claims in the exchanged token. Code assumes delegation claims but does not validate their presence.
 
-**Why partial:** The BFF sends RFC 8693-compliant requests, but there is no evidence (config files, PingOne policy screenshots, token inspection logs) that the response includes delegation claims. The code path for consuming `act` claims exists but may never execute.
+**Why partial:** The Backend-for-Frontend (BFF) sends RFC 8693-compliant requests, but there is no evidence (config files, PingOne policy screenshots, token inspection logs) that the response includes delegation claims. The code path for consuming `act` claims exists but may never execute.
 
 **Evidence:**
 - `banking_api_server/services/agentMcpTokenService.js` lines 45-80: Token exchange call with correct parameters
 - Environment variable: `MCP_SERVER_RESOURCE_URI` (optional, controls whether exchange happens)
 - **Missing:** No logged examples of tokens with `act` claim; no PingOne policy configuration documented
 
-**Risk/Impact:** Medium. If PingOne does not issue `act` claims, the delegation chain is invisible. Audit trails will not show "BFF acting on behalf of user." The architecture assumes delegation but cannot prove it.
+**Risk/Impact:** Medium. If PingOne does not issue `act` claims, the delegation chain is invisible. Audit trails will not show "Backend-for-Frontend (BFF) acting on behalf of user." The architecture assumes delegation but cannot prove it.
 
 **Standards:** RFC 8693 (partial compliance — request format correct, response claim structure unverified)
 
@@ -381,7 +381,7 @@ Add error handling and log revocation status.
 **Recommended path:**
 - Extract `act` claim from tokens in middleware
 - Log structured events: `{ user: sub, actor: act.client_id, action, resource, timestamp }`
-- Add correlation IDs across BFF → MCP → Banking API
+- Add correlation IDs across Backend-for-Frontend (BFF) → MCP → Banking API
 - Centralize logs in audit database or SIEM
 
 **Evidence:** `banking_api_server/middleware/logging.js`: Generic request logging, no `act` claim extraction.
@@ -389,10 +389,10 @@ Add error handling and log revocation status.
 #### 4. Correlation IDs
 **Why missing:** No request correlation IDs propagated across services.
 
-**Impact:** Medium operational risk. Cannot trace a single user request through BFF → MCP → Banking API in logs.
+**Impact:** Medium operational risk. Cannot trace a single user request through Backend-for-Frontend (BFF) → MCP → Banking API in logs.
 
 **Recommended path:**
-- Generate correlation ID in BFF on request entry
+- Generate correlation ID in Backend-for-Frontend (BFF) on request entry
 - Propagate via `X-Correlation-ID` header
 - Log correlation ID in all services
 - Include in error responses for debugging
@@ -418,7 +418,7 @@ Add error handling and log revocation status.
 - State and nonce parameters prevent CSRF and replay attacks
 - Session regeneration after login prevents session fixation
 - JWKS-based signature validation ensures token authenticity
-- BFF pattern prevents XSS token theft
+- Backend-for-Frontend (BFF) pattern prevents XSS token theft
 
 **Authorization/Delegation Gaps:**
 - **Critical:** `act`/`may_act` claims assumed but not verified. Delegation chain may not exist in practice.
@@ -478,7 +478,7 @@ Add error handling and log revocation status.
 
 **Correlation IDs:**
 - **Missing:** No correlation ID generation or propagation.
-- **Impact:** Cannot trace requests across BFF → MCP → Banking API.
+- **Impact:** Cannot trace requests across Backend-for-Frontend (BFF) → MCP → Banking API.
 - **Workaround:** Timestamps and user IDs can partially correlate, but not reliably.
 
 **Structured Audit Logging:**
@@ -542,7 +542,7 @@ Add error handling and log revocation status.
 **Expected impact:** Enables end-to-end request tracing. Improves incident response time.
 
 **Implementation notes:**
-- Generate UUID in BFF on request entry
+- Generate UUID in Backend-for-Frontend (BFF) on request entry
 - Propagate via `X-Correlation-ID` header to MCP and Banking API
 - Log correlation ID in all services
 - Include in error responses
@@ -627,7 +627,7 @@ Add error handling and log revocation status.
 
 ## Final Conclusion
 
-**Architecturally sound:** Yes. The core OAuth 2.0 + OIDC implementation is RFC-compliant, the BFF pattern is correctly applied, token exchange is structurally correct, and the MCP gateway follows protocol specifications. The foundation is solid.
+**Architecturally sound:** Yes. The core OAuth 2.0 + OIDC implementation is RFC-compliant, the Backend-for-Frontend (BFF) pattern is correctly applied, token exchange is structurally correct, and the MCP gateway follows protocol specifications. The foundation is solid.
 
 **Production-ready for core flows:** Partially. The authentication and authorization flows work correctly for the happy path. However, critical operational gaps (no revocation, no refresh) and unverified delegation claims make this not fully production-ready. It is suitable for demo or pilot but requires hardening for production.
 

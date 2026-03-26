@@ -72,10 +72,19 @@ function _resolveRedisUrl() {
 }
 
 let sessionStore;
+/** node-redis client when Redis session store is configured (exposed for /api/auth/debug only). */
+let sessionRedisClient = null;
+let sessionRedisInitError = null;
+let sessionRedisConnectError = null;
 const _redisUrl = _resolveRedisUrl();
 if (_redisUrl) {
   try {
-    const RedisStore = require('connect-redis').default || require('connect-redis');
+    // connect-redis v8+ exports { RedisStore } — .default is often undefined in CJS.
+    const connectRedisPkg = require('connect-redis');
+    const RedisStore =
+      connectRedisPkg.RedisStore ||
+      connectRedisPkg.default ||
+      connectRedisPkg;
     const { createClient } = require('redis');
     const redisClient = createClient({
       url: _redisUrl,
@@ -83,7 +92,8 @@ if (_redisUrl) {
       // In a Vercel serverless environment each request is a fresh invocation;
       // disable reconnect strategy so a stale socket doesn't log noisy errors.
       socket: {
-        connectTimeout: 5000,
+        // Upstash from cold serverless can exceed 5s; avoid false timeouts after RedisStore fix.
+        connectTimeout: 15000,
         reconnectStrategy: (retries) => {
           if (retries < 2) return Math.min(retries * 200, 500);
           // Give up after 2 attempts — serverless instances are short-lived.
@@ -91,10 +101,15 @@ if (_redisUrl) {
         },
       },
     });
-    redisClient.connect().catch((err) => console.error('[session-store] Redis connect error:', err.message));
+    sessionRedisClient = redisClient;
+    redisClient.connect().catch((err) => {
+      sessionRedisConnectError = err.message || String(err);
+      console.error('[session-store] Redis connect error:', err.message);
+    });
     redisClient.on('error', (err) => {
       // Only log the first error per instance; subsequent socket-closed events are redundant
       if (!redisClient._loggedError) {
+        sessionRedisConnectError = err.message || String(err);
         console.error('[session-store] Redis error:', err.message);
         redisClient._loggedError = true;
       }
@@ -102,6 +117,8 @@ if (_redisUrl) {
     sessionStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
     console.log(`[session-store] Using Redis store (from ${sessionRedisEnvHint})`);
   } catch (err) {
+    sessionRedisInitError = err.message || String(err);
+    sessionRedisClient = null;
     console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
   }
 }
@@ -409,6 +426,16 @@ app.get('/api/auth/debug', (req, res) => {
     sessionCookieName: cookieNames.includes('connect.sid') ? 'connect.sid present' : 'connect.sid MISSING',
     /** redis = connect-redis configured; memory = serverless will cookie-restore without tokens */
     bffSessionStore: sessionStore ? 'redis' : 'memory',
+    /** True if REDIS_URL or REST-derived URL was present at startup (even if Redis store init failed). */
+    sessionRedisUrlConfigured: Boolean(_redisUrl),
+    /** node-redis client socket open (null = no client created). */
+    sessionRedisClientOpen: sessionRedisClient ? !!sessionRedisClient.isOpen : null,
+    /** Client accepted commands (null = no client). */
+    sessionRedisClientReady: sessionRedisClient ? !!sessionRedisClient.isReady : null,
+    /** Sync failure creating Redis client / RedisStore (null if none). */
+    sessionRedisInitError: sessionRedisInitError || null,
+    /** Last async connect/socket error observed (null if none). */
+    sessionRedisConnectError: sessionRedisConnectError || null,
     /** Which env supplied the resolved Redis URL (null if none). */
     sessionRedisEnv: sessionRedisEnvHint,
     storageType:       configStore.getStorageType(),
@@ -557,10 +584,10 @@ const { oauthErrorHandler } = require('./middleware/oauthErrorHandler');
 // Proxies tool calls from the React UI to the banking_mcp_server WebSocket.
 // Shared client: services/mcpWebSocketClient.js. Inspector: routes/mcpInspector.js.
 //
-// When MCP_SERVER_RESOURCE_URI is configured, the BFF performs an RFC 8693
+// When MCP_SERVER_RESOURCE_URI is configured, the Backend-for-Frontend (BFF) performs an RFC 8693
 // token exchange before calling the MCP server. This produces a delegated token
 // with `act: { client_id: <bff> }` and a scope narrowed to what the tool needs,
-// scoped to the MCP server audience — the user's raw token never leaves the BFF.
+// scoped to the MCP server audience — the user's raw token never leaves the Backend-for-Frontend (BFF).
 
 const { resolveMcpAccessTokenWithEvents } = require('./services/agentMcpTokenService');
 const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./services/mcpWebSocketClient');

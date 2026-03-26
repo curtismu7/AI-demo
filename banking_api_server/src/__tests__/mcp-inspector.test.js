@@ -127,10 +127,25 @@ describe('MCP Inspector routes', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
+    expect(res.body._source).toBe('mcp_server');
     expect(res.body.tools).toHaveLength(1);
     expect(res.body.tools[0].name).toBe('get_my_accounts');
     expect(mockList).toHaveBeenCalledWith(token, null);
     expect(res.body.timingsMs).toHaveProperty('roundTrip');
+  });
+
+  it('GET /api/mcp/inspector/tools falls back to local catalog when mcpListTools fails (connection)', async () => {
+    mockList.mockRejectedValueOnce(Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' }));
+    const token = bearerToken();
+    const res = await request(app)
+      .get('/api/mcp/inspector/tools')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body._source).toBe('local_catalog');
+    expect(Array.isArray(res.body.tools)).toBe(true);
+    expect(res.body.tools.some((t) => t.name === 'get_my_accounts')).toBe(true);
+    expect(res.body._localCatalogReason).toMatch(/mcp_unreachable/i);
   });
 
   it('POST /api/mcp/inspector/invoke returns 400 when tool is missing', async () => {

@@ -14,8 +14,9 @@
   justify-content: center;
   gap: 8px;
   box-sizing: border-box;
-  width: var(--stack-fab-width, 220px);
-  min-width: var(--stack-fab-width, 220px);
+  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
+  max-width: var(--stack-fab-viewport-max, 100vw);
+  min-width: 0;
   height: var(--stack-fab-height, 44px);
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;

@@ -8,8 +8,8 @@ This document explains how to verify that PingOne is correctly issuing `act` and
 
 The banking demo architecture relies on delegation claims to establish a clear chain of custody:
 
-- **`may_act`** (in T1 - user token): Prospectively authorizes the BFF to exchange the token
-- **`act`** (in T2 - exchanged token): Identifies the current actor (BFF) acting on behalf of the user
+- **`may_act`** (in T1 - user token): Prospectively authorizes the Backend-for-Frontend (BFF) to exchange the token
+- **`act`** (in T2 - exchanged token): Identifies the current actor (Backend-for-Frontend (BFF)) acting on behalf of the user
 
 Without these claims, the delegation chain is invisible in audit logs and token introspection.
 
@@ -19,7 +19,7 @@ Without these claims, the delegation chain is invisible in audit logs and token 
 
 For PingOne to issue `act` and `may_act` claims, you must configure:
 
-1. **Token Exchange Grant** enabled on the BFF OAuth application
+1. **Token Exchange Grant** enabled on the Backend-for-Frontend (BFF) OAuth application
 2. **may_act Token Policy** that adds the `may_act` claim to user tokens
 3. **act Token Policy** that adds the `act` claim to exchanged tokens
 
@@ -28,7 +28,7 @@ For PingOne to issue `act` and `may_act` claims, you must configure:
 #### 1. Enable Token Exchange Grant
 
 In PingOne Admin Console:
-1. Navigate to **Applications** → Your BFF Application
+1. Navigate to **Applications** → Your Backend-for-Frontend (BFF) Application
 2. Go to **Configuration** → **Grant Types**
 3. Enable **Token Exchange** (`urn:ietf:params:oauth:grant-type:token-exchange`)
 4. Save changes
@@ -47,7 +47,7 @@ Create a custom token policy for user tokens:
 }
 ```
 
-This adds `may_act.client_id` to all user access tokens, authorizing the BFF to exchange them.
+This adds `may_act.client_id` to all user access tokens, authorizing the Backend-for-Frontend (BFF) to exchange them.
 
 #### 3. Configure act Token Policy
 
@@ -63,7 +63,7 @@ Create a custom token policy for token exchange:
 }
 ```
 
-This adds `act.client_id` to exchanged tokens, identifying the BFF as the current actor.
+This adds `act.client_id` to exchanged tokens, identifying the Backend-for-Frontend (BFF) as the current actor.
 
 ## Verification Methods
 
@@ -199,7 +199,7 @@ The application includes a Token Chain visualization panel:
 
 **Symptom:** T2 is issued but contains no `act` claim
 
-**Impact:** Delegation chain is invisible. Audit logs cannot show "BFF acting on behalf of user"
+**Impact:** Delegation chain is invisible. Audit logs cannot show "Backend-for-Frontend (BFF) acting on behalf of user"
 
 **Cause:** PingOne token exchange policy not configured to add `act` claim
 
@@ -237,7 +237,7 @@ The application includes a Token Chain visualization panel:
 1. Check PingOne application has Token Exchange grant enabled
 2. Verify `may_act` claim is present in T1
 3. Check PingOne logs for detailed error message
-4. Ensure BFF client credentials are correct
+4. Ensure Backend-for-Frontend (BFF) client credentials are correct
 
 ### act Claim Not Present in T2
 

@@ -20,6 +20,15 @@
   --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
   --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
   --stack-fab-top-demo: calc(var(--stack-fab-top-logs) + var(--stack-fab-height) + var(--stack-fab-gap));
+  /* Keep fixed top-right FABs inside the viewport (narrow widths, safe area, scrollbar) */
+  --stack-fab-viewport-max: max(
+    0px,
+    calc(
+      100vw - 2 * var(--float-edge) - env(safe-area-inset-left, 0px) -
+        env(safe-area-inset-right, 0px)
+    )
+  );
+  --stack-fab-used-width: min(var(--stack-fab-width), var(--stack-fab-viewport-max));
 }
 
 /* Reserve space for the fixed embedded agent dock */
@@ -204,8 +213,9 @@
   top: var(--stack-fab-top-logs, 120px);
   right: var(--float-edge, 28px);
   box-sizing: border-box;
-  width: var(--stack-fab-width, 220px);
-  min-width: var(--stack-fab-width, 220px);
+  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
+  max-width: var(--stack-fab-viewport-max, 100vw);
+  min-width: 0;
   height: var(--stack-fab-height, 44px);
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
@@ -261,8 +271,9 @@
   top: var(--stack-fab-top-demo, 172px);
   right: var(--float-edge, 28px);
   box-sizing: border-box;
-  width: var(--stack-fab-width, 220px);
-  min-width: var(--stack-fab-width, 220px);
+  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
+  max-width: var(--stack-fab-viewport-max, 100vw);
+  min-width: 0;
   height: var(--stack-fab-height, 44px);
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
@@ -364,6 +375,16 @@
   text-decoration: none !important;
 }
 
+/* Toolbar uses <button> on MCP Inspector / Demo config — nano still paints link-blue on buttons */
+.App.end-user-nano button.app-page-toolbar-btn,
+.App.end-user-nano button.app-page-toolbar-btn:hover,
+.App.end-user-nano button.app-page-toolbar-btn:focus,
+.App.end-user-nano button.app-page-toolbar-btn:focus-visible,
+.App.end-user-nano button.app-page-toolbar-btn:active {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
 .App.end-user-nano a.log-page-nav-btn,
 .App.end-user-nano a.log-page-nav-btn:any-link,
 .App.end-user-nano a.log-page-nav-btn:hover,
@@ -380,6 +401,33 @@
 .App.end-user-nano a.app-page-shell__btn:hover,
 .App.end-user-nano a.app-page-shell__btn:focus-visible,
 .App.end-user-nano a.app-page-shell__btn:active {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-decoration: none !important;
+}
+
+.App.end-user-nano button.app-page-shell__btn,
+.App.end-user-nano button.app-page-shell__btn:hover,
+.App.end-user-nano button.app-page-shell__btn:focus,
+.App.end-user-nano button.app-page-shell__btn:focus-visible,
+.App.end-user-nano button.app-page-shell__btn:active {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* MCP Inspector red CTAs: <a> and <button> (.mcp-inspector__btn) vs global nano link color */
+.App.end-user-nano .mcp-inspector-page a.mcp-inspector__btn,
+.App.end-user-nano .mcp-inspector-page a.mcp-inspector__btn:any-link,
+.App.end-user-nano .mcp-inspector-page a.mcp-inspector__btn:visited,
+.App.end-user-nano .mcp-inspector-page a.mcp-inspector__btn:hover,
+.App.end-user-nano .mcp-inspector-page a.mcp-inspector__btn:focus,
+.App.end-user-nano .mcp-inspector-page a.mcp-inspector__btn:focus-visible,
+.App.end-user-nano .mcp-inspector-page a.mcp-inspector__btn:active,
+.App.end-user-nano .mcp-inspector-page button.mcp-inspector__btn,
+.App.end-user-nano .mcp-inspector-page button.mcp-inspector__btn:hover,
+.App.end-user-nano .mcp-inspector-page button.mcp-inspector__btn:focus,
+.App.end-user-nano .mcp-inspector-page button.mcp-inspector__btn:focus-visible,
+.App.end-user-nano .mcp-inspector-page button.mcp-inspector__btn:active {
   color: #fff !important;
   -webkit-text-fill-color: #fff !important;
   text-decoration: none !important;

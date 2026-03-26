@@ -1,6 +1,6 @@
 // banking_api_ui/src/services/bankingAgentNlService.js
 /**
- * Natural language routing for the Banking Agent (BFF: heuristic + optional Gemini).
+ * Natural language routing for the Banking Agent (Backend-for-Frontend (BFF): heuristic + optional Gemini).
  */
 
 import { refreshOAuthSession } from './bankingAgentService';

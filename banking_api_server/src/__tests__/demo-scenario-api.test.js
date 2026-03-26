@@ -7,7 +7,7 @@ const request = require('supertest');
 const express = require('express');
 
 // Mutable in-memory store toggled before each test
-global.__demoScenarioAccountTest = { rows: [] };
+global.__demoScenarioAccountTest = { rows: [], users: new Map() };
 
 jest.mock('../../data/store', () => {
   const g = () => global.__demoScenarioAccountTest;
@@ -24,14 +24,28 @@ jest.mock('../../data/store', () => {
       g().rows[i] = { ...g().rows[i], ...updates };
       return g().rows[i];
     }),
-    getUserById: (id) => ({
-      id,
-      firstName: 'Test',
-      lastName: 'User',
-      email: 'test@example.com',
-      role: 'customer',
+    getUserById: (id) => g().users.get(id) || null,
+    ensureUser: jest.fn(async (id, seed) => {
+      const u = {
+        id,
+        firstName: seed.firstName || '',
+        lastName: seed.lastName || '',
+        email: seed.email || '',
+        username: seed.username || 'user',
+        role: seed.role || 'customer',
+        isActive: seed.isActive !== false,
+        oauthId: seed.oauthId || null,
+      };
+      g().users.set(id, u);
+      return u;
     }),
-    updateUser: jest.fn(async () => {}),
+    updateUser: jest.fn(async (id, updates) => {
+      const cur = g().users.get(id);
+      if (!cur) return null;
+      const next = { ...cur, ...updates };
+      g().users.set(id, next);
+      return next;
+    }),
   };
 });
 
@@ -51,11 +65,14 @@ const dataStore = require('../../data/store');
 const demoScenarioStore = require('../../services/demoScenarioStore');
 const demoScenarioRouter = require('../../routes/demoScenario');
 
-function makeApp(userId = 'u1') {
+function makeApp(userId = 'u1', sessionUser = null) {
   const app = express();
   app.use(express.json());
   app.use((req, res, next) => {
     req.user = { id: userId, role: 'user' };
+    if (sessionUser) {
+      req.session = { user: sessionUser };
+    }
     next();
   });
   app.use('/', demoScenarioRouter);
@@ -75,6 +92,19 @@ describe('Demo scenario API — account create/update', () => {
         currency: 'USD',
       },
     ];
+    global.__demoScenarioAccountTest.users = new Map([
+      [
+        'u1',
+        {
+          id: 'u1',
+          firstName: 'Test',
+          lastName: 'User',
+          email: 'test@example.com',
+          role: 'customer',
+          username: 'testuser',
+        },
+      ],
+    ]);
     jest.clearAllMocks();
   });
 
@@ -97,6 +127,23 @@ describe('Demo scenario API — account create/update', () => {
     expect(created.accountType).toBe('savings');
     expect(created.balance).toBe(99.5);
     expect(String(created.accountNumber || '')).toMatch(/^SAV-/);
+  });
+
+  it('PUT creates money_market account with MMK account number prefix', async () => {
+    const app = makeApp();
+    const res = await request(app)
+      .put('/')
+      .send({
+        accounts: [
+          { id: 'a-existing', name: 'Main Checking', balance: 50 },
+          { accountType: 'money_market', name: 'Cash stash', balance: 2500 },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    const created = res.body.accounts.find((a) => a.name === 'Cash stash');
+    expect(created.accountType).toBe('money_market');
+    expect(String(created.accountNumber || '')).toMatch(/^MMK-/);
   });
 
   it('PUT defaults checking name when new row name is empty', async () => {
@@ -125,6 +172,35 @@ describe('Demo scenario API — account create/update', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_balance');
+  });
+
+  it('PUT userData ensures user row when store is empty (serverless cold start)', async () => {
+    global.__demoScenarioAccountTest.users = new Map();
+    const app = makeApp('pingone-sub-xyz', {
+      id: 'pingone-sub-xyz',
+      email: 'session@example.com',
+      username: 'sessuser',
+      firstName: 'Session',
+      lastName: 'Only',
+      role: 'customer',
+      oauthId: 'pingone-sub-xyz',
+    });
+    const res = await request(app)
+      .put('/')
+      .send({
+        userData: {
+          firstName: 'Updated',
+          lastName: 'Name',
+          email: 'session@example.com',
+          username: 'sessuser',
+          isActive: true,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(dataStore.ensureUser).toHaveBeenCalled();
+    expect(dataStore.updateUser).toHaveBeenCalled();
+    expect(res.body.userData.firstName).toBe('Updated');
   });
 
   it('PUT returns 400 when adding accounts would exceed the per-user cap', async () => {

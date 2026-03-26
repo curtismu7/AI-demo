@@ -115,7 +115,7 @@ function describeMayAct(claims, bffClientId) {
 
   if (may_act.client_id) {
     const match = !bffClientId || may_act.client_id === bffClientId;
-    const mismatchMsg = match ? '✅ matches Backend For Frontend (BFF)' : `❌ mismatch (Backend For Frontend (BFF) is ${bffClientId})`;
+    const mismatchMsg = match ? '✅ matches Backend-for-Frontend (BFF)' : `❌ mismatch (Backend-for-Frontend (BFF) is ${bffClientId})`;
     checks.push(`client_id: ${may_act.client_id} ${mismatchMsg}`);
     if (!match) mismatch = true;
   }
@@ -135,6 +135,88 @@ function describeMayAct(claims, bffClientId) {
     reason: checks.join(' · '),
     mayActObj: may_act,
   };
+}
+
+/**
+ * Append the User Token row to tokenEvents (same shape as MCP tool-call flow).
+ * @returns {{ userSub: string|null, t1Claims: object|undefined, t1Decoded: object|null }}
+ */
+function appendUserTokenEvent(tokenEvents, userToken) {
+  const t1Decoded = decodeJwtClaims(userToken);
+  const t1Claims = t1Decoded?.claims;
+  const userSub = t1Claims?.sub != null ? String(t1Claims.sub) : null;
+  const bffClientId = oauthService.config?.clientId || process.env.PINGONE_CLIENT_ID || null;
+  const mayActInfo = describeMayAct(t1Claims, bffClientId);
+
+  tokenEvents.push(buildTokenEvent(
+    'user-token',
+    'User Token',
+    'active',
+    t1Decoded,
+    'Issued by PingOne after Authorization Code + PKCE login. ' +
+    'Stored in the Backend-for-Frontend (BFF) session (server-side httpOnly cookie — never sent to the browser). ' +
+    (t1Claims?.may_act
+      ? `Contains may_act: ${JSON.stringify(t1Claims.may_act)} — this prospectively authorises the Backend-for-Frontend (BFF) to exchange this token. ${mayActInfo.reason}`
+      : 'No may_act claim — PingOne must be configured to add may_act for token exchange to succeed.'),
+    {
+      rfc: 'RFC 7519 (JWT) · RFC 9068 (OAuth2 JWT AT)',
+      mayActPresent: !!t1Claims?.may_act,
+      mayActValid: mayActInfo.valid,
+      mayActDetails: mayActInfo.reason,
+    }
+  ));
+
+  return { userSub, t1Claims, t1Decoded };
+}
+
+/**
+ * Session-only token chain rows for the dashboard after login — decodes User Token from BFF session only (no PingOne exchange).
+ * @param {import('express').Request} req
+ * @returns {{ tokenEvents: Array }}
+ */
+function buildSessionPreviewTokenEvents(req) {
+  const tokenEvents = [];
+  const userToken = getSessionBearerForMcp(req);
+  if (!userToken) {
+    return { tokenEvents: [] };
+  }
+
+  appendUserTokenEvent(tokenEvents, userToken);
+
+  const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
+  if (!mcpResourceUri) {
+    tokenEvents.push(buildTokenEvent(
+      'exchange-skipped',
+      'Token Exchange (RFC 8693)',
+      'skipped',
+      null,
+      'MCP_RESOURCE_URI is not configured — the User Token is forwarded directly to the MCP server. ' +
+      'To enable delegation: set MCP_RESOURCE_URI to the MCP server\'s audience URI and configure ' +
+      'the token-exchange grant + may_act policy in PingOne.',
+      { rfc: 'RFC 8693 (Token Exchange)' }
+    ));
+    return { tokenEvents };
+  }
+
+  tokenEvents.push(buildTokenEvent(
+    'exchange',
+    'Token Exchange (RFC 8693): User Token → MCP Token',
+    'waiting',
+    null,
+    'Your session has a User Token (above). The exchange runs when the AI Agent or another MCP-backed call invokes a tool — then the live RFC 8693 request and result appear here.',
+    { rfc: 'RFC 8693 · RFC 8707' }
+  ));
+
+  tokenEvents.push(buildTokenEvent(
+    'exchanged-token',
+    'MCP Token (Delegated) → MCP Server',
+    'waiting',
+    null,
+    'After a successful exchange on an MCP tool call, decoded MCP token claims (including act, audience, and scope) appear here.',
+    { rfc: 'RFC 8693' }
+  ));
+
+  return { tokenEvents };
 }
 
 // ─── Main resolver ────────────────────────────────────────────────────────────
@@ -158,30 +240,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     return { token: null, tokenEvents, userSub: null };
   }
 
-  // ── Event 1: User token ──────────────────────────────────────────────────────
-  const t1Decoded = decodeJwtClaims(userToken);
-  const t1Claims = t1Decoded?.claims;
-  const userSub = t1Claims?.sub != null ? String(t1Claims.sub) : null;
-  const bffClientId = oauthService.config?.clientId || process.env.PINGONE_CLIENT_ID || null;
-  const mayActInfo = describeMayAct(t1Claims, bffClientId);
-
-  tokenEvents.push(buildTokenEvent(
-    'user-token',
-    'User Token',
-    'active',
-    t1Decoded,
-    'Issued by PingOne after Authorization Code + PKCE login. ' +
-    'Stored in the Backend For Frontend (BFF) session (server-side httpOnly cookie — never sent to the browser). ' +
-    (t1Claims?.may_act
-      ? `Contains may_act: ${JSON.stringify(t1Claims.may_act)} — this prospectively authorises the Backend For Frontend (BFF) to exchange this token. ${mayActInfo.reason}`
-      : 'No may_act claim — PingOne must be configured to add may_act for token exchange to succeed.'),
-    {
-      rfc: 'RFC 7519 (JWT) · RFC 9068 (OAuth2 JWT AT)',
-      mayActPresent: !!t1Claims?.may_act,
-      mayActValid: mayActInfo.valid,
-      mayActDetails: mayActInfo.reason,
-    }
-  ));
+  const { userSub, t1Claims } = appendUserTokenEvent(tokenEvents, userToken);
 
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   const toolScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
@@ -237,10 +296,10 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     'Token Exchange (RFC 8693): User Token → MCP Token',
     'acquiring',
     null,
-    `Backend For Frontend (BFF) is exchanging the User Token for a delegated MCP Token scoped to audience=${mcpResourceUri}, ` +
+    `Backend-for-Frontend (BFF) is exchanging the User Token for a delegated MCP Token scoped to audience=${mcpResourceUri}, ` +
     `scope="${toolScopes.join(' ')}". ` +
     (t1Claims?.may_act
-      ? `PingOne will validate may_act.client_id="${t1Claims.may_act.client_id}" against the authenticated Backend For Frontend (BFF) client.`
+      ? `PingOne will validate may_act.client_id="${t1Claims.may_act.client_id}" against the authenticated Backend-for-Frontend (BFF) client.`
       : 'PingOne will check exchange policy (may_act not present on User token — exchange may be rejected).'),
     {
       rfc: 'RFC 8693 · RFC 8707 (resource indicator)',
@@ -285,11 +344,11 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       t2Decoded,
       'PingOne issued the MCP Token after validating may_act. ' +
       (t2Claims?.act
-        ? `act: ${JSON.stringify(t2Claims.act)} — this is the current fact: the Backend For Frontend (BFF) is acting on behalf of the user. ` +
+        ? `act: ${JSON.stringify(t2Claims.act)} — this is the current fact: the Backend-for-Frontend (BFF) is acting on behalf of the user. ` +
           'Resource servers use act (not may_act) to identify the current actor for audit and policy decisions.'
         : 'act claim not present — PingOne may not have applied delegation policy. ') +
       `Audience is narrowed to ${mcpResourceUri}, scope narrowed to "${toolScopes.join(' ')}". ` +
-      'The User Token (your original login token) NEVER leaves the Backend For Frontend (BFF) — only the MCP Token reaches the MCP Server.',
+      'The User Token (your original login token) NEVER leaves the Backend-for-Frontend (BFF) — only the MCP Token reaches the MCP Server.',
       {
         rfc: 'RFC 8693 · RFC 8707',
         exchangeMethod,
@@ -330,7 +389,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
           'exchanged',
           t2Decoded,
           'Agent Token exchange failed; fell back to subject-only RFC 8693 exchange (no act claim). ' +
-          'The MCP Token is still scoped to the MCP audience — the User Token never leaves the BFF.',
+          'The MCP Token is still scoped to the MCP audience — the User Token never leaves the Backend-for-Frontend (BFF).',
           { rfc: 'RFC 8693', exchangeMethod: 'fallback-subject-only' }
         ));
         return { token: exchangedToken, tokenEvents, userSub };
@@ -353,6 +412,7 @@ async function resolveMcpAccessToken(req, tool) {
 module.exports = {
   resolveMcpAccessToken,
   resolveMcpAccessTokenWithEvents,
+  buildSessionPreviewTokenEvents,
   decodeJwtClaims,
   sanitizeClaims,
 };

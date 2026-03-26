@@ -11,7 +11,7 @@
  *
  * Required for exchange path:
  *   INTEGRATION_SUBJECT_ACCESS_TOKEN — User token (user access token) JWT from a real login
- *   Same PingOne + BFF env as server: PINGONE_ENVIRONMENT_ID, PINGONE_ADMIN_CLIENT_ID,
+ *   Same PingOne + Backend-for-Frontend (BFF) env as server: PINGONE_ENVIRONMENT_ID, PINGONE_ADMIN_CLIENT_ID,
  *   PINGONE_ADMIN_CLIENT_SECRET, MCP_SERVER_RESOURCE_URI, etc. (see env.example)
  *
  * Optional:
@@ -96,7 +96,7 @@ async function runChainOnly() {
   }
   console.log('Token chain (session + live exchange + MCP resolver):');
   printChainSummary(res.data);
-  console.log('\nSession storage: access token lives in the BFF session as oauthTokens.accessToken (server-side).');
+  console.log('\nSession storage: access token lives in the Backend-for-Frontend (BFF) session as oauthTokens.accessToken (server-side).');
 }
 
 async function runExchangeAndOptionalActor() {
@@ -124,7 +124,7 @@ async function runExchangeAndOptionalActor() {
 
   console.log('PingOne token exchange (RFC 8693) — live verification');
   console.log('  environment:', envId);
-  console.log('  BFF client_id:', clientId);
+  console.log('  Backend-for-Frontend (BFF) client_id:', clientId);
   console.log('  audience (mcp_resource_uri):', mcpUri);
   console.log('  scopes:', scopes.join(' '));
   console.log('  User token preview:', previewToken(subject));
@@ -167,7 +167,7 @@ async function runExchangeAndOptionalActor() {
     }
   }
 
-  console.log('\nDone. The MCP token is the real JWT the BFF sends to banking_mcp_server for tools/call when MCP_SERVER_RESOURCE_URI is set.');
+  console.log('\nDone. The MCP token is the real JWT the Backend-for-Frontend (BFF) sends to banking_mcp_server for tools/call when MCP_SERVER_RESOURCE_URI is set.');
 }
 
 async function main() {
@@ -177,7 +177,7 @@ async function main() {
 verify-token-exchange.js — real PingOne token exchange (no mocks).
 
   node scripts/verify-token-exchange.js
-    Needs INTEGRATION_SUBJECT_ACCESS_TOKEN + full BFF/PingOne config.
+    Needs INTEGRATION_SUBJECT_ACCESS_TOKEN + full Backend-for-Frontend (BFF)/PingOne config.
 
   node scripts/verify-token-exchange.js --chain-only
     Needs SESSION_COOKIE; calls GET /api/tokens/chain on BANKING_API_BASE_URL.

@@ -27,7 +27,7 @@ alwaysApply: false
 
 ## 1. Project Auth Architecture
 
-This project uses a **Backend For Frontend (BFF)** pattern:
+This project uses a **Backend-for-Frontend (BFF)** pattern:
 - `banking_api_server` is the confidential client — it holds tokens in server-side sessions, never exposes them to the browser.
 - `banking_api_ui` (React SPA) only ever receives opaque session cookies — never raw tokens.
 - Two PingOne applications: **Admin client** (admin users/employees) and **User client** (bank customers).
@@ -109,13 +109,13 @@ SKIP_TOKEN_SIGNATURE_VALIDATION=false  # MUST be false in production
 
 ---
 
-## 4. Authorization Code + PKCE Flow (Primary BFF Pattern)
+## 4. Authorization Code + PKCE Flow (Primary Backend-for-Frontend (BFF) Pattern)
 
 **PingOne app requirements:**
 - `type: WEB_APP`, `grantTypes: ["authorization_code", "refresh_token"]`
 - `pkceEnforcement: S256_REQUIRED`
 - `tokenEndpointAuthMethod: CLIENT_SECRET_BASIC`
-- `redirectUris` must include the BFF callback URL
+- `redirectUris` must include the Backend-for-Frontend (BFF) callback URL
 
 ### 4a. Step 1 — Initiate Login
 
@@ -200,7 +200,7 @@ router.get('/callback', async (req, res) => {
     return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
   }
 
-  // BFF: store tokens server-side, never send to browser
+  // Backend-for-Frontend (BFF): store tokens server-side, never send to browser
   req.session.oauthTokens = {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
@@ -261,7 +261,7 @@ const response = await axios.post(tokenEndpoint, body.toString(), {
 
 Used for step-up auth and out-of-band user approval without a browser redirect.
 
-**Flow:** BFF initiates → PingOne delivers challenge to user (email / device push via DaVinci) → BFF polls token endpoint
+**Flow:** Backend-for-Frontend (BFF) initiates → PingOne delivers challenge to user (email / device push via DaVinci) → Backend-for-Frontend (BFF) polls token endpoint
 
 **PingOne app requirements:**
 - Enable CIBA grant type on the application
@@ -303,7 +303,7 @@ grant_type=urn:openid:params:grant-type:ciba
 | `slow_down` | Polling too fast | Increase interval by 5s (max 30s) |
 | `access_denied` | User denied | Abort, notify user |
 | `expired_token` | auth_req_id expired | Start new CIBA flow |
-| _(success)_ | `{ access_token, id_token, refresh_token, ... }` | Store in BFF session |
+| _(success)_ | `{ access_token, id_token, refresh_token, ... }` | Store in Backend-for-Frontend (BFF) session |
 
 ### 6c. cibaService.js Route Pattern
 
@@ -323,7 +323,7 @@ router.post('/initiate', authenticateToken, async (req, res) => {
 router.get('/poll/:authReqId', authenticateToken, async (req, res) => {
   try {
     const tokens = await pollForTokens(req.params.authReqId);
-    req.session.oauthTokens = tokens;  // BFF: tokens stay server-side
+    req.session.oauthTokens = tokens;  // Backend-for-Frontend (BFF): tokens stay server-side
     res.json({ status: 'approved' });
   } catch (err) {
     const code = err.response?.data?.error;
@@ -343,7 +343,7 @@ Used to mint a scoped delegated token for a specific audience (e.g., MCP server)
 
 **PingOne setup:**
 1. User's T1 token must contain `may_act: { client_id: <bff-client-id> }` — configure in PingOne token customization
-2. Enable `urn:ietf:params:oauth:grant-type:token-exchange` grant on BFF admin client
+2. Enable `urn:ietf:params:oauth:grant-type:token-exchange` grant on Backend-for-Frontend (BFF) admin client
 3. Configure a custom resource server with the target audience URI
 
 **Grant type URN:** `urn:ietf:params:oauth:grant-type:token-exchange`
@@ -757,6 +757,6 @@ Use the discovery doc to avoid hardcoding URLs and to check supported features:
 ## See Also
 
 - [python-java.md](oauth-references/python-java.md) — Python Flask + Java Spring Security OIDC examples
-- [pingone-api-calls.mdc](pingone-api-calls.mdc) — BFF calls to PingOne Management API (users, MFA)
+- [pingone-api-calls.mdc](pingone-api-calls.mdc) — Backend-for-Frontend (BFF) calls to PingOne Management API (users, MFA)
 - [vercel-deployment.mdc](vercel-deployment.mdc) — Vercel session gotchas, Upstash, env var table
 - [mcp-server.mdc](mcp-server.mdc) — MCP tool registration, auth challenge flow, token chain display

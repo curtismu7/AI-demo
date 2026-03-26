@@ -7,16 +7,16 @@
 | Standard | RFC / Spec | Used For | Why It Matters |
 |---|---|---|---|
 | **OAuth 2.0** | RFC 6749 | Authorization framework for all token flows | Industry baseline — defines grant types, scopes, token endpoints |
-| **PKCE** | RFC 7636 | Code exchange in auth code flow (S256) | Prevents auth code interception; required for public/BFF clients |
+| **PKCE** | RFC 7636 | Code exchange in auth code flow (S256) | Prevents auth code interception; required for public/Backend-for-Frontend (BFF) clients |
 | **JWT** | RFC 7519 | Access tokens, ID tokens, may_act/act claims | Self-contained, verifiable tokens — no DB lookup needed |
 | **JWKS** | RFC 7517 | Token signature verification | Public key discovery — verify PingOne-signed tokens without a shared secret |
 | **OIDC Core** | OIDC 1.0 | ID token, userinfo, discovery | Standard user identity on top of OAuth 2.0 |
 | **OIDC CIBA** | OIDC CIBA 1.0 | Backchannel auth (email challenge, no redirect) | Decouples consumption device from auth device — enables AI agent auth flows |
-| **Token Exchange** | RFC 8693 | BFF/AI agent gets scoped delegated token | Proper delegation — new token has narrowed scope + `act` claim identifying actor |
+| **Token Exchange** | RFC 8693 | Backend-for-Frontend (BFF)/AI agent gets scoped delegated token | Proper delegation — new token has narrowed scope + `act` claim identifying actor |
 | **`may_act` / `act`** | RFC 8693 §4.1 | Delegation chain in JWTs | `may_act` = who MAY act; `act` = who IS acting — enables auditable multi-hop delegation |
 | **Token Introspection** | RFC 7662 | MCP server validates tokens with PingOne | Zero-trust: every request proves token is still active, not just well-formed |
 | **Token Revocation** | RFC 7009 | Invalidate tokens on logout | Ensures session destroy also kills the PingOne token — prevents replay |
-| **BFF Pattern** | IETF draft | Tokens stay server-side; browser gets session cookie only | Prevents XSS token theft; no token ever reaches browser JavaScript |
+| **Backend-for-Frontend (BFF) Pattern** | IETF draft | Tokens stay server-side; browser gets session cookie only | Prevents XSS token theft; no token ever reaches browser JavaScript |
 | **MCP Protocol** | Anthropic MCP 2024-11-05 | AI agent ↔ tool server communication | Standardised tool calling over JSON-RPC / WebSocket |
 | **Session Fixation Prevention** | OWASP | `req.session.regenerate()` after OAuth callback | New session ID post-login prevents pre-auth session hijacking |
 
@@ -28,9 +28,9 @@ Use this list for compliance slides and diagram legends.
 |----|----------|------------------|
 | **RFC 6749** | OAuth 2.0 Authorization Framework | Auth code, client credentials, token endpoint; base for all grants |
 | **RFC 6750** | OAuth 2.0 Bearer Token Usage | `Authorization: Bearer` to Banking API and MCP-related calls |
-| **RFC 7636** | PKCE | Auth code flow for the SPA/BFF (`code_challenge` S256) |
+| **RFC 7636** | PKCE | Auth code flow for the SPA/Backend-for-Frontend (BFF) (`code_challenge` S256) |
 | **RFC 7662** | OAuth 2.0 Token Introspection | MCP server validates tokens with PingOne |
-| **RFC 8693** | OAuth 2.0 Token Exchange | BFF may exchange session token for MCP-audience token when `MCP_SERVER_RESOURCE_URI` / `mcp_resource_uri` is configured |
+| **RFC 8693** | OAuth 2.0 Token Exchange | Backend-for-Frontend (BFF) may exchange session token for MCP-audience token when `MCP_SERVER_RESOURCE_URI` / `mcp_resource_uri` is configured |
 | **RFC 7009** | OAuth 2.0 Token Revocation | Target: revoke on logout (not fully wired end-to-end) |
 | **RFC 7517** | JSON Web Key (JWK) | JWKS URI for verifying JWT signatures |
 | **RFC 7519** | JSON Web Token (JWT) | Access tokens, ID tokens, optional `act` / delegation claims per deployment |
@@ -40,7 +40,7 @@ Use this list for compliance slides and diagram legends.
 | **OpenID Connect CIBA** | OIDF CIBA Core 1.0 | Back-channel consent (e.g. email approval); poll `grant_type` per PingOne |
 | **MCP protocol** | MCP `2024-11-05` | Tool discovery and invocation semantics (this server uses WS + JSON-RPC) |
 
-**Patterns (not single RFCs):** BFF (tokens server-side, session cookie to browser); OWASP session fixation mitigation.
+**Patterns (not single RFCs):** Backend-for-Frontend (BFF) (tokens server-side, session cookie to browser); OWASP session fixation mitigation.
 
 **Which are implemented today vs. gaps:**
 
@@ -50,12 +50,12 @@ Use this list for compliance slides and diagram legends.
 | Bearer token usage (RFC 6750) | ✅ Done |
 | JWKS / JWT validation (RFC 7517 + 7519) | ✅ Done |
 | OIDC Core (ID token, userinfo) | ✅ Done |
-| OIDC CIBA (poll / email flow) | ✅ Done (BFF + agent integration as configured) |
-| BFF session pattern | ✅ Done |
+| OIDC CIBA (poll / email flow) | ✅ Done (Backend-for-Frontend (BFF) + agent integration as configured) |
+| Backend-for-Frontend (BFF) session pattern | ✅ Done |
 | MCP Protocol (`2024-11-05`) + JSON-RPC 2.0 | ✅ Done |
 | Scope enforcement (API + MCP) | ✅ Done |
 | Token Introspection (RFC 7662) on MCP server | ✅ Done |
-| RFC 8693 Token Exchange | ✅ When `mcp_resource_uri` / `MCP_SERVER_RESOURCE_URI` is set on BFF; PingOne must allow grant + policies |
+| RFC 8693 Token Exchange | ✅ When `mcp_resource_uri` / `MCP_SERVER_RESOURCE_URI` is set on Backend-for-Frontend (BFF); PingOne must allow grant + policies |
 | `act` / `may_act` on exchanged tokens | ⚠️ Depends on PingOne token issuance / policy (app supports consuming delegated tokens) |
 | Token Revocation (RFC 7009) on logout | ❌ Target; unified logout clears session |
 | Token Refresh | ❌ Routes exist; refresh logic incomplete |
@@ -66,13 +66,13 @@ Use this list for compliance slides and diagram legends.
 
 ### BEFORE: Token Passed by Reference (Current)
 
-The user's raw access token is shared from the BFF session directly into the MCP server.
+The user's raw access token is shared from the Backend-for-Frontend (BFF) session directly into the MCP server.
 There is no delegation record. The MCP server cannot distinguish "user calling directly"
-from "BFF acting on user's behalf."
+from "Backend-for-Frontend (BFF) acting on user's behalf."
 
 ```
 ┌────────────┐     session cookie      ┌──────────────────────┐
-│  Browser   │ ─────────────────────── │   Banking BFF        │
+│  Browser   │ ─────────────────────── │   Banking Backend-for-Frontend (BFF)        │
 │  (React)   │                         │   (Port 3001)        │
 └────────────┘                         │                      │
                                        │  session = {         │
@@ -102,7 +102,7 @@ from "BFF acting on user's behalf."
                                        └──────────────────────┘
 
 Problems:
-  ✗  MCP server cannot prove the BFF sent the token (no act claim)
+  ✗  MCP server cannot prove the Backend-for-Frontend (BFF) sent the token (no act claim)
   ✗  Token scoped for browser use, not MCP use (same aud)
   ✗  If T1 leaks anywhere in the chain, attacker has full user token
   ✗  No audit trail of delegation
@@ -112,16 +112,16 @@ Problems:
 
 ### AFTER: RFC 8693 Token Exchange (Target)
 
-The BFF exchanges the user token for a **new, narrowly-scoped, delegated token**
-with `act` identifying the BFF as the actor. The MCP server gets a token it can
+The Backend-for-Frontend (BFF) exchanges the user token for a **new, narrowly-scoped, delegated token**
+with `act` identifying the Backend-for-Frontend (BFF) as the actor. The MCP server gets a token it can
 validate is properly delegated — not a raw user token.
 
 ```
 ┌────────────┐    session cookie       ┌──────────────────────────────────────┐
-│  Browser   │ ──────────────────────  │   Banking BFF  (Port 3001)           │
+│  Browser   │ ──────────────────────  │   Banking Backend-for-Frontend (BFF)  (Port 3001)           │
 │  (React)   │                         │                                      │
 └────────────┘                         │  session = {                         │
-                                       │    accessToken: T1 (user, aud=BFF)   │
+                                       │    accessToken: T1 (user, aud=Backend-for-Frontend (BFF))   │
                                        │  }                                   │
                                        │                                      │
                                        │  Before calling MCP:                 │
@@ -146,7 +146,7 @@ validate is properly delegated — not a raw user token.
                                              │   aud: mcp-uri  │ ← scoped to MCP
                                              │   act: {        │
                                              │    client_id:   │
-                                             │    bff-client   │ ← BFF is the actor
+                                             │    bff-client   │ ← Backend-for-Frontend (BFF) is the actor
                                              │   }             │
                                              │   scope: narrow │ ← only what MCP needs
                                              │  }              │
@@ -176,8 +176,8 @@ validate is properly delegated — not a raw user token.
 
 Benefits:
   ✓  MCP token scoped only to MCP (aud = mcp-server-uri)
-  ✓  act claim proves BFF is the actor — full audit trail
-  ✓  T1 (user's browser token) never leaves the BFF
+  ✓  act claim proves Backend-for-Frontend (BFF) is the actor — full audit trail
+  ✓  T1 (user's browser token) never leaves the Backend-for-Frontend (BFF)
   ✓  Scope is downscoped to only what the tool needs
   ✓  PingOne validates the delegation policy before issuing T2
 ```
@@ -253,7 +253,7 @@ Benefits:
             │ HTTP (session cookie)     │ HTTP/WS
             │                          │
 ┌───────────▼──────────────────────────┼──────────────────────────────────────────┐
-│  BANKING BFF — Backend For Frontend  │                                          │
+│  BANKING Backend-for-Frontend (BFF)  │                                          │
 │  Port 3001  (Vercel: same domain)    │                                          │
 │                                      │                                          │
 │  ┌─────────────────────────────┐     │                                          │
@@ -315,7 +315,7 @@ Benefits:
 └───────────────────────────────────┼────────────────────────────────────────────┘
                                     │ HTTP (Bearer token)
 ┌───────────────────────────────────▼────────────────────────────────────────────┐
-│  BANKING API SERVER  (Port 3001 — same process as BFF on Vercel)               │
+│  BANKING API SERVER  (Port 3001 — same process as Backend-for-Frontend (BFF) on Vercel)               │
 │                                                                                 │
 │  ┌────────────────────────────────────────────────────────────────────────┐    │
 │  │  auth.js middleware                                                    │    │
@@ -353,7 +353,7 @@ Benefits:
 ## 4. Detailed Flow — User Logs In via Browser
 
 ```
-Browser                   BFF (3001)               PingOne
+Browser                   Backend-for-Frontend (BFF) (3001)               PingOne
    │                          │                       │
    │  GET /api/auth/oauth/    │                       │
    │       user/login         │                       │
@@ -417,7 +417,7 @@ Browser                   BFF (3001)               PingOne
 ## 5. Detailed Flow — AI Agent (LangChain) Makes a Tool Call
 
 ```
-User Email              LangChain Agent          MCP Server (8080)      BFF (3001)         PingOne
+User Email              LangChain Agent          MCP Server (8080)      Backend-for-Frontend (BFF) (3001)         PingOne
     │                        │                         │                    │                  │
     │  "Show my accounts"    │                         │                    │                  │
     │ ─────────────────►    │                         │                    │                  │
@@ -508,10 +508,10 @@ User Email              LangChain Agent          MCP Server (8080)      BFF (300
 
 ---
 
-## 6. Detailed Flow — Browser User Calls MCP via BFF Proxy
+## 6. Detailed Flow — Browser User Calls MCP via Backend-for-Frontend (BFF) Proxy
 
 ```
-Browser (React)          BFF /api/mcp/tool         MCP Server (8080)     Banking API
+Browser (React)          Backend-for-Frontend (BFF) /api/mcp/tool         MCP Server (8080)     Banking API
      │                          │                         │                    │
      │  POST /api/mcp/tool      │                         │                    │
      │  Cookie: session=...     │                         │                    │
@@ -562,7 +562,7 @@ Browser (React)          BFF /api/mcp/tool         MCP Server (8080)     Banking
 ## 7. CIBA Flow Detail (Email Approval)
 
 ```
-BFF / MCP Server                   PingOne                    User Email
+Backend-for-Frontend (BFF) / MCP Server                   PingOne                    User Email
        │                              │                             │
        │  POST /bc-authorize          │                             │
        │  {                           │                             │
@@ -623,14 +623,14 @@ BFF / MCP Server                   PingOne                    User Email
 
 ```
 Phase 1 — Token correctness (no user-facing change)
-  ├── Implement token refresh in BFF
+  ├── Implement token refresh in Backend-for-Frontend (BFF)
   ├── Enforce aud + iss in tokenValidationService
   └── Add token revocation on logout (POST PingOne /token/revoke)
 
 Phase 2 — Proper delegation (main gap)
   ├── Configure PingOne to issue may_act on user tokens
-  │     (naming the BFF client_id and AI agent client_id)
-  ├── Implement RFC 8693 token exchange in BFF MCP proxy
+  │     (naming the Backend-for-Frontend (BFF) client_id and AI agent client_id)
+  ├── Implement RFC 8693 token exchange in Backend-for-Frontend (BFF) MCP proxy
   │     POST /token { grant_type: token-exchange, subject_token,
   │                   audience: mcp-server-uri, scope: narrow }
   ├── Implement token exchange in LangChain agent

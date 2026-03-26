@@ -5,6 +5,16 @@ import { resolveSessionUser } from '../services/sessionResolver';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
+const ACCOUNT_TYPE_BADGE_COLORS = {
+  checking: '#3b82f6',
+  savings: '#10b981',
+  investment: '#8b5cf6',
+  money_market: '#06b6d4',
+  credit: '#f59e0b',
+  car_loan: '#ec4899',
+  mortgage: '#6366f1',
+};
+
 const Accounts = ({ user, onLogout }) => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +92,10 @@ const Accounts = ({ user, onLogout }) => {
                 </tr>
               </thead>
               <tbody>
-                {accounts.map((account) => (
+                {accounts.map((account) => {
+                  const typeKey = String(account.accountType || '').toLowerCase();
+                  const badgeColor = ACCOUNT_TYPE_BADGE_COLORS[typeKey] || '#64748b';
+                  return (
                   <tr key={account.id}>
                     <td style={{ fontFamily: 'monospace', fontWeight: '600' }}>
                       {account.accountNumber}
@@ -93,7 +106,7 @@ const Accounts = ({ user, onLogout }) => {
                         borderRadius: '0.25rem',
                         fontSize: '0.75rem',
                         fontWeight: '500',
-                        backgroundColor: account.accountType === 'checking' ? '#3b82f6' : '#10b981',
+                        backgroundColor: badgeColor,
                         color: 'white'
                       }}>
                         {account.accountType}
@@ -117,7 +130,8 @@ const Accounts = ({ user, onLogout }) => {
                     </td>
                     <td>{format(new Date(account.createdAt), 'MMM dd, yyyy')}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

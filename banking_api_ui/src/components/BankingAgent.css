@@ -797,6 +797,13 @@
   gap: 10px;
 }
 
+.ba-session-fix-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .ba-session-fix-btn {
   align-self: flex-start;
   padding: 8px 14px;
@@ -817,6 +824,22 @@
   border-color: #fecaca;
   background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
+}
+
+.ba-session-fix-btn--secondary {
+  border-color: #64748b;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.ba-session-fix-btn--secondary:hover {
+  filter: brightness(0.97);
+}
+
+.ba-mode-light .ba-session-fix-btn--secondary {
+  border-color: #94a3b8;
+  background: #fff;
+  color: #0f172a;
 }
 
 /* ─── Token event inline messages ────────────────────────────────────────── */

@@ -14,7 +14,7 @@
  *   - Logout button triggers logout flow
  *   - Non-admin sees UserDashboard, not admin panels
  *   - Activity Logs section accessible to admin
- *   - Dashboard API calls omit Authorization (BFF uses session cookie only)
+ *   - Dashboard API calls omit Authorization (Backend-for-Frontend (BFF) uses session cookie only)
  */
 
 const { test, expect } = require('@playwright/test');
@@ -202,7 +202,7 @@ test.describe('Admin Dashboard', () => {
     await expect(page.getByText(/accounts/i).first()).toBeVisible({ timeout: 5000 });
   });
 
-  test('dashboard data requests omit Authorization header (BFF session cookie)', async ({ page }) => {
+  test('dashboard data requests omit Authorization header (Backend-for-Frontend (BFF) session cookie)', async ({ page }) => {
     await mockAdminSession(page);
     const statsReqPromise = page.waitForRequest(
       (req) => req.url().includes('/api/admin/stats') && req.method() === 'GET',

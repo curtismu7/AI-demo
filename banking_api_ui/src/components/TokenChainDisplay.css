@@ -62,6 +62,16 @@
   50%       { opacity: 0.55; transform: scale(0.75); }
 }
 
+/* Session preview: signed-in user token from BFF, no MCP tool call yet */
+.tcd-session-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2563eb;
+  flex-shrink: 0;
+}
+
 /* ─── Tabs ───────────────────────────────────────────────────────────────── */
 .tcd-tabs {
   display: flex;

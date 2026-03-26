@@ -26,7 +26,7 @@ This document summarizes the implementation of 4 partially implemented capabilit
   
 - **Delegation chain extraction**
   - Extracts complete delegation chain from tokens
-  - Identifies subject (user) and actor (BFF/agent)
+  - Identifies subject (user) and actor (Backend-for-Frontend (BFF) / agent)
   - Attaches to request object for audit logging
   
 - **Middleware integration**

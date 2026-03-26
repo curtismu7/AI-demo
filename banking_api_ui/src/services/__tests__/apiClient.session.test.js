@@ -109,7 +109,7 @@ describe('apiClient session OAuth', () => {
     expect(out.headers.Authorization).toBe('Bearer tok');
   });
 
-  it('request interceptor omits Authorization when getValidToken is null (BFF session cookie)', async () => {
+  it('request interceptor omits Authorization when getValidToken is null (Backend-for-Frontend (BFF) session cookie)', async () => {
     expect(requestInterceptorFn).toEqual(expect.any(Function));
     jest.spyOn(apiClient, 'getValidToken').mockResolvedValue(null);
     const out = await requestInterceptorFn({ headers: {} });

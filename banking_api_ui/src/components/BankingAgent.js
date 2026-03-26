@@ -21,6 +21,12 @@ import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlS
 import { getToolStepsForAction } from '../utils/agentToolSteps';
 import './BankingAgent.css';
 
+/** Floating agent: collapsed on app home `/`; open on other routes (dashboard URL, demo-data, MCP inspector, …). */
+function isBankingAgentOpenByDefaultForPath(pathname) {
+  const p = pathname && pathname !== '' ? pathname : '/';
+  return p !== '/';
+}
+
 // ─── Action definitions ────────────────────────────────────────────────────────
 
 const ACTIONS = [
@@ -85,17 +91,21 @@ const SUGGESTIONS_ADMIN = [
   'What is step-up auth?',
 ];
 
-/** Chat copy when BFF has cookie but no OAuth tokens (e.g. Vercel without Redis). */
+/** Chat copy when Backend-for-Frontend (BFF) has cookie but no OAuth tokens (e.g. Vercel without Redis). */
 const SESSION_NOT_HYDRATED_CHAT = [
-  'Your browser is signed in, but this server does not have your OAuth tokens yet.',
+  'Your browser shows you as signed in, but this server instance does not have your OAuth tokens. On Vercel that almost always means sessions are not shared in Redis (each request can hit a different instance).',
   '',
-  'Hosted (Vercel): set REDIS_URL, or UPSTASH_REDIS_REST_URL + TOKEN, or Vercel KV (KV_REST_API_URL + KV_REST_API_TOKEN) on this same project; redeploy; then use Sign out below and sign in again.',
+  'Fix: In Vercel → this project → Settings → Environment Variables, add either:',
+  '  • REDIS_URL (Upstash “Redis” connection string), or',
+  '  • KV_REST_API_URL + KV_REST_API_TOKEN (same values as Upstash REST / Vercel KV).',
+  'Apply to Production, redeploy, then use Sign out below and sign in again.',
   '',
-  'Check GET /api/auth/debug — bffSessionStore should be "redis" after deploy. "Refresh access token" only works once Redis holds a real session.',
+  'Use “Open session debug” to see bffSessionStore, Redis client state, and sessionRestored. You want bffSessionStore: "redis", sessionRedisClientReady: true, accessTokenStub: false after a fresh login.',
+  '“Refresh access token” does not fix this until a real Redis-backed session exists.',
 ].join('\n');
 
 /**
- * Picks the signed-in user from BFF status responses and reads cookie-only / Vercel hydration flag from GET /api/auth/session.
+ * Picks the signed-in user from Backend-for-Frontend (BFF) status responses and reads cookie-only / Vercel hydration flag from GET /api/auth/session.
  */
 function resolveSessionFromAuthTrio(admin, endUser, session) {
   const found = (admin?.authenticated && admin.user)
@@ -355,12 +365,12 @@ function parseLogPrompt(text) {
 // ─── Education topic inline messages (module-level for performance) ───────────
 
 const TOPIC_MESSAGES = {
-  'login-flow': `🔐 Authorization Code + PKCE Flow:\n\n1. App generates code_verifier (random 64 bytes) + code_challenge (SHA-256 hash)\n2. Browser redirects to PingOne /as/authorize with challenge\n3. User authenticates → PingOne redirects back with code\n4. BFF exchanges code + verifier for tokens (server-side only)\n5. Browser never sees the token — only a session cookie\n\nPKCE prevents interception: even if code is stolen, attacker can't exchange it without the verifier.`,
-  'token-exchange': `🔄 RFC 8693 Token Exchange (User token → MCP token):\n\nWhy: The user token has broad scope. The MCP server needs a narrowly-scoped MCP token for least-privilege.\n\nHow:\n• BFF holds the User token (session access token)\n• BFF calls PingOne /as/token with grant_type=urn:ietf:params:oauth:grant-type:token-exchange\n• User token is subject_token; agent client credentials are actor_token\n• PingOne validates may_act on the User token and issues an MCP token\n• MCP token has: sub=user, act={client_id=agent}, narrow scope, MCP audience\n\nmay_act on the User token → act on the MCP token — proving delegation chain.`,
-  'may-act': `📋 may_act / act Claims (RFC 8693 §4.1):\n\nmay_act on the User token: "this client is allowed to act on my behalf"\n  { "sub": "user-uuid", "may_act": { "client_id": "bff-admin-client" } }\n\nact on the MCP token (exchanged token): "this action was delegated"\n  { "sub": "user-uuid", "act": { "client_id": "bff-admin-client" } }\n\nThe MCP server validates act to confirm the BFF is the authorized actor — not just any client that got a token.`,
-  'mcp-protocol': `⚙️ Model Context Protocol (MCP):\n\nMCP is a JSON-RPC 2.0 protocol over WebSocket (or stdio/SSE) for AI tools.\n\nHandshake:\n  initialize → { protocolVersion, capabilities, serverInfo }\n  → initialized (ACK)\n\nDiscovery:\n  tools/list → [{ name, description, inputSchema }]\n\nExecution:\n  tools/call { name, arguments } → { content: [{ type, text }] }\n\nIn this demo:\n  Browser → BFF (/api/mcp/tool) → MCP Server (WebSocket) → Banking API\n\nToken flow: BFF performs RFC 8693 exchange before forwarding tool calls.`,
+  'login-flow': `🔐 Authorization Code + PKCE Flow:\n\n1. App generates code_verifier (random 64 bytes) + code_challenge (SHA-256 hash)\n2. Browser redirects to PingOne /as/authorize with challenge\n3. User authenticates → PingOne redirects back with code\n4. Backend-for-Frontend (BFF) exchanges code + verifier for tokens (server-side only)\n5. Browser never sees the token — only a session cookie\n\nPKCE prevents interception: even if code is stolen, attacker can't exchange it without the verifier.`,
+  'token-exchange': `🔄 RFC 8693 Token Exchange (User token → MCP token):\n\nWhy: The user token has broad scope. The MCP server needs a narrowly-scoped MCP token for least-privilege.\n\nHow:\n• Backend-for-Frontend (BFF) holds the User token (session access token)\n• Backend-for-Frontend (BFF) calls PingOne /as/token with grant_type=urn:ietf:params:oauth:grant-type:token-exchange\n• User token is subject_token; agent client credentials are actor_token\n• PingOne validates may_act on the User token and issues an MCP token\n• MCP token has: sub=user, act={client_id=agent}, narrow scope, MCP audience\n\nmay_act on the User token → act on the MCP token — proving delegation chain.`,
+  'may-act': `📋 may_act / act Claims (RFC 8693 §4.1):\n\nmay_act on the User token: "this client is allowed to act on my behalf"\n  { "sub": "user-uuid", "may_act": { "client_id": "bff-admin-client" } }\n\nact on the MCP token (exchanged token): "this action was delegated"\n  { "sub": "user-uuid", "act": { "client_id": "bff-admin-client" } }\n\nThe MCP server validates act to confirm the Backend-for-Frontend (BFF) is the authorized actor — not just any client that got a token.`,
+  'mcp-protocol': `⚙️ Model Context Protocol (MCP):\n\nMCP is a JSON-RPC 2.0 protocol over WebSocket (or stdio/SSE) for AI tools.\n\nHandshake:\n  initialize → { protocolVersion, capabilities, serverInfo }\n  → initialized (ACK)\n\nDiscovery:\n  tools/list → [{ name, description, inputSchema }]\n\nExecution:\n  tools/call { name, arguments } → { content: [{ type, text }] }\n\nIn this demo:\n  Browser → Backend-for-Frontend (BFF) (/api/mcp/tool) → MCP Server (WebSocket) → Banking API\n\nToken flow: Backend-for-Frontend (BFF) performs RFC 8693 exchange before forwarding tool calls.`,
   'introspection': `🔍 RFC 7662 Token Introspection:\n\nThe MCP server calls PingOne to validate tokens in real-time:\n  POST /as/introspect\n  { token: "...", token_type_hint: "access_token" }\n  → { active: true, sub, scope, exp, aud }\n\nWhy not just verify the JWT locally?\n• Catches revoked tokens (user logged out, compromised session)\n• Zero-trust: every tool call re-validates the token\n• Results cached 60s to avoid hammering PingOne`,
-  'step-up': `⬆️ Step-Up Authentication:\n\nTriggered when a high-value action requires stronger auth:\n• Transfer ≥ $250 → require MFA\n• BFF returns HTTP 428 with WWW-Authenticate: Bearer scope="step_up"\n\nTwo methods:\n1. CIBA: PingOne pushes challenge to user's device (out-of-band)\n2. Redirect: Browser redirects to /api/auth/oauth/user/stepup?acr_values=Multi_factor\n\nAfter approval, PingOne issues new token with higher ACR — BFF stores it and retries the original transaction.`,
+  'step-up': `⬆️ Step-Up Authentication:\n\nTriggered when a high-value action requires stronger auth:\n• Transfer ≥ $250 → require MFA\n• Backend-for-Frontend (BFF) returns HTTP 428 with WWW-Authenticate: Bearer scope="step_up"\n\nTwo methods:\n1. CIBA: PingOne pushes challenge to user's device (out-of-band)\n2. Redirect: Browser redirects to /api/auth/oauth/user/stepup?acr_values=Multi_factor\n\nAfter approval, PingOne issues new token with higher ACR — Backend-for-Frontend (BFF) stores it and retries the original transaction.`,
   'agent-gateway': `🌐 Agent Gateway / Resource Indicators (RFC 8707):\n\nRFC 8707: client specifies the resource URI when requesting a token\n  /as/token?resource=https://mcp.example.com\n  → token aud = "https://mcp.example.com"\n\nRFC 9728: Protected Resource Metadata\n  GET https://mcp.example.com/.well-known/oauth-protected-resource\n  → { resource, authorization_servers, scopes_supported }\n\nThis lets a dynamic AI agent discover what auth is needed before attempting a tool call — no hardcoded configuration.`,
   'pingone-authorize': `🔐 PingOne Authorize (DaVinci):\n\nPingOne Authorize evaluates access policies at runtime using DaVinci flows.\n\nIn this demo it drives:\n• Step-up MFA triggers (ACR values like "Multi_factor")\n• CIBA push notifications to the user's device\n• Dynamic consent for high-value transactions\n\nThe acr_values parameter in /as/authorize tells PingOne which DaVinci policy to run.`,
   'cimd': `📄 Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "▶ Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
@@ -383,11 +393,11 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
     setAgentAppearance,
     effectiveAgentTheme,
   } = useTheme();
-  // Always open by default, unless user explicitly collapsed it (persisted in localStorage)
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('bankingAgentOpen');
-    return saved === null ? true : saved === 'true';
-  });
+  const [isOpen, setIsOpen] = useState(() =>
+    typeof window !== 'undefined'
+      ? isBankingAgentOpenByDefaultForPath(window.location.pathname)
+      : true
+  );
   /** Panel light/dark: default follows page (`auto`); can override in header. */
   const isDark = effectiveAgentTheme === 'dark';
   const [isExpanded, setIsExpanded] = useState(false);
@@ -432,10 +442,11 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   // On the /agent route the inline/full-page instance is shown — hide duplicate float
   const isAgentPage = location.pathname === '/agent';
 
-  // Persist isOpen state to localStorage whenever it changes
+  // Floating mode: follow route — collapsed on `/`, open elsewhere (`?oauth=success` / scrollToAgent effects below may re-open on `/`)
   useEffect(() => {
-    localStorage.setItem('bankingAgentOpen', isOpen.toString());
-  }, [isOpen]);
+    if (isInline) return;
+    setIsOpen(isBankingAgentOpenByDefaultForPath(location.pathname));
+  }, [location.pathname, isInline]);
 
   // Auto-open when returning from /config (Config.js navigates back with scrollToAgent:true)
   useEffect(() => {
@@ -507,9 +518,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   //  and again if the user changes while the component is mounted)
   useEffect(() => {
     if (user) {
-      // Respect explicit user preference — only auto-open if user hasn't collapsed it
-      if (localStorage.getItem('bankingAgentOpen') !== 'false') {
-        setIsOpen(true);
+      if (!isInline) {
+        setIsOpen(isBankingAgentOpenByDefaultForPath(location.pathname));
       }
       setMessages(prev =>
         prev.length === 0
@@ -517,7 +527,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
           : prev
       );
     }
-  }, [user]);
+  }, [user, isInline, location.pathname]);
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
@@ -575,9 +585,8 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
-        // Respect explicit user preference — only auto-open if user hasn't collapsed it
-        if (localStorage.getItem('bankingAgentOpen') !== 'false') {
-          setIsOpen(true);
+        if (!isInline) {
+          setIsOpen(isBankingAgentOpenByDefaultForPath(window.location.pathname));
         }
         const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found) };
         if (cookieOnly) {
@@ -598,15 +607,14 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isInline]);
 
   // Re-check when App.js confirms a login, and auto-open the agent
   useEffect(() => {
     const onAuth = () => {
       checkSelfAuth();
-      // Respect explicit user preference — only auto-open if user hasn't collapsed it
-      if (localStorage.getItem('bankingAgentOpen') !== 'false') {
-        setIsOpen(true);
+      if (!isInline) {
+        setIsOpen(isBankingAgentOpenByDefaultForPath(window.location.pathname));
       }
       setMessages(prev =>
         prev.length === 0
@@ -617,7 +625,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
     window.addEventListener('userAuthenticated', onAuth);
     return () => window.removeEventListener('userAuthenticated', onAuth);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkSelfAuth, user, sessionUser]);
+  }, [checkSelfAuth, user, sessionUser, isInline]);
 
   // Re-check when panel opens (catches sessions established after mount)
   useEffect(() => {
@@ -855,10 +863,13 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
             highlightSection = 'transactions';
             break;
           case 'balance':
+            highlightSection = 'accounts';
+            break;
           case 'deposit':
           case 'withdraw':
           case 'transfer':
-            highlightSection = 'accounts';
+            // Writes append to history — highlight Recent transactions after refresh
+            highlightSection = 'transactions';
             break;
           default:
             // No highlighting for other actions
@@ -976,7 +987,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
       if (isConnErr) {
         toast.error('🔌 MCP server unreachable — check your server connection', { autoClose: 8000 });
       } else if (hydrationAuthFailure && cookieOnlyBffSession) {
-        // Inline session-fix banner already shown on load for cookie-only BFF; avoid duplicate toasts.
+        // Inline session-fix banner already shown on load for cookie-only Backend-for-Frontend (BFF); avoid duplicate toasts.
       } else if (err?.code === 'session_not_hydrated') {
         toast.error(
           'Sign in again: server session has no tokens (Vercel needs Redis/Upstash + redeploy, then sign out & sign in).',
@@ -1528,13 +1539,22 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
                       <div key={msg.id} className="banking-agent-msg error">
                         <div className="banking-agent-msg-bubble banking-agent-msg-bubble--session-fix">
                           <pre className="banking-agent-msg-text">{msg.content}</pre>
-                          <button
-                            type="button"
-                            className="ba-session-fix-btn"
-                            onClick={() => onLogout?.()}
-                          >
-                            Sign out (then sign in again)
-                          </button>
+                          <div className="ba-session-fix-actions">
+                            <button
+                              type="button"
+                              className="ba-session-fix-btn ba-session-fix-btn--secondary"
+                              onClick={() => window.open('/api/auth/debug', '_blank', 'noopener,noreferrer')}
+                            >
+                              Open session debug
+                            </button>
+                            <button
+                              type="button"
+                              className="ba-session-fix-btn"
+                              onClick={() => onLogout?.()}
+                            >
+                              Sign out (then sign in again)
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );

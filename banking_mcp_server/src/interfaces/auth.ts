@@ -10,7 +10,7 @@ export interface AgentTokenInfo {
   expiresAt: Date;
   isValid: boolean;
   /** Populated when the token carries an RFC 8693 `act` claim — identifies the
-   *  actor (e.g. BFF or AI agent client_id) that performed token exchange. */
+   *  actor (e.g. Backend-for-Frontend (BFF) or AI agent client_id) that performed token exchange. */
   actorClientId?: string;
 }
 

@@ -81,7 +81,7 @@ jest.mock('../../services/configStore', () => ({
 }));
 
 const configStore = require('../../services/configStore');
-const { resolveMcpAccessTokenWithEvents } = require('../../services/agentMcpTokenService');
+const { resolveMcpAccessTokenWithEvents, buildSessionPreviewTokenEvents } = require('../../services/agentMcpTokenService');
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -243,5 +243,44 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange (MCP_RESOURCE_UR
     expect(mcpTokEv.jwtFullDecode.claims.sub).toBe(USER_SUB);
     expect(mcpTokEv.jwtFullDecode.claims.aud).toBe('mcp-resource-uri');
     expect(mcpTokEv.jwtFullDecode.claims.act).toEqual({ client_id: 'bff-client-id' });
+  });
+});
+
+describe('buildSessionPreviewTokenEvents', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns empty tokenEvents when no session token', () => {
+    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(null));
+    expect(tokenEvents).toEqual([]);
+  });
+
+  it('returns user-token active plus exchange-skipped when MCP_RESOURCE_URI is unset', () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return '';
+      return null;
+    });
+    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(MOCK_USER_TOKEN));
+    expect(tokenEvents).toHaveLength(2);
+    expect(tokenEvents[0].id).toBe('user-token');
+    expect(tokenEvents[0].status).toBe('active');
+    expect(tokenEvents[1].id).toBe('exchange-skipped');
+    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
+  });
+
+  it('returns waiting exchange rows when MCP_RESOURCE_URI is set — does not call PingOne exchange', () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      return null;
+    });
+    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(MOCK_USER_TOKEN));
+    expect(tokenEvents).toHaveLength(3);
+    expect(tokenEvents[0].id).toBe('user-token');
+    expect(tokenEvents[1].id).toBe('exchange');
+    expect(tokenEvents[1].status).toBe('waiting');
+    expect(tokenEvents[2].id).toBe('exchanged-token');
+    expect(tokenEvents[2].status).toBe('waiting');
+    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 });

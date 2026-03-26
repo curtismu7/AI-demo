@@ -35,6 +35,43 @@ function isExistingAccountId(id) {
   return String(id).trim().length > 0;
 }
 
+/** Allowed account types from the Demo config UI (new rows). */
+const DEMO_ACCOUNT_TYPES = new Set([
+  'checking',
+  'savings',
+  'investment',
+  'money_market',
+  'credit',
+  'car_loan',
+  'mortgage',
+]);
+
+const DEMO_ACCOUNT_NUMBER_PREFIX = {
+  checking: 'CHK',
+  savings: 'SAV',
+  investment: 'INV',
+  money_market: 'MMK',
+  credit: 'CRD',
+  car_loan: 'CAR',
+  mortgage: 'HOM',
+};
+
+const DEMO_DEFAULT_ACCOUNT_NAMES = {
+  checking: 'Checking Account',
+  savings: 'Savings Account',
+  investment: 'Investment Account',
+  money_market: 'Money Market Account',
+  credit: 'Credit Card',
+  car_loan: 'Car Loan',
+  mortgage: 'Mortgage (Home Loan)',
+};
+
+function normalizeDemoAccountType(raw) {
+  const typeRaw = typeof raw === 'string' ? raw.toLowerCase().trim() : '';
+  if (DEMO_ACCOUNT_TYPES.has(typeRaw)) return typeRaw;
+  return 'checking';
+}
+
 /**
  * Merge PingOne/session-backed identity into stored user for the demo-config form.
  * Anonymous fields stay empty until we fall back to PROFILE_UI_FALLBACK.
@@ -111,7 +148,7 @@ function sanitizeUserUpdates(raw) {
 }
 
 // Auth: server mounts this router with authenticateToken only (same pattern as GET /api/accounts/my).
-// No banking:* scope gate — BFF session users often lack those scopes in the PingOne access token.
+// No banking:* scope gate — Backend-for-Frontend (BFF) session users often lack those scopes in the PingOne access token.
 router.get('/', async (req, res) => {
   try {
     let accounts = dataStore.getAccountsByUserId(req.user.id);
@@ -215,11 +252,10 @@ router.put('/', async (req, res) => {
         if (!row || typeof row !== 'object') continue;
 
         if (!isExistingAccountId(row.id)) {
-          const typeRaw = typeof row.accountType === 'string' ? row.accountType.toLowerCase().trim() : '';
-          const accountType = typeRaw === 'savings' ? 'savings' : 'checking';
+          const accountType = normalizeDemoAccountType(row.accountType);
           let name = typeof row.name === 'string' ? row.name.trim().slice(0, 120) : '';
           if (!name) {
-            name = accountType === 'savings' ? 'Savings Account' : 'Checking Account';
+            name = DEMO_DEFAULT_ACCOUNT_NAMES[accountType] || 'Account';
           }
           let balance = 0;
           if (row.balance !== undefined && row.balance !== null && row.balance !== '') {
@@ -231,7 +267,7 @@ router.put('/', async (req, res) => {
           }
           const newId = uuidv4();
           const numSuffix = newId.replace(/-/g, '').slice(0, 12).toUpperCase();
-          const acctNumPrefix = accountType === 'savings' ? 'SAV' : 'CHK';
+          const acctNumPrefix = DEMO_ACCOUNT_NUMBER_PREFIX[accountType] || 'ACC';
           await dataStore.createAccount({
             id: newId,
             userId: uid,
@@ -277,7 +313,21 @@ router.put('/', async (req, res) => {
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'userData')) {
-      const user = dataStore.getUserById(uid);
+      let user = dataStore.getUserById(uid);
+      if (!user) {
+        const su = req.session?.user || {};
+        const tu = req.user || {};
+        user = await dataStore.ensureUser(uid, {
+          username: su.username || tu.username,
+          email: su.email || tu.email,
+          firstName: su.firstName || tu.firstName,
+          lastName: su.lastName || tu.lastName,
+          role: su.role || tu.role,
+          oauthProvider: su.oauthProvider,
+          oauthId: su.oauthId || tu.oauthSub || null,
+          isActive: su.isActive !== false && tu.isActive !== false,
+        });
+      }
       if (!user) {
         return res.status(404).json({ error: 'user_not_found', message: 'Signed-in user not found.' });
       }

@@ -13,7 +13,7 @@ const live =
   process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true' &&
   String(process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN || '').trim().length > 0;
 
-describe('Session oauthTokens contract (BFF → MCP)', () => {
+describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', () => {
   /**
    * Same shape as production: routes/oauth persist accessToken for mcpWebSocketClient.getSessionAccessToken.
    */
@@ -40,7 +40,7 @@ describe('Session oauthTokens contract (BFF → MCP)', () => {
   });
 
   /**
-   * Exchanges a real User token for an MCP token (MCP-audience) via BFF oauthService.
+   * Exchanges a real User token for an MCP token (MCP-audience) via Backend-for-Frontend (BFF) oauthService.
    */
   it('performTokenExchange returns a 3-part JWT with sub and aud', async () => {
     const oauthService = require('../../services/oauthService');

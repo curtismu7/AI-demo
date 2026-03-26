@@ -2,17 +2,23 @@
    CIBAPanel.css — styles for the floating CIBA drawer
    ========================================================= */
 
-/* ---------- CIBA guide trigger — top-right corner of page ---------- */
+/* ---------- CIBA guide trigger — top of top-right stack (same width/height as CIMD / Logs / Demo config) ---------- */
 .ciba-fab {
   position: fixed;
   top: var(--stack-fab-top-base, 16px);
   right: var(--float-edge, 28px);
   z-index: 1001;
+  box-sizing: border-box;
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  gap: 8px;
+  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
+  max-width: var(--stack-fab-viewport-max, 100vw);
+  min-width: 0;
+  height: var(--stack-fab-height, 44px);
+  min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
   background: var(--app-primary-red);
   color: #fff;
@@ -21,6 +27,7 @@
   border-radius: 8px;
   font-size: 0.8125rem;
   font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
@@ -41,10 +48,16 @@
 
 .ciba-fab-icon {
   font-size: 1rem;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .ciba-fab-label {
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* small green dot when enabled */

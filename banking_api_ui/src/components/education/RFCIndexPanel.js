@@ -10,7 +10,7 @@ const ROWS = [
   { rfc: 'RFC 7519', name: 'JWT', app: 'User token, MCP token, …', href: 'https://datatracker.ietf.org/doc/html/rfc7519', panel: EDU.LOGIN_FLOW, tab: 'tokens' },
   { rfc: 'RFC 7517', name: 'JWK', app: 'JWKS for Banking API validation', href: 'https://datatracker.ietf.org/doc/html/rfc7517', panel: EDU.INTROSPECTION, tab: 'vsjwks' },
   { rfc: 'RFC 7662', name: 'Token Introspection', app: 'MCP validates MCP token', href: 'https://datatracker.ietf.org/doc/html/rfc7662', panel: EDU.INTROSPECTION, tab: 'why' },
-  { rfc: 'RFC 8693', name: 'Token Exchange', app: 'BFF User token→MCP token', href: 'https://datatracker.ietf.org/doc/html/rfc8693', panel: EDU.TOKEN_EXCHANGE, tab: 'after' },
+  { rfc: 'RFC 8693', name: 'Token Exchange', app: 'Backend-for-Frontend (BFF) User token→MCP token', href: 'https://datatracker.ietf.org/doc/html/rfc8693', panel: EDU.TOKEN_EXCHANGE, tab: 'after' },
   { rfc: 'RFC 8707', name: 'Resource Indicators', app: 'Bind aud to RS URL', href: 'https://datatracker.ietf.org/doc/html/rfc8707', panel: EDU.AGENT_GATEWAY, tab: 'rfc8707' },
   { rfc: 'RFC 9449', name: 'DPoP', app: 'Optional egress binding', href: 'https://datatracker.ietf.org/doc/html/rfc9449', panel: EDU.AGENT_GATEWAY, tab: 'overview' },
   { rfc: 'RFC 9728', name: 'OAuth for MCP', app: 'MCP AS discovery', href: 'https://datatracker.ietf.org/doc/html/rfc9728', panel: EDU.AGENT_GATEWAY, tab: 'rfc9728' },

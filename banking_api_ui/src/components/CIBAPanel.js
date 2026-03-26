@@ -260,7 +260,7 @@ function TryItTab({ cibaStatus }) {
         <strong>What you are exercising:</strong> <code>POST /api/auth/ciba/initiate</code> starts a CIBA request at PingOne
         (backchannel). The server returns an <code>auth_req_id</code>. This UI then calls{' '}
         <code>GET /api/auth/ciba/poll/:authReqId</code> until PingOne issues tokens (approved) or returns denied / expired.
-        Tokens are written to the <strong>BFF session</strong> — they are not returned to the browser.
+        Tokens are written to the <strong>Backend-for-Frontend (BFF) session</strong> — they are not returned to the browser.
       </p>
       <p className="ciba-section-desc">
         Initiate a live CIBA request. PingOne will deliver the approval step by <strong>email</strong> or{' '}
@@ -337,7 +337,7 @@ function TryItTab({ cibaStatus }) {
 
           {status === 'approved' && (
             <div className="ciba-notice ciba-notice--success">
-              ✅ User approved! Tokens stored server-side in the BFF session.
+              ✅ User approved! Tokens stored server-side in the Backend-for-Frontend (BFF) session.
               They are never sent to this browser.
             </div>
           )}
@@ -483,7 +483,7 @@ export default function CIBAPanel() {
                 : <span className="ciba-badge ciba-badge--off">Disabled</span>}
             </h2>
             <p className="ciba-subtitle">
-              OIDC CIBA plus OAuth tokens, BFF session, MCP, and RFC 8693 token exchange — open <strong>Full stack</strong> for the map and <strong>Token exchange</strong> for before/after <code>/token</code>, statuses, and responses.
+              OIDC CIBA plus OAuth tokens, Backend-for-Frontend (BFF) session, MCP, and RFC 8693 token exchange — open <strong>Full stack</strong> for the map and <strong>Token exchange</strong> for before/after <code>/token</code>, statuses, and responses.
             </p>
           </div>
           <button className="ciba-close" onClick={() => setOpen(false)} aria-label="Close">✕</button>
@@ -530,7 +530,7 @@ export default function CIBAPanel() {
                   <div>
                     <strong>Authorization Code + PKCE</strong><br />
                     Full browser redirect to PingOne login page, then redirect back with <code>code</code>. Immediate session establishment;
-                    standard for SPAs with BFF. See <strong>Learn → Login Flow</strong> in the top bar.
+                    standard for SPAs with Backend-for-Frontend (BFF). See <strong>Learn → Login Flow</strong> in the top bar.
                   </div>
                 </div>
               </div>
@@ -575,13 +575,13 @@ export default function CIBAPanel() {
 
               <h3 className="ciba-section-title">Banking Agent (robot button) vs signing in</h3>
               <p className="ciba-section-desc">
-                The <strong>Banking Agent</strong> panel is <em>not</em> a third identity. It does not log you in by itself. When you <strong>are</strong> signed in, the Agent calls <code>POST /api/mcp/tool</code>; the API server attaches your <strong>current session&apos;s OAuth access token</strong> and forwards MCP tool calls (accounts, transactions, etc.) <strong>as you</strong>. So the Agent is the same user as the browser session — just a different UI (MCP tools) on top of the same BFF session cookie.
+                The <strong>Banking Agent</strong> panel is <em>not</em> a third identity. It does not log you in by itself. When you <strong>are</strong> signed in, the Agent calls <code>POST /api/mcp/tool</code>; the API server attaches your <strong>current session&apos;s OAuth access token</strong> and forwards MCP tool calls (accounts, transactions, etc.) <strong>as you</strong>. So the Agent is the same user as the browser session — just a different UI (MCP tools) on top of the same Backend-for-Frontend (BFF) session cookie.
               </p>
               <p className="ciba-section-desc">
                 When you are <strong>not</strong> signed in, the Agent only offers Configure and the two login buttons — it cannot run banking tools until a session exists.
               </p>
               <div className="ciba-notice ciba-notice--info">
-                <strong>How we know who you are:</strong> the server reads <code>req.session.user</code> for the human. For MCP tool calls, the BFF can optionally issue a <strong>delegated token</strong> where the <strong>agent OAuth client</strong> is the actor and you remain the subject (RFC 8693 with <code>actor_token</code> + <code>subject_token</code>) — configure <code>USE_AGENT_ACTOR_FOR_MCP</code>, <code>AGENT_OAUTH_CLIENT_*</code>, and optional PingOne directory provisioning via <code>/api/agent/identity/bootstrap</code>. That is “on behalf of,” not impersonation.
+                <strong>How we know who you are:</strong> the server reads <code>req.session.user</code> for the human. For MCP tool calls, the Backend-for-Frontend (BFF) can optionally issue a <strong>delegated token</strong> where the <strong>agent OAuth client</strong> is the actor and you remain the subject (RFC 8693 with <code>actor_token</code> + <code>subject_token</code>) — configure <code>USE_AGENT_ACTOR_FOR_MCP</code>, <code>AGENT_OAUTH_CLIENT_*</code>, and optional PingOne directory provisioning via <code>/api/agent/identity/bootstrap</code>. That is “on behalf of,” not impersonation.
               </div>
             </div>
           )}

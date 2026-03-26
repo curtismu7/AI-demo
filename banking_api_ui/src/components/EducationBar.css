@@ -39,6 +39,10 @@
   color: #fff !important;
 }
 
+.edu-bar-inner > a.edu-bar-btn.edu-bar-btn--active {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--app-primary-red-border) !important;
+}
+
 .edu-bar-inner > .edu-bar-group .edu-bar-btn:hover,
 .edu-bar-inner > button.edu-bar-btn:hover,
 .edu-bar-inner > a.edu-bar-btn:hover,

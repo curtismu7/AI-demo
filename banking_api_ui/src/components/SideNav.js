@@ -24,6 +24,7 @@ const ADMIN_NAV = [
   {
     group: 'Developer Tools',
     items: [
+      { to: '/demo-data',          label: 'Demo config',      icon: '⚙️' },
       { to: '/mcp-inspector',      label: 'MCP Inspector',    icon: '🔌' },
       { to: '/oauth-debug-logs',   label: 'OAuth Logs',       icon: '🔍' },
       { to: '/client-registration',label: 'Client Reg.',      icon: '📝' },
@@ -45,6 +46,7 @@ const USER_NAV = [
     items: [
       { to: '/dashboard', label: 'My Dashboard', icon: '📊' },
       { to: '/agent',     label: 'AI Agent',      icon: '💬' },
+      { to: '/demo-data', label: 'Demo config',   icon: '⚙️' },
     ],
   },
 ];

@@ -47,7 +47,7 @@ PingOne supports CIBA natively. Since users are identified by email (`login_hint
 ## Architecture After CIBA
 
 ```
-AI Agent (MCP) or BFF server
+AI Agent (MCP) or Backend-for-Frontend (BFF) server
     │
     │  1. POST /bc-authorize (login_hint=email)
     ▼
@@ -67,7 +67,7 @@ Server polls POST /token (auth_req_id)
     │
     │  5. Returns access_token, id_token, refresh_token
     ▼
-MCP session / BFF session stores tokens
+MCP session / Backend-for-Frontend (BFF) session stores tokens
     │
     │  6. Tool call proceeds with user context
     ▼
@@ -105,7 +105,7 @@ PingOne CIBA authentication is orchestrated by a DaVinci flow — there is no bu
 
 ### Step 3: Enable CIBA Grant Type on Your Application
 
-1. Navigate to **Applications** → **Applications** → select your application (the one used by the BFF server — the admin/worker client)
+1. Navigate to **Applications** → **Applications** → select your application (the one used by the Backend-for-Frontend (BFF) server — the admin/worker client)
 2. Go to the **Overview** tab → click **Edit**
 3. Under **Grant Types**, enable **CIBA**
 
@@ -295,7 +295,7 @@ const { authenticateToken } = require('../middleware/auth');
 /**
  * POST /api/auth/ciba/initiate
  * Initiates a CIBA auth request for the current session user.
- * Used by the BFF when step-up auth is needed without a redirect.
+ * Used by the Backend-for-Frontend (BFF) when step-up auth is needed without a redirect.
  * Body: { scope: 'banking:write', binding_message: 'Confirm $500 transfer' }
  */
 router.post('/initiate', authenticateToken, async (req, res) => {
@@ -349,7 +349,7 @@ router.get('/poll/:authReqId', authenticateToken, async (req, res) => {
 
   try {
     const tokens = await cibaService.pollForTokens(authReqId);
-    // Store tokens in session (BFF pattern — never expose to browser)
+    // Store tokens in session (Backend-for-Frontend (BFF) pattern — never expose to browser)
     req.session.oauthTokens = {
       accessToken: tokens.access_token,
       idToken: tokens.id_token,
@@ -528,7 +528,7 @@ User (Chat UI)         MCP Server           PingOne           User's Phone
 ### CIBA Step-Up (High-Value Transaction)
 
 ```
-User (Browser)         BFF Server           PingOne           User's Phone
+User (Browser)         Backend-for-Frontend (BFF) Server           PingOne           User's Phone
      │                    │                    │                    │
      │── POST /transfer ──▶│                    │                    │
      │  (amount=$500)      │── bc-authorize ────▶│                    │
@@ -554,7 +554,7 @@ User (Browser)         BFF Server           PingOne           User's Phone
 - The existing OAuth redirect flows (`/api/auth/oauth/login`, `/api/auth/oauth/user/login`) remain as-is. CIBA is additive — use it where redirect is impossible or awkward.
 - Session structure (`req.session.oauthTokens`) does not change — CIBA tokens are stored in the same shape.
 - JWKS validation (`tokenValidationService.js`) does not change — CIBA tokens are standard JWTs from the same PingOne issuer.
-- The BFF pattern does not change — tokens still never reach the browser.
+- The Backend-for-Frontend (BFF) pattern does not change — tokens still never reach the browser.
 
 ---
 

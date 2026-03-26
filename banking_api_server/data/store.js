@@ -116,6 +116,38 @@ class DataStore {
     return user;
   }
 
+  /**
+   * Create a user row keyed by id if missing (e.g. serverless cold start after session still holds profile).
+   * Does not overwrite an existing user.
+   * @param {string} id - Banking user id (session / canonical id)
+   * @param {object} seed - Defaults from session or token claims
+   */
+  async ensureUser(id, seed = {}) {
+    if (!id) return null;
+    const existing = this.users.get(id);
+    if (existing) return existing;
+    const username =
+      (typeof seed.username === 'string' && seed.username.trim()) ||
+      (typeof seed.email === 'string' && seed.email.trim()) ||
+      `user_${String(id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12) || 'demo'}`;
+    const user = {
+      id,
+      username,
+      email: typeof seed.email === 'string' ? seed.email.trim() : '',
+      firstName: typeof seed.firstName === 'string' ? seed.firstName : '',
+      lastName: typeof seed.lastName === 'string' ? seed.lastName : '',
+      role: seed.role || 'customer',
+      isActive: seed.isActive !== false,
+      password: seed.password != null ? seed.password : null,
+      oauthProvider: seed.oauthProvider || null,
+      oauthId: seed.oauthId || null,
+      createdAt: new Date(),
+    };
+    this.users.set(id, user);
+    await this.persistAllData();
+    return user;
+  }
+
   async updateUser(id, updates) {
     const user = this.users.get(id);
     if (!user) return null;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTokenChainOptional } from '../context/TokenChainContext';
 import './TokenChainDisplay.css';
 
@@ -110,7 +110,7 @@ function EventRow({ event, isLast }) {
           )}
           {event.actPresent === true && (
             <div className="tcd-pill tcd-pill--act">
-              act ✅ {event.actDetails} — Backend For Frontend (BFF) is the current actor
+              act ✅ {event.actDetails} — Backend-for-Frontend (BFF) is the current actor
             </div>
           )}
 
@@ -169,7 +169,7 @@ const PLACEHOLDER_EVENTS = [
     label: 'User Token',
     status: 'waiting',
     claims: null,
-    explanation: 'Issued by PingOne after Authorization Code + PKCE login. Stored securely in the BFF session (server-side, httpOnly cookie — never exposed to the browser). Contains may_act authorising the BFF to exchange it on the user\'s behalf.',
+    explanation: 'Issued by PingOne after Authorization Code + PKCE login. Stored securely in the Backend-for-Frontend (BFF) session (server-side, httpOnly cookie — never exposed to the browser). Contains may_act authorising the Backend-for-Frontend (BFF) to exchange it on the user\'s behalf.',
     rfc: 'RFC 7519 · RFC 9068',
   },
   {
@@ -177,7 +177,7 @@ const PLACEHOLDER_EVENTS = [
     label: 'Token Exchange (RFC 8693): User Token → MCP Token',
     status: 'waiting',
     claims: null,
-    explanation: 'BFF presents the User Token to PingOne as subject_token. PingOne validates may_act, narrows the scope to the tool\'s required scopes, and issues the MCP Token with an act claim identifying the BFF as the actor. The User Token NEVER leaves the BFF.',
+    explanation: 'Backend-for-Frontend (BFF) presents the User Token to PingOne as subject_token. PingOne validates may_act, narrows the scope to the tool\'s required scopes, and issues the MCP Token with an act claim identifying the Backend-for-Frontend (BFF) as the actor. The User Token NEVER leaves the Backend-for-Frontend (BFF).',
     rfc: 'RFC 8693 · RFC 8707',
   },
   {
@@ -185,7 +185,7 @@ const PLACEHOLDER_EVENTS = [
     label: 'MCP Token (Delegated) → MCP Server',
     status: 'waiting',
     claims: null,
-    explanation: 'The MCP Token is scoped to the MCP server audience with narrowed scopes. Contains act: { client_id: bff } — proves delegation chain. The User Token stays in the BFF; only the MCP Token reaches the MCP Server and Banking API.',
+    explanation: 'The MCP Token is scoped to the MCP server audience with narrowed scopes. Contains act: { client_id: bff } — proves delegation chain. The User Token stays in the Backend-for-Frontend (BFF); only the MCP Token reaches the MCP Server and Banking API.',
     rfc: 'RFC 8693',
   },
 ];
@@ -193,10 +193,33 @@ const PLACEHOLDER_EVENTS = [
 const TokenChainDisplay = () => {
   const ctx = useTokenChainOptional();
   const [tab, setTab] = useState('current');
+  const [sessionPreviewEvents, setSessionPreviewEvents] = useState(null);
 
-  const currentEvents = (ctx && ctx.events.length > 0) ? ctx.events : PLACEHOLDER_EVENTS;
-  const history = ctx ? ctx.history : [];
   const isLive = ctx && ctx.events.length > 0;
+  const isSessionPreview = !isLive && Array.isArray(sessionPreviewEvents) && sessionPreviewEvents.length > 0;
+
+  /** After login, show User Token (+ waiting rows) from BFF session without an MCP tool call. */
+  useEffect(() => {
+    if (isLive) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/tokens/session-preview', { credentials: 'include' });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (cancelled || !Array.isArray(data.tokenEvents) || data.tokenEvents.length === 0) return;
+        setSessionPreviewEvents(data.tokenEvents);
+      } catch (_err) {
+        /* non-fatal — keep placeholder */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isLive]);
+
+  const currentEvents = isLive
+    ? ctx.events
+    : (isSessionPreview ? sessionPreviewEvents : PLACEHOLDER_EVENTS);
+  const history = ctx ? ctx.history : [];
 
   return (
     <div className="tcd-root">
@@ -204,9 +227,15 @@ const TokenChainDisplay = () => {
         <div className="tcd-header-title">
           Token Chain
           {isLive && <span className="tcd-live-dot" title="Live data from last tool call" />}
+          {isSessionPreview && (
+            <span
+              className="tcd-session-dot"
+              title="User token loaded from your Backend-for-Frontend (BFF) session. Use the AI Agent to run RFC 8693 exchange and see MCP token claims."
+            />
+          )}
         </div>
         <p className="tcd-header-sub">
-          User Token stays in BFF → RFC 8693 Exchange → MCP Token → MCP Server → Banking API
+          User Token stays in Backend-for-Frontend (BFF) → RFC 8693 Exchange → MCP Token → MCP Server → Banking API
         </p>
       </div>
 
@@ -223,7 +252,9 @@ const TokenChainDisplay = () => {
         <div className="tcd-events">
           {!isLive && (
             <div className="tcd-placeholder-note">
-              Make a banking request to see live token events
+              {isSessionPreview
+                ? 'You are signed in — the User Token row is decoded from your Backend-for-Frontend (BFF) session (no raw JWT in the browser). Use the AI Agent (e.g. list accounts) to run the flow and see RFC 8693 exchange + MCP token rows update live.'
+                : 'Sign in and load the dashboard to see your User Token, or make a banking / AI Agent request to see the full chain after exchange.'}
             </div>
           )}
           {currentEvents.map((ev, i) => (

@@ -37,10 +37,9 @@ router.get('/', authenticateToken, requireScopes(['banking:transactions:read', '
 // Authenticated user's own transactions — scope-independent for stable dashboard hydration.
 router.get('/my', authenticateToken, async (req, res) => {
   try {
-    // Add cache headers for frequent polling
+    // Do not cache in the browser — deposits/transfers from the agent must show on the next GET.
     res.set({
-      'Cache-Control': 'private, max-age=10', // Cache for 10 seconds
-      'ETag': `"transactions-${req.user.id}-${Date.now()}"`,
+      'Cache-Control': 'private, no-store',
     });
     
     const userTransactions = dataStore.getTransactionsByUserId(req.user.id);

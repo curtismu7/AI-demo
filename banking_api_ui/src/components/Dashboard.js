@@ -342,7 +342,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
           <Link
             to="/mcp-inspector"
             className="app-page-toolbar-btn app-page-toolbar-btn--accent"
-            title="MCP discovery, tools/list & tools/call via BFF"
+            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
           >
             MCP Inspector
           </Link>
@@ -537,7 +537,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
           <button
             className="btn btn-secondary"
             onClick={() => (window.location.href = '/mcp-inspector')}
-            title="MCP discovery & tools/call via BFF"
+            title="MCP discovery & tools/call via Backend-for-Frontend (BFF)"
           >
             🔌 MCP Inspector
           </button>

@@ -16,5 +16,8 @@
     "test:agent:full": "cd langchain_agent && bash scripts/run-pytest.sh tests/",
     "test:agent-ui": "cd langchain_agent/frontend && npm run test:ci",
     "test:mcp-inspector": "cd banking_api_server && npm test -- --testPathPattern=mcp-inspector --forceExit"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.37.0"
   }
 }

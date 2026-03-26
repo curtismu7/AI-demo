@@ -246,6 +246,126 @@ async function create_transfer(params, userId) {
   };
 }
 
+// ─── inspector catalog (mirrors banking_mcp_server BankingToolRegistry user tools) ─
+
+/** Tool definitions for MCP Inspector when WebSocket/MCP is unavailable or session has no MCP bearer. */
+const LOCAL_INSPECTOR_TOOLS = [
+  {
+    name: 'get_my_accounts',
+    description: "Retrieve user's bank accounts",
+    requiresUserAuth: true,
+    requiredScopes: ['banking:accounts:read'],
+    inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+  {
+    name: 'get_account_balance',
+    description:
+      'Get balance for a specific account. Use account ID (not account number) from get_my_accounts response.',
+    requiresUserAuth: true,
+    requiredScopes: ['banking:accounts:read'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description:
+            'Account ID (UUID format, not account number) - use the "id" field from get_my_accounts response',
+          minLength: 1,
+        },
+      },
+      required: ['account_id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_my_transactions',
+    description: "Retrieve user's transaction history",
+    requiresUserAuth: true,
+    requiredScopes: ['banking:transactions:read'],
+    inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
+  {
+    name: 'create_deposit',
+    description:
+      'Create a deposit transaction to an account. Use account ID (not account number) from get_my_accounts response.',
+    requiresUserAuth: true,
+    requiredScopes: ['banking:transactions:write'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        to_account_id: {
+          type: 'string',
+          description:
+            'Account ID (UUID format, not account number) to deposit to - use the "id" field from get_my_accounts response',
+          minLength: 1,
+        },
+        amount: { type: 'number', description: 'Amount to deposit', minimum: 0.01, multipleOf: 0.01 },
+        description: { type: 'string', description: 'Transaction description', maxLength: 255 },
+      },
+      required: ['to_account_id', 'amount'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'create_withdrawal',
+    description:
+      'Create a withdrawal transaction from an account. Use account ID (not account number) from get_my_accounts response.',
+    requiresUserAuth: true,
+    requiredScopes: ['banking:transactions:write'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from_account_id: {
+          type: 'string',
+          description:
+            'Account ID (UUID format, not account number) to withdraw from - use the "id" field from get_my_accounts response',
+          minLength: 1,
+        },
+        amount: { type: 'number', description: 'Amount to withdraw', minimum: 0.01, multipleOf: 0.01 },
+        description: { type: 'string', description: 'Transaction description', maxLength: 255 },
+      },
+      required: ['from_account_id', 'amount'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'create_transfer',
+    description:
+      'Transfer money between accounts. Use account IDs (not account numbers) from get_my_accounts response.',
+    requiresUserAuth: true,
+    requiredScopes: ['banking:transactions:write'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from_account_id: {
+          type: 'string',
+          description:
+            'Source account ID (UUID format, not account number) - use the "id" field from get_my_accounts response',
+          minLength: 1,
+        },
+        to_account_id: {
+          type: 'string',
+          description:
+            'Destination account ID (UUID format, not account number) - use the "id" field from get_my_accounts response',
+          minLength: 1,
+        },
+        amount: { type: 'number', description: 'Amount to transfer (minimum $50)', minimum: 50, multipleOf: 0.01 },
+        description: { type: 'string', description: 'Transfer description', maxLength: 255 },
+      },
+      required: ['from_account_id', 'to_account_id', 'amount'],
+      additionalProperties: false,
+    },
+  },
+];
+
+/**
+ * Returns MCP-shaped tool descriptors for the in-process fallback (same names as TOOL_MAP).
+ * @returns {typeof LOCAL_INSPECTOR_TOOLS}
+ */
+function listLocalInspectorTools() {
+  return LOCAL_INSPECTOR_TOOLS.map((t) => ({ ...t }));
+}
+
 // ─── dispatch ─────────────────────────────────────────────────────────────────
 
 const TOOL_MAP = {
@@ -279,4 +399,4 @@ async function callToolLocal(tool, params, userId) {
   return handler(params || {}, userId);
 }
 
-module.exports = { callToolLocal };
+module.exports = { callToolLocal, listLocalInspectorTools };

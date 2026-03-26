@@ -78,8 +78,9 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 18px;
+  gap: 14px;
+  row-gap: 12px;
+  padding: 16px 22px;
   background: #ffffff;
   border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
@@ -184,14 +185,25 @@
 .dashboard-toolbar-toggle {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 16px 8px 18px;
+  margin: 0 2px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+/* Extra space between label copy and switch; keeps toggle off the pill edge */
+.toggle-label.toggle-label--toolbar {
+  gap: 14px;
+  align-items: center;
 }
 
 .toggle-label--toolbar .toggle-text {
   color: #334155;
+  padding-right: 2px;
 }
 
 .toggle-label--toolbar .toggle-slider {
@@ -1216,7 +1228,9 @@
   .dashboard-toolbar {
     flex-direction: column;
     align-items: stretch;
-    padding: 12px 14px;
+    padding: 14px 16px;
+    gap: 12px;
+    row-gap: 10px;
   }
 
   .dashboard-toolbar-btn,
@@ -1234,6 +1248,15 @@
   .dashboard-toolbar-toggle {
     justify-content: space-between;
     width: 100%;
+    margin: 0;
+    padding: 10px 16px;
+    min-height: 44px;
+  }
+
+  .toggle-label.toggle-label--toolbar {
+    width: 100%;
+    justify-content: space-between;
+    gap: 16px;
   }
   
   .accounts-grid {
@@ -1504,7 +1527,13 @@
   }
   
   .dashboard-toolbar {
-    gap: 8px;
+    gap: 10px;
+    row-gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .dashboard-toolbar-toggle {
+    padding: 8px 14px;
   }
   
   .toggle-label--toolbar .toggle-text {

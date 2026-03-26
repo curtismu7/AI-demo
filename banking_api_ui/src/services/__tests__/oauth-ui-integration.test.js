@@ -573,9 +573,9 @@ describe.skip('UI OAuth Integration Tests (legacy)', () => {
 });
 
 /**
- * Current BFF behavior — not part of the legacy skipped suite above.
+ * Current Backend-for-Frontend (BFF) behavior — not part of the legacy skipped suite above.
  */
-describe('apiClient BFF OAuth (current)', () => {
+describe('apiClient Backend-for-Frontend (BFF) OAuth (current)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     delete axios.defaults.headers.common['Authorization'];

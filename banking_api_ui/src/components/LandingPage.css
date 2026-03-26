@@ -82,7 +82,7 @@
 }
 
 .nav-cta {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -94,7 +94,44 @@
 
 .nav-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  box-shadow: 0 8px 25px rgba(127, 29, 29, 0.3);
+}
+
+.nav-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-cta--ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  box-shadow: none;
+}
+
+.nav-cta--ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow: none;
+}
+
+.hero-setup-link {
+  margin-top: 1rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.hero-setup-link:hover {
+  color: #e5e7eb;
 }
 
 .nav-toggle {

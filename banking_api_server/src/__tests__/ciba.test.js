@@ -449,13 +449,13 @@ describe('GET /api/auth/ciba/poll/:authReqId — OTP approval simulation', () =>
     expect(res.body.scope).toBe('openid profile email');
   });
 
-  it('does NOT expose access_token or id_token in approval response (BFF pattern)', async () => {
+  it('does NOT expose access_token or id_token in approval response (Backend-for-Frontend (BFF) pattern)', async () => {
     cibaService.pollForTokens.mockResolvedValue(MOCK_TOKENS);
     const res = await request(buildApp(pendingReq))
       .get(`/api/auth/ciba/poll/${MOCK_AUTH_REQ_ID}`)
       .set('x-test-user', USER_HDR);
 
-    // BFF pattern: tokens must never reach the browser
+    // Backend-for-Frontend (BFF) pattern: tokens must never reach the browser
     expect(res.body.access_token).toBeUndefined();
     expect(res.body.id_token).toBeUndefined();
     expect(res.body.refresh_token).toBeUndefined();

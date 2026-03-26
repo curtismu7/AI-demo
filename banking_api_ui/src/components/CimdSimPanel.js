@@ -368,7 +368,7 @@ function FlowTab() {
 
   REGISTRATION (admin only — one time)
   ─────────────────────────────────────
-  Admin Browser           BFF (this server)          PingOne Mgmt API
+  Admin Browser           Backend-for-Frontend (BFF) (this server)          PingOne Mgmt API
        │                        │                           │
        │  POST /api/clients/    │                           │
        │  register              │                           │
@@ -395,7 +395,7 @@ function FlowTab() {
 
   DOCUMENT SERVING  (GET /.well-known/oauth-client/:id)
   ─────────────────────────────────────────────────────
-  Any caller               BFF
+  Any caller               Backend-for-Frontend (BFF)
        │                    │
        │  GET /.well-known/ │
        │  oauth-client/{id} │
@@ -408,7 +408,7 @@ function FlowTab() {
 
   AUTHORIZATION (CIMD-native AS flow — see Simulate tab)
   ─────────────────────────────────────────────────────────
-  Client App              CIMD-capable AS         BFF CIMD endpoint
+  Client App              CIMD-capable AS         Backend-for-Frontend (BFF) CIMD endpoint
        │                        │                       │
        │  GET /authorize?       │                       │
        │  client_id=https://…   │                       │

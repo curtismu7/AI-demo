@@ -24,7 +24,7 @@ const config = {
   get clientSecret()          { return configStore.getEffective('user_client_secret'); },
   get redirectUri()           { return configStore.getEffective('user_redirect_uri'); },
 
-  // offline_access: PingOne issues a refresh_token (RFC 6749 §6) — required for BFF auto-refresh and /api/auth/oauth/user/refresh
+  // offline_access: PingOne issues a refresh_token (RFC 6749 §6) — required for Backend-for-Frontend (BFF) auto-refresh and /api/auth/oauth/user/refresh
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 
   /** Same as admin oauth.js — opt-in pi.flow authorize for supported PingOne apps. */

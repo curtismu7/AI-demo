@@ -333,7 +333,7 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('transactions');
     });
 
-    it('should allow GET /api/transactions/my when authenticated without read scopes (BFF /my hydration)', async () => {
+    it('should allow GET /api/transactions/my when authenticated without read scopes (Backend-for-Frontend (BFF) /my hydration)', async () => {
       const token = createOAuthToken(['banking:write']);
       const response = await request(app)
         .get('/api/transactions/my')

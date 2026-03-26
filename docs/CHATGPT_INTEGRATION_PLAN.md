@@ -132,7 +132,7 @@ Keep **one** source of truth for “what a user may do”; avoid duplicating pol
 
 | Phase | Deliverable |
 |-------|-------------|
-| **A** | OpenAPI spec + stub routes or BFF proxy to existing handlers |
+| **A** | OpenAPI spec + stub routes or Backend-for-Frontend (BFF) proxy to existing handlers |
 | **B** | OAuth client in PingOne + GPT OAuth config on staging |
 | **C** | Read-only actions (accounts, transactions) in production GPT |
 | **D** | Transfers (if allowed) + step-up behavior validated end-to-end |

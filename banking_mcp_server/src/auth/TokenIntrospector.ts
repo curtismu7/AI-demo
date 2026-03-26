@@ -105,7 +105,7 @@ export class TokenIntrospector {
     }
 
     // RFC 8693 §4.2 — enforce may_act when BFF_CLIENT_ID + REQUIRE_MAY_ACT are configured.
-    // Ensures only tokens exchanged by the designated BFF client are accepted by this MCP server.
+    // Ensures only tokens exchanged by the designated Backend-for-Frontend (BFF) client are accepted by this MCP server.
     const bffClientId = process.env.BFF_CLIENT_ID;
     const requireMayAct = process.env.REQUIRE_MAY_ACT === 'true';
     if (requireMayAct && bffClientId) {
@@ -113,7 +113,7 @@ export class TokenIntrospector {
       if (!mayAct || mayAct.client_id !== bffClientId) {
         console.error(`[TokenIntrospector] may_act enforcement failed: expected client_id=${bffClientId}, got ${mayAct?.client_id || 'none'}`);
         throw new AuthenticationError(
-          'Token missing valid may_act claim for BFF client',
+          'Token missing valid may_act claim for Backend-for-Frontend (BFF) client',
           AuthErrorCodes.INVALID_AGENT_TOKEN
         );
       }
@@ -133,7 +133,7 @@ export class TokenIntrospector {
 
     // RFC 8693 §4.1 — log act claim for audit trail.
     // `act` is present on tokens issued via token exchange and identifies the
-    // actor (BFF or AI agent) that performed the exchange on behalf of `sub`.
+    // actor (Backend-for-Frontend (BFF) or AI agent) that performed the exchange on behalf of `sub`.
     const actorClientId = tokenInfo.act?.client_id;
     if (actorClientId) {
       console.log(`[TokenIntrospector] Delegated token — actor: ${actorClientId}, subject: ${tokenInfo.sub}`);

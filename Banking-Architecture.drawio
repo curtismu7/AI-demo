@@ -19,7 +19,7 @@
           <mxGeometry y="78" width="220" height="62" as="geometry" />
         </mxCell>
 
-        <mxCell id="lane-bff" value="Banking BFF (Express — same origin on Vercel)" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#fff8e1;strokeColor=#f57f17;" vertex="1" parent="1">
+        <mxCell id="lane-bff" value="Banking Backend-for-Frontend (BFF) (Express — same origin on Vercel)" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=28;fillColor=#fff8e1;strokeColor=#f57f17;" vertex="1" parent="1">
           <mxGeometry x="300" y="70" width="260" height="380" as="geometry" />
         </mxCell>
         <mxCell id="oauth" value="OAuth + CIBA&#xa;/api/auth/oauth/*&#xa;/api/auth/ciba/*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffecb3;strokeColor=#ff8f00;" vertex="1" parent="lane-bff">

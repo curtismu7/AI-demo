@@ -73,8 +73,8 @@ const FIELD_DEFS = {
   authorize_worker_client_secret: { public: false, default: '' },
 
   // RFC 8693 Token Exchange — MCP server resource URI
-  // When set, the BFF exchanges user tokens for delegated tokens scoped to this
-  // audience before forwarding to the MCP server (act claim identifies the BFF).
+  // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
+  // audience before forwarding to the MCP server (act claim identifies the Backend-for-Frontend (BFF)).
   mcp_resource_uri:           { public: true,  default: '' },
 
   // CIBA — Client-Initiated Backchannel Authentication

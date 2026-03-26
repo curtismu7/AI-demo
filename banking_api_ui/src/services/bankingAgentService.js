@@ -5,13 +5,13 @@
  * to the banking_mcp_server via WebSocket (JSON-RPC).
  *
  * Returns { result, tokenEvents } so callers can push events to TokenChainContext.
- * tokenEvents is an array of token lifecycle objects from the BFF:
+ * tokenEvents is an array of token lifecycle objects from the Backend-for-Frontend (BFF):
  *   - User Token decoded claims + may_act status (+ jwtFullDecode JSON)
  *   - Token Exchange (RFC 8693) request + result
  *   - MCP Token (delegated) decoded claims + act status (+ jwtFullDecode JSON)
  */
 
-// ─── Session refresh (RFC 6749 §6) — same endpoints as BFF auto-refresh ───────
+// ─── Session refresh (RFC 6749 §6) — same endpoints as Backend-for-Frontend (BFF) auto-refresh ───────
 
 /**
  * Tries end-user refresh, then admin refresh. Does not log the user out.
@@ -55,9 +55,13 @@ export async function callMcpTool(tool, params = {}) {
 
   let response = await fetch('/api/mcp/tool', fetchOpts);
   if (response.status === 401) {
-    const refreshed = await refreshOAuthSession();
-    if (refreshed.ok) {
-      response = await fetch('/api/mcp/tool', fetchOpts);
+    const err401 = await response.clone().json().catch(() => ({}));
+    // Cookie-only / empty Redis session: refresh cannot add tokens — avoid spamming refresh endpoints.
+    if (err401.error !== 'session_not_hydrated') {
+      const refreshed = await refreshOAuthSession();
+      if (refreshed.ok) {
+        response = await fetch('/api/mcp/tool', fetchOpts);
+      }
     }
   }
 

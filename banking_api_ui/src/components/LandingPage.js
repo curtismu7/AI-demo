@@ -1,10 +1,8 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
 import './LandingPage.css';
 
 const LandingPage = () => {
-  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -66,8 +64,9 @@ const LandingPage = () => {
     }
   ];
 
+  // Marketing home stays dark (.landing-page #0a0a0a); global light/dark theme applies inside the app after sign-in.
   return (
-    <div className={`landing-page${theme === 'light' ? ' landing-page--light' : ''}`}>
+    <div className="landing-page">
       {/* Navigation */}
       <nav className={`navbar ${scrollY > 50 ? 'scrolled' : ''}`}>
         <div className="nav-container">
@@ -86,15 +85,20 @@ const LandingPage = () => {
               style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.5rem', color: 'inherit', fontSize: 'inherit' }}
               onClick={() => navigate('/config')}
             >
-              ⚙ Config
+              ⚙ Application setup
             </button>
-            <button 
-              type="button"
-              className="nav-cta"
-              onClick={() => navigate('/config')}
-            >
-              Try AI Assistant
-            </button>
+            <div className="nav-cta-row">
+              <button
+                type="button"
+                className="nav-cta nav-cta--ghost"
+                onClick={() => handleOAuthLogin('admin')}
+              >
+                Admin sign in
+              </button>
+              <button type="button" className="nav-cta" onClick={() => handleOAuthLogin('user')}>
+                Customer sign in
+              </button>
+            </div>
           </div>
           
           <button 
@@ -127,24 +131,19 @@ const LandingPage = () => {
               automate complex tasks, and provide personalized insights—all through natural conversation.
             </p>
             <div className="hero-actions">
-              <button 
-                type="button"
-                className="cta-primary"
-                onClick={() => navigate('/config')}
-              >
-                Start Conversation
+              <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user')}>
+                Customer sign in
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" title="Arrow icon">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
               </button>
-              <button 
-                type="button"
-                className="cta-secondary"
-                onClick={() => handleOAuthLogin('user')}
-              >
-                Sign In to Access
+              <button type="button" className="cta-secondary" onClick={() => handleOAuthLogin('admin')}>
+                Admin sign in
               </button>
             </div>
+            <button type="button" className="hero-setup-link" onClick={() => navigate('/config')}>
+              Application setup (PingOne, redirects, local dev) — optional
+            </button>
             <div className="hero-note">
               <p style={{ fontSize: '2rem', color: '#ef4444', fontWeight: 800, margin: 0, lineHeight: 1.1 }}>
                 Powered by PingOne AI IAM Core
@@ -349,13 +348,17 @@ const LandingPage = () => {
         <div className="container">
           <div className="cta-content">
             <h2>Ready to Experience the Future?</h2>
-            <p>Join thousands of users who have transformed their banking experience with AI</p>
-            <button 
-              type="button"
-              className="cta-primary"
-              onClick={() => navigate('/config')}
-            >
-              Start Your AI Journey
+            <p>Choose customer or admin — you&apos;ll land on the right dashboard after PingOne sign-in.</p>
+            <div className="hero-actions" style={{ justifyContent: 'center', marginTop: '1rem' }}>
+              <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user')}>
+                Customer sign in
+              </button>
+              <button type="button" className="cta-secondary" onClick={() => handleOAuthLogin('admin')}>
+                Admin sign in
+              </button>
+            </div>
+            <button type="button" className="hero-setup-link" style={{ display: 'block', margin: '1.25rem auto 0' }} onClick={() => navigate('/config')}>
+              Open application setup instead
             </button>
           </div>
         </div>

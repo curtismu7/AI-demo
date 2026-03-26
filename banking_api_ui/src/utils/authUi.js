@@ -17,14 +17,14 @@ export function errorMessageSuggestsLogin(message) {
   );
 }
 
-/** Redirect to customer (end-user) OAuth BFF route. */
+/** Redirect to customer (end-user) OAuth Backend-for-Frontend (BFF) route. */
 export function navigateToCustomerOAuthLogin() {
   const apiUrl =
     process.env.REACT_APP_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
   window.location.href = `${apiUrl}/api/auth/oauth/user/login`;
 }
 
-/** Redirect to admin OAuth BFF route. */
+/** Redirect to admin OAuth Backend-for-Frontend (BFF) route. */
 export function navigateToAdminOAuthLogin() {
   const apiUrl =
     process.env.REACT_APP_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');

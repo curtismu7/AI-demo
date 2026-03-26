@@ -65,7 +65,7 @@ const defaultScenarioPayload = {
 function renderPage() {
   return render(
     <BrowserRouter>
-      <DemoDataPage onLogout={jest.fn()} />
+      <DemoDataPage user={{ role: 'customer' }} onLogout={jest.fn()} />
     </BrowserRouter>,
   );
 }

@@ -204,7 +204,7 @@ class OAuthService {
   /**
    * RFC 8693 Token Exchange with both subject (end user) and actor (agent OAuth client) tokens.
    * The issued access token represents the user (subject) with the agent acting on their behalf.
-   * Requires PingOne token-exchange grant on the BFF client and compatible may_act / actor policy.
+   * Requires PingOne token-exchange grant on the Backend-for-Frontend (BFF) client and compatible may_act / actor policy.
    *
    * @param {string} subjectToken - User's access token (who is affected)
    * @param {string} actorToken   - Agent client-credentials token (who performs the action)

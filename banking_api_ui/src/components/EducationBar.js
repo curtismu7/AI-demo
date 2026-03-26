@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/EducationBar.js
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import './EducationBar.css';
@@ -68,6 +68,15 @@ export default function EducationBar() {
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.TOKEN_EXCHANGE, 'why')}>
           Token Exchange
         </button>
+        <NavLink
+          to="/demo-data"
+          className={({ isActive }) =>
+            `btn btn-sm btn-outline-primary edu-bar-btn${isActive ? ' edu-bar-btn--active' : ''}`
+          }
+          title="Sandbox accounts, balances, profile, MFA threshold, agent layout"
+        >
+          Demo config
+        </NavLink>
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.MAY_ACT, 'what')}>
           may_act / act
         </button>
@@ -92,13 +101,6 @@ export default function EducationBar() {
         <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openCimd}>
           CIMD
         </button>
-        <Link
-          to="/demo-data"
-          className="btn btn-sm btn-outline-primary edu-bar-btn"
-          title="Sandbox accounts, balances, MFA threshold"
-        >
-          Demo config
-        </Link>
       </div>
     </div>
   );

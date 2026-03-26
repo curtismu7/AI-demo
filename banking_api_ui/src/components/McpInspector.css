@@ -385,3 +385,15 @@
   margin-top: 1rem;
   box-sizing: border-box;
 }
+
+/* Copy under full-width primary link — larger than default muted (nano can shrink body text) */
+.mcp-inspector__btn--block + .mcp-inspector__muted {
+  margin-top: 12px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.mcp-inspector__btn--block + .mcp-inspector__muted code {
+  font-size: 0.875em;
+}

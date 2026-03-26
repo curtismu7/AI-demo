@@ -195,7 +195,7 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
 
   REGISTRATION (admin only — one time)
   ─────────────────────────────────────
-  Admin Browser           BFF (this server)          PingOne Mgmt API
+  Admin Browser           Backend-for-Frontend (BFF) — this server          PingOne Mgmt API
        │                        │                           │
        │  POST /api/admin/      │                           │
        │  clients               │                           │
@@ -222,7 +222,7 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
 
   DOCUMENT SERVING (public, cacheable)
   ─────────────────────────────────────
-  Any caller               BFF
+  Any caller               Backend-for-Frontend (BFF)
        │                    │
        │  GET /.well-known/ │
        │  oauth-client/{id} │
@@ -236,7 +236,7 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
 
   AUTHORIZATION (future / CIMD-native AS)
   ─────────────────────────────────────────
-  Client App              CIMD-capable AS         BFF CIMD endpoint
+  Client App              CIMD-capable AS         Backend-for-Frontend (BFF) CIMD endpoint
        │                        │                       │
        │  GET /authorize?       │                       │
        │  client_id=https://…/  │                       │

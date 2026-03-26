@@ -479,7 +479,7 @@ router.get('/status', (req, res) => {
       role: req.session.user.role
     } : null,
     oauthProvider: isAuthenticated ? req.session.user.oauthProvider : null,
-    // accessToken intentionally omitted — token stays on the backend (BFF pattern)
+    // accessToken intentionally omitted — token stays on the backend (Backend-for-Frontend (BFF) pattern)
     tokenType: isAuthenticated ? req.session.oauthTokens.tokenType : null,
     expiresAt: isAuthenticated ? req.session.oauthTokens.expiresAt : null,
     clientType: isAuthenticated ? req.session.clientType : null

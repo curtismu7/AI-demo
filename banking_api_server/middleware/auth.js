@@ -27,7 +27,7 @@ const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 const COOKIE_SESSION_ALLOWED_ROUTES = new Set([
   'GET /api/accounts/my',
   'GET /api/transactions/my',
-  // BFF POST uses session cookie; _cookie_session marker must not be JWT-validated (Vercel / serverless).
+  // Backend-for-Frontend (BFF) POST uses session cookie; _cookie_session marker must not be JWT-validated (Vercel / serverless).
   'POST /api/transactions',
   'POST /api/accounts/reset-demo',
   'GET /api/demo-scenario',
@@ -319,7 +319,7 @@ const requireScopes = (requiredScopes, requireAll = false) => {
       // Normalize required scopes to array
       const scopesToCheck = Array.isArray(requiredScopes) ? requiredScopes : [requiredScopes];
 
-      // Role bypass: users authenticated via the BFF session (PingOne token stored server-side)
+      // Role bypass: users authenticated via the Backend-for-Frontend (BFF) session (PingOne token stored server-side)
       // may not have banking:* scopes in their PingOne token. Trust them based on role.
       // Only applies to session-sourced tokens (fromSession:true) — raw Bearer tokens are
       // still subject to scope enforcement so tests and direct API access behave correctly.
@@ -613,7 +613,7 @@ const authenticateToken = async (req, res, next) => {
     }
 
     if (!token) {
-      // BFF session fallback: if the browser SPA has a valid session (session cookie),
+      // Backend-for-Frontend (BFF) session fallback: if the browser SPA has a valid session (session cookie),
       // use the session-stored token for validation instead of requiring the Authorization header.
       // This prevents token relay — the token never needs to leave the backend.
       if (sessionToken) {
@@ -661,12 +661,12 @@ const authenticateToken = async (req, res, next) => {
             clientType: clientType,
             userType: userType,
             tokenType: 'oauth',
-            fromSession: true,  // token sourced from BFF server-side session
+            fromSession: true,  // token sourced from Backend-for-Frontend (BFF) server-side session
             acr: decoded.acr || null,
             scopes: scopes,
             oauthSub: decoded.sub,
           };
-          logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Session-based token authentication successful (BFF)', {
+          logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Session-based token authentication successful (Backend-for-Frontend (BFF))', {
             ...requestContext,
             subject: decoded.sub,
             client_type: clientType,
