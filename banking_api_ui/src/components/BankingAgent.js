@@ -1132,9 +1132,17 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
         await runAction(action, {}, { skipUserLabel: true });
       } else if (action === 'balance' && p.accountId) {
         await runAction('balance', { accountId: p.accountId }, { skipUserLabel: true });
+      } else if (action === 'transfer' && p.fromId && p.toId && p.amount) {
+        // All params extracted by NL — execute directly
+        await runAction('transfer', p, { skipUserLabel: true });
+      } else if (action === 'deposit' && p.amount) {
+        await runAction('deposit', p, { skipUserLabel: true });
+      } else if (action === 'withdraw' && p.amount) {
+        await runAction('withdraw', p, { skipUserLabel: true });
       } else if (['balance', 'transfer', 'deposit', 'withdraw'].includes(action)) {
+        // Missing params — open the form (pre-populate what we have)
         setActiveAction(action);
-        addMessage('assistant', `Open the form below to complete **${action}** (${source}).`);
+        addMessage('assistant', `I'll help you ${action}. Fill in the details below.`);
       } else {
         await runAction(action, p, { skipUserLabel: true });
       }

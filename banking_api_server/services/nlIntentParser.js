@@ -95,13 +95,36 @@ function parseBanking(t) {
     }
   }
   if (/\btransfer\b/.test(t)) {
-    return { kind: 'banking', banking: { action: 'transfer' } };
+    const amountMatch = t.match(/\$?\s*(\d+(?:\.\d+)?)/);
+    const fromMatch   = t.match(/\bfrom\s+((?:my\s+|the\s+|primary\s+)?(?:checking|savings|chk|sav)(?:\s+account)?)/i);
+    const toMatch     = t.match(/\bto\s+((?:my\s+|the\s+|primary\s+)?(?:checking|savings|chk|sav)(?:\s+account)?)/i);
+    const clean = (s) => s && s.replace(/^(my|the|primary)\s+/i, '').replace(/\s+account$/i, '').trim();
+    const params = {
+      ...(amountMatch && { amount: parseFloat(amountMatch[1]) }),
+      ...(fromMatch   && { fromId: clean(fromMatch[1]) }),
+      ...(toMatch     && { toId:   clean(toMatch[1]) }),
+    };
+    return { kind: 'banking', banking: { action: 'transfer', params } };
   }
   if (/\bdeposit\b/.test(t)) {
-    return { kind: 'banking', banking: { action: 'deposit' } };
+    const amountMatch = t.match(/\$?\s*(\d+(?:\.\d+)?)/);
+    const toMatch     = t.match(/\b(?:to|into)\s+((?:my\s+|the\s+)?(?:checking|savings|chk|sav)(?:\s+account)?)/i);
+    const clean = (s) => s && s.replace(/^(my|the)\s+/i, '').replace(/\s+account$/i, '').trim();
+    const params = {
+      ...(amountMatch && { amount: parseFloat(amountMatch[1]) }),
+      ...(toMatch     && { toId:   clean(toMatch[1]) }),
+    };
+    return { kind: 'banking', banking: { action: 'deposit', params } };
   }
   if (/\b(withdraw|withdrawal)\b/.test(t)) {
-    return { kind: 'banking', banking: { action: 'withdraw' } };
+    const amountMatch = t.match(/\$?\s*(\d+(?:\.\d+)?)/);
+    const fromMatch   = t.match(/\b(?:from)\s+((?:my\s+|the\s+)?(?:checking|savings|chk|sav)(?:\s+account)?)/i);
+    const clean = (s) => s && s.replace(/^(my|the)\s+/i, '').replace(/\s+account$/i, '').trim();
+    const params = {
+      ...(amountMatch && { amount: parseFloat(amountMatch[1]) }),
+      ...(fromMatch   && { fromId: clean(fromMatch[1]) }),
+    };
+    return { kind: 'banking', banking: { action: 'withdraw', params } };
   }
   if (/\b(logout|log out|sign out|signout)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'logout' } };

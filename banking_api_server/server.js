@@ -674,6 +674,19 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   }
 
   if (!agentToken) {
+    // No bearer token (cookie-only or degraded session) — use local handler if session user present.
+    // This lets the banking agent work for basic operations even without a fully-hydrated Redis session.
+    const sessionUser = req.session?.user;
+    if (sessionUser?.id) {
+      console.log(`[MCP Local] ${tool} — no bearer token (cookie-only session), using local handler`);
+      try {
+        const result = await callToolLocal(tool, params || {}, sessionUser.id);
+        return res.json({ result, tokenEvents, _localFallback: true });
+      } catch (localErr) {
+        console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
+        return res.status(502).json({ error: 'mcp_error', message: localErr.message, tokenEvents });
+      }
+    }
     const r = mcpNoBearerResponse(req, tokenEvents);
     return res.status(r.status).json(r.body);
   }

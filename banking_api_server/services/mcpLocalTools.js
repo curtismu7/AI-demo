@@ -58,6 +58,27 @@ async function ensureAccounts(userId) {
   return [checking, savings];
 }
 
+// ─── account ID resolution ────────────────────────────────────────────────────
+
+/**
+ * Resolve a value that may be an account type name ('checking', 'savings') or partial
+ * name to the actual account ID. Returns the original value if it already looks like an ID.
+ */
+function resolveAccountId(idOrType, accounts) {
+  if (!idOrType) return null;
+  const s = String(idOrType).trim();
+  // Already looks like an ID (chk-*, sav-*, or UUID)
+  if (/^(chk-|sav-)/i.test(s) || /^[0-9a-f]{8}-/i.test(s)) return s;
+  const lower = s.toLowerCase().replace(/^(my|the|primary|main)\s+/, '');
+  const byType = accounts.find(a => String(a.accountType || '').toLowerCase() === lower);
+  if (byType) return byType.id;
+  const byName = accounts.find(a =>
+    String(a.name || '').toLowerCase().includes(lower) ||
+    String(a.accountType || '').toLowerCase().includes(lower)
+  );
+  return byName ? byName.id : s;
+}
+
 // ─── tool implementations ─────────────────────────────────────────────────────
 
 async function get_my_accounts(params, userId) {
@@ -105,7 +126,9 @@ async function get_my_transactions(params, userId) {
 }
 
 async function create_deposit(params, userId) {
-  const { account_id, amount, description } = params;
+  const accounts = await ensureAccounts(userId);
+  const account_id = resolveAccountId(params.account_id || params.to_account_id, accounts);
+  const { amount, description } = params;
 
   const parsedAmount = parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0)
@@ -116,10 +139,9 @@ async function create_deposit(params, userId) {
   let account = null;
   if (account_id) {
     account = dataStore.getAccountById(account_id);
-    if (!account) return { error: `Account ${account_id} not found` };
+    if (!account) return { error: `Account "${account_id}" not found` };
     if (account.userId !== userId) return { error: 'Access denied — not your account' };
   } else {
-    const accounts = await ensureAccounts(userId);
     account = accounts.find((a) => String(a.accountType || '').toLowerCase() === 'checking') || accounts[0];
     if (!account) return { error: 'No accounts found for this user' };
   }
@@ -150,7 +172,9 @@ async function create_deposit(params, userId) {
 }
 
 async function create_withdrawal(params, userId) {
-  const { account_id, amount, description } = params;
+  const accounts = await ensureAccounts(userId);
+  const account_id = resolveAccountId(params.account_id || params.from_account_id, accounts);
+  const { amount, description } = params;
 
   const parsedAmount = parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0)
@@ -161,10 +185,9 @@ async function create_withdrawal(params, userId) {
   let account = null;
   if (account_id) {
     account = dataStore.getAccountById(account_id);
-    if (!account) return { error: `Account ${account_id} not found` };
+    if (!account) return { error: `Account "${account_id}" not found` };
     if (account.userId !== userId) return { error: 'Access denied — not your account' };
   } else {
-    const accounts = await ensureAccounts(userId);
     account = accounts.find((a) => String(a.accountType || '').toLowerCase() === 'checking') || accounts[0];
     if (!account) return { error: 'No accounts found for this user' };
   }
@@ -198,9 +221,12 @@ async function create_withdrawal(params, userId) {
 }
 
 async function create_transfer(params, userId) {
-  const { from_account_id, to_account_id, amount, description } = params;
+  const accounts = await ensureAccounts(userId);
+  const from_account_id = resolveAccountId(params.from_account_id || params.fromId, accounts);
+  const to_account_id   = resolveAccountId(params.to_account_id   || params.toId,   accounts);
+  const { amount, description } = params;
   if (!from_account_id || !to_account_id)
-    return { error: 'from_account_id and to_account_id are required' };
+    return { error: 'Please specify which accounts to transfer between (e.g. "from checking to savings").' };
 
   const parsedAmount = parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0)
