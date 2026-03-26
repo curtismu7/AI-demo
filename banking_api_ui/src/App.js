@@ -173,11 +173,12 @@ function App() {
       <TokenChainProvider>
         <div className="App end-user-nano">
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
-          {/* Config page is always accessible, regardless of auth state */}
+          {/* These pages are always accessible, regardless of auth state */}
           <Routes>
             <Route path="/config" element={<Config />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/logs" element={<LogViewerPage />} />
+            <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
             <Route path="*" element={
               !user ? (
                 <LandingPage />
