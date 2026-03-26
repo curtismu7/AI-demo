@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit
+# Reminds you to update CHANGELOG.md, FEATURES.md, and REGRESSION_LOG.md
+# before committing. Warns but does NOT block (use --no-verify to skip).
+
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+warn() { echo -e "${YELLOW}⚠  $1${RESET}"; }
+info() { echo -e "${CYAN}   $1${RESET}"; }
+
+STAGED=$(git diff --cached --name-only)
+CHANGED=0
+
+# ── CHANGELOG check ────────────────────────────────────────────────────────
+if ! echo "$STAGED" | grep -q "CHANGELOG.md"; then
+  warn "CHANGELOG.md not staged."
+  info "Add one line under [Unreleased] in the right category (Added/Fixed/Changed/Removed)."
+  CHANGED=1
+fi
+
+# ── FEATURES check (only if a route, component, service, or middleware changed) ──
+FEATURE_RELEVANT=$(echo "$STAGED" | grep -E \
+  "routes/|components/|services/|middleware/|mcp_server/" | grep -v "__tests__" | grep -v "\.css$")
+
+if [ -n "$FEATURE_RELEVANT" ] && ! echo "$STAGED" | grep -q "FEATURES.md"; then
+  warn "FEATURES.md not staged — but feature-related files changed:"
+  echo "$FEATURE_RELEVANT" | head -5 | while read -r f; do info "$f"; done
+  info "Update FEATURES.md if a feature was added, removed, or its test coverage changed."
+  CHANGED=1
+fi
+
+# ── REGRESSION_LOG check (only if a test file was staged) ──────────────────
+TEST_FILES=$(echo "$STAGED" | grep -E "\.test\.(js|ts)$")
+
+if [ -n "$TEST_FILES" ] && ! echo "$STAGED" | grep -q "REGRESSION_LOG.md"; then
+  warn "Test files staged but REGRESSION_LOG.md not staged."
+  info "If this test covers a production bug fix, add an entry to REGRESSION_LOG.md."
+  CHANGED=1
+fi
+
+# ── Summary ────────────────────────────────────────────────────────────────
+if [ "$CHANGED" -eq 1 ]; then
+  echo ""
+  echo -e "${YELLOW}Run  git commit --no-verify  to skip these checks.${RESET}"
+  echo ""
+fi
+
+# Always exit 0 — warn only, never block.
+exit 0
