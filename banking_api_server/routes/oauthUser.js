@@ -246,27 +246,36 @@ router.get('/callback', async (req, res) => {
     const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri);
     console.log('Token received for end user');
 
-    // Verify nonce in ID token to prevent ID token replay attacks (OIDC Core §3.1.2.7)
-    if (expectedNonce && tokenData.id_token) {
+    // Decode ID token claims — used for nonce verification and as a fallback for userinfo gaps.
+    let idTokenClaims = {};
+    if (tokenData.id_token) {
       try {
-        const idPayload = JSON.parse(Buffer.from(tokenData.id_token.split('.')[1], 'base64url').toString());
-        if (!idPayload.nonce) {
-          console.warn('[oauth/user/callback] ID token has no nonce claim');
-        } else if (idPayload.nonce !== expectedNonce) {
-          console.error('[oauth/user/callback] Nonce mismatch — possible ID token replay attack');
-          return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
-        }
+        idTokenClaims = JSON.parse(Buffer.from(tokenData.id_token.split('.')[1], 'base64url').toString());
       } catch (e) {
-        console.warn('[oauth/user/callback] Could not decode ID token for nonce verification:', e.message);
+        console.warn('[oauth/user/callback] Could not decode ID token:', e.message);
       }
     }
-    
+
+    // Verify nonce in ID token to prevent ID token replay attacks (OIDC Core §3.1.2.7)
+    if (expectedNonce && idTokenClaims.nonce) {
+      if (idTokenClaims.nonce !== expectedNonce) {
+        console.error('[oauth/user/callback] Nonce mismatch — possible ID token replay attack');
+        return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
+      }
+    } else if (expectedNonce && tokenData.id_token && !idTokenClaims.nonce) {
+      console.warn('[oauth/user/callback] ID token has no nonce claim');
+    }
+
     // Get user information from PingOne Core
     const userInfo = await oauthService.getUserInfo(tokenData.access_token);
     console.log('User info from PingOne Core:', JSON.stringify(userInfo, null, 2));
-    
+
+    // Merge ID token claims as fallback for any userinfo gaps (e.g. email not in userinfo response).
+    // userinfo takes priority; idTokenClaims fills only missing fields.
+    const mergedUserInfo = { ...idTokenClaims, ...userInfo };
+
     // Create user object from OAuth data
-    const oauthUser = oauthService.createUserFromOAuth(userInfo);
+    const oauthUser = oauthService.createUserFromOAuth(mergedUserInfo);
     
     // Check if user already exists in our system
     let user = dataStore.getUserByUsername(oauthUser.username);

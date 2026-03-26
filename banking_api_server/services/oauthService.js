@@ -390,17 +390,26 @@ class OAuthService {
    * Create a user object from PingOne Core user info
    */
   createUserFromOAuth(userInfo) {
+    const email = userInfo.email || userInfo.email_address || null;
+    const firstName = userInfo.given_name || userInfo.first_name || userInfo.name?.split(' ')[0] || '';
+    const lastName = userInfo.family_name || userInfo.last_name || userInfo.name?.split(' ').slice(1).join(' ') || '';
+    if (!email) {
+      console.warn(
+        '[createUserFromOAuth] No email in userinfo/ID token — check PingOne app attribute mappings ' +
+        '(email scope must be authorized and the "email" attribute mapped). sub:', userInfo.sub || userInfo.id,
+      );
+    }
     return {
       id: userInfo.sub || userInfo.id,
-      username: userInfo.preferred_username || userInfo.username || userInfo.email,
-      email: userInfo.email,
-      firstName: userInfo.given_name || userInfo.first_name || userInfo.name?.split(' ')[0] || '',
-      lastName: userInfo.family_name || userInfo.last_name || userInfo.name?.split(' ').slice(1).join(' ') || '',
+      username: userInfo.preferred_username || userInfo.username || email || userInfo.sub,
+      email,
+      firstName,
+      lastName,
       role: 'customer', // Default role, will be overridden in OAuth callback if needed
       isActive: true,
       createdAt: new Date(),
       oauthProvider: 'pingone_ai_core',
-      oauthId: userInfo.sub || userInfo.id
+      oauthId: userInfo.sub || userInfo.id,
     };
   }
 }
