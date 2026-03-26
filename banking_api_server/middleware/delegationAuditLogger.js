@@ -9,7 +9,7 @@
  * Logs structured JSON events: { user, actor, action, resource, timestamp, correlationId }
  */
 
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 /**
  * Decode JWT without verification (for audit logging only)
