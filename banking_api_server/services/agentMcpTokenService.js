@@ -180,7 +180,7 @@ function describeMayAct(claims, bffClientId) {
  * Append the User Token row to tokenEvents (same shape as MCP tool-call flow).
  * @returns {{ userSub: string|null, t1Claims: object|undefined, t1Decoded: object|null }}
  */
-function appendUserTokenEvent(tokenEvents, userToken) {
+function appendUserTokenEvent(tokenEvents, userToken, req = null) {
   const t1Decoded = decodeJwtClaims(userToken);
   const t1Claims = t1Decoded?.claims;
   const userSub = t1Claims?.sub != null ? String(t1Claims.sub) : null;
@@ -203,8 +203,8 @@ function appendUserTokenEvent(tokenEvents, userToken) {
       mayActValid: mayActInfo.valid,
       mayActDetails: mayActInfo.reason,
       // In-app consent gate
-      consentGiven: req.session?.agentConsentGiven === true,
-      consentedAt: req.session?.agentConsentedAt || null,
+      consentGiven: req?.session?.agentConsentGiven === true,
+      consentedAt: req?.session?.agentConsentedAt || null,
     }
   ));
 
@@ -223,7 +223,7 @@ function buildSessionPreviewTokenEvents(req) {
     return { tokenEvents: [] };
   }
 
-  appendUserTokenEvent(tokenEvents, userToken);
+  appendUserTokenEvent(tokenEvents, userToken, req);
 
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   if (!mcpResourceUri) {
@@ -298,7 +298,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     return { token: null, tokenEvents, userSub: null };
   }
 
-  const { userSub, t1Claims } = appendUserTokenEvent(tokenEvents, userToken);
+  const { userSub, t1Claims } = appendUserTokenEvent(tokenEvents, userToken, req);
 
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   const toolScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];

@@ -356,24 +356,35 @@ const TokenChainDisplay = () => {
   const [inspectedEvent, setInspectedEvent] = useState(null);
   const [inspectorPos, setInspectorPos] = useState({ x: 420, y: 100 });
 
-  /** After login, show User Token (+ waiting rows) from BFF session without an MCP tool call. */
-  React.useEffect(() => {
-    const isLiveNow = ctx && ctx.events.length > 0;
-    if (isLiveNow) return undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/tokens/session-preview', { credentials: 'include' });
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (cancelled || !Array.isArray(data.tokenEvents) || data.tokenEvents.length === 0) return;
+  /** Fetch session preview (called on mount, on login, and when live events reset). */
+  const fetchSessionPreview = useCallback(async () => {
+    if (ctx && ctx.events.length > 0) return; // live data present — skip
+    try {
+      const res = await fetch('/api/tokens/session-preview', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
         setSessionPreviewEvents(data.tokenEvents);
-      } catch (_err) {
-        /* non-fatal — keep placeholder */
       }
-    })();
-    return () => { cancelled = true; };
+    } catch (_err) {
+      /* non-fatal — keep placeholder */
+    }
   }, [ctx]);
+
+  /** Run on mount and whenever ctx events reset (e.g. after page navigation). */
+  React.useEffect(() => {
+    void fetchSessionPreview();
+  }, [fetchSessionPreview]);
+
+  /** Also re-fetch immediately after a successful PingOne login. */
+  React.useEffect(() => {
+    const onAuth = () => {
+      setSessionPreviewEvents(null); // clear stale preview so new fetch replaces it
+      void fetchSessionPreview();
+    };
+    window.addEventListener('userAuthenticated', onAuth);
+    return () => window.removeEventListener('userAuthenticated', onAuth);
+  }, [fetchSessionPreview]);
 
   const isLive = ctx && ctx.events.length > 0;
   const isSessionPreview = !isLive && Array.isArray(sessionPreviewEvents) && sessionPreviewEvents.length > 0;
