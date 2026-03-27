@@ -5,30 +5,30 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
-## 2026-03-27 — Split3 layout polish: wider token rail, flush columns, integrated bottom dock, quick nav on all pages
+## 2026-03-27 — Split3: flush columns, wider token rail, integrated bottom dock, quick nav everywhere
 
 **Symptoms (multiple)**:
 1. Token chain column too narrow (220 px) — RFC labels and flow text cramped.
-2. Small hairline gap visible between the three columns in Middle split view.
-3. Bottom dock (Bottom Agent UI mode) looked like a detached floating widget (rounded corners, gradient shadow, isolated background).
-4. Quick nav rail (Home / Dashboard / API / Logs) disappeared on `/demo-data`, `/config`, `/mcp-inspector`, `/logs`, and `/activity` after signing in.
-5. Left-rail padding (`App--has-quick-nav`) intermittently missing on re-render — content overlapped the FAB buttons.
+2. Visual gap / whitespace between agent column and customer data column in Middle split view.
+3. Bottom dock (Bottom Agent UI mode) looked like a detached floating widget (rounded corners, gradient shadow).
+4. Quick nav rail (Home / Dashboard / API / Logs) disappeared on `/demo-data`, `/config`, `/mcp-inspector`, `/logs`, `/activity`.
+5. Left-rail padding (`App--has-quick-nav`) intermittently missing — content overlapped FAB buttons.
 
 **Root causes**:
 1. `grid-template-columns` hard-coded `220px` for token rail.
-2. Gap and border misalignment — no outer container border, individual column borders created double-pixel seams. Grid `gap: 0` was correct but no unifying wrapper.
-3. `.global-embedded-agent-dock-wrap` had `border-radius: 12px 12px 0 0`, gradient `box-shadow`, and an isolated `background: #f8fafc` that made it visually float above the page.
-4. `isDashboardQuickNavRoute()` only returned `true` for `/`, `/admin`, `/dashboard`, and `/admin/banking` — all other signed-in pages excluded.
-5. `AppRouteChrome` added `App--has-quick-nav` via imperative `classList.toggle()`. When `sessionReauth` or `hasEmbeddedDockLayout` state changed, React re-rendered `<div className="App …">` overwriting the DOM `className` string and stripping the imperatively-added class.
+2. `.ud-agent-column` had `padding: 10px 10px 0` — shrinking the agent panel away from its right neighbour. `.ba-split-column` had `border-radius: 10px 10px 0 0` leaving corner gaps.
+3. `.global-embedded-agent-dock-wrap` had `border-radius: 12px 12px 0 0`, gradient `box-shadow`, isolated background.
+4. `isDashboardQuickNavRoute()` only covered `/`, `/admin`, `/dashboard`, `/admin/banking`.
+5. `AppRouteChrome` added `App--has-quick-nav` via `classList.toggle()`; React re-renders overwrote `className`, stripping it.
 
 **Fixes**:
-- **`UserDashboard.css`**: token rail `220px → 300px` (and `200px → 260px` at ≤1280 px); outer split3 container gets `border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden` — single enclosing border; agent column background lightened to `#f8fafc`.
-- **`App.css`**: dock wrapper — removed gradient shadow, border-radius, and isolated background; toolbar now has `border-left: 4px solid #2563eb` accent and `background: #f1f5f9` matching page section headers; title upgraded to uppercase section-label style; resize handle simplified to a flat `#f1f5f9` strip.
+- **`UserDashboard.css`**: token rail `220px → 300px`; outer split3 container `border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden`; agent column `padding: 0` (was `10px 10px 0`).
+- **`BankingAgent.css`**: `.ba-split-column` `border-radius: 0; width: 100%` — fills column flush.
+- **`App.css`**: dock wrapper — removed gradient shadow and border-radius; toolbar has blue left accent + section-label title.
 - **`embeddedAgentFabVisibility.js`**: `isDashboardQuickNavRoute` expanded to include `/demo-data`, `/config`, `/mcp-inspector`, `/logs`, `/activity`.
-- **`App.js`**: removed `AppRouteChrome` component entirely; `showQuickNav` and `isOnDashboard` computed inline in `AppWithAuth` and included directly in the `className` string — React now owns the full class list on every render.
-- **`UserDashboard.css`** (earlier): `.ud-body.ud-body--2026:not(.ud-body--design-3col)` collapsed the split3 grid to 2 columns; added `:not(.ud-body--dashboard-split3)` guard.
+- **`App.js`**: removed `AppRouteChrome`; `showQuickNav` + `isOnDashboard` computed inline and included in declarative `className`.
 
-**Tests**: `CI=false npm run build` (banking_api_ui) — compiled successfully. Manual: Middle split view shows proper 3-col layout with flush edges; token chain readable; Bottom dock visually part of page; nav rail present on all signed-in pages.
+**Tests**: `CI=false npm run build` — compiled successfully. Manual: Middle split — 3 columns flush, no whitespace between agent and accounts; Bottom dock visually part of page; nav rail on all signed-in pages.
 
 ---
 
