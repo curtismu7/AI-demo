@@ -288,17 +288,33 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setUser(sessionUser);
 
       // ── 2. Fetch real account + transaction data ──────────────────────────
+      const REAUTH_KEY = 'bx-dashboard-reauth';
       try {
         const [acctRes, txRes] = await Promise.all([
           apiClient.get('/api/accounts/my'),
           apiClient.get('/api/transactions/my'),
         ]);
+        // Successful fetch — clear any pending reauth guard
+        sessionStorage.removeItem(REAUTH_KEY);
         setAccounts(acctRes.data.accounts || []);
         setTransactions(txRes.data.transactions || []);
       } catch (dataErr) {
         console.error('Data fetch failed:', dataErr);
         if (dataErr.response?.status === 401) {
-          toastCustomerError('Your session has expired. Please log in again.', navigateToCustomerOAuthLogin);
+          if (!silent) {
+            // Token expired or cold-start stub. Redirect to re-auth.
+            // PingOne's SSO session usually makes this seamless (no credentials needed).
+            // Guard: only auto-redirect once — if a redirect already happened and we still
+            // get 401, clear the guard and fall back to the banner so the user can act.
+            if (!sessionStorage.getItem(REAUTH_KEY)) {
+              sessionStorage.setItem(REAUTH_KEY, '1');
+              navigateToCustomerOAuthLogin();
+              return;
+            }
+            sessionStorage.removeItem(REAUTH_KEY);
+            toastCustomerError('Your session has expired. Please log in again.', navigateToCustomerOAuthLogin);
+          }
+          // silent refresh 401 — ignore; next explicit load will handle it
         } else if (dataErr.response?.status === 403) {
           notifyError('You do not have permission to access this information.');
         } else if (!silent) {
