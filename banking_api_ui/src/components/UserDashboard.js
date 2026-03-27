@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import axios from 'axios';
+import { toast, notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
+import { toastCustomerError } from '../utils/dashboardToast';
+import { navigateToCustomerOAuthLogin } from '../utils/authUi';
 import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
 import useChatWidget from '../hooks/useChatWidget';
@@ -29,7 +31,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const [tokenData, setTokenData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [transferForm, setTransferForm] = useState({
     toAccountId: '',
@@ -47,7 +48,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   });
   const [withdrawAccount, setWithdrawAccount] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [success, setSuccess] = useState(null);
   const [stepUpRequired, setStepUpRequired] = useState(false);
   // 'ciba' | 'email' — set from the 428 response step_up_method field
   const [stepUpMethod, setStepUpMethod] = useState('email');
@@ -78,13 +78,6 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const handleDashThemeToggle = useCallback(() => {
     setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
   }, []);
-
-  // Auto-dismiss success messages after 4 seconds
-  useEffect(() => {
-    if (!success) return;
-    const t = setTimeout(() => setSuccess(null), 4000);
-    return () => clearTimeout(t);
-  }, [success]);
 
   // Initialize chat widget (configuration is handled in index.html)
   useChatWidget();
@@ -184,10 +177,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   }, [autoRefresh]);
 
   const loadDemoFallback = (reason) => {
-    setError(null);
     setAccounts(DEMO_ACCOUNTS);
     setTransactions(DEMO_TRANSACTIONS);
-    toast.info(`Demo mode — ${reason}. Sign in to see your real accounts.`, {
+    notifyInfo(`Demo mode — ${reason}. Sign in to see your real accounts.`, {
       toastId: 'demo-mode',   // deduplicate across refreshes
       autoClose: 6000,
       icon: '🏦',
@@ -233,9 +225,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       } catch (dataErr) {
         console.error('Data fetch failed:', dataErr);
         if (dataErr.response?.status === 401) {
-          setError('Your session has expired. Please log in again.');
+          toastCustomerError('Your session has expired. Please log in again.', navigateToCustomerOAuthLogin);
         } else if (dataErr.response?.status === 403) {
-          setError('You do not have permission to access this information.');
+          notifyError('You do not have permission to access this information.');
         } else if (!silent) {
           // API unreachable or 5xx — fall back to demo without blocking the user
           loadDemoFallback('could not reach banking API');
@@ -249,8 +241,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   };
 
   // ── CIBA step-up: initiate back-channel authentication ──
-  const handleCibaStepUp = async () => {
-    if (!user?.email) { setError('Cannot initiate CIBA: no email on session.'); return; }
+  const handleCibaStepUp = useCallback(async () => {
+    if (!user?.email) { notifyError('Cannot initiate CIBA: no email on session.'); return; }
     try {
       const { data } = await axios.post('/api/auth/ciba/initiate', {
         loginHint: user.email,
@@ -260,9 +252,25 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setCibaAuthReqId(data.authReqId);
       setCibaStatus('pending');
     } catch (err) {
-      setError('CIBA initiation failed: ' + (err.response?.data?.message || err.message));
+      notifyError('CIBA initiation failed: ' + (err.response?.data?.message || err.message));
     }
-  };
+  }, [user?.email]);
+
+  const stepUpVerifyHref = useMemo(
+    () =>
+      `/api/auth/oauth/user/stepup?return_to=${encodeURIComponent(
+        (process.env.REACT_APP_CLIENT_URL || 'http://localhost:4000') + '/dashboard'
+      )}`,
+    []
+  );
+
+  /** Clears step-up gate state and dismisses the persistent step-up toast. */
+  const dismissStepUp = useCallback(() => {
+    setStepUpRequired(false);
+    setCibaAuthReqId(null);
+    setCibaStatus('idle');
+    toast.dismiss('customer-step-up');
+  }, []);
 
   // Poll CIBA status when a request is in flight
   useEffect(() => {
@@ -275,16 +283,86 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           setCibaAuthReqId(null);
           setStepUpRequired(false);
           await fetchUserData(true);
-          setSuccess('Identity verified — please retry your transaction.');
+          notifySuccess('Identity verified — please retry your transaction.');
         } else if (data.status === 'failed' || data.status === 'expired' || data.status === 'error') {
           setCibaStatus('error');
           setCibaAuthReqId(null);
-          setError(`CIBA verification ${data.status}. Please try again.`);
+          notifyError(`CIBA verification ${data.status}. Please try again.`);
         }
       } catch (_) { /* keep polling */ }
     }, 5000);
     return () => clearInterval(interval);
   }, [cibaAuthReqId, cibaStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Step-up MFA (428): persistent warning toast with verify actions (replaces inline banner). */
+  useEffect(() => {
+    if (!stepUpRequired) {
+      toast.dismiss('customer-step-up');
+      return;
+    }
+
+    const onToastClosed = () => {
+      setStepUpRequired(false);
+      setCibaAuthReqId(null);
+      setCibaStatus('idle');
+    };
+
+    const body = (
+      <div className="dashboard-toast-error" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+        <p className="dashboard-toast-error__text" style={{ marginBottom: 8 }}>
+          <strong>Additional verification required.</strong>{' '}
+          Transfers and withdrawals of $250 or more require MFA. Verify your identity to continue.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          {stepUpMethod === 'ciba' ? (
+            <>
+              {cibaStatus === 'idle' && (
+                <button type="button" className="dashboard-toast-error__btn" onClick={handleCibaStepUp}>
+                  Verify via CIBA
+                </button>
+              )}
+              {cibaStatus === 'pending' && (
+                <span style={{ fontStyle: 'italic' }}>Waiting for approval on your device…</span>
+              )}
+              {cibaStatus === 'error' && (
+                <button
+                  type="button"
+                  className="dashboard-toast-error__btn"
+                  onClick={() => { setCibaStatus('idle'); setCibaAuthReqId(null); }}
+                >
+                  Retry
+                </button>
+              )}
+            </>
+          ) : (
+            <a
+              href={stepUpVerifyHref}
+              className="dashboard-toast-error__btn"
+              style={{ textDecoration: 'none', display: 'inline-block' }}
+            >
+              Verify now
+            </a>
+          )}
+          <button type="button" className="dashboard-toast-error__btn" onClick={dismissStepUp}>
+            Dismiss
+          </button>
+        </div>
+      </div>
+    );
+
+    const opts = {
+      toastId: 'customer-step-up',
+      autoClose: false,
+      closeOnClick: false,
+      onClose: onToastClosed,
+    };
+
+    if (toast.isActive('customer-step-up')) {
+      toast.update('customer-step-up', { render: body, ...opts });
+    } else {
+      toast.warning(body, opts);
+    }
+  }, [stepUpRequired, stepUpMethod, cibaStatus, handleCibaStepUp, dismissStepUp, stepUpVerifyHref]);
 
   // Demo mode: true when accounts haven't been replaced by real API data
   const isDemoMode = accounts.length > 0 && accounts.every(a => a._demo);
@@ -333,7 +411,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     e.preventDefault();
 
     if (!selectedAccount || !transferForm.toAccountId || !transferForm.amount) {
-      setError('Please fill in all transfer details');
+      notifyWarning('Please fill in all transfer details');
       return;
     }
 
@@ -341,7 +419,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       applyDemoTransaction('transfer', parseFloat(transferForm.amount), selectedAccount.id, transferForm.toAccountId, transferForm.description || 'Demo transfer');
       setTransferForm({ toAccountId: '', amount: '', description: '' });
       setSelectedAccount(null);
-      setSuccess('Demo transfer completed!');
+      notifySuccess('Demo transfer completed!');
       return;
     }
 
@@ -360,7 +438,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setSelectedAccount(null);
       await fetchUserData();
 
-      setSuccess('Transfer completed successfully!');
+      notifySuccess('Transfer completed successfully!');
     } catch (error) {
       console.error('Transfer error:', error);
       if (error.response?.status === 428) {
@@ -368,9 +446,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to perform transfers. Please contact your administrator.');
+        notifyError('You do not have permission to perform transfers. Please contact your administrator.');
       } else {
-        setError(error.response?.data?.error || 'Transfer failed');
+        notifyError(error.response?.data?.error || 'Transfer failed');
       }
     }
   };
@@ -379,7 +457,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     e.preventDefault();
 
     if (!depositAccount || !depositForm.amount) {
-      setError('Please fill in all deposit details');
+      notifyWarning('Please fill in all deposit details');
       return;
     }
 
@@ -387,7 +465,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       applyDemoTransaction('deposit', parseFloat(depositForm.amount), null, depositAccount.id, depositForm.description || 'Demo deposit');
       setDepositForm({ amount: '', description: '' });
       setDepositAccount(null);
-      setSuccess('Demo deposit completed!');
+      notifySuccess('Demo deposit completed!');
       return;
     }
 
@@ -406,7 +484,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setDepositAccount(null);
       await fetchUserData();
 
-      setSuccess('Deposit completed successfully!');
+      notifySuccess('Deposit completed successfully!');
     } catch (error) {
       console.error('Deposit error:', error);
       if (error.response?.status === 428) {
@@ -414,9 +492,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to make deposits. Please contact your administrator.');
+        notifyError('You do not have permission to make deposits. Please contact your administrator.');
       } else {
-        setError(error.response?.data?.error || 'Deposit failed');
+        notifyError(error.response?.data?.error || 'Deposit failed');
       }
     }
   };
@@ -425,17 +503,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     e.preventDefault();
 
     if (!withdrawAccount || !withdrawForm.amount) {
-      setError('Please fill in all withdrawal details');
+      notifyWarning('Please fill in all withdrawal details');
       return;
     }
 
     if (isDemoMode) {
       const amt = parseFloat(withdrawForm.amount);
-      if (amt > withdrawAccount.balance) { setError('Insufficient demo balance'); return; }
+      if (amt > withdrawAccount.balance) { notifyWarning('Insufficient demo balance'); return; }
       applyDemoTransaction('withdrawal', amt, withdrawAccount.id, null, withdrawForm.description || 'Demo withdrawal');
       setWithdrawForm({ amount: '', description: '' });
       setWithdrawAccount(null);
-      setSuccess('Demo withdrawal completed!');
+      notifySuccess('Demo withdrawal completed!');
       return;
     }
 
@@ -454,7 +532,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       setWithdrawAccount(null);
       await fetchUserData();
 
-      setSuccess('Withdrawal completed successfully!');
+      notifySuccess('Withdrawal completed successfully!');
     } catch (error) {
       console.error('Withdrawal error:', error);
       if (error.response?.status === 428) {
@@ -462,9 +540,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         setCibaStatus('idle');
         setStepUpRequired(true);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to make withdrawals. Please contact your administrator.');
+        notifyError('You do not have permission to make withdrawals. Please contact your administrator.');
       } else {
-        setError(error.response?.data?.error || 'Withdrawal failed');
+        notifyError(error.response?.data?.error || 'Withdrawal failed');
       }
     }
   };
@@ -515,71 +593,11 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
 
   return (
     <div
-      className={`user-dashboard user-dashboard--2026${agentUiMode === 'embedded' || agentUiMode === 'both' ? ' user-dashboard--embed-agent' : ''}`}
+      className={`user-dashboard user-dashboard--2026${agentUiMode === 'embedded' ? ' user-dashboard--embed-agent' : ''}`}
     >
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
-      {error && (
-        <div className="inline-message inline-message--error" onClick={() => setError(null)}>
-          {error} <span className="inline-message__dismiss">✕</span>
-        </div>
-      )}
-      {success && (
-        <div className="inline-message inline-message--success" onClick={() => setSuccess(null)}>
-          {success} <span className="inline-message__dismiss">✕</span>
-        </div>
-      )}
-      {stepUpRequired && (
-        <div className="inline-message inline-message--warning">
-          <strong>🔐 Additional verification required</strong>
-          <span style={{ marginLeft: 8 }}>
-            Transfers and withdrawals of $250 or more require MFA. Please verify your identity to continue.
-          </span>
-          {stepUpMethod === 'ciba' ? (
-            <>
-              {cibaStatus === 'idle' && (
-                <button
-                  onClick={handleCibaStepUp}
-                  className="inline-message__action"
-                  style={{ marginLeft: 12, fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', textDecoration: 'underline', color: 'inherit', fontSize: 'inherit' }}
-                >
-                  Verify via CIBA →
-                </button>
-              )}
-              {cibaStatus === 'pending' && (
-                <span style={{ marginLeft: 12, fontStyle: 'italic' }}>
-                  ⏳ Waiting for approval on your device…
-                </span>
-              )}
-              {cibaStatus === 'error' && (
-                <button
-                  onClick={() => { setCibaStatus('idle'); setCibaAuthReqId(null); }}
-                  className="inline-message__action"
-                  style={{ marginLeft: 12, fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', textDecoration: 'underline', color: 'inherit', fontSize: 'inherit' }}
-                >
-                  Retry →
-                </button>
-              )}
-            </>
-          ) : (
-            <a
-              href={`/api/auth/oauth/user/stepup?return_to=${process.env.REACT_APP_CLIENT_URL || 'http://localhost:4000'}/dashboard`}
-              className="inline-message__action"
-              style={{ marginLeft: 12, fontWeight: 600, color: 'inherit', textDecoration: 'underline' }}
-            >
-              Verify now →
-            </a>
-          )}
-          <span
-            className="inline-message__dismiss"
-            onClick={() => { setStepUpRequired(false); setCibaAuthReqId(null); setCibaStatus('idle'); }}
-            style={{ marginLeft: 12, cursor: 'pointer' }}
-          >
-            ✕
-          </span>
-        </div>
-      )}
       {/* ── Header stack: branding row + toolbar row ────────────────── */}
       <div className="dashboard-header-stack">
         <div className="dashboard-header dashboard-header--surface">

@@ -296,13 +296,13 @@ describe('Demo scenario API — account create/update', () => {
     );
   });
 
-  it('PUT persists bankingAgentUiMode both', async () => {
+  it('PUT normalizes legacy bankingAgentUiMode both to floating', async () => {
     const app = makeApp();
     const res = await request(app).put('/').send({ bankingAgentUiMode: 'both' });
     expect(res.status).toBe(200);
     expect(demoScenarioStore.save).toHaveBeenCalledWith(
       'u1',
-      expect.objectContaining({ bankingAgentUiMode: 'both' }),
+      expect.objectContaining({ bankingAgentUiMode: 'floating' }),
     );
   });
 

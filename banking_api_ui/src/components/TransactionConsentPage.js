@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import PageNav from './PageNav';
 import bffAxios from '../services/bffAxios';
+import { notifyError, notifyWarning } from '../utils/appToast';
 import { setAgentBlockedByConsentDecline } from '../services/agentAccessConsent';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
@@ -31,9 +32,8 @@ export default function TransactionConsentPage({ user, onLogout }) {
 
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
   const [denialOpen, setDenialOpen] = useState(false);
-  const [loadError, setLoadError] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [snapshot, setSnapshot] = useState(null);
   const [accounts, setAccounts] = useState([]);
@@ -45,7 +45,7 @@ export default function TransactionConsentPage({ user, onLogout }) {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      setLoadError(null);
+      setLoadFailed(false);
       try {
         const [chRes, accRes] = await Promise.all([
           bffAxios.get(`/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}`),
@@ -56,7 +56,10 @@ export default function TransactionConsentPage({ user, onLogout }) {
         setAccounts(Array.isArray(accRes.data?.accounts) ? accRes.data.accounts : []);
       } catch (e) {
         if (!cancelled) {
-          setLoadError(e.response?.data?.message || e.response?.data?.error || 'Consent challenge expired or invalid.');
+          const msg =
+            e.response?.data?.message || e.response?.data?.error || 'Consent challenge expired or invalid.';
+          notifyError(msg);
+          setLoadFailed(true);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -122,7 +125,6 @@ export default function TransactionConsentPage({ user, onLogout }) {
 
   const handleConfirm = async () => {
     if (!agreed || submitting || !snapshot || !challengeId) return;
-    setError(null);
     setSubmitting(true);
     try {
       await bffAxios.post(`/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/confirm`);
@@ -147,11 +149,11 @@ export default function TransactionConsentPage({ user, onLogout }) {
       const status = e.response?.status;
       const d = e.response?.data;
       if (status === 428) {
-        setError(
+        notifyWarning(
           'Additional verification (step-up MFA) is required. After you complete it, start the high-value transaction again from the dashboard.',
         );
       } else {
-        setError(d?.message || d?.error_description || d?.error || e.message || 'Request failed.');
+        notifyError(d?.message || d?.error_description || d?.error || e.message || 'Request failed.');
       }
     } finally {
       setSubmitting(false);
@@ -169,14 +171,14 @@ export default function TransactionConsentPage({ user, onLogout }) {
     );
   }
 
-  if (loadError || !snapshot) {
+  if (loadFailed || !snapshot) {
     return (
       <div className="app-page-shell transaction-consent-page">
         <PageNav user={user} onLogout={onLogout} title="High-value transaction" />
         <div className="app-page-shell__body">
           <div className="transaction-consent-card">
             <p className="transaction-consent-card__error" role="alert">
-              {loadError || 'Could not load this consent challenge.'}
+              Could not load this consent challenge. Try again from the dashboard or use a valid link.
             </p>
             <Link to={homePath} className="transaction-consent-learn-btn transaction-consent-learn-btn--inline">
               Back to dashboard
@@ -237,12 +239,6 @@ export default function TransactionConsentPage({ user, onLogout }) {
             />
             <span>I have reviewed the details and authorize this transaction.</span>
           </label>
-
-          {error && (
-            <div className="transaction-consent-card__error" role="alert">
-              {error}
-            </div>
-          )}
 
           <div className="transaction-consent-card__actions">
             <button

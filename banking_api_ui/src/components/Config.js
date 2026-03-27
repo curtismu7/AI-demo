@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError } from '../utils/appToast';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import AgentUiModeToggle from './AgentUiModeToggle';
@@ -221,7 +221,7 @@ function AgentLayoutPreferences() {
   return (
     <CollapsibleCard
       title="AI Agent layout"
-      subtitle="Floating widget, embedded bottom dock, or both (for layout demos)"
+      subtitle="Floating widget or embedded bottom dock — only one at a time"
       defaultOpen={true}
       className="config-page__agent-layout"
     >
@@ -231,10 +231,10 @@ function AgentLayoutPreferences() {
       </p>
       <AgentUiModeToggle variant="config" />
       <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '1rem', lineHeight: 1.5 }}>
-        <strong>Floating</strong> — corner FAB on any page. <strong>Embedded</strong> — full-width bottom dock on home/admin/customer
-        dashboard routes (no FAB while signed in). <strong>Both</strong> — dock plus FAB for UI demos.
+        <strong>Floating</strong> — corner FAB on any page (no bottom dock). <strong>Embedded</strong> — full-width bottom dock on home/admin/customer
+        dashboard routes only (no floating FAB while signed in).
       </p>
-      {(mode === 'embedded' || mode === 'both') && (
+      {mode === 'embedded' && (
         <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: '#1d4ed8' }}>
           Embedded mode: open <strong>Home</strong> or <strong>My Dashboard</strong> to use the agent. The marketing home page still uses the floating agent when you are not signed in.
         </div>
@@ -337,8 +337,8 @@ export default function Config() {
   };
 
   function showToast(type, msg) {
-    if (type === 'success') toast.success(msg);
-    else toast.error(msg);
+    if (type === 'success') notifySuccess(msg);
+    else notifyError(msg);
   }
 
   // Build auth headers for config write requests (hosted: password header)
@@ -490,7 +490,7 @@ export default function Config() {
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <code className="config-page__code-block">{redirectInfo.adminRedirectUri}</code>
                   <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}
-                    onClick={() => { navigator.clipboard.writeText(redirectInfo.adminRedirectUri); toast.success('Admin redirect URI copied'); }}>
+                    onClick={() => { navigator.clipboard.writeText(redirectInfo.adminRedirectUri); notifySuccess('Admin redirect URI copied'); }}>
                     Copy
                   </button>
                 </div>
@@ -500,7 +500,7 @@ export default function Config() {
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <code className="config-page__code-block">{redirectInfo.userRedirectUri}</code>
                   <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}
-                    onClick={() => { navigator.clipboard.writeText(redirectInfo.userRedirectUri); toast.success('Customer redirect URI copied'); }}>
+                    onClick={() => { navigator.clipboard.writeText(redirectInfo.userRedirectUri); notifySuccess('Customer redirect URI copied'); }}>
                     Copy
                   </button>
                 </div>

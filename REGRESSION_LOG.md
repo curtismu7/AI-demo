@@ -29,6 +29,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-26 — UI notifications: centralized toasts (success / error / warning)
+
+**Symptom**: Mixed patterns (`alert()`, inline banners, direct `toast.*`) made outcomes inconsistent; **`Transactions.js`** called **`setError`** without state (silent failure); **`OAuthDebugLogViewer`** called **`setError`** without state; **`BankingAdminOps`** used **`toast.error`** without importing **`toast`**.
+
+**Root cause**: No single convention for user-visible feedback; some components predated **`appToast`** helpers.
+
+**Fix**: **`banking_api_ui/src/utils/appToast.js`** — **`notifySuccess` / `notifyError` / `notifyWarning` / `notifyInfo`**; **`dashboardToast.js`** for session messages with **Sign in** actions. Migrated **Dashboard**, **UserDashboard**, **BankingAgent**, **Config**, **DemoDataPage**, **ActivityLogs**, **AgentUiModeToggle**, **ClientRegistrationPage**, **SecuritySettings**, **Transactions**, **OAuthDebugLogViewer**, **BankingAdminOps**. **UserDashboard** step-up (428) uses a **persistent warning toast** with CIBA / email verify (**`toastId: customer-step-up`**). **`McpInspector`**: JSX spacing fix for ESLint **`no-undef`**. **`EmbeddedAgentDock`**: CSS custom property style object lint.
+
+**Tests**: **`cd banking_api_ui && CI=true npm run build`**; manual checks per **`docs/runbooks/regression/post-deploy.md`** (§4 step-up toast).
+
+---
+
 ## 2026-03-26 — HITL consent HTTP routes missing; scope tests out of sync with GET /api/transactions/my
 
 **Symptom**: `transaction-consent-challenge.test.js` and `step-up-gate.test.js` failed (404 on `/api/transactions/consent-challenge`; high-value `POST /api/transactions` returned **201** without a consent flow). OAuth scope suites expected **200** on **`GET /api/transactions/my`** when the token only had **`banking:accounts:read`** or **`banking:write`**.

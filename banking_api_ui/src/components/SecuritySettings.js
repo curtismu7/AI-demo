@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
+import { notifySuccess, notifyError } from '../utils/appToast';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import AdminSubPageShell from './AdminSubPageShell';
@@ -126,7 +126,6 @@ const SecuritySettings = ({ user, onLogout }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
 
   const fetchSettings = useCallback(async () => {
@@ -138,7 +137,7 @@ const SecuritySettings = ({ user, onLogout }) => {
       setHistory(res.data.history || []);
       setDirty(false);
     } catch (err) {
-      setError(
+      notifyError(
         err.response?.data?.error_description ||
           err.response?.data?.error ||
           'Failed to load settings.'
@@ -160,17 +159,16 @@ const SecuritySettings = ({ user, onLogout }) => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      setError('');
       const res = await apiClient.put('/api/admin/settings', form);
       setSettings(res.data.settings);
       setForm({ ...res.data.settings });
       setDirty(false);
-      toast.success('Settings saved successfully.');
+      notifySuccess('Settings saved successfully.');
       // Re-fetch history
       const full = await apiClient.get('/api/admin/settings');
       setHistory(full.data.history || []);
     } catch (err) {
-      setError(
+      notifyError(
         err.response?.data?.error_description ||
           err.response?.data?.error ||
           'Failed to save settings.'
@@ -183,7 +181,6 @@ const SecuritySettings = ({ user, onLogout }) => {
   const handleReset = () => {
     setForm({ ...settings });
     setDirty(false);
-    setError('');
   };
 
   if (loading) {
@@ -232,13 +229,6 @@ const SecuritySettings = ({ user, onLogout }) => {
           ← Admin Dashboard
         </button>
       </div>
-
-      {/* Alert messages */}
-      {error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '12px 16px', borderRadius: '6px', marginBottom: '16px' }}>
-          ⚠ {error}
-        </div>
-      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px', alignItems: 'start' }}>
 

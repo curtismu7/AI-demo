@@ -1,8 +1,10 @@
 // banking_api_ui/src/components/BankingAdminOps.js
 import React, { useState, useCallback } from 'react';
 import { format } from 'date-fns';
-import { toast } from 'react-toastify';
 import bffAxios from '../services/bffAxios';
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '../utils/appToast';
+import { toastAdminSessionError } from '../utils/dashboardToast';
+import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
@@ -17,22 +19,20 @@ export default function BankingAdminOps({ user, onLogout }) {
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [error, setError] = useState('');
 
   const runLookup = useCallback(async () => {
     const q = String(query || '').trim();
     if (!q) {
-      setError('Enter an account number (or digits to match).');
+      notifyWarning('Enter an account number (or digits to match).');
       return;
     }
     setLoading(true);
-    setError('');
     try {
       const { data } = await bffAxios.get('/api/admin/banking/lookup', { params: { q } });
       setAccounts(data.accounts || []);
       setTransactions(data.transactions || []);
       if (!data.accounts?.length) {
-        toast.info('No accounts matched — try a different fragment (e.g. last digits).');
+        notifyInfo('No accounts matched — try a different fragment (e.g. last digits).');
       }
     } catch (err) {
       const st = err.response?.status;
@@ -42,11 +42,11 @@ export default function BankingAdminOps({ user, onLogout }) {
         err.message ||
         'Lookup failed';
       if (st === 401) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
       } else if (st === 403) {
-        setError('Admin access required.');
+        notifyError('Admin access required.');
       } else {
-        setError(msg);
+        notifyError(msg);
       }
       setAccounts([]);
       setTransactions([]);
@@ -59,14 +59,14 @@ export default function BankingAdminOps({ user, onLogout }) {
     if (!window.confirm('Delete this account and all references? This cannot be undone.')) return;
     try {
       await bffAxios.delete(`/api/accounts/${encodeURIComponent(accountId)}`);
-      toast.success('Account deleted');
+      notifySuccess('Account deleted');
       await runLookup();
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || err.message;
       if (err.response?.data?.error === 'demo_mode') {
-        toast.error('Account deletion is disabled on the shared public demo (DEMO_MODE).');
+        notifyError('Account deletion is disabled on the shared public demo (DEMO_MODE).');
       } else {
-        toast.error(msg || 'Delete failed');
+        notifyError(msg || 'Delete failed');
       }
     }
   };
@@ -75,14 +75,14 @@ export default function BankingAdminOps({ user, onLogout }) {
     if (!window.confirm('Remove this transaction from history?')) return;
     try {
       await bffAxios.delete(`/api/transactions/${encodeURIComponent(txId)}`);
-      toast.success('Transaction removed');
+      notifySuccess('Transaction removed');
       await runLookup();
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || err.message;
       if (err.response?.data?.error === 'demo_mode') {
-        toast.error('Disabled on shared public demo (DEMO_MODE). Use a private deployment to delete.');
+        notifyError('Disabled on shared public demo (DEMO_MODE). Use a private deployment to delete.');
       } else {
-        toast.error(msg || 'Failed to remove transaction');
+        notifyError(msg || 'Failed to remove transaction');
       }
     }
   };
@@ -92,11 +92,11 @@ export default function BankingAdminOps({ user, onLogout }) {
       const { data } = await bffAxios.post(
         `/api/admin/banking/accounts/${encodeURIComponent(accountId)}/seed-charges`
       );
-      toast.success(data.message || 'Fake charges added');
+      notifySuccess(data.message || 'Fake charges added');
       await runLookup();
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || err.message;
-      toast.error(msg || 'Could not add charges');
+      notifyError(msg || 'Could not add charges');
     }
   };
 
@@ -128,11 +128,6 @@ export default function BankingAdminOps({ user, onLogout }) {
             {loading ? 'Loading…' : 'Load activity'}
           </button>
         </div>
-        {error && (
-          <div className="alert alert-error" style={{ margin: '0 1rem 1rem' }}>
-            {error}
-          </div>
-        )}
       </div>
 
       {accounts.length > 0 && (

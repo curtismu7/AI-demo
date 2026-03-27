@@ -66,15 +66,44 @@
   --stack-fab-top-base: 156px;
 }
 
-/* Embedded dock sits in normal document flow at the bottom of <main> (see App.js) */
+/* Embedded dock sits in normal document flow at the bottom of <main> (see EmbeddedAgentDock.js) */
 .global-embedded-agent-dock-wrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
   width: 100%;
+  max-width: min(1400px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
   z-index: 2;
   pointer-events: auto;
   border-top: 1px solid #e2e8f0;
   background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
+}
+
+.global-embedded-agent-dock-wrap--collapsed {
+  border-radius: 14px 14px 0 0;
+}
+
+.embedded-agent-dock__toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.embedded-agent-dock__toolbar .embedded-agent-dock__head {
+  flex: 1;
+  min-width: 0;
+}
+
+.global-embedded-agent-dock-wrap--collapsed .embedded-dock-resize-handle,
+.global-embedded-agent-dock-wrap--collapsed .embedded-agent-dock.embedded-banking-agent {
+  display: none;
 }
 
 .global-embedded-agent-dock-wrap[data-agent-ui='embedded'] {
@@ -157,7 +186,15 @@
 }
 
 .embedded-dock-resize-handle__label {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .embedded-dock-resize-handle:hover {
@@ -382,7 +419,7 @@
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #fff;
   -webkit-text-fill-color: #fff;
@@ -390,7 +427,7 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.35);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
   transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
   z-index: 1001;
   display: inline-flex;
@@ -401,8 +438,8 @@
 
 .demo-config-fab:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.45);
-  background: linear-gradient(135deg, #0f8c82 0%, #2dd4bf 100%);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.45);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
 .demo-config-fab:active {

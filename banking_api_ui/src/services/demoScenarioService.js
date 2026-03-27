@@ -42,12 +42,11 @@ export async function saveDemoScenario(body) {
 /**
  * Persists floating vs embedded agent layout to the signed-in user's demo scenario (KV when configured).
  * Does not throw. Returns whether the server accepted the update (false on network error or non-OK response).
- * @param {'floating' | 'embedded' | 'both'} mode
+ * @param {'floating' | 'embedded'} mode
  * @returns {Promise<boolean>}
  */
 export async function persistBankingAgentUiMode(mode) {
-  const m =
-    mode === 'embedded' ? 'embedded' : mode === 'both' ? 'both' : 'floating';
+  const m = mode === 'embedded' ? 'embedded' : 'floating';
   try {
     const res = await fetch('/api/demo-scenario', {
       method: 'PUT',

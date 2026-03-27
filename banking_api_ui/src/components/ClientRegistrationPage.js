@@ -7,7 +7,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError } from '../utils/appToast';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import AdminSubPageShell from './AdminSubPageShell';
@@ -233,10 +233,10 @@ export default function ClientRegistrationPage({ user, onLogout }) {
       };
       const resp = await axios.post('/api/clients/register', payload, { withCredentials: true });
       setResult(resp.data);
-      toast.success('Client registered successfully in PingOne!');
+      notifySuccess('Client registered successfully in PingOne!');
     } catch (err) {
       const msg = err.response?.data?.detail || err.response?.data?.error || err.message;
-      toast.error(`Registration failed: ${msg}`);
+      notifyError(`Registration failed: ${msg}`);
     } finally {
       setSubmitting(false);
     }

@@ -85,13 +85,13 @@ describe('shouldShowGlobalFloatingBankingAgentFab', () => {
     ).toBe(false);
   });
 
-  it('shows FAB when mode is both', () => {
+  it('hides FAB when mode is legacy both (mutually exclusive layouts)', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
         agentUiMode: 'both',
         pathname: '/dashboard',
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 });

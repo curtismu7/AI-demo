@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
+import { notifyError } from '../utils/appToast';
+import { toastAdminSessionError } from '../utils/dashboardToast';
+import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import AdminSubPageShell from './AdminSubPageShell';
@@ -11,7 +14,6 @@ const ActivityLogs = ({ user, onLogout }) => {
   const [logs, setLogs] = useState([]);
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [filters, setFilters] = useState({
@@ -42,11 +44,11 @@ const ActivityLogs = ({ user, onLogout }) => {
       console.error('Activity logs error:', error);
       
       if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to view activity logs.');
+        notifyError('You do not have permission to view activity logs.');
       } else {
-        setError('Failed to load activity logs');
+        notifyError('Failed to load activity logs');
       }
     } finally {
       setLoading(false);
@@ -174,8 +176,8 @@ const ActivityLogs = ({ user, onLogout }) => {
       console.log('Generated cURL command:', curlCommand);
     }).catch(err => {
       console.error('Failed to copy to clipboard:', err);
-      // Fallback: show alert with the command
-      alert('Copy failed. Here is the cURL command:\n\n' + curlCommand);
+      console.log('cURL command (copy manually if needed):', curlCommand);
+      notifyError('Copy failed. The cURL command was printed to the browser console (F12 → Console).');
     });
   };
 
@@ -208,12 +210,6 @@ const ActivityLogs = ({ user, onLogout }) => {
           Clear Old Logs
         </button>
       </div>
-
-      {error && (
-        <div className="alert alert-error">
-          {error}
-        </div>
-      )}
 
       {/* Filters */}
       <div className="card">

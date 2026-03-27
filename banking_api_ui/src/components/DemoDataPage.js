@@ -1,7 +1,7 @@
 // banking_api_ui/src/components/DemoDataPage.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
 import { fetchDemoScenario, saveDemoScenario, persistBankingAgentUiMode } from '../services/demoScenarioService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import PageNav from './PageNav';
@@ -73,7 +73,7 @@ export default function DemoDataPage({ user, onLogout }) {
       setDefaults(data.defaults || null);
       setPersistenceNote(data.persistenceNote || null);
     } catch (e) {
-      toast.error(e.message || 'Failed to load demo data');
+      notifyError(e.message || 'Failed to load demo data');
     } finally {
       setLoading(false);
     }
@@ -123,7 +123,7 @@ export default function DemoDataPage({ user, onLogout }) {
       if (t !== '') {
         const n = parseFloat(t);
         if (!Number.isFinite(n)) {
-          toast.error('Enter a valid number for the threshold, or leave it blank for the server default.');
+          notifyError('Enter a valid number for the threshold, or leave it blank for the server default.');
           setSaving(false);
           return;
         }
@@ -152,7 +152,7 @@ export default function DemoDataPage({ user, onLogout }) {
         },
       };
       await saveDemoScenario(body);
-      toast.success('Demo data saved');
+      notifySuccess('Demo data saved');
       await load();
       // Let dashboards refresh their cached account/transaction lists immediately.
       // (Helps when users switch back without a hard refresh.)
@@ -164,7 +164,7 @@ export default function DemoDataPage({ user, onLogout }) {
     } catch (err) {
       if (err.code === 'stale_demo_accounts') {
         await load();
-        toast.warning(
+        notifyWarning(
           err.message ||
             'These account IDs are no longer on this server (common after a deploy or new instance). The form was reloaded — review accounts and save again.'
         );
@@ -173,7 +173,7 @@ export default function DemoDataPage({ user, onLogout }) {
           err.code === 'invalid_token'
             ? 'Could not validate your sign-in token. Use Refresh access token in the Banking Agent, or sign in again.'
             : err.message || 'Save failed';
-        toast.error(msg);
+        notifyError(msg);
       }
     } finally {
       setSaving(false);
@@ -219,26 +219,26 @@ export default function DemoDataPage({ user, onLogout }) {
           };
         }),
     );
-    toast.info('Form reset to defaults — click Save to apply');
+    notifyInfo('Form reset to defaults — click Save to apply');
   };
 
   /**
    * Persists floating vs embedded agent; only one layout is active. Reload so App picks up the change.
-   * @param {'floating' | 'embedded' | 'both'} next
+   * @param {'floating' | 'embedded'} next
    */
   const handleAgentLayoutChange = async next => {
     if (next === agentUiMode) return;
     setAgentUiMode(next);
     const saved = await persistBankingAgentUiMode(next);
     if (!saved) {
-      toast.warn(
+      notifyWarning(
         'Agent layout could not be saved on the server yet. It stays on this browser; refresh may revert if the server still has the old value.',
         { autoClose: 4500 }
       );
     }
-    toast.info('Applying agent layout…', { autoClose: 1200 });
+    notifyInfo('Applying agent layout…', { autoClose: 1200 });
     window.setTimeout(() => {
-      if (next === 'embedded' || next === 'both') {
+      if (next === 'embedded') {
         window.location.href = '/';
       } else {
         window.location.reload();
@@ -279,8 +279,8 @@ export default function DemoDataPage({ user, onLogout }) {
       <section className="app-page-card demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
         <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
         <p className="demo-data-hint">
-          Choose a layout: <strong>floating</strong> (FAB — default), <strong>embedded</strong> (full-width bottom strip on home only), or <strong>both</strong> (dock + FAB for UI demos).
-          On this page there is no embedded dock — use the link below to open your dashboard. Switching to embedded or both sends you home so the dock appears.
+          Choose one layout: <strong>floating</strong> (corner FAB — default) or <strong>embedded</strong> (full-width bottom strip on home only; no floating FAB while signed in).
+          On this page there is no embedded dock — use the link below to open your dashboard. Switching to embedded sends you home so the dock appears.
         </p>
         <div className="demo-data-agent-options" role="radiogroup" aria-label="Agent layout">
           <label className="demo-data-agent-option">
@@ -313,27 +313,10 @@ export default function DemoDataPage({ user, onLogout }) {
               </span>
             </span>
           </label>
-          <label className="demo-data-agent-option">
-            <input
-              type="radio"
-              name="demoDataAgentUiMode"
-              value="both"
-              checked={agentUiMode === 'both'}
-              onChange={() => handleAgentLayoutChange('both')}
-            />
-            <span className="demo-data-agent-option-text">
-              <span className="demo-data-agent-option-title">Both (dock + FAB)</span>
-              <span className="demo-data-agent-option-desc">
-                Embedded bottom bar on <strong>home</strong> plus the floating panel — use the customer dashboard right column as space for the FAB.
-              </span>
-            </span>
-          </label>
         </div>
-        {(agentUiMode === 'embedded' || agentUiMode === 'both') && (
+        {agentUiMode === 'embedded' && (
           <p className="demo-data-agent-note" role="status">
-            {agentUiMode === 'both'
-              ? 'Both mode: home dashboard shows the bottom dock and the corner FAB. Demo config has no dock — use the link below to open your dashboard.'
-              : 'Embedded mode shows the assistant as a bottom strip on your home dashboard only (/ or /dashboard for customers; / or /admin for admins). Other routes have no dock until you return home.'}
+            Embedded mode shows the assistant as a bottom strip on your home dashboard only (/ or /dashboard for customers; / or /admin for admins). Other routes have no dock until you return home.
           </p>
         )}
       </section>

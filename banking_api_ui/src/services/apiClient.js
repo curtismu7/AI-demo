@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl';
-import { appendTrafficEntry, redactHeaders, redactBody, tryParseJson } from './apiTrafficStore';
+import { appendTrafficEntry, redactHeaders, redactBody, tryParseJson, normalizeHeaders } from './apiTrafficStore';
 
 class ApiClient {
   constructor() {
@@ -46,9 +46,9 @@ class ApiClient {
             url,
             status: response.status,
             duration: cfg._trafficStart ? Date.now() - cfg._trafficStart : null,
-            requestHeaders: redactHeaders(cfg.headers || {}),
+            requestHeaders: redactHeaders(normalizeHeaders(cfg.headers || {})),
             requestBody: reqBody ?? null,
-            responseHeaders: response.headers || {},
+            responseHeaders: normalizeHeaders(response.headers),
             responseBody: response.data ?? null,
             source: 'axios',
             timestamp: new Date().toISOString(),
@@ -60,14 +60,16 @@ class ApiClient {
         const cfg = error.config || {};
         const url = cfg.url || '';
         if (url.startsWith('/api/')) {
+          let errReqBody = cfg.data ? (tryParseJson(cfg.data) ?? cfg.data) : null;
+          if (errReqBody && typeof errReqBody === 'object') errReqBody = redactBody(errReqBody);
           appendTrafficEntry({
             method: (cfg.method || 'GET').toUpperCase(),
             url,
             status: error.response?.status ?? 0,
             duration: cfg._trafficStart ? Date.now() - cfg._trafficStart : null,
-            requestHeaders: redactHeaders(cfg.headers || {}),
-            requestBody: cfg.data ? (tryParseJson(cfg.data) ?? cfg.data) : null,
-            responseHeaders: error.response?.headers || {},
+            requestHeaders: redactHeaders(normalizeHeaders(cfg.headers || {})),
+            requestBody: errReqBody,
+            responseHeaders: normalizeHeaders(error.response?.headers),
             responseBody: error.response?.data ?? null,
             error: error.message,
             source: 'axios',

@@ -18,6 +18,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **appToast** (`banking_api_ui/src/utils/appToast.js`): shared **`notifySuccess` / `notifyError` / `notifyWarning` / `notifyInfo`** for react-toastify; **UserDashboard** step-up MFA (428) uses a persistent warning toast with verify actions; **`dashboardToast`** remains for session errors with **Sign in** — see `REGRESSION_LOG.md`, `docs/runbooks/regression/post-deploy.md`
+- **Embedded agent dock** (`EmbeddedAgentDock.js`, **`useDemoMode`**) and related demo-scenario / FAB visibility updates — see `docs/runbooks/regression/ui-browser.md` where touched
 - **Session regression tooling**: `npm run test:session` from repo root or `banking_api_server` (focused Jest subset); `npm run test:e2e:session` in `banking_api_ui` (Playwright `request` smoke only); `GET /api/auth/session` contract tests for `sessionStoreHealthy` / `sessionStoreError` with production-shaped middleware; Playwright API smoke `session-regression.spec.js`; runbook `docs/runbooks/session-regression.md`
 - **Session debugging**: expanded `GET /api/auth/debug` (`oauthTokenSummary`, `diagnosisHints`, optional `?deep=1` Redis vs `req.session`, `sessionInMemoryCache`); `GET /api/auth/session` includes `sessionStoreHealthy`; Banking Agent session-fix copy + deep debug link — see `REGRESSION_LOG.md`, `FEATURES.md`
 - Left-side rail: **HOME** (`/`) and role-based **Admin** (`/admin`) / **Dashboard** (`/dashboard`) links (signed-in dashboard button); stack positions use `App--has-nav-dash` when both rows show
@@ -32,6 +34,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Fixed
 
+- **Transactions admin page** / **OAuth debug log** / **BankingAdminOps**: removed invalid **`setError`** calls and **`toast.error`** without import; errors use **`notifyError`** / **`toastAdminSessionError`**
+- **McpInspector** / **EmbeddedAgentDock**: ESLint JSX spacing and **`no-useless-computed-key`** for CSS variables (CI **`CI=true` build**)
 - **Playwright Banking Agent E2E** (`banking-agent.spec.js`): collapse locator scoped to header tools; MCP actions scoped to `.ba-action-item` (avoids suggestion-chip collisions); forms assert **Account** selects and `#field-*` ids — see `REGRESSION_LOG.md`, `npm run test:e2e:agent`
 - **HITL transaction consent (API)**: Wire **`POST /api/transactions/consent-challenge`** and **`POST /api/transactions/consent-challenge/:id/confirm`**, and enforce session-bound consent on **`POST /api/transactions`** for non-admin high-value writes (**> $500**) — `REGRESSION_LOG.md`, `transactionConsentChallenge.js`, `routes/transactions.js`
 - **Customer dashboard blank / no user data**: **`/api/accounts/my`** and **`/api/transactions/my`** are fetched **separately** (transactions require scopes — **403** no longer fails the whole load); **normalize** API rows (`balance`, **`createdAt`/`created_at`**); **sample demo data** when the API returns no accounts, when transactions are **403**, on **401** soft-fail, on session-missing path, or generic errors; **empty transactions** row when accounts loaded but history is empty

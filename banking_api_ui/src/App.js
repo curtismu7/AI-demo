@@ -34,7 +34,9 @@ import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import UIDesignNav from './components/UIDesignNav';
 import DashboardQuickNav from './components/DashboardQuickNav';
+import EmbeddedAgentDock from './components/EmbeddedAgentDock';
 import { isBankingAgentDashboardRoute } from './utils/embeddedAgentFabVisibility';
+import { useDemoMode } from './hooks/useDemoMode';
 import './App.css';
 
 /** Prevents re-auth after logout when effects re-run (matches f8393a7 session guard). */
@@ -55,38 +57,9 @@ function AppRouteChrome({ user }) {
   return null;
 }
 
-/**
- * Bottom-dock embedded agent on home routes only (/, /admin, /dashboard) when mode is embedded.
- */
-function EmbeddedAgentDock({ user, onLogout, agentUiMode }) {
-  const { pathname } = useLocation();
-  if (!user || (agentUiMode !== 'embedded' && agentUiMode !== 'both') || !isBankingAgentDashboardRoute(pathname)) {
-    return null;
-  }
-  return (
-    <div
-      className="global-embedded-agent-dock-wrap"
-      role="region"
-      aria-label="AI banking assistant"
-      data-agent-ui="embedded"
-    >
-      <div className="embedded-agent-dock">
-        <div className="embedded-agent-dock__head">
-          <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
-          <p className="embedded-agent-dock__lead">
-            Natural language and MCP tools along the bottom — step chips show progress.
-          </p>
-        </div>
-        <div className="embedded-banking-agent embedded-banking-agent--bottom">
-          <BankingAgent user={user} onLogout={onLogout} mode="inline" embeddedDockBottom />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AppWithAuth() {
   const { mode: agentUiMode } = useAgentUiMode();
+  const demoMode = useDemoMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -250,7 +223,7 @@ function AppWithAuth() {
     );
   }
 
-  const showFloatingAgent = !user || agentUiMode === 'floating' || agentUiMode === 'both';
+  const showFloatingAgent = !user || agentUiMode === 'floating';
 
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -258,7 +231,7 @@ function AppWithAuth() {
       <TokenChainProvider>
         <AppRouteChrome user={user} />
         <div
-          className={`App end-user-nano${agentUiMode === 'embedded' || agentUiMode === 'both' ? ' App--has-embedded-dock' : ''}`}
+          className={`App end-user-nano${agentUiMode === 'embedded' ? ' App--has-embedded-dock' : ''}`}
         >
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           <DashboardQuickNav user={user} />
@@ -306,7 +279,7 @@ function AppWithAuth() {
           <CIBAPanel />
           <CimdSimPanel />
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {user && (
+          {user && demoMode !== true && (
             <button
               type="button"
               className="demo-config-fab"

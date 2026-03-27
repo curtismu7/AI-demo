@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { toastLogStore } from '../services/toastLogStore';
+import { notifyError } from '../utils/appToast';
 import './LogViewer.css';
 
 /** Stable React key + dedup across sources (id from server when present). */
@@ -45,7 +46,6 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   const [logs, setLogs] = useState([]);
   const [toastLogs, setToastLogs] = useState(() => toastLogStore.getAll() || []);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [filter, setFilter] = useState({
     level: '',
@@ -81,7 +81,6 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
         return;
       }
       if (!silent) setLoading(true);
-      setError(null);
 
       const params = {
         limit: 500,
@@ -112,7 +111,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
           const reason = rej?.reason;
           const msg =
             reason instanceof Error ? reason.message : String(reason || 'Network error');
-          setError(msg);
+          notifyError(msg);
           replaceLogsOnNextFetchRef.current = true;
           setLogs([]);
         } else {
@@ -134,7 +133,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
       }
     } catch (err) {
       console.error('Error fetching logs:', err);
-      setError(err.message);
+      notifyError(err.message);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -224,7 +223,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
       fetchStats();
     } catch (err) {
       console.error('Error clearing logs:', err);
-      setError(err.message);
+      notifyError(err.message);
     }
   };
 
@@ -398,12 +397,6 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
             <span style={{ color: '#ef4444' }}>Errors: {stats.byLevel?.error || 0}</span>
             <span style={{ color: '#f59e0b' }}>Warnings: {stats.byLevel?.warn || 0}</span>
             <span style={{ color: '#3b82f6' }}>Info: {stats.byLevel?.info || 0}</span>
-          </div>
-        )}
-
-        {error && (
-          <div className="log-error">
-            ⚠️ Error: {error}
           </div>
         )}
 

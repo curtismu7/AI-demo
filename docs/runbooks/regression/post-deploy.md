@@ -37,7 +37,7 @@ Run after every production **or** preview deploy.
 ## 4. Transaction consent / step-up
 
 1. Trigger a transfer ≥ $250 as an end user.
-2. Confirm 428 response surfaces the step-up banner.
+2. Confirm HTTP **428** surfaces a **persistent step-up toast** (verify via CIBA, **Verify now** link, or **Dismiss**) — not a duplicate inline banner.
 3. Complete CIBA or email step-up.
 4. Confirm transfer proceeds and balance updates.
 

@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/AgentUiModeToggle.js
 import React, { useCallback } from 'react';
-import { toast } from 'react-toastify';
+import { notifyInfo, notifyWarning } from '../utils/appToast';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { persistBankingAgentUiMode } from '../services/demoScenarioService';
 import './AgentUiModeToggle.css';
@@ -8,11 +8,10 @@ import './AgentUiModeToggle.css';
 const MODES = [
   { id: 'floating', label: 'Floating' },
   { id: 'embedded', label: 'Embedded' },
-  { id: 'both', label: 'Both' },
 ];
 
 /**
- * Segmented control for banking agent UI: floating FAB, embedded bottom dock, or both.
+ * Segmented control for banking agent UI: floating FAB or embedded bottom dock (mutually exclusive).
  * Persists to demo scenario when signed in; always updates localStorage via context.
  *
  * @param {'landing' | 'eduBar' | 'config'} props.variant
@@ -29,14 +28,14 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
       setMode(next);
       const saved = await persistBankingAgentUiMode(next);
       if (!saved) {
-        toast.warn(
+        notifyWarning(
           'Agent layout could not be saved on the server yet. It stays in this browser; refresh may revert if the server still has the old value.',
           { autoClose: 4500 }
         );
       }
-      toast.info('Applying agent layout…', { autoClose: 1200 });
+      notifyInfo('Applying agent layout…', { autoClose: 1200 });
       window.setTimeout(() => {
-        if (next === 'embedded' || next === 'both') {
+        if (next === 'embedded') {
           window.location.href = '/';
         } else {
           window.location.reload();
@@ -57,7 +56,7 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
     <div
       className={`agent-ui-mode-toggle agent-ui-mode-toggle--${variant} ${className}`.trim()}
       role="group"
-      aria-label={ariaLabel || 'AI banking agent layout: floating, embedded dock, or both'}
+      aria-label={ariaLabel || 'AI banking agent layout: floating or embedded dock'}
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
         {label}
@@ -72,10 +71,8 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
             aria-pressed={mode === m.id}
             title={
               m.id === 'floating'
-                ? 'FAB in the corner on every screen'
-                : m.id === 'embedded'
-                  ? 'Bottom dock on home dashboard routes'
-                  : 'Bottom dock plus floating FAB'
+                ? 'FAB in the corner on every screen (no bottom dock)'
+                : 'Bottom dock on home dashboard routes (no floating FAB while signed in)'
             }
           >
             {m.label}

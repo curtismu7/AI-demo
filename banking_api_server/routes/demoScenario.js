@@ -17,6 +17,13 @@ const router = express.Router();
 const DEFAULT_STEP_UP = () => runtimeSettings.get('stepUpAmountThreshold');
 const BLOCKED_USER_FIELDS = new Set(['id', 'password', 'createdAt']);
 
+/** Legacy `both` in KV → floating (embedded and floating FAB are mutually exclusive in the UI). */
+function normalizeBankingAgentUiMode(stored) {
+  if (stored === 'embedded' || stored === 'floating') return stored;
+  if (stored === 'both') return 'floating';
+  return null;
+}
+
 /** Shown in Demo config UI only when DB + session have no profile strings (never overwrites real data). */
 const PROFILE_UI_FALLBACK = Object.freeze({
   firstName: 'Jordan',
@@ -158,12 +165,7 @@ router.get('/', async (req, res) => {
     const scenario = await demoScenarioStore.load(req.user.id);
     const currentUser = dataStore.getUserById(req.user.id) || {};
     const userData = buildUserDataForDemoResponse(req, currentUser);
-    const bankingAgentUiMode =
-      scenario.bankingAgentUiMode === 'embedded' ||
-      scenario.bankingAgentUiMode === 'floating' ||
-      scenario.bankingAgentUiMode === 'both'
-        ? scenario.bankingAgentUiMode
-        : null;
+    const bankingAgentUiMode = normalizeBankingAgentUiMode(scenario.bankingAgentUiMode);
     res.json({
       accounts: accounts.map(a => ({
         id: a.id,
@@ -229,11 +231,12 @@ router.put('/', async (req, res) => {
       if (raw === null || raw === '') {
         await demoScenarioStore.save(uid, { bankingAgentUiMode: null });
       } else if (raw === 'embedded' || raw === 'floating' || raw === 'both') {
-        await demoScenarioStore.save(uid, { bankingAgentUiMode: raw });
+        const normalized = raw === 'both' ? 'floating' : raw;
+        await demoScenarioStore.save(uid, { bankingAgentUiMode: normalized });
       } else {
         return res.status(400).json({
           error: 'invalid_banking_agent_ui_mode',
-          message: 'bankingAgentUiMode must be embedded, floating, both, or null.',
+          message: 'bankingAgentUiMode must be embedded, floating, or null (legacy both is saved as floating).',
         });
       }
     }
@@ -349,12 +352,7 @@ router.put('/', async (req, res) => {
     const scenario = await demoScenarioStore.load(uid);
     const currentUser = dataStore.getUserById(uid) || {};
     const { password: _password, ...savedUserData } = currentUser;
-    const bankingAgentUiModeOut =
-      scenario.bankingAgentUiMode === 'embedded' ||
-      scenario.bankingAgentUiMode === 'floating' ||
-      scenario.bankingAgentUiMode === 'both'
-        ? scenario.bankingAgentUiMode
-        : null;
+    const bankingAgentUiModeOut = normalizeBankingAgentUiMode(scenario.bankingAgentUiMode);
     res.json({
       ok: true,
       staleAccountIds: staleAccountIds?.length ? staleAccountIds : undefined,

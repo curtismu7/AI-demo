@@ -25,9 +25,41 @@ function JsonView({ value }) {
   return <pre className="api-json" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+/** Absolute URL for same-origin /api paths (shown in traffic detail). */
+function absoluteApiUrl(relativePath) {
+  if (typeof window === 'undefined' || !relativePath) return relativePath || '';
+  const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  return `${window.location.origin}${path}`;
+}
+
+/** Single JSON snapshot: full request + response for debugging. */
+function buildHttpExchangeSnapshot(entry) {
+  const fullUrl = absoluteApiUrl(entry.url);
+  return {
+    request: {
+      method: (entry.method || 'GET').toUpperCase(),
+      path: entry.url,
+      fullUrl,
+      headers: entry.requestHeaders || {},
+      body: entry.requestBody ?? null,
+    },
+    response: {
+      status: entry.status,
+      headers: entry.responseHeaders || {},
+      body: entry.responseBody ?? null,
+      error: entry.error || null,
+    },
+    meta: {
+      durationMs: entry.duration,
+      timestamp: entry.timestamp,
+      source: entry.source,
+    },
+  };
+}
+
 function HeadersView({ headers }) {
   if (!headers || !Object.keys(headers).length)
-    return <p style={{ color: '#475569', fontSize: 12 }}>No headers captured.</p>;
+    return <p className="api-detail-muted">No headers captured.</p>;
   return (
     <div className="api-detail-kv">
       {Object.entries(headers).map(([k, v]) => (
@@ -154,13 +186,15 @@ function TokenEventDetail({ entry }) {
 // ── HTTP Entry Detail ─────────────────────────────────────────────────────────
 
 function HttpEntryDetail({ entry }) {
-  const [tab, setTab] = useState('response');
+  const [tab, setTab] = useState('full');
   const isMcp = entry.url === '/api/mcp/tool';
+  const fullUrl = absoluteApiUrl(entry.url);
   const tabs = [
+    { id: 'full', label: 'Full exchange' },
     { id: 'response', label: 'Response' },
-    { id: 'request', label: 'Request Body' },
-    { id: 'req-headers', label: 'Req Headers' },
-    { id: 'res-headers', label: 'Res Headers' },
+    { id: 'request', label: 'Request body' },
+    { id: 'req-headers', label: 'Req headers' },
+    { id: 'res-headers', label: 'Res headers' },
   ];
 
   return (
@@ -174,17 +208,33 @@ function HttpEntryDetail({ entry }) {
         ))}
       </div>
       <div className="api-detail-content">
-        <p className="api-detail-url">
-          {isMcp
-            ? <>🔌 MCP <strong>{entry.requestBody?.tool || 'tool call'}</strong></>
-            : <>{(entry.method || 'GET').toUpperCase()} {entry.url}</>
-          }
-          {entry.duration != null && ` — ${entry.duration}ms`}
-          {' '}<span style={{ color: '#64748b', fontSize: 10 }}>{entry.timestamp}</span>
-        </p>
+        <div className="api-detail-summary">
+          <div className="api-detail-summary-row">
+            <span className="api-detail-summary-label">Full URL</span>
+            <code className="api-detail-summary-value api-detail-summary-value--url">{fullUrl}</code>
+          </div>
+          <div className="api-detail-summary-row api-detail-summary-row--inline">
+            <span><span className="api-detail-summary-label">Method</span>{' '}
+              <strong>{(entry.method || 'GET').toUpperCase()}</strong></span>
+            <span><span className="api-detail-summary-label">Status</span>{' '}
+              <strong>{entry.status ?? '—'}</strong></span>
+            {entry.duration != null && (
+              <span><span className="api-detail-summary-label">Duration</span>{' '}
+                <strong>{entry.duration}ms</strong></span>
+            )}
+            <span><span className="api-detail-summary-label">Time</span>{' '}
+              <span className="api-detail-summary-mono">{entry.timestamp || '—'}</span></span>
+          </div>
+          {isMcp && (
+            <p className="api-detail-mcp-line">
+              🔌 MCP tool <strong>{entry.requestBody?.tool || 'tool call'}</strong>
+            </p>
+          )}
+        </div>
         {entry.error && <div className="api-detail-err">Network error: {entry.error}</div>}
-        {tab === 'response'    && <JsonView value={entry.responseBody} />}
-        {tab === 'request'     && <JsonView value={entry.requestBody} />}
+        {tab === 'full'       && <JsonView value={buildHttpExchangeSnapshot(entry)} />}
+        {tab === 'response'   && <JsonView value={entry.responseBody} />}
+        {tab === 'request'    && <JsonView value={entry.requestBody} />}
         {tab === 'req-headers' && <HeadersView headers={entry.requestHeaders} />}
         {tab === 'res-headers' && <HeadersView headers={entry.responseHeaders} />}
       </div>
@@ -249,7 +299,7 @@ export default function ApiTrafficPanel({ onClose, pageMode = false }) {
         <div className="api-traffic-title">
           <span>🌐 API Traffic</span>
           <span className="api-traffic-count">{filtered.length}</span>
-          {paused && <span style={{ fontSize: 11, color: '#fbbf24' }}>⏸ paused</span>}
+          {paused && <span className="api-traffic-paused">⏸ paused</span>}
         </div>
         <div className="api-traffic-toolbar">
           <input
@@ -303,7 +353,10 @@ export default function ApiTrafficPanel({ onClose, pageMode = false }) {
               >
                 <MethodBadge entry={entry} />
                 <StatusBadge entry={entry} />
-                <span className="api-entry-url" title={entryLabel(entry)}>{entryLabel(entry)}</span>
+                <span
+                  className="api-entry-url"
+                  title={entry.kind === 'token-event' ? entryLabel(entry) : absoluteApiUrl(entry.url)}
+                >{entryLabel(entry)}</span>
                 {entry.duration != null && <span className="api-entry-dur">{entry.duration}ms</span>}
               </div>
             ))

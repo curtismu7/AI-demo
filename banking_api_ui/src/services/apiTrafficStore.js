@@ -5,6 +5,8 @@
  */
 
 const MAX_ENTRIES = 200;
+/** Max characters stored per raw string body (fetch); avoids runaway memory on huge downloads. */
+const MAX_CAPTURE_BODY_CHARS = 2_000_000;
 const LS_KEY = 'api-traffic-store';
 let entries = [];
 let paused = false;
@@ -51,6 +53,18 @@ export function redactBody(body) {
     out[k] = REDACT_BODY_KEYS.has(String(k).toLowerCase()) ? '***' : v;
   }
   return out;
+}
+
+/** Flatten AxiosHeaders / Headers into a plain object for display. */
+export function normalizeHeaders(headers) {
+  if (!headers) return {};
+  if (typeof headers.toJSON === 'function') return headers.toJSON();
+  if (typeof headers.forEach === 'function' && typeof Object.fromEntries === 'function') {
+    try {
+      return Object.fromEntries(headers.entries());
+    } catch (_) {}
+  }
+  return typeof headers === 'object' ? { ...headers } : {};
 }
 
 /** Try to JSON-parse a text string; return the object or null. */
@@ -186,11 +200,18 @@ export function patchFetch() {
       // Clone so the original body is still readable by the caller
       response.clone().text().then(text => {
         const parsed = tryParseJson(text);
+        let responseBody = parsed;
+        if (parsed === null && text) {
+          responseBody =
+            text.length > MAX_CAPTURE_BODY_CHARS
+              ? `${text.slice(0, MAX_CAPTURE_BODY_CHARS)}\n… [truncated ${text.length - MAX_CAPTURE_BODY_CHARS} chars]`
+              : text;
+        }
         appendTrafficEntry({
           method, url, status: response.status, duration,
           requestHeaders: reqHeaders, requestBody: reqBody,
           responseHeaders: resHeaders,
-          responseBody: parsed ?? (text ? text.slice(0, 8192) : null),
+          responseBody,
           source: 'fetch',
           timestamp: new Date().toISOString(),
         });

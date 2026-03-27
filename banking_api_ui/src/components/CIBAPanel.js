@@ -15,6 +15,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { notifyError } from '../utils/appToast';
 import './CIBAPanel.css';
 import {
   CibaWhatContent,
@@ -143,7 +144,6 @@ function TryItTab({ cibaStatus }) {
   const [acrValues, setAcrValues]   = useState('');
   const [status, setStatus]         = useState('idle'); // idle|loading|pending|approved|denied|error|expired
   const [authReqId, setAuthReqId]   = useState(null);
-  const [errorMsg, setErrorMsg]     = useState('');
   const [pollLog, setPollLog]       = useState([]);
   const [expiresAt, setExpiresAt]   = useState(null);
   const [timeLeft, setTimeLeft]     = useState(null);
@@ -187,7 +187,7 @@ function TryItTab({ cibaStatus }) {
         if (s === 'denied') {
           stopPolling();
           setStatus('denied');
-          setErrorMsg(err.response?.data?.message || 'User denied the request');
+          notifyError(err.response?.data?.message || 'User denied the request');
           log('denied by user');
         } else if (err.response?.status === 410) {
           stopPolling();
@@ -215,7 +215,6 @@ function TryItTab({ cibaStatus }) {
   const initiate = async () => {
     if (!cibaStatus?.enabled) return;
     setStatus('loading');
-    setErrorMsg('');
     setPollLog([]);
     setAuthReqId(null);
     log('initiating CIBA request…');
@@ -234,7 +233,7 @@ function TryItTab({ cibaStatus }) {
     } catch (err) {
       setStatus('error');
       const d = err.response?.data;
-      setErrorMsg(d?.message || d?.error || err.message);
+      notifyError(d?.message || d?.error || err.message);
       log(`error: ${d?.message || err.message}`);
     }
   };
@@ -312,9 +311,6 @@ function TryItTab({ cibaStatus }) {
               placeholder="e.g. Multi_factor"
             />
           </label>
-          {status === 'error' && (
-            <div className="ciba-notice ciba-notice--error">{errorMsg}</div>
-          )}
           <button className="ciba-btn ciba-btn--primary" onClick={initiate}>
             📲 Start CIBA request
           </button>
@@ -339,12 +335,6 @@ function TryItTab({ cibaStatus }) {
             <div className="ciba-notice ciba-notice--success">
               ✅ User approved! Tokens stored server-side in the Backend-for-Frontend (BFF) session.
               They are never sent to this browser.
-            </div>
-          )}
-
-          {status === 'denied' && (
-            <div className="ciba-notice ciba-notice--error">
-              ❌ {errorMsg || 'User denied the request or it expired.'}
             </div>
           )}
 

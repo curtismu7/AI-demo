@@ -19,7 +19,7 @@ export default function UIDesignNav({ user }) {
     { to: '/mcp-inspector', label: 'MCP Inspector', show: true },
     { to: '/api-traffic', label: 'API traffic', show: true, newWindow: true },
     { href: '/design/customer-dashboard-2026.html', label: 'Static mock · Customer', show: true, newWindow: true, external: true },
-    { href: '/design/customer-dashboard-2026-agent-ui.html', label: 'Static mock · Agent UI (floating / embedded / both)', show: true, newWindow: true, external: true },
+    { href: '/design/customer-dashboard-2026-agent-ui.html', label: 'Static mock · Agent UI (floating / embedded)', show: true, newWindow: true, external: true },
     { href: '/design/admin-dashboard-2026.html', label: 'Static mock · Admin', show: isAdmin, newWindow: true, external: true },
   ].filter((x) => x.show);
 

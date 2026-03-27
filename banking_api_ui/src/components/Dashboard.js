@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast, notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
 import { useEducationUI } from '../context/EducationUIContext';
@@ -21,7 +21,6 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
   const [resettingDemo, setResettingDemo] = useState(false);
-  const [resetMsg, setResetMsg] = useState('');
   const [txLookupUsername, setTxLookupUsername] = useState('bankuser');
   const [txLookupPhone4, setTxLookupPhone4] = useState('1586');
   const [txLookupTx, setTxLookupTx] = useState([]);
@@ -71,7 +70,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      toast.success('Downloaded bootstrapData.json — commit it to update the default seed.');
+      notifySuccess('Downloaded bootstrapData.json — commit it to update the default seed.');
     } catch (err) {
       let msg = err.message || 'Seed export failed.';
       const data = err.response?.data;
@@ -86,7 +85,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
       } else if (data?.message) {
         msg = data.message;
       }
-      toast.error(msg);
+      notifyError(msg);
     }
   };
 
@@ -94,22 +93,21 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
     if (!window.confirm('Overwrite data/bootstrapData.json on the API server? (local dev only)')) return;
     try {
       const { data } = await bffAxios.post('/api/admin/bootstrap/export');
-      toast.success(data.path ? `Wrote ${data.path}` : 'Seed file written.');
+      notifySuccess(data.path ? `Wrote ${data.path}` : 'Seed file written.');
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || err.message;
-      toast.error(msg || 'Could not write seed file.');
+      notifyError(msg || 'Could not write seed file.');
     }
   };
 
   const handleResetDemo = async () => {
     if (!window.confirm('Reset all demo OAuth accounts to $5,000 starting balance?')) return;
     setResettingDemo(true);
-    setResetMsg('');
     try {
       await bffAxios.post('/api/accounts/reset-all-demo');
-      setResetMsg('✓ Demo accounts reset to $5,000.');
+      notifySuccess('Demo accounts reset to $5,000.');
     } catch (err) {
-      setResetMsg(`Reset failed: ${err.response?.data?.error || err.message}`);
+      notifyError(`Reset failed: ${err.response?.data?.error || err.message}`);
     } finally {
       setResettingDemo(false);
     }
@@ -138,7 +136,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
           const delays = [600, 1400, 2200];
           setForbidden403(false);
           if (attempt === 0) {
-            toast.info('Reconnecting to admin API…', { toastId: 'admin-dash-reconnect', autoClose: 3000 });
+            notifyInfo('Reconnecting to admin API…', { toastId: 'admin-dash-reconnect', autoClose: 3000 });
           }
           await new Promise((r) => setTimeout(r, delays[attempt]));
           return fetchDashboardData(attempt + 1);
@@ -148,7 +146,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
           setForbidden403(false);
           const still = await resolveSessionUser();
           if (still?.role === 'admin') {
-            toast.warn(
+            notifyWarning(
               'Could not load admin data yet. Try refreshing the page, or use Refresh access token in the Banking Agent.',
               { autoClose: 14000 }
             );
@@ -157,10 +155,10 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
           }
         } else if (status === 403) {
           setForbidden403(true);
-          toast.error('You do not have permission to access the admin dashboard.');
+          notifyError('You do not have permission to access the admin dashboard.');
         } else {
           setForbidden403(false);
-          toast.error(
+          notifyError(
             detail
               ? `Failed to load dashboard data (${status || 'error'}): ${detail}`
               : `Failed to load dashboard data${status ? ` (HTTP ${status})` : ''}. Try refreshing the page.`
@@ -174,7 +172,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
       if (!nextStats || typeof nextStats !== 'object') {
         toast.dismiss('admin-dash-reconnect');
         setForbidden403(false);
-        toast.error('Failed to load dashboard data: invalid response from server.');
+        notifyError('Failed to load dashboard data: invalid response from server.');
         setStats(null);
         return;
       }
@@ -192,7 +190,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
       console.error('Dashboard error:', err);
       toast.dismiss('admin-dash-reconnect');
       setForbidden403(false);
-      toast.error(err.message || 'Failed to load dashboard data');
+      notifyError(err.message || 'Failed to load dashboard data');
       setStats(null);
     } finally {
       setLoading(false);
@@ -225,10 +223,10 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
         setTxLookupTotalTx(typeof data.totalTransactions === 'number' ? data.totalTransactions : (data.transactions || []).length);
         const n = data.count ?? data.transactions?.length ?? 0;
         const ac = (data.accounts || []).length;
-        toast.success(`Loaded profile, ${ac} account(s), ${n} recent transaction row(s)`);
+        notifySuccess(`Loaded profile, ${ac} account(s), ${n} recent transaction row(s)`);
       } catch (err) {
         const msg = err.response?.data?.error || err.message || 'Lookup failed';
-        toast.error(msg);
+        notifyError(msg);
       } finally {
         setTxLookupLoading(false);
       }
@@ -343,10 +341,10 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
       </header>
 
       <div
-        className={`app-page-shell__body app-page-shell__body--wide ${agentUiMode === 'embedded' || agentUiMode === 'both' ? 'app-page-shell__body--embed-agent' : ''}`}
+        className={`app-page-shell__body app-page-shell__body--wide ${agentUiMode === 'embedded' ? 'app-page-shell__body--embed-agent' : ''}`}
       >
         <div
-          className={`ud-shell ${agentUiMode === 'embedded' || agentUiMode === 'both' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
+          className={`ud-shell ${agentUiMode === 'embedded' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
         >
         <div className="app-page-toolbar" role="toolbar" aria-label="Admin actions">
           <button
@@ -441,8 +439,6 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
             Log out
           </button>
         </div>
-        {resetMsg && <div className="admin-dashboard__reset-msg">{resetMsg}</div>}
-
       <main id="admin-dashboard-main" tabIndex={-1}>
       {/* Token chain — grouped card (TokenChainDisplay includes its own title) */}
       <section className="dash-shell-card dash-shell-card--token" aria-label="Security and token chain">

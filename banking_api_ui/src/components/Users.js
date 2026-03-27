@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { toast } from 'react-toastify';
 import bffAxios from '../services/bffAxios';
+import { notifySuccess, notifyError } from '../utils/appToast';
+import { toastAdminSessionError } from '../utils/dashboardToast';
+import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { resolveSessionUser } from '../services/sessionResolver';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
@@ -9,7 +11,6 @@ import PageNav from './PageNav';
 const Users = ({ user, onLogout }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -21,21 +22,20 @@ const Users = ({ user, onLogout }) => {
       setLoading(true);
       const sessionUser = await resolveSessionUser();
       if (!sessionUser) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
         return;
       }
       const response = await bffAxios.get('/api/users');
       setUsers(response.data.users);
-      setError('');
     } catch (error) {
       console.error('Users error:', error);
       
       if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to view users.');
+        notifyError('You do not have permission to view users.');
       } else {
-        setError('Failed to load users');
+        notifyError('Failed to load users');
       }
     } finally {
       setLoading(false);
@@ -52,21 +52,20 @@ const Users = ({ user, onLogout }) => {
       setLoading(true);
       const sessionUser = await resolveSessionUser();
       if (!sessionUser) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
         return;
       }
       const response = await bffAxios.get(`/api/users/search/${searchQuery}`);
       setUsers(response.data.users);
-      setError('');
     } catch (error) {
       console.error('Search error:', error);
       
       if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to search users.');
+        notifyError('You do not have permission to search users.');
       } else {
-        setError('Failed to search users');
+        notifyError('Failed to search users');
       }
     } finally {
       setLoading(false);
@@ -77,23 +76,23 @@ const Users = ({ user, onLogout }) => {
     try {
       const sessionUser = await resolveSessionUser();
       if (!sessionUser) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
         return;
       }
       await bffAxios.put(`/api/users/${userId}`, {
         isActive: !currentStatus
       });
-      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+      notifySuccess(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
       fetchUsers(); // Refresh the list
     } catch (error) {
       console.error('Toggle status error:', error);
       
       if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to update user status.');
+        notifyError('You do not have permission to update user status.');
       } else {
-        setError('Failed to update user status');
+        notifyError('Failed to update user status');
       }
     }
   };
@@ -106,23 +105,22 @@ const Users = ({ user, onLogout }) => {
     try {
       const sessionUser = await resolveSessionUser();
       if (!sessionUser) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
         return;
       }
       await bffAxios.delete(`/api/users/${userId}`);
-      toast.success(`User "${userName}" deleted successfully`);
-      setError(''); // Clear any previous errors
+      notifySuccess(`User "${userName}" deleted successfully`);
       fetchUsers(); // Refresh the list
     } catch (error) {
       console.error('Delete user error:', error);
       
       if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to delete users.');
+        notifyError('You do not have permission to delete users.');
       } else {
         const errorMessage = error.response?.data?.error || 'Failed to delete user';
-        setError(errorMessage);
+        notifyError(errorMessage);
       }
     }
   };
@@ -153,12 +151,6 @@ const Users = ({ user, onLogout }) => {
           Search
         </button>
       </div>
-
-      {error && (
-        <div className="alert alert-error">
-          {error}
-        </div>
-      )}
 
       <div className="app-page-card">
         <div className="card-header">

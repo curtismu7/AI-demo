@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { toast } from 'react-toastify';
+import { toast, notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   getMyAccounts,
@@ -732,13 +732,13 @@ export default function BankingAgent({
     try {
       const r = await refreshOAuthSession();
       if (r.ok) {
-        toast.success('Access token refreshed. You can retry your action.');
+        notifySuccess('Access token refreshed. You can retry your action.');
         checkSelfAuth();
       } else {
-        toast.error('Could not refresh — use Sign in again or reload the page.');
+        notifyError('Could not refresh — use Sign in again or reload the page.');
       }
     } catch (e) {
-      toast.error(e?.message || 'Refresh failed');
+      notifyError(e?.message || 'Refresh failed');
     } finally {
       setSessionRefreshing(false);
     }
@@ -1076,11 +1076,11 @@ export default function BankingAgent({
         addMessage('assistant', formatResult(response.result), actionId);
         toast.dismiss(toastId);
         if (consent) {
-          toast.info('👤 Amount over $500 — complete consent on the dashboard (human-in-the-loop)', {
+          notifyInfo('👤 Amount over $500 — complete consent on the dashboard (human-in-the-loop)', {
             autoClose: 7000,
           });
         } else {
-          toast.error(`❌ ${normalized.message || normalized.error || 'Request failed'}`, { autoClose: 5000 });
+          notifyError(`❌ ${normalized.message || normalized.error || 'Request failed'}`, { autoClose: 5000 });
         }
         setLoading(false);
         return;
@@ -1107,16 +1107,16 @@ export default function BankingAgent({
           const mayActStatus = userTokEv?.mayActPresent ? '✅ may_act validated' : '⚠️ no may_act';
           const actStatus    = exchanged.actPresent ? `✅ act: ${exchanged.actDetails}` : '⚠️ no act claim';
           tokenMsg = `🔐 RFC 8693 Token Exchange\n${mayActStatus} → MCP token issued · ${actStatus}\nScope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`;
-          toast.info(`🔐 Token Exchange complete — MCP token issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
+          notifyInfo(`🔐 Token Exchange complete — MCP token issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
         } else if (required) {
           tokenMsg = '🔐 RFC 8693 token exchange is required — set mcp_resource_uri / MCP_RESOURCE_URI (MCP audience). User token is not sent to MCP without exchange.';
-          toast.error('❌ MCP resource URI missing — token exchange required', { autoClose: 6000 });
+          notifyError('❌ MCP resource URI missing — token exchange required', { autoClose: 6000 });
         } else if (badScopes) {
           tokenMsg = `🔐 User token needs more OAuth scopes for MCP exchange (${badScopes.explanation || 'see Token Chain'})`;
-          toast.error('❌ Sign in again with broader scopes (at least 5) for MCP token exchange', { autoClose: 7000 });
+          notifyError('❌ Sign in again with broader scopes (at least 5) for MCP token exchange', { autoClose: 7000 });
         } else if (failed) {
           tokenMsg = `🔐 Token Exchange failed: ${failed.error || 'unknown error'}`;
-          toast.error(`❌ Token Exchange failed: ${failed.error || 'unknown error'}`, { autoClose: 6000 });
+          notifyError(`❌ Token Exchange failed: ${failed.error || 'unknown error'}`, { autoClose: 6000 });
         }
         if (tokenMsg) {
           addMessage('token-event', tokenMsg, actionId);
@@ -1188,11 +1188,11 @@ export default function BankingAgent({
             /sign in to use the banking agent/i.test(String(err?.message || ''))));
 
       if (isConnErr) {
-        toast.error('🔌 MCP server unreachable — check your server connection', { autoClose: 8000 });
+        notifyError('🔌 MCP server unreachable — check your server connection', { autoClose: 8000 });
       } else if (hydrationAuthFailure && cookieOnlyBffSession) {
         // Inline session-fix banner already shown on load for cookie-only Backend-for-Frontend (BFF); avoid duplicate toasts.
       } else if (err?.code === 'session_not_hydrated') {
-        toast.error(
+        notifyError(
           'Sign in again: server session has no tokens (Vercel needs Redis/Upstash + redeploy, then sign out & sign in).',
           { autoClose: 12000 },
         );
@@ -1201,12 +1201,12 @@ export default function BankingAgent({
         err?.code === 'authentication_required' ||
         /sign in to use the banking agent/i.test(String(err?.message || ''))
       ) {
-        toast.error(
+        notifyError(
           'Session missing or expired on the server. Try Refresh access token, or Sign in again.',
           { autoClose: 9000 },
         );
       } else {
-        toast.error(`❌ ${err.message}`, { autoClose: 6000 });
+        notifyError(`❌ ${err.message}`, { autoClose: 6000 });
       }
 
       const authHint =
@@ -1362,7 +1362,7 @@ export default function BankingAgent({
   function reportNlFailure(err) {
     if (err?.code === 'session_not_hydrated') {
       if (!cookieOnlyBffSession) {
-        toast.error(
+        notifyError(
           'Sign in again: server session has no tokens (Vercel needs Redis/Upstash + redeploy, then sign out & sign in).',
           { autoClose: 12000 },
         );
@@ -1381,7 +1381,7 @@ export default function BankingAgent({
         }
         return;
       }
-      toast.error(
+      notifyError(
         'Sign in required — the server has no session for this request. Refresh the page and sign in again.',
         { autoClose: 5000 },
       );
@@ -1391,7 +1391,7 @@ export default function BankingAgent({
       );
       return;
     }
-    toast.error(`❌ Could not parse request: ${err.message}`, { autoClose: 5000 });
+    notifyError(`❌ Could not parse request: ${err.message}`, { autoClose: 5000 });
     addMessage('assistant', `Could not parse: ${err.message}`);
   }
 

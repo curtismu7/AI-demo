@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
+import { notifyError, notifyWarning } from '../utils/appToast';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import PageNav from './PageNav';
@@ -40,7 +41,6 @@ const McpInspector = ({ user, onLogout }) => {
   const [selectedTool, setSelectedTool] = useState(null);
   const [paramsJson, setParamsJson] = useState('{}');
   const [lastInvoke, setLastInvoke] = useState(null);
-  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const langchainInspector =
@@ -54,13 +54,12 @@ const McpInspector = ({ user, onLogout }) => {
       setContext(data);
     } catch (e) {
       console.error(e);
-      setError(formatAxiosError(e, 'Failed to load inspector context'));
+      notifyError(formatAxiosError(e, 'Failed to load inspector context'));
     }
   }, []);
 
   const refreshTools = useCallback(async () => {
     setLoadingTools(true);
-    setError('');
     try {
       const { data } = await apiClient.get('/api/mcp/inspector/tools');
       setTools(data.tools || []);
@@ -72,7 +71,7 @@ const McpInspector = ({ user, onLogout }) => {
             : null
       );
     } catch (e) {
-      setError(formatAxiosError(e, 'tools/list failed'));
+      notifyError(formatAxiosError(e, 'tools/list failed'));
       setTools([]);
       setToolsSourceInfo(null);
     } finally {
@@ -97,11 +96,10 @@ const McpInspector = ({ user, onLogout }) => {
     try {
       params = JSON.parse(paramsJson || '{}');
     } catch {
-      setError('Arguments must be valid JSON');
+      notifyWarning('Arguments must be valid JSON');
       return;
     }
     setBusy(true);
-    setError('');
     try {
       const { data } = await apiClient.post('/api/mcp/inspector/invoke', {
         tool: selectedTool.name,
@@ -110,7 +108,7 @@ const McpInspector = ({ user, onLogout }) => {
       setLastInvoke(data);
     } catch (e) {
       setLastInvoke(null);
-      setError(formatAxiosError(e, 'Invoke failed'));
+      notifyError(formatAxiosError(e, 'Invoke failed'));
     } finally {
       setBusy(false);
     }
@@ -159,16 +157,10 @@ const McpInspector = ({ user, onLogout }) => {
         </div>
 
         <div className="mcp-inspector">
-          {error && (
-            <div className="mcp-inspector__banner mcp-inspector__banner--error" role="alert">
-              {error}
-            </div>
-          )}
-
           <section className="app-page-card demo-data-section">
             <h2>How MCP tools work (this demo)</h2>
             <p className="demo-data-hint mcp-inspector__hint-tight">
-              Use the education buttons above for deep dives: <strong>MCP protocol</strong>, <strong>token exchange</strong>,{' '}
+              Use the education buttons above for deep dives: <strong>MCP protocol</strong>, <strong>token exchange</strong>,
               <strong>introspection</strong>, and <strong>Agent Gateway</strong>. Short version: the Backend-for-Frontend (BFF) holds your session and may
               RFC 8693 exchange before <code>tools/call</code>; the MCP server calls the Banking API with Bearer tokens.
             </p>

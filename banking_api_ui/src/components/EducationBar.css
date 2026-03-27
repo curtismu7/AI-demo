@@ -19,6 +19,15 @@
   gap: 0.4rem;
 }
 
+/* DEMO_MODE: only agent layout control — no OAuth/learn/API pills */
+.edu-bar--demo-minimal {
+  padding: 0.35rem 0.75rem;
+}
+
+.edu-bar-inner--demo-minimal {
+  justify-content: flex-start;
+}
+
 .edu-bar-group {
   position: relative;
 }

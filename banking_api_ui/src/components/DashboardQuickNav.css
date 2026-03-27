@@ -1,4 +1,4 @@
-/* banking_api_ui/src/components/DashboardQuickNav.css — left rail below CIMD; red/teal alternating like CIBA/CIMD */
+/* banking_api_ui/src/components/DashboardQuickNav.css — left rail; odd = brand red, even = blue */
 
 .dashboard-quick-nav {
   position: fixed;
@@ -54,13 +54,13 @@
   -webkit-text-fill-color: #fff;
 }
 
-/* Odd: CIBA-style red · Even: CIMD-style teal */
+/* Odd: red · Even: blue (no teal/green) */
 .dashboard-quick-nav__btn:nth-child(odd) {
   background: var(--app-primary-red);
 }
 
 .dashboard-quick-nav__btn:nth-child(even) {
-  background: #0f766e;
+  background: #2563eb;
 }
 
 .dashboard-quick-nav__btn:nth-child(odd):hover {
@@ -71,9 +71,9 @@
 }
 
 .dashboard-quick-nav__btn:nth-child(even):hover {
-  background: #0d9488;
+  background: #1d4ed8;
   border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.2);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
   transform: translateY(-1px);
 }
 
@@ -92,7 +92,7 @@
 }
 
 .dashboard-quick-nav__btn--active:nth-child(even) {
-  background: #0b6b63;
+  background: #1e40af;
   border-color: rgba(255, 255, 255, 0.25);
 }
 

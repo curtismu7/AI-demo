@@ -1,8 +1,8 @@
 // banking_api_ui/src/components/OAuthDebugLogViewer.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
+import { notifyError, notifySuccess } from '../utils/appToast';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
@@ -14,7 +14,6 @@ export default function OAuthDebugLogViewer({ user, onLogout }) {
   const [backend, setBackend] = useState('');
   const [hint, setHint] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
 
   const fetchLog = useCallback(async () => {
@@ -23,9 +22,8 @@ export default function OAuthDebugLogViewer({ user, onLogout }) {
       setLines(data.lines || []);
       setBackend(data.backend || '');
       setHint(data.hint || '');
-      setError('');
     } catch (e) {
-      setError(e.response?.data?.message || e.message || 'Failed to load log');
+      notifyError(e.response?.data?.message || e.message || 'Failed to load log');
     } finally {
       setLoading(false);
     }
@@ -45,10 +43,10 @@ export default function OAuthDebugLogViewer({ user, onLogout }) {
     if (!window.confirm('Clear all stored OAuth verbose log lines on the server?')) return;
     try {
       await apiClient.delete('/api/admin/oauth-debug-log');
-      toast.success('Log cleared.');
+      notifySuccess('Log cleared.');
       fetchLog();
     } catch (e) {
-      toast.error(e.response?.data?.message || e.message);
+      notifyError(e.response?.data?.message || e.message);
     }
   };
 
@@ -87,11 +85,6 @@ export default function OAuthDebugLogViewer({ user, onLogout }) {
         Verbose mode can include token claims (e.g. subject, email). Only use for troubleshooting; restrict admin access.
         {hint ? <> {hint}</> : null}
       </div>
-      {error && (
-        <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
       {loading ? (
         <p style={{ color: '#64748b' }}>Loading…</p>
       ) : (

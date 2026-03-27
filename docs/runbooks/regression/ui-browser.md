@@ -45,6 +45,7 @@ Includes admin dashboard, Banking Agent, security settings, session regression.
 | `BankingAgent.js` / `ActionForm.js` | `test:e2e:agent` |
 | `Dashboard.js` (admin) | `test:e2e:admin` |
 | `App.js` / `App.css` / `DashboardQuickNav.*` / `AgentUiModeToggle.*` / `EducationBar.js` | `test:e2e:landing` + `test:e2e:customer` + `test:e2e:admin` + manual post-deploy rail + agent toggle |
+| `appToast.js` / `dashboardToast.js` / toast copy in any screen | Smoke affected routes; confirm success/error/warning uses **react-toastify** (no `alert()`, no orphan `toast.*` except dismiss/update/loading in Banking Agent) |
 | Any auth/session flow | `test:e2e:session` |
 
 ## Mock helpers

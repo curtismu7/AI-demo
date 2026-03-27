@@ -45,27 +45,30 @@ export default function EducationDrawer({
         style={{ width }}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby="edu-drawer-title"
       >
-        <div className="edu-drawer-header">
-          <h2 className="edu-drawer-title">{title}</h2>
+        {/* Top row: tab pills upper-left, close upper-right (cleaner for screen shares / demos) */}
+        <div className="edu-drawer-topbar">
+          <div className="edu-drawer-tabs" role="tablist" aria-label="Section">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={activeId === t.id}
+                className={`edu-drawer-tab${activeId === t.id ? ' edu-drawer-tab--active' : ''}`}
+                onClick={() => setActiveId(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
           <button type="button" className="edu-drawer-close" onClick={onClose} aria-label="Close">
             ×
           </button>
         </div>
-        <div className="edu-drawer-tabs" role="tablist">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={activeId === t.id}
-              className={`edu-drawer-tab${activeId === t.id ? ' edu-drawer-tab--active' : ''}`}
-              onClick={() => setActiveId(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="edu-drawer-title-row">
+          <h2 id="edu-drawer-title" className="edu-drawer-title">{title}</h2>
         </div>
         <div className="edu-drawer-body scroll-area">
           {active?.content}

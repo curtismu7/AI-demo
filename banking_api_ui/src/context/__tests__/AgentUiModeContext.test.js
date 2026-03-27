@@ -1,7 +1,7 @@
 // banking_api_ui/src/context/__tests__/AgentUiModeContext.test.js
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { AgentUiModeProvider, useAgentUiMode } from '../AgentUiModeContext';
 
 const STORAGE_KEY = 'banking_agent_ui_mode';
@@ -43,6 +43,19 @@ describe('AgentUiModeProvider', () => {
       </AgentUiModeProvider>,
     );
     expect(screen.getByTestId('mode')).toHaveTextContent('embedded');
+  });
+
+  it('migrates legacy both from localStorage to floating', async () => {
+    localStorage.setItem(STORAGE_KEY, 'both');
+    render(
+      <AgentUiModeProvider>
+        <ModeProbe />
+      </AgentUiModeProvider>,
+    );
+    expect(screen.getByTestId('mode')).toHaveTextContent('floating');
+    await waitFor(() => {
+      expect(localStorage.getItem(STORAGE_KEY)).toBe('floating');
+    });
   });
 
   it('persists setMode to localStorage and updates UI', () => {

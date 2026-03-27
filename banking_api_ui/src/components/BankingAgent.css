@@ -1486,7 +1486,7 @@
   color: #b91c1c;
 }
 
-.embedded-banking-agent {
+.embedded-banking-agent:not(.embedded-banking-agent--bottom) {
   margin-top: 1rem;
   min-height: 260px;
   height: min(70vh, 360px);
@@ -1496,7 +1496,7 @@
   background: #f8fafc;
 }
 
-.embedded-banking-agent .banking-agent-panel.ba-mode-inline {
+.embedded-banking-agent:not(.embedded-banking-agent--bottom) .banking-agent-panel.ba-mode-inline {
   min-height: 260px;
   height: 100%;
 }
@@ -1543,22 +1543,33 @@
 
 .embedded-banking-agent.embedded-banking-agent--bottom {
   margin-top: 0;
-  min-height: 220px;
-  /* Height set inline from App (persisted); cap for safety */
-  max-height: min(85vh, 720px);
   width: 100%;
   flex-shrink: 0;
+  /* Height from EmbeddedAgentDock --embedded-dock-height (persisted) */
+  height: var(--embedded-dock-height, 320px);
+  min-height: 200px;
+  max-height: min(85vh, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
 .embedded-banking-agent.embedded-banking-agent--bottom .banking-agent-panel.ba-mode-inline {
+  flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Bottom-dock agent: messages on top, suggestions strip below */
+/* Bottom-dock agent: column layout — header, then body row */
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   width: 100%;
   max-width: 100%;
@@ -1567,33 +1578,77 @@
   border-radius: 12px;
 }
 
-/* Bottom-dock: messages fill left, chips panel on the right */
-.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-body {
-  flex-direction: row;
-  flex: 1;
-  min-height: 0;
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-header {
+  flex-shrink: 0;
 }
 
-.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-right-col {
-  flex: 1;
+/* Chat column left, suggestions / actions right (DOM is left-col | right-col; reverse for UX) */
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-body {
+  flex-direction: row-reverse;
+  flex: 1 1 0%;
   min-height: 0;
   overflow: hidden;
 }
 
-.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col {
-  width: 220px;
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-right-col {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollable transcript + tool chips; input bar stays pinned at bottom */
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .banking-agent-messages {
+  flex: 1 1 0%;
+  min-height: 72px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-bottom {
   flex-shrink: 0;
-  border-right: none;
-  border-left: 1px solid var(--ba-border);
+}
+
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-commands-popup {
+  flex-shrink: 1;
+  min-height: 0;
+  max-height: min(200px, 30vh);
+  overflow-y: auto;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-action-form-anchor {
+  flex-shrink: 1;
+  min-height: 0;
+  max-height: min(38vh, 360px);
+  overflow-y: auto;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-header .ba-server-chips {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col {
+  width: min(240px, 34vw);
+  flex-shrink: 0;
+  border-right: 1px solid var(--ba-border);
+  border-left: none;
   border-top: none;
   max-height: none;
   overflow-y: auto;
+  overflow-x: hidden;
   flex-direction: column;
   flex-wrap: nowrap;
   align-content: flex-start;
   align-items: stretch;
   gap: 4px;
   padding: 10px 10px 10px 12px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col > .ba-left-auth-btn.primary:first-of-type {

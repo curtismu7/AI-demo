@@ -4,12 +4,15 @@ import { NavLink } from 'react-router-dom';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import AgentUiModeToggle from './AgentUiModeToggle';
+import { useDemoMode } from '../hooks/useDemoMode';
 import './EducationBar.css';
 
 /**
  * Global learn pill bar for authenticated users (below main header area).
+ * On DEMO_MODE deployments, OAuth/education shortcuts are hidden so demos stay uncluttered.
  */
 export default function EducationBar() {
+  const demoMode = useDemoMode();
   const { open } = useEducationUI();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -39,6 +42,16 @@ export default function EducationBar() {
   const openApiTraffic = () => {
     window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes');
   };
+
+  if (demoMode === true) {
+    return (
+      <div className="edu-bar edu-bar--demo-minimal" role="navigation" aria-label="Agent layout">
+        <div className="edu-bar-inner edu-bar-inner--demo-minimal">
+          <AgentUiModeToggle variant="eduBar" className="edu-bar-agent-toggle" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="edu-bar" role="navigation" aria-label="Learn topics">

@@ -3,10 +3,10 @@ import { useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import { notifyError } from '../utils/appToast';
 
 const Login = () => {
   const [loading] = useState(false);
-  const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
   const edu = useEducationUIOptional();
   const [oauthDebug, setOauthDebug] = useState(null);
@@ -70,7 +70,7 @@ const Login = () => {
         default:
           errorMessage = 'Something went wrong during sign-in. Please try again.';
       }
-      setError(errorMessage);
+      notifyError(errorMessage);
     }
   }, [searchParams]);
 
@@ -101,12 +101,6 @@ const Login = () => {
             <p className="login-product-line">PingOne AI IAM Core</p>
             <p>Sign in to access your banking services</p>
           </div>
-
-          {error && (
-            <div className="alert alert-error">
-              {error}
-            </div>
-          )}
 
           <div className="oauth-login">
             <div className="oauth-options">

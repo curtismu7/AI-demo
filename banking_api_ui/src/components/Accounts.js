@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
+import { notifyError } from '../utils/appToast';
+import { toastAdminSessionError } from '../utils/dashboardToast';
+import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
@@ -18,7 +21,6 @@ const ACCOUNT_TYPE_BADGE_COLORS = {
 const Accounts = ({ user, onLogout }) => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchAccounts();
@@ -29,21 +31,20 @@ const Accounts = ({ user, onLogout }) => {
       setLoading(true);
       const sessionUser = await resolveSessionUser();
       if (!sessionUser) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
         return;
       }
       const response = await bffAxios.get('/api/accounts');
       setAccounts(response.data.accounts);
-      setError('');
     } catch (error) {
       console.error('Accounts error:', error);
       
       if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to view accounts.');
+        notifyError('You do not have permission to view accounts.');
       } else {
-        setError('Failed to load accounts');
+        notifyError('Failed to load accounts');
       }
     } finally {
       setLoading(false);
@@ -63,12 +64,6 @@ const Accounts = ({ user, onLogout }) => {
   return (
     <AdminSubPageShell title="Accounts" lead="View bank accounts in the demo environment.">
       <PageNav user={user} onLogout={onLogout} title="Accounts" />
-
-      {error && (
-        <div className="alert alert-error">
-          {error}
-        </div>
-      )}
 
       <div className="app-page-card">
         <div className="card-header">
