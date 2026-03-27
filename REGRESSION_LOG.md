@@ -5,6 +5,30 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Split3: agent bottom cut off, columns unequal, layout disconnected from header
+
+**Symptoms (3 bugs)**:
+1. Agent panel bottom was cut off — input bar / action strip not visible.
+2. All three columns were not equal width (token rail was fixed 300 px, the other two divided the rest).
+3. 3-column grid appeared visually disconnected from the header (32 px gap, rounded corners on header).
+
+**Root causes**:
+1. `.banking-agent-panel` base rule has `max-height: min(85vh, 720px)`. `.ba-mode-inline` never reset it, so taller grids clipped the panel at 720 px.
+2. `grid-template-columns: 300px 1fr 1fr` — hardcoded first column, not equal thirds.
+3. `height: min(calc(100vh - 130px), 900px)` — wrong magic number (real header is ~165–180 px tall, not 130 px), so the grid always overflowed the viewport by 35–50 px. Also, `dashboard-header-stack` had `margin-bottom: 32px` creating a visual gap. A duplicate property `height: auto` was immediately overridden by the `height: min(…)` below it on the same rule.
+
+**Fixes**:
+- **`BankingAgent.css`** — Added `max-height: none; min-height: 0` to `.banking-agent-panel.ba-mode-inline` so container drives the height in inline contexts.
+- **`UserDashboard.css`** — Changed `grid-template-columns` from `300px 1fr 1fr` to `1fr 1fr 1fr` everywhere (base rule + `ud-body--2026` override + `@media (max-width:1280px)`).
+- **`UserDashboard.css`** — Dropped the magic-number `height: min(calc(100vh - 130px), 900px)` and `min-height: 500px`. The `.user-dashboard--split3` wrapper is now `height: 100vh; display: flex; flex-direction: column; overflow: hidden` so the 3-col grid receives `flex: 1 1 0%` and fills exactly the remaining viewport.
+- **`UserDashboard.css`** — In split3 mode `dashboard-header-stack` gets `margin-bottom: 0` + no bottom border-radius so it connects flush to the grid edge → one cohesive page.
+
+**Commits**: `8a8d1b4`, `0f91ffa`
+
+**Tests**: `CI=false npm run build` — compiled successfully. Manual: Middle split — all 3 columns equal width; agent chat input visible; no overflow; header and grid appear as one unit.
+
+---
+
 ## 2026-03-27 — Split3: flush columns, wider token rail, integrated bottom dock, quick nav everywhere
 
 **Symptoms (multiple)**:
