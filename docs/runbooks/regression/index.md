@@ -18,6 +18,10 @@ No single file is allowed to exceed ~300 lines so context windows stay manageabl
 
 **Bottom dock integration** (2026-03-27): Resize handle moved to top of dock (acts as the join between page content and panel — no gap). Collapsed state retains rounded-pill top corners; expanded state is flush/square. `padding-bottom` removed from `.user-dashboard--embed-agent`. Dark-theme overrides updated.
 
+**Token Inspector panel** (2026-03-27): Each token chain event row now shows a hover-reveal inspect icon (magnifying glass SVG). Clicking it opens a floating `TokenInspectorPanel` (portal → `document.body`) that is draggable by header, resizable via bottom-right grip, collapsible, and can move off-screen. Key regressions: (1) panel opens on inspect-icon click; (2) drag and resize work; (3) collapse toggles body visibility; (4) close dismisses the panel; (5) clicking a different row's icon opens a new panel at that row's position.
+
+**Delegated Access** (2026-03-27): New route `/delegated-access` (`DelegatedAccessPage.js`). Two tabs — "Access I've granted" and "Granted to me". "+ Add person" modal supports name, email, relationship, and multi-account checkbox selection. "Act as" button opens a dark RFC 8693 explainer panel with the token-exchange request params and `act` / `may_act` claim explanation. "Revoke" removes a delegation. Quick-action link added to UserDashboard. Key regressions: (1) page renders at `/delegated-access` for authenticated users; (2) add-person modal validates required fields and account selection; (3) new delegation appears in list after save; (4) Act as panel opens and simulate button fires toast.
+
 ## Run everything (CI order)
 
 ```bash

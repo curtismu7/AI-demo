@@ -18,6 +18,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Delegated Access page** (`/delegated-access`) — family-member account delegation with "Access I've granted" / "Granted to me" tabs; account-level multi-select; **RFC 8693 Token Exchange** explainer panel showing `may_act` / `act` claims; "Act as" demo simulation; quick-action button on UserDashboard
+- **Token Inspector panel** — floating, draggable, resizable, collapsible detail panel for each token chain event; launched via hover-reveal inspect icon per row; rendered via `ReactDOM.createPortal` for off-screen capability
 - **Agent UI placement** — new **Middle / Bottom / Float + FAB** toggle replaces Floating/Embedded/Both; `AgentUiModeContext` stores `{ placement, fab }` under `banking_agent_ui_v2`; Middle+Bottom together not permitted
 - **Bottom dock integration** — resize handle is now the visual seam between page content and dock (no gap); collapsed state keeps rounded-pill corners; dark-theme overrides updated
 - **Slim token-chain column** in split3 view (`160–200px`) so agent and banking columns have more space

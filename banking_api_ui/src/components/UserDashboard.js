@@ -727,6 +727,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             <button type="button" className="ud-qa-btn ud-qa-btn--accent" onClick={handleScrollToAssistant}>
               Ask assistant
             </button>
+            <Link to="/delegated-access" className="ud-qa-btn ud-qa-btn--delegate">
+              👥 Delegated access
+            </Link>
           </div>
         </div>
 

@@ -46,9 +46,10 @@
   border-right: 1px solid rgba(148, 163, 184, 0.45);
 }
 
-.ud-body--dashboard-split3 {
+/* Two-class selector beats ud-body--2026 single-class override */
+.ud-body.ud-body--dashboard-split3 {
   display: grid;
-  grid-template-columns: minmax(160px, 200px) minmax(300px, 1.2fr) minmax(260px, 400px);
+  grid-template-columns: minmax(160px, 200px) minmax(300px, 1.2fr) minmax(260px, 1fr);
   gap: 0;
   align-items: stretch;
   overflow: visible;
@@ -67,8 +68,8 @@
 }
 
 .ud-banking-column.ud-center {
-  max-height: min(100vh, 1400px);
   overflow-y: auto;
+  min-height: 0;
 }
 
 .ud-dashboard-inline-agent.embedded-banking-agent:not(.embedded-banking-agent--bottom) {
@@ -80,13 +81,13 @@
 }
 
 @media (max-width: 1200px) {
-  .ud-body--dashboard-split3 {
-    grid-template-columns: minmax(140px, 180px) minmax(260px, 1fr) minmax(220px, 320px);
+  .ud-body.ud-body--dashboard-split3 {
+    grid-template-columns: minmax(140px, 180px) minmax(260px, 1fr) minmax(220px, 1fr);
   }
 }
 
 @media (max-width: 1024px) {
-  .ud-body--dashboard-split3 {
+  .ud-body.ud-body--dashboard-split3 {
     grid-template-columns: 1fr;
     min-height: 0;
   }
@@ -1882,7 +1883,8 @@
   border-left: none;
   overflow-x: hidden;
   overflow-y: auto;
-  max-height: min(100vh, 1200px);
+  /* In split3 grid the row height is set by the grid — let it fill */
+  min-height: 0;
 }
 
 .ud-token-rail > .section,
@@ -2141,6 +2143,21 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
 
 .user-dashboard--2026 .ud-qa-btn--accent:hover {
   filter: brightness(1.05);
+}
+
+.user-dashboard--2026 .ud-qa-btn--delegate {
+  text-decoration: none;
+  border-color: #c7d2fe;
+  background: #eff6ff;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.user-dashboard--2026 .ud-qa-btn--delegate:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
 }
 
 .user-dashboard--2026 .ud-trust-strip {
