@@ -1033,26 +1033,38 @@ export default function BankingAgent({
     };
   }, []);
 
-  // Resize handler
+  // Resize handler — works whether the panel is at CSS default position or has been dragged
   const handleResize = useCallback((e, direction) => {
     e.preventDefault();
+    e.stopPropagation();
     const startX = e.clientX;
     const startY = e.clientY;
     const startWidth = panelSize.width;
     const startHeight = panelSize.height;
 
-    function onMove(e) {
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
-      
-      let newWidth = startWidth;
+    // If the panel hasn't been dragged yet, anchor it now at its current position
+    // so resizing doesn't shift it. We must do this synchronously before the first
+    // mousemove fires.
+    if (!dragPos) {
+      const rect = panelRef.current?.getBoundingClientRect();
+      if (rect) setDragPos({ x: rect.left, y: rect.top });
+    }
+
+    function onMove(ev) {
+      const deltaX = ev.clientX - startX;
+      const deltaY = ev.clientY - startY;
+      const MIN_W = 280, MIN_H = 220;
+      const MAX_W = Math.floor(window.innerWidth * 0.9);
+      const MAX_H = Math.floor(window.innerHeight * 0.9);
+
+      let newWidth  = startWidth;
       let newHeight = startHeight;
 
-      if (direction.includes('e')) {
-        newWidth = Math.min(560, Math.max(280, startWidth + deltaX));
+      if (direction === 'e' || direction === 'se') {
+        newWidth = Math.min(MAX_W, Math.max(MIN_W, startWidth + deltaX));
       }
-      if (direction.includes('s')) {
-        newHeight = Math.min(720, Math.max(220, startHeight + deltaY));
+      if (direction === 's' || direction === 'se') {
+        newHeight = Math.min(MAX_H, Math.max(MIN_H, startHeight + deltaY));
       }
 
       setPanelSize({ width: newWidth, height: newHeight });
@@ -1065,7 +1077,8 @@ export default function BankingAgent({
 
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-  }, [panelSize]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelSize, dragPos]);
 
   // Panel position: override CSS anchoring when user has dragged the window
   // In inline mode the CSS (.ba-mode-inline) handles size — no inline style needed
