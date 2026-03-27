@@ -67,6 +67,7 @@ const EMPTY_FORM = {
   session_secret: '',
   frontend_url: '',
   mcp_server_url: '',           // populated from saved config; not defaulted to localhost
+  mcp_resource_uri: '',         // RFC 8693 MCP audience URI — required for token exchange
   debug_oauth: 'false',
   // PingOne Authorize (in-app authorization policy gate)
   authorize_enabled: 'false',
@@ -1088,6 +1089,15 @@ export default function Config() {
                 help={storageType === 'vercel-kv'
                   ? '⚠️ This URL is only reachable when running locally. On Replit/Vercel, clear this field.'
                   : 'URL of the banking LangChain agent (WebSocket). Local only — not reachable from hosted cloud.'}
+                disabled={readOnly}
+              />
+              <TextField
+                label="MCP Resource URI (RFC 8693 audience)"
+                fieldKey="mcp_resource_uri"
+                value={form.mcp_resource_uri}
+                onChange={handleChange}
+                placeholder="https://mcp.example.com or urn:pingone:mcp"
+                help="Required for RFC 8693 token exchange. The audience (aud) the exchanged MCP token will be scoped to. Must match the Resource registered in PingOne. Also set via MCP_SERVER_RESOURCE_URI env var."
                 disabled={readOnly}
               />
               <div>
