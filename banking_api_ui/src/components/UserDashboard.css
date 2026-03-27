@@ -1888,8 +1888,8 @@
   padding-right: clamp(12px, 2vw, 20px);
 }
 
-/* Legacy: single split without right reserve */
-.ud-body.ud-body--2026:not(.ud-body--design-3col) {
+/* Legacy: single split without right reserve — not applicable to split3 or 3col */
+.ud-body.ud-body--2026:not(.ud-body--design-3col):not(.ud-body--dashboard-split3) {
   grid-template-columns: minmax(0, 1fr) min(360px, min(40vw, 480px));
 }
 
