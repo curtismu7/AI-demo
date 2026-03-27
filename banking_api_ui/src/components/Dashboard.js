@@ -25,6 +25,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
   const [resettingDemo, setResettingDemo] = useState(false);
+  const [switchingRole, setSwitchingRole] = useState(false);
   const [txLookupUsername, setTxLookupUsername] = useState('bankuser');
   const [txLookupPhone4, setTxLookupPhone4] = useState('1586');
   const [txLookupTx, setTxLookupTx] = useState([]);
@@ -438,6 +439,25 @@ const Dashboard = ({ user, onLogout }) => {
             title={dashTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
             {dashTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
+          {/* P2 — Role switch: re-login as customer without a full logout cycle */}
+          <button
+            type="button"
+            disabled={switchingRole}
+            onClick={async () => {
+              setSwitchingRole(true);
+              try {
+                const res = await bffAxios.post('/api/auth/switch', { targetRole: 'customer' });
+                window.location.href = res.data.redirectUrl;
+              } catch (err) {
+                notifyError(err.response?.data?.message || 'Role switch unavailable — user client not configured.');
+                setSwitchingRole(false);
+              }
+            }}
+            className="app-page-toolbar-btn"
+            title="Re-login as a banking customer without signing out"
+          >
+            {switchingRole ? 'Switching…' : 'Switch to Customer view'}
           </button>
           <button type="button" onClick={onLogout} className="app-page-toolbar-btn app-page-toolbar-btn--danger">
             Log out

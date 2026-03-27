@@ -298,8 +298,14 @@ router.get('/callback', async (req, res) => {
  * Logout - clear local session and end PingOne SSO session
  */
 router.get('/logout', (req, res) => {
-  const idToken = req.session.oauthTokens?.idToken || null;
+  const idToken      = req.session.oauthTokens?.idToken      || null;
+  const accessToken  = req.session.oauthTokens?.accessToken  || null;
+  const refreshToken = req.session.oauthTokens?.refreshToken || null;
   const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
+
+  // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
+  if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
+  if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
 
   req.session.destroy((err) => {
     if (err) {

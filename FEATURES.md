@@ -41,6 +41,8 @@ git checkout <last-version-tag> -- <key-file>
 | Session debug `GET /api/auth/debug` (diagnosis hints, optional `?deep=1` Redis probe vs `req.session`) | active | `banking_api_server/server.js`, `banking_api_server/services/upstashSessionStore.js` (`getPersistenceDebug`) | `s:upstashSessionStore.test.js` |
 | BFF `GET /api/auth/session` includes `sessionStoreHealthy` + `cookieOnlyBffSession` | active | `banking_api_server/server.js`, `banking_api_server/routes/auth.js` | — |
 | Login — `error=session_persist_failed` when OAuth callback cannot persist session | active | `banking_api_ui/src/components/Login.js`, `banking_api_server/routes/oauthUser.js`, `banking_api_server/routes/oauth.js` | — |
+| Session reliability P0–P3 — retry delays, Upstash re-fetch, reconnecting banner, role-switch endpoint, fatal session.regenerate | active | `banking_api_server/server.js`, `banking_api_server/routes/oauth.js`, `banking_api_server/routes/oauthUser.js`, `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/App.js` | — |
+| `POST /api/auth/switch` — role-switch endpoint clears session + redirects to correct login URL | active | `banking_api_server/server.js` | — |
 
 ---
 
@@ -92,6 +94,8 @@ git checkout <last-version-tag> -- <key-file>
 | Groq NL backend | active | `banking_api_server/services/groqNlIntent.js` | `s:nlIntentParser.test.js` |
 | Agent identity / impersonation (act-as) | active | `banking_api_server/routes/agentIdentity.js`, `banking_api_server/services/agentIdentityStore.js` | — |
 | Cookie-only / stub-token session messaging + deep session debug link (`/api/auth/debug?deep=1`) | active | `banking_api_ui/src/components/BankingAgent.js` | — |
+| Session reconnecting banner — polls `/api/auth/session` every 2s while `cookieOnlyBffSession:true` | active | `banking_api_ui/src/components/BankingAgent.js` | — |
+| Always on-behalf-of — RFC 8693 actor_token always used when `AGENT_OAUTH_CLIENT_ID` set; `on-behalf-of-warning` Token Chain event when unset | active | `banking_api_server/services/agentMcpTokenService.js` | `s:agentMcpTokenService.test.js` |
 
 ---
 
@@ -128,6 +132,7 @@ git checkout <last-version-tag> -- <key-file>
 | RFC index guide | active | `banking_api_ui/src/components/education/RFCIndexPanel.js` | — |
 | Human-in-the-loop (HITL) / consent education | active | `banking_api_ui/src/components/education/HumanInLoopPanel.js` | — |
 | AI Agent Best Practices guide (Ping Identity 5 practices) | active | `banking_api_ui/src/components/education/BestPracticesPanel.js` | — |
+| SPIFFE implementation plan | plan | `docs/SPIFFE_PLAN.md` | — |
 
 ---
 

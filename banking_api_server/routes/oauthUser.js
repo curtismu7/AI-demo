@@ -369,6 +369,19 @@ router.get('/callback', async (req, res) => {
     // Preserve step-up return destination across session regeneration
     const stepUpReturnTo = req.session.stepUpReturnTo || null;
 
+    // Decode access token to extract consent ACR and may_act for session storage.
+    // These are used by the consent gate in agentMcpTokenService and the agent UI.
+    let accessTokenAcr = null;
+    let accessTokenMayAct = null;
+    try {
+      const parts = (tokenData.access_token || '').split('.');
+      if (parts.length === 3) {
+        const atClaims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+        accessTokenAcr    = atClaims.acr    || idTokenClaims.acr    || null;
+        accessTokenMayAct = atClaims.may_act || null;
+      }
+    } catch (_) { /* non-fatal — acr / may_act stay null */ }
+
     console.log('End user OAuth login successful for:', authedUser.username);
 
     // Regenerate session before storing credentials to prevent session fixation.
@@ -384,6 +397,10 @@ router.get('/callback', async (req, res) => {
       req.session.user = authedUser;
       req.session.clientType = clientType;
       req.session.oauthType = 'user';
+      // Consent gate: store ACR and may_act from the user access token so the
+      // MCP token-exchange guard can check them without re-decoding the JWT.
+      req.session.consentAcr = accessTokenAcr;
+      req.session.mayAct     = accessTokenMayAct;
       if (stepUpReturnTo) {
         req.session.stepUpReturnTo = stepUpReturnTo;
       }
@@ -488,7 +505,11 @@ router.get('/status', (req, res) => {
   const token = req.session.oauthTokens?.accessToken;
   const hasOAuthToken = !!(token && token !== '_cookie_session');
   const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
-  
+
+  const expectedAcr = process.env.AGENT_CONSENT_ACR || 'Agent-Consent-Login';
+  const consentAcr  = req.session.consentAcr || null;
+  const consentGiven = isAuthenticated && consentAcr === expectedAcr;
+
   res.json({
     authenticated: isAuthenticated,
     user: isAuthenticated ? {
@@ -503,7 +524,11 @@ router.get('/status', (req, res) => {
     // accessToken intentionally omitted — token stays on the backend (Backend-for-Frontend (BFF) pattern)
     tokenType: isAuthenticated ? req.session.oauthTokens.tokenType : null,
     expiresAt: isAuthenticated ? req.session.oauthTokens.expiresAt : null,
-    clientType: isAuthenticated ? req.session.clientType : null
+    clientType: isAuthenticated ? req.session.clientType : null,
+    // Consent gate fields — consumed by BankingAgent.js and agentMcpTokenService
+    consentGiven,
+    consentAcr,
+    mayAct: isAuthenticated ? (req.session.mayAct || null) : null,
   });
 });
 
@@ -599,6 +624,46 @@ router.post('/refresh', async (req, res) => {
     console.error('[refresh] Token refresh failed:', err.message);
     return res.status(401).json({ error: 'refresh_failed', message: err.message });
   }
+});
+
+/**
+ * GET /api/auth/oauth/user/consent-url
+ * Returns a PingOne authorize URL that forces the Agent-Consent-Login policy,
+ * so the user sees the consent agreement screen on re-authentication.
+ * The frontend redirects to this URL when the agent panel detects consentGiven=false.
+ */
+router.get('/consent-url', (req, res) => {
+  const redirectUri    = getUserRedirectUri(req);
+  const state          = oauthService.generateState();
+  const codeVerifier   = oauthService.generateCodeVerifier();
+  const nonce          = crypto.randomBytes(16).toString('hex');
+  const expectedAcr    = process.env.AGENT_CONSENT_ACR || 'Agent-Consent-Login';
+
+  // Store PKCE material so the normal callback can complete.
+  req.session.oauthState       = state;
+  req.session.oauthCodeVerifier = codeVerifier;
+  req.session.oauthRedirectUri = redirectUri;
+  req.session.oauthNonce       = nonce;
+
+  const params = new URLSearchParams({
+    response_type:         'code',
+    client_id:             oauthUserConfig.clientId,
+    redirect_uri:          redirectUri,
+    scope:                 oauthUserConfig.scopes.join(' '),
+    state,
+    nonce,
+    acr_values:            expectedAcr,
+    prompt:                'consent',
+  });
+
+  const url = `${oauthUserConfig.authorizationEndpoint}?${params.toString()}`;
+
+  req.session.save((saveErr) => {
+    if (saveErr) {
+      console.warn('[consent-url] Session save failed (non-fatal):', saveErr.message);
+    }
+    res.json({ url });
+  });
 });
 
 module.exports = router;

@@ -636,6 +636,9 @@ export default function BankingAgent({
   const sessionFixBubbleShownRef = useRef(false);
   /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
   const [consentBlocked, setConsentBlocked] = useState(() => isAgentBlockedByConsentDecline());
+  /** True when the user has not yet accepted the PingOne Agent Consent agreement (acr gate). */
+  const [consentGiven, setConsentGiven] = useState(true); // optimistic default — fetched on panel open
+  const [consentGranting, setConsentGranting] = useState(false);
 
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -837,6 +840,20 @@ export default function BankingAgent({
     }
   }, [checkSelfAuth]);
 
+  /** Redirect to PingOne consent flow so the user can accept the Agent Consent agreement. */
+  const handleGrantConsent = useCallback(async () => {
+    setConsentGranting(true);
+    try {
+      const r = await fetch('/api/auth/oauth/user/consent-url', { credentials: 'include' });
+      if (!r.ok) throw new Error('Could not get consent URL');
+      const { url } = await r.json();
+      window.location.href = url;
+    } catch (err) {
+      notifyError(err?.message || 'Could not start consent flow');
+      setConsentGranting(false);
+    }
+  }, []);
+
   // Check on mount — auto-open if already authenticated (e.g. page refresh after login)
   useEffect(() => {
     Promise.all([
@@ -846,6 +863,11 @@ export default function BankingAgent({
     ]).then(([admin, endUser, session]) => {
       const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
       setCookieOnlyBffSession(cookieOnly);
+      // Consent gate: consentGiven defaults true for graceful degradation when PingOne
+      // consent is not configured (AGENT_CONSENT_ACR='' disables the server-side check too).
+      if (endUser?.authenticated) {
+        setConsentGiven(endUser.consentGiven !== false);
+      }
       if (found) {
         setSessionUser(found);
         const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus, brandShortName) };
@@ -1755,6 +1777,25 @@ export default function BankingAgent({
               </div>
             )}
 
+            {/* Agent consent agreement banner — shown when user hasn't accepted the PingOne consent policy */}
+            {isLoggedIn && !consentBlocked && !consentGiven && (
+              <div className="ba-consent-required" role="alert">
+                <p>
+                  <strong>🔒 Agent permission required</strong><br />
+                  BX Finance AI needs your permission to act on your behalf.
+                  This is a one-time consent (valid 180 days).
+                </p>
+                <button
+                  type="button"
+                  className="ba-consent-btn"
+                  disabled={consentGranting}
+                  onClick={handleGrantConsent}
+                >
+                  {consentGranting ? 'Redirecting…' : 'Grant agent permission'}
+                </button>
+              </div>
+            )}
+
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">
               {/* Dashboard navigation button — shown when logged in */}
@@ -1779,7 +1820,7 @@ export default function BankingAgent({
                     type="button"
                     className="ba-action-item"
                     onClick={() => void handleSessionRefresh()}
-                    disabled={sessionRefreshing || loading || consentBlocked}
+                    disabled={sessionRefreshing || loading || consentBlocked || !consentGiven}
                     title="Refresh your access token using PingOne refresh token (no logout)"
                   >
                     {sessionRefreshing ? 'Refreshing…' : '🔄 Refresh access token'}
@@ -1788,7 +1829,7 @@ export default function BankingAgent({
                     type="button"
                     className="ba-action-item"
                     onClick={() => handleLoginAction(effectiveUser?.role === 'admin' ? 'login_admin' : 'login_user')}
-                    disabled={loading || consentBlocked}
+                    disabled={loading || consentBlocked || !consentGiven}
                     title="Sign in again if refresh fails"
                   >
                     🔐 Sign in again
@@ -1802,7 +1843,7 @@ export default function BankingAgent({
                   key={s}
                   type="button"
                   className="ba-suggestion"
-                  disabled={consentBlocked}
+                  disabled={consentBlocked || !consentGiven}
                   onClick={() => {
                     if (isAgentBlockedByConsentDecline()) {
                       addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
@@ -1835,7 +1876,7 @@ export default function BankingAgent({
                       type="button"
                       className="ba-action-item"
                       onClick={() => handleActionClick(a.id)}
-                      disabled={loading || (consentBlocked && a.id !== 'logout')}
+                      disabled={loading || ((consentBlocked || !consentGiven) && a.id !== 'logout')}
                       title={a.desc}
                     >
                       {a.label}
@@ -1851,7 +1892,7 @@ export default function BankingAgent({
                       type="button"
                       className="ba-action-item"
                       onClick={() => openEducationCommand(cmd)}
-                      disabled={consentBlocked}
+                      disabled={consentBlocked || !consentGiven}
                       title={cmd.label}
                     >
                       {cmd.label}
@@ -2008,7 +2049,7 @@ export default function BankingAgent({
                       onClick={() => setShowCommands(s => !s)}
                       title="Learn &amp; Explore topics"
                       aria-expanded={showCommands}
-                      disabled={consentBlocked}
+                      disabled={consentBlocked || !consentGiven}
                     >
                       ⚡
                     </button>
@@ -2030,13 +2071,13 @@ export default function BankingAgent({
                             ? `Message ${brandShortName} AI… (Groq AI)`
                             : `Message ${brandShortName} AI…`
                       }
-                      disabled={nlLoading || consentBlocked}
+                      disabled={nlLoading || consentBlocked || !consentGiven}
                     />
                     <button
                       type="button"
                       className="ba-send-btn"
                       onClick={() => { handleNaturalLanguage(); setShowCommands(false); }}
-                      disabled={nlLoading || !nlInput.trim() || consentBlocked}
+                      disabled={nlLoading || !nlInput.trim() || consentBlocked || !consentGiven}
                       aria-label="Send"
                     >
                       {nlLoading ? '…' : splitChrome ? 'Send' : '↑'}

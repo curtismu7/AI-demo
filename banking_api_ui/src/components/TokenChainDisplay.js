@@ -81,6 +81,22 @@ function EventDetail({ event }) {
           may_act absent — exchange may be rejected by PingOne
         </div>
       )}
+      {/* acr / consent pills — shown on user-token events */}
+      {event.acr && event.consentGiven === true && (
+        <div className="tcd-pill tcd-pill--consent">
+          acr ✅ &ldquo;{event.acr}&rdquo; — agent consent recorded
+        </div>
+      )}
+      {event.acr && event.consentGiven === false && (
+        <div className="tcd-pill tcd-pill--warn">
+          acr ⚠️ &ldquo;{event.acr}&rdquo; — expected &ldquo;{event.consentAcrExpected}&rdquo;
+        </div>
+      )}
+      {!event.acr && event.id === 'user-token' && (
+        <div className="tcd-pill tcd-pill--warn">
+          acr absent — user may not have completed the agent consent agreement
+        </div>
+      )}
       {event.actPresent === true && (
         <div className="tcd-pill tcd-pill--act">
           act ✅ {event.actDetails} — Backend-for-Frontend (BFF) is the current actor
@@ -432,6 +448,8 @@ const TokenChainDisplay = () => {
         <div className="tcd-legend">
           <span className="tcd-legend-item tcd-pill--may-act">may_act — prospective permission</span>
           <span className="tcd-legend-item tcd-pill--act">act — current actor fact</span>
+          <span className="tcd-legend-item tcd-pill--consent">acr ✅ — agent consent given</span>
+          <span className="tcd-legend-item tcd-pill--warn">acr ⚠️ — consent missing or mismatch</span>
         </div>
       </div>
 

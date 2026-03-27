@@ -993,3 +993,33 @@
   border-top-color: #e2e8f0;
   color: #475569;
 }
+
+/* ─── Hero quick-link buttons ──────────────────────────────────────────────── */
+.hero-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.hql-btn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.hql-btn:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.hql-btn--red  { background: #b91c1c; }
+.hql-btn--blue { background: #2563eb; }
+.hql-btn--dark { background: #1e3a3a; }

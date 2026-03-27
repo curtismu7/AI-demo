@@ -152,6 +152,30 @@ const LandingPage = () => {
                 Admin sign in
               </button>
             </div>
+
+            <div className="hero-quick-links">
+              <button type="button" className="hql-btn hql-btn--red" onClick={() => { window.dispatchEvent(new CustomEvent('education-open-ciba', { detail: { tab: 'what' } })); }}>
+                📱 CIBA guide
+              </button>
+              <button type="button" className="hql-btn hql-btn--dark" onClick={() => { window.dispatchEvent(new CustomEvent('education-open-cimd', { detail: { tab: 'what' } })); }}>
+                📄 CIMD Simulator
+              </button>
+              <button type="button" className="hql-btn hql-btn--red" onClick={() => navigate('/')}>
+                Home
+              </button>
+              <button type="button" className="hql-btn hql-btn--blue" onClick={() => handleOAuthLogin('user')}>
+                Dashboard
+              </button>
+              <button type="button" className="hql-btn hql-btn--red" onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')}>
+                API
+              </button>
+              <button type="button" className="hql-btn hql-btn--blue" onClick={() => { handleOAuthLogin('admin'); }}>
+                Logs
+              </button>
+              <button type="button" className="hql-btn hql-btn--blue" onClick={() => navigate('/demo-data')}>
+                Demo config
+              </button>
+            </div>
             <button type="button" className="hero-setup-link" onClick={() => navigate('/config')}>
               Application setup (PingOne, redirects, local dev) — optional
             </button>

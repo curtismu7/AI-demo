@@ -337,6 +337,20 @@
   border: 1px solid #f1c21b;
 }
 
+/* Green pill: agent consent given (acr matches expected policy) */
+.tcd-pill--consent {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+/* Inspector panel mirrors */
+.tci-body .tcd-pill--consent {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
 /* ─── Exchange request preview ───────────────────────────────────────────── */
 .tcd-exchange-req {
   background: #fff;

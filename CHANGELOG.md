@@ -18,6 +18,9 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **SPIFFE implementation plan** — `docs/SPIFFE_PLAN.md` defines 4 integration points (JWT-SVID as RFC 8693 actor_token, mTLS BFF↔MCP, agent workload identity, PingGateway SPIFFE bridging) and 4 phased delivery phases; workload identity map and environment variable spec included
+- **Landing page quick-links** — hero section now shows shortcut buttons matching the edu-bar: CIBA guide, CIMD Simulator, Home, Dashboard, API, Logs, Demo config
+- **`mcp_resource_uri` Config UI field** — RFC 8693 MCP audience URI can now be set from Admin → Config without a redeploy; previously env-var only (`MCP_SERVER_RESOURCE_URI`)
 - **Best Practices education panel** — new `BestPracticesPanel.js` with 6-tab Education Drawer covering all five Ping Identity AI Agent best practices: Know Your Agents, Detect Agents, Use Delegation Not Impersonation, Enforce Least Privilege, Human in the Loop; each tab shows plain-English explanation + BX Finance implementation status + linked deep-dives; accessible from hamburger menu (⭐ AI Agent Best Practices, featured blue button)
 
 - **Delegated Access page** (`/delegated-access`) — family-member account delegation with "Access I've granted" / "Granted to me" tabs; account-level multi-select; **RFC 8693 Token Exchange** explainer panel showing `may_act` / `act` claims; "Act as" demo simulation; quick-action button on UserDashboard

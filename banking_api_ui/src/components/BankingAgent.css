@@ -1800,14 +1800,47 @@
   border-color: #4169e1;
 }
 
-/* High-value consent declined — full-width notice above agent body */
-.ba-consent-denied-banner {
+/* Agent consent agreement not yet given — amber banner above action buttons */
+.ba-consent-required {
   flex: 0 0 100%;
   width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  padding: 0.7rem 0.9rem;
+  margin: 0 0 0.5rem;
+  background: linear-gradient(90deg, #fffbeb 0%, #fef9c3 100%);
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #78350f;
+}
+
+.ba-consent-required p {
+  margin: 0 0 0.6rem;
+}
+
+.ba-consent-btn {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #d97706;
+  background: #d97706;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ba-consent-btn:hover {
+  background: #b45309;
+}
+
+.ba-consent-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* High-value consent declined — full-width notice above agent body */
+.ba-consent-denied-banner {
   gap: 0.75rem;
   padding: 0.65rem 0.85rem;
   margin: 0 0 0.35rem;

@@ -202,6 +202,10 @@ function appendUserTokenEvent(tokenEvents, userToken) {
       mayActPresent: !!t1Claims?.may_act,
       mayActValid: mayActInfo.valid,
       mayActDetails: mayActInfo.reason,
+      // Consent gate fields
+      acr: t1Claims?.acr || null,
+      consentGiven: t1Claims?.acr === (process.env.AGENT_CONSENT_ACR || 'Agent-Consent-Login'),
+      consentAcrExpected: process.env.AGENT_CONSENT_ACR || 'Agent-Consent-Login',
     }
   ));
 
@@ -333,7 +337,41 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // is NEVER forwarded to MCP — but the act claim is absent, weakening audit provenance).
   const useActor = !!process.env.AGENT_OAUTH_CLIENT_ID;
 
-  // ── MCP resource audience required — never forward user token to MCP without RFC 8693 ──
+  // ── Consent pre-flight: block when user has not accepted the agent consent agreement ──
+  // Set AGENT_CONSENT_ACR='' to disable check for demos without PingOne consent configured.
+  const expectedAcr = process.env.AGENT_CONSENT_ACR !== undefined
+    ? process.env.AGENT_CONSENT_ACR
+    : 'Agent-Consent-Login';
+  if (expectedAcr) {
+    const sessionConsentAcr = req.session?.consentAcr || null;
+    const consentGiven      = sessionConsentAcr === expectedAcr;
+    const delegationReady   = !!t1Claims?.may_act;
+    if (!consentGiven && !delegationReady) {
+      tokenEvents.push(buildTokenEvent(
+        'consent-required',
+        'Agent Consent Required',
+        'failed',
+        null,
+        `User has not accepted the AI agent consent agreement (expected acr="${expectedAcr}"). ` +
+          'Token exchange blocked. The user must visit /api/auth/oauth/user/consent-url to re-authenticate with the consent step.',
+        { rfc: 'RFC 8693', consentAcr: sessionConsentAcr, expectedAcr, mayActPresent: delegationReady }
+      ));
+      const consentErr = new Error(
+        'Agent consent required. The user must accept the agent consent agreement before the AI agent can act on their behalf.'
+      );
+      consentErr.code        = 'AGENT_CONSENT_REQUIRED';
+      consentErr.tokenEvents = tokenEvents;
+      consentErr.httpStatus  = 403;
+      consentErr.consentAcr  = sessionConsentAcr;
+      consentErr.expectedAcr = expectedAcr;
+      throw consentErr;
+    }
+    if (!delegationReady) {
+      // Consent ACR present but may_act missing — likely PingOne resource/expression not configured.
+      console.warn('[agentMcpTokenService] may_act absent despite consent ACR. Check agent resource may_act expression in PingOne.');
+    }
+  }
+
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
       'exchange-required',
