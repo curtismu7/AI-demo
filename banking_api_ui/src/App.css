@@ -66,7 +66,7 @@
   --stack-fab-top-base: 156px;
 }
 
-/* Embedded dock sits in normal document flow at the bottom of <main> (see EmbeddedAgentDock.js) */
+/* Embedded dock — flows as part of the page content, not a floating widget */
 .global-embedded-agent-dock-wrap {
   position: relative;
   display: flex;
@@ -80,30 +80,41 @@
   box-sizing: border-box;
   z-index: 2;
   pointer-events: auto;
-  background: #f8fafc;
-  /* No border-top here — the resize handle IS the seam */
+  background: #fff;
+  border-top: 2px solid #e2e8f0;
 }
 
-/* Collapsed pill: floats at the bottom of the layout */
+/* Collapsed: just the header bar */
 .global-embedded-agent-dock-wrap--collapsed {
-  border-top: 1px solid rgba(148, 163, 184, 0.45);
-  border-radius: 12px 12px 0 0;
-  background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
-  box-shadow: 0 -3px 16px rgba(15, 23, 42, 0.07);
+  background: #f8fafc;
 }
 
+/* Toolbar — looks like a page section header, not a widget titlebar */
 .embedded-agent-dock__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 6px 14px 6px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 8px 20px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  /* Left accent bar — anchors it to the page visually */
+  border-left: 4px solid #2563eb;
 }
 
 .embedded-agent-dock__toolbar .embedded-agent-dock__head {
   flex: 1;
   min-width: 0;
+}
+
+/* Title text — matches page section heading style */
+.embedded-agent-dock__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e3a5f;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .global-embedded-agent-dock-wrap .embedded-agent-dock {
@@ -120,7 +131,7 @@
   padding-top: 0;
 }
 
-/* Collapse / expand toggle button in the dock header */
+/* Collapse / expand toggle */
 .embedded-dock-collapse-btn {
   background: transparent;
   border: 1px solid rgba(148, 163, 184, 0.4);
@@ -139,24 +150,22 @@
   color: #334155;
 }
 
-/* Resize handle is the FIRST child — it IS the seam where content meets the dock */
+/* Resize handle — minimal drag grip between content and dock */
 .embedded-dock-resize-handle {
   flex-shrink: 0;
   width: 100%;
-  min-height: 14px;
+  min-height: 10px;
   margin: 0;
-  padding: 4px 0;
+  padding: 3px 0;
   border: none;
-  /* Subtle top border that blends rather than cuts */
-  border-top: 2px solid rgba(148, 163, 184, 0.3);
   cursor: ns-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(226, 232, 240, 0.6) 0%, rgba(241, 245, 249, 0.4) 100%);
+  background: #f1f5f9;
   user-select: none;
   -webkit-user-select: none;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s;
 }
 
 .embedded-dock-resize-handle__grip {
@@ -168,10 +177,10 @@
 
 .embedded-dock-resize-handle__bar {
   display: block;
-  width: 36px;
+  width: 32px;
   height: 3px;
   border-radius: 2px;
-  background: rgba(100, 116, 139, 0.35);
+  background: rgba(100, 116, 139, 0.3);
   transition: background 0.15s, width 0.15s;
 }
 
@@ -188,18 +197,17 @@
 }
 
 .embedded-dock-resize-handle:hover {
-  background: linear-gradient(180deg, rgba(219, 234, 254, 0.7) 0%, rgba(239, 246, 255, 0.5) 100%);
-  border-top-color: rgba(65, 105, 225, 0.4);
+  background: #e2e8f0;
 }
 
 .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__bar {
-  background: rgba(37, 99, 235, 0.55);
-  width: 48px;
+  background: rgba(37, 99, 235, 0.5);
+  width: 44px;
 }
 
 .embedded-dock-resize-handle:active {
   cursor: ns-resize;
-  background: rgba(191, 219, 254, 0.75);
+  background: #dbeafe;
 }
 
 .embedded-dock-resize-handle:focus-visible {
