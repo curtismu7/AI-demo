@@ -49,8 +49,8 @@
 /* Two-class selector beats ud-body--2026 single-class override */
 .ud-body.ud-body--dashboard-split3 {
   display: grid;
-  /* Token rail | Agent 1fr | Banking 1fr — all same height, no gaps */
-  grid-template-columns: 300px 1fr 1fr;
+  /* Token rail | Agent | Banking — equal 1fr columns */
+  grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr;
   gap: 0;
   align-items: stretch;
@@ -99,7 +99,7 @@
 
 @media (max-width: 1280px) {
   .ud-body.ud-body--dashboard-split3 {
-    grid-template-columns: 260px 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 
@@ -1875,9 +1875,9 @@
   overflow: visible;
 }
 
-/* Split-3 overrides ud-body--2026: token rail | agent 1fr | banking 1fr */
+/* Split-3 overrides ud-body--2026: all 3 columns equal */
 .ud-body.ud-body--2026.ud-body--dashboard-split3 {
-  grid-template-columns: 300px 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr;
   overflow: hidden;
   height: min(calc(100vh - 130px), 900px);
