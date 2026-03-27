@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import axios from 'axios';
 import { format } from 'date-fns';
 import apiClient from '../services/apiClient';
@@ -23,10 +24,10 @@ const DEMO_TRANSACTIONS = [
 const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
-  const [accounts, setAccounts] = useState(DEMO_ACCOUNTS);
+  const [accounts, setAccounts] = useState([]);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
-  const [transactions, setTransactions] = useState(DEMO_TRANSACTIONS);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -157,62 +158,67 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     };
   }, [autoRefresh]);
 
+  const loadDemoFallback = (reason) => {
+    setError(null);
+    setAccounts(DEMO_ACCOUNTS);
+    setTransactions(DEMO_TRANSACTIONS);
+    toast.info(`Demo mode — ${reason}. Sign in to see your real accounts.`, {
+      toastId: 'demo-mode',   // deduplicate across refreshes
+      autoClose: 6000,
+      icon: '🏦',
+    });
+  };
+
   const fetchUserData = async (silent = false) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
-      // Only show loading spinner for initial load, not auto-refreshes
-      if (!silent) {
-        setLoading(true);
+      if (!silent) setLoading(true);
+
+      // ── 1. Resolve session ────────────────────────────────────────────────
+      let sessionUser = null;
+      try {
+        const userRes = await axios.get('/api/auth/oauth/user/status');
+        if (userRes.data.authenticated) {
+          sessionUser = userRes.data.user;
+        } else {
+          const adminRes = await axios.get('/api/auth/oauth/status');
+          if (adminRes.data.authenticated) sessionUser = adminRes.data.user;
+        }
+      } catch (sessionErr) {
+        console.warn('Session check failed:', sessionErr.message);
       }
 
-      // Check for OAuth session and get user info
-      try {
-        // Try end user OAuth session first
-        const userSessionResponse = await axios.get('/api/auth/oauth/user/status');
-        if (userSessionResponse.data.authenticated) {
-          setUser(userSessionResponse.data.user);
-        } else {
-          // Try admin OAuth session as fallback
-          const adminSessionResponse = await axios.get('/api/auth/oauth/status');
-          if (adminSessionResponse.data.authenticated) {
-            setUser(adminSessionResponse.data.user);
-          } else {
-            throw new Error('No valid OAuth session found');
-          }
-        }
-      } catch (sessionError) {
-        console.error('OAuth session error:', sessionError);
-        setError('Please log in to access your account');
-        if (!silent) {
-          setLoading(false);
-        }
+      if (!sessionUser) {
+        // Not logged in — show demo data, no error banner
+        if (!silent) loadDemoFallback('no active session');
         return;
       }
 
-      // Get user's accounts using the new API client
-      const accountsResponse = await apiClient.get('/api/accounts/my');
-      setAccounts(accountsResponse.data.accounts);
+      setUser(sessionUser);
 
-      // Get user's transactions using the new API client
-      const transactionsResponse = await apiClient.get('/api/transactions/my');
-      setTransactions(transactionsResponse.data.transactions);
-
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      
-      // Check if it's an authentication error
-      if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
-      } else if (error.response?.status === 403) {
-        setError('You do not have permission to access this information.');
-      } else {
-        setError('Failed to load your account information');
+      // ── 2. Fetch real account + transaction data ──────────────────────────
+      try {
+        const [acctRes, txRes] = await Promise.all([
+          apiClient.get('/api/accounts/my'),
+          apiClient.get('/api/transactions/my'),
+        ]);
+        setAccounts(acctRes.data.accounts || []);
+        setTransactions(txRes.data.transactions || []);
+      } catch (dataErr) {
+        console.error('Data fetch failed:', dataErr);
+        if (dataErr.response?.status === 401) {
+          setError('Your session has expired. Please log in again.');
+        } else if (dataErr.response?.status === 403) {
+          setError('You do not have permission to access this information.');
+        } else if (!silent) {
+          // API unreachable or 5xx — fall back to demo without blocking the user
+          loadDemoFallback('could not reach banking API');
+        }
       }
+
     } finally {
-      if (!silent) {
-        setLoading(false);
-      }
+      if (!silent) setLoading(false);
       fetchingRef.current = false;
     }
   };
