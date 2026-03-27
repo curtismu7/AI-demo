@@ -5,6 +5,24 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Floating agent panel closes on page refresh
+
+**Symptoms**:
+Floating (FAB) agent panel was always closed after a browser refresh, even if the user had opened it. The panel also defaults to closed on `/dashboard` routes — so a refresh always reset the open state.
+
+**Root causes**:
+1. `useState` initializer read `isBankingAgentFloatingDefaultOpen(pathname)` which returns `false` for all dashboard routes — no localStorage fallback existed.
+2. Route-change `useEffect([location.pathname, isInline])` fired on initial mount (same pathname) and called `setIsOpen(false)` again, overriding anything the initializer could have set from storage.
+
+**Fixes** — `BankingAgent.js`:
+- **`useState` initializer** — now checks `localStorage.getItem('banking-agent-open')` first; falls back to `isBankingAgentFloatingDefaultOpen` only when no saved value exists. Inline mode (`isInline=true`) is excluded and always returns `false`.
+- **`hasMountedRef` guard** — a `useRef(false)` flag in the route-change effect skips the first call (initial mount), preserving the localStorage-restored value; subsequent pathname changes still close the panel on dashboard routes as designed.
+- **Persist effect** — a new `useEffect([isOpen, isInline])` writes `String(isOpen)` to `localStorage('banking-agent-open')` on every toggle.
+
+**Tests**: `CI=false npm run build` — compiled successfully. Manual: open panel → refresh → panel stays open.
+
+---
+
 ## 2026-03-27 — Log viewer: remove nav buttons + light background
 
 **Symptoms**:
