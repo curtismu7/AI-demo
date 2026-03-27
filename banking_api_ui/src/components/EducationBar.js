@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import AgentUiModeToggle from './AgentUiModeToggle';
 import './EducationBar.css';
 
 /**
@@ -42,6 +43,7 @@ export default function EducationBar() {
   return (
     <div className="edu-bar" role="navigation" aria-label="Learn topics">
       <div className="edu-bar-inner">
+        <AgentUiModeToggle variant="eduBar" className="edu-bar-agent-toggle" />
         <div className="dropdown edu-bar-group" ref={menuRef}>
           <button
             type="button"

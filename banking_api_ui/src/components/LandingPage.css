@@ -42,6 +42,21 @@
   font-weight: 700;
 }
 
+/* Agent layout toggle — visible on all breakpoints (navbar) */
+.nav-agent-ui-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .nav-agent-ui-wrap .agent-ui-mode-toggle__btn {
+    padding: 0.32rem 0.4rem;
+    font-size: 0.65rem;
+  }
+}
+
 .brand-icon {
   display: grid;
   grid-template-columns: 1fr 1fr;

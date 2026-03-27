@@ -1,0 +1,233 @@
+/* banking_api_ui/src/styles/dashboard-theme.css
+ * Shared design tokens for 2026 customer + admin dashboard shells.
+ * Toggle: document.documentElement.dataset.theme = 'dark' | 'light'; persist key bx-dash-theme */
+
+:root {
+  /* Slightly warm neutral — calmer, more “system” / Apple-adjacent than pure gray-blue */
+  --dash-bg: #f5f5f7;
+  --dash-surface: #ffffff;
+  --dash-surface-2: #ececf1;
+  --dash-text: #0f172a;
+  --dash-muted: #64748b;
+  --dash-accent: #2563eb;
+  --dash-accent-red: #dc2626;
+  --dash-accent-soft: rgba(37, 99, 235, 0.1);
+  --dash-border: rgb(15 23 42 / 0.08);
+  --dash-radius: 14px;
+  --dash-radius-sm: 10px;
+  --dash-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+  --dash-header-grad: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #b91c1c 100%);
+  /* Space above fixed embedded BankingAgent dock */
+  --dash-embed-pad-bottom: clamp(160px, 22vh, 240px);
+}
+
+html[data-theme='dark'] {
+  --dash-bg: #0c1018;
+  --dash-surface: #141a24;
+  --dash-surface-2: #1a2230;
+  --dash-text: #e8edf5;
+  --dash-muted: #94a3b8;
+  --dash-accent: #60a5fa;
+  --dash-accent-red: #f87171;
+  --dash-accent-soft: rgba(96, 165, 250, 0.12);
+  --dash-border: rgb(148 163 184 / 0.18);
+  --dash-shadow: 0 1px 4px rgb(0 0 0 / 38%);
+  --dash-header-grad: linear-gradient(135deg, #172554 0%, #1d4ed8 48%, #991b1b 100%);
+}
+
+/* Skip link — focus order: skip → main landmark */
+.dash-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 10000;
+  padding: 10px 18px;
+  background: var(--dash-accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.dash-skip-link:focus {
+  left: 12px;
+  top: 12px;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+#main-dashboard-content:focus,
+#admin-dashboard-main:focus {
+  outline: none;
+}
+
+#main-dashboard-content:focus-visible,
+#admin-dashboard-main:focus-visible {
+  outline: 2px solid var(--dash-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Card wrapper for admin sections (token, KPIs, tables) */
+.dash-shell-card {
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-sm);
+  box-shadow: var(--dash-shadow);
+  padding: 1.1rem 1.25rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.dash-shell-card--token {
+  margin-bottom: 1.1rem;
+}
+
+.dash-shell-card__title {
+  margin: 0 0 0.65rem;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--dash-text);
+  letter-spacing: -0.02em;
+}
+
+.dash-shell-card .stats-grid {
+  margin-bottom: 0;
+}
+
+html[data-theme='dark'] .dash-shell-card .tcd-root {
+  --tcd-bg: var(--dash-surface-2);
+}
+
+/* Customer dashboard — 2026 shell */
+.user-dashboard--2026 {
+  background: var(--dash-bg) !important;
+  color: var(--dash-text);
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+.user-dashboard--2026.user-dashboard--embed-agent {
+  padding-bottom: calc(var(--dash-embed-pad-bottom) + env(safe-area-inset-bottom, 0px));
+}
+
+.user-dashboard--2026 .dashboard-header-stack {
+  box-shadow: var(--dash-shadow);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-sm);
+  overflow: hidden;
+}
+
+.user-dashboard--2026 .dashboard-header {
+  background: var(--dash-header-grad);
+  color: #fff;
+}
+
+.user-dashboard--2026 .dashboard-toolbar {
+  background: var(--dash-surface);
+  border-top: 1px solid var(--dash-border);
+}
+
+.user-dashboard--2026 .dashboard-toolbar-toggle {
+  background: var(--dash-surface-2);
+  border-color: var(--dash-border);
+}
+
+.user-dashboard--2026 .toggle-text {
+  color: var(--dash-text);
+}
+
+.user-dashboard--2026 .section {
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  color: var(--dash-text);
+  box-shadow: var(--dash-shadow);
+}
+
+.user-dashboard--2026 .section h2 {
+  color: var(--dash-text);
+}
+
+.user-dashboard--2026 .ud-token-rail {
+  background: var(--dash-surface);
+  border-color: var(--dash-border);
+}
+
+.user-dashboard--2026 .ud-token-rail > .section {
+  background: transparent;
+}
+
+.user-dashboard--2026 .ud-center {
+  color: var(--dash-text);
+}
+
+.user-dashboard--2026 .ud-float-reserve {
+  background: linear-gradient(180deg, var(--dash-surface-2) 0%, var(--dash-surface) 100%);
+  border-left-color: var(--dash-border);
+}
+
+.user-dashboard--2026 .ud-float-reserve__card {
+  background: var(--dash-surface);
+  border-color: var(--dash-border);
+}
+
+.user-dashboard--2026 .ud-float-reserve__label,
+.user-dashboard--2026 .ud-float-reserve__hint {
+  color: var(--dash-muted);
+}
+
+/* Admin shell variant */
+.app-page-shell--dash2026 {
+  background: var(--dash-bg) !important;
+  color: var(--dash-text);
+  min-height: calc(100vh - 48px);
+}
+
+.admin-dashboard-page.app-page-shell--dash2026 .app-page-shell__body--embed-agent {
+  padding-bottom: calc(var(--dash-embed-pad-bottom) + env(safe-area-inset-bottom, 0px));
+}
+
+.app-page-shell--dash2026 .app-page-shell__hero {
+  background: var(--dash-header-grad);
+  box-shadow: 0 12px 32px rgb(30 58 138 / 0.22);
+}
+
+.app-page-shell--dash2026 .app-page-toolbar {
+  background: var(--dash-surface);
+  border-color: var(--dash-border);
+  box-shadow: var(--dash-shadow);
+}
+
+.app-page-shell--dash2026 .stats-grid .stat-card {
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  color: var(--dash-text);
+  box-shadow: var(--dash-shadow);
+}
+
+.app-page-shell--dash2026 .stat-label {
+  color: var(--dash-muted);
+}
+
+.app-page-shell--dash2026 .card {
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  color: var(--dash-text);
+  box-shadow: var(--dash-shadow);
+}
+
+.app-page-shell--dash2026 .card-header .card-title {
+  color: var(--dash-text);
+}
+
+.app-page-shell--dash2026 .table-container {
+  color: var(--dash-text);
+}
+
+.app-page-shell--dash2026 .table thead th {
+  color: var(--dash-muted);
+  border-color: var(--dash-border);
+}
+
+.app-page-shell--dash2026 .table tbody td {
+  border-color: var(--dash-border);
+}

@@ -84,4 +84,14 @@ describe('shouldShowGlobalFloatingBankingAgentFab', () => {
       }),
     ).toBe(false);
   });
+
+  it('shows FAB when mode is both', () => {
+    expect(
+      shouldShowGlobalFloatingBankingAgentFab({
+        user: customer,
+        agentUiMode: 'both',
+        pathname: '/dashboard',
+      }),
+    ).toBe(true);
+  });
 });

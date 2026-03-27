@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -21,7 +21,7 @@ const DEMO_TRANSACTIONS = [
   { id: 'd4', type: 'deposit',    amount:   75.00, description: 'Refund — online purchase', accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*5).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
 ];
 
-const UserDashboard = ({ user: propUser, onLogout }) => {
+const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -55,6 +55,29 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const fetchingRef = React.useRef(false);
+
+  /** Dashboard chrome theme (persists `bx-dash-theme` for admin + mock HTML). */
+  const [dashTheme, setDashTheme] = useState(() => {
+    try {
+      const t = localStorage.getItem('bx-dash-theme');
+      return t === 'dark' ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = dashTheme;
+    try {
+      localStorage.setItem('bx-dash-theme', dashTheme);
+    } catch (_) {
+      /* ignore */
+    }
+  }, [dashTheme]);
+
+  const handleDashThemeToggle = useCallback(() => {
+    setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
+  }, []);
 
   // Auto-dismiss success messages after 4 seconds
   useEffect(() => {
@@ -137,6 +160,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   useEffect(() => {
     // Initial data fetch
     fetchUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only load
   }, []);
 
   useEffect(() => {
@@ -156,6 +180,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         clearInterval(refreshInterval);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- interval uses current fetchUserData; adding it would reset timer too often
   }, [autoRefresh]);
 
   const loadDemoFallback = (reason) => {
@@ -263,6 +288,21 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   // Demo mode: true when accounts haven't been replaced by real API data
   const isDemoMode = accounts.length > 0 && accounts.every(a => a._demo);
+
+  const totalBalance = useMemo(
+    () => accounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0),
+    [accounts]
+  );
+
+  const accountsAnchorRef = useRef(null);
+
+  const handleScrollToAccounts = useCallback(() => {
+    accountsAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const handleScrollToAssistant = useCallback(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  }, []);
 
   // Simulate a transaction locally (demo mode only)
   const applyDemoTransaction = (type, amount, fromId, toId, description) => {
@@ -473,19 +513,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     );
   }
 
-  const dashboardStyle = {
-    background: `
-      linear-gradient(rgba(248, 250, 252, 0.85), rgba(248, 250, 252, 0.85)),
-      url(${process.env.PUBLIC_URL}/images/pexels-1462751220-33995750.jpg)
-    `,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-    backgroundRepeat: 'no-repeat'
-  };
-
   return (
-    <div className="user-dashboard" style={dashboardStyle}>
+    <div
+      className={`user-dashboard user-dashboard--2026${agentUiMode === 'embedded' || agentUiMode === 'both' ? ' user-dashboard--embed-agent' : ''}`}
+    >
+      <a href="#main-dashboard-content" className="dash-skip-link">
+        Skip to main content
+      </a>
       {error && (
         <div className="inline-message inline-message--error" onClick={() => setError(null)}>
           {error} <span className="inline-message__dismiss">✕</span>
@@ -548,9 +582,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       )}
       {/* ── Header stack: branding row + toolbar row ────────────────── */}
       <div className="dashboard-header-stack">
-        <div className="dashboard-header">
+        <div className="dashboard-header dashboard-header--surface">
           {/* LEFT: logo + title + nav shortcuts */}
-          <div className="bank-branding" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div className="bank-branding">
             <div className="bank-logo">
               <div className="logo-icon">
                 <div className="logo-square"></div>
@@ -561,13 +595,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               <span className="bank-name">BX Finance</span>
             </div>
             <div>
-              <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
-                Customer Dashboard
-              </h1>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
-                <Link to="/"          style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.78rem', textDecoration: 'none' }}>Home</Link>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem' }}>›</span>
-                <Link to="/dashboard" style={{ color: '#fff', fontSize: '0.78rem', textDecoration: 'none', fontWeight: 600 }}>Dashboard</Link>
+              <h1 className="dashboard-header__title">Overview</h1>
+              <div className="dashboard-header__crumbs">
+                <Link to="/" className="dashboard-header__crumb-link">Home</Link>
+                <span className="dashboard-header__crumb-sep" aria-hidden="true">›</span>
+                <Link to="/dashboard" className="dashboard-header__crumb-link dashboard-header__crumb-link--current">Dashboard</Link>
               </div>
             </div>
           </div>
@@ -609,6 +641,37 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           >
             MCP Inspector
           </Link>
+          <Link
+            to="/demo-data"
+            className="dashboard-toolbar-btn"
+            title="Sandbox accounts, balances, and MFA threshold"
+          >
+            Demo config
+          </Link>
+          <Link
+            to="/config"
+            className="dashboard-toolbar-btn"
+            title="PingOne environment and OAuth client settings"
+          >
+            PingOne config
+          </Link>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')}
+            title="Open API Traffic viewer (all /api/* calls)"
+          >
+            API Traffic
+          </button>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--theme"
+            onClick={handleDashThemeToggle}
+            aria-pressed={dashTheme === 'dark'}
+            title={dashTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            {dashTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
           <div className="dashboard-toolbar-toggle">
             <label className="toggle-label toggle-label--toolbar">
               <span className="toggle-text">Auto-refresh</span>
@@ -644,22 +707,72 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
       </div>
 
-      {/* ── Three-column body ────────────────────────────────────────── */}
-      <div className="dashboard-content ud-body ud-body--floating">
-        {/* Left sidebar — token chain */}
-        <aside className="ud-left">
-          <div className="section">
+      {/* ── Token (left) · banking (center) · space for floating agent (right) · embedded dock in App ── */}
+      <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--design-3col">
+        <aside className="ud-token-rail" aria-label="Token chain">
+          <div className="section ud-token-rail__inner">
             <TokenChainDisplay />
           </div>
         </aside>
 
-        {/* Centre — customer info + accounts + forms + transactions */}
-        <main className="ud-center">
+        <main className="ud-center" id="main-dashboard-content" tabIndex={-1}>
+
+        {/* Hero: balance, AI insight, lightweight viz (2026 “financial butler” pattern) */}
+        <div className="section ud-hero" aria-labelledby="ud-hero-heading">
+          <div className="ud-hero__top">
+            <p className="ud-hero__eyebrow" id="ud-hero-heading">
+              {format(new Date(), 'EEEE, MMM d')}
+            </p>
+            <p className="ud-hero__insight" role="status">
+              {isDemoMode
+                ? 'Demo snapshot — connect real accounts to unlock personalized cash-flow and savings nudges from the assistant.'
+                : 'Your balances update automatically. Ask the assistant below for transfers, explanations, or spending patterns.'}
+            </p>
+          </div>
+          <p className="ud-hero__balance-label">Total balance</p>
+          <p className="ud-hero__balance" aria-live="polite">
+            ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <div className="ud-hero__spark" aria-hidden="true" title="Illustrative activity trend">
+            <span style={{ height: '40%' }} /><span style={{ height: '65%' }} /><span style={{ height: '55%' }} />
+            <span style={{ height: '78%' }} /><span style={{ height: '62%' }} /><span style={{ height: '88%' }} /><span style={{ height: '72%' }} />
+          </div>
+        </div>
+
+        {/* Proactive actions — reduce menu depth (mobile-first tap targets) */}
+        <div className="section ud-quick-actions" aria-label="Quick actions">
+          <h2 className="ud-quick-actions__title">Quick actions</h2>
+          <div className="ud-quick-actions__row">
+            <button type="button" className="ud-qa-btn" onClick={handleScrollToAccounts}>
+              Move money
+            </button>
+            <button type="button" className="ud-qa-btn" onClick={handleScrollToAccounts}>
+              Add funds
+            </button>
+            <button type="button" className="ud-qa-btn ud-qa-btn--accent" onClick={handleScrollToAssistant}>
+              Ask assistant
+            </button>
+          </div>
+        </div>
+
+        {/* Trust + omnichannel / super-app cues (copy only in this demo) */}
+        <div className="ud-trust-strip" role="status">
+          <span className="ud-trust-strip__item">Session secured (OAuth)</span>
+          <span className="ud-trust-strip__dot" aria-hidden="true" />
+          <span className="ud-trust-strip__item">Step-up when risk warrants</span>
+          <span className="ud-trust-strip__dot" aria-hidden="true" />
+          <span className="ud-trust-strip__item">Biometrics on supported devices</span>
+        </div>
+        <div className="ud-super-pills" aria-label="More capabilities (demo)">
+          <span className="ud-super-pill" title="Demo placeholder">Insights</span>
+          <span className="ud-super-pill" title="Demo placeholder">Goals</span>
+          <span className="ud-super-pill" title="Demo placeholder">Payments hub</span>
+        </div>
 
         {/* Customer Profile */}
         <div className="section">
           <h2>Account Holder</h2>
-          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.88rem', color: '#374151' }}>
+          <div className="ud-profile-meta">
             <div><strong>Name:&nbsp;</strong>
               {(user?.firstName || user?.lastName)
                 ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
@@ -676,7 +789,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
 
         {/* Account Summary */}
-        <div className="section">
+        <div ref={accountsAnchorRef} className="section">
           <h2>Your Accounts</h2>
           {isDemoMode && (
             <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
@@ -941,7 +1054,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           </div>
         </div>
 
-        </main>{/* /ud-center */}
+        </main>
+
+        <aside className="ud-float-reserve" aria-hidden="true">
+          <div className="ud-float-reserve__card">
+            <span className="ud-float-reserve__label">Floating assistant</span>
+            <p className="ud-float-reserve__hint">
+              The corner FAB and panel stay in this zone so your balances and token flow stay readable.
+            </p>
+          </div>
+        </aside>
       </div>{/* /ud-body */}
 
       {/* OAuth Token Info Modal */}

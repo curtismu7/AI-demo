@@ -2,6 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   /* Bottom-right stack: CIBA guide (regular button) above agent FAB — shared by CIBAPanel + BankingAgent */
   --float-edge: 28px;
   --float-gap: 12px;
@@ -12,18 +13,16 @@
   --agent-panel-bottom: calc(
     var(--ciba-bottom) + var(--ciba-action-height) + var(--float-gap)
   );
-  /* Left-side rail: HOME → [Dashboard when signed in] → CIBA → … — CIBA top = --stack-fab-top-base */
+  /* Left-side rail (top → bottom): CIBA → CIMD → Quick nav (Home, Dashboard, API, Logs) → Demo config */
   --stack-fab-width: 220px;
   --stack-fab-height: 44px;
   --stack-fab-gap: 8px;
   --stack-fab-top-home: 16px;
   --stack-fab-top-dash: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
-  /* One slot after HOME when logged out; App--has-nav-dash shifts base below Dashboard */
-  --stack-fab-top-base: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
+  --stack-fab-top-base: 12px;
   --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-api:  calc(var(--stack-fab-top-logs)  + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-demo: calc(var(--stack-fab-top-api)   + var(--stack-fab-height) + var(--stack-fab-gap));
+  /* Demo config FAB — under CIMD when quick nav is hidden (config, landing, …) */
+  --stack-fab-top-demo: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
   /* Keep left-side FABs inside the viewport */
   --stack-fab-viewport-max: max(
     0px,
@@ -35,16 +34,37 @@
   --stack-fab-used-width: min(var(--stack-fab-width), var(--stack-fab-viewport-max));
 }
 
+/* Quick nav (signed-in /, /admin, /dashboard only) — extra stack + content inset */
+.App.App--has-quick-nav {
+  --float-edge: 12px;
+  --stack-fab-top-quick-nav: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
+  --quick-nav-stack-height: calc(4 * var(--stack-fab-height) + 3 * var(--stack-fab-gap));
+  --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height) + var(--stack-fab-gap));
+  /* Page content clears CIBA + CIMD + quick nav + demo */
+  --rail-content-gap: 16px;
+  --left-rail-inset: calc(
+    var(--float-edge) + var(--stack-fab-used-width) + var(--rail-content-gap)
+  );
+  padding-left: var(--left-rail-inset);
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .App.App--has-quick-nav {
+    --rail-content-gap: 8px;
+    --stack-fab-width: 168px;
+  }
+}
+
 /* Second nav row (Dashboard) present — push CIBA and everything below down one slot */
 .App.App--has-nav-dash {
   --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
 }
 
-/* On the /dashboard route the UserDashboard header is ~146px tall.
-   Use direct top overrides (not CSS vars) so media-query var recalcs can't win. */
-.App.App--on-dashboard .ciba-fab        { top: 156px; }
-.App.App--on-dashboard .cimd-fab        { top: calc(156px + var(--stack-fab-height, 44px) + var(--stack-fab-gap, 8px)); }
-.App.App--on-dashboard .log-viewer-fab  { top: calc(156px + (var(--stack-fab-height, 44px) + var(--stack-fab-gap, 8px)) * 2); }
+/* On /dashboard, UserDashboard header clears the rail — shift entire stack below it */
+.App.App--on-dashboard {
+  --stack-fab-top-base: 156px;
+}
 
 /* Embedded dock sits in normal document flow at the bottom of <main> (see App.js) */
 .global-embedded-agent-dock-wrap {
@@ -55,6 +75,13 @@
   pointer-events: auto;
   border-top: 1px solid #e2e8f0;
   background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
+}
+
+.global-embedded-agent-dock-wrap[data-agent-ui='embedded'] {
+  border-radius: 14px 14px 0 0;
+  margin-top: 2px;
+  border-top-color: rgba(148, 163, 184, 0.45);
+  box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.06);
 }
 
 .global-embedded-agent-dock-wrap .embedded-agent-dock {
@@ -315,58 +342,20 @@
   transform: scale(0.97);
 }
 
-/* Log Viewer FAB — below CIMD in left-side rail (size matches --stack-fab-*) */
-.log-viewer-fab {
-  position: fixed;
-  top: var(--stack-fab-top-logs, 120px);
-  left: var(--float-edge, 28px);
-  box-sizing: border-box;
-  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
-  max-width: var(--stack-fab-viewport-max, 100vw);
-  min-width: 0;
-  height: var(--stack-fab-height, 44px);
-  min-height: var(--stack-fab-height, 44px);
-  padding: 0 12px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
-  z-index: 1001;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  user-select: none;
-}
-
-.log-viewer-fab:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
-  background: linear-gradient(135deg, #7c8ef5 0%, #8b5cf6 100%);
-}
-
-.log-viewer-fab:active {
-  transform: scale(0.97);
-}
-
 @media (max-width: 768px) {
   .App {
     --stack-fab-width: 200px;
     --stack-fab-height: 42px;
     --stack-fab-top-home: 14px;
     --stack-fab-top-dash: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-base: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
+    --stack-fab-top-base: 12px;
     --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-api:  calc(var(--stack-fab-top-logs)  + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-demo: calc(var(--stack-fab-top-api)   + var(--stack-fab-height) + var(--stack-fab-gap));
+    --stack-fab-top-demo: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
+  }
+  .App.App--has-quick-nav {
+    --stack-fab-top-quick-nav: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
+    --quick-nav-stack-height: calc(4 * var(--stack-fab-height) + 3 * var(--stack-fab-gap));
+    --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height) + var(--stack-fab-gap));
   }
   .App.App--has-nav-dash {
     --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
@@ -375,55 +364,12 @@
   .cimd-fab,
   .nav-home-fab,
   .nav-dashboard-fab,
-  .log-viewer-fab,
-  .api-traffic-fab,
   .demo-config-fab {
     font-size: 0.75rem;
   }
 }
 
-/* API Traffic FAB — 4th slot in left-side rail */
-.api-traffic-fab {
-  position: fixed;
-  top: var(--stack-fab-top-api, 172px);
-  left: var(--float-edge, 28px);
-  box-sizing: border-box;
-  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
-  max-width: var(--stack-fab-viewport-max, 100vw);
-  min-width: 0;
-  height: var(--stack-fab-height, 44px);
-  min-height: var(--stack-fab-height, 44px);
-  padding: 0 12px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.25);
-  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
-  z-index: 1001;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  user-select: none;
-}
-
-.api-traffic-fab:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-  background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
-}
-
-.api-traffic-fab:active {
-  transform: scale(0.97);
-}
-
-/* Global Demo Config FAB — bottom of left-side rail */
+/* Global Demo Config FAB — below CIMD in left-side rail */
 .demo-config-fab {
   position: fixed;
   top: var(--stack-fab-top-demo, 224px);
@@ -615,16 +561,6 @@
   .nav-dashboard-fab:focus,
   .nav-dashboard-fab:focus-visible,
   .nav-dashboard-fab:active,
-  .log-viewer-fab,
-  .log-viewer-fab:hover,
-  .log-viewer-fab:focus,
-  .log-viewer-fab:focus-visible,
-  .log-viewer-fab:active,
-  .api-traffic-fab,
-  .api-traffic-fab:hover,
-  .api-traffic-fab:focus,
-  .api-traffic-fab:focus-visible,
-  .api-traffic-fab:active,
   .demo-config-fab,
   .demo-config-fab:hover,
   .demo-config-fab:focus,

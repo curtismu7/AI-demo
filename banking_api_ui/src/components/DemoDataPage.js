@@ -224,7 +224,7 @@ export default function DemoDataPage({ user, onLogout }) {
 
   /**
    * Persists floating vs embedded agent; only one layout is active. Reload so App picks up the change.
-   * @param {'floating' | 'embedded'} next
+   * @param {'floating' | 'embedded' | 'both'} next
    */
   const handleAgentLayoutChange = async next => {
     if (next === agentUiMode) return;
@@ -238,7 +238,7 @@ export default function DemoDataPage({ user, onLogout }) {
     }
     toast.info('Applying agent layout…', { autoClose: 1200 });
     window.setTimeout(() => {
-      if (next === 'embedded') {
+      if (next === 'embedded' || next === 'both') {
         window.location.href = '/';
       } else {
         window.location.reload();
@@ -279,10 +279,8 @@ export default function DemoDataPage({ user, onLogout }) {
       <section className="app-page-card demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
         <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
         <p className="demo-data-hint">
-          Choose one layout: <strong>floating</strong> (FAB opens the assistant on most pages — default), or <strong>embedded</strong>{' '}
-          (full-width chat strip along the bottom of <strong>home</strong> only: <strong>/</strong> or <strong>/dashboard</strong> for customers,{' '}
-          <strong>/</strong> or <strong>/admin</strong> for admins). On this page there is no chat widget — use the assistant icon (bottom-right) to open your dashboard.
-          With floating layout, other pages keep the FAB; with embedded, the assistant exists only on home — not on logs, MCP, or Demo config. Switching to embedded sends you home so the strip appears immediately.
+          Choose a layout: <strong>floating</strong> (FAB — default), <strong>embedded</strong> (full-width bottom strip on home only), or <strong>both</strong> (dock + FAB for UI demos).
+          On this page there is no embedded dock — use the link below to open your dashboard. Switching to embedded or both sends you home so the dock appears.
         </p>
         <div className="demo-data-agent-options" role="radiogroup" aria-label="Agent layout">
           <label className="demo-data-agent-option">
@@ -315,10 +313,27 @@ export default function DemoDataPage({ user, onLogout }) {
               </span>
             </span>
           </label>
+          <label className="demo-data-agent-option">
+            <input
+              type="radio"
+              name="demoDataAgentUiMode"
+              value="both"
+              checked={agentUiMode === 'both'}
+              onChange={() => handleAgentLayoutChange('both')}
+            />
+            <span className="demo-data-agent-option-text">
+              <span className="demo-data-agent-option-title">Both (dock + FAB)</span>
+              <span className="demo-data-agent-option-desc">
+                Embedded bottom bar on <strong>home</strong> plus the floating panel — use the customer dashboard right column as space for the FAB.
+              </span>
+            </span>
+          </label>
         </div>
-        {agentUiMode === 'embedded' && (
+        {(agentUiMode === 'embedded' || agentUiMode === 'both') && (
           <p className="demo-data-agent-note" role="status">
-            Embedded mode shows the assistant as a bottom strip on your home dashboard only (<strong>/</strong> or <strong>/dashboard</strong> for customers; <strong>/</strong> or <strong>/admin</strong> for admins). Other routes have no assistant until you return home. Demo config has no widget — use the icon to go home.
+            {agentUiMode === 'both'
+              ? 'Both mode: home dashboard shows the bottom dock and the corner FAB. Demo config has no dock — use the link below to open your dashboard.'
+              : 'Embedded mode shows the assistant as a bottom strip on your home dashboard only (/ or /dashboard for customers; / or /admin for admins). Other routes have no dock until you return home.'}
           </p>
         )}
       </section>

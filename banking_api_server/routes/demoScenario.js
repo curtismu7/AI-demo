@@ -159,7 +159,9 @@ router.get('/', async (req, res) => {
     const currentUser = dataStore.getUserById(req.user.id) || {};
     const userData = buildUserDataForDemoResponse(req, currentUser);
     const bankingAgentUiMode =
-      scenario.bankingAgentUiMode === 'embedded' || scenario.bankingAgentUiMode === 'floating'
+      scenario.bankingAgentUiMode === 'embedded' ||
+      scenario.bankingAgentUiMode === 'floating' ||
+      scenario.bankingAgentUiMode === 'both'
         ? scenario.bankingAgentUiMode
         : null;
     res.json({
@@ -226,12 +228,12 @@ router.put('/', async (req, res) => {
       const raw = req.body.bankingAgentUiMode;
       if (raw === null || raw === '') {
         await demoScenarioStore.save(uid, { bankingAgentUiMode: null });
-      } else if (raw === 'embedded' || raw === 'floating') {
+      } else if (raw === 'embedded' || raw === 'floating' || raw === 'both') {
         await demoScenarioStore.save(uid, { bankingAgentUiMode: raw });
       } else {
         return res.status(400).json({
           error: 'invalid_banking_agent_ui_mode',
-          message: 'bankingAgentUiMode must be embedded, floating, or null.',
+          message: 'bankingAgentUiMode must be embedded, floating, both, or null.',
         });
       }
     }
@@ -348,7 +350,9 @@ router.put('/', async (req, res) => {
     const currentUser = dataStore.getUserById(uid) || {};
     const { password: _password, ...savedUserData } = currentUser;
     const bankingAgentUiModeOut =
-      scenario.bankingAgentUiMode === 'embedded' || scenario.bankingAgentUiMode === 'floating'
+      scenario.bankingAgentUiMode === 'embedded' ||
+      scenario.bankingAgentUiMode === 'floating' ||
+      scenario.bankingAgentUiMode === 'both'
         ? scenario.bankingAgentUiMode
         : null;
     res.json({

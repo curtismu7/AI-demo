@@ -296,6 +296,16 @@ describe('Demo scenario API — account create/update', () => {
     );
   });
 
+  it('PUT persists bankingAgentUiMode both', async () => {
+    const app = makeApp();
+    const res = await request(app).put('/').send({ bankingAgentUiMode: 'both' });
+    expect(res.status).toBe(200);
+    expect(demoScenarioStore.save).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ bankingAgentUiMode: 'both' }),
+    );
+  });
+
   it('PUT returns 400 for invalid bankingAgentUiMode', async () => {
     const app = makeApp();
     const res = await request(app).put('/').send({ bankingAgentUiMode: 'sidebar' });

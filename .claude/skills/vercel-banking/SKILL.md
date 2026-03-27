@@ -195,13 +195,10 @@ npm run build --prefix banking_api_ui \
 | API server | `banking_api_server` on port 3001 | `api/handler.js` serverless |
 | Sessions | In-memory (MemoryStore) | Must use Redis |
 | Cookies | `secure: false`, `sameSite: lax` | `secure: true`, `sameSite: none` |
-| `api/handler.js` | NOT used (CRA proxy: `/api → localhost:3001`) | Used for all /api/* |
+| `api/handler.js` | NOT used (`src/setupProxy.js`: `/api →` `REACT_APP_API_PORT`, default 3001) | Used for all /api/* |
 | HTTPS | Plain HTTP | Enforced (301 redirect) |
 
-```json
-// banking_api_ui/package.json — local dev proxy
-"proxy": "http://localhost:3001"
-```
+Local `/api` is proxied only by `banking_api_ui/src/setupProxy.js` (do not add `package.json` `"proxy"` — it can break static files under `public/design/`).
 
 ---
 

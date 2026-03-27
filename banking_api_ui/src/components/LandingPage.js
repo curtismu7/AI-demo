@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import LoadingOverlay from './shared/LoadingOverlay';
+import AgentUiModeToggle from './AgentUiModeToggle';
 import './LandingPage.css';
 
 const LandingPage = () => {
@@ -76,6 +77,10 @@ const LandingPage = () => {
           <div className="nav-brand">
             <img src="/logo.svg" alt="BX Finance Logo" style={{ height: 40, width: 40, marginRight: 12, borderRadius: 12, background: '#fff' }} />
             <span className="brand-name">BX Finance</span>
+          </div>
+
+          <div className="nav-agent-ui-wrap">
+            <AgentUiModeToggle variant="landing" />
           </div>
           
           <div className={`nav-menu ${isMenuOpen ? 'open' : ''}`}>

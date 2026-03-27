@@ -175,6 +175,18 @@
   color: #fff;
 }
 
+.app-page-toolbar-btn--theme {
+  background: linear-gradient(180deg, #475569 0%, #334155 100%);
+  border-color: #475569;
+  color: #fff;
+}
+
+.app-page-toolbar-btn--theme:hover {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border-color: #334155;
+  color: #fff;
+}
+
 .admin-dashboard__intro {
   display: flex;
   flex-direction: row;

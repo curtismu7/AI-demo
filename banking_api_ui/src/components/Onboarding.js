@@ -115,7 +115,7 @@ export default function Onboarding() {
         </div>
 
         <div style={{ ...cardStyle, borderColor: '#e9d5ff', background: '#faf5ff' }}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#5b21b6' }}>Localhost (development)</h2>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#2563eb' }}>Localhost (development)</h2>
           <ol style={olStyle}>
             <li>Create <strong>two</strong> PingOne OIDC web apps — one for admin sign-in and one for customers — the same two-client model as hosted deployments.</li>
             <li>The configuration page shows <strong>Admin OAuth App</strong> and <strong>End-User OAuth App</strong> separately so each client ID, secret, and redirect URI maps to the correct PingOne app.</li>

@@ -1,5 +1,8 @@
 /**
- * CRA custom dev proxy — replaces the static "proxy" field in package.json.
+ * CRA dev-server middleware. Do not use package.json "proxy" here: CRA's
+ * prepareProxy() can forward GET /design/*.html to the API (404) when the
+ * Accept header does not include text/html. /api is proxied below; static UI
+ * mocks live under public/design and are served first.
  *
  * Target is read from REACT_APP_API_PORT (default 3001) so run-bank.sh can
  * pass PORT=3002 without touching source files.
@@ -14,9 +17,14 @@
  */
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function (app) {
+  // Serve static HTML mocks before webpack / CRA proxy heuristics run.
+  const designDir = path.join(__dirname, '../public/design');
+  app.use('/design', express.static(designDir));
+
   const apiPort = process.env.REACT_APP_API_PORT || '3001';
 
   // Use HTTPS automatically whenever the cert file is present — this mirrors the

@@ -40,7 +40,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
-    "@resvg/resvg-js": "^2.6.2"
+    "@resvg/resvg-js": "^2.6.2",
+    "wait-on": "^9.0.4"
   },
   "eslintConfig": {
     "extends": [
@@ -60,7 +61,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:3001",
   "engines": {
     "node": "20.x",
     "npm": ">=9"

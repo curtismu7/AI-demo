@@ -530,8 +530,15 @@ const TOPIC_MESSAGES = {
  * @param {object} props
  * @param {'float' | 'inline'} [props.mode]
  * @param {boolean} [props.embeddedDockBottom] When inline, stack chat on top and suggestions below (dashboard bottom bar)
+ * @param {boolean} [props.distinctFloatingChrome] When floating, stronger card/chrome so it reads as a separate widget vs the page.
  */
-export default function BankingAgent({ user, onLogout, mode = 'float', embeddedDockBottom = false }) {
+export default function BankingAgent({
+  user,
+  onLogout,
+  mode = 'float',
+  embeddedDockBottom = false,
+  distinctFloatingChrome = false,
+}) {
   const isInline = mode === 'inline';
   const isBottomDock = isInline && embeddedDockBottom;
   const edu = useEducationUIOptional();
@@ -1470,7 +1477,10 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
   if (!isInline && isAgentPage) return null;
 
   const floatShell = (
-    <>
+    <div
+      className={`banking-agent-float-root${distinctFloatingChrome && !isInline ? ' banking-agent-float-root--distinct' : ''}`}
+      data-agent-ui="floating"
+    >
       {/* FAB - only shown when floating agent is collapsed (not in inline mode) */}
       {!isInline && !isOpen && (
         <button
@@ -1910,7 +1920,7 @@ export default function BankingAgent({ user, onLogout, mode = 'float', embeddedD
           )}
         </div>
       )}
-    </>
+    </div>
   );
 
   const overlay = (

@@ -16,15 +16,16 @@ export function isBankingAgentDashboardRoute(pathname) {
  *
  * - Floating mode: FAB on all signed-in routes except Demo config (`/demo-data`), which uses an in-page icon only.
  * - Embedded mode: no FAB — assistant only as the bottom dock on `/`, `/admin`, `/dashboard`.
+ * - Both mode: FAB shown like floating; bottom dock also on home routes.
  *
- * @param {{ user?: { role?: string } | null | undefined; agentUiMode: 'floating' | 'embedded'; pathname?: string }} p
+ * @param {{ user?: { role?: string } | null | undefined; agentUiMode: 'floating' | 'embedded' | 'both'; pathname?: string }} p
  * @returns {boolean}
  */
 export function shouldShowGlobalFloatingBankingAgentFab({ user: _user, agentUiMode, pathname = '' }) {
   const p = (pathname || '').replace(/\/$/, '') || '/';
   if (p === '/demo-data') return false;
 
-  if (agentUiMode === 'floating') return true;
+  if (agentUiMode === 'floating' || agentUiMode === 'both') return true;
 
   if (agentUiMode === 'embedded') {
     return false;

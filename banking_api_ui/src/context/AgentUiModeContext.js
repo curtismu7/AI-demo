@@ -8,22 +8,27 @@ const AgentUiModeContext = createContext({
   setMode: () => {},
 });
 
+function normalizeMode(v) {
+  if (v === 'embedded' || v === 'both') return v;
+  return 'floating';
+}
+
 /**
  * floating — FAB + overlay panel (default); hidden on Demo config (`/demo-data`).
- * embedded — bottom dock only on `/`, `/admin`, `/dashboard`; no FAB on other routes (logs, MCP, etc.).
+ * embedded — bottom dock only on `/`, `/admin`, `/dashboard`; no FAB while signed in.
+ * both — embedded bottom dock on home routes plus floating FAB (for layout demos / power users).
  */
 export function AgentUiModeProvider({ children }) {
   const [mode, setModeState] = useState(() => {
     try {
-      const v = localStorage.getItem(STORAGE_KEY);
-      return v === 'embedded' ? 'embedded' : 'floating';
+      return normalizeMode(localStorage.getItem(STORAGE_KEY));
     } catch {
       return 'floating';
     }
   });
 
   const setMode = useCallback((next) => {
-    const m = next === 'embedded' ? 'embedded' : 'floating';
+    const m = normalizeMode(next);
     setModeState(m);
     try {
       localStorage.setItem(STORAGE_KEY, m);
@@ -41,8 +46,7 @@ export function AgentUiModeProvider({ children }) {
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key !== STORAGE_KEY || e.newValue == null) return;
-      const m = e.newValue === 'embedded' ? 'embedded' : 'floating';
-      setModeState(m);
+      setModeState(normalizeMode(e.newValue));
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);

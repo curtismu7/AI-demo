@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Dashboard shell UX: quick nav scope, rail layout, admin lookup, agent mode toggle
+
+**Symptom**: Left-rail controls overlapped main content and headers; quick nav appeared on marketing and config routes; users wanted CIBA/CIMD-style blocks with alternating colors; admin needed customer lookup with PingOne-enriched profile and accounts/transactions.
+
+**Root cause**: `DashboardQuickNav` mounted for all routes with `App--has-quick-nav` always on; no `padding-left` on `.App` reserved space for the fixed stack; link-styled `<Link>` rows; admin lookup returned transactions only from local seed.
+
+**Fix**: **`DashboardQuickNav`** only when **signed in** and path is **`/`**, **`/admin`**, or **`/dashboard`** (`isBankingAgentDashboardRoute`); **`AppRouteChrome`** toggles **`App--has-quick-nav`** for content inset; base **`--stack-fab-top-demo`** when quick nav off vs full stack when on; **`pingOneUserLookupService`** + **`POST /api/admin/transactions/lookup`** merges PingOne directory fields when worker token can read users; **`AgentUiModeToggle`** on landing nav, learn bar, and Config; alternating red/teal quick-nav buttons; static mocks under **`public/design/`** updated.
+
+**Tests**: `embeddedAgentFabVisibility` / demo-scenario tests where touched; manual per **`docs/runbooks/regression/post-deploy.md`**.
+
+---
+
 ## 2026-03-27 — Playwright BankingAgent E2E specs out of sync with current UI
 
 **Symptom**: `tests/e2e/banking-agent.spec.js` failed (collapse control, action-row clicks, form assertions). Examples: collapse locator matched **two** `role="button"` nodes (header drag handle + collapse icon); `/Transfer/i` matched **suggestion** chips and **action** rows; **`ActionForm`** uses **Account** `<select>`s and labels like **Amount ($)** / **From Account**, not free-text “Account ID” or the old input order.

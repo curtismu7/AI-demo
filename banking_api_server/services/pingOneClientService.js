@@ -142,4 +142,4 @@ async function listApplications() {
   }));
 }
 
-module.exports = { createApplication, listApplications };
+module.exports = { createApplication, listApplications, getManagementToken };

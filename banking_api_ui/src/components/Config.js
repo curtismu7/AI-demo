@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
-import { persistBankingAgentUiMode } from '../services/demoScenarioService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import AgentUiModeToggle from './AgentUiModeToggle';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
 import '../styles/appShellPages.css';
 import './Config.css';
@@ -216,81 +216,27 @@ function DisplayPreferences() {
 }
 
 function AgentLayoutPreferences() {
-  const { mode, setMode } = useAgentUiMode();
-
-  async function handleModeChange(next) {
-    if (next === mode) return;
-    setMode(next);
-    const saved = await persistBankingAgentUiMode(next);
-    if (!saved) {
-      toast.warn(
-        'Agent layout could not be saved on the server yet. It stays on this browser; refresh may revert if the server still has the old value.',
-        { autoClose: 4500 }
-      );
-    }
-    toast.info('Applying agent layout…', { autoClose: 1200 });
-    window.setTimeout(() => {
-      // Embedded dock only mounts on dashboard home routes; staying on /config after
-      // reload looks "broken" (settings show embedded but only the FAB appears).
-      if (next === 'embedded') {
-        window.location.href = '/';
-      } else {
-        window.location.reload();
-      }
-    }, 350);
-  }
+  const { mode } = useAgentUiMode();
 
   return (
     <CollapsibleCard
       title="AI Agent layout"
-      subtitle="Choose floating widget or dashboard-embedded chat (only one is active)"
+      subtitle="Floating widget, embedded bottom dock, or both (for layout demos)"
       defaultOpen={true}
       className="config-page__agent-layout"
     >
       <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
-        Controls whether the banking agent appears as a <strong>floating</strong> panel (FAB) or is <strong>embedded</strong>
-        into your dashboard home page. Tool steps (e.g. read/update account, transactions) show in the chat as actions run.
-        Choosing <strong>embedded</strong> sends you to <strong>Home</strong> so the bottom strip appears right away; choosing <strong>floating</strong> reloads this page.
-        When signed in, your choice is saved with your demo profile so refresh and new devices pick it up from the server.
+        Use the control below to switch layouts. <strong>Embedded</strong> or <strong>both</strong> sends you to{' '}
+        <strong>Home</strong> after apply so the bottom dock mounts. When signed in, your choice syncs to your demo profile.
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
-          <input
-            type="radio"
-            name="bankingAgentUiMode"
-            value="floating"
-            checked={mode === 'floating'}
-            onChange={() => handleModeChange('floating')}
-            style={{ marginTop: '3px', flexShrink: 0 }}
-          />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Floating (default)</div>
-            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
-              FAB in the corner — open/close over any page. Use this when you want the agent on every screen.
-            </div>
-          </div>
-        </label>
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
-          <input
-            type="radio"
-            name="bankingAgentUiMode"
-            value="embedded"
-            checked={mode === 'embedded'}
-            onChange={() => handleModeChange('embedded')}
-            style={{ marginTop: '3px', flexShrink: 0 }}
-          />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Embedded in dashboard</div>
-            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
-              Chat appears as a <strong>full-width bar along the bottom</strong> of the customer or admin <strong>home</strong> dashboard — no floating widget while you are signed in.
-              Other routes (e.g. MCP Inspector) do not include the embedded panel.
-            </div>
-          </div>
-        </label>
-      </div>
-      {mode === 'embedded' && (
+      <AgentUiModeToggle variant="config" />
+      <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '1rem', lineHeight: 1.5 }}>
+        <strong>Floating</strong> — corner FAB on any page. <strong>Embedded</strong> — full-width bottom dock on home/admin/customer
+        dashboard routes (no FAB while signed in). <strong>Both</strong> — dock plus FAB for UI demos.
+      </p>
+      {(mode === 'embedded' || mode === 'both') && (
         <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: '#1d4ed8' }}>
-          Embedded mode: go to <strong>Home</strong> or <strong>My Dashboard</strong> to use the agent. The sign-in experience still uses the floating agent when you are not logged in.
+          Embedded mode: open <strong>Home</strong> or <strong>My Dashboard</strong> to use the agent. The marketing home page still uses the floating agent when you are not signed in.
         </div>
       )}
     </CollapsibleCard>

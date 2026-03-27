@@ -22,45 +22,78 @@ import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
 import LogViewerPage from './components/LogViewerPage';
+import DemoDataPage from './components/DemoDataPage';
+import ApiTrafficPage from './components/ApiTrafficPage';
 
 import { savePublicConfig } from './services/configService';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
+import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
+import UIDesignNav from './components/UIDesignNav';
+import DashboardQuickNav from './components/DashboardQuickNav';
+import { isBankingAgentDashboardRoute } from './utils/embeddedAgentFabVisibility';
 import './App.css';
 
+/** Prevents re-auth after logout when effects re-run (matches f8393a7 session guard). */
+let _didLogOut = false;
+
 /**
- * Sets a CSS custom property on <html> so the left-rail FABs (CIBA / CIMD / Logs)
- * are always positioned below whatever header is on the current page.
- * Must be rendered inside <Router> so useLocation is available.
+ * Syncs .App classes: dashboard route chrome + quick-nav rail (only on signed-in /, /admin, /dashboard).
  */
-function RouteClassModifier() {
+function AppRouteChrome({ user }) {
   const { pathname } = useLocation();
   useEffect(() => {
-    // Toggle a class on .App — CSS rules in App.css target this with high
-    // specificity to push the left-rail FABs below the dashboard header.
     const appEl = document.querySelector('.App');
     if (!appEl) return;
-    if (pathname === '/dashboard') {
-      appEl.classList.add('App--on-dashboard');
-    } else {
-      appEl.classList.remove('App--on-dashboard');
-    }
-  }, [pathname]);
+    const showQuickNav = Boolean(user) && isBankingAgentDashboardRoute(pathname);
+    appEl.classList.toggle('App--has-quick-nav', showQuickNav);
+    appEl.classList.toggle('App--on-dashboard', pathname === '/dashboard');
+  }, [pathname, user]);
   return null;
 }
 
-function App() {
+/**
+ * Bottom-dock embedded agent on home routes only (/, /admin, /dashboard) when mode is embedded.
+ */
+function EmbeddedAgentDock({ user, onLogout, agentUiMode }) {
+  const { pathname } = useLocation();
+  if (!user || (agentUiMode !== 'embedded' && agentUiMode !== 'both') || !isBankingAgentDashboardRoute(pathname)) {
+    return null;
+  }
+  return (
+    <div
+      className="global-embedded-agent-dock-wrap"
+      role="region"
+      aria-label="AI banking assistant"
+      data-agent-ui="embedded"
+    >
+      <div className="embedded-agent-dock">
+        <div className="embedded-agent-dock__head">
+          <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
+          <p className="embedded-agent-dock__lead">
+            Natural language and MCP tools along the bottom — step chips show progress.
+          </p>
+        </div>
+        <div className="embedded-banking-agent embedded-banking-agent--bottom">
+          <BankingAgent user={user} onLogout={onLogout} mode="inline" embeddedDockBottom />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppWithAuth() {
+  const { mode: agentUiMode } = useAgentUiMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
-  // Module-scoped ref for injecting user email into the WebSocket session_init message.
-  // Using a ref keeps userEmail out of window scope (avoids PII on global object).
   const pendingUserEmailRef = useRef(null);
+  /** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
+  const sessionEstablishedRef = useRef(false);
 
-  // Inject userEmail into the first session_init WS message then restore send.
   const injectEmailIntoNextSessionInit = useCallback((email) => {
     pendingUserEmailRef.current = email;
     const _origSend = WebSocket.prototype.send;
@@ -80,103 +113,132 @@ function App() {
   }, []);
 
   const checkOAuthSession = useCallback(async () => {
-    console.log('🔍 checkOAuthSession - Checking for active OAuth sessions...');
-    try {
-      // Check admin OAuth session
-      console.log('👑 Checking admin OAuth session...');
-      const adminResponse = await axios.get('/api/auth/oauth/status');
-      console.log('👑 Admin OAuth response:', {
-        authenticated: adminResponse.data.authenticated,
-        user: adminResponse.data.user,
-        expiresAt: adminResponse.data.expiresAt
-      });
-      
-      if (adminResponse.data.authenticated) {
-        console.log('✅ Admin OAuth session found, logging in user:', adminResponse.data.user);
-        setUser(adminResponse.data.user);
-        const userEmail = adminResponse.data.user?.email;
-        if (userEmail) {
-          injectEmailIntoNextSessionInit(userEmail);
-        }
+    const applyUser = (u) => {
+      setUser(u);
+      const userEmail = u?.email;
+      if (userEmail) injectEmailIntoNextSessionInit(userEmail);
+      if (!sessionEstablishedRef.current) {
+        sessionEstablishedRef.current = true;
         window.dispatchEvent(new CustomEvent('userAuthenticated'));
-        setLoading(false);
-        return;
       }
-      
-      // Check end user OAuth session
-      console.log('👤 Checking end user OAuth session...');
-      const userResponse = await axios.get('/api/auth/oauth/user/status');
-      console.log('👤 End user OAuth response:', {
-        authenticated: userResponse.data.authenticated,
-        user: userResponse.data.user,
-        expiresAt: userResponse.data.expiresAt
-      });
-      
-      if (userResponse.data.authenticated) {
-        console.log('✅ End user OAuth session found, logging in user:', userResponse.data.user);
-        setUser(userResponse.data.user);
-        const userEmail = userResponse.data.user?.email;
-        if (userEmail) {
-          injectEmailIntoNextSessionInit(userEmail);
-        }
-        window.dispatchEvent(new CustomEvent('userAuthenticated'));
-        setLoading(false);
-        return;
-      }
-      
-      console.log('❌ No active OAuth sessions found');
       setLoading(false);
+    };
+
+    try {
+      const adminResponse = await axios.get('/api/auth/oauth/status');
+      if (adminResponse.data.authenticated) {
+        applyUser(adminResponse.data.user);
+        return true;
+      }
+
+      const userResponse = await axios.get('/api/auth/oauth/user/status');
+      if (userResponse.data.authenticated) {
+        applyUser(userResponse.data.user);
+        return true;
+      }
+
+      const sessionResponse = await axios.get('/api/auth/session');
+      if (sessionResponse.data.authenticated) {
+        applyUser(sessionResponse.data.user);
+        return true;
+      }
+
+      setLoading(false);
+      return false;
     } catch (error) {
       console.log('❌ Error checking OAuth sessions:', error.message);
       setLoading(false);
+      return false;
     }
   }, [injectEmailIntoNextSessionInit]);
 
+  // Public config → IndexedDB when not in logout handoff (f8393a7 pattern).
   useEffect(() => {
-    console.log('🔍 App useEffect - Starting authentication check...');
-
-    const userLoggedOut = localStorage.getItem('userLoggedOut');
-    if (userLoggedOut === 'true') {
-      console.log('🚪 User explicitly logged out, skipping authentication check');
-      localStorage.removeItem('userLoggedOut');
-      setLoading(false);
-      return;
-    }
-
-    // Sync server config (SQLite) → IndexedDB on every startup
+    if (localStorage.getItem('userLoggedOut') === 'true') return;
     axios.get('/api/admin/config')
       .then(({ data }) => savePublicConfig(data.config))
-      .catch(() => {}); // non-fatal
+      .catch(() => {});
+  }, []);
 
-    const t = setTimeout(() => {
-      console.log('🔄 Checking for OAuth session...');
-      checkOAuthSession();
-    }, 200);
-    return () => clearTimeout(t);
+  useEffect(() => {
+    const pathname =
+      typeof window !== 'undefined' && typeof window.location?.pathname === 'string'
+        ? window.location.pathname
+        : '';
+    const isPostLogoutLanding = pathname === '/logout' || pathname.endsWith('/logout');
+    const userLoggedOut =
+      localStorage.getItem('userLoggedOut') === 'true' || _didLogOut || isPostLogoutLanding;
+
+    if (userLoggedOut) {
+      _didLogOut = true;
+      sessionEstablishedRef.current = false;
+      fetch('/api/auth/clear-session', { method: 'POST', credentials: 'include' })
+        .catch(() => {})
+        .finally(() => {
+          localStorage.removeItem('userLoggedOut');
+          setUser(null);
+          setLoading(false);
+          if (isPostLogoutLanding && window.history?.replaceState) {
+            window.history.replaceState(null, '', '/');
+          }
+        });
+      return undefined;
+    }
+
+    const oauthSuccess =
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search || '').get('oauth') === 'success';
+
+    const RETRY_DELAYS_MS = [450, 950, 1900];
+    let retryIndex = 0;
+    let cancelled = false;
+    const timeouts = [];
+
+    const arm = (delayMs, fn) => {
+      const id = setTimeout(() => {
+        if (!cancelled) void fn();
+      }, delayMs);
+      timeouts.push(id);
+    };
+
+    const runCheck = async () => {
+      if (cancelled) return;
+      const ok = await checkOAuthSession();
+      if (cancelled || ok) return;
+      if (!oauthSuccess || retryIndex >= RETRY_DELAYS_MS.length) return;
+      const delay = RETRY_DELAYS_MS[retryIndex++];
+      arm(delay, runCheck);
+    };
+
+    arm(200, runCheck);
+
+    return () => {
+      cancelled = true;
+      timeouts.forEach(clearTimeout);
+    };
+  }, [checkOAuthSession]);
+
+  useEffect(() => {
+    const handler = () => {
+      void checkOAuthSession();
+    };
+    window.addEventListener('userAuthenticated', handler);
+    return () => window.removeEventListener('userAuthenticated', handler);
   }, [checkOAuthSession]);
 
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
 
-    // Signal that the user intentionally logged out so the startup
-    // session-check in useEffect skips auto-login on return to /login.
     localStorage.setItem('userLoggedOut', 'true');
 
-    // Clear leftover client-side storage.
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     sessionStorage.clear();
 
-    // Notify the chat widget immediately.
     window.dispatchEvent(new CustomEvent('userLoggedOut'));
 
-    // Navigate the browser directly (NOT via axios) to the unified logout
-    // endpoint. Express will destroy the server session, then 302-redirect
-    // the browser to PingOne's RP-Initiated Logout → post_logout_redirect_uri
-    // (/login). This ensures the PingOne SSO session is actually terminated
-    // and a subsequent login will prompt for credentials fresh.
     window.location.href = '/api/auth/logout';
   };
 
@@ -188,20 +250,25 @@ function App() {
     );
   }
 
-  return (
+  const showFloatingAgent = !user || agentUiMode === 'floating' || agentUiMode === 'both';
 
+  return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <EducationUIProvider>
       <TokenChainProvider>
-        <RouteClassModifier />
-        <div className="App end-user-nano">
+        <AppRouteChrome user={user} />
+        <div
+          className={`App end-user-nano${agentUiMode === 'embedded' || agentUiMode === 'both' ? ' App--has-embedded-dock' : ''}`}
+        >
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
-          {/* These pages are always accessible, regardless of auth state */}
+          <DashboardQuickNav user={user} />
+          {user && <UIDesignNav user={user} />}
           <Routes>
             <Route path="/config" element={<Config />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/logs" element={<LogViewerPage />} />
-            <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
+            <Route path="/api-traffic" element={<ApiTrafficPage />} />
+            <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
             <Route path="*" element={
               !user ? (
                 <LandingPage />
@@ -209,9 +276,10 @@ function App() {
                 <main className="main-content">
                   <EducationBar />
                   <Routes>
-                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
-                    <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
+                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                    <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} agentUiMode={agentUiMode} /> : <Navigate to="/" replace />} />
+                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} agentUiMode={agentUiMode} />} />
+                    <Route path="/demo-data" element={<DemoDataPage user={user} onLogout={logout} />} />
                     <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
@@ -230,27 +298,25 @@ function App() {
               )
             } />
           </Routes>
-          <BankingAgent user={user} />
+          {showFloatingAgent && (
+            <BankingAgent user={user} onLogout={logout} distinctFloatingChrome />
+          )}
+          <EmbeddedAgentDock user={user} onLogout={logout} agentUiMode={agentUiMode} />
           <EducationPanelsHost />
           <CIBAPanel />
           <CimdSimPanel />
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {/* Floating Log Viewer Button — opens in a new window so it stays visible */}
-          <button
-            className="log-viewer-fab"
-            onClick={() => window.open('/logs', 'BankingLogs', 'width=1400,height=900,scrollbars=yes,resizable=yes')}
-            title="Open Log Viewer in new window"
-            type="button"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="9" y1="13" x2="15" y2="13"/>
-              <line x1="9" y1="17" x2="13" y2="17"/>
-            </svg>
-            <span>Logs</span>
-          </button>
-          <Footer />
+          {user && (
+            <button
+              type="button"
+              className="demo-config-fab"
+              onClick={() => { window.location.href = '/demo-data'; }}
+              title="Open Demo config (sandbox accounts, balances, MFA)"
+            >
+              Demo config
+            </button>
+          )}
+          <Footer user={user} />
         </div>
       </TokenChainProvider>
       </EducationUIProvider>
@@ -258,4 +324,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AgentUiModeProvider>
+      <AppWithAuth />
+    </AgentUiModeProvider>
+  );
+}

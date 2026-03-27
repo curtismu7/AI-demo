@@ -18,7 +18,9 @@ Run after every production **or** preview deploy.
 | Navigate to `/dashboard` without signing in | Demo accounts load + toast appears once |
 | Auto-refresh fires (every 5 s) | Toast does NOT re-appear (deduped `toastId`) |
 | Sign in as end user | Real accounts replace demo data, no toast |
-| CIBA / CIMD / Logs FABs visible | Below the dashboard header (~156 px from top) |
+| CIBA / CIMD / Demo config FABs | Fixed left rail; **quick nav** (Home / Dashboard / API / Logs) **only** on signed-in **`/`**, **`/admin`**, **`/dashboard`** — not on landing or `/config` |
+| Main content | Does not sit under the left rail (`.App--has-quick-nav` inset when quick nav is shown) |
+| Learn bar | **Agent UI** segmented control (Floating / Embedded / Both) visible when signed in |
 | "Customer Dashboard" title | Visible in the header |
 | Home › Dashboard breadcrumb | Links render and navigate correctly |
 
@@ -27,8 +29,10 @@ Run after every production **or** preview deploy.
 | Check | Expected |
 |---|---|
 | Sign in as admin, open `/admin` | "Admin Dashboard" title, stats cards visible |
+| **Customer lookup** | Username + last 4 phone returns profile (PingOne when linked), accounts, recent transactions |
 | `/activity`, `/users`, `/accounts`, `/transactions` | All load without 403 |
 | MCP Inspector (`/mcp-inspector`) | Tools list populates |
+| Open **`/config`** signed in | **AI Agent layout** segmented control matches learn bar; **no** dashboard quick nav on this route |
 
 ## 4. Transaction consent / step-up
 

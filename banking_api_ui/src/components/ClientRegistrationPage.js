@@ -283,7 +283,7 @@ export default function ClientRegistrationPage({ user, onLogout }) {
       <div style={{ maxWidth: '760px', margin: '0 auto' }}>
         <div style={{
           marginBottom: '32px', padding: '14px 16px', background: '#eef2ff',
-          borderLeft: '4px solid #6366f1', borderRadius: '0 6px 6px 0', fontSize: '13px', color: '#3730a3',
+          borderLeft: '4px solid #2563eb', borderRadius: '0 6px 6px 0', fontSize: '13px', color: '#1e40af',
         }}>
           <strong>How this works:</strong> You define the metadata below (CIMD format). The server
           calls the PingOne Management API to create the OAuth application, then hosts the
