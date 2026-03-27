@@ -52,20 +52,6 @@ import './App.css';
 /** Prevents re-auth after logout when effects re-run (matches f8393a7 session guard). */
 let _didLogOut = false;
 
-/**
- * Syncs .App classes: dashboard route chrome + quick-nav rail (only on signed-in /, /admin, /dashboard).
- */
-function AppRouteChrome({ user }) {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    const appEl = document.querySelector('.App');
-    if (!appEl) return;
-    const showQuickNav = Boolean(user) && isDashboardQuickNavRoute(pathname, user);
-    appEl.classList.toggle('App--has-quick-nav', showQuickNav);
-    appEl.classList.toggle('App--on-dashboard', pathname === '/dashboard');
-  }, [pathname, user]);
-  return null;
-}
 
 function AppWithAuth() {
   const { pathname } = useLocation();
@@ -229,6 +215,10 @@ function AppWithAuth() {
     if (user) setSessionReauth(null);
   }, [user]);
 
+  /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
+  const showQuickNav = Boolean(user) && isDashboardQuickNavRoute(pathname, user);
+  const isOnDashboard = pathname === '/dashboard';
+
   /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
   const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
   const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
@@ -266,9 +256,8 @@ function AppWithAuth() {
   return (
     <EducationUIProvider>
       <TokenChainProvider>
-        <AppRouteChrome user={user} />
         <div
-          className={`App end-user-nano${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}`}
+          className={`App end-user-nano${showQuickNav ? ' App--has-quick-nav' : ''}${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}`}
         >
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {sessionReauth && (
