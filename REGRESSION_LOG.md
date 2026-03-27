@@ -5,6 +5,26 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Log viewer: remove nav buttons + light background
+
+**Symptoms**:
+1. Standalone `/logs` window had a top nav bar of buttons (Dashboard / Admin / Demo config) cluttering the top of the window.
+2. Full dark background (`#1e1e1e`/`#252525`) matched the terminal aesthetic but was hard to read in bright environments.
+
+**Root causes**:
+1. `LogViewerPage.js` rendered a `log-page-nav` div with three `Link` buttons above the `LogViewer` component.
+2. All CSS was hard-coded to dark palette — header/controls `#252525`, table `#1e1e1e`, text `#ddd`, borders `#333`/`#444`.
+3. Refresh, Download, and Clear action buttons in the toolbar were redundant with auto-refresh.
+
+**Fixes**:
+- **`LogViewerPage.js`** — Removed `log-page-nav` div and unused `Link` import. Standalone viewer now fills the full `100vh` window with no nav bar.
+- **`LogViewer.js`** — Removed Refresh, Download, and Clear buttons from the controls toolbar. Auto-refresh/auto-scroll checkboxes remain. Added `eslint-disable` comments on `clearLogs`/`downloadLogs` (preserved but not rendered).
+- **`LogViewer.css`** — Full light-theme rewrite: backgrounds `#ffffff`/`#f8fafc`/`#f1f5f9`, borders `#e2e8f0`/`#cbd5e1`, text `#0f172a`/`#1e293b`/`#64748b`. Chip buttons, selects, inputs, table headers/rows, footer, scrollbars all updated to light palette. `log-viewer-standalone` height changed to `100vh` (was `calc(100vh - 56px)` to accommodate the removed nav bar).
+
+**Tests**: `CI=false npm run build` — compiled successfully. Manual: open `/logs` — no nav buttons, light background, table rows legible.
+
+---
+
 ## 2026-03-27 — API Traffic window: freeze button + light theme
 
 **Symptoms**:

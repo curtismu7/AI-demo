@@ -206,6 +206,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
     });
   }, [logs, autoScroll]);
 
+  // eslint-disable-next-line no-unused-vars -- available for caller use
   const clearLogs = async () => {
     if (filter.category === 'toast messages') {
       if (!window.confirm('Clear all recorded toast messages from this browser session?')) return;
@@ -227,6 +228,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars -- kept for keyboard shortcut use
   const downloadLogs = () => {
     const content = logs.map(log => JSON.stringify(log)).join('\n');
     const blob = new Blob([content], { type: 'application/json' });
@@ -376,19 +378,6 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
             </label>
           </div>
 
-          <button onClick={() => fetchLogs({ silent: false })} disabled={loading} className="refresh-button">
-            🔄 Refresh
-          </button>
-
-          <button onClick={downloadLogs} className="download-button">
-            💾 Download
-          </button>
-
-          {(filter.category === 'toast messages' || filter.source === 'console' || filter.source === 'all') && (
-            <button onClick={clearLogs} className="clear-button">
-              🗑️ Clear
-            </button>
-          )}
         </div>
 
         {stats && (
