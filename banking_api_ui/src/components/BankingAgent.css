@@ -105,9 +105,7 @@
   width: 400px;
   height: 480px;
   min-width: 280px;
-  min-height: 260px;
-  max-width: 560px;
-  max-height: min(85vh, 720px);
+  min-height: 220px;
   display: flex;
   flex-direction: column;
   background: var(--ba-bg);
@@ -118,7 +116,6 @@
   color: var(--ba-text);
   animation: agent-slide-up 0.22s ease;
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-  resize: both;
 }
 
 /* ─── Two-column body ─────────────────────────────────────────────────── */
