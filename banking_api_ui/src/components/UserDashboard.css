@@ -10,6 +10,16 @@
   min-height: 100vh;
 }
 
+/* ── Split3: one-page viewport layout — no scroll, no magic-number heights ── */
+.user-dashboard.user-dashboard--split3 {
+  height: 100vh;
+  min-height: unset;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
 /* Embedded agent lives in App <main> below this page — single scroll via .main-content__primary */
 .user-dashboard--embed-agent {
   display: flex;
@@ -36,6 +46,14 @@
   padding-bottom: 0;
 }
 
+/* In split3 page-mode: header connects directly to the 3-col grid (no gap) */
+.user-dashboard--split3 .dashboard-header-stack {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 .dashboard-toolbar__agent-layout {
   display: flex;
   flex-wrap: wrap;
@@ -55,11 +73,24 @@
   gap: 0;
   align-items: stretch;
   overflow: hidden;
-  height: min(calc(100vh - 130px), 900px);
-  min-height: 500px;
+  /* Height is controlled by the flex parent (.user-dashboard--split3) */
+  height: auto;
+  min-height: 400px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
+}
+
+/* In split3 page-mode the grid fills the flex remainder — no fixed height needed */
+.user-dashboard--split3 .ud-body.ud-body--dashboard-split3 {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: auto;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  border-top: 1px solid #e2e8f0;
 }
 
 .ud-agent-column {
@@ -1875,13 +1906,12 @@
   overflow: visible;
 }
 
-/* Split-3 overrides ud-body--2026: all 3 columns equal */
+/* Split-3 overrides ud-body--2026: all 3 columns equal, flex-fills the viewport */
 .ud-body.ud-body--2026.ud-body--dashboard-split3 {
+  height: auto;
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr;
   overflow: hidden;
-  height: min(calc(100vh - 130px), 900px);
-  min-height: 500px;
   align-items: stretch;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
