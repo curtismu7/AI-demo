@@ -56,7 +56,7 @@ let _didLogOut = false;
 function AppWithAuth() {
   const { pathname } = useLocation();
   const pathNorm = pathname.replace(/\/$/, '') || '/';
-  const isApiTrafficOnlyPage = pathNorm === '/api-traffic';
+  const isApiTrafficOnlyPage = pathNorm === '/api-traffic' || pathNorm === '/logs';
   const { placement: agentPlacement, fab: agentFab } = useAgentUiMode();
   const demoMode = useDemoMode();
   const [user, setUser] = useState(null);
