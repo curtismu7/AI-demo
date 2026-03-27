@@ -9,6 +9,8 @@ No single file is allowed to exceed ~300 lines so context windows stay manageabl
 | [ui-browser.md](ui-browser.md) | Playwright browser E2E: customer dashboard, landing page, admin dashboard, Banking Agent |
 | [post-deploy.md](post-deploy.md) | Manual smoke checks after production or preview deploys |
 
+**Toast notifications**: User-visible success / error / warning should use **`appToast`** (`notify*`); session + Sign-in use **`dashboardToast`**. See **`REGRESSION_LOG.md`** (2026-03-26 — UI notifications) and **post-deploy.md** §4 (step-up toast).
+
 ## Run everything (CI order)
 
 ```bash
