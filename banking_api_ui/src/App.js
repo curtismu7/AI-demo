@@ -222,10 +222,10 @@ function AppWithAuth() {
   /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
   const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
   const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
-  const showFloatingAgent =
-    Boolean(user) &&
-    onDashboardAgentRoute &&
-    (agentPlacement === 'none' || agentFab);
+  // Always render the float agent (FAB + panel) on dashboard routes when signed in.
+  // Removing the agentPlacement gate so the FAB is never accidentally hidden by a
+  // persisted placement preference (e.g. 'bottom'/'middle' with fab:false).
+  const showFloatingAgent = Boolean(user) && onDashboardAgentRoute;
   const hasEmbeddedDockLayout =
     Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute;
 

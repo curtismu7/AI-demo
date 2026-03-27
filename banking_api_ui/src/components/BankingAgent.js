@@ -975,10 +975,12 @@ export default function BankingAgent({
     if (!rect) return;
     isDraggingRef.current = true;
     dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    // Anchor to current pixel position so we can move freely
-    if (!dragPos) setDragPos({ x: rect.left, y: rect.top });
+    // Always anchor to current visual position and exit expanded mode so panelStyle
+    // uses the drag coordinates (isExpanded causes the centered style to win otherwise)
+    setIsExpanded(false);
+    setDragPos({ x: rect.left, y: rect.top });
     e.preventDefault();
-  }, [dragPos]);
+  }, []);
 
   useEffect(() => {
     const onMove = (e) => {
