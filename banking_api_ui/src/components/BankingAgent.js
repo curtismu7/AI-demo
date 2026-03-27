@@ -26,6 +26,7 @@ import {
   isAgentBlockedByConsentDecline,
 } from '../services/agentAccessConsent';
 import { isBankingAgentFloatingDefaultOpen } from '../utils/bankingAgentFloatingDefaultOpen';
+import AgentConsentModal from './AgentConsentModal';
 import './BankingAgent.css';
 
 // ─── Action definitions ────────────────────────────────────────────────────────
@@ -636,9 +637,10 @@ export default function BankingAgent({
   const sessionFixBubbleShownRef = useRef(false);
   /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
   const [consentBlocked, setConsentBlocked] = useState(() => isAgentBlockedByConsentDecline());
-  /** True when the user has not yet accepted the PingOne Agent Consent agreement (acr gate). */
+  /** True when the user has accepted the in-app agent consent agreement. */
   const [consentGiven, setConsentGiven] = useState(true); // optimistic default — fetched on panel open
-  const [consentGranting, setConsentGranting] = useState(false);
+  /** Whether to show the in-app AgentConsentModal. */
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -840,18 +842,16 @@ export default function BankingAgent({
     }
   }, [checkSelfAuth]);
 
-  /** Redirect to PingOne consent flow so the user can accept the Agent Consent agreement. */
-  const handleGrantConsent = useCallback(async () => {
-    setConsentGranting(true);
-    try {
-      const r = await fetch('/api/auth/oauth/user/consent-url', { credentials: 'include' });
-      if (!r.ok) throw new Error('Could not get consent URL');
-      const { url } = await r.json();
-      window.location.href = url;
-    } catch (err) {
-      notifyError(err?.message || 'Could not start consent flow');
-      setConsentGranting(false);
-    }
+  /** Open the in-app consent modal so the user can accept the agent delegation agreement. */
+  const handleGrantConsent = useCallback(() => {
+    setShowConsentModal(true);
+  }, []);
+
+  /** Called by AgentConsentModal after the server confirms consent. */
+  const handleConsentAccepted = useCallback(() => {
+    setConsentGiven(true);
+    setShowConsentModal(false);
+    notifySuccess('Agent permission granted. You can now use the AI assistant.');
   }, []);
 
   // Check on mount — auto-open if already authenticated (e.g. page refresh after login)
@@ -1777,21 +1777,27 @@ export default function BankingAgent({
               </div>
             )}
 
-            {/* Agent consent agreement banner — shown when user hasn't accepted the PingOne consent policy */}
+            {/* Agent consent modal — rendered at body root via portal */}
+            {showConsentModal && (
+              <AgentConsentModal
+                onAccept={handleConsentAccepted}
+                onDismiss={() => setShowConsentModal(false)}
+              />
+            )}
+
+            {/* Agent consent banner — shown when user hasn't accepted the in-app consent */}
             {isLoggedIn && !consentBlocked && !consentGiven && (
               <div className="ba-consent-required" role="alert">
                 <p>
                   <strong>🔒 Agent permission required</strong><br />
                   BX Finance AI needs your permission to act on your behalf.
-                  This is a one-time consent (valid 180 days).
                 </p>
                 <button
                   type="button"
                   className="ba-consent-btn"
-                  disabled={consentGranting}
                   onClick={handleGrantConsent}
                 >
-                  {consentGranting ? 'Redirecting…' : 'Grant agent permission'}
+                  Grant agent permission
                 </button>
               </div>
             )}

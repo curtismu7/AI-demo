@@ -468,3 +468,38 @@ When fixing a production bug:
 2. Write (or update) a focused unit test that reproduces the bug and verifies the fix.
 3. Run the full suite (`npm test` in `banking_api_server/`) before committing.
 4. The PR description must reference the test file and test name.
+
+---
+
+## 2026-03-27 — `/consent-url` missing PKCE caused token exchange 400
+
+**Symptom**: Clicking "Grant agent permission" would redirect to PingOne, but the callback would fail with an `invalid_grant` or `400 Bad Request` because the `code_verifier` sent at token exchange had no matching `code_challenge` registered.
+
+**Root cause**:  
+`GET /api/auth/oauth/user/consent-url` built the authorization URL manually using `URLSearchParams` and omitted `code_challenge` and `code_challenge_method: S256`. Additionally it was missing the `setPkceCookie` call, so Vercel serverless callbacks running on a different instance had no PKCE recovery path. A missing `validateRedirectUriOrigin` check was also identified.
+
+**Fix**:  
+- Replaced manual `URLSearchParams` builder with `oauthService.generateAuthorizationUrl()` which includes PKCE S256 automatically.  
+- Added `setPkceCookie(res, { state, codeVerifier, redirectUri, nonce }, _isProd())` for cold-start recovery.  
+- Added `validateRedirectUriOrigin` guard matching the login route.
+
+**Files**: `banking_api_server/routes/oauthUser.js`
+
+---
+
+## 2026-03-27 — In-app consent replaced PingOne ACR gate
+
+**Symptom**: The agent consent gate required the PingOne admin to create an "Agent Consent" agreement, an "Agent-Consent-Login" auth policy, and attach it to the web app — blocking demos where PingOne config was unavailable or out of scope.
+
+**Root cause**:  
+The original design relied on `acr: "Agent-Consent-Login"` in the user's access token (issued only after PingOne shows the consent agreement screen). Missing `acr` caused the MCP token exchange to throw `AGENT_CONSENT_REQUIRED`, leaving the agent permanently blocked.
+
+**Fix**:  
+Replaced the PingOne ACR gate entirely with an in-app consent flag stored in the BFF session:
+- `POST /api/auth/oauth/user/consent` sets `req.session.agentConsentGiven = true` after the user accepts the in-app modal.
+- `DELETE /consent` revokes for demo reset.
+- `agentMcpTokenService.js` now checks `req.session.agentConsentGiven === true` instead of comparing `acr` to `AGENT_CONSENT_ACR`.
+- `SKIP_AGENT_CONSENT=true` env var disables the gate entirely for automated testing.
+- New `AgentConsentModal.js` / `AgentConsentModal.css` renders a consent agreement modal without any PingOne dependency.
+
+**Files**: `banking_api_server/routes/oauthUser.js`, `banking_api_server/services/agentMcpTokenService.js`, `banking_api_ui/src/components/AgentConsentModal.js`, `banking_api_ui/src/components/BankingAgent.js`

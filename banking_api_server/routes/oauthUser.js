@@ -506,9 +506,8 @@ router.get('/status', (req, res) => {
   const hasOAuthToken = !!(token && token !== '_cookie_session');
   const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
 
-  const expectedAcr = process.env.AGENT_CONSENT_ACR || 'Agent-Consent-Login';
-  const consentAcr  = req.session.consentAcr || null;
-  const consentGiven = isAuthenticated && consentAcr === expectedAcr;
+  // In-app consent flag — set by POST /api/auth/oauth/user/consent (no PingOne dependency)
+  const consentGiven = isAuthenticated && req.session.agentConsentGiven === true;
 
   res.json({
     authenticated: isAuthenticated,
@@ -525,10 +524,53 @@ router.get('/status', (req, res) => {
     tokenType: isAuthenticated ? req.session.oauthTokens.tokenType : null,
     expiresAt: isAuthenticated ? req.session.oauthTokens.expiresAt : null,
     clientType: isAuthenticated ? req.session.clientType : null,
-    // Consent gate fields — consumed by BankingAgent.js and agentMcpTokenService
+    // In-app consent gate field — consumed by BankingAgent.js and agentMcpTokenService
     consentGiven,
-    consentAcr,
+    consentedAt: isAuthenticated ? (req.session.agentConsentedAt || null) : null,
     mayAct: isAuthenticated ? (req.session.mayAct || null) : null,
+  });
+});
+
+/**
+ * POST /api/auth/oauth/user/consent
+ * Record that the authenticated end-user has accepted the in-app agent consent agreement.
+ * Sets req.session.agentConsentGiven = true (no PingOne round-trip needed).
+ */
+router.post('/consent', (req, res) => {
+  const token = req.session.oauthTokens?.accessToken;
+  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
+
+  if (!isAuthenticated) {
+    return res.status(401).json({ error: 'not_authenticated', message: 'Must be logged in as a customer to grant agent consent.' });
+  }
+
+  req.session.agentConsentGiven  = true;
+  req.session.agentConsentedAt   = new Date().toISOString();
+
+  req.session.save((err) => {
+    if (err) {
+      console.error('[consent] Session save failed:', err.message);
+      return res.status(500).json({ error: 'session_save_failed' });
+    }
+    console.log('[consent] Agent consent granted for user:', req.session.user?.username);
+    res.json({ consentGiven: true, consentedAt: req.session.agentConsentedAt });
+  });
+});
+
+/**
+ * DELETE /api/auth/oauth/user/consent
+ * Revoke the in-app agent consent for the current session (for testing / demo reset).
+ */
+router.delete('/consent', (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'not_authenticated' });
+  }
+  req.session.agentConsentGiven = false;
+  delete req.session.agentConsentedAt;
+  req.session.save((err) => {
+    if (err) return res.status(500).json({ error: 'session_save_failed' });
+    res.json({ consentGiven: false });
   });
 });
 
@@ -628,42 +670,11 @@ router.post('/refresh', async (req, res) => {
 
 /**
  * GET /api/auth/oauth/user/consent-url
- * Returns a PingOne authorize URL that forces the Agent-Consent-Login policy,
- * so the user sees the consent agreement screen on re-authentication.
- * The frontend redirects to this URL when the agent panel detects consentGiven=false.
+ * @deprecated — In-app consent is now handled via POST /consent.
+ * Kept for backwards-compat; signals caller to use the in-app modal.
  */
 router.get('/consent-url', (req, res) => {
-  const redirectUri    = getUserRedirectUri(req);
-  const state          = oauthService.generateState();
-  const codeVerifier   = oauthService.generateCodeVerifier();
-  const nonce          = crypto.randomBytes(16).toString('hex');
-  const expectedAcr    = process.env.AGENT_CONSENT_ACR || 'Agent-Consent-Login';
-
-  // Store PKCE material so the normal callback can complete.
-  req.session.oauthState       = state;
-  req.session.oauthCodeVerifier = codeVerifier;
-  req.session.oauthRedirectUri = redirectUri;
-  req.session.oauthNonce       = nonce;
-
-  const params = new URLSearchParams({
-    response_type:         'code',
-    client_id:             oauthUserConfig.clientId,
-    redirect_uri:          redirectUri,
-    scope:                 oauthUserConfig.scopes.join(' '),
-    state,
-    nonce,
-    acr_values:            expectedAcr,
-    prompt:                'consent',
-  });
-
-  const url = `${oauthUserConfig.authorizationEndpoint}?${params.toString()}`;
-
-  req.session.save((saveErr) => {
-    if (saveErr) {
-      console.warn('[consent-url] Session save failed (non-fatal):', saveErr.message);
-    }
-    res.json({ url });
-  });
+  return res.json({ deprecated: true, useInAppConsent: true });
 });
 
 module.exports = router;

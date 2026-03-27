@@ -1,0 +1,125 @@
+/* AgentConsentModal — full-screen overlay with centred card */
+
+.acm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(10, 20, 50, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.acm-card {
+  background: #152a52;
+  border: 1px solid rgba(65, 105, 225, 0.45);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(10, 20, 50, 0.65);
+  color: #e8eefc;
+  max-width: 480px;
+  width: 100%;
+  padding: 2rem 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.acm-icon {
+  font-size: 2.5rem;
+  text-align: center;
+}
+
+.acm-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+  color: #e8eefc;
+}
+
+.acm-body {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #c7d7ff;
+}
+
+.acm-list {
+  margin: 0;
+  padding: 0 0 0 0.25rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #9db4e8;
+}
+
+.acm-list li {
+  line-height: 1.4;
+}
+
+.acm-legal {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6b87c4;
+  line-height: 1.5;
+}
+
+.acm-legal a {
+  color: #7aa3f5;
+  text-underline-offset: 2px;
+}
+
+.acm-error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #fca5a5;
+  background: rgba(185, 28, 28, 0.2);
+  border: 1px solid rgba(185, 28, 28, 0.4);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+
+.acm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+.acm-btn {
+  padding: 0.55rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.acm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.acm-btn--primary {
+  background: #4169e1;
+  color: #fff;
+}
+
+.acm-btn--primary:hover:not(:disabled) {
+  background: #3155c5;
+}
+
+.acm-btn--secondary {
+  background: rgba(65, 105, 225, 0.15);
+  color: #9db4e8;
+  border: 1px solid rgba(65, 105, 225, 0.35);
+}
+
+.acm-btn--secondary:hover:not(:disabled) {
+  background: rgba(65, 105, 225, 0.25);
+}

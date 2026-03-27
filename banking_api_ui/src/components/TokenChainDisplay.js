@@ -81,20 +81,15 @@ function EventDetail({ event }) {
           may_act absent — exchange may be rejected by PingOne
         </div>
       )}
-      {/* acr / consent pills — shown on user-token events */}
-      {event.acr && event.consentGiven === true && (
+      {/* In-app consent pill — shown on user-token events */}
+      {event.id === 'user-token' && event.consentGiven === true && (
         <div className="tcd-pill tcd-pill--consent">
-          acr ✅ &ldquo;{event.acr}&rdquo; — agent consent recorded
+          consent ✅ user accepted in-app agent delegation — {event.consentedAt ? new Date(event.consentedAt).toLocaleTimeString() : 'this session'}
         </div>
       )}
-      {event.acr && event.consentGiven === false && (
+      {event.id === 'user-token' && event.consentGiven === false && (
         <div className="tcd-pill tcd-pill--warn">
-          acr ⚠️ &ldquo;{event.acr}&rdquo; — expected &ldquo;{event.consentAcrExpected}&rdquo;
-        </div>
-      )}
-      {!event.acr && event.id === 'user-token' && (
-        <div className="tcd-pill tcd-pill--warn">
-          acr absent — user may not have completed the agent consent agreement
+          consent ⚠️ — user has not yet accepted the agent delegation agreement
         </div>
       )}
       {event.actPresent === true && (
@@ -448,8 +443,8 @@ const TokenChainDisplay = () => {
         <div className="tcd-legend">
           <span className="tcd-legend-item tcd-pill--may-act">may_act — prospective permission</span>
           <span className="tcd-legend-item tcd-pill--act">act — current actor fact</span>
-          <span className="tcd-legend-item tcd-pill--consent">acr ✅ — agent consent given</span>
-          <span className="tcd-legend-item tcd-pill--warn">acr ⚠️ — consent missing or mismatch</span>
+          <span className="tcd-legend-item tcd-pill--consent">consent ✅ — agent delegation accepted</span>
+          <span className="tcd-legend-item tcd-pill--warn">consent ⚠️ — user has not accepted</span>
         </div>
       </div>
 

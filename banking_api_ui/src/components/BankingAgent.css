@@ -1548,6 +1548,16 @@
   height: 100%;
 }
 
+/* In the split-column 3-col layout the container is sized by the grid — fill it fully */
+.ud-dashboard-inline-agent.embedded-banking-agent:not(.embedded-banking-agent--bottom) {
+  margin-top: 0;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+
 /* Bottom-of-page strip (embedded mode — flows with <main>, not a floating card) */
 .embedded-agent-dock {
   flex-shrink: 0;
@@ -1924,9 +1934,13 @@
   --ba-chip-bg: #e2e8f0;
   --ba-chip-bd: #94a3b8;
   --ba-chip-txt: #334155;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   box-shadow: none;
+  /* Fill the full ud-agent-column height so all 3 columns align */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-header {
@@ -2023,54 +2037,110 @@
   background: var(--ba-surface);
 }
 
-/* Split-column: stack chat on top, chips/suggestions below (not side-by-side) */
+/* Split-column: stack chat on top, action strip below (not side-by-side) */
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-body {
   flex-direction: column;
   flex-wrap: nowrap;
+  /* Fill full parent height so all 3 columns match */
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-right-col {
   flex: 1 1 0%;
   min-height: 0;
   background: var(--ba-surface);
+  overflow: hidden;
 }
 
+/* Action strip: full-width row of chips below the chat */
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col {
-  /* Full-width strip below the chat */
   width: 100%;
-  max-height: 160px;
   flex-shrink: 0;
   border-right: none;
   border-top: 1px solid #cbd5e1;
-  background: #f1f5f9;
+  background: #f8fafc;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: 5px;
+  padding: 7px 10px;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: none;
 }
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col::-webkit-scrollbar { display: none; }
 
-/* Hide session/action buttons in the bottom strip — keep only suggestions */
+/* Section labels hidden — keep the strip compact */
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-label,
-.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth-btn,
-.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-action-item,
-.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-divider,
-.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth {
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-divider {
   display: none;
 }
 
-/* Suggestion chips render as compact horizontal pills */
-.banking-agent-panel.ba-mode-inline.ba-split-column .ba-suggestion {
+/* Dashboard nav + session buttons — compact pill style */
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth-btn,
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-action-item {
   flex-shrink: 0;
+  width: auto;
   white-space: nowrap;
-  font-size: 0.75rem;
+  font-size: 0.73rem;
   padding: 4px 10px;
   border-radius: 99px;
   background: #fff;
   border: 1px solid #cbd5e1;
+  color: #334155;
+  cursor: pointer;
+  font-weight: 500;
+  line-height: 1.4;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth-btn:hover:not(:disabled),
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-action-item:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth-btn:disabled,
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-action-item:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+/* Primary nav button (Dashboard) — slightly accented */
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth-btn.primary {
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #fff;
+  font-weight: 600;
+}
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth-btn.primary:hover:not(:disabled) {
+  background: #172554;
+  border-color: #172554;
+}
+
+/* Auth panel (unauthenticated state) — render inline */
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  width: 100%;
+}
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col .ba-left-auth-notice {
+  display: none;
+}
+
+/* Suggestion chips — same pill style */
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-suggestion {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.73rem;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: #fff;
+  border: 1px dashed #94a3b8;
   color: #475569;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s, color 0.12s;

@@ -18,7 +18,23 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
-- **PingOne Authorize — Phase 2 Decision Endpoints API** — `pingOneAuthorizeService.js` now targets `POST /decisionEndpoints/{endpointId}` (preferred) with automatic fallback to legacy PDP path; new `authorize_decision_endpoint_id` config field + `PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID` env alias; Config UI "Decision Endpoint ID" field; `transactions.js` logs `path` + `decisionId`
+- **In-app Agent Consent** (`AgentConsentModal.js` / `AgentConsentModal.css`) — replaced PingOne ACR-gate consent with a fully self-contained in-app modal; `POST /api/auth/oauth/user/consent` records consent in session; `DELETE /consent` revokes for demo reset; `SKIP_AGENT_CONSENT=true` env var disables gate; no PingOne agreement or auth policy needed
+- **3-column Split Dashboard layout** — Token Chain (slim `220px`) | AI Agent (`1fr`) | Customer Accounts (`1fr`); all three columns same height, same row; action/suggestion chips now render as horizontal pill strip below the chat prompt instead of side column; responsive collapse at ≤1024px
+
+### Fixed
+
+- **`/consent-url` missing PKCE** — `GET /api/auth/oauth/user/consent-url` was building the authorization URL manually, omitting `code_challenge` and `code_challenge_method`; PingOne would have rejected the token exchange at callback; now uses `oauthService.generateAuthorizationUrl()` (same builder as login) and adds `setPkceCookie` for Vercel cold-start recovery
+- **`/consent-url` missing redirect-URI validation** — added `validateRedirectUriOrigin` guard mirroring the login route
+- **Split dashboard column heights** — columns were different heights due to `overflow: visible` and content-driven sizing; fixed with `overflow: hidden`, explicit `height: min(calc(100vh - 130px), 900px)` on the grid and `height: 100%` on all three cells
+- **Agent panel didn't fill column** — `embedded-banking-agent` had fixed `min(70vh, 360px)` height; `ud-dashboard-inline-agent` now overrides to `height: 100%` to fill the grid cell
+
+### Changed
+
+- `agentMcpTokenService.js` consent gate now checks `req.session.agentConsentGiven === true` (in-app flag) instead of `acr === AGENT_CONSENT_ACR` env var; `AGENT_CONSENT_ACR` env var is no longer used
+- `GET /api/auth/oauth/user/status` returns `consentGiven` (boolean) and `consentedAt` (ISO string) instead of `consentAcr`
+- Token Chain Display consent pills updated to show in-app consent status instead of ACR value
+- `ba-split-column` action strip now shows all action chips (session, actions, suggestions) as horizontal pills — previously hid all except suggestions
+ — `pingOneAuthorizeService.js` now targets `POST /decisionEndpoints/{endpointId}` (preferred) with automatic fallback to legacy PDP path; new `authorize_decision_endpoint_id` config field + `PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID` env alias; Config UI "Decision Endpoint ID" field; `transactions.js` logs `path` + `decisionId`
 - **PingOne Authorize — Phase 3 Recent Decisions** — `GET /api/authorize/recent-decisions` + `GET /api/authorize/decision-endpoints` admin routes; `PingOneAuthorizePanel.js` rewritten with 5 rich tabs including live "🔍 Recent Decisions" viewer with PERMIT/DENY badges and expandable JSON
 - **SPIFFE implementation plan** — `docs/SPIFFE_PLAN.md` defines 4 integration points (JWT-SVID as RFC 8693 actor_token, mTLS BFF↔MCP, agent workload identity, PingGateway SPIFFE bridging) and 4 phased delivery phases; workload identity map and environment variable spec included
 - **Landing page quick-links** — hero section now shows shortcut buttons matching the edu-bar: CIBA guide, CIMD Simulator, Home, Dashboard, API, Logs, Demo config

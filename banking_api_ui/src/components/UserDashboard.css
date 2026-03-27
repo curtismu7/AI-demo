@@ -49,11 +49,14 @@
 /* Two-class selector beats ud-body--2026 single-class override */
 .ud-body.ud-body--dashboard-split3 {
   display: grid;
-  grid-template-columns: minmax(160px, 200px) minmax(300px, 1.2fr) minmax(260px, 1fr);
+  /* Token rail slim fixed | Agent 1fr | Banking 1fr — all same height */
+  grid-template-columns: 220px 1fr 1fr;
+  grid-template-rows: 1fr;
   gap: 0;
   align-items: stretch;
-  overflow: visible;
-  min-height: min(70vh, 900px);
+  overflow: hidden;
+  height: min(calc(100vh - 130px), 900px);
+  min-height: 500px;
 }
 
 .ud-agent-column {
@@ -63,39 +66,64 @@
   background: #f1f5f9;
   display: flex;
   flex-direction: column;
-  padding: 10px 10px 12px;
+  padding: 0;
   overflow: hidden;
+  /* Fill full grid row height */
+  height: 100%;
 }
 
 .ud-banking-column.ud-center {
   overflow-y: auto;
   min-height: 0;
+  height: 100%;
 }
 
-.ud-dashboard-inline-agent.embedded-banking-agent:not(.embedded-banking-agent--bottom) {
-  margin-top: 0;
-  flex: 1;
-  min-height: 320px;
-  height: min(72vh, 560px);
-  max-height: min(85vh, 640px);
+/* Inline agent fills the full ud-agent-column height (BankingAgent.css also has this rule) */
+.ud-agent-column .ud-dashboard-inline-agent {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-@media (max-width: 1200px) {
+/* Token rail fills full height in split grid */
+.ud-body.ud-body--dashboard-split3 .ud-token-rail {
+  height: 100%;
+  overflow-y: auto;
+}
+
+@media (max-width: 1280px) {
   .ud-body.ud-body--dashboard-split3 {
-    grid-template-columns: minmax(140px, 180px) minmax(260px, 1fr) minmax(220px, 1fr);
+    grid-template-columns: 200px 1fr 1fr;
   }
 }
 
 @media (max-width: 1024px) {
   .ud-body.ud-body--dashboard-split3 {
     grid-template-columns: 1fr;
+    height: auto;
     min-height: 0;
+    overflow: visible;
+  }
+  .ud-body.ud-body--dashboard-split3 .ud-token-rail {
+    height: auto;
+    max-height: 300px;
   }
   .ud-agent-column {
     border-left: none;
     border-right: none;
     border-bottom: 1px solid #e2e8f0;
-    max-height: 480px;
+    height: auto;
+    max-height: 520px;
+  }
+  .ud-banking-column.ud-center {
+    height: auto;
+  }
+  .ud-dashboard-inline-agent.embedded-banking-agent:not(.embedded-banking-agent--bottom) {
+    height: min(72vh, 480px);
+    max-height: min(72vh, 480px);
   }
   .dashboard-toolbar__agent-layout {
     border-right: none;
