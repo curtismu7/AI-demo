@@ -18,7 +18,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
-- **GET `/api/transactions/consent-challenge/:challengeId`** — snapshot for **TransactionConsentPage** (registered before **`GET /:id`**); **HITL** from **UserDashboard** creates challenge and navigates to **`/transaction-consent`**; routes **`/admin/banking`**, **`/transaction-consent`**; **SessionReauthBanner** for **`SESSION_REAUTH_EVENT`**
+- **Customer split dashboard** (token \| inline agent \| banking) with **Split view** / **Classic** toggle (`dashboardLayout.js`); **Agent UI** modes **Floating** / **Embedded** / **Both** with split-aware FAB/dock suppression (`customerSplit3Dashboard.js`)
+- **TransactionConsentModal** — high-value HITL as an on-dashboard popup (checkbox authorizing the assistant); **`/transaction-consent?challenge=…`** still works as a deep link
+- **Industry branding** (`IndustryBrandingContext`, presets, `BrandLogo`, Config) and **agent MCP scope policy** (server + UI config)
+- **GET `/api/transactions/consent-challenge/:challengeId`** — snapshot for consent UI (registered before **`GET /:id`**); routes **`/admin/banking`**, **`/transaction-consent`**; **SessionReauthBanner** for **`SESSION_REAUTH_EVENT`**
 - **Floating Banking Agent** only on signed-in dashboard homes **`/`**, **`/admin`**, **`/dashboard`** (Router wraps **`AppWithAuth`**); larger default/expanded panel sizing — see **`REGRESSION_LOG.md`** (2026-03-27)
 - **appToast** (`banking_api_ui/src/utils/appToast.js`): shared **`notifySuccess` / `notifyError` / `notifyWarning` / `notifyInfo`** for react-toastify; **UserDashboard** step-up MFA (428) uses a persistent warning toast with verify actions; **`dashboardToast`** remains for session errors with **Sign in** — see `REGRESSION_LOG.md`, `docs/runbooks/regression/post-deploy.md`
 - **Embedded agent dock** (`EmbeddedAgentDock.js`, **`useDemoMode`**) and related demo-scenario / FAB visibility updates — see `docs/runbooks/regression/ui-browser.md` where touched
