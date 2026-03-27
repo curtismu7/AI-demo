@@ -24,6 +24,12 @@ If you only need session + OAuth BFF coverage, use `npm run test:session` (see a
 
 Playwright can exercise **`UserDashboard`**, marketing **`LandingPage`**, and related flows without a live **`banking_api_server`** by stubbing `/api/*` in **`tests/e2e/customer-dashboard.spec.js`** and **`landing-marketing.spec.js`**.
 
+**Banking Agent FAB** (floating panel, MCP action buttons, forms, collapse): **`tests/e2e/banking-agent.spec.js`**. After UI changes to **`BankingAgent`** / **`ActionForm`**, run:
+
+```bash
+cd banking_api_ui && npm run test:e2e:agent
+```
+
 From repo root:
 
 ```bash

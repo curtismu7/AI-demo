@@ -16,14 +16,13 @@
  *   - Two-column layout: left column and right column are present
  *
  *   AUTHENTICATED (post-login)
- *   - Panel auto-opens after login (no FAB click needed)
- *   - Panel shows role-aware welcome message
+ *   - On /dashboard and /admin the floating panel defaults collapsed; tests open via FAB
  *   - Panel shows role badge in header subtitle (Admin / Customer)
- *   - Dashboard nav button shown and navigates to correct route
- *   - Panel shows banking action buttons (Accounts, Transactions, Balance, etc.)
+ *   - Dashboard nav button shown in agent left column
+ *   - Core Actions rows (My Accounts … Transfer) appear as .ba-action-item entries
  *   - "My Accounts" action triggers /api/mcp/tool call with tool=get_my_accounts
  *   - "Recent Transactions" action triggers /api/mcp/tool call
- *   - "Check Balance" shows form with Account ID field, runs get_account_balance
+ *   - "Check Balance" uses Account select + Run; runs get_account_balance
  *   - "Deposit" shows form and submits create_deposit
  *   - "Withdraw" shows form and submits create_withdrawal
  *   - "Transfer" shows form and submits create_transfer
@@ -219,11 +218,18 @@ async function openAgentPanelWhenConfigured(page) {
 }
 
 /**
- * Clicks a BankingAgent MCP action button. Scoped to `.banking-agent-panel` so names like
- * "Deposit" / "Withdraw" / "Transfer" do not match UserDashboard account card buttons.
+ * Clicks a BankingAgent **Actions** row (`.ba-action-item`) — not suggestion chips (`ba-suggestion`),
+ * which can also mention "Transfer" or "transactions".
  */
 function agentPanelButton(page, namePattern) {
-  return page.locator('.banking-agent-panel').getByRole('button', { name: namePattern });
+  return page
+    .locator('.banking-agent-panel .ba-left-col .ba-action-item')
+    .filter({ hasText: namePattern });
+}
+
+/** Collapse control in the floating panel header (avoid getByRole name matching the drag-handle header). */
+function collapseAgentButton(page) {
+  return page.locator('.banking-agent-panel .ba-header-tools button[aria-label="Collapse agent"]');
 }
 
 /**
@@ -327,7 +333,7 @@ test.describe('BankingAgent — Login page (unauthenticated)', () => {
     await page.goto('/');
     await page.locator('.banking-agent-fab').click();
     await expect(page.locator('.banking-agent-panel')).toBeVisible();
-    await page.getByRole('button', { name: 'Collapse agent' }).click();
+    await collapseAgentButton(page).click();
     await expect(page.locator('.banking-agent-panel')).not.toBeVisible();
   });
 
@@ -336,7 +342,7 @@ test.describe('BankingAgent — Login page (unauthenticated)', () => {
     await page.goto('/');
     await page.locator('.banking-agent-fab').click();
     await expect(page.locator('.banking-agent-panel')).toBeVisible();
-    await page.getByRole('button', { name: 'Collapse agent' }).click();
+    await collapseAgentButton(page).click();
     await expect(page.locator('.banking-agent-fab')).toBeVisible();
   });
 });
@@ -382,18 +388,21 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await expect(page.locator('.ba-left-col')).toContainText('My Dashboard');
   });
 
-  test('panel shows all 6 banking action buttons in left column', async ({ page }) => {
+  test('panel lists core banking actions in the Actions section', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
     await openFloatingAgentPanel(page);
-    const actions = page.locator('.ba-left-col .ba-action-item');
-    await expect(actions).toHaveCount(6);
-    await expect(actions.nth(0)).toContainText('My Accounts');
-    await expect(actions.nth(1)).toContainText('Recent Transactions');
-    await expect(actions.nth(2)).toContainText('Check Balance');
-    await expect(actions.nth(3)).toContainText('Deposit');
-    await expect(actions.nth(4)).toContainText('Withdraw');
-    await expect(actions.nth(5)).toContainText('Transfer');
+    const panelActions = page.locator('.banking-agent-panel .ba-left-col .ba-action-item');
+    for (const label of [
+      'My Accounts',
+      'Recent Transactions',
+      'Check Balance',
+      'Deposit',
+      'Withdraw',
+      'Transfer',
+    ]) {
+      await expect(panelActions.filter({ hasText: label })).toHaveCount(1);
+    }
   });
 
   test('customer suggestions are shown in the left column', async ({ page }) => {
@@ -443,13 +452,15 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
   // ── Form-based actions ──
 
-  test('"Check Balance" shows Account ID form', async ({ page }) => {
+  test('"Check Balance" shows Account selector form', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
     await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Check Balance/i).click();
-    await expect(page.locator('.banking-agent-form')).toBeVisible();
-    await expect(page.locator('label', { hasText: 'Account ID' })).toBeVisible();
+    const form = page.locator('.banking-agent-form');
+    await expect(form).toBeVisible();
+    await expect(form.getByLabel(/Account/i)).toBeVisible();
+    await expect(page.locator('#field-accountId')).toBeVisible();
   });
 
   test('"Check Balance" submits get_account_balance and shows balance', async ({ page }) => {
@@ -459,7 +470,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Check Balance/i).click();
 
-    await page.locator('input[placeholder*="acc_"]').first().fill('acc_001');
+    const accountId = await page.locator('#field-accountId').inputValue();
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
@@ -468,12 +479,12 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
     const body = JSON.parse(req.postData() || '{}');
     expect(body.tool).toBe('get_account_balance');
-    expect(body.params.account_id).toBe('acc_001');
+    expect(body.params.account_id).toBe(accountId);
 
     await expect(page.locator('.banking-agent-messages')).toContainText('Balance: $1,500.00');
   });
 
-  test('"Deposit" shows form with Account ID and Amount fields', async ({ page }) => {
+  test('"Deposit" shows form with Account and Amount fields', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
     await openFloatingAgentPanel(page);
@@ -481,8 +492,8 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
     const form = page.locator('.banking-agent-form');
     await expect(form).toBeVisible();
-    await expect(form.locator('label', { hasText: 'Account ID' })).toBeVisible();
-    await expect(form.locator('label', { hasText: 'Amount' })).toBeVisible();
+    await expect(form.getByLabel(/^Account$/)).toBeVisible();
+    await expect(form.getByLabel(/Amount \(\$\)/)).toBeVisible();
   });
 
   test('"Deposit" submits create_deposit with correct params', async ({ page }) => {
@@ -492,10 +503,9 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Deposit/i).click();
 
-    const inputs = page.locator('.banking-agent-field input');
-    await inputs.nth(0).fill('acc_001');          // Account ID
-    await inputs.nth(1).fill('250');              // Amount
-    await inputs.nth(2).fill('Birthday money');   // Note
+    const accountId = await page.locator('#field-accountId').inputValue();
+    await page.locator('#field-amount').fill('250');
+    await page.locator('#field-note').fill('Birthday money');
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
@@ -504,7 +514,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
     const body = JSON.parse(req.postData() || '{}');
     expect(body.tool).toBe('create_deposit');
-    expect(body.params.account_id).toBe('acc_001');
+    expect(body.params.account_id).toBe(accountId);
     expect(body.params.amount).toBe(250);
 
     await expect(page.locator('.banking-agent-messages')).toContainText('✅ Success');
@@ -517,10 +527,9 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Withdraw/i).click();
 
-    const inputs = page.locator('.banking-agent-field input');
-    await inputs.nth(0).fill('acc_001');
-    await inputs.nth(1).fill('100');
-    await inputs.nth(2).fill('ATM');
+    const accountId = await page.locator('#field-accountId').inputValue();
+    await page.locator('#field-amount').fill('100');
+    await page.locator('#field-note').fill('ATM');
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
@@ -529,7 +538,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
     const body = JSON.parse(req.postData() || '{}');
     expect(body.tool).toBe('create_withdrawal');
-    expect(body.params.account_id).toBe('acc_001');
+    expect(body.params.account_id).toBe(accountId);
     expect(body.params.amount).toBe(100);
 
     await expect(page.locator('.banking-agent-messages')).toContainText('✅ Success');
@@ -543,9 +552,10 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
     const form = page.locator('.banking-agent-form');
     await expect(form).toBeVisible();
-    await expect(form.locator('label', { hasText: 'From Account ID' })).toBeVisible();
-    await expect(form.locator('label', { hasText: 'To Account ID' })).toBeVisible();
-    await expect(form.locator('label', { hasText: 'Amount' })).toBeVisible();
+    await expect(form.getByLabel(/From Account/i)).toBeVisible();
+    await expect(form.getByLabel(/To Account/i)).toBeVisible();
+    await expect(form.getByLabel(/Amount \(\$\)/)).toBeVisible();
+    await expect(form.getByLabel(/^Note$/)).toBeVisible();
   });
 
   test('"Transfer" submits create_transfer with correct params', async ({ page }) => {
@@ -555,11 +565,10 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Transfer/i).click();
 
-    const inputs = page.locator('.banking-agent-field input');
-    await inputs.nth(0).fill('acc_001');    // from
-    await inputs.nth(1).fill('acc_002');    // to
-    await inputs.nth(2).fill('500');        // amount
-    await inputs.nth(3).fill('Rent');       // note
+    const fromId = await page.locator('#field-fromId').inputValue();
+    const toId = await page.locator('#field-toId').inputValue();
+    await page.locator('#field-amount').fill('500');
+    await page.locator('#field-note').fill('Rent');
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
@@ -568,8 +577,8 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
 
     const body = JSON.parse(req.postData() || '{}');
     expect(body.tool).toBe('create_transfer');
-    expect(body.params.from_account_id).toBe('acc_001');
-    expect(body.params.to_account_id).toBe('acc_002');
+    expect(body.params.from_account_id).toBe(fromId);
+    expect(body.params.to_account_id).toBe(toId);
     expect(body.params.amount).toBe(500);
 
     await expect(page.locator('.banking-agent-messages')).toContainText('✅ Success');

@@ -143,3 +143,4 @@ git checkout <last-version-tag> -- <key-file>
 | Session regression — `npm run test:session` (API Jest subset) | active | root `package.json`, `banking_api_server/package.json` | `authSession.test.js` (+ pattern in `test:session` script) |
 | Session API smoke (Playwright `request`) — `npm run test:e2e:session` | active | `banking_api_ui/tests/e2e/session-regression.spec.js`, `banking_api_ui/package.json` | `session-regression.spec.js` |
 | UI browser E2E smoke (Playwright Chromium; mocked API) — `npm run test:e2e:ui:smoke` | active | `banking_api_ui/tests/e2e/customer-dashboard.spec.js`, `landing-marketing.spec.js`, `playwright.config.js` | `customer-dashboard.spec.js`, `landing-marketing.spec.js` |
+| Banking Agent FAB E2E — `npm run test:e2e:agent` | active | `banking_api_ui/src/components/BankingAgent.js`, `playwright.config.js` | `banking-agent.spec.js` |

@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Playwright BankingAgent E2E specs out of sync with current UI
+
+**Symptom**: `tests/e2e/banking-agent.spec.js` failed (collapse control, action-row clicks, form assertions). Examples: collapse locator matched **two** `role="button"` nodes (header drag handle + collapse icon); `/Transfer/i` matched **suggestion** chips and **action** rows; **`ActionForm`** uses **Account** `<select>`s and labels like **Amount ($)** / **From Account**, not free-text “Account ID” or the old input order.
+
+**Root cause**: Tests were written for an older BankingAgent layout and form schema; Playwright **accessible name** matching is not unique for `getByRole('button', { name: 'Collapse agent' })` when another `role="button"` exists in the panel header.
+
+**Fix**: Scope **collapse** to `.ba-header-tools button[aria-label="Collapse agent"]` ; scope **MCP action** clicks to `.ba-action-item` under the panel; assert **core** banking actions by label instead of a fixed `.ba-action-item` count (Session / Learn rows added more buttons); align balance/deposit/withdraw/transfer tests with **`#field-accountId`**, **`#field-amount`**, etc., and dynamic MCP `account_id` / transfer IDs from the selected options.
+
+**Tests**: `cd banking_api_ui && npm run test:e2e:agent` (or `npx playwright test tests/e2e/banking-agent.spec.js`).
+
+---
+
 ## 2026-03-26 — HITL consent HTTP routes missing; scope tests out of sync with GET /api/transactions/my
 
 **Symptom**: `transaction-consent-challenge.test.js` and `step-up-gate.test.js` failed (404 on `/api/transactions/consent-challenge`; high-value `POST /api/transactions` returned **201** without a consent flow). OAuth scope suites expected **200** on **`GET /api/transactions/my`** when the token only had **`banking:accounts:read`** or **`banking:write`**.

@@ -42,6 +42,12 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-27 — BankingAgent Playwright E2E (`banking-agent.spec.js`)
+- **Symptom:** Multiple failures in `banking-agent.spec.js` (collapse strict mode, Transfer/Recent Transactions matching suggestions, outdated Account ID / input order assertions).
+- **Root cause:** UI changed (header `role="button"` drag strip, `ActionForm` selectors + labels); tests were not scoped to action rows.
+- **Fix:** `collapseAgentButton` + `agentPanelButton` helpers; form tests use `#field-*` and account IDs from the form; core actions asserted by label.
+- **Regression check:** `cd banking_api_ui && npm run test:e2e:agent`
+
 ### 2026-03-21 — /api/admin/config blocked by authenticateToken on Vercel (commit `57d2300`)
 - **Symptom:** `GET /api/admin/config` returned 401 on Vercel; Config page couldn't load existing settings
 - **Root cause:** `app.use('/api/admin', authenticateToken, adminRoutes)` was registered BEFORE `app.use('/api/admin/config', adminConfigRoutes)`. Express prefix matching caused all `/api/admin/*` requests (including `/api/admin/config`) to hit `authenticateToken` first.
