@@ -12,4 +12,6 @@ export const EDU = {
   CIMD: 'cimd',
   /** Human-in-the-loop: mandatory human approval before high-impact agent-related actions */
   HUMAN_IN_LOOP: 'human-in-loop',
+  /** Ping Identity five best practices for AI agent security */
+  BEST_PRACTICES: 'best-practices',
 };

@@ -118,6 +118,19 @@ export default function EducationBar() {
           </div>
 
           <div className="edu-bar-panel__section">
+            <button
+              type="button"
+              className="edu-bar-panel__btn edu-bar-panel__btn--featured"
+              onClick={() => {
+                open(EDU.BEST_PRACTICES, 'overview');
+                close();
+              }}
+            >
+              ⭐ AI Agent Best Practices
+            </button>
+          </div>
+
+          <div className="edu-bar-panel__section">
             <p className="edu-bar-panel__heading">OAuth flows</p>
             <button
               type="button"

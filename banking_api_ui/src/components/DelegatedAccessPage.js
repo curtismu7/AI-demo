@@ -329,8 +329,6 @@ export default function DelegatedAccessPage({ user }) {
   const [showAdd, setShowAdd]         = useState(false);
   const [actAsDelegate, setActAsDelegate] = useState(null);
 
-  const totalDelegated = grantedByMe.length + grantedToMe.length;
-
   const handleSave = (data) => {
     const entry = {
       id: `del-${Date.now()}`,

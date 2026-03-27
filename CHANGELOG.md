@@ -18,6 +18,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Best Practices education panel** — new `BestPracticesPanel.js` with 6-tab Education Drawer covering all five Ping Identity AI Agent best practices: Know Your Agents, Detect Agents, Use Delegation Not Impersonation, Enforce Least Privilege, Human in the Loop; each tab shows plain-English explanation + BX Finance implementation status + linked deep-dives; accessible from hamburger menu (⭐ AI Agent Best Practices, featured blue button)
+
 - **Delegated Access page** (`/delegated-access`) — family-member account delegation with "Access I've granted" / "Granted to me" tabs; account-level multi-select; **RFC 8693 Token Exchange** explainer panel showing `may_act` / `act` claims; "Act as" demo simulation; quick-action button on UserDashboard
 - **Token Inspector panel** — floating, draggable, resizable, collapsible detail panel for each token chain event; launched via hover-reveal inspect icon per row; rendered via `ReactDOM.createPortal` for off-screen capability
 - **Agent UI placement** — new **Middle / Bottom / Float + FAB** toggle replaces Floating/Embedded/Both; `AgentUiModeContext` stores `{ placement, fab }` under `banking_agent_ui_v2`; Middle+Bottom together not permitted

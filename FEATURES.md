@@ -127,6 +127,7 @@ git checkout <last-version-tag> -- <key-file>
 | PingOne Authorize guide | active | `banking_api_ui/src/components/education/PingOneAuthorizePanel.js` | — |
 | RFC index guide | active | `banking_api_ui/src/components/education/RFCIndexPanel.js` | — |
 | Human-in-the-loop (HITL) / consent education | active | `banking_api_ui/src/components/education/HumanInLoopPanel.js` | — |
+| AI Agent Best Practices guide (Ping Identity 5 practices) | active | `banking_api_ui/src/components/education/BestPracticesPanel.js` | — |
 
 ---
 
