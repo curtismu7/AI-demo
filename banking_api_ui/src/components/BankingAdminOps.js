@@ -222,7 +222,7 @@ export default function BankingAdminOps({ user, onLogout }) {
         </div>
       )}
 
-      {!loading && accounts.length === 0 && !error && (
+      {!loading && accounts.length === 0 && (
         <p className="text-muted" style={{ padding: '0 0.5rem' }}>
           Enter a fragment (try <strong>{DEFAULT_QUERY}</strong>) and click <strong>Load activity</strong>.
         </p>
