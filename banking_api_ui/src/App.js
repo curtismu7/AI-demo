@@ -37,7 +37,11 @@ import Footer from './components/Footer';
 import UIDesignNav from './components/UIDesignNav';
 import DashboardQuickNav from './components/DashboardQuickNav';
 import EmbeddedAgentDock from './components/EmbeddedAgentDock';
-import { isBankingAgentDashboardRoute, isDashboardQuickNavRoute } from './utils/embeddedAgentFabVisibility';
+import {
+  isBankingAgentDashboardRoute,
+  isDashboardQuickNavRoute,
+  isEmbeddedAgentDockRoute,
+} from './utils/embeddedAgentFabVisibility';
 import { useDemoMode } from './hooks/useDemoMode';
 import SessionReauthBanner from './components/SessionReauthBanner';
 import { SESSION_REAUTH_EVENT } from './utils/authUi';
@@ -245,12 +249,13 @@ function AppWithAuth() {
     );
   }
 
-  /** Floating + embedded agent chrome only on customer/admin dashboard homes (`/`, `/admin`, `/dashboard`). */
+  /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
   const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
+  const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
   const showFloatingAgent =
     Boolean(user) && agentUiMode === 'floating' && onDashboardAgentRoute;
   const hasEmbeddedDockLayout =
-    Boolean(user) && agentUiMode === 'embedded' && onDashboardAgentRoute;
+    Boolean(user) && agentUiMode === 'embedded' && onEmbeddedDockRoute;
 
   return (
     <EducationUIProvider>

@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-26 — Embedded agent on `/config` (setup focus); Demo config page matches 2026 dashboard shell
+
+**Symptom**: Application Configuration had no embedded bottom dock when Agent UI mode was embedded; the dock copy and shortcuts were banking-centric everywhere. **`/demo-data`** still used the older **`app-page-shell`** layout (gradient hero + **`PageNav`**) instead of the customer **`UserDashboard`** header stack and toolbar.
+
+**Root cause**: **`isBankingAgentDashboardRoute`** gated **`EmbeddedAgentDock`** and **`App--has-embedded-dock`** to **`/`** / **`/admin`** / **`/dashboard`** only — **`/config`** was excluded. **`BankingAgent`** had no “application setup” variant for the dock. **`DemoDataPage`** did not import **`UserDashboard.css`** or reuse **`dashboard-header-stack`** / **`dashboard-toolbar`**.
+
+**Fix**: **`embeddedAgentFabVisibility.js`** — **`isEmbeddedAgentDockRoute(pathname)`** includes **`/config`**; floating FAB still uses **`isBankingAgentDashboardRoute`** only (no FAB on **`/config`**). **`App.js`** — **`hasEmbeddedDockLayout`** uses **`isEmbeddedAgentDockRoute`**. **`EmbeddedAgentDock`** — show on embedded dock routes; on **`/config`**, dock title/lead and **`embeddedFocus="config"`** on **`BankingAgent`**. **`BankingAgent`** — prop **`embeddedFocus`** **`'banking'`** | **`'config'`**; config mode: setup title/subtitle, **`SUGGESTIONS_CONFIG_*`**, actions limited to **MCP tools** + **Log out**, updated welcome copy. **`DemoDataPage`** — **`user-dashboard user-dashboard--2026`**, same header/toolbar pattern as **`UserDashboard`** (breadcrumbs, education shortcuts, theme toggle); **`section` / **`ud-hero`** for intro; **`useEducationUI`**; removed **`PageNav`** / **`appShellPages`** for this page.
+
+**Tests**: **`embeddedAgentFabVisibility.test.js`** (**`isEmbeddedAgentDockRoute`**, FAB hidden on **`/config`** when floating); **`DemoDataPage.test.js`** mocks **`EducationUIContext`**. Manual: embedded mode — dock on **`/config`** with setup copy; **`/demo-data`** matches dashboard chrome.
+
+---
+
 ## 2026-03-27 — Banking Agent: dashboard-only floating UI; HITL routes; floating panel sizing; consent GET
 
 **Symptom**: Floating agent appeared on marketing and tool routes; panel was too small to read chips and suggestions; HITL consent page and admin banking ops were not routed; `DashboardQuickNav` crashed (`isBankingAgentDashboardRoute` referenced without import).

@@ -1,11 +1,13 @@
 // banking_api_ui/src/components/DemoDataPage.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
 import { fetchDemoScenario, saveDemoScenario, persistBankingAgentUiMode } from '../services/demoScenarioService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
-import PageNav from './PageNav';
-import '../styles/appShellPages.css';
+import { useEducationUI } from '../context/EducationUIContext';
+import { EDU } from './education/educationIds';
+import './UserDashboard.css';
 import './DemoDataPage.css';
 
 /** Account types for new rows (values stored lowercase; labels for the dropdown). */
@@ -23,8 +25,34 @@ const ACCOUNT_TYPE_OPTIONS = [
  * Lets demo users edit account labels, balances, and MFA step-up threshold for their sandbox data.
  */
 export default function DemoDataPage({ user, onLogout }) {
+  const navigate = useNavigate();
+  const { open } = useEducationUI();
   const { mode: agentUiMode, setMode: setAgentUiMode } = useAgentUiMode();
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+  const dashboardCrumbLabel = user?.role === 'admin' ? 'Admin' : 'Dashboard';
+
+  const [dashTheme, setDashTheme] = useState(() => {
+    try {
+      const t = localStorage.getItem('bx-dash-theme');
+      return t === 'dark' ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = dashTheme;
+    try {
+      localStorage.setItem('bx-dash-theme', dashTheme);
+    } catch (_) {
+      /* ignore */
+    }
+  }, [dashTheme]);
+
+  const handleDashThemeToggle = useCallback(() => {
+    setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState([]);
@@ -43,14 +71,14 @@ export default function DemoDataPage({ user, onLogout }) {
   const [persistenceNote, setPersistenceNote] = useState(null);
 
   /** Stable React key for a row before the server assigns an account id. */
-  const getAccountRowKey = a => a.id || a._clientKey;
+  const getAccountRowKey = (a) => a.id || a._clientKey;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchDemoScenario();
       setAccounts(
-        (data.accounts || []).map(a => ({
+        (data.accounts || []).map((a) => ({
           ...a,
           _name: a.name || '',
           _balance: String(a.balance ?? ''),
@@ -85,8 +113,8 @@ export default function DemoDataPage({ user, onLogout }) {
 
   /** Updates a single account row (by id or draft _clientKey). */
   const handleAccountChange = (rowKey, field, value) => {
-    setAccounts(prev =>
-      prev.map(a => (getAccountRowKey(a) === rowKey ? { ...a, [field]: value } : a)),
+    setAccounts((prev) =>
+      prev.map((a) => (getAccountRowKey(a) === rowKey ? { ...a, [field]: value } : a)),
     );
   };
 
@@ -95,7 +123,7 @@ export default function DemoDataPage({ user, onLogout }) {
     const c = typeof window !== 'undefined' ? window.crypto : null;
     const ck =
       c && typeof c.randomUUID === 'function' ? c.randomUUID() : `draft-${Date.now()}`;
-    setAccounts(prev => [
+    setAccounts((prev) => [
       ...prev,
       {
         id: '',
@@ -110,11 +138,11 @@ export default function DemoDataPage({ user, onLogout }) {
   };
 
   /** Drops a not-yet-saved row from the form. */
-  const handleRemoveDraft = rowKey => {
-    setAccounts(prev => prev.filter(a => a.id || getAccountRowKey(a) !== rowKey));
+  const handleRemoveDraft = (rowKey) => {
+    setAccounts((prev) => prev.filter((a) => a.id || getAccountRowKey(a) !== rowKey));
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
@@ -131,7 +159,7 @@ export default function DemoDataPage({ user, onLogout }) {
       }
       const body = {
         stepUpAmountThreshold,
-        accounts: accounts.map(a => {
+        accounts: accounts.map((a) => {
           const row = {
             name: a._name,
             balance: a._balance === '' ? undefined : parseFloat(a._balance),
@@ -154,8 +182,6 @@ export default function DemoDataPage({ user, onLogout }) {
       await saveDemoScenario(body);
       notifySuccess('Demo data saved');
       await load();
-      // Let dashboards refresh their cached account/transaction lists immediately.
-      // (Helps when users switch back without a hard refresh.)
       try {
         window.dispatchEvent(new CustomEvent('demoScenarioUpdated'));
       } catch {
@@ -166,7 +192,7 @@ export default function DemoDataPage({ user, onLogout }) {
         await load();
         notifyWarning(
           err.message ||
-            'These account IDs are no longer on this server (common after a deploy or new instance). The form was reloaded — review accounts and save again.'
+            'These account IDs are no longer on this server (common after a deploy or new instance). The form was reloaded — review accounts and save again.',
         );
       } else {
         const msg =
@@ -193,10 +219,10 @@ export default function DemoDataPage({ user, onLogout }) {
         isActive: true,
       });
     }
-    setAccounts(prev =>
+    setAccounts((prev) =>
       prev
-        .filter(a => a.id)
-        .map(a => {
+        .filter((a) => a.id)
+        .map((a) => {
           const idStr = typeof a.id === 'string' ? a.id : '';
           if (idStr.startsWith('chk-')) {
             return {
@@ -226,14 +252,14 @@ export default function DemoDataPage({ user, onLogout }) {
    * Persists floating vs embedded agent; only one layout is active. Reload so App picks up the change.
    * @param {'floating' | 'embedded'} next
    */
-  const handleAgentLayoutChange = async next => {
+  const handleAgentLayoutChange = async (next) => {
     if (next === agentUiMode) return;
     setAgentUiMode(next);
     const saved = await persistBankingAgentUiMode(next);
     if (!saved) {
       notifyWarning(
         'Agent layout could not be saved on the server yet. It stays on this browser; refresh may revert if the server still has the old value.',
-        { autoClose: 4500 }
+        { autoClose: 4500 },
       );
     }
     notifyInfo('Applying agent layout…', { autoClose: 1200 });
@@ -247,284 +273,386 @@ export default function DemoDataPage({ user, onLogout }) {
   };
 
   return (
-    <div className="demo-data-page app-page-shell">
-      <header className="app-page-shell__hero">
-        <div className="app-page-shell__hero-top">
-          <div>
-            <h1 className="app-page-shell__title">Demo config</h1>
-            <p className="app-page-shell__lead">
-              Adjust sandbox account names, balances, your profile, and the MFA step-up threshold for transfers and withdrawals.
-              Changes apply to your signed-in user only.
-            </p>
-          </div>
-          <div className="app-page-shell__actions">
-            <Link to={dashboardPath} className="app-page-shell__btn app-page-shell__btn--solid">
-              ← Dashboard
-            </Link>
-            <button type="button" className="app-page-shell__btn" onClick={onLogout}>
-              Log out
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="user-dashboard user-dashboard--2026 demo-data-page">
+      <a href="#demo-data-main" className="dash-skip-link">
+        Skip to main content
+      </a>
 
-      <div className="app-page-shell__body">
-        <PageNav user={user} onLogout={onLogout} title="Demo config" />
-      {persistenceNote && (
-        <div className="demo-data-banner" role="status">
-          {persistenceNote}
-        </div>
-      )}
-
-      <section className="app-page-card demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
-        <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
-        <p className="demo-data-hint">
-          Choose one layout: <strong>floating</strong> (corner FAB — default) or <strong>embedded</strong> (full-width bottom strip on home only; no floating FAB while signed in).
-          On this page there is no embedded dock — use the link below to open your dashboard. Switching to embedded sends you home so the dock appears.
-        </p>
-        <div className="demo-data-agent-options" role="radiogroup" aria-label="Agent layout">
-          <label className="demo-data-agent-option">
-            <input
-              type="radio"
-              name="demoDataAgentUiMode"
-              value="embedded"
-              checked={agentUiMode === 'embedded'}
-              onChange={() => handleAgentLayoutChange('embedded')}
-            />
-            <span className="demo-data-agent-option-text">
-              <span className="demo-data-agent-option-title">Embedded (dashboard home)</span>
-              <span className="demo-data-agent-option-desc">
-                On your <strong>home</strong> dashboard, the assistant sits in a full-width bottom strip and the FAB is hidden while signed in.
-              </span>
-            </span>
-          </label>
-          <label className="demo-data-agent-option">
-            <input
-              type="radio"
-              name="demoDataAgentUiMode"
-              value="floating"
-              checked={agentUiMode === 'floating'}
-              onChange={() => handleAgentLayoutChange('floating')}
-            />
-            <span className="demo-data-agent-option-text">
-              <span className="demo-data-agent-option-title">Floating panel</span>
-              <span className="demo-data-agent-option-desc">
-                Corner button opens the agent over whatever page you are on (default).
-              </span>
-            </span>
-          </label>
-        </div>
-        {agentUiMode === 'embedded' && (
-          <p className="demo-data-agent-note" role="status">
-            Embedded mode shows the assistant as a bottom strip on your home dashboard only (/ or /dashboard for customers; / or /admin for admins). Other routes have no dock until you return home.
-          </p>
-        )}
-      </section>
-
-      <Link
-        to={dashboardPath}
-        className="demo-data-agent-open-icon"
-        title="Open AI banking assistant on your dashboard"
-        aria-label="Open AI banking assistant on your dashboard"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 8V4H8" />
-          <rect width="16" height="12" x="4" y="8" rx="2" />
-          <path d="M2 14h2" />
-          <path d="M20 14h2" />
-          <path d="M15 13v2" />
-          <path d="M9 13v2" />
-        </svg>
-      </Link>
-
-      {loading ? (
-        <div className="app-page-card">
-          <p className="demo-data-loading">Loading…</p>
-        </div>
-      ) : (
-        <form className="demo-data-form" onSubmit={handleSubmit}>
-          <section className="app-page-card demo-data-section">
-            <h2>User profile</h2>
-            <p className="demo-data-hint">
-              These fields update your signed-in user record. Immutable fields (<code>id</code>, <code>password</code>,{' '}
-              <code>createdAt</code>) are not editable here.
-            </p>
-            {(userMeta.id || userMeta.role || userMeta.createdAt) && (
-              <p className="demo-data-readonly-meta" aria-label="Account metadata">
-                {userMeta.id && (
-                  <span>
-                    User ID: <code>{userMeta.id}</code>
-                  </span>
-                )}
-                {userMeta.role && (
-                  <span>
-                    Role: <strong>{userMeta.role}</strong>
-                  </span>
-                )}
-                {userMeta.createdAt && (
-                  <span>
-                    Created: <time dateTime={userMeta.createdAt}>{userMeta.createdAt}</time>
-                  </span>
-                )}
-              </p>
-            )}
-            <div className="demo-data-profile-grid">
-              <label className="demo-data-field">
-                <span>First name</span>
-                <input
-                  type="text"
-                  autoComplete="given-name"
-                  value={profile.firstName}
-                  onChange={e => setProfile(p => ({ ...p, firstName: e.target.value }))}
-                  maxLength={300}
-                />
-              </label>
-              <label className="demo-data-field">
-                <span>Last name</span>
-                <input
-                  type="text"
-                  autoComplete="family-name"
-                  value={profile.lastName}
-                  onChange={e => setProfile(p => ({ ...p, lastName: e.target.value }))}
-                  maxLength={300}
-                />
-              </label>
-              <label className="demo-data-field">
-                <span>Email</span>
-                <input
-                  type="email"
-                  autoComplete="email"
-                  value={profile.email}
-                  onChange={e => setProfile(p => ({ ...p, email: e.target.value }))}
-                  maxLength={300}
-                />
-              </label>
-              <label className="demo-data-field">
-                <span>Username</span>
-                <input
-                  type="text"
-                  autoComplete="username"
-                  value={profile.username}
-                  onChange={e => setProfile(p => ({ ...p, username: e.target.value }))}
-                  maxLength={300}
-                />
-              </label>
-            </div>
-            <label className="demo-data-field demo-data-field--checkbox">
-              <input
-                type="checkbox"
-                checked={profile.isActive}
-                onChange={e => setProfile(p => ({ ...p, isActive: e.target.checked }))}
-              />
-              <span>Account active</span>
-            </label>
-          </section>
-
-          <section className="app-page-card demo-data-section">
-            <h2>Step-up MFA threshold (USD)</h2>
-            <p className="demo-data-hint">
-              Transfers and withdrawals at or above this amount require step-up authentication (when enabled).
-              Default from server: <strong>{defaults?.stepUpAmountThreshold ?? '—'}</strong>.
-            </p>
-            <label className="demo-data-field">
-              <span>Threshold ($)</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={threshold}
-                onChange={e => setThreshold(e.target.value)}
-              />
-            </label>
-          </section>
-
-          <section className="app-page-card demo-data-section">
-            <div className="demo-data-accounts-header">
-              <h2>Accounts</h2>
-              <button type="button" className="demo-data-btn ghost" onClick={handleAddAccount}>
-                Add account
-              </button>
-            </div>
-            {accounts.length === 0 ? (
-              <p className="demo-data-hint">
-                No accounts yet. Use <strong>Add account</strong> above, or open the dashboard once to provision the
-                default checking and savings accounts.
-              </p>
-            ) : (
-              <div className="demo-data-accounts">
-                {accounts.map(a => {
-                  const rowKey = getAccountRowKey(a);
-                  const isNew = !a.id;
-                  return (
-                    <div key={rowKey} className="demo-data-account-card">
-                      <div className="demo-data-account-meta">
-                        {isNew ? (
-                          <select
-                            className="demo-data-account-type-select"
-                            aria-label="Account type"
-                            value={a.accountType || 'checking'}
-                            onChange={e => handleAccountChange(rowKey, 'accountType', e.target.value)}
-                          >
-                            {ACCOUNT_TYPE_OPTIONS.map(opt => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="demo-data-type">{a.accountType}</span>
-                        )}
-                        <code>{a.accountNumber}</code>
-                        {isNew && (
-                          <button
-                            type="button"
-                            className="demo-data-remove-draft"
-                            onClick={() => handleRemoveDraft(rowKey)}
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      <label className="demo-data-field">
-                        <span>Account name</span>
-                        <input
-                          type="text"
-                          value={a._name}
-                          onChange={e => handleAccountChange(rowKey, '_name', e.target.value)}
-                          maxLength={120}
-                        />
-                      </label>
-                      <label className="demo-data-field">
-                        <span>Balance ({a.currency || 'USD'})</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={a._balance}
-                          onChange={e => handleAccountChange(rowKey, '_balance', e.target.value)}
-                        />
-                      </label>
-                    </div>
-                  );
-                })}
+      <div className="dashboard-header-stack">
+        <div className="dashboard-header dashboard-header--surface">
+          <div className="bank-branding">
+            <div className="bank-logo">
+              <div className="logo-icon">
+                <div className="logo-square" />
+                <div className="logo-square" />
+                <div className="logo-square" />
+                <div className="logo-square" />
               </div>
+              <span className="bank-name">BX Finance</span>
+            </div>
+            <div>
+              <h1 className="dashboard-header__title">Demo config</h1>
+              <div className="dashboard-header__crumbs">
+                <Link to="/" className="dashboard-header__crumb-link">
+                  Home
+                </Link>
+                <span className="dashboard-header__crumb-sep" aria-hidden="true">
+                  ›
+                </span>
+                <Link to={dashboardPath} className="dashboard-header__crumb-link">
+                  {dashboardCrumbLabel}
+                </Link>
+                <span className="dashboard-header__crumb-sep" aria-hidden="true">
+                  ›
+                </span>
+                <span className="dashboard-header__crumb-link dashboard-header__crumb-link--current">
+                  Demo config
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div className="user-info">
+              <span className="user-greeting">
+                Hello,{' '}
+                {user?.firstName || user?.lastName
+                  ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                  : user?.name || user?.username || user?.email?.split('@')[0] || 'there'}
+              </span>
+              <span className="user-email">{user?.email || user?.username}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboard-toolbar" role="toolbar" aria-label="Demo config actions">
+          <button type="button" className="dashboard-toolbar-btn" onClick={() => navigate(-1)}>
+            ← Back
+          </button>
+          <Link to={dashboardPath} className="dashboard-toolbar-btn">
+            ⌂ {dashboardCrumbLabel}
+          </Link>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
+          >
+            How does login work?
+          </button>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.MAY_ACT, 'what')}
+          >
+            What is may_act?
+          </button>
+          <Link
+            to="/mcp-inspector"
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
+            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
+          >
+            MCP Inspector
+          </Link>
+          <span className="demo-data-toolbar-current" aria-current="page">
+            Demo config
+          </span>
+          <Link to="/config" className="dashboard-toolbar-btn" title="PingOne environment and OAuth client settings">
+            PingOne config
+          </Link>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() =>
+              window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')
+            }
+            title="Open API Traffic viewer (all /api/* calls)"
+          >
+            API Traffic
+          </button>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--theme"
+            onClick={handleDashThemeToggle}
+            aria-pressed={dashTheme === 'dark'}
+            title={dashTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            {dashTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
+          <button type="button" onClick={onLogout} className="dashboard-toolbar-btn dashboard-toolbar-btn--danger">
+            Log out
+          </button>
+        </div>
+      </div>
+
+      <div className="dashboard-content demo-data-page__body">
+        <main className="demo-data-page__main" id="demo-data-main" tabIndex={-1}>
+          <div className="section ud-hero demo-data-page__hero">
+            <div className="ud-hero__top">
+              <p className="ud-hero__eyebrow">{format(new Date(), 'EEEE, MMM d')}</p>
+              <p className="ud-hero__insight" role="status">
+                Adjust sandbox account names, balances, your profile, and the MFA step-up threshold for transfers and
+                withdrawals. Changes apply to your signed-in user only.
+              </p>
+            </div>
+          </div>
+
+          {persistenceNote && (
+            <div className="demo-data-banner" role="status">
+              {persistenceNote}
+            </div>
+          )}
+
+          <section className="section demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
+            <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
+            <p className="demo-data-hint">
+              Choose one layout: <strong>floating</strong> (corner FAB — default) or <strong>embedded</strong> (full-width
+              bottom strip on home only; no floating FAB while signed in). On this page there is no embedded dock — use your
+              dashboard link below. Switching to embedded sends you home so the dock appears.
+            </p>
+            <div className="demo-data-agent-options" role="radiogroup" aria-label="Agent layout">
+              <label className="demo-data-agent-option">
+                <input
+                  type="radio"
+                  name="demoDataAgentUiMode"
+                  value="embedded"
+                  checked={agentUiMode === 'embedded'}
+                  onChange={() => handleAgentLayoutChange('embedded')}
+                />
+                <span className="demo-data-agent-option-text">
+                  <span className="demo-data-agent-option-title">Embedded (dashboard home)</span>
+                  <span className="demo-data-agent-option-desc">
+                    On your <strong>home</strong> dashboard, the assistant sits in a full-width bottom strip and the FAB is
+                    hidden while signed in.
+                  </span>
+                </span>
+              </label>
+              <label className="demo-data-agent-option">
+                <input
+                  type="radio"
+                  name="demoDataAgentUiMode"
+                  value="floating"
+                  checked={agentUiMode === 'floating'}
+                  onChange={() => handleAgentLayoutChange('floating')}
+                />
+                <span className="demo-data-agent-option-text">
+                  <span className="demo-data-agent-option-title">Floating panel</span>
+                  <span className="demo-data-agent-option-desc">
+                    Corner button opens the agent over whatever page you are on (default).
+                  </span>
+                </span>
+              </label>
+            </div>
+            {agentUiMode === 'embedded' && (
+              <p className="demo-data-agent-note" role="status">
+                Embedded mode shows the assistant as a bottom strip on your home dashboard only (/ or /dashboard for
+                customers; / or /admin for admins). Other routes have no dock until you return home.
+              </p>
             )}
           </section>
 
-          <div className="app-page-card demo-data-actions-row">
-            <div className="demo-data-actions">
-              <button type="button" className="demo-data-btn ghost" onClick={handleResetDefaults} disabled={!defaults}>
-                Reset form to defaults
-              </button>
-              <button type="submit" className="demo-data-btn primary" disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </form>
-      )}
+          <Link
+            to={dashboardPath}
+            className="demo-data-agent-open-icon"
+            title="Open dashboard (AI assistant)"
+            aria-label="Open dashboard (AI assistant)"
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 8V4H8" />
+              <rect width="16" height="12" x="4" y="8" rx="2" />
+              <path d="M2 14h2" />
+              <path d="M20 14h2" />
+              <path d="M15 13v2" />
+              <path d="M9 13v2" />
+            </svg>
+          </Link>
 
-            </div>
+          {loading ? (
+            <section className="section">
+              <p className="demo-data-loading">Loading…</p>
+            </section>
+          ) : (
+            <form className="demo-data-form" onSubmit={handleSubmit}>
+              <section className="section demo-data-section">
+                <h2>User profile</h2>
+                <p className="demo-data-hint">
+                  These fields update your signed-in user record. Immutable fields (<code>id</code>, <code>password</code>,{' '}
+                  <code>createdAt</code>) are not editable here.
+                </p>
+                {(userMeta.id || userMeta.role || userMeta.createdAt) && (
+                  <p className="demo-data-readonly-meta" aria-label="Account metadata">
+                    {userMeta.id && (
+                      <span>
+                        User ID: <code>{userMeta.id}</code>
+                      </span>
+                    )}
+                    {userMeta.role && (
+                      <span>
+                        Role: <strong>{userMeta.role}</strong>
+                      </span>
+                    )}
+                    {userMeta.createdAt && (
+                      <span>
+                        Created: <time dateTime={userMeta.createdAt}>{userMeta.createdAt}</time>
+                      </span>
+                    )}
+                  </p>
+                )}
+                <div className="demo-data-profile-grid">
+                  <label className="demo-data-field">
+                    <span>First name</span>
+                    <input
+                      type="text"
+                      autoComplete="given-name"
+                      value={profile.firstName}
+                      onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))}
+                      maxLength={300}
+                    />
+                  </label>
+                  <label className="demo-data-field">
+                    <span>Last name</span>
+                    <input
+                      type="text"
+                      autoComplete="family-name"
+                      value={profile.lastName}
+                      onChange={(e) => setProfile((p) => ({ ...p, lastName: e.target.value }))}
+                      maxLength={300}
+                    />
+                  </label>
+                  <label className="demo-data-field">
+                    <span>Email</span>
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      value={profile.email}
+                      onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
+                      maxLength={300}
+                    />
+                  </label>
+                  <label className="demo-data-field">
+                    <span>Username</span>
+                    <input
+                      type="text"
+                      autoComplete="username"
+                      value={profile.username}
+                      onChange={(e) => setProfile((p) => ({ ...p, username: e.target.value }))}
+                      maxLength={300}
+                    />
+                  </label>
+                </div>
+                <label className="demo-data-field demo-data-field--checkbox">
+                  <input
+                    type="checkbox"
+                    checked={profile.isActive}
+                    onChange={(e) => setProfile((p) => ({ ...p, isActive: e.target.checked }))}
+                  />
+                  <span>Account active</span>
+                </label>
+              </section>
+
+              <section className="section demo-data-section">
+                <h2>Step-up MFA threshold (USD)</h2>
+                <p className="demo-data-hint">
+                  Transfers and withdrawals at or above this amount require step-up authentication (when enabled). Default
+                  from server: <strong>{defaults?.stepUpAmountThreshold ?? '—'}</strong>.
+                </p>
+                <label className="demo-data-field">
+                  <span>Threshold ($)</span>
+                  <input type="number" min="0" step="0.01" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+                </label>
+              </section>
+
+              <section className="section demo-data-section">
+                <div className="demo-data-accounts-header">
+                  <h2>Accounts</h2>
+                  <button type="button" className="demo-data-btn ghost" onClick={handleAddAccount}>
+                    Add account
+                  </button>
+                </div>
+                {accounts.length === 0 ? (
+                  <p className="demo-data-hint">
+                    No accounts yet. Use <strong>Add account</strong> above, or open the dashboard once to provision the
+                    default checking and savings accounts.
+                  </p>
+                ) : (
+                  <div className="demo-data-accounts">
+                    {accounts.map((a) => {
+                      const rowKey = getAccountRowKey(a);
+                      const isNew = !a.id;
+                      return (
+                        <div key={rowKey} className="demo-data-account-card">
+                          <div className="demo-data-account-meta">
+                            {isNew ? (
+                              <select
+                                className="demo-data-account-type-select"
+                                aria-label="Account type"
+                                value={a.accountType || 'checking'}
+                                onChange={(e) => handleAccountChange(rowKey, 'accountType', e.target.value)}
+                              >
+                                {ACCOUNT_TYPE_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="demo-data-type">{a.accountType}</span>
+                            )}
+                            <code>{a.accountNumber}</code>
+                            {isNew && (
+                              <button type="button" className="demo-data-remove-draft" onClick={() => handleRemoveDraft(rowKey)}>
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                          <label className="demo-data-field">
+                            <span>Account name</span>
+                            <input
+                              type="text"
+                              value={a._name}
+                              onChange={(e) => handleAccountChange(rowKey, '_name', e.target.value)}
+                              maxLength={120}
+                            />
+                          </label>
+                          <label className="demo-data-field">
+                            <span>Balance ({a.currency || 'USD'})</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={a._balance}
+                              onChange={(e) => handleAccountChange(rowKey, '_balance', e.target.value)}
+                            />
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <section className="section demo-data-actions-row">
+                <div className="demo-data-actions">
+                  <button type="button" className="demo-data-btn ghost" onClick={handleResetDefaults} disabled={!defaults}>
+                    Reset form to defaults
+                  </button>
+                  <button type="submit" className="demo-data-btn primary" disabled={saving}>
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </section>
+            </form>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

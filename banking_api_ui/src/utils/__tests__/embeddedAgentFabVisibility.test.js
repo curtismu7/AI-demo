@@ -1,6 +1,7 @@
 // banking_api_ui/src/utils/__tests__/embeddedAgentFabVisibility.test.js
 import {
   isBankingAgentDashboardRoute,
+  isEmbeddedAgentDockRoute,
   isDashboardQuickNavRoute,
   shouldShowGlobalFloatingBankingAgentFab,
 } from '../embeddedAgentFabVisibility';
@@ -16,6 +17,18 @@ describe('isBankingAgentDashboardRoute', () => {
     expect(isBankingAgentDashboardRoute('/admin/')).toBe(true);
     expect(isBankingAgentDashboardRoute('/demo-data')).toBe(false);
     expect(isBankingAgentDashboardRoute('/mcp-inspector')).toBe(false);
+    expect(isBankingAgentDashboardRoute('/config')).toBe(false);
+  });
+});
+
+describe('isEmbeddedAgentDockRoute', () => {
+  it('includes dashboard homes and Application Configuration', () => {
+    expect(isEmbeddedAgentDockRoute('/')).toBe(true);
+    expect(isEmbeddedAgentDockRoute('/admin')).toBe(true);
+    expect(isEmbeddedAgentDockRoute('/dashboard')).toBe(true);
+    expect(isEmbeddedAgentDockRoute('/config')).toBe(true);
+    expect(isEmbeddedAgentDockRoute('/config/')).toBe(true);
+    expect(isEmbeddedAgentDockRoute('/logs')).toBe(false);
   });
 });
 
@@ -87,6 +100,16 @@ describe('shouldShowGlobalFloatingBankingAgentFab', () => {
         user: customer,
         agentUiMode: 'embedded',
         pathname: '/dashboard',
+      }),
+    ).toBe(false);
+  });
+
+  it('hides FAB on /config when floating (dock is embedded-only there)', () => {
+    expect(
+      shouldShowGlobalFloatingBankingAgentFab({
+        user: customer,
+        agentUiMode: 'floating',
+        pathname: '/config',
       }),
     ).toBe(false);
   });

@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import BankingAgent from './BankingAgent';
-import { isBankingAgentDashboardRoute } from '../utils/embeddedAgentFabVisibility';
+import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
 
 const HEIGHT_KEY = 'embedded_agent_dock_height_px';
 const COLLAPSE_KEY = 'embedded_agent_dock_collapsed';
@@ -88,22 +88,28 @@ export default function EmbeddedAgentDock({ user, onLogout, agentUiMode }) {
     [dockHeight]
   );
 
-  if (!user || agentUiMode !== 'embedded' || !isBankingAgentDashboardRoute(pathname)) {
+  if (!user || agentUiMode !== 'embedded' || !isEmbeddedAgentDockRoute(pathname)) {
     return null;
   }
+
+  const isConfigPage = pathname.replace(/\/$/, '') === '/config';
 
   return (
     <div
       className={`global-embedded-agent-dock-wrap${collapsed ? ' global-embedded-agent-dock-wrap--collapsed' : ''}`}
       role="region"
-      aria-label="AI banking assistant"
+      aria-label={isConfigPage ? 'Application setup assistant' : 'AI banking assistant'}
       data-agent-ui="embedded"
     >
       <div className="embedded-agent-dock__toolbar">
         <div className="embedded-agent-dock__head">
-          <h2 className="embedded-agent-dock__title">AI banking assistant</h2>
+          <h2 className="embedded-agent-dock__title">
+            {isConfigPage ? 'Application setup assistant' : 'AI banking assistant'}
+          </h2>
           <p className="embedded-agent-dock__lead">
-            Natural language and MCP tools — resize from the grip above, or collapse to reclaim space.
+            {isConfigPage
+              ? 'Ask about PingOne, redirect URIs, OAuth scopes, and environment variables — resize from the grip above, or collapse to reclaim space.'
+              : 'Natural language and MCP tools — resize from the grip above, or collapse to reclaim space.'}
           </p>
         </div>
         <button
@@ -134,7 +140,13 @@ export default function EmbeddedAgentDock({ user, onLogout, agentUiMode }) {
             className="embedded-agent-dock embedded-banking-agent embedded-banking-agent--bottom"
             style={{ '--embedded-dock-height': `${Math.round(dockHeight)}px` }}
           >
-            <BankingAgent user={user} onLogout={onLogout} mode="inline" embeddedDockBottom />
+            <BankingAgent
+              user={user}
+              onLogout={onLogout}
+              mode="inline"
+              embeddedDockBottom
+              embeddedFocus={isConfigPage ? 'config' : 'banking'}
+            />
           </div>
         </>
       )}

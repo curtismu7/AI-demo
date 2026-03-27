@@ -12,6 +12,19 @@ export function isBankingAgentDashboardRoute(pathname) {
 }
 
 /**
+ * Routes where the embedded bottom-dock agent is mounted (dashboard homes + Application Configuration).
+ * Floating FAB still uses {@link isBankingAgentDashboardRoute} only — not `/config`.
+ * @param {string} [pathname]
+ * @returns {boolean}
+ */
+export function isEmbeddedAgentDockRoute(pathname) {
+  if (pathname == null || typeof pathname !== 'string') return false;
+  const p = pathname.replace(/\/$/, '') || '/';
+  if (p === '/config') return true;
+  return isBankingAgentDashboardRoute(pathname);
+}
+
+/**
  * Routes where the fixed upper-left quick nav (Home, Dashboard, API, Logs) is shown.
  * Includes admin banking ops so admins can jump back without losing the rail.
  * @param {string} [pathname]

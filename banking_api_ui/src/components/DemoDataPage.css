@@ -1,13 +1,50 @@
-/* banking_api_ui/src/components/DemoDataPage.css */
-/* Layout shell: ../styles/appShellPages.css */
+/* banking_api_ui/src/components/DemoDataPage.css
+ * Demo config page — aligned with UserDashboard 2026 (UserDashboard.css). */
+
+.demo-data-page__body {
+  width: 100%;
+  max-width: min(960px, 100%);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.demo-data-page__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Hero matches dashboard “2026” card; eyebrow + insight only */
+.demo-data-page__hero .ud-hero__top {
+  margin: 0;
+}
+
+.demo-data-toolbar-current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: clamp(8px, 1.2vw, 10px) clamp(10px, 1.8vw, 16px);
+  font-size: clamp(0.75rem, 0.5vw + 0.68rem, 0.84rem);
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.25;
+  color: var(--dash-muted, #64748b);
+  border: 1px dashed var(--dash-border, rgba(15, 23, 42, 0.18));
+  border-radius: 8px;
+  background: var(--dash-surface-2, #f1f5f9);
+  box-sizing: border-box;
+}
 
 .demo-data-page .demo-data-section {
   margin-bottom: 0;
 }
 
-.demo-data-page .app-page-card + .app-page-card,
-.demo-data-page .demo-data-banner + .app-page-card {
-  margin-top: 1rem;
+.demo-data-page .section + .section,
+.demo-data-page .demo-data-banner + .section {
+  margin-top: 0;
 }
 
 .demo-data-banner {
@@ -17,22 +54,26 @@
   padding: 0.65rem 0.85rem;
   border-radius: 0.5rem;
   font-size: 0.85rem;
-  margin-bottom: 1rem;
 }
 
 .demo-data-loading {
-  color: #6b7280;
+  color: var(--dash-muted, #64748b);
+  margin: 0;
 }
 
 .demo-data-section h2 {
-  font-size: 1.05rem;
+  font-size: clamp(1.05rem, 1vw + 0.75rem, 1.25rem);
   margin: 0 0 0.5rem;
+  color: var(--dash-text, #111827);
+  font-weight: 600;
+  letter-spacing: -0.025em;
 }
 
 .demo-data-hint {
   margin: 0 0 0.75rem;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--dash-muted, #64748b);
+  line-height: 1.5;
 }
 
 .demo-data-field {
@@ -71,10 +112,10 @@
   gap: 0.65rem 1.25rem;
   margin: 0 0 0.85rem;
   padding: 0.5rem 0.65rem;
-  background: #f1f5f9;
+  background: var(--dash-surface-2, #f1f5f9);
   border-radius: 8px;
   font-size: 0.78rem;
-  color: #475569;
+  color: var(--dash-muted, #475569);
 }
 
 .demo-data-readonly-meta code {
@@ -121,10 +162,10 @@
 }
 
 .demo-data-account-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--dash-border, #e2e8f0);
   border-radius: 8px;
   padding: 1rem 1.1rem;
-  background: #f8fafc;
+  background: var(--dash-surface-2, #f8fafc);
 }
 
 .demo-data-account-meta {
@@ -171,7 +212,6 @@
 .demo-data-actions-row {
   display: flex;
   justify-content: flex-end;
-  margin-top: 0.25rem;
 }
 
 .demo-data-actions {
@@ -220,23 +260,9 @@
   color: #fff;
 }
 
-.demo-data-docs {
-  font-size: 0.88rem;
-  color: #475569;
-  line-height: 1.55;
-}
-
-.demo-data-docs h2 {
-  font-size: 1.05rem;
-  color: #0f172a;
-}
-
 /* AI agent layout (floating vs embedded) */
 .demo-data-agent-layout {
-  padding: 0;
-  border: none;
-  background: transparent;
-  box-shadow: none;
+  padding: clamp(18px, 3vw, 32px);
 }
 
 .demo-data-agent-options {
@@ -300,7 +326,7 @@
   line-height: 1.45;
 }
 
-/* Icon-only shortcut to home dashboard (no BankingAgent widget on this page) */
+/* Shortcut to dashboard (no embedded dock on this route) */
 .demo-data-agent-open-icon {
   position: fixed;
   bottom: calc(28px + env(safe-area-inset-bottom, 0px));

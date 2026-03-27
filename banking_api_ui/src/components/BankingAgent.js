@@ -91,6 +91,27 @@ const SUGGESTIONS_ADMIN = [
   'What is step-up auth?',
 ];
 
+/** Embedded dock on `/config` — setup / OAuth / env, not day-to-day banking. */
+const CONFIG_ACTION_IDS = ['mcp_tools', 'logout'];
+
+const SUGGESTIONS_CONFIG_CUSTOMER = [
+  'What PingOne or OAuth environment variables does this app need?',
+  'How should I set redirect URIs for local development?',
+  'What OAuth scopes does the BFF use?',
+  'What is PKCE and why does this app use it?',
+  'List MCP tools',
+  'How do I fix invalid_redirect_uri?',
+];
+
+const SUGGESTIONS_CONFIG_ADMIN = [
+  'What worker app credentials does the API server need in production?',
+  'What redirect URIs should I register in PingOne for this demo?',
+  'Show me last 5 errors',
+  'List MCP tools',
+  'How does token exchange work for the MCP server?',
+  'What is CIBA?',
+];
+
 /**
  * Chat copy when the BFF has a cookie but no live OAuth tokens.
  * Adapts to store quota/auth errors vs. healthy Redis but missing OAuth tokens in this session.
@@ -461,7 +482,17 @@ function ResultsPanel({ panel, onClose, style }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-function welcomeMessage(u) {
+function welcomeMessage(u, focus = 'banking') {
+  if (focus === 'config') {
+    if (!u) {
+      return '⚙️ Ask about PingOne, redirect URIs, OAuth scopes, and environment variables for this demo.';
+    }
+    const name = u.firstName || u.name?.split(' ')[0] || 'there';
+    if (u.role === 'admin') {
+      return `⚙️ Hi ${name} — you're on Application Configuration. Ask about environment IDs, worker apps, redirect URIs, or OAuth. Banking shortcuts are hidden here.`;
+    }
+    return `⚙️ Hi ${name} — you're on Application Configuration. Ask how to connect this app to PingOne and what URLs to register.`;
+  }
   if (!u) return "👋 You're signed in! What would you like to do?";
   const name = u.firstName || u.name?.split(' ')[0] || 'there';
   if (u.role === 'admin') {
@@ -530,6 +561,7 @@ const TOPIC_MESSAGES = {
  * @param {object} props
  * @param {'float' | 'inline'} [props.mode]
  * @param {boolean} [props.embeddedDockBottom] When inline, stack chat on top and suggestions below (dashboard bottom bar)
+ * @param {'banking' | 'config'} [props.embeddedFocus] When `config`, dock on Application Configuration emphasizes setup (not transfers).
  * @param {boolean} [props.distinctFloatingChrome] When floating, stronger card/chrome so it reads as a separate widget vs the page.
  */
 export default function BankingAgent({
@@ -537,10 +569,12 @@ export default function BankingAgent({
   onLogout,
   mode = 'float',
   embeddedDockBottom = false,
+  embeddedFocus = 'banking',
   distinctFloatingChrome = false,
 }) {
   const isInline = mode === 'inline';
   const isBottomDock = isInline && embeddedDockBottom;
+  const isConfigEmbeddedFocus = embeddedFocus === 'config';
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   const {
@@ -659,7 +693,7 @@ export default function BankingAgent({
             setSessionUser(found);
             setMessages(prev => {
               if (prev.length > 0) return prev;
-              const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found) };
+              const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus) };
               if (cookieOnly) {
                 sessionFixBubbleShownRef.current = true;
                 return [
@@ -694,15 +728,29 @@ export default function BankingAgent({
     if (!user) return;
     setMessages(prev =>
       prev.length === 0
-        ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user) }]
+        ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user, embeddedFocus) }]
         : prev
     );
-  }, [user]);
+  }, [user, embeddedFocus]);
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
   const isLoggedIn = !!effectiveUser;
   const isConfigured = oauthConfig && (oauthConfig.admin || oauthConfig.user);
+
+  const suggestionList = useMemo(() => {
+    if (isConfigEmbeddedFocus) {
+      return effectiveUser?.role === 'admin' ? SUGGESTIONS_CONFIG_ADMIN : SUGGESTIONS_CONFIG_CUSTOMER;
+    }
+    return effectiveUser?.role === 'admin' ? SUGGESTIONS_ADMIN : SUGGESTIONS_CUSTOMER;
+  }, [isConfigEmbeddedFocus, effectiveUser?.role]);
+
+  const actionsList = useMemo(() => {
+    if (isConfigEmbeddedFocus) {
+      return ACTIONS.filter(a => CONFIG_ACTION_IDS.includes(a.id));
+    }
+    return ACTIONS;
+  }, [isConfigEmbeddedFocus]);
 
   /**
    * Independently check auth endpoints.  Called on mount, on panel open, and
@@ -755,7 +803,7 @@ export default function BankingAgent({
       setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
-        const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found) };
+        const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus) };
         if (cookieOnly) {
           sessionFixBubbleShownRef.current = true;
           setMessages([
@@ -774,7 +822,7 @@ export default function BankingAgent({
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInline]);
+  }, [isInline, embeddedFocus]);
 
   // Re-check when App.js confirms a login, and auto-open the agent
   useEffect(() => {
@@ -782,13 +830,13 @@ export default function BankingAgent({
       checkSelfAuth();
       setMessages(prev =>
         prev.length === 0
-          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUserRef.current) }]
+          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUserRef.current, embeddedFocus) }]
           : prev
       );
     };
     window.addEventListener('userAuthenticated', onAuth);
     return () => window.removeEventListener('userAuthenticated', onAuth);
-  }, [checkSelfAuth, user, isInline]);
+  }, [checkSelfAuth, user, isInline, embeddedFocus]);
 
   // Re-check when panel opens (catches sessions established after mount)
   useEffect(() => {
@@ -1509,7 +1557,7 @@ export default function BankingAgent({
         <div
           className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded && !isInline ? ' ba-expanded' : ''}${isInline ? ' ba-mode-inline' : ''}${isBottomDock ? ' ba-embedded-bottom-dock' : ''}`}
           role="dialog"
-          aria-label="Banking AI Agent"
+          aria-label={isConfigEmbeddedFocus ? 'Application setup assistant' : 'Banking AI Agent'}
           ref={panelRef}
           style={panelStyle}
         >
@@ -1525,11 +1573,17 @@ export default function BankingAgent({
               <div className="ba-header-left">
                 <span className="ba-status-dot" />
                 <div>
-                  <div className="ba-title">BX Finance AI Agent</div>
+                  <div className="ba-title">
+                    {isConfigEmbeddedFocus ? 'Application setup assistant' : 'BX Finance AI Agent'}
+                  </div>
                   <div className="ba-subtitle">
-                    {isLoggedIn
-                      ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'}`
-                      : 'Sign in to get started'}
+                    {isConfigEmbeddedFocus
+                      ? isLoggedIn
+                        ? 'PingOne · OAuth · redirect URIs · environment variables'
+                        : 'Sign in to get started'
+                      : isLoggedIn
+                        ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'}`
+                        : 'Sign in to get started'}
                   </div>
                 </div>
               </div>
@@ -1584,9 +1638,12 @@ export default function BankingAgent({
             </div>
             {/* Connected services row */}
             <div className="ba-server-chips">
-              <span className="ba-server-chip ba-server-chip--active" title="Banking AI tools service — connected">
+              <span
+                className="ba-server-chip ba-server-chip--active"
+                title={isConfigEmbeddedFocus ? 'MCP tools (same server — use for discovery)' : 'Banking AI tools service — connected'}
+              >
                 <span className="ba-chip-dot" />
-                Banking Tools
+                {isConfigEmbeddedFocus ? 'MCP tools' : 'Banking Tools'}
                 {mcpStatus.connected && mcpStatus.toolCount != null && (
                   <span className="ba-chip-count">{mcpStatus.toolCount} actions</span>
                 )}
@@ -1663,7 +1720,7 @@ export default function BankingAgent({
               )}
 
               <div className="ba-left-label">Try asking:</div>
-              {(effectiveUser?.role === 'admin' ? SUGGESTIONS_ADMIN : SUGGESTIONS_CUSTOMER).map(s => (
+              {suggestionList.map(s => (
                 <button
                   key={s}
                   type="button"
@@ -1695,7 +1752,7 @@ export default function BankingAgent({
               {isLoggedIn ? (
                 <>
                   <div className="ba-left-label">Actions:</div>
-                  {ACTIONS.map(a => (
+                  {actionsList.map(a => (
                     <button
                       key={a.id}
                       type="button"

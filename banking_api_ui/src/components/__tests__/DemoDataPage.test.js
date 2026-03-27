@@ -14,6 +14,10 @@ jest.mock('../../context/AgentUiModeContext', () => ({
   useAgentUiMode: () => ({ mode: 'floating', setMode: jest.fn() }),
 }));
 
+jest.mock('../../context/EducationUIContext', () => ({
+  useEducationUI: () => ({ open: jest.fn() }),
+}));
+
 jest.mock('react-toastify', () => ({
   toast: {
     error: jest.fn(),
