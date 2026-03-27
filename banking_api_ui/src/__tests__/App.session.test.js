@@ -39,6 +39,7 @@ jest.mock('axios', () => {
 
 jest.mock('react-router-dom', () => ({
   BrowserRouter: ({ children }) => children,
+  Router:        ({ children }) => children,
   Routes:        ({ children }) => children,
   Route:         () => null,
   Navigate:      () => null,

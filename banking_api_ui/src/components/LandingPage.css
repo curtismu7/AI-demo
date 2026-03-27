@@ -42,6 +42,11 @@
   font-weight: 700;
 }
 
+/* BX Finance wordmark next to logo — always white on dark landing chrome */
+.landing-page .brand-name {
+  color: #ffffff;
+}
+
 /* Agent layout toggle — visible on all breakpoints (navbar) */
 .nav-agent-ui-wrap {
   display: flex;

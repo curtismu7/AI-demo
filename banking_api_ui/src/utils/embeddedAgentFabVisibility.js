@@ -12,19 +12,30 @@ export function isBankingAgentDashboardRoute(pathname) {
 }
 
 /**
+ * Routes where the fixed upper-left quick nav (Home, Dashboard, API, Logs) is shown.
+ * Includes admin banking ops so admins can jump back without losing the rail.
+ * @param {string} [pathname]
+ * @param {{ role?: string } | null | undefined} [user]
+ */
+export function isDashboardQuickNavRoute(pathname, user) {
+  if (pathname == null || typeof pathname !== 'string') return false;
+  const p = pathname.replace(/\/$/, '') || '/';
+  if (isBankingAgentDashboardRoute(pathname)) return true;
+  if (user?.role === 'admin' && p === '/admin/banking') return true;
+  return false;
+}
+
+/**
  * Whether the global corner FAB floating agent should render.
  *
- * - Floating mode: FAB on all signed-in routes except Demo config (`/demo-data`), which uses an in-page icon only.
- * - Embedded mode: no FAB — assistant only as the bottom dock on `/`, `/admin`, `/dashboard`.
+ * - Only when signed in, floating mode, and on dashboard home routes (`/`, `/admin`, `/dashboard`).
+ * - Embedded mode: no FAB — assistant only as the bottom dock on those same routes.
  *
  * @param {{ user?: { role?: string } | null | undefined; agentUiMode: 'floating' | 'embedded'; pathname?: string }} p
  * @returns {boolean}
  */
-export function shouldShowGlobalFloatingBankingAgentFab({ user: _user, agentUiMode, pathname = '' }) {
-  const p = (pathname || '').replace(/\/$/, '') || '/';
-  if (p === '/demo-data') return false;
-
-  if (agentUiMode === 'floating') return true;
-
-  return false;
+export function shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode, pathname = '' }) {
+  if (!user) return false;
+  if (agentUiMode !== 'floating') return false;
+  return isBankingAgentDashboardRoute(pathname);
 }

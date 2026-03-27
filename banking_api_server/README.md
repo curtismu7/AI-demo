@@ -98,6 +98,7 @@ PINGONE_CORE_TENANT_NAME=your-tenant-name
 PINGONE_CORE_CLIENT_ID=your-client-id
 PINGONE_CORE_CLIENT_SECRET=your-client-secret
 PINGONE_CORE_REDIRECT_URI=http://localhost:3001/api/auth/oauth/callback
+# Also register https://api.pingdeme.org/api/auth/oauth/callback (and user callback) in PingOne if you use that host.
 
 # Security
 SESSION_SECRET=your-session-secret
@@ -111,7 +112,7 @@ NODE_ENV=development
 ### PingOne Core Setup
 
 1. Create OAuth2 client in PingOne Core admin console
-2. Configure redirect URI: `http://localhost:3001/api/auth/oauth/callback`
+2. Configure redirect URIs (add **all** origins you use): `http://localhost:3001/api/auth/oauth/callback` and, if applicable, `https://api.pingdeme.org/api/auth/oauth/callback` — same for the end-user app with `/api/auth/oauth/user/callback`. See `GET /api/auth/oauth/redirect-info` on a running server or **Configuration → Register these redirect URIs** in the app.
 3. Set grant types to "Authorization Code"
 4. Configure user roles and attributes
 5. Update `.env` file with client credentials
@@ -160,7 +161,7 @@ NODE_ENV=development
 ### Common Issues
 
 1. **"Invalid redirect URI"**
-   - Ensure redirect URI matches PingOne Core configuration exactly
+   - Ensure the callback URL matches PingOne **exactly** (scheme, host, path). Register **localhost** and **https://api.pingdeme.org** (or your API host) if you switch between dev and hosted BFF — PingOne allows multiple redirect URIs per application.
 
 2. **"Invalid client"**
    - Verify client ID and secret in `.env` file

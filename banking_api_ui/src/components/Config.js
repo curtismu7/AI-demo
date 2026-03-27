@@ -506,6 +506,47 @@ export default function Config() {
                 </div>
               </div>
             </div>
+            {Array.isArray(redirectInfo.referenceRedirectSets) && redirectInfo.referenceRedirectSets.length > 0 && (
+              <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.35)', borderRadius: 8, border: '1px solid rgba(15,23,42,0.12)' }}>
+                <p style={{ margin: '0 0 0.65rem', fontSize: '0.875rem', fontWeight: 600 }}>
+                  Reference: localhost + api.pingdeme.org (add every host you use in PingOne)
+                </p>
+                {redirectInfo.referenceRedirectSets.map((row) => (
+                  <div key={row.id} style={{ marginBottom: '0.85rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>{row.label}</div>
+                    {row.hint && <p style={{ margin: '0 0 0.35rem', fontSize: '0.78rem', color: '#475569' }}>{row.hint}</p>}
+                    <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.78rem' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                        <span style={{ minWidth: '7rem', color: '#64748b' }}>Admin</span>
+                        <code className="config-page__code-block" style={{ flex: '1 1 200px' }}>{row.adminRedirectUri}</code>
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem' }}
+                          onClick={() => { navigator.clipboard.writeText(row.adminRedirectUri); notifySuccess('Copied'); }}>
+                          Copy
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                        <span style={{ minWidth: '7rem', color: '#64748b' }}>Customer</span>
+                        <code className="config-page__code-block" style={{ flex: '1 1 200px' }}>{row.userRedirectUri}</code>
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem' }}
+                          onClick={() => { navigator.clipboard.writeText(row.userRedirectUri); notifySuccess('Copied'); }}>
+                          Copy
+                        </button>
+                      </div>
+                      {row.postLogoutExample && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                          <span style={{ minWidth: '7rem', color: '#64748b' }}>Sign off</span>
+                          <code className="config-page__code-block" style={{ flex: '1 1 200px' }}>{row.postLogoutExample}</code>
+                          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem' }}
+                            onClick={() => { navigator.clipboard.writeText(row.postLogoutExample); notifySuccess('Copied'); }}>
+                            Copy
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {redirectInfo.canonicalOrigin && (
               <p className="config-page__redirect-foot">
                 Canonical origin: <code>{redirectInfo.canonicalOrigin}</code>

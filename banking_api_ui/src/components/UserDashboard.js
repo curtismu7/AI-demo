@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast, notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
 import { toastCustomerError } from '../utils/dashboardToast';
@@ -24,6 +24,8 @@ const DEMO_TRANSACTIONS = [
 ];
 
 const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { open } = useEducationUI();
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -175,6 +177,23 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- interval uses current fetchUserData; adding it would reset timer too often
   }, [autoRefresh]);
+
+  /** Toast when returning from transaction consent page (success or decline). */
+  useEffect(() => {
+    const st = location.state;
+    if (!st || typeof st !== 'object') return;
+    if (typeof st.transactionSuccess === 'string' && st.transactionSuccess.trim()) {
+      notifySuccess(st.transactionSuccess.trim());
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} });
+      return;
+    }
+    if (st.consentDeclined) {
+      notifyInfo(
+        'You declined high-value consent. The AI banking assistant stays disabled until you sign out and sign in again.',
+      );
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, location.search, navigate]);
 
   const loadDemoFallback = (reason) => {
     setAccounts(DEMO_ACCOUNTS);
@@ -382,6 +401,25 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   }, []);
 
+  /**
+   * High-value HITL: POST /transactions without consent returns 400; create a session challenge and open the consent route.
+   */
+  const openConsentFlowForPayload = async (intentBody) => {
+    try {
+      const { data } = await apiClient.post('/api/transactions/consent-challenge', intentBody);
+      const cid = data?.challengeId;
+      if (!cid) {
+        notifyError('Could not start consent — no challenge id from server.');
+        return;
+      }
+      navigate(`/transaction-consent?challenge=${encodeURIComponent(cid)}`);
+    } catch (e) {
+      const msg =
+        e.response?.data?.message || e.response?.data?.error || e.message || 'Could not start consent flow.';
+      notifyError(msg);
+    }
+  };
+
   // Simulate a transaction locally (demo mode only)
   const applyDemoTransaction = (type, amount, fromId, toId, description) => {
     const now = new Date().toISOString();
@@ -441,6 +479,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       notifySuccess('Transfer completed successfully!');
     } catch (error) {
       console.error('Transfer error:', error);
+      const d = error.response?.data;
+      if (error.response?.status === 400 && d?.error === 'consent_challenge_required') {
+        await openConsentFlowForPayload({
+          fromAccountId: selectedAccount.id,
+          toAccountId: transferForm.toAccountId,
+          amount: parseFloat(transferForm.amount),
+          type: 'transfer',
+          description: transferForm.description || 'Transfer between accounts',
+        });
+        return;
+      }
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');
@@ -487,6 +536,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       notifySuccess('Deposit completed successfully!');
     } catch (error) {
       console.error('Deposit error:', error);
+      const d = error.response?.data;
+      if (error.response?.status === 400 && d?.error === 'consent_challenge_required') {
+        await openConsentFlowForPayload({
+          fromAccountId: null,
+          toAccountId: depositAccount.id,
+          amount: parseFloat(depositForm.amount),
+          type: 'deposit',
+          description: depositForm.description || 'Deposit to account',
+        });
+        return;
+      }
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');
@@ -535,6 +595,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       notifySuccess('Withdrawal completed successfully!');
     } catch (error) {
       console.error('Withdrawal error:', error);
+      const d = error.response?.data;
+      if (error.response?.status === 400 && d?.error === 'consent_challenge_required') {
+        await openConsentFlowForPayload({
+          fromAccountId: withdrawAccount.id,
+          toAccountId: null,
+          amount: parseFloat(withdrawForm.amount),
+          type: 'withdrawal',
+          description: withdrawForm.description || 'Withdrawal from account',
+        });
+        return;
+      }
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');

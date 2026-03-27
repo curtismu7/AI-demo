@@ -86,12 +86,12 @@
   bottom: var(--agent-panel-bottom, 24px);
   right: 192px; /* sits to the left of the FAB pill (~148px wide + 16px gap + 28px edge) */
   z-index: 10059;
-  width: 260px;
-  height: 210px;
-  min-width: 180px;
-  min-height: 140px;
-  max-width: 450px;
-  max-height: 310px;
+  width: 400px;
+  height: 480px;
+  min-width: 280px;
+  min-height: 260px;
+  max-width: 560px;
+  max-height: min(85vh, 720px);
   display: flex;
   flex-direction: column;
   background: var(--ba-bg);
@@ -115,6 +115,23 @@
   min-height: 0;
   align-items: stretch;
   align-content: stretch;
+}
+
+/* Floating: keep suggestions + chat side-by-side; avoid collapsing to unreadable single column */
+.banking-agent-panel:not(.ba-mode-inline) .ba-body {
+  flex-wrap: nowrap;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-consent-denied-banner {
+  flex: 0 0 100%;
+  min-width: 100%;
+}
+.banking-agent-panel:not(.ba-mode-inline) .ba-body:has(.ba-consent-denied-banner) {
+  flex-wrap: wrap;
+}
+
+/* Floating: wider rail so "Try asking" lines and actions stay readable */
+.banking-agent-panel:not(.ba-mode-inline) .ba-left-col {
+  width: 148px;
 }
 
 /* ─── Left column ─────────────────────────────────────────────────────── */
@@ -1079,19 +1096,24 @@
     left: 0 !important;
     bottom: 0;
     width: 100% !important;
-    height: min(76vh, 260px) !important;
-    max-height: 76vh !important;
+    height: min(88vh, 620px) !important;
+    max-height: 88vh !important;
     border-radius: 14px 14px 0 0;
+  }
+  /* Wins over floating .ba-body { flex-wrap: nowrap } so stacked layout works on narrow viewports */
+  .banking-agent-panel:not(.ba-mode-inline) .ba-body {
+    flex-direction: column;
+    flex-wrap: nowrap;
   }
   .ba-body {
     flex-direction: column;
     flex-wrap: nowrap;
   }
-  .ba-left-col {
+  .banking-agent-panel:not(.ba-mode-inline) .ba-left-col {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--ba-border);
-    max-height: 180px;
+    max-height: min(42vh, 320px);
     flex: 0 0 auto;
   }
   .ba-right-col {
@@ -1172,16 +1194,16 @@
 
 /* ═══════════════════════════════════════════════════════════════════════
    Results Panel — slides in to the LEFT of the agent panel, wider
-   Default position: right-anchored just left of the agent (~260px default + 16px gap)
+   Default position: right-anchored just left of the agent (~400px default + 16px gap)
    When dragged: follows the agent via inline styles
    ═══════════════════════════════════════════════════════════════════════ */
 .banking-agent-results-panel {
   position: fixed;
-  right: calc(var(--float-edge, 28px) + 260px + 16px);
+  right: calc(var(--float-edge, 28px) + 400px + 16px);
   bottom: var(--agent-panel-bottom, 96px);
   z-index: 10058; /* just below the agent */
   width: 220px;
-  max-height: 260px;
+  max-height: min(50vh, 360px);
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -1343,10 +1365,10 @@
   transform: translate(-50%, -50%);
   right: auto;
   bottom: auto;
-  width: min(94vw, 320px);
-  height: min(80vh, 260px);
-  max-width: 320px;
-  max-height: 80vh;
+  width: min(94vw, 520px);
+  height: min(85vh, 720px);
+  max-width: 560px;
+  max-height: 85vh;
   border-radius: 12px;
 }
 

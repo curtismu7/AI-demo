@@ -12,6 +12,8 @@ Specs included:
 - `tests/e2e/customer-dashboard.spec.js` — Customer Dashboard loads, accounts/transactions display, demo fallback, transfer/deposit/withdraw forms
 - `tests/e2e/landing-marketing.spec.js` — Landing page hero, CTA buttons, feature copy
 
+**Floating Banking Agent** is **not** rendered on the unauthenticated marketing `/` — agent E2E (`test:e2e:agent`) assumes FAB only after sign-in on **`/dashboard`** or **`/admin`**.
+
 ## Individual spec runners
 
 ```bash

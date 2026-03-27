@@ -3,7 +3,7 @@
  * Standard notifications for the banking UI (react-toastify).
  * Prefer `notifySuccess` / `notifyError` / `notifyWarning` / `notifyInfo` for all user-visible outcomes
  * instead of `alert()`, inline banners, or calling `toast.*` directly (except `toast` for dismiss/update/loading patterns).
- * Session + “Sign in” actions: `dashboardToast.js` (`toastCustomerError`, `toastAdminSessionError`).
+ * Session + “Sign in”: `dashboardToast.js` dispatches `SESSION_REAUTH_EVENT` → `SessionReauthBanner` in App (on-page CTA).
  */
 import { toast } from 'react-toastify';
 

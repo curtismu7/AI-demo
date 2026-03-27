@@ -3,17 +3,8 @@
  * @description Playwright E2E regression tests for the BankingAgent FAB component.
  *
  * Covers:
- *   LOGIN PAGE (unauthenticated)
- *   - FAB is visible on the login page before authentication
- *   - Clicking FAB opens the agent panel
- *   - Panel header shows "BX Finance AI Agent" title
- *   - Subtitle shows "Sign in to get started" when not logged in
- *   - "👑 Admin Sign In" button is visible
- *   - "👤 Customer Sign In" button is visible
- *   - Clicking Admin Sign In redirects to /api/auth/oauth/login
- *   - Clicking Customer Sign In redirects to /api/auth/oauth/user/login
- *   - Closing the panel hides it again
- *   - Two-column layout: left column and right column are present
+ *   UNAUTHENTICATED LANDING
+ *   - Floating agent FAB is not shown (agent only on dashboard home routes when signed in)
  *
  *   AUTHENTICATED (post-login)
  *   - On /dashboard and /admin the floating panel defaults collapsed; tests open via FAB
@@ -176,48 +167,6 @@ async function mockMcpToolError(page) {
 }
 
 /**
- * BankingAgent enables Admin/Customer login only when loadPublicConfig() reads
- * pingone_environment_id + client IDs from IndexedDB.
- */
-async function seedPublicConfigIndexedDb(page) {
-  await page.evaluate(async () => {
-    const DB_NAME = 'banking-assistant-config';
-    const STORE = 'config';
-    const rows = [
-      { key: 'pingone_environment_id', value: 'e2e-test-env' },
-      { key: 'admin_client_id', value: 'e2e-admin-client' },
-      { key: 'user_client_id', value: 'e2e-user-client' },
-    ];
-    await new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE)) {
-          db.createObjectStore(STORE, { keyPath: 'key' });
-        }
-      };
-      req.onsuccess = () => {
-        const db = req.result;
-        const tx = db.transaction(STORE, 'readwrite');
-        const os = tx.objectStore(STORE);
-        for (const row of rows) os.put(row);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      };
-      req.onerror = () => reject(req.error);
-    });
-  });
-}
-
-/** Open the FAB panel and wait until PingOne login buttons are enabled (IndexedDB seeded). */
-async function openAgentPanelWhenConfigured(page) {
-  await page.locator('.banking-agent-fab').click();
-  await expect(page.locator('.ba-left-auth-btn', { hasText: 'Customer Sign In' })).toBeEnabled({
-    timeout: 15000,
-  });
-}
-
-/**
  * Clicks a BankingAgent **Actions** row (`.ba-action-item`) — not suggestion chips (`ba-suggestion`),
  * which can also mention "Transfer" or "transactions".
  */
@@ -240,110 +189,13 @@ async function openFloatingAgentPanel(page) {
   await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
 }
 
-// ─── LOGIN PAGE tests ──────────────────────────────────────────────────────────
+// ─── UNAUTHENTICATED LANDING (no floating agent) ───────────────────────────────
 
-test.describe('BankingAgent — Login page (unauthenticated)', () => {
-
-  test('FAB is visible on the login page', async ({ page }) => {
+test.describe('BankingAgent — unauthenticated landing', () => {
+  test('floating agent FAB is not shown on /', async ({ page }) => {
     await mockUnauthenticated(page);
     await page.goto('/');
-    await expect(page.locator('.banking-agent-fab')).toBeVisible();
-    await expect(page.locator('.banking-agent-fab')).toContainText(/🏦|AI Agent/);
-  });
-
-  test('clicking FAB opens the agent panel', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.goto('/');
-    await page.locator('.banking-agent-fab').click();
-    await expect(page.locator('.banking-agent-panel')).toBeVisible();
-  });
-
-  test('panel shows "BX Finance AI Agent" title', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.goto('/');
-    await page.locator('.banking-agent-fab').click();
-    await expect(page.locator('.ba-title')).toHaveText('BX Finance AI Agent');
-  });
-
-  test('subtitle shows "Sign in to get started" when not logged in', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.goto('/');
-    await page.locator('.banking-agent-fab').click();
-    await expect(page.locator('.ba-subtitle')).toContainText('Sign in to get started');
-  });
-
-  test('two-column layout: left and right columns are present', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.goto('/');
-    await page.locator('.banking-agent-fab').click();
-    await expect(page.locator('.banking-agent-panel .ba-left-col')).toBeVisible();
-    await expect(page.locator('.banking-agent-panel .ba-right-col')).toBeVisible();
-  });
-
-  test('"👤 Customer Sign In" button is visible in left column', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.goto('/');
-    await seedPublicConfigIndexedDb(page);
-    await openAgentPanelWhenConfigured(page);
-    await expect(page.locator('.ba-left-col')).toContainText('Customer Sign In');
-  });
-
-  test('"👑 Admin Sign In" button is visible in left column', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.goto('/');
-    await seedPublicConfigIndexedDb(page);
-    await openAgentPanelWhenConfigured(page);
-    await expect(page.locator('.ba-left-col')).toContainText('Admin Sign In');
-  });
-
-  test('clicking Admin Sign In navigates to /api/auth/oauth/login', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.route('**/api/auth/oauth/login**', (route) =>
-      route.fulfill({ status: 302, headers: { Location: '/' } })
-    );
-    await page.goto('/');
-    await seedPublicConfigIndexedDb(page);
-    await openAgentPanelWhenConfigured(page);
-
-    const [navReq] = await Promise.all([
-      page.waitForRequest((req) => req.url().includes('/api/auth/oauth/login')),
-      page.locator('.ba-left-col button', { hasText: 'Admin Sign In' }).click(),
-    ]);
-    expect(navReq.url()).toContain('/api/auth/oauth/login');
-  });
-
-  test('clicking Customer Sign In navigates to /api/auth/oauth/user/login', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.route('**/api/auth/oauth/user/login**', (route) =>
-      route.fulfill({ status: 302, headers: { Location: '/' } })
-    );
-    await page.goto('/');
-    await seedPublicConfigIndexedDb(page);
-    await openAgentPanelWhenConfigured(page);
-
-    const [navReq] = await Promise.all([
-      page.waitForRequest((req) => req.url().includes('/api/auth/oauth/user/login')),
-      page.locator('.ba-left-col button', { hasText: 'Customer Sign In' }).click(),
-    ]);
-    expect(navReq.url()).toContain('/api/auth/oauth/user/login');
-  });
-
-  test('Collapse agent button hides the floating panel', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.goto('/');
-    await page.locator('.banking-agent-fab').click();
-    await expect(page.locator('.banking-agent-panel')).toBeVisible();
-    await collapseAgentButton(page).click();
-    await expect(page.locator('.banking-agent-panel')).not.toBeVisible();
-  });
-
-  test('FAB is available again after collapsing the panel', async ({ page }) => {
-    await mockUnauthenticated(page);
-    await page.goto('/');
-    await page.locator('.banking-agent-fab').click();
-    await expect(page.locator('.banking-agent-panel')).toBeVisible();
-    await collapseAgentButton(page).click();
-    await expect(page.locator('.banking-agent-fab')).toBeVisible();
+    await expect(page.locator('.banking-agent-fab')).toHaveCount(0);
   });
 });
 
@@ -363,6 +215,13 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await page.goto('/dashboard');
     await expect(page.locator('.banking-agent-fab')).toBeVisible({ timeout: 20000 });
     await openFloatingAgentPanel(page);
+  });
+
+  test('panel shows "BX Finance AI Agent" title on /dashboard', async ({ page }) => {
+    await mockAuthenticatedCustomer(page);
+    await page.goto('/dashboard');
+    await openFloatingAgentPanel(page);
+    await expect(page.locator('.ba-title')).toHaveText('BX Finance AI Agent');
   });
 
   test('subtitle shows customer role badge when logged in', async ({ page }) => {

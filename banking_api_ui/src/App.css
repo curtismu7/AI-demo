@@ -637,3 +637,83 @@
 .dashboard-toast-error__btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Push main layout below fixed session banner */
+.App.App--session-reauth {
+  padding-top: 5.5rem;
+}
+
+@media (max-width: 520px) {
+  .App.App--session-reauth {
+    padding-top: 6.5rem;
+  }
+}
+
+/* Full-width session prompt — “log in again” (replaces toast for login-style errors; see dashboardToast.js) */
+.session-reauth-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10050;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom: 1px solid #f59e0b;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  box-sizing: border-box;
+}
+
+.session-reauth-banner__inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.session-reauth-banner__text {
+  margin: 0;
+  flex: 1 1 240px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #78350f;
+  line-height: 1.45;
+}
+
+.session-reauth-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.session-reauth-banner__btn {
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.session-reauth-banner__btn--primary {
+  background: #b45309;
+  color: #fff;
+  border-color: #92400e;
+}
+
+.session-reauth-banner__btn--primary:hover {
+  background: #92400e;
+}
+
+.session-reauth-banner__btn--ghost {
+  background: transparent;
+  color: #78350f;
+  border-color: rgba(120, 53, 15, 0.35);
+}
+
+.session-reauth-banner__btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.5);
+}

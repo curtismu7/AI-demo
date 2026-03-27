@@ -570,8 +570,8 @@ export default function BankingAgent({
   const [oauthConfig, setOauthConfig] = useState(null);
   /** {x,y} when panel has been dragged; null = CSS-anchored default position */
   const [dragPos, setDragPos] = useState(null);
-  /** Panel dimensions for resizing */
-  const [panelSize, setPanelSize] = useState({ width: 260, height: 210 });
+  /** Panel dimensions for resizing — floating default is large enough for header, chips, and two-column body */
+  const [panelSize, setPanelSize] = useState({ width: 400, height: 480 });
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
   /** MCP server connection status for header display */
@@ -883,10 +883,10 @@ export default function BankingAgent({
       let newHeight = startHeight;
 
       if (direction.includes('e')) {
-        newWidth = Math.min(450, Math.max(180, startWidth + deltaX));
+        newWidth = Math.min(560, Math.max(280, startWidth + deltaX));
       }
       if (direction.includes('s')) {
-        newHeight = Math.min(310, Math.max(140, startHeight + deltaY));
+        newHeight = Math.min(720, Math.max(220, startHeight + deltaY));
       }
 
       setPanelSize({ width: newWidth, height: newHeight });
@@ -910,10 +910,10 @@ export default function BankingAgent({
           left: '50%',
           top: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 'min(94vw, 320px)',
-          height: 'min(80vh, 260px)',
-          maxWidth: 320,
-          maxHeight: '80vh',
+          width: 'min(94vw, 520px)',
+          height: 'min(85vh, 720px)',
+          maxWidth: 560,
+          maxHeight: '85vh',
           right: 'auto',
           bottom: 'auto',
         }
@@ -944,11 +944,11 @@ export default function BankingAgent({
         zIndex: 10058,
       };
     }
-    /* Expanded (⊞): agent is centered — anchor results to the left of it (default CSS assumed 260px-wide docked agent). */
+    /* Expanded (⊞): agent is centered — anchor results to the left of it (matches min(94vw, 520px) expanded width). */
     if (isExpanded) {
       return {
         position: 'fixed',
-        left: `max(8px, calc(50vw - min(94vw, 320px) / 2 - ${gap}px - ${rpW}px))`,
+        left: `max(8px, calc(50vw - min(94vw, 520px) / 2 - ${gap}px - ${rpW}px))`,
         top: '50vh',
         transform: 'translateY(-50%)',
         bottom: 'auto',

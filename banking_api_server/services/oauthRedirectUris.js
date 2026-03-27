@@ -22,6 +22,29 @@ function _sanitizeUrl(url) {
 }
 
 /**
+ * Static examples for PingOne allowlists — register every host you actually use.
+ * Paths are fixed; origins match common BX Finance deployments (local + custom API domain).
+ */
+const REFERENCE_REDIRECT_SETS = [
+  {
+    id: 'localhost',
+    label: 'Local development (API / BFF on port 3001)',
+    adminRedirectUri: 'http://localhost:3001/api/auth/oauth/callback',
+    userRedirectUri: 'http://localhost:3001/api/auth/oauth/user/callback',
+    postLogoutExample: 'http://localhost:3000/logout',
+    hint: 'CRA often serves the UI on :3000 and proxies /api to :3001 — OAuth callbacks still hit the BFF origin (:3001).',
+  },
+  {
+    id: 'api-pingdeme',
+    label: 'Custom API host (example: api.pingdeme.org)',
+    adminRedirectUri: 'https://api.pingdeme.org/api/auth/oauth/callback',
+    userRedirectUri: 'https://api.pingdeme.org/api/auth/oauth/user/callback',
+    postLogoutExample: 'https://api.pingdeme.org/logout',
+    hint: 'Set PUBLIC_APP_URL=https://api.pingdeme.org when the BFF is served at this host. Sign Off URL must match REACT_APP_CLIENT_URL + /logout.',
+  },
+];
+
+/**
  * Frontend origin for redirects after login / config (no /api prefix).
  */
 function getFrontendOrigin(req) {
@@ -106,6 +129,8 @@ function getOAuthRedirectDebugInfo(req) {
     postLogoutUri,
     requestHost: getPublicHost(req),
     pingOneRegisterThese: [...new Set([admin, user])],
+    /** Copy/paste examples — add each origin you use to PingOne (localhost + api.pingdeme.org, etc.). */
+    referenceRedirectSets: REFERENCE_REDIRECT_SETS,
     environmentId:    configStore.getEffective('pingone_environment_id') || null,
     adminClientId:    configStore.getEffective('admin_client_id')        || null,
     adminSecretSet:   !!(configStore.getEffective('admin_client_secret')),
@@ -117,11 +142,12 @@ function getOAuthRedirectDebugInfo(req) {
     stableDemoOrigin: OFFICIAL_DEMO_ORIGIN,
     instructions: {
       summary:
-        'In PingOne, each OAuth application (Admin app and Customer app) must list its redirect URI exactly as shown below — same scheme, host, and path.',
+        'In PingOne, each OAuth application (Admin app and Customer app) must list its redirect URI exactly — same scheme, host, and path. You can register **multiple** URIs per app (e.g. **localhost** for dev and **https://api.pingdeme.org** for a hosted BFF) so the same tenant works in every environment.',
       steps: [
-        'PingOne Admin → Applications → select the Admin (staff) app → Configuration → Redirect URIs → Add URI → paste the Admin redirect URI below.',
-        'PingOne Admin → Applications → select the End-user (customer) app → Configuration → Redirect URIs → Add URI → paste the Customer redirect URI below.',
-        'Both apps → Configuration → Sign Off URLs → Add URI → paste the Sign Off (post-logout) URI below. PingOne redirects here after RP-Initiated Logout.',
+        'If you use **local dev** and a **hosted API** (e.g. api.pingdeme.org), add **both** sets of Admin + Customer callback URLs from the reference table below to each PingOne app — not only the “current” deployment values.',
+        'PingOne Admin → Applications → select the Admin (staff) app → Configuration → Redirect URIs → Add URI → paste the Admin redirect URI below (and any reference rows you need).',
+        'PingOne Admin → Applications → select the End-user (customer) app → Configuration → Redirect URIs → Add URI → paste the Customer redirect URI below (and reference rows).',
+        'Both apps → Configuration → Sign Off URLs → Add URI → paste the Sign Off (post-logout) URI for each frontend origin you use (see reference examples). PingOne redirects here after RP-Initiated Logout.',
         'Save both applications. Sign-in uses Authorization Code + PKCE; the callback path is always under /api/auth/oauth/ on this server.',
       ],
     },
@@ -184,4 +210,5 @@ module.exports = {
   getOAuthRedirectDebugInfo,
   validateRedirectUriOrigin,
   getExpectedFrontendOrigin,
+  REFERENCE_REDIRECT_SETS,
 };

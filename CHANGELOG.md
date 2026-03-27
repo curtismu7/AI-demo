@@ -18,6 +18,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **GET `/api/transactions/consent-challenge/:challengeId`** — snapshot for **TransactionConsentPage** (registered before **`GET /:id`**); **HITL** from **UserDashboard** creates challenge and navigates to **`/transaction-consent`**; routes **`/admin/banking`**, **`/transaction-consent`**; **SessionReauthBanner** for **`SESSION_REAUTH_EVENT`**
+- **Floating Banking Agent** only on signed-in dashboard homes **`/`**, **`/admin`**, **`/dashboard`** (Router wraps **`AppWithAuth`**); larger default/expanded panel sizing — see **`REGRESSION_LOG.md`** (2026-03-27)
 - **appToast** (`banking_api_ui/src/utils/appToast.js`): shared **`notifySuccess` / `notifyError` / `notifyWarning` / `notifyInfo`** for react-toastify; **UserDashboard** step-up MFA (428) uses a persistent warning toast with verify actions; **`dashboardToast`** remains for session errors with **Sign in** — see `REGRESSION_LOG.md`, `docs/runbooks/regression/post-deploy.md`
 - **Embedded agent dock** (`EmbeddedAgentDock.js`, **`useDemoMode`**) and related demo-scenario / FAB visibility updates — see `docs/runbooks/regression/ui-browser.md` where touched
 - **Session regression tooling**: `npm run test:session` from repo root or `banking_api_server` (focused Jest subset); `npm run test:e2e:session` in `banking_api_ui` (Playwright `request` smoke only); `GET /api/auth/session` contract tests for `sessionStoreHealthy` / `sessionStoreError` with production-shaped middleware; Playwright API smoke `session-regression.spec.js`; runbook `docs/runbooks/session-regression.md`

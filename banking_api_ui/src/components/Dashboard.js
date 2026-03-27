@@ -779,6 +779,13 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
           >
             Manage Users
           </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => { window.location.href = '/admin/banking'; }}
+            title="Look up accounts by fragment, seed demo charges, admin cleanup"
+          >
+            Banking admin
+          </button>
           <button 
             className="btn btn-secondary"
             onClick={() => window.location.href = '/accounts'}

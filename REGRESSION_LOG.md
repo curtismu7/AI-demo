@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Banking Agent: dashboard-only floating UI; HITL routes; floating panel sizing; consent GET
+
+**Symptom**: Floating agent appeared on marketing and tool routes; panel was too small to read chips and suggestions; HITL consent page and admin banking ops were not routed; `DashboardQuickNav` crashed (`isBankingAgentDashboardRoute` referenced without import).
+
+**Root cause**: `showFloatingAgent` used `!user || agentUiMode === 'floating'` (agent everywhere when signed in); default panel size and expanded height used `min(80vh, 260px)`; server lacked **`GET /api/transactions/consent-challenge/:challengeId`** for the consent UI snapshot.
+
+**Fix**: **`App.js`** — `Router` wraps **`AppWithAuth`**; floating agent only when **signed in**, **floating mode**, and **`isBankingAgentDashboardRoute(pathname)`** (`/`, `/admin`, `/dashboard`); **`App--has-embedded-dock`** only on those routes. **`BankingAgent.js` / `BankingAgent.css`** — larger defaults, fixed expand dimensions, resize limits, results panel offset. **`routes/transactions.js`** — register **GET** consent challenge before **`GET /:id`**. **Routes**: **`/admin/banking`**, **`/transaction-consent`**; **`UserDashboard`** — on **`consent_challenge_required`**, create challenge and navigate to consent; return-state toasts. **`DashboardQuickNav`** — use **`isDashboardQuickNavRoute(pathname, user)`**. **`embeddedAgentFabVisibility`** — **`shouldShowGlobalFloatingBankingAgentFab`** matches dashboard-only rule. **Logo SVGs** — explicit **`#ffffff`** text fills; landing **`.brand-name`** white.
+
+**Tests**: `embeddedAgentFabVisibility.test.js`; `App.session.test.js` mock includes **`Router`**; `banking-agent.spec.js` — no FAB on unauthenticated `/`; title assertion on `/dashboard`; `npm test` in `banking_api_server` (consent). Manual: **`docs/runbooks/regression/post-deploy.md`**.
+
+---
+
 ## 2026-03-27 — Dashboard shell UX: quick nav scope, rail layout, admin lookup, agent mode toggle
 
 **Symptom**: Left-rail controls overlapped main content and headers; quick nav appeared on marketing and config routes; users wanted CIBA/CIMD-style blocks with alternating colors; admin needed customer lookup with PingOne-enriched profile and accounts/transactions.

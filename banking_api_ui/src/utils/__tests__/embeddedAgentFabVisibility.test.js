@@ -1,10 +1,12 @@
 // banking_api_ui/src/utils/__tests__/embeddedAgentFabVisibility.test.js
 import {
   isBankingAgentDashboardRoute,
+  isDashboardQuickNavRoute,
   shouldShowGlobalFloatingBankingAgentFab,
 } from '../embeddedAgentFabVisibility';
 
 const customer = { role: 'customer', id: '1' };
+const admin = { role: 'admin', id: 'a1' };
 
 describe('isBankingAgentDashboardRoute', () => {
   it('matches home dashboards only', () => {
@@ -14,6 +16,23 @@ describe('isBankingAgentDashboardRoute', () => {
     expect(isBankingAgentDashboardRoute('/admin/')).toBe(true);
     expect(isBankingAgentDashboardRoute('/demo-data')).toBe(false);
     expect(isBankingAgentDashboardRoute('/mcp-inspector')).toBe(false);
+  });
+});
+
+describe('isDashboardQuickNavRoute', () => {
+  it('matches dashboard homes for any signed-in user', () => {
+    expect(isDashboardQuickNavRoute('/', customer)).toBe(true);
+    expect(isDashboardQuickNavRoute('/dashboard', customer)).toBe(true);
+    expect(isDashboardQuickNavRoute('/admin', admin)).toBe(true);
+  });
+
+  it('includes /admin/banking for admins only', () => {
+    expect(isDashboardQuickNavRoute('/admin/banking', admin)).toBe(true);
+    expect(isDashboardQuickNavRoute('/admin/banking', customer)).toBe(false);
+  });
+
+  it('does not match arbitrary tool routes', () => {
+    expect(isDashboardQuickNavRoute('/mcp-inspector', admin)).toBe(false);
   });
 });
 
@@ -28,17 +47,31 @@ describe('shouldShowGlobalFloatingBankingAgentFab', () => {
     ).toBe(false);
   });
 
-  it('shows FAB when mode is floating on non-demo-data routes', () => {
+  it('shows FAB when floating and on a dashboard home route', () => {
+    expect(
+      shouldShowGlobalFloatingBankingAgentFab({
+        user: customer,
+        agentUiMode: 'floating',
+        pathname: '/dashboard',
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowGlobalFloatingBankingAgentFab({
+        user: customer,
+        agentUiMode: 'floating',
+        pathname: '/',
+      }),
+    ).toBe(true);
+  });
+
+  it('hides FAB on tool routes when floating (dashboard homes only)', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
         agentUiMode: 'floating',
         pathname: '/mcp-inspector',
       }),
-    ).toBe(true);
-  });
-
-  it('hides FAB on Demo config even when floating', () => {
+    ).toBe(false);
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,

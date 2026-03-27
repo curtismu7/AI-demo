@@ -24,6 +24,8 @@ import LogViewer from './components/LogViewer';
 import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
 import ApiTrafficPage from './components/ApiTrafficPage';
+import BankingAdminOps from './components/BankingAdminOps';
+import TransactionConsentPage from './components/TransactionConsentPage';
 
 import { savePublicConfig } from './services/configService';
 import { EducationUIProvider } from './context/EducationUIContext';
@@ -35,8 +37,10 @@ import Footer from './components/Footer';
 import UIDesignNav from './components/UIDesignNav';
 import DashboardQuickNav from './components/DashboardQuickNav';
 import EmbeddedAgentDock from './components/EmbeddedAgentDock';
-import { isBankingAgentDashboardRoute } from './utils/embeddedAgentFabVisibility';
+import { isBankingAgentDashboardRoute, isDashboardQuickNavRoute } from './utils/embeddedAgentFabVisibility';
 import { useDemoMode } from './hooks/useDemoMode';
+import SessionReauthBanner from './components/SessionReauthBanner';
+import { SESSION_REAUTH_EVENT } from './utils/authUi';
 import './App.css';
 
 /** Prevents re-auth after logout when effects re-run (matches f8393a7 session guard). */
@@ -50,7 +54,7 @@ function AppRouteChrome({ user }) {
   useEffect(() => {
     const appEl = document.querySelector('.App');
     if (!appEl) return;
-    const showQuickNav = Boolean(user) && isBankingAgentDashboardRoute(pathname);
+    const showQuickNav = Boolean(user) && isDashboardQuickNavRoute(pathname, user);
     appEl.classList.toggle('App--has-quick-nav', showQuickNav);
     appEl.classList.toggle('App--on-dashboard', pathname === '/dashboard');
   }, [pathname, user]);
@@ -58,11 +62,14 @@ function AppRouteChrome({ user }) {
 }
 
 function AppWithAuth() {
+  const { pathname } = useLocation();
   const { mode: agentUiMode } = useAgentUiMode();
   const demoMode = useDemoMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
+  /** On-page session prompt (replaces toast-only for “log in again” flows). */
+  const [sessionReauth, setSessionReauth] = useState(null);
   const pendingUserEmailRef = useRef(null);
   /** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
   const sessionEstablishedRef = useRef(false);
@@ -199,6 +206,21 @@ function AppWithAuth() {
     return () => window.removeEventListener('userAuthenticated', handler);
   }, [checkOAuthSession]);
 
+  useEffect(() => {
+    const onSessionReauth = (e) => {
+      const d = e.detail;
+      if (!d || typeof d.message !== 'string' || !d.message.trim()) return;
+      const role = d.role === 'admin' ? 'admin' : 'customer';
+      setSessionReauth({ message: d.message.trim(), role });
+    };
+    window.addEventListener(SESSION_REAUTH_EVENT, onSessionReauth);
+    return () => window.removeEventListener(SESSION_REAUTH_EVENT, onSessionReauth);
+  }, []);
+
+  useEffect(() => {
+    if (user) setSessionReauth(null);
+  }, [user]);
+
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
 
@@ -223,17 +245,28 @@ function AppWithAuth() {
     );
   }
 
-  const showFloatingAgent = !user || agentUiMode === 'floating';
+  /** Floating + embedded agent chrome only on customer/admin dashboard homes (`/`, `/admin`, `/dashboard`). */
+  const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
+  const showFloatingAgent =
+    Boolean(user) && agentUiMode === 'floating' && onDashboardAgentRoute;
+  const hasEmbeddedDockLayout =
+    Boolean(user) && agentUiMode === 'embedded' && onDashboardAgentRoute;
 
   return (
-    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <EducationUIProvider>
+    <EducationUIProvider>
       <TokenChainProvider>
         <AppRouteChrome user={user} />
         <div
-          className={`App end-user-nano${agentUiMode === 'embedded' ? ' App--has-embedded-dock' : ''}`}
+          className={`App end-user-nano${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}`}
         >
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
+          {sessionReauth && (
+            <SessionReauthBanner
+              message={sessionReauth.message}
+              role={sessionReauth.role}
+              onDismiss={() => setSessionReauth(null)}
+            />
+          )}
           <DashboardQuickNav user={user} />
           {user && <UIDesignNav user={user} />}
           <Routes>
@@ -257,6 +290,11 @@ function AppWithAuth() {
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                    <Route
+                      path="/admin/banking"
+                      element={user?.role === 'admin' ? <BankingAdminOps user={user} onLogout={logout} /> : <Navigate to="/" replace />}
+                    />
+                    <Route path="/transaction-consent" element={<TransactionConsentPage user={user} onLogout={logout} />} />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/oauth-debug-logs"
@@ -292,15 +330,16 @@ function AppWithAuth() {
           <Footer user={user} />
         </div>
       </TokenChainProvider>
-      </EducationUIProvider>
-    </Router>
+    </EducationUIProvider>
   );
 }
 
 export default function App() {
   return (
     <AgentUiModeProvider>
-      <AppWithAuth />
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AppWithAuth />
+      </Router>
     </AgentUiModeProvider>
   );
 }

@@ -111,6 +111,23 @@ router.post(
   },
 );
 
+/** Read pending challenge snapshot for the consent UI (must be registered before GET /:id). */
+router.get(
+  '/consent-challenge/:challengeId',
+  authenticateToken,
+  requireScopes(['banking:transactions:read', 'banking:read']),
+  (req, res) => {
+    const result = txConsent.getChallenge(req, req.params.challengeId);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    return res.json({
+      challengeId: result.challengeId,
+      snapshot: result.snapshot,
+      status: result.status,
+      expiresAt: result.expiresAt,
+    });
+  },
+);
+
 // Get transaction by ID (admin or transaction owner)
 router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
   try {

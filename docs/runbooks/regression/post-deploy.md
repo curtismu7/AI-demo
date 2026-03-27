@@ -18,7 +18,9 @@ Run after every production **or** preview deploy.
 | Navigate to `/dashboard` without signing in | Demo accounts load + toast appears once |
 | Auto-refresh fires (every 5 s) | Toast does NOT re-appear (deduped `toastId`) |
 | Sign in as end user | Real accounts replace demo data, no toast |
-| CIBA / CIMD / Demo config FABs | Fixed left rail; **quick nav** (Home / Dashboard / API / Logs) **only** on signed-in **`/`**, **`/admin`**, **`/dashboard`** — not on landing or `/config` |
+| CIBA / CIMD / Demo config FABs | Fixed left rail; **quick nav** (Home / Dashboard / API / Logs) **only** on signed-in **`/`**, **`/admin`**, **`/dashboard`** (plus **Banking** for admins on **`/admin/banking`**) — not on landing or `/config` |
+| **Banking Agent (floating)** | **Only** on signed-in dashboard homes **`/`**, **`/admin`**, **`/dashboard`** — not on marketing landing, config, logs, MCP, etc. Open FAB → panel readable (chips, suggestions). |
+| **HITL consent** | High-value transfer/deposit/withdraw from customer dashboard → consent page; decline/success returns with toast (see **`REGRESSION_LOG.md`** 2026-03-27 consent entry). |
 | Main content | Does not sit under the left rail (`.App--has-quick-nav` inset when quick nav is shown) |
 | Learn bar | **Agent UI** segmented control (Floating / Embedded / Both) visible when signed in |
 | "Customer Dashboard" title | Visible in the header |
