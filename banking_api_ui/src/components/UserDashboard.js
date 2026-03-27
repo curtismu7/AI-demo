@@ -546,81 +546,133 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           </span>
         </div>
       )}
-      <div className="dashboard-header">
-        <div className="bank-branding">
-          <div className="bank-logo">
-            <div className="logo-icon">
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
-              <div className="logo-square"></div>
+      {/* ── Header stack: branding row + toolbar row ────────────────── */}
+      <div className="dashboard-header-stack">
+        <div className="dashboard-header">
+          {/* LEFT: logo + title + nav shortcuts */}
+          <div className="bank-branding" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div className="bank-logo">
+              <div className="logo-icon">
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+              </div>
+              <span className="bank-name">BX Finance</span>
             </div>
-            <span className="bank-name">BX Finance</span>
+            <div>
+              <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
+                Customer Dashboard
+              </h1>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+                <Link to="/"          style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.78rem', textDecoration: 'none' }}>Home</Link>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem' }}>›</span>
+                <Link to="/dashboard" style={{ color: '#fff', fontSize: '0.78rem', textDecoration: 'none', fontWeight: 600 }}>Dashboard</Link>
+              </div>
+            </div>
+          </div>
+          {/* RIGHT: greeting + email */}
+          <div className="header-right">
+            <div className="user-info">
+              <span className="user-greeting">
+                Hello, {
+                  (user?.firstName || user?.lastName)
+                    ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                    : user?.name || user?.username || user?.email?.split('@')[0] || 'there'
+                }
+              </span>
+              <span className="user-email">{user?.email || user?.username}</span>
+            </div>
           </div>
         </div>
-        <div className="header-right">
-          <div className="user-info">
-            <span className="user-greeting">
-              Hello, {
-                (user?.firstName || user?.lastName)
-                  ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                  : user?.name || user?.username || user?.email?.split('@')[0] || 'there'
-              }
-            </span>
-            <span className="user-email">{user?.email || user?.username}</span>
+
+        {/* Toolbar row */}
+        <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
+          >
+            How does login work?
+          </button>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.MAY_ACT, 'what')}
+          >
+            What is may_act?
+          </button>
+          <Link
+            to="/mcp-inspector"
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
+            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
+          >
+            MCP Inspector
+          </Link>
+          <div className="dashboard-toolbar-toggle">
+            <label className="toggle-label toggle-label--toolbar">
+              <span className="toggle-text">Auto-refresh</span>
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+              </div>
+            </label>
           </div>
-          <div className="header-actions">
-            <button
-              type="button"
-              className="dashboard-edu-btn"
-              onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-            >
-              How does login work?
-            </button>
-            <button
-              type="button"
-              className="dashboard-edu-btn"
-              onClick={() => open(EDU.MAY_ACT, 'what')}
-            >
-              What is may_act?
-            </button>
-            <Link
-              to="/mcp-inspector"
-              className="dashboard-header-mcp-btn"
-              title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
-            >
-              MCP Inspector
-            </Link>
-            <div className="auto-refresh-toggle">
-              <label className="toggle-label">
-                <span className="toggle-text">Auto-refresh</span>
-                <div className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={autoRefresh}
-                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                    className="toggle-input"
-                  />
-                  <span className="toggle-slider"></span>
-                </div>
-              </label>
-            </div>
-            <button onClick={openTokenModal} className="token-info-btn" title="View OAuth Token Info">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
-              </svg>
-            </button>
-            <button onClick={onLogout} className="logout-btn">
-              Log Out
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={openTokenModal}
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--icon"
+            title="View OAuth Token Info"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+            </svg>
+            <span className="dashboard-toolbar-btn__sr">Token info</span>
+          </button>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--danger"
+          >
+            Log out
+          </button>
         </div>
       </div>
 
-      <div className="dashboard-content">
-        {/* Token Chain Display */}
+      {/* ── Three-column body ────────────────────────────────────────── */}
+      <div className="dashboard-content ud-body ud-body--floating">
+        {/* Left sidebar — token chain */}
+        <aside className="ud-left">
+          <div className="section">
+            <TokenChainDisplay />
+          </div>
+        </aside>
+
+        {/* Centre — customer info + accounts + forms + transactions */}
+        <main className="ud-center">
+
+        {/* Customer Profile */}
         <div className="section">
-          <TokenChainDisplay />
+          <h2>Account Holder</h2>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.88rem', color: '#374151' }}>
+            <div><strong>Name:&nbsp;</strong>
+              {(user?.firstName || user?.lastName)
+                ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                : user?.name || user?.username || '—'}
+            </div>
+            <div><strong>Email:&nbsp;</strong>{user?.email || user?.username || '—'}</div>
+            <div><strong>Role:&nbsp;</strong><span style={{ textTransform: 'capitalize' }}>{user?.role || (isDemoMode ? 'demo' : 'customer')}</span></div>
+            {isDemoMode && (
+              <span style={{ background: '#e5e7eb', color: '#6b7280', borderRadius: 4, padding: '1px 8px', fontSize: '0.75rem', alignSelf: 'center' }}>
+                🏦 Demo mode
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Account Summary */}
@@ -888,7 +940,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </div>
           </div>
         </div>
-      </div>
+
+        </main>{/* /ud-center */}
+      </div>{/* /ud-body */}
 
       {/* OAuth Token Info Modal */}
       {showTokenModal && (
