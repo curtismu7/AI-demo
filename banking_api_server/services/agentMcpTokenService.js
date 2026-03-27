@@ -327,7 +327,11 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     );
   }
 
-  const useActor = process.env.USE_AGENT_ACTOR_FOR_MCP === 'true' && process.env.AGENT_OAUTH_CLIENT_ID;
+  // Always use actor token when agent OAuth client is configured — ensures on_behalf_of semantics
+  // (the exchanged MCP token carries act: { client_id: <agent> } proving which client is acting).
+  // Without AGENT_OAUTH_CLIENT_ID the exchange runs subject-only (still RFC 8693; user token
+  // is NEVER forwarded to MCP — but the act claim is absent, weakening audit provenance).
+  const useActor = !!process.env.AGENT_OAUTH_CLIENT_ID;
 
   // ── MCP resource audience required — never forward user token to MCP without RFC 8693 ──
   if (!mcpResourceUri) {
@@ -368,7 +372,25 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     );
   }
 
-  // ── Event 2a (optional): Agent actor client-credentials token ───────────────
+  // ── Event 2a: Agent actor client-credentials token (required for on_behalf_of) ─
+  if (!useActor) {
+    console.warn(
+      '[agentMcpTokenService] AGENT_OAUTH_CLIENT_ID not set — RFC 8693 exchange will run subject-only ' +
+      '(no act claim). Configure AGENT_OAUTH_CLIENT_ID + AGENT_OAUTH_CLIENT_SECRET for full on_behalf_of semantics.'
+    );
+    tokenEvents.push(buildTokenEvent(
+      'on-behalf-of-warning',
+      'On-Behalf-Of — agent client not configured',
+      'skipped',
+      null,
+      'AGENT_OAUTH_CLIENT_ID is not set. The token exchange will proceed subject-only (RFC 8693 still enforced — ' +
+        'the User Token is never forwarded to MCP). However, the resulting MCP Token will have no act claim, ' +
+        'so audit logs and the MCP server cannot distinguish the AI Agent from the user. ' +
+        'Set AGENT_OAUTH_CLIENT_ID + AGENT_OAUTH_CLIENT_SECRET to enable full on-behalf-of delegation.',
+      { rfc: 'RFC 8693 §2.1 (actor_token)' }
+    ));
+  }
+
   let actorToken = null;
   if (useActor) {
     try {

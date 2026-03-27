@@ -2,10 +2,11 @@
  * @file agentMcpTokenService.test.js
  *
  * Tests for resolveMcpAccessTokenWithEvents — verifying that:
- * 1. Agent client_credentials are used only when USE_AGENT_ACTOR_FOR_MCP and MCP_RESOURCE_URI are set.
+ * 1. Agent client_credentials (actor token) are always used when AGENT_OAUTH_CLIENT_ID is set.
  * 2. Without MCP_RESOURCE_URI, resolution throws (no User token passthrough to MCP).
  * 3. User token must have ≥ MIN_USER_SCOPES_FOR_MCP distinct scopes before exchange.
  * 4. RFC 8693 exchange path works when MCP_RESOURCE_URI is set and scopes are sufficient.
+ * 5. Subject-only fallback emits an on-behalf-of-warning event when no agent client is configured.
  */
 
 'use strict';
@@ -112,10 +113,8 @@ describe('resolveMcpAccessTokenWithEvents — no session token', () => {
 describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
   const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
   const origSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
-  const origUseActor = process.env.USE_AGENT_ACTOR_FOR_MCP;
 
   beforeEach(() => {
-    delete process.env.USE_AGENT_ACTOR_FOR_MCP;
     process.env.AGENT_OAUTH_CLIENT_ID = 'agent-client-id';
     process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
     configStore.getEffective.mockImplementation((key) => {
@@ -130,8 +129,6 @@ describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
     else delete process.env.AGENT_OAUTH_CLIENT_ID;
     if (origSecret !== undefined) process.env.AGENT_OAUTH_CLIENT_SECRET = origSecret;
     else delete process.env.AGENT_OAUTH_CLIENT_SECRET;
-    if (origUseActor !== undefined) process.env.USE_AGENT_ACTOR_FOR_MCP = origUseActor;
-    else delete process.env.USE_AGENT_ACTOR_FOR_MCP;
   });
 
   it('throws mcp_resource_uri_required — never forwards User token without RFC 8693', async () => {
@@ -151,7 +148,7 @@ describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
     }
   });
 
-  it('does not call performTokenExchange', async () => {
+  it('does not call performTokenExchange when MCP_RESOURCE_URI is unset', async () => {
     try {
       await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     } catch {
@@ -160,12 +157,13 @@ describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
-  it('does not call getAgentClientCredentialsToken without USE_AGENT_ACTOR_FOR_MCP', async () => {
+  it('does not call getAgentClientCredentialsToken when MCP_RESOURCE_URI is unset (throws before actor step)', async () => {
     try {
       await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     } catch {
       /* expected */
     }
+    // mcp_resource_uri check fires before the actor token step
     expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
   });
 });
@@ -228,13 +226,12 @@ describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (MCP_RESO
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange (MCP_RESOURCE_URI set)', () => {
+describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (AGENT_OAUTH_CLIENT_ID unset)', () => {
   const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
   const origUri = process.env.MCP_RESOURCE_URI;
 
   beforeEach(() => {
     delete process.env.AGENT_OAUTH_CLIENT_ID;
-    delete process.env.USE_AGENT_ACTOR_FOR_MCP;
     process.env.MCP_RESOURCE_URI = 'https://mcp.example.com/api';
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
@@ -248,7 +245,6 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange (MCP_RESOURCE_UR
     else delete process.env.AGENT_OAUTH_CLIENT_ID;
     if (origUri !== undefined) process.env.MCP_RESOURCE_URI = origUri;
     else delete process.env.MCP_RESOURCE_URI;
-    delete process.env.USE_AGENT_ACTOR_FOR_MCP;
   });
 
   it('returns the exchanged MCP token, not the User token', async () => {
@@ -286,6 +282,99 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange (MCP_RESOURCE_UR
     expect(mcpTokEv.jwtFullDecode.claims.sub).toBe(USER_SUB);
     expect(mcpTokEv.jwtFullDecode.claims.aud).toBe('mcp-resource-uri');
     expect(mcpTokEv.jwtFullDecode.claims.act).toEqual({ client_id: 'bff-client-id' });
+  });
+});
+
+describe('resolveMcpAccessTokenWithEvents — on_behalf_of (AGENT_OAUTH_CLIENT_ID set)', () => {
+  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+  const origSecret   = process.env.AGENT_OAUTH_CLIENT_SECRET;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.AGENT_OAUTH_CLIENT_ID = 'agent-client-id';
+    process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      return null;
+    });
+    mockGetAgentClientCredentialsToken.mockResolvedValue(M2M_TOKEN);
+    mockPerformTokenExchangeWithActor.mockResolvedValue(EXCHANGED_TOKEN);
+  });
+
+  afterEach(() => {
+    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
+    else delete process.env.AGENT_OAUTH_CLIENT_ID;
+    if (origSecret !== undefined) process.env.AGENT_OAUTH_CLIENT_SECRET = origSecret;
+    else delete process.env.AGENT_OAUTH_CLIENT_SECRET;
+  });
+
+  it('always calls getAgentClientCredentialsToken when AGENT_OAUTH_CLIENT_ID is set', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    expect(mockGetAgentClientCredentialsToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls performTokenExchangeWithActor (not subject-only) when agent client is configured', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    expect(mockPerformTokenExchangeWithActor).toHaveBeenCalledWith(
+      MOCK_USER_TOKEN,
+      M2M_TOKEN,
+      'https://mcp.example.com/api',
+      expect.arrayContaining(['banking:accounts:read'])
+    );
+    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
+  });
+
+  it('returns exchanged token, not user token', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    expect(token).toBe(EXCHANGED_TOKEN);
+    expect(token).not.toBe(MOCK_USER_TOKEN);
+    expect(token).not.toBe(M2M_TOKEN);
+  });
+
+  it('emits agent-actor-token event in the token chain', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const actorEv = tokenEvents.find(e => e.id === 'agent-actor-token');
+    expect(actorEv).toBeDefined();
+    expect(actorEv.status).toBe('active');
+  });
+
+  it('does not emit on-behalf-of-warning when agent client is configured', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    expect(tokenEvents.find(e => e.id === 'on-behalf-of-warning')).toBeUndefined();
+  });
+});
+
+describe('resolveMcpAccessTokenWithEvents — subject-only warning when no agent client', () => {
+  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.AGENT_OAUTH_CLIENT_ID;
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      return null;
+    });
+    mockPerformTokenExchange.mockResolvedValue(EXCHANGED_TOKEN);
+  });
+
+  afterEach(() => {
+    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
+    else delete process.env.AGENT_OAUTH_CLIENT_ID;
+  });
+
+  it('emits on-behalf-of-warning event when AGENT_OAUTH_CLIENT_ID is not set', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const warn = tokenEvents.find(e => e.id === 'on-behalf-of-warning');
+    expect(warn).toBeDefined();
+    expect(warn.status).toBe('skipped');
+  });
+
+  it('still completes RFC 8693 subject-only exchange (user token never forwarded)', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    expect(token).toBe(EXCHANGED_TOKEN);
+    expect(token).not.toBe(MOCK_USER_TOKEN);
+    expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
+    expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
   });
 });
 
