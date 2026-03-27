@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Agent UI placement (Middle/Bottom/Float) + bottom dock integration
+
+**Symptom**: Agent UI toggle only offered Floating/Embedded/Both with no clear distinction between "agent in middle column" vs "agent pinned at the bottom"; bottom dock had a visible gap between page content and the panel, with rounded corners that made it look detached.
+
+**Root cause**: `AgentUiModeContext` stored a flat `mode` string with no separation of placement vs FAB overlay. `EmbeddedAgentDock` rendered the resize handle between the toolbar and the agent body (not at the top), and `padding-bottom: 12px` on `.user-dashboard--embed-agent` created a gap before the dock.
+
+**Fix**: `AgentUiModeContext` — state is now `{ placement: 'middle'|'bottom'|'none', fab: boolean }`, persisted as `banking_agent_ui_v2`. `AgentUiModeToggle` — **Middle / Bottom / Float** buttons; **+ FAB** checkbox when placement is middle or bottom (not all three at once). `EmbeddedAgentDock` — resize handle moved to first child (acts as the seam); no `margin-top`; rounded corners only when collapsed; `padding-bottom: 0` on dashboard wrapper. Split3 token-chain column reduced to `160–200px`. `demoScenario.js` GET handler — `bankingAgentUi` now computed via `effectiveBankingAgentUi` before use in response payload.
+
+**Tests**: `AgentUiModeContext.test.js`, `embeddedAgentFabVisibility.test.js`, `demo-scenario-api.test.js`. Manual: toggle between Middle/Bottom/Float; verify dock flush-joins content; verify token rail stays slim in split view.
+
+---
+
 ## 2026-03-27 — Split-column agent: SecureBank-style chrome, scroll regions, education hamburger
 
 **Symptom**: Split-dashboard middle column needed a compact assistant look (navy header, bubbles, **Send**), independent scrolling for transcript vs chips/actions, and **Education** / agent UI controls could not sit in a full-width bar beside the token rail.

@@ -18,6 +18,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **Agent UI placement** — new **Middle / Bottom / Float + FAB** toggle replaces Floating/Embedded/Both; `AgentUiModeContext` stores `{ placement, fab }` under `banking_agent_ui_v2`; Middle+Bottom together not permitted
+- **Bottom dock integration** — resize handle is now the visual seam between page content and dock (no gap); collapsed state keeps rounded-pill corners; dark-theme overrides updated
+- **Slim token-chain column** in split3 view (`160–200px`) so agent and banking columns have more space
+
 - **Customer split dashboard** (token \| inline agent \| banking) with **Split view** / **Classic** toggle (`dashboardLayout.js`); **Agent UI** modes **Floating** / **Embedded** / **Both** with split-aware FAB/dock suppression (`customerSplit3Dashboard.js`)
 - **TransactionConsentModal** — high-value HITL as an on-dashboard popup (checkbox authorizing the assistant); **`/transaction-consent?challenge=…`** still works as a deep link
 - **Industry branding** (`IndustryBrandingContext`, presets, `BrandLogo`, Config) and **agent MCP scope policy** (server + UI config)
