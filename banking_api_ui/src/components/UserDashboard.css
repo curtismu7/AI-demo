@@ -49,27 +49,30 @@
 /* Two-class selector beats ud-body--2026 single-class override */
 .ud-body.ud-body--dashboard-split3 {
   display: grid;
-  /* Token rail slim fixed | Agent 1fr | Banking 1fr — all same height */
-  grid-template-columns: 220px 1fr 1fr;
+  /* Token rail | Agent 1fr | Banking 1fr — all same height, no gaps */
+  grid-template-columns: 300px 1fr 1fr;
   grid-template-rows: 1fr;
   gap: 0;
   align-items: stretch;
   overflow: hidden;
   height: min(calc(100vh - 130px), 900px);
   min-height: 500px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .ud-agent-column {
   min-width: 0;
+  /* Share borders with neighbours — left neighbour provides right border, we provide left border for right neighbour */
   border-left: 1px solid #e2e8f0;
   border-right: 1px solid #e2e8f0;
-  background: #f1f5f9;
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
   padding: 10px 10px 0;
   box-sizing: border-box;
   overflow: hidden;
-  /* Fill full grid row height */
   height: 100%;
 }
 
@@ -97,7 +100,7 @@
 
 @media (max-width: 1280px) {
   .ud-body.ud-body--dashboard-split3 {
-    grid-template-columns: 200px 1fr 1fr;
+    grid-template-columns: 260px 1fr 1fr;
   }
 }
 
@@ -1873,14 +1876,16 @@
   overflow: visible;
 }
 
-/* Split-3 overrides ud-body--2026: slim token rail | agent 1fr | banking 1fr */
+/* Split-3 overrides ud-body--2026: token rail | agent 1fr | banking 1fr */
 .ud-body.ud-body--2026.ud-body--dashboard-split3 {
-  grid-template-columns: 220px 1fr 1fr;
+  grid-template-columns: 300px 1fr 1fr;
   grid-template-rows: 1fr;
   overflow: hidden;
   height: min(calc(100vh - 130px), 900px);
   min-height: 500px;
   align-items: stretch;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
 }
 
 .ud-body.ud-body--2026 .ud-center {
