@@ -31,7 +31,7 @@ function readStoredCollapsed() {
 /**
  * Bottom embedded AI agent: content-width strip, collapsible, vertically resizable.
  */
-export default function EmbeddedAgentDock({ user, onLogout, agentUiMode }) {
+export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(readStoredCollapsed);
   const [dockHeight, setDockHeight] = useState(() =>
@@ -88,7 +88,7 @@ export default function EmbeddedAgentDock({ user, onLogout, agentUiMode }) {
     [dockHeight]
   );
 
-  if (!user || agentUiMode !== 'embedded' || !isEmbeddedAgentDockRoute(pathname)) {
+  if (!user || agentPlacement !== 'bottom' || !isEmbeddedAgentDockRoute(pathname)) {
     return null;
   }
 
@@ -101,16 +101,26 @@ export default function EmbeddedAgentDock({ user, onLogout, agentUiMode }) {
       aria-label={isConfigPage ? 'Application setup assistant' : 'AI banking assistant'}
       data-agent-ui="embedded"
     >
+      {/* Resize handle sits at the very top — acts as the visual seam between content and dock */}
+      {!collapsed && (
+        <button
+          type="button"
+          className="embedded-dock-resize-handle"
+          onMouseDown={onResizeMouseDown}
+          aria-label="Drag up or down to resize assistant height"
+        >
+          <span className="embedded-dock-resize-handle__grip" aria-hidden>
+            <span className="embedded-dock-resize-handle__bar" />
+          </span>
+          <span className="embedded-dock-resize-handle__label">Resize height</span>
+        </button>
+      )}
+
       <div className="embedded-agent-dock__toolbar">
         <div className="embedded-agent-dock__head">
           <h2 className="embedded-agent-dock__title">
             {isConfigPage ? 'Application setup assistant' : 'AI banking assistant'}
           </h2>
-          <p className="embedded-agent-dock__lead">
-            {isConfigPage
-              ? 'Ask about PingOne, redirect URIs, OAuth scopes, and environment variables — resize from the grip above, or collapse to reclaim space.'
-              : 'Natural language and MCP tools — resize from the grip above, or collapse to reclaim space.'}
-          </p>
         </div>
         <button
           type="button"
@@ -124,31 +134,18 @@ export default function EmbeddedAgentDock({ user, onLogout, agentUiMode }) {
       </div>
 
       {!collapsed && (
-        <>
-          <button
-            type="button"
-            className="embedded-dock-resize-handle"
-            onMouseDown={onResizeMouseDown}
-            aria-label="Drag up or down to resize assistant height"
-          >
-            <span className="embedded-dock-resize-handle__grip" aria-hidden>
-              <span className="embedded-dock-resize-handle__bar" />
-            </span>
-            <span className="embedded-dock-resize-handle__label">Resize height</span>
-          </button>
-          <div
-            className="embedded-agent-dock embedded-banking-agent embedded-banking-agent--bottom"
-            style={{ '--embedded-dock-height': `${Math.round(dockHeight)}px` }}
-          >
-            <BankingAgent
-              user={user}
-              onLogout={onLogout}
-              mode="inline"
-              embeddedDockBottom
-              embeddedFocus={isConfigPage ? 'config' : 'banking'}
-            />
-          </div>
-        </>
+        <div
+          className="embedded-agent-dock embedded-banking-agent embedded-banking-agent--bottom"
+          style={{ '--embedded-dock-height': `${Math.round(dockHeight)}px` }}
+        >
+          <BankingAgent
+            user={user}
+            onLogout={onLogout}
+            mode="inline"
+            embeddedDockBottom
+            embeddedFocus={isConfigPage ? 'config' : 'banking'}
+          />
+        </div>
       )}
     </div>
   );

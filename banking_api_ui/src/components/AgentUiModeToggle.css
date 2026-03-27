@@ -15,6 +15,33 @@
   opacity: 0.85;
 }
 
+.agent-ui-mode-toggle__fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #7f1d1d;
+  cursor: pointer;
+  user-select: none;
+}
+
+.agent-ui-mode-toggle__fab input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.agent-ui-mode-toggle--config .agent-ui-mode-toggle__fab {
+  margin-top: 0.4rem;
+  color: #374151;
+  font-size: 0.75rem;
+}
+
+.agent-ui-mode-toggle--landing .agent-ui-mode-toggle__fab {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .agent-ui-mode-toggle__segmented {
   display: inline-flex;
   flex-wrap: nowrap;
@@ -72,8 +99,13 @@
 /* ─── Education bar (red pill row) ─── */
 .agent-ui-mode-toggle--eduBar {
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+
+.agent-ui-mode-toggle--eduBar .agent-ui-mode-toggle__fab {
+  margin-top: 0;
 }
 
 .agent-ui-mode-toggle--eduBar .agent-ui-mode-toggle__label {

@@ -12,8 +12,10 @@ import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import { useAgentUiMode } from '../context/AgentUiModeContext';
 
-const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
+const Dashboard = ({ user, onLogout }) => {
+  const { placement: agentPlacement } = useAgentUiMode();
   const { open } = useEducationUI();
   const { preset } = useIndustryBranding();
   const [stats, setStats] = useState(null);
@@ -343,10 +345,10 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
       </header>
 
       <div
-        className={`app-page-shell__body app-page-shell__body--wide ${agentUiMode === 'embedded' ? 'app-page-shell__body--embed-agent' : ''}`}
+        className={`app-page-shell__body app-page-shell__body--wide ${agentPlacement === 'bottom' ? 'app-page-shell__body--embed-agent' : ''}`}
       >
         <div
-          className={`ud-shell ${agentUiMode === 'embedded' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
+          className={`ud-shell ${agentPlacement === 'bottom' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
         >
         <div className="app-page-toolbar" role="toolbar" aria-label="Admin actions">
           <button

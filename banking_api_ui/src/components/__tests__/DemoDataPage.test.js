@@ -11,7 +11,7 @@ jest.mock('../../services/demoScenarioService', () => ({
 }));
 
 jest.mock('../../context/AgentUiModeContext', () => ({
-  useAgentUiMode: () => ({ mode: 'floating', setMode: jest.fn() }),
+  useAgentUiMode: () => ({ placement: 'none', fab: true, setAgentUi: jest.fn() }),
 }));
 
 jest.mock('../../context/EducationUIContext', () => ({

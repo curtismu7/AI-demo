@@ -2,27 +2,39 @@
 import React, { useCallback } from 'react';
 import { notifyInfo } from '../utils/appToast';
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
+import { useAgentUiMode } from '../context/AgentUiModeContext';
+import { persistBankingAgentUi } from '../services/demoScenarioService';
 import './DashboardLayoutToggle.css';
 
 /**
- * Customer dashboard: classic 3-column (token + banking + floating zone) vs split (token | agent | banking).
+ * Customer dashboard: classic vs split. Split implies Agent UI **Middle**; Classic clears middle (float-only or bottom dock).
  */
 export default function DashboardLayoutToggle({ className = '' }) {
   const layout = getDashboardLayout();
+  const { placement, fab, setAgentUi } = useAgentUiMode();
 
   const handleClassic = useCallback(() => {
     if (layout === 'classic') return;
     setDashboardLayout('classic');
+    if (placement === 'middle') {
+      setAgentUi({ placement: 'none', fab: true });
+      void persistBankingAgentUi({ placement: 'none', fab: true });
+    }
     notifyInfo('Switched to classic dashboard layout.', { autoClose: 1800 });
     window.setTimeout(() => window.location.reload(), 200);
-  }, [layout]);
+  }, [layout, placement, setAgentUi]);
 
   const handleSplit = useCallback(() => {
     if (layout === 'split3') return;
     setDashboardLayout('split3');
-    notifyInfo('Switched to split view: token chain | assistant | banking.', { autoClose: 1800 });
+    setAgentUi({ placement: 'middle', fab });
+    void persistBankingAgentUi({ placement: 'middle', fab });
+    notifyInfo('Switched to split view: token | assistant | banking.', { autoClose: 1800 });
     window.setTimeout(() => window.location.reload(), 200);
-  }, [layout]);
+  }, [layout, fab, setAgentUi]);
+
+  const splitActive = placement === 'middle';
+  const classicActive = placement !== 'middle';
 
   return (
     <div
@@ -36,18 +48,18 @@ export default function DashboardLayoutToggle({ className = '' }) {
       <div className="dashboard-layout-toggle__segmented" role="toolbar" aria-labelledby="dashboard-layout-legend">
         <button
           type="button"
-          className={`dashboard-layout-toggle__btn${layout === 'split3' ? ' dashboard-layout-toggle__btn--active' : ''}`}
+          className={`dashboard-layout-toggle__btn${splitActive ? ' dashboard-layout-toggle__btn--active' : ''}`}
           onClick={handleSplit}
-          aria-pressed={layout === 'split3'}
-          title="Token chain (left) · AI assistant (center) · accounts & transactions (right)"
+          aria-pressed={splitActive}
+          title="Token chain (left) · AI assistant (center) · accounts & transactions (right). Sets Agent UI to Middle."
         >
           Split view
         </button>
         <button
           type="button"
-          className={`dashboard-layout-toggle__btn${layout === 'classic' ? ' dashboard-layout-toggle__btn--active' : ''}`}
+          className={`dashboard-layout-toggle__btn${classicActive ? ' dashboard-layout-toggle__btn--active' : ''}`}
           onClick={handleClassic}
-          aria-pressed={layout === 'classic'}
+          aria-pressed={classicActive}
           title="Original layout: token + banking center + floating assistant zone"
         >
           Classic

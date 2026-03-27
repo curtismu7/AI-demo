@@ -50,114 +50,88 @@ describe('isDashboardQuickNavRoute', () => {
 });
 
 describe('shouldShowGlobalFloatingBankingAgentFab', () => {
-  it('hides FAB when not logged in with embedded mode', () => {
+  it('hides FAB when not logged in', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: null,
-        agentUiMode: 'embedded',
+        placement: 'bottom',
+        fab: false,
         pathname: '/',
       }),
     ).toBe(false);
   });
 
-  it('shows FAB when floating and on a dashboard home route', () => {
+  it('shows FAB when float-only on dashboard home routes', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
-        agentUiMode: 'floating',
+        placement: 'none',
+        fab: true,
+        pathname: '/dashboard',
+      }),
+    ).toBe(true);
+  });
+
+  it('shows FAB when middle or bottom with + FAB', () => {
+    expect(
+      shouldShowGlobalFloatingBankingAgentFab({
+        user: customer,
+        placement: 'middle',
+        fab: true,
         pathname: '/dashboard',
       }),
     ).toBe(true);
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
-        agentUiMode: 'floating',
+        placement: 'bottom',
+        fab: true,
         pathname: '/',
       }),
     ).toBe(true);
   });
 
-  it('shows FAB when both mode on dashboard home routes', () => {
+  it('hides FAB on tool routes', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
-        agentUiMode: 'both',
-        pathname: '/dashboard',
-      }),
-    ).toBe(true);
-  });
-
-  it('hides FAB on tool routes when floating (dashboard homes only)', () => {
-    expect(
-      shouldShowGlobalFloatingBankingAgentFab({
-        user: customer,
-        agentUiMode: 'floating',
+        placement: 'none',
+        fab: true,
         pathname: '/mcp-inspector',
       }),
     ).toBe(false);
-    expect(
-      shouldShowGlobalFloatingBankingAgentFab({
-        user: customer,
-        agentUiMode: 'floating',
-        pathname: '/demo-data',
-      }),
-    ).toBe(false);
   });
 
-  it('hides FAB on dashboard routes when embedded', () => {
+  it('hides FAB when embedded bottom without + FAB', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
-        agentUiMode: 'embedded',
+        placement: 'bottom',
+        fab: false,
         pathname: '/dashboard',
       }),
     ).toBe(false);
   });
 
-  it('hides FAB on /config when floating (dock is embedded-only there)', () => {
+  it('hides FAB on /config when float-only (dashboard homes only)', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
-        agentUiMode: 'floating',
+        placement: 'none',
+        fab: true,
         pathname: '/config',
       }),
     ).toBe(false);
   });
 
-  it('hides FAB on non-dashboard routes when embedded (e.g. logs — dock is dashboard-only)', () => {
+  it('hides FAB when middle without + FAB', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
-        agentUiMode: 'embedded',
-        pathname: '/logs',
-      }),
-    ).toBe(false);
-    expect(
-      shouldShowGlobalFloatingBankingAgentFab({
-        user: customer,
-        agentUiMode: 'embedded',
-        pathname: '/mcp-inspector',
-      }),
-    ).toBe(false);
-  });
-
-  it('hides FAB on Demo config when embedded', () => {
-    expect(
-      shouldShowGlobalFloatingBankingAgentFab({
-        user: customer,
-        agentUiMode: 'embedded',
-        pathname: '/demo-data',
-      }),
-    ).toBe(false);
-  });
-
-  it('shows FAB on dashboard when mode is both (FAB + bottom dock; split3 suppression is in App.js)', () => {
-    expect(
-      shouldShowGlobalFloatingBankingAgentFab({
-        user: customer,
-        agentUiMode: 'both',
+        placement: 'middle',
+        fab: false,
         pathname: '/dashboard',
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 });

@@ -15,7 +15,8 @@ import BankingAgent from './BankingAgent';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import DashboardLayoutToggle from './DashboardLayoutToggle';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
-import { getDashboardLayout } from '../utils/dashboardLayout';
+import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
+import { useAgentUiMode } from '../context/AgentUiModeContext';
 import './UserDashboard.css';
 
 const DEMO_ACCOUNTS = [
@@ -29,11 +30,12 @@ const DEMO_TRANSACTIONS = [
   { id: 'd4', type: 'deposit',    amount:   75.00, description: 'Refund — online purchase', accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*5).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
 ];
 
-const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) => {
+const UserDashboard = ({ user: propUser, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { open } = useEducationUI();
   const { preset } = useIndustryBranding();
+  const { placement: agentPlacement } = useAgentUiMode();
   const [dashboardLayout, setDashboardLayoutState] = useState(() => getDashboardLayout());
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -92,6 +94,17 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     window.addEventListener('banking-dashboard-layout', onLayout);
     return () => window.removeEventListener('banking-dashboard-layout', onLayout);
   }, []);
+
+  /** Keep localStorage layout aligned with Agent UI (Middle → split, Bottom → classic). */
+  useEffect(() => {
+    if (agentPlacement === 'middle') {
+      setDashboardLayoutState('split3');
+      setDashboardLayout('split3');
+    } else if (agentPlacement === 'bottom') {
+      setDashboardLayoutState('classic');
+      setDashboardLayout('classic');
+    }
+  }, [agentPlacement]);
 
   const handleDashThemeToggle = useCallback(() => {
     setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
@@ -1031,8 +1044,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   return (
     <div
       className={`user-dashboard user-dashboard--2026${
-        agentUiMode === 'embedded' && dashboardLayout === 'classic' ? ' user-dashboard--embed-agent' : ''
-      }${dashboardLayout === 'split3' ? ' user-dashboard--split3' : ''}`}
+        agentPlacement === 'bottom' && dashboardLayout === 'classic' ? ' user-dashboard--embed-agent' : ''
+      }${agentPlacement === 'middle' ? ' user-dashboard--split3' : ''}`}
     >
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
@@ -1169,7 +1182,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       </div>
 
       {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
-      {dashboardLayout === 'split3' ? (
+      {agentPlacement === 'middle' ? (
         <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
           <aside className="ud-token-rail" aria-label="Token chain">
             <div className="section ud-token-rail__inner">

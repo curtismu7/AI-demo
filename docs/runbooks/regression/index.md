@@ -14,6 +14,10 @@ No single file is allowed to exceed ~300 lines so context windows stay manageabl
 
 **Split dashboard agent** (2026-03-27): **Split view** embeds **`BankingAgent`** with **`splitColumnChrome`** (navy header, session id, **Sign out**, compact input + **Send**, suggestion chips). Scroll the transcript and the lower tray independently. See **`REGRESSION_LOG.md`** (2026-03-27 — split-column agent UX + SecureBank-style chrome).
 
+**Agent UI placement** (2026-03-27): `AgentUiModeContext` now stores `{ placement: 'middle' | 'bottom' | 'none', fab: boolean }` under `banking_agent_ui_v2`. Toggle renders **Middle / Bottom / Float** buttons; **+ FAB** checkbox appears when placement is `middle` or `bottom` (Middle+Bottom together not permitted). Key regressions: (1) toggle persists across reload; (2) Middle sets `split3` layout with slim token-chain column (`160–200px`); (3) Bottom renders `EmbeddedAgentDock` flush to page content with drag-to-resize handle as the visual seam; (4) Float shows FAB only.
+
+**Bottom dock integration** (2026-03-27): Resize handle moved to top of dock (acts as the join between page content and panel — no gap). Collapsed state retains rounded-pill top corners; expanded state is flush/square. `padding-bottom` removed from `.user-dashboard--embed-agent`. Dark-theme overrides updated.
+
 ## Run everything (CI order)
 
 ```bash

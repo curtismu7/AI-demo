@@ -136,10 +136,15 @@ export function ThemeProvider({ children }) {
     // globalTheme.css forced dark chrome on the wrapper. Default to light unless
     // the user explicitly chose Agent: Dark (handled above).
     try {
-      if (
-        localStorage.getItem('banking_agent_ui_mode') === 'embedded' &&
-        theme === 'dark'
-      ) {
+      const v2raw = localStorage.getItem('banking_agent_ui_v2');
+      let embedLike = false;
+      if (v2raw) {
+        const o = JSON.parse(v2raw);
+        embedLike = o?.placement === 'bottom' || o?.placement === 'middle';
+      } else if (localStorage.getItem('banking_agent_ui_mode') === 'embedded') {
+        embedLike = true;
+      }
+      if (embedLike && theme === 'dark') {
         return 'light';
       }
     } catch {

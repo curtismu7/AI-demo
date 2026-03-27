@@ -76,41 +76,34 @@
   max-width: min(1400px, 100%);
   margin-left: auto;
   margin-right: auto;
+  margin-top: 0;
   box-sizing: border-box;
   z-index: 2;
   pointer-events: auto;
-  border-top: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
+  background: #f8fafc;
+  /* No border-top here — the resize handle IS the seam */
 }
 
+/* Collapsed pill: floats at the bottom of the layout */
 .global-embedded-agent-dock-wrap--collapsed {
-  border-radius: 14px 14px 0 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
+  box-shadow: 0 -3px 16px rgba(15, 23, 42, 0.07);
 }
 
 .embedded-agent-dock__toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px 8px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 6px 14px 6px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .embedded-agent-dock__toolbar .embedded-agent-dock__head {
   flex: 1;
   min-width: 0;
-}
-
-.global-embedded-agent-dock-wrap--collapsed .embedded-dock-resize-handle,
-.global-embedded-agent-dock-wrap--collapsed .embedded-agent-dock.embedded-banking-agent {
-  display: none;
-}
-
-.global-embedded-agent-dock-wrap[data-agent-ui='embedded'] {
-  border-radius: 14px 14px 0 0;
-  margin-top: 2px;
-  border-top-color: rgba(148, 163, 184, 0.45);
-  box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.06);
 }
 
 .global-embedded-agent-dock-wrap .embedded-agent-dock {
@@ -125,12 +118,6 @@
   box-shadow: none;
   background: transparent;
   padding-top: 0;
-}
-
-/* Collapsed state — only the header bar is visible */
-.global-embedded-agent-dock-wrap .embedded-agent-dock--collapsed {
-  background: transparent;
-  box-shadow: none;
 }
 
 /* Collapse / expand toggle button in the dock header */
@@ -152,22 +139,24 @@
   color: #334155;
 }
 
-/* Drag handle between dock title and agent (resize height) */
+/* Resize handle is the FIRST child — it IS the seam where content meets the dock */
 .embedded-dock-resize-handle {
   flex-shrink: 0;
   width: 100%;
-  min-height: 10px;
+  min-height: 14px;
   margin: 0;
-  padding: 3px 0;
+  padding: 4px 0;
   border: none;
-  border-top: 1px solid rgba(148, 163, 184, 0.45);
+  /* Subtle top border that blends rather than cuts */
+  border-top: 2px solid rgba(148, 163, 184, 0.3);
   cursor: ns-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(241, 245, 249, 0.9);
+  background: linear-gradient(180deg, rgba(226, 232, 240, 0.6) 0%, rgba(241, 245, 249, 0.4) 100%);
   user-select: none;
   -webkit-user-select: none;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .embedded-dock-resize-handle__grip {
@@ -179,10 +168,11 @@
 
 .embedded-dock-resize-handle__bar {
   display: block;
-  width: 48px;
-  height: 4px;
+  width: 36px;
+  height: 3px;
   border-radius: 2px;
-  background: rgba(71, 85, 105, 0.45);
+  background: rgba(100, 116, 139, 0.35);
+  transition: background 0.15s, width 0.15s;
 }
 
 .embedded-dock-resize-handle__label {
@@ -198,17 +188,18 @@
 }
 
 .embedded-dock-resize-handle:hover {
-  background: rgba(219, 234, 254, 0.8);
-  border-top-color: rgba(65, 105, 225, 0.35);
+  background: linear-gradient(180deg, rgba(219, 234, 254, 0.7) 0%, rgba(239, 246, 255, 0.5) 100%);
+  border-top-color: rgba(65, 105, 225, 0.4);
 }
 
 .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__bar {
-  background: rgba(37, 99, 235, 0.65);
+  background: rgba(37, 99, 235, 0.55);
+  width: 48px;
 }
 
 .embedded-dock-resize-handle:active {
   cursor: ns-resize;
-  background: rgba(191, 219, 254, 0.85);
+  background: rgba(191, 219, 254, 0.75);
 }
 
 .embedded-dock-resize-handle:focus-visible {

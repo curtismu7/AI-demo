@@ -3,8 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
-import { fetchDemoScenario, saveDemoScenario, persistBankingAgentUiMode } from '../services/demoScenarioService';
+import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import AgentUiModeToggle from './AgentUiModeToggle';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
@@ -29,7 +30,7 @@ export default function DemoDataPage({ user, onLogout }) {
   const { preset: industryPreset } = useIndustryBranding();
   const navigate = useNavigate();
   const { open } = useEducationUI();
-  const { mode: agentUiMode, setMode: setAgentUiMode } = useAgentUiMode();
+  const { placement: agentPlacement } = useAgentUiMode();
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
   const dashboardCrumbLabel = user?.role === 'admin' ? 'Admin' : 'Dashboard';
 
@@ -250,30 +251,6 @@ export default function DemoDataPage({ user, onLogout }) {
     notifyInfo('Form reset to defaults — click Save to apply');
   };
 
-  /**
-   * Persists floating / embedded / both. Reload so App picks up the change.
-   * @param {'floating' | 'embedded' | 'both'} next
-   */
-  const handleAgentLayoutChange = async (next) => {
-    if (next === agentUiMode) return;
-    setAgentUiMode(next);
-    const saved = await persistBankingAgentUiMode(next);
-    if (!saved) {
-      notifyWarning(
-        'Agent layout could not be saved on the server yet. It stays on this browser; refresh may revert if the server still has the old value.',
-        { autoClose: 4500 },
-      );
-    }
-    notifyInfo('Applying agent layout…', { autoClose: 1200 });
-    window.setTimeout(() => {
-      if (next === 'embedded') {
-        window.location.href = '/';
-      } else {
-        window.location.reload();
-      }
-    }, 350);
-  };
-
   return (
     <div className="user-dashboard user-dashboard--2026 demo-data-page">
       <a href="#demo-data-main" className="dash-skip-link">
@@ -406,62 +383,15 @@ export default function DemoDataPage({ user, onLogout }) {
           <section className="section demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
             <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
             <p className="demo-data-hint">
-              Choose <strong>floating</strong> (corner FAB), <strong>embedded</strong> (bottom dock on home; no FAB while
-              signed in), or <strong>both</strong> (FAB + dock on dashboard routes). On this page there is no dock — open
-              your dashboard below. Switching to embedded sends you home so the dock appears.
+              <strong>Middle</strong> — split dashboard (token | assistant | banking). <strong>Bottom</strong> — full-width
+              dock on home and config. <strong>Float</strong> — corner FAB only. Check <strong>+ FAB</strong> with Middle or
+              Bottom to show the floating panel as well (you cannot combine Middle and Bottom).
             </p>
-            <div className="demo-data-agent-options" role="radiogroup" aria-label="Agent layout">
-              <label className="demo-data-agent-option">
-                <input
-                  type="radio"
-                  name="demoDataAgentUiMode"
-                  value="embedded"
-                  checked={agentUiMode === 'embedded'}
-                  onChange={() => handleAgentLayoutChange('embedded')}
-                />
-                <span className="demo-data-agent-option-text">
-                  <span className="demo-data-agent-option-title">Embedded (dashboard home)</span>
-                  <span className="demo-data-agent-option-desc">
-                    On your <strong>home</strong> dashboard, the assistant sits in a full-width bottom strip and the FAB is
-                    hidden while signed in.
-                  </span>
-                </span>
-              </label>
-              <label className="demo-data-agent-option">
-                <input
-                  type="radio"
-                  name="demoDataAgentUiMode"
-                  value="floating"
-                  checked={agentUiMode === 'floating'}
-                  onChange={() => handleAgentLayoutChange('floating')}
-                />
-                <span className="demo-data-agent-option-text">
-                  <span className="demo-data-agent-option-title">Floating panel</span>
-                  <span className="demo-data-agent-option-desc">
-                    Corner button opens the agent over whatever page you are on (default).
-                  </span>
-                </span>
-              </label>
-              <label className="demo-data-agent-option">
-                <input
-                  type="radio"
-                  name="demoDataAgentUiMode"
-                  value="both"
-                  checked={agentUiMode === 'both'}
-                  onChange={() => handleAgentLayoutChange('both')}
-                />
-                <span className="demo-data-agent-option-text">
-                  <span className="demo-data-agent-option-title">Both</span>
-                  <span className="demo-data-agent-option-desc">
-                    Floating FAB and bottom dock together on home dashboard routes.
-                  </span>
-                </span>
-              </label>
-            </div>
-            {agentUiMode === 'embedded' && (
+            <AgentUiModeToggle variant="config" />
+            {agentPlacement === 'bottom' && (
               <p className="demo-data-agent-note" role="status">
-                Embedded mode shows the assistant as a bottom strip on your home dashboard only (/ or /dashboard for
-                customers; / or /admin for admins). Other routes have no dock until you return home.
+                Bottom dock appears on your home dashboard routes and Application Configuration. Open Home from the nav to
+                see it.
               </p>
             )}
           </section>

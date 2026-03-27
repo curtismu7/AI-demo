@@ -312,4 +312,36 @@ describe('Demo scenario API — account create/update', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_banking_agent_ui_mode');
   });
+
+  it('GET includes settings.bankingAgentUi derived from legacy mode', async () => {
+    demoScenarioStore.load.mockResolvedValueOnce({
+      stepUpAmountThreshold: null,
+      bankingAgentUiMode: 'both',
+    });
+    const app = makeApp();
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.body.settings.bankingAgentUi).toEqual({ placement: 'bottom', fab: true });
+  });
+
+  it('PUT persists bankingAgentUi object', async () => {
+    const app = makeApp();
+    const ui = { placement: 'middle', fab: false };
+    const res = await request(app).put('/').send({ bankingAgentUi: ui });
+    expect(res.status).toBe(200);
+    expect(demoScenarioStore.save).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({
+        bankingAgentUi: ui,
+        bankingAgentUiMode: 'embedded',
+      }),
+    );
+  });
+
+  it('PUT returns 400 for invalid bankingAgentUi', async () => {
+    const app = makeApp();
+    const res = await request(app).put('/').send({ bankingAgentUi: { placement: 'sidebar', fab: true } });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('invalid_banking_agent_ui');
+  });
 });

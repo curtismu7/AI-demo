@@ -226,27 +226,29 @@ function DisplayPreferences() {
 }
 
 function AgentLayoutPreferences() {
-  const { mode } = useAgentUiMode();
+  const { placement } = useAgentUiMode();
 
   return (
     <CollapsibleCard
       title="AI Agent layout"
-      subtitle="Floating widget or embedded bottom dock — only one at a time"
+      subtitle="Middle column, bottom dock, or float — optional + FAB"
       defaultOpen={true}
       className="config-page__agent-layout"
     >
       <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
-        Use the control below to switch layouts. <strong>Embedded</strong> or <strong>both</strong> sends you to{' '}
-        <strong>Home</strong> after apply so the bottom dock mounts. When signed in, your choice syncs to your demo profile.
+        <strong>Middle</strong> uses the split dashboard (token | assistant | banking). <strong>Bottom</strong> uses the
+        full-width dock on home and config (Classic layout). <strong>Float</strong> is the corner FAB only.{' '}
+        <strong>+ FAB</strong> adds the floating panel on top of Middle or Bottom (never Middle and Bottom together).
+        When signed in, your choice syncs to your demo profile.
       </p>
       <AgentUiModeToggle variant="config" />
       <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '1rem', lineHeight: 1.5 }}>
-        <strong>Floating</strong> — corner FAB on any page (no bottom dock). <strong>Embedded</strong> — full-width bottom dock on home/admin/customer
-        dashboard routes only (no floating FAB while signed in).
+        <strong>Bottom</strong> sends you to <strong>Home</strong> after apply so the dock mounts. <strong>Middle</strong>{' '}
+        reloads with split view.
       </p>
-      {mode === 'embedded' && (
+      {placement === 'bottom' && (
         <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: '#1d4ed8' }}>
-          Embedded mode: open <strong>Home</strong> or <strong>My Dashboard</strong> to use the agent. The marketing home page still uses the floating agent when you are not signed in.
+          Bottom dock: open <strong>Home</strong> or <strong>My Dashboard</strong> to use the agent. The marketing home page still uses the floating agent when you are not signed in.
         </div>
       )}
     </CollapsibleCard>

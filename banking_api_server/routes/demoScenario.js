@@ -23,6 +23,34 @@ function normalizeBankingAgentUiMode(stored) {
   return null;
 }
 
+/** @param {unknown} stored */
+function normalizeBankingAgentUi(stored) {
+  if (!stored || typeof stored !== 'object') return null;
+  const p = stored.placement;
+  const fab = Boolean(stored.fab);
+  if (p !== 'middle' && p !== 'bottom' && p !== 'none') return null;
+  if (p === 'none' && !fab) return { placement: 'none', fab: true };
+  return { placement: p, fab };
+}
+
+function effectiveBankingAgentUi(scenario) {
+  const direct = normalizeBankingAgentUi(scenario.bankingAgentUi);
+  if (direct) return direct;
+  const legacy = normalizeBankingAgentUiMode(scenario.bankingAgentUiMode);
+  if (legacy === 'embedded') return { placement: 'bottom', fab: false };
+  if (legacy === 'both') return { placement: 'bottom', fab: true };
+  if (legacy === 'floating') return { placement: 'none', fab: true };
+  return { placement: 'none', fab: true };
+}
+
+function legacyModeFromUi(ui) {
+  if (ui.placement === 'none') return 'floating';
+  if (ui.placement === 'bottom' && !ui.fab) return 'embedded';
+  if (ui.placement === 'bottom' && ui.fab) return 'both';
+  if (ui.placement === 'middle' && !ui.fab) return 'embedded';
+  return 'both';
+}
+
 /** Shown in Demo config UI only when DB + session have no profile strings (never overwrites real data). */
 const PROFILE_UI_FALLBACK = Object.freeze({
   firstName: 'Jordan',
@@ -164,7 +192,8 @@ router.get('/', async (req, res) => {
     const scenario = await demoScenarioStore.load(req.user.id);
     const currentUser = dataStore.getUserById(req.user.id) || {};
     const userData = buildUserDataForDemoResponse(req, currentUser);
-    const bankingAgentUiMode = normalizeBankingAgentUiMode(scenario.bankingAgentUiMode);
+    const bankingAgentUi = effectiveBankingAgentUi(scenario);
+    const bankingAgentUiMode = legacyModeFromUi(bankingAgentUi);
     res.json({
       accounts: accounts.map(a => ({
         id: a.id,
@@ -179,6 +208,7 @@ router.get('/', async (req, res) => {
           scenario.stepUpAmountThreshold != null ? scenario.stepUpAmountThreshold : DEFAULT_STEP_UP(),
         stepUpAmountThresholdIsDefault: scenario.stepUpAmountThreshold == null,
         bankingAgentUiMode,
+        bankingAgentUi,
       },
       defaults: {
         stepUpAmountThreshold: DEFAULT_STEP_UP(),
@@ -235,6 +265,25 @@ router.put('/', async (req, res) => {
         return res.status(400).json({
           error: 'invalid_banking_agent_ui_mode',
           message: 'bankingAgentUiMode must be embedded, floating, both, or null.',
+        });
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'bankingAgentUi')) {
+      const raw = req.body.bankingAgentUi;
+      if (raw === null || raw === '') {
+        await demoScenarioStore.save(uid, { bankingAgentUi: null });
+      } else {
+        const ui = normalizeBankingAgentUi(raw);
+        if (!ui) {
+          return res.status(400).json({
+            error: 'invalid_banking_agent_ui',
+            message: 'bankingAgentUi must be { placement: middle|bottom|none, fab: boolean } or null.',
+          });
+        }
+        await demoScenarioStore.save(uid, {
+          bankingAgentUi: ui,
+          bankingAgentUiMode: legacyModeFromUi(ui),
         });
       }
     }
@@ -350,7 +399,8 @@ router.put('/', async (req, res) => {
     const scenario = await demoScenarioStore.load(uid);
     const currentUser = dataStore.getUserById(uid) || {};
     const { password: _password, ...savedUserData } = currentUser;
-    const bankingAgentUiModeOut = normalizeBankingAgentUiMode(scenario.bankingAgentUiMode);
+    const bankingAgentUiOut = effectiveBankingAgentUi(scenario);
+    const bankingAgentUiModeOut = legacyModeFromUi(bankingAgentUiOut);
     res.json({
       ok: true,
       staleAccountIds: staleAccountIds?.length ? staleAccountIds : undefined,
@@ -366,6 +416,7 @@ router.put('/', async (req, res) => {
         stepUpAmountThreshold:
           scenario.stepUpAmountThreshold != null ? scenario.stepUpAmountThreshold : DEFAULT_STEP_UP(),
         bankingAgentUiMode: bankingAgentUiModeOut,
+        bankingAgentUi: bankingAgentUiOut,
       },
       userData: savedUserData,
     });

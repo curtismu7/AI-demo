@@ -194,8 +194,13 @@ html[data-theme='dark'] .embedded-banking-agent {
 }
 
 html[data-theme='dark'] .global-embedded-agent-dock-wrap {
+  background: #0f172a;
+}
+
+html[data-theme='dark'] .global-embedded-agent-dock-wrap--collapsed {
   border-top-color: #334155;
   background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  box-shadow: 0 -3px 16px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] .embedded-agent-dock {
@@ -205,7 +210,7 @@ html[data-theme='dark'] .embedded-agent-dock {
 }
 
 html[data-theme='dark'] .embedded-agent-dock__title {
-  color: #f1f5f9;
+  color: #94a3b8;
 }
 
 html[data-theme='dark'] .embedded-agent-dock__lead {
@@ -235,41 +240,21 @@ html[data-theme='dark'] .edu-bar-panel__heading {
 }
 
 html[data-theme='dark'] .embedded-dock-resize-handle {
-  color: #cbd5e1;
-  border-top-color: rgba(148, 163, 184, 0.35);
-  background: linear-gradient(
-    180deg,
-    rgba(51, 65, 85, 0.55) 0%,
-    rgba(30, 41, 59, 0.85) 100%
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-top-color: rgba(51, 65, 85, 0.8);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.3) 100%);
 }
 
 html[data-theme='dark'] .embedded-dock-resize-handle__bar {
-  background: rgba(226, 232, 240, 0.45);
-  box-shadow: none;
-}
-
-html[data-theme='dark'] .embedded-dock-resize-handle__label {
-  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.35);
 }
 
 html[data-theme='dark'] .embedded-dock-resize-handle:hover {
-  border-top-color: rgba(96, 165, 250, 0.45);
-  background: linear-gradient(
-    180deg,
-    rgba(65, 105, 225, 0.35) 0%,
-    rgba(30, 58, 110, 0.55) 100%
-  );
-  color: #e2e8f0;
+  border-top-color: rgba(96, 165, 250, 0.5);
+  background: linear-gradient(180deg, rgba(30, 58, 138, 0.3) 0%, rgba(15, 23, 42, 0.2) 100%);
 }
 
 html[data-theme='dark'] .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__bar {
-  background: rgba(147, 197, 253, 0.85);
-}
-
-html[data-theme='dark'] .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__label {
-  color: #bfdbfe;
+  background: rgba(147, 197, 253, 0.7);
 }
 
 /*

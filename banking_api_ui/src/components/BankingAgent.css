@@ -1549,11 +1549,12 @@
 }
 
 .embedded-agent-dock__title {
-  margin: 0 0 2px;
-  font-size: 0.92rem;
-  font-weight: 800;
-  color: #0f172a;
-  letter-spacing: -0.01em;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .embedded-agent-dock__lead {

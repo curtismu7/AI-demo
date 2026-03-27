@@ -77,7 +77,11 @@ jest.mock('../context/TokenChainContext', () => ({
 }));
 jest.mock('../context/AgentUiModeContext', () => ({
   AgentUiModeProvider: ({ children }) => children,
-  useAgentUiMode: () => ({ mode: 'floating', setMode: jest.fn() }),
+  useAgentUiMode: () => ({
+    placement: 'none',
+    fab: true,
+    setAgentUi: jest.fn(),
+  }),
 }));
 jest.mock('../services/configService', () => ({
   savePublicConfig: jest.fn().mockResolvedValue(undefined),
@@ -88,6 +92,7 @@ jest.mock('../services/demoScenarioService', () => {
     __esModule: true,
     fetchDemoScenario,
     persistBankingAgentUiMode: jest.fn(() => Promise.resolve(true)),
+    persistBankingAgentUi: jest.fn(() => Promise.resolve(true)),
   };
 });
 jest.mock('react-toastify', () => ({
