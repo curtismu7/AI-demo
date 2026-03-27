@@ -66,7 +66,8 @@
   background: #f1f5f9;
   display: flex;
   flex-direction: column;
-  padding: 0;
+  padding: 10px 10px 0;
+  box-sizing: border-box;
   overflow: hidden;
   /* Fill full grid row height */
   height: 100%;
@@ -1872,6 +1873,16 @@
   overflow: visible;
 }
 
+/* Split-3 overrides ud-body--2026: slim token rail | agent 1fr | banking 1fr */
+.ud-body.ud-body--2026.ud-body--dashboard-split3 {
+  grid-template-columns: 220px 1fr 1fr;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  height: min(calc(100vh - 130px), 900px);
+  min-height: 500px;
+  align-items: stretch;
+}
+
 .ud-body.ud-body--2026 .ud-center {
   padding-left: clamp(12px, 2vw, 20px);
   padding-right: clamp(12px, 2vw, 20px);
@@ -2707,7 +2718,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
 @media (max-width: 768px) {
   .ud-body { flex-direction: column; }
   .ud-left { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; }
-  .ud-body.ud-body--2026 {
+  .ud-body.ud-body--2026:not(.ud-body--dashboard-split3) {
     grid-template-columns: 1fr;
   }
   .ud-body.ud-body--2026.ud-body--design-3col .ud-float-reserve {
