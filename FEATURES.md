@@ -54,6 +54,7 @@ git checkout <last-version-tag> -- <key-file>
 | Step-up authentication gate (high-value transactions) | active | `banking_api_server/middleware/authorizeGate.js`, `banking_api_server/middleware/stepUpGate.js` | `s:step-up-gate.test.js`, `s:authorize-gate.test.js` |
 | Transaction consent challenge (high-value transfers — PingOne-style consent) | active | `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/TransactionConsentPage.js` | `s:transaction-consent-challenge.test.js` |
 | Agent blocked after consent decline (until re-auth) | active | `banking_api_ui/src/services/agentAccessConsent.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
+| Delegated Access — grant family member access to 1+ accounts; RFC 8693 Act-as explainer | active | `banking_api_ui/src/components/DelegatedAccessPage.js`, `banking_api_ui/src/components/DelegatedAccessPage.css` | — |
 
 ---
 
@@ -115,6 +116,7 @@ git checkout <last-version-tag> -- <key-file>
 | Education drawer / modal shell | active | `banking_api_ui/src/components/shared/EducationDrawer.js`, `banking_api_ui/src/components/shared/EducationModal.js` | `u:components/shared/__tests__/EducationDrawer.test.js` |
 | Login flow guide | active | `banking_api_ui/src/components/education/LoginFlowPanel.js` | — |
 | Token chain display + guide | active | `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/education/TokenChainPanel.js` | — |
+| Token Inspector panel — floating draggable/resizable/collapsible detail popup per token event | active | `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/TokenChainDisplay.css` | — |
 | Token introspection guide | active | `banking_api_ui/src/components/education/IntrospectionPanel.js` | — |
 | Token exchange guide | active | `banking_api_ui/src/components/education/TokenExchangePanel.js` | — |
 | Step-up auth guide | active | `banking_api_ui/src/components/education/StepUpPanel.js` | — |
