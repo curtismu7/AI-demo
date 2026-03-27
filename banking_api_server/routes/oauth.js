@@ -243,10 +243,14 @@ router.get('/callback', async (req, res) => {
     const authedUser = user;
     const redirectOrigin = getFrontendOrigin(req);
 
-    // Non-fatal: if regenerate fails, continue with existing session (Vercel cold start).
+    // P3 — Session regenerate failure is now fatal (prevents session fixation).
+    // If regenerate fails the user retries sign-in once; the UX cost is acceptable
+    // compared to serving the pre-login session ID after authentication.
     req.session.regenerate((regenErr) => {
       if (regenErr) {
-        console.warn('[oauth/callback] Session regenerate failed (continuing):', regenErr.message);
+        console.error('[oauth/callback] Session regenerate FAILED — aborting login (session fixation risk):', regenErr.message);
+        clearAuthCookie(res, _isProd());
+        return res.redirect(`${redirectOrigin}/login?error=session_regenerate_failed`);
       }
       req.session.oauthTokens = oauthTokens;
       req.session.user = authedUser;
@@ -274,6 +278,8 @@ router.get('/callback', async (req, res) => {
           oauthType: 'admin',
           expiresAt: oauthTokens.expiresAt,
         }, _isProd());
+        // Clear role-switch cookie if this login was triggered by POST /api/auth/switch
+        res.clearCookie('_switch_target', { path: '/', sameSite: _isProd() ? 'none' : 'lax', secure: _isProd() });
         res.redirect(`${redirectOrigin}/admin?oauth=success`);
       });
     });

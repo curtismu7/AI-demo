@@ -372,10 +372,12 @@ router.get('/callback', async (req, res) => {
     console.log('End user OAuth login successful for:', authedUser.username);
 
     // Regenerate session before storing credentials to prevent session fixation.
-    // Non-fatal on Vercel: if regenerate fails we continue with the existing session.
+    // P3 — failure is now fatal (abort login) to eliminate the session fixation risk.
     req.session.regenerate((regenErr) => {
       if (regenErr) {
-        console.warn('[oauth/user/callback] Session regenerate failed (continuing with existing session):', regenErr.message);
+        console.error('[oauth/user/callback] Session regenerate FAILED — aborting login:', regenErr.message);
+        clearAuthCookie(res, _isProd());
+        return res.redirect(`${origin}/login?error=session_regenerate_failed`);
       }
 
       req.session.oauthTokens = oauthTokens;
@@ -407,6 +409,9 @@ router.get('/callback', async (req, res) => {
           oauthType: 'user',
           expiresAt: oauthTokens.expiresAt,
         }, _isProd());
+
+        // Clear role-switch cookie if this login was triggered by POST /api/auth/switch
+        res.clearCookie('_switch_target', { path: '/', sameSite: _isProd() ? 'none' : 'lax', secure: _isProd() });
 
         if (stepUpReturnTo) {
           return res.redirect(stepUpReturnTo);

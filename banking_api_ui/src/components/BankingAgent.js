@@ -630,6 +630,8 @@ export default function BankingAgent({
   const [sessionRefreshing, setSessionRefreshing] = useState(false);
   /** True when identity came from _auth cookie / stub token — MCP and NL need a Redis-backed session. */
   const [cookieOnlyBffSession, setCookieOnlyBffSession] = useState(false);
+  /** True while the 2s reconnect poll is actively running (shows "Reconnecting…" banner). */
+  const [sessionReconnecting, setSessionReconnecting] = useState(false);
   /** Avoid repeating the session-fix error bubble after we showed it on load or after a failed action. */
   const sessionFixBubbleShownRef = useRef(false);
   /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
@@ -783,6 +785,39 @@ export default function BankingAgent({
       }
     });
   }, []);
+
+  // P1 — When the BFF returns cookieOnlyBffSession:true, poll /api/auth/session
+  // every 2s for up to 10s. Once the Upstash write has propagated (cookieOnlyBffSession
+  // becomes false) clear the banner and let normal interaction resume.
+  useEffect(() => {
+    if (!cookieOnlyBffSession) {
+      setSessionReconnecting(false);
+      return;
+    }
+    setSessionReconnecting(true);
+    let attempts = 0;
+    const MAX_ATTEMPTS = 5; // 5 × 2s = 10s
+    const interval = setInterval(async () => {
+      attempts += 1;
+      try {
+        const r = await fetch('/api/auth/session', { credentials: 'include' });
+        if (r.ok) {
+          const data = await r.json();
+          if (!data.cookieOnlyBffSession) {
+            setCookieOnlyBffSession(false);
+            setSessionReconnecting(false);
+            clearInterval(interval);
+            return;
+          }
+        }
+      } catch (_) { /* non-fatal */ }
+      if (attempts >= MAX_ATTEMPTS) {
+        setSessionReconnecting(false);
+        clearInterval(interval);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [cookieOnlyBffSession]);
 
   /** RFC 6749 refresh — does not log out; retries server-side session tokens. */
   const handleSessionRefresh = useCallback(async () => {
@@ -1571,6 +1606,14 @@ export default function BankingAgent({
           ref={panelRef}
           style={panelStyle}
         >
+          {/* P1 — Reconnecting banner: shown while Upstash write is still propagating */}
+          {sessionReconnecting && (
+            <div className="ba-reconnecting" role="status" aria-live="polite">
+              <span className="ba-reconnecting__spinner" aria-hidden="true">⟳</span>
+              Reconnecting to your session…
+            </div>
+          )}
+
           {/* Header — spans full width */}
           {/* In inline mode: no drag handle. In float mode: drag to reposition */}
           <div

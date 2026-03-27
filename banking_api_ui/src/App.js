@@ -177,7 +177,7 @@ function AppWithAuth() {
       typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search || '').get('oauth') === 'success';
 
-    const RETRY_DELAYS_MS = [450, 950, 1900];
+    const RETRY_DELAYS_MS = [450, 950, 1900, 3000];
     let retryIndex = 0;
     let cancelled = false;
     const timeouts = [];

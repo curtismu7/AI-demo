@@ -400,6 +400,33 @@ app.use((req, res, next) => {
 // land on a fresh instance with no in-memory session data.
 app.use(restoreSessionFromCookie);
 
+// P1 — Upstash re-fetch: when a _auth-cookie restore left us with no tokens
+// (Lambda B cold-start race), attempt one Upstash read with the session ID to
+// pull the tokens that Lambda A wrote. Non-fatal; no-op outside Upstash-REST deployments.
+app.use(async (req, _res, next) => {
+  if (!req.session?._restoredFromCookie) return next();
+  if (req.session.oauthTokens && req.session.oauthTokens.accessToken !== '_cookie_session') return next();
+  if (!sessionStore || typeof sessionStore.get !== 'function') return next();
+  const sid = req.sessionID;
+  if (!sid) return next();
+  try {
+    sessionStore.get(sid, (err, stored) => {
+      if (!err && stored?.oauthTokens && stored.oauthTokens.accessToken !== '_cookie_session') {
+        Object.assign(req.session, stored);
+        req.session._restoredFromCookie = false;
+        req.session.save((saveErr) => {
+          if (saveErr) console.warn('[session-refetch] save after Upstash re-fetch failed:', saveErr.message);
+        });
+        console.log('[session-refetch] Tokens recovered from Upstash for cookie-only session sid=' + sid.slice(0, 8) + '…');
+      }
+      next();
+    });
+  } catch (refetchErr) {
+    console.warn('[session-refetch] Non-fatal re-fetch error:', refetchErr.message);
+    next();
+  }
+});
+
 // RFC 6749 §6 — silently refresh near-expired end-user access tokens on
 // authenticated API routes so UIs never serve stale tokens to downstream services.
 // Include /api/auth/oauth so GET /api/auth/oauth/user/status (and admin /status) run
@@ -426,6 +453,50 @@ app.get('/api/healthz', (req, res) => {
     timestamp: new Date().toISOString(),
     port: PORT 
   });
+});
+
+// P2 — Role switch: initiates an OAuth re-login to a different role without a
+// full sign-out cycle.  Stashes the current tokens in Upstash under a keyed
+// prev-session entry (60s TTL) and redirects to PingOne for the target role.
+app.post('/api/auth/switch', (req, res) => {
+  const { targetRole } = req.body || {};
+  if (!['admin', 'customer'].includes(targetRole)) {
+    return res.status(400).json({ error: 'invalid_target', message: 'targetRole must be "admin" or "customer".' });
+  }
+
+  // Stash current tokens (non-fatal; best-effort)
+  const prevTokens = req.session?.oauthTokens;
+  const prevUser   = req.session?.user;
+  if (prevTokens && upstashSessionStoreInstance && prevUser?.id) {
+    const key = `sessions:prev:${prevUser.id}`;
+    upstashSessionStoreInstance.kv.set(key, JSON.stringify({ oauthTokens: prevTokens, user: prevUser }), { ex: 60 })
+      .catch(e => console.warn('[auth/switch] Failed to stash previous session:', e.message));
+  }
+
+  // Clear current auth
+  delete req.session.oauthTokens;
+  delete req.session.user;
+  delete req.session.clientType;
+  delete req.session.oauthType;
+  clearAuthCookie(res, isProduction);
+
+  // Set switch_target cookie so the OAuth callback knows where to redirect
+  const cookieOpts = {
+    httpOnly: true,
+    sameSite: isProduction ? 'none' : 'lax',
+    secure: isProduction,
+    maxAge: 5 * 60 * 1000, // 5 minutes
+    path: '/',
+  };
+  res.cookie('_switch_target', targetRole, cookieOpts);
+
+  // Return the appropriate login URL for the client to navigate to
+  const origin = req.headers.origin || '';
+  const loginUrl = targetRole === 'admin'
+    ? `${origin}/api/auth/oauth/login`
+    : `${origin}/api/auth/oauth/user/login`;
+
+  req.session.save(() => res.json({ redirectUrl: loginUrl }));
 });
 
 // Belt-and-suspenders cookie/session clear — called by the SPA after it detects
