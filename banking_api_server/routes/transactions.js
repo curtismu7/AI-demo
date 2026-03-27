@@ -271,21 +271,24 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
     const AUTHORIZE_ENABLED =
       (configStore.get('authorize_enabled') === 'true' || configStore.get('authorize_enabled') === true) ||
       runtimeSettings.get('authorizeEnabled');
+    const AUTHORIZE_DECISION_ENDPOINT_ID = configStore.get('authorize_decision_endpoint_id');
     const AUTHORIZE_POLICY_ID =
       configStore.get('authorize_policy_id') ||
       runtimeSettings.get('authorizePolicyId');
     const AUTHORIZE_TYPES = ['transfer', 'withdrawal'];
 
-    if (AUTHORIZE_ENABLED && AUTHORIZE_POLICY_ID && req.user.role !== 'admin' && AUTHORIZE_TYPES.includes(type)) {
+    if (AUTHORIZE_ENABLED && (AUTHORIZE_DECISION_ENDPOINT_ID || AUTHORIZE_POLICY_ID) && req.user.role !== 'admin' && AUTHORIZE_TYPES.includes(type)) {
       try {
-        const { decision, stepUpRequired } = await pingOneAuthorizeService.evaluateTransaction({
+        const { decision, stepUpRequired, path: authorizePath, decisionId } = await pingOneAuthorizeService.evaluateTransaction({
+          decisionEndpointId: AUTHORIZE_DECISION_ENDPOINT_ID,
           policyId: AUTHORIZE_POLICY_ID,
           userId: req.user.id,
           amount: parseFloat(amount),
           type,
           acr: req.user.acr,
         });
-        console.log(`[Authorize] Policy ${AUTHORIZE_POLICY_ID} — user ${req.user.id} — type ${type} — decision: ${decision} — stepUpRequired: ${stepUpRequired}`);
+        const authorizeRef = AUTHORIZE_DECISION_ENDPOINT_ID || AUTHORIZE_POLICY_ID;
+        console.log(`[Authorize] ${authorizePath} ${authorizeRef} — user ${req.user.id} — type ${type} — decision: ${decision} — stepUpRequired: ${stepUpRequired}${decisionId ? ` — decisionId: ${decisionId}` : ''}`);
 
         // Policy signalled that a step-up is required (obligation/advice)
         if (stepUpRequired) {

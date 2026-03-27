@@ -170,6 +170,7 @@ const demoScenarioRoutes = require('./routes/demoScenario');
 const adminRoutes       = require('./routes/admin');
 const adminConfigRoutes = require('./routes/adminConfig');
 const cibaRoutes        = require('./routes/ciba');
+const authorizeRoutes   = require('./routes/authorize');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
@@ -803,6 +804,7 @@ app.use('/api/agent', agentIdentityRoutes);
 // NL route uses its own req.session?.user check — full JWT validation is not
 // needed here and causes invalid_token errors when JWKS fetch times out.
 app.use('/api/banking-agent', bankingAgentNlRoutes);
+app.use('/api/authorize', authorizeRoutes);
 app.use('/api/mcp/inspector', authenticateToken, mcpInspectorRoutes);
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);

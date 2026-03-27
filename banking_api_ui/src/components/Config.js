@@ -71,7 +71,8 @@ const EMPTY_FORM = {
   debug_oauth: 'false',
   // PingOne Authorize (in-app authorization policy gate)
   authorize_enabled: 'false',
-  authorize_policy_id: '',
+  authorize_decision_endpoint_id: '', // Phase 2 — preferred path
+  authorize_policy_id: '',            // Phase 1 — legacy fallback
   authorize_worker_client_id: '',
   authorize_worker_client_secret: '',
   // Step-up authentication for large transfers / withdrawals
@@ -1007,12 +1008,21 @@ export default function Config() {
                 </p>
               </div>
               <TextField
-                label="Policy Decision Point ID"
+                label="Decision Endpoint ID (Phase 2 — preferred)"
+                fieldKey="authorize_decision_endpoint_id"
+                value={form.authorize_decision_endpoint_id}
+                onChange={handleChange}
+                placeholder="e.g. 87554d55-a7cf-…"
+                help="Endpoint ID from PingOne Authorize → Decision Endpoints. When set, uses the current Decision Endpoints API (POST /decisionEndpoints/{id}). Takes priority over Policy Decision Point ID below."
+                disabled={readOnly}
+              />
+              <TextField
+                label="Policy Decision Point ID (Phase 1 — legacy fallback)"
                 fieldKey="authorize_policy_id"
                 value={form.authorize_policy_id}
                 onChange={handleChange}
                 placeholder="e.g. abc12345-…"
-                help="The PDP ID from PingOne Authorize → Policy Decision Points."
+                help="Legacy PDP ID. Used only when Decision Endpoint ID above is not set. From PingOne Authorize → Policy Decision Points."
                 disabled={readOnly}
               />
             </div>

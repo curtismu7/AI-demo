@@ -67,29 +67,29 @@ Per [Decision Endpoints](https://developer.pingidentity.com/pingone-api/authoriz
 
 ## Phased implementation plan
 
-### Phase 1 — Documentation and config clarity (no breaking change)
+### Phase 1 — Documentation and config clarity ✅ COMPLETE
 
-- Keep current `evaluateTransaction` behavior; document the exact request/response in this file once validated against Ping’s OpenAPI/spec.
-- Add **Ping Identity doc links** to `PingOneAuthorizePanel.js`: overview + decision endpoints (and API reference when we pick the evaluate URL).
-- Update `FEATURES.md` / `REGRESSION_LOG.md` when behavior changes.
+- `PingOneAuthorizePanel.js` fully rewritten with 5 rich tabs + official Ping doc links.
 
-### Phase 2 — Align with Decision Endpoints evaluation
+### Phase 2 — Align with Decision Endpoints evaluation ✅ COMPLETE (2026-03-27)
 
-- Register or read a **decision endpoint** in PingOne Admin (per [overview tutorials](https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html) — *Publishing a policy and configuring an endpoint*).
-- Implement **POST** *Evaluate a Decision Request* per [Decision Endpoints / Decision Evaluation](https://developer.pingidentity.com/pingone-api/authorize/authorization-decisions/decision-endpoints.html) (exact path from current Platform API spec).
-- Map response to existing `{ decision, stepUpRequired, raw }` so `routes/transactions.js` and tests change minimally.
-- Deprecate or gate the old `policyDecisionPoints/.../evaluate` path behind a config flag if both exist during migration.
+- `pingOneAuthorizeService.js` — dual-path: `POST /decisionEndpoints/{endpointId}` (preferred) + legacy PDP fallback.
+- New config field: `authorize_decision_endpoint_id` (configStore + `PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID` env alias).
+- Config UI: Decision Endpoint ID field in Admin → Config → PingOne Authorize.
+- `routes/transactions.js` passes `decisionEndpointId`; response includes `path` + `decisionId`.
+- Trust Framework parameters: `Amount`, `TransactionType`, `UserId`, `Acr`, `Timestamp`.
+- Old PDP path kept as fallback — no breaking change for existing deployments.
 
-### Phase 3 — Recent decisions and UX
+### Phase 3 — Recent decisions and UX ✅ COMPLETE (2026-03-27)
 
-- If `recordRecentRequests` is enabled on the endpoint, use **GET** *Read Recent Decisions* for support/education screens (admin-only).
-- Optional: correlate high-value **HITL** consent in the app with **decision id** logged from Authorize for audit narrative.
+- `getRecentDecisions()` + `getDecisionEndpoints()` added to service.
+- New admin routes: `GET /api/authorize/recent-decisions` + `GET /api/authorize/decision-endpoints`.
+- Education panel: live Recent Decisions tab with PERMIT/DENY badges and expandable JSON.
 
-### Phase 4 — Broader Authorize features (optional)
+### Phase 4 — Broader Authorize features (optional / future)
 
-- **API Access Management** (API services, operations, gateway sidecars) — aligns with `docs/MCP_GATEWAY_PLAN.md` fine-grained controls.
+- **API Access Management** (API services, operations, gateway sidecars) — aligns with `docs/MCP_GATEWAY_PLAN.md`.
 - **Step-up for APIs** and **external OAuth** token sources — tie to existing OAuth/token exchange work in the BFF.
-
 ---
 
 ## References

@@ -18,6 +18,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **PingOne Authorize — Phase 2 Decision Endpoints API** — `pingOneAuthorizeService.js` now targets `POST /decisionEndpoints/{endpointId}` (preferred) with automatic fallback to legacy PDP path; new `authorize_decision_endpoint_id` config field + `PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID` env alias; Config UI "Decision Endpoint ID" field; `transactions.js` logs `path` + `decisionId`
+- **PingOne Authorize — Phase 3 Recent Decisions** — `GET /api/authorize/recent-decisions` + `GET /api/authorize/decision-endpoints` admin routes; `PingOneAuthorizePanel.js` rewritten with 5 rich tabs including live "🔍 Recent Decisions" viewer with PERMIT/DENY badges and expandable JSON
 - **SPIFFE implementation plan** — `docs/SPIFFE_PLAN.md` defines 4 integration points (JWT-SVID as RFC 8693 actor_token, mTLS BFF↔MCP, agent workload identity, PingGateway SPIFFE bridging) and 4 phased delivery phases; workload identity map and environment variable spec included
 - **Landing page quick-links** — hero section now shows shortcut buttons matching the edu-bar: CIBA guide, CIMD Simulator, Home, Dashboard, API, Logs, Demo config
 - **`mcp_resource_uri` Config UI field** — RFC 8693 MCP audience URI can now be set from Admin → Config without a redeploy; previously env-var only (`MCP_SERVER_RESOURCE_URI`)

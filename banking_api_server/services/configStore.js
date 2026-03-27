@@ -69,10 +69,13 @@ const FIELD_DEFS = {
   debug_oauth:            { public: true,  default: 'false' },
 
   // PingOne Authorize (policy decision point for transfers/withdrawals)
-  authorize_enabled:              { public: true,  default: 'false' },
-  authorize_policy_id:            { public: true,  default: '' },
-  authorize_worker_client_id:     { public: true,  default: '' },
-  authorize_worker_client_secret: { public: false, default: '' },
+  authorize_enabled:                { public: true,  default: 'false' },
+  // Phase 2: Decision Endpoints API — preferred path (set this in PingOne Authorize → Decision Endpoints)
+  authorize_decision_endpoint_id:   { public: true,  default: '' },
+  // Phase 1: Legacy PDP path — fallback when decision endpoint ID is not set
+  authorize_policy_id:              { public: true,  default: '' },
+  authorize_worker_client_id:       { public: true,  default: '' },
+  authorize_worker_client_secret:   { public: false, default: '' },
 
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
@@ -357,9 +360,10 @@ class ConfigStore {
       user_role:              ['USER_ROLE'],
       session_secret:         ['SESSION_SECRET'],
       frontend_url:           ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
-      mcp_server_url:         ['MCP_SERVER_URL'],
-      mcp_resource_uri:       ['MCP_SERVER_RESOURCE_URI'],
-      debug_oauth:            ['DEBUG_OAUTH'],
+      mcp_server_url:                   ['MCP_SERVER_URL'],
+      mcp_resource_uri:                 ['MCP_SERVER_RESOURCE_URI'],
+      authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
+      debug_oauth:                      ['DEBUG_OAUTH'],
       ciba_enabled:           ['CIBA_ENABLED'],
       step_up_method:         ['STEP_UP_METHOD'],
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
