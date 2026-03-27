@@ -5,6 +5,24 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Float agent not visible + drag broken after expand button
+
+**Symptoms**:
+1. Float agent FAB and open panel both disappeared on dashboard routes.
+2. After clicking the expand/restore (⊞/⊟) button, dragging the panel no longer moved it.
+
+**Root causes**:
+1. `showFloatingAgent` in App.js gated on `agentPlacement === 'none' || agentFab`. If the user had previously set placement to `'bottom'` or `'middle'` with `fab: false` (via the Agent UI Mode toggle), `showFloatingAgent` became `false` and the entire `BankingAgent` component — including the FAB — was never rendered.
+2. `handleDragStart` only called `setDragPos` when `dragPos === null` (first drag). After clicking ⊞ expand, `setIsExpanded(true)` is called. `panelStyle` checks `isExpanded` **before** `dragPos`, so the centered/expanded style always won — dragging set `dragPos` but the panel didn't move. The `[dragPos]` dependency on the `useCallback` also caused a stale closure when `dragPos` was already set.
+
+**Fixes**:
+- **App.js** — `showFloatingAgent`: removed the `(agentPlacement === 'none' || agentFab)` gate. Float agent now always renders on dashboard routes when the user is signed in. If an inline/dock agent is also active, the FAB coexists as a small corner button.
+- **BankingAgent.js** — `handleDragStart`: now always calls `setDragPos({ x: rect.left, y: rect.top })` (unconditionally) and adds `setIsExpanded(false)` to exit expanded mode before applying the drag position. Removed stale `[dragPos]` dep — callback is now `[]`.
+
+**Tests**: `CI=false npm run build` — compiled successfully. Manual: drag panel → click ⊞ → drag again → panel moves correctly. FAB visible even when `agentPlacement` is `'bottom'` or `'middle'` in localStorage.
+
+---
+
 ## 2026-03-27 — Floating agent panel closes on page refresh
 
 **Symptoms**:
