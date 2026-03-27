@@ -274,7 +274,6 @@ function AppWithAuth() {
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/logs" element={<LogViewerPage />} />
             <Route path="/api-traffic" element={<ApiTrafficPage />} />
-            <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
             <Route path="*" element={
               !user ? (
                 <LandingPage />
