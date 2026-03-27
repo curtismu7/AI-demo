@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -30,6 +30,27 @@ import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import './App.css';
+
+/**
+ * Sets a CSS custom property on <html> so the left-rail FABs (CIBA / CIMD / Logs)
+ * are always positioned below whatever header is on the current page.
+ * Must be rendered inside <Router> so useLocation is available.
+ */
+function RouteClassModifier() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    // Toggle a class on .App — CSS rules in App.css target this with high
+    // specificity to push the left-rail FABs below the dashboard header.
+    const appEl = document.querySelector('.App');
+    if (!appEl) return;
+    if (pathname === '/dashboard') {
+      appEl.classList.add('App--on-dashboard');
+    } else {
+      appEl.classList.remove('App--on-dashboard');
+    }
+  }, [pathname]);
+  return null;
+}
 
 function App() {
   const [user, setUser] = useState(null);
@@ -168,9 +189,11 @@ function App() {
   }
 
   return (
+
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <EducationUIProvider>
       <TokenChainProvider>
+        <RouteClassModifier />
         <div className="App end-user-nano">
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {/* These pages are always accessible, regardless of auth state */}

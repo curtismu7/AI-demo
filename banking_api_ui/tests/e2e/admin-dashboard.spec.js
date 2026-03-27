@@ -222,14 +222,14 @@ test.describe('Admin Dashboard', () => {
     await page.getByRole('button', { name: /oauth flows/i }).click();
     await page.getByRole('menuitem', { name: /authorization code \+ pkce/i }).click();
 
-    await expect(page.getByRole('dialog', { name: /login flow \(authorization code \+ pkce\)/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /ten-step login walkthrough/i })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /how you sign in/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /what happens when you click/i })).toBeVisible();
 
-    await page.getByRole('tab', { name: /pkce deep dive/i }).click();
-    await expect(page.getByRole('heading', { name: /why pkce\?/i })).toBeVisible();
+    await page.getByRole('tab', { name: /one-time code protection/i }).click();
+    await expect(page.getByRole('heading', { name: /why pkce/i })).toBeVisible();
 
     await page.locator('.edu-drawer .edu-drawer-close').click();
-    await expect(page.getByRole('dialog', { name: /login flow/i })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: /how you sign in/i })).toHaveCount(0);
   });
 });
 

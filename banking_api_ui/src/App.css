@@ -40,6 +40,12 @@
   --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
 }
 
+/* On the /dashboard route the UserDashboard header is ~146px tall.
+   Use direct top overrides (not CSS vars) so media-query var recalcs can't win. */
+.App.App--on-dashboard .ciba-fab        { top: 156px; }
+.App.App--on-dashboard .cimd-fab        { top: calc(156px + var(--stack-fab-height, 44px) + var(--stack-fab-gap, 8px)); }
+.App.App--on-dashboard .log-viewer-fab  { top: calc(156px + (var(--stack-fab-height, 44px) + var(--stack-fab-gap, 8px)) * 2); }
+
 /* Embedded dock sits in normal document flow at the bottom of <main> (see App.js) */
 .global-embedded-agent-dock-wrap {
   position: relative;

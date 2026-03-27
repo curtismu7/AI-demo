@@ -20,6 +20,22 @@ cd banking_api_server && npm test -- --forceExit
 
 If you only need session + OAuth BFF coverage, use `npm run test:session` (see above). Run the full suite before release when changing **`routes/transactions.js`**, **`transactionConsentChallenge.js`**, or **`middleware/auth`** scope rules.
 
+### UI (React) — browser E2E with mocked API
+
+Playwright can exercise **`UserDashboard`**, marketing **`LandingPage`**, and related flows without a live **`banking_api_server`** by stubbing `/api/*` in **`tests/e2e/customer-dashboard.spec.js`** and **`landing-marketing.spec.js`**.
+
+From repo root:
+
+```bash
+npm run test:e2e:ui:smoke
+```
+
+Full browser Playwright suite (admin dashboard, Banking Agent, security settings, etc.):
+
+```bash
+npm run test:e2e:ui
+```
+
 ## API smoke (server must be running)
 
 Session-only (faster than full API Playwright suite):

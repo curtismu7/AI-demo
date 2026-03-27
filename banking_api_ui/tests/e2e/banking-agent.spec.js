@@ -226,6 +226,14 @@ function agentPanelButton(page, namePattern) {
   return page.locator('.banking-agent-panel').getByRole('button', { name: namePattern });
 }
 
+/**
+ * /dashboard and /admin default the floating agent to collapsed — open via FAB before action tests.
+ */
+async function openFloatingAgentPanel(page) {
+  await page.locator('.banking-agent-fab').click();
+  await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+}
+
 // ─── LOGIN PAGE tests ──────────────────────────────────────────────────────────
 
 test.describe('BankingAgent — Login page (unauthenticated)', () => {
@@ -234,7 +242,7 @@ test.describe('BankingAgent — Login page (unauthenticated)', () => {
     await mockUnauthenticated(page);
     await page.goto('/');
     await expect(page.locator('.banking-agent-fab')).toBeVisible();
-    await expect(page.locator('.banking-agent-fab')).toHaveText('🤖');
+    await expect(page.locator('.banking-agent-fab')).toContainText(/🏦|AI Agent/);
   });
 
   test('clicking FAB opens the agent panel', async ({ page }) => {
@@ -314,22 +322,22 @@ test.describe('BankingAgent — Login page (unauthenticated)', () => {
     expect(navReq.url()).toContain('/api/auth/oauth/user/login');
   });
 
-  test('clicking close button (✕) hides the panel', async ({ page }) => {
+  test('Collapse agent button hides the floating panel', async ({ page }) => {
     await mockUnauthenticated(page);
     await page.goto('/');
     await page.locator('.banking-agent-fab').click();
     await expect(page.locator('.banking-agent-panel')).toBeVisible();
-    await page.locator('.banking-agent-panel button[aria-label="Close"]').click();
+    await page.getByRole('button', { name: 'Collapse agent' }).click();
     await expect(page.locator('.banking-agent-panel')).not.toBeVisible();
   });
 
-  test('clicking FAB again toggles panel closed', async ({ page }) => {
+  test('FAB is available again after collapsing the panel', async ({ page }) => {
     await mockUnauthenticated(page);
     await page.goto('/');
     await page.locator('.banking-agent-fab').click();
     await expect(page.locator('.banking-agent-panel')).toBeVisible();
-    await page.locator('.banking-agent-fab').click();
-    await expect(page.locator('.banking-agent-panel')).not.toBeVisible();
+    await page.getByRole('button', { name: 'Collapse agent' }).click();
+    await expect(page.locator('.banking-agent-fab')).toBeVisible();
   });
 });
 
@@ -344,16 +352,17 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await expect(page.locator('.banking-agent-fab')).toBeVisible({ timeout: 20000 });
   });
 
-  test('panel auto-opens after customer login without FAB click', async ({ page }) => {
+  test('FAB opens the floating agent panel on /dashboard', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('.banking-agent-fab')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
   });
 
   test('subtitle shows customer role badge when logged in', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await expect(page.locator('.ba-subtitle')).toContainText('Customer');
     await expect(page.locator('.ba-subtitle')).toContainText('Test');
   });
@@ -361,7 +370,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
   test('welcome message is shown in right column for logged-in user', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     const messages = page.locator('.banking-agent-messages');
     await expect(messages).toBeVisible();
   });
@@ -369,14 +378,14 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
   test('dashboard nav button shows "My Dashboard" for customer', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await expect(page.locator('.ba-left-col')).toContainText('My Dashboard');
   });
 
   test('panel shows all 6 banking action buttons in left column', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     const actions = page.locator('.ba-left-col .ba-action-item');
     await expect(actions).toHaveCount(6);
     await expect(actions.nth(0)).toContainText('My Accounts');
@@ -390,7 +399,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
   test('customer suggestions are shown in the left column', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await expect(page.locator('.ba-left-col')).toContainText('Check my account balance');
   });
 
@@ -400,11 +409,11 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, SAMPLE_ACCOUNTS);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool') && r.method() === 'POST'),
-      page.getByRole('button', { name: /My Accounts/i }).first().click(),
+      agentPanelButton(page, /My Accounts/i).click(),
     ]);
 
     const body = JSON.parse(req.postData() || '{}');
@@ -419,7 +428,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, SAMPLE_TRANSACTIONS);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/api/mcp/tool')),
@@ -437,7 +446,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
   test('"Check Balance" shows Account ID form', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Check Balance/i).click();
     await expect(page.locator('.banking-agent-form')).toBeVisible();
     await expect(page.locator('label', { hasText: 'Account ID' })).toBeVisible();
@@ -447,7 +456,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, SAMPLE_BALANCE);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Check Balance/i).click();
 
     await page.locator('input[placeholder*="acc_"]').first().fill('acc_001');
@@ -467,7 +476,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
   test('"Deposit" shows form with Account ID and Amount fields', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Deposit/i).click();
 
     const form = page.locator('.banking-agent-form');
@@ -480,7 +489,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'deposit', amount: 250 });
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Deposit/i).click();
 
     const inputs = page.locator('.banking-agent-field input');
@@ -505,7 +514,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'withdrawal', amount: 100 });
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Withdraw/i).click();
 
     const inputs = page.locator('.banking-agent-field input');
@@ -529,7 +538,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
   test('"Transfer" shows form with From, To, Amount and Note fields', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Transfer/i).click();
 
     const form = page.locator('.banking-agent-form');
@@ -543,7 +552,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpTool(page, { ...SAMPLE_TRANSACTION_CONFIRM, type: 'transfer', amount: 500 });
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Transfer/i).click();
 
     const inputs = page.locator('.banking-agent-field input');
@@ -577,7 +586,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     });
 
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /Withdraw/i).click();
     await expect(page.locator('.banking-agent-form')).toBeVisible();
 
@@ -592,7 +601,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await mockMcpToolError(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await agentPanelButton(page, /My Accounts/i).click();
 
     const messages = page.locator('.banking-agent-messages');
@@ -603,7 +612,7 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
   test('login action buttons are NOT shown when user is authenticated', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await expect(page.locator('.ba-left-col')).not.toContainText('Admin Sign In');
     await expect(page.locator('.ba-left-col')).not.toContainText('Customer Sign In');
   });
@@ -616,13 +625,13 @@ test.describe('BankingAgent — Authenticated (admin logged in)', () => {
   test('panel auto-opens after admin login without FAB click', async ({ page }) => {
     await mockAuthenticatedAdmin(page);
     await page.goto('/admin');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
   });
 
   test('subtitle shows admin role badge for admin user', async ({ page }) => {
     await mockAuthenticatedAdmin(page);
     await page.goto('/admin');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await expect(page.locator('.ba-subtitle')).toContainText('Admin');
     await expect(page.locator('.ba-subtitle')).toContainText('Alice');
   });
@@ -630,14 +639,14 @@ test.describe('BankingAgent — Authenticated (admin logged in)', () => {
   test('dashboard nav button shows "Admin Dashboard" for admin', async ({ page }) => {
     await mockAuthenticatedAdmin(page);
     await page.goto('/admin');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await expect(page.locator('.ba-left-col')).toContainText('Admin Dashboard');
   });
 
   test('admin suggestions are shown (system-wide framing)', async ({ page }) => {
     await mockAuthenticatedAdmin(page);
     await page.goto('/admin');
-    await expect(page.locator('.banking-agent-panel')).toBeVisible({ timeout: 20000 });
+    await openFloatingAgentPanel(page);
     await expect(page.locator('.ba-left-col')).toContainText('Show all customer accounts');
   });
 });

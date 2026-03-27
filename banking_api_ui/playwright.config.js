@@ -17,6 +17,9 @@
  *   npm run test:e2e:admin        # admin-dashboard.spec.js only
  *   npm run test:e2e:security     # security-settings.spec.js only
  *   npm run test:e2e:agent        # banking-agent.spec.js only
+ *   npm run test:e2e:customer     # customer-dashboard.spec.js (UserDashboard mocks)
+ *   npm run test:e2e:landing      # landing-marketing.spec.js (unauthenticated marketing)
+ *   npm run test:e2e:ui:smoke    # customer + landing (fast UI smoke)
  *
  * Remote UI (e.g. Vercel):
  *   CI=true PLAYWRIGHT_BASE_URL=https://your-app.vercel.app npm run test:e2e:ci
@@ -65,7 +68,7 @@ module.exports = defineConfig({
 
   // API-only specs use playwright.api.config.js (BANKING_API_BASE). Do not run them here or
   // requests would go to the UI baseURL (e.g. Vercel) instead of banking_api_server.
-  testIgnore: ['**/banking-operations.spec.js', '**/health.spec.js'],
+  testIgnore: ['**/banking-operations.spec.js', '**/health.spec.js', '**/session-regression.spec.js'],
 
   // Fail fast on CI; allow retries locally
   retries: process.env.CI ? 2 : 0,
