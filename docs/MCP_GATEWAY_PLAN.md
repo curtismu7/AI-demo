@@ -35,7 +35,7 @@ Use it together with the public tutorial: [MCP security gateway | PingGateway 20
    - Allow only **valid MCP** requests  
  - **Audit** MCP requests and actors  
    - **Coarse-grained** controls (OAuth 2.0)  
-   - **Fine-grained** controls (PingOne Authorize, Advanced Identity Cloud, PingOne Protect)  
+   - **Fine-grained** controls (PingOne Authorize, Advanced Identity Cloud, PingOne Protect) — see **`docs/PINGONE_AUTHORIZE_PLAN.md`** for Authorize APIs and decision endpoints.  
    - **Token transformation** to match downstream security models  
 
 ### High-level flow (TOI diagrams)

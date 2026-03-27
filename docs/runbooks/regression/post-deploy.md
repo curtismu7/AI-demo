@@ -23,6 +23,7 @@ Run after every production **or** preview deploy.
 | **HITL consent** | High-value transfer/deposit/withdraw from customer dashboard → **consent popup** (checkbox to allow the assistant to complete the transaction); decline/success closes modal + toast. Deep link **`/transaction-consent?challenge=…`** shows the same popup. |
 | Main content | Does not sit under the left rail (`.App--has-quick-nav` inset when quick nav is shown) |
 | **Split vs Classic** (customer) | Toolbar **Split view** / **Classic** toggles three-column (token \| agent \| banking) vs prior layout; page reload may apply after change. |
+| **Split view — embedded agent** | Middle column: tall scrollable chat, thin prompt row, scrollable chip/tray below; **Embedded** bottom dock uses **Classic** layout (split suppresses duplicate dock). Education shortcuts: **hamburger** (top-right). |
 | Learn bar | **Agent UI** (Floating / Embedded / Both) + layout toggle when signed in on customer dashboard |
 | "Customer Dashboard" title | Visible in the header |
 | Home › Dashboard breadcrumb | Links render and navigate correctly |

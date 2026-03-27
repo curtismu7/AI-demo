@@ -220,14 +220,18 @@ html[data-theme='dark'] .embedded-banking-agent-lead {
   color: #94a3b8;
 }
 
-html[data-theme='dark'] .edu-bar {
-  background: linear-gradient(to bottom, #1e293b 0%, #0f172a 100%);
-  border-bottom-color: #334155;
+html[data-theme='dark'] .edu-bar-panel {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
 }
 
-html[data-theme='dark'] .edu-bar-dropdown .dropdown-item:hover {
-  background: #334155;
-  color: #fecaca;
+html[data-theme='dark'] .edu-bar-panel__title {
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .edu-bar-panel__heading {
+  color: #94a3b8;
 }
 
 html[data-theme='dark'] .embedded-dock-resize-handle {

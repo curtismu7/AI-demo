@@ -1185,6 +1185,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
                 mode="inline"
                 embeddedFocus="banking"
                 distinctFloatingChrome
+                splitColumnChrome
               />
             </div>
           </section>

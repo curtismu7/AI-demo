@@ -8,8 +8,11 @@ No single file is allowed to exceed ~300 lines so context windows stay manageabl
 | [api-session.md](api-session.md) | Jest session/OAuth unit tests; BFF store ping; auth state cookies |
 | [ui-browser.md](ui-browser.md) | Playwright browser E2E: customer dashboard, landing page, admin dashboard, Banking Agent |
 | [post-deploy.md](post-deploy.md) | Manual smoke checks after production or preview deploys |
+| [../PINGONE_AUTHORIZE_PLAN.md](../PINGONE_AUTHORIZE_PLAN.md) | PingOne Authorize integration plan (decision endpoints, overview links) |
 
 **Toast notifications**: User-visible success / error / warning should use **`appToast`** (`notify*`); session + Sign-in use **`dashboardToast`**. See **`REGRESSION_LOG.md`** (2026-03-26 — UI notifications) and **post-deploy.md** §4 (step-up toast).
+
+**Split dashboard agent** (2026-03-27): **Split view** embeds **`BankingAgent`** with **`splitColumnChrome`** (navy header, session id, **Sign out**, compact input + **Send**, suggestion chips). Scroll the transcript and the lower tray independently. See **`REGRESSION_LOG.md`** (2026-03-27 — split-column agent UX + SecureBank-style chrome).
 
 ## Run everything (CI order)
 

@@ -1844,3 +1844,159 @@
     0 10px 36px rgba(15, 23, 42, 0.35),
     0 4px 16px rgba(65, 105, 225, 0.45);
 }
+
+/* Split dashboard (token rail | assistant | accounts): compact SecureBank-style chrome */
+.banking-agent-panel.ba-mode-inline.ba-split-column {
+  --ba-split-navy: #1e3a5f;
+  --ba-split-navy-deep: #172554;
+  --ba-bg: #f1f5f9;
+  --ba-surface: #f8fafc;
+  --ba-text: #0f172a;
+  --ba-muted: #64748b;
+  --ba-border: #cbd5e1;
+  --ba-agent-bg: #e2e8f0;
+  --ba-agent-txt: #0f172a;
+  --ba-user-bg: var(--ba-split-navy);
+  --ba-user-txt: #ffffff;
+  --ba-accent: var(--ba-split-navy);
+  --ba-accent-h: var(--ba-split-navy-deep);
+  --ba-input-bg: #ffffff;
+  --ba-input-bd: #cbd5e1;
+  --ba-chip-bg: #e2e8f0;
+  --ba-chip-bd: #94a3b8;
+  --ba-chip-txt: #334155;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-header {
+  background: linear-gradient(180deg, var(--ba-split-navy) 0%, var(--ba-split-navy-deep) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: default;
+  padding: 8px 10px 8px;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-title {
+  color: #ffffff;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-subtitle {
+  color: rgba(226, 232, 240, 0.95);
+  font-weight: 500;
+}
+
+.ba-header-session {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0 0.35rem;
+  font-size: 0.65rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #93c5fd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  align-self: center;
+  line-height: 1.2;
+}
+
+@media (max-width: 640px) {
+  .ba-header-session {
+    display: none;
+  }
+}
+
+.ba-header-signout {
+  padding: 4px 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.ba-header-signout:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-header-top {
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-header-tools {
+  flex-shrink: 0;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-icon-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-agent-appearance-select {
+  max-width: 7.5rem;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(15, 23, 42, 0.35);
+  color: #f8fafc;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-agent-appearance-select option {
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-status-dot {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .banking-agent-messages {
+  background: var(--ba-surface);
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-right-col {
+  background: var(--ba-surface);
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-left-col {
+  background: #f1f5f9;
+  border-right-color: #cbd5e1;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-bottom {
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-input:focus {
+  border-color: var(--ba-split-navy);
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-send-btn {
+  width: auto;
+  min-width: 52px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #94a3b8;
+  color: #ffffff;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .ba-send-btn:hover:not(:disabled) {
+  background: #64748b;
+}
+
+.banking-agent-panel.ba-mode-inline.ba-split-column .banking-agent-msg.assistant.typing .banking-agent-msg-bubble {
+  background: #e2e8f0;
+  color: #475569;
+}

@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Split-column agent: SecureBank-style chrome, scroll regions, education hamburger
+
+**Symptom**: Split-dashboard middle column needed a compact assistant look (navy header, bubbles, **Send**), independent scrolling for transcript vs chips/actions, and **Education** / agent UI controls could not sit in a full-width bar beside the token rail.
+
+**Root cause**: Inline **`BankingAgent`** in the three-column grid used the same two-column body as other embeds; **`.ba-split-column`** visual tokens were incomplete; **EducationBar** was a horizontal strip.
+
+**Fix**: **`BankingAgent.css` / `BankingAgent.js`** — **`splitColumnChrome`** styling (header session, **Sign out**, message/input/send, **`ba-split-suggestions-row`**), flex **`order`** so chat + input sit above the tray, overflow on messages and tray. **`EducationBar`** — top-right hamburger + panel (offset from **`UIDesignNav`**). **`UserDashboard.css`** — agent column flex height for embedded panel. **`docs/PINGONE_AUTHORIZE_PLAN.md`**, **`MCP_GATEWAY_PLAN.md`**, **`PingOneAuthorizePanel.js`** — Authorize/decision-endpoint cross-links.
+
+**Tests**: **`cd banking_api_ui && CI=true npm run build`**. Manual: **`/dashboard`** Split view — scroll chat and lower tray; **Classic** + **Embedded** — bottom dock; **Floating** FAB on dashboard routes when mode allows.
+
+---
+
 ## 2026-03-27 — Customer split dashboard; agent modes (Floating / Embedded / Both); HITL consent popup
 
 **Symptom**: Users lost the top-of-screen agent mode switch on `/dashboard`; they wanted token chain left, embedded assistant center, banking content right, with a way to revert to the previous layout. High-value HITL navigated away to a full consent page.

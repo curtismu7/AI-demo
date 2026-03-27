@@ -568,6 +568,7 @@ const TOPIC_MESSAGES = {
  * @param {boolean} [props.embeddedDockBottom] When inline, stack chat on top and suggestions below (dashboard bottom bar)
  * @param {'banking' | 'config'} [props.embeddedFocus] When `config`, dock on Application Configuration emphasizes setup (not transfers).
  * @param {boolean} [props.distinctFloatingChrome] When floating, stronger card/chrome so it reads as a separate widget vs the page.
+ * @param {boolean} [props.splitColumnChrome] Inline mode: compact “assistant” chrome for token | agent | banking columns (navy header, chat bubbles).
  */
 export default function BankingAgent({
   user,
@@ -576,10 +577,12 @@ export default function BankingAgent({
   embeddedDockBottom = false,
   embeddedFocus = 'banking',
   distinctFloatingChrome = false,
+  splitColumnChrome = false,
 }) {
   const isInline = mode === 'inline';
   const isBottomDock = isInline && embeddedDockBottom;
   const isConfigEmbeddedFocus = embeddedFocus === 'config';
+  const splitChrome = Boolean(splitColumnChrome && isInline);
   const { preset: industryPreset } = useIndustryBranding();
   const brandShortName = industryPreset.shortName;
   const edu = useEducationUIOptional();
@@ -1562,7 +1565,7 @@ export default function BankingAgent({
       {/* Panel */}
       {effectiveIsOpen && (
         <div
-          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded && !isInline ? ' ba-expanded' : ''}${isInline ? ' ba-mode-inline' : ''}${isBottomDock ? ' ba-embedded-bottom-dock' : ''}`}
+          className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded && !isInline ? ' ba-expanded' : ''}${isInline ? ' ba-mode-inline' : ''}${isBottomDock ? ' ba-embedded-bottom-dock' : ''}${splitChrome ? ' ba-split-column' : ''}`}
           role="dialog"
           aria-label={isConfigEmbeddedFocus ? 'Application setup assistant' : `${brandShortName} AI Agent`}
           ref={panelRef}
@@ -1581,19 +1584,32 @@ export default function BankingAgent({
                 <span className="ba-status-dot" />
                 <div>
                   <div className="ba-title">
-                    {isConfigEmbeddedFocus ? 'Application setup assistant' : `${brandShortName} AI Agent`}
+                    {isConfigEmbeddedFocus
+                      ? 'Application setup assistant'
+                      : splitChrome
+                        ? `${brandShortName} Assistant`
+                        : `${brandShortName} AI Agent`}
                   </div>
                   <div className="ba-subtitle">
                     {isConfigEmbeddedFocus
                       ? isLoggedIn
                         ? `PingOne · OAuth · branding (${brandShortName}) · environment variables`
                         : 'Sign in to get started'
-                      : isLoggedIn
-                        ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'}`
-                        : 'Sign in to get started'}
+                      : splitChrome
+                        ? isLoggedIn
+                          ? `${effectiveUser.role === 'admin' ? 'Admin' : 'Customer'} · ${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'}`
+                          : 'Sign in to get started'
+                        : isLoggedIn
+                          ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'}`
+                          : 'Sign in to get started'}
                   </div>
                 </div>
               </div>
+              {splitChrome && isLoggedIn && (effectiveUser?.id || effectiveUser?.username) && (
+                <div className="ba-header-session" title="PingOne user id">
+                  {effectiveUser?.id || effectiveUser?.username}
+                </div>
+              )}
               <div className="ba-header-tools">
                 {/* Expand/restore only available in float mode */}
                 {!isInline && (
@@ -1629,6 +1645,15 @@ export default function BankingAgent({
                 >
                   {appTheme === 'dark' ? '☀️' : '🌙'}
                 </button>
+                {splitChrome && isLoggedIn && (
+                  <button
+                    type="button"
+                    className="ba-header-signout"
+                    onClick={() => onLogout?.()}
+                  >
+                    Sign out
+                  </button>
+                )}
                 {/* Collapse to FAB only in float mode */}
                 {!isInline && (
                   <button 
@@ -1643,23 +1668,25 @@ export default function BankingAgent({
                 )}
               </div>
             </div>
-            {/* Connected services row */}
-            <div className="ba-server-chips">
-              <span
-                className="ba-server-chip ba-server-chip--active"
-                title={isConfigEmbeddedFocus ? 'MCP tools (same server — use for discovery)' : 'Banking AI tools service — connected'}
-              >
-                <span className="ba-chip-dot" />
-                {isConfigEmbeddedFocus ? 'MCP tools' : 'Banking Tools'}
-                {mcpStatus.connected && mcpStatus.toolCount != null && (
-                  <span className="ba-chip-count">{mcpStatus.toolCount} actions</span>
-                )}
-              </span>
-              <span className="ba-server-chip ba-server-chip--active" title="PingOne Identity — connected">
-                <span className="ba-chip-dot" />
-                PingOne Identity
-              </span>
-            </div>
+            {/* Connected services row — hidden in split column to maximize chat height */}
+            {!splitChrome && (
+              <div className="ba-server-chips">
+                <span
+                  className="ba-server-chip ba-server-chip--active"
+                  title={isConfigEmbeddedFocus ? 'MCP tools (same server — use for discovery)' : 'Banking AI tools service — connected'}
+                >
+                  <span className="ba-chip-dot" />
+                  {isConfigEmbeddedFocus ? 'MCP tools' : 'Banking Tools'}
+                  {mcpStatus.connected && mcpStatus.toolCount != null && (
+                    <span className="ba-chip-count">{mcpStatus.toolCount} actions</span>
+                  )}
+                </span>
+                <span className="ba-server-chip ba-server-chip--active" title="PingOne Identity — connected">
+                  <span className="ba-chip-dot" />
+                  PingOne Identity
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Two-column body */}
@@ -1953,7 +1980,13 @@ export default function BankingAgent({
                           setShowCommands(false);
                         }
                       }}
-                      placeholder={nlMeta?.groqConfigured ? `Message ${brandShortName} AI… (Groq AI)` : `Message ${brandShortName} AI…`}
+                      placeholder={
+                        splitChrome && !nlMeta?.groqConfigured
+                          ? 'Ask about your accounts…'
+                          : nlMeta?.groqConfigured
+                            ? `Message ${brandShortName} AI… (Groq AI)`
+                            : `Message ${brandShortName} AI…`
+                      }
                       disabled={nlLoading || consentBlocked}
                     />
                     <button
@@ -1963,7 +1996,7 @@ export default function BankingAgent({
                       disabled={nlLoading || !nlInput.trim() || consentBlocked}
                       aria-label="Send"
                     >
-                      {nlLoading ? '…' : '↑'}
+                      {nlLoading ? '…' : splitChrome ? 'Send' : '↑'}
                     </button>
                   </div>
                 ) : (
