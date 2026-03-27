@@ -127,3 +127,59 @@ export function createWithdrawal(accountId, amount, description) {
     description: description || 'Agent withdrawal',
   });
 }
+
+// ─── Consent-challenge retry helpers (used by BankingAgent after HITL modal confirms) ───────────────
+// These call the REST endpoint directly with a consentChallengeId so the
+// server's HITL gate is satisfied. They return { result, tokenEvents } to
+// match the shape returned by callMcpTool().
+
+async function callRestTransaction(body) {
+  const res = await fetch('/api/transactions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const e = Object.assign(
+      new Error(data.message || data.error || `Transaction failed: ${res.status}`),
+      { statusCode: res.status, code: data.error }
+    );
+    throw e;
+  }
+  return { result: data, tokenEvents: [] };
+}
+
+export function createTransferWithConsent(fromAccountId, toAccountId, amount, description, consentChallengeId) {
+  return callRestTransaction({
+    fromAccountId,
+    toAccountId,
+    amount,
+    type: 'transfer',
+    description: description || 'Agent transfer',
+    consentChallengeId,
+  });
+}
+
+export function createDepositWithConsent(accountId, amount, description, consentChallengeId) {
+  return callRestTransaction({
+    toAccountId: accountId,
+    fromAccountId: null,
+    amount,
+    type: 'deposit',
+    description: description || 'Agent deposit',
+    consentChallengeId,
+  });
+}
+
+export function createWithdrawalWithConsent(accountId, amount, description, consentChallengeId) {
+  return callRestTransaction({
+    fromAccountId: accountId,
+    toAccountId: null,
+    amount,
+    type: 'withdrawal',
+    description: description || 'Agent withdrawal',
+    consentChallengeId,
+  });
+}

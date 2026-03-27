@@ -70,6 +70,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const fetchingRef = React.useRef(false);
+  /** Holds the agent HITL detail (actionId, form) while the consent modal is open so we can fire the confirmed event. */
+  const agentHitlDetailRef = React.useRef(null);
 
   /** Dashboard chrome theme (persists `bx-dash-theme` for admin + mock HTML). */
   const [dashTheme, setDashTheme] = useState(() => {
@@ -94,6 +96,28 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     const onLayout = () => setDashboardLayoutState(getDashboardLayout());
     window.addEventListener('banking-dashboard-layout', onLayout);
     return () => window.removeEventListener('banking-dashboard-layout', onLayout);
+  }, []);
+
+  /** HITL: open the TransactionConsentModal when the floating agent requests consent. */
+  useEffect(() => {
+    const onAgentHitl = async (e) => {
+      const { intentPayload } = e.detail || {};
+      if (!intentPayload) return;
+      try {
+        const { data } = await apiClient.post('/api/transactions/consent-challenge', intentPayload);
+        const cid = data?.challengeId;
+        if (!cid) { notifyError('Could not start consent — no challenge id from server.'); return; }
+        setConsentChallengeId(cid);
+        // Store the original agent intent so we can pass it back on confirmation
+        agentHitlDetailRef.current = e.detail;
+      } catch (ex) {
+        const msg = ex.response?.data?.message || ex.response?.data?.error || ex.message || 'Could not start consent flow.';
+        notifyError(msg);
+      }
+    };
+    window.addEventListener('banking-agent-hitl-consent', onAgentHitl);
+    return () => window.removeEventListener('banking-agent-hitl-consent', onAgentHitl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** Keep localStorage layout aligned with Agent UI (Middle → split, Bottom → classic). */
@@ -1258,11 +1282,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           open
           challengeId={consentChallengeId}
           user={user}
-          onClose={() => setConsentChallengeId(null)}
+          onClose={() => { setConsentChallengeId(null); agentHitlDetailRef.current = null; }}
           onTransactionSuccess={(msg) => {
+            const agentDetail = agentHitlDetailRef.current;
             setConsentChallengeId(null);
+            agentHitlDetailRef.current = null;
             notifySuccess(msg);
             void fetchUserData(true);
+            // If the consent was triggered from the floating agent, notify it so it
+            // can show a success message in the chat panel.
+            if (agentDetail) {
+              window.dispatchEvent(new CustomEvent('banking-agent-hitl-confirmed', {
+                detail: { actionId: agentDetail.actionId, successMsg: msg },
+              }));
+            }
           }}
           onDeclinedConfirmed={() => {
             setConsentChallengeId(null);

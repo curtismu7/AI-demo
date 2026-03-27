@@ -225,7 +225,26 @@ function normalizeAgentToolResult(result) {
       return result;
     }
   }
+
   return result;
+}
+
+/**
+ * Build the payload expected by POST /api/transactions/consent-challenge
+ * from the agent actionId + form values (same keys used in runAction).
+ */
+function buildConsentIntent(actionId, form) {
+  const amount = parseFloat(form.amount);
+  if (actionId === 'deposit') {
+    return { type: 'deposit', toAccountId: form.accountId, fromAccountId: null, amount, description: form.note || 'Agent deposit' };
+  }
+  if (actionId === 'withdraw') {
+    return { type: 'withdrawal', fromAccountId: form.accountId, toAccountId: null, amount, description: form.note || 'Agent withdrawal' };
+  }
+  if (actionId === 'transfer') {
+    return { type: 'transfer', fromAccountId: form.fromId, toAccountId: form.toId, amount, description: form.note || 'Agent transfer' };
+  }
+  return null;
 }
 
 /** Maps MCP JSON (including deposit/transfer/withdraw shapes) to results panel + dashboard event types. */
@@ -669,6 +688,21 @@ export default function BankingAgent({
   useEffect(() => {
     if (consentBlocked) setActiveAction(null);
   }, [consentBlocked]);
+
+  // Listen for UserDashboard confirming a HITL consent challenge.
+  // The modal already executes the transaction — we just surface the success message in the agent.
+  useEffect(() => {
+    const onConfirmed = (e) => {
+      const { actionId, successMsg } = e.detail || {};
+      const label = ACTIONS.find(a => a.id === actionId)?.label || actionId;
+      addMessage('assistant', `✅ **${label} approved and completed.**\n\n${successMsg || 'The transaction went through after your consent.'}`, actionId);
+      notifySuccess(`✅ ${label} complete`);
+    };
+    window.addEventListener('banking-agent-hitl-confirmed', onConfirmed);
+    return () => window.removeEventListener('banking-agent-hitl-confirmed', onConfirmed);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // Persist open state so the panel survives a page refresh
   const hasMountedRef = useRef(false);
@@ -1205,13 +1239,22 @@ export default function BankingAgent({
         }
         const consent =
           normalized.consent_challenge_required === true || normalized.error === 'consent_challenge_required';
-        addMessage('assistant', formatResult(response.result), actionId);
-        toast.dismiss(toastId);
         if (consent) {
-          notifyInfo('👤 Amount over $500 — complete the consent popup on the dashboard (human-in-the-loop)', {
-            autoClose: 7000,
-          });
+          // Dispatch to UserDashboard which owns the TransactionConsentModal.
+          // The payload mirrors what POST /api/transactions/consent-challenge expects.
+          const intentPayload = buildConsentIntent(actionId, form);
+          addMessage('assistant',
+            `👤 **Human approval required**\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} need your explicit consent.\n\nA consent dialog has opened — review the details and approve to continue.`,
+            actionId
+          );
+          toast.dismiss(toastId);
+          notifyInfo('👤 Consent required — review the popup that just appeared', { autoClose: 5000 });
+          window.dispatchEvent(new CustomEvent('banking-agent-hitl-consent', {
+            detail: { actionId, form, intentPayload },
+          }));
         } else {
+          addMessage('assistant', formatResult(response.result), actionId);
+          toast.dismiss(toastId);
           notifyError(`❌ ${normalized.message || normalized.error || 'Request failed'}`, { autoClose: 5000 });
         }
         setLoading(false);
