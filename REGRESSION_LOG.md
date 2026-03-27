@@ -5,6 +5,24 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — API Traffic window: freeze button + light theme
+
+**Symptoms**:
+1. Live log kept updating while the user was trying to read an entry — no way to pause/inspect.
+2. Dark background (`#0f172a` slate) made the viewer hard to read in bright environments.
+
+**Root causes**:
+1. `ApiTrafficPanel` subscribed to the store unconditionally with no freeze mechanism.
+2. All CSS colours were hard-coded to dark slate palette.
+
+**Fixes**:
+- **`ApiTrafficPanel.js`** — Added `frozen` + `frozenEntries` state. **⏸ Freeze** button snapshots `liveEntries` into `frozenEntries`; list shows the snapshot while frozen. **▶ Resume** clears the snapshot and reverts to live feed. A `FROZEN` amber badge appears in the title bar. Live capture continues in the background regardless.
+- **`ApiTrafficPanel.css`** — Full light-theme rewrite: background `#ffffff`/`#f8fafc`, borders `#e2e8f0`, text `#0f172a`/`#334155`. JSON syntax colours updated to dark-on-white (keys `#1d4ed8`, strings `#15803d`, numbers `#b45309`). Token event status badges updated to light variants. Added `.api-traffic-btn--frozen` amber style.
+
+**Tests**: `CI=false npm run build` — compiled successfully. Manual: open `/api-traffic` — light background; click Freeze — list stops updating, badge shows FROZEN; inspect entry; click Resume — live again.
+
+---
+
 ## 2026-03-27 — Split3: agent bottom cut off, columns unequal, layout disconnected from header
 
 **Symptoms (3 bugs)**:

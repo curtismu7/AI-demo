@@ -241,15 +241,29 @@ function HttpEntryDetail({ entry }) {
 // ── Full-page viewer ───────────────────────────────────────────────────────────
 
 /**
- * Read-only API traffic viewer: list + detail. Search and filter only; no agent chrome.
+ * Read-only API traffic viewer: list + detail. Search, filter, and freeze only; no agent chrome.
  */
 export default function ApiTrafficPanel() {
-  const [entries, setEntries] = useState(() => getAll());
+  const [liveEntries, setLiveEntries] = useState(() => getAll());
+  const [frozen, setFrozen] = useState(false);
+  const [frozenEntries, setFrozenEntries] = useState(null);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
 
-  useEffect(() => subscribe(setEntries), []);
+  useEffect(() => subscribe(setLiveEntries), []);
+
+  const entries = frozen && frozenEntries !== null ? frozenEntries : liveEntries;
+
+  function toggleFreeze() {
+    if (frozen) {
+      setFrozenEntries(null);
+      setFrozen(false);
+    } else {
+      setFrozenEntries(liveEntries);
+      setFrozen(true);
+    }
+  }
 
   const filtered = entries.filter(e => matchFilter(e, filter, search));
 
@@ -259,8 +273,18 @@ export default function ApiTrafficPanel() {
         <div className="api-traffic-title">
           <span>API traffic</span>
           <span className="api-traffic-count">{filtered.length}</span>
+          {frozen && <span className="api-traffic-frozen-badge">FROZEN</span>}
         </div>
         <div className="api-traffic-toolbar">
+          <button
+            type="button"
+            className={`api-traffic-btn${frozen ? ' api-traffic-btn--frozen' : ''}`}
+            onClick={toggleFreeze}
+            title={frozen ? 'Resume live updates' : 'Freeze log — stop updating so you can inspect entries'}
+            aria-pressed={frozen}
+          >
+            {frozen ? '▶ Resume' : '⏸ Freeze'}
+          </button>
           <input
             className="api-traffic-search"
             placeholder="Filter by URL / tool…"
