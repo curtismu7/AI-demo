@@ -64,13 +64,12 @@
 
 .ud-agent-column {
   min-width: 0;
-  /* Share borders with neighbours — left neighbour provides right border, we provide left border for right neighbour */
   border-left: 1px solid #e2e8f0;
   border-right: 1px solid #e2e8f0;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
-  padding: 10px 10px 0;
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
   height: 100%;

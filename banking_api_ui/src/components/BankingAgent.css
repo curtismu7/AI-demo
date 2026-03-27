@@ -1934,11 +1934,12 @@
   --ba-chip-bg: #e2e8f0;
   --ba-chip-bd: #94a3b8;
   --ba-chip-txt: #334155;
-  border-radius: 10px 10px 0 0;
+  border-radius: 0;
   overflow: hidden;
   box-shadow: none;
-  /* Fill the full ud-agent-column height so all 3 columns align */
+  /* Fill the full ud-agent-column flush — no gap to neighbours */
   height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
