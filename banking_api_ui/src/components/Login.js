@@ -4,8 +4,10 @@ import axios from 'axios';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { notifyError } from '../utils/appToast';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
 
 const Login = () => {
+  const { preset } = useIndustryBranding();
   const [loading] = useState(false);
   const [searchParams] = useSearchParams();
   const edu = useEducationUIOptional();
@@ -94,11 +96,11 @@ const Login = () => {
                   <div className="logo-square"></div>
                   <div className="logo-square"></div>
                 </div>
-                <span className="bank-name">BX Finance</span>
+                <span className="bank-name">{preset.shortName}</span>
               </div>
             </div>
             <h1>Secure Account Access</h1>
-            <p className="login-product-line">PingOne AI IAM Core</p>
+            <p className="login-product-line">{preset.tagline || 'PingOne AI IAM Core'}</p>
             <p>Sign in to access your banking services</p>
           </div>
 

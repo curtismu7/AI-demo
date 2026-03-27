@@ -11,6 +11,12 @@
 
 const configStore = require('./configStore');
 const oauthService = require('./oauthService');
+const {
+  parseAllowedScopesFromConfig,
+  isToolPermittedByAgentPolicy,
+  missingAgentPolicyScopes,
+  scopesAreCatalogOnly,
+} = require('./agentMcpScopePolicy');
 const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
 
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
@@ -293,6 +299,34 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   const toolScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
+  const agentAllowedRaw = configStore.getEffective('agent_mcp_allowed_scopes');
+  const agentAllowedSet = parseAllowedScopesFromConfig(agentAllowedRaw);
+
+  if (
+    scopesAreCatalogOnly(toolScopes) &&
+    !isToolPermittedByAgentPolicy(toolScopes, agentAllowedSet)
+  ) {
+    const missing = missingAgentPolicyScopes(toolScopes, agentAllowedSet);
+    tokenEvents.push(buildTokenEvent(
+      'agent-scope-denied',
+      'Agent MCP scope policy — action blocked',
+      'failed',
+      null,
+      `Application Configuration does not allow the OAuth scopes required for this tool: ${missing.join(', ')}. ` +
+        'Enable the matching options under **Agent MCP scopes** on the config page. RFC 8693 token exchange was not started.',
+      {
+        missingScopes: missing,
+        agentPolicyAllows: [...agentAllowedSet].join(' '),
+      }
+    ));
+    throwTokenResolutionError(
+      tokenEvents,
+      'agent_mcp_scope_denied',
+      `Agent MCP scopes exclude: ${missing.join(', ')}. Enable them in Application Configuration → Agent MCP scopes, then try again.`,
+      403
+    );
+  }
+
   const useActor = process.env.USE_AGENT_ACTOR_FOR_MCP === 'true' && process.env.AGENT_OAUTH_CLIENT_ID;
 
   // ── MCP resource audience required — never forward user token to MCP without RFC 8693 ──

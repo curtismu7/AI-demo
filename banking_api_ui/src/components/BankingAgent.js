@@ -15,6 +15,7 @@ import { loadPublicConfig } from '../services/configService';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { useTokenChainOptional } from '../context/TokenChainContext';
 import { useTheme } from '../context/ThemeContext';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { EDU } from './education/educationIds';
 import { EDUCATION_COMMANDS } from './education/educationCommands';
 import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
@@ -95,6 +96,8 @@ const SUGGESTIONS_ADMIN = [
 const CONFIG_ACTION_IDS = ['mcp_tools', 'logout'];
 
 const SUGGESTIONS_CONFIG_CUSTOMER = [
+  'How do I change industry branding (e.g. FunnyBank) on the config page?',
+  'How do Agent MCP scopes limit transfers vs read-only?',
   'What PingOne or OAuth environment variables does this app need?',
   'How should I set redirect URIs for local development?',
   'What OAuth scopes does the BFF use?',
@@ -104,6 +107,8 @@ const SUGGESTIONS_CONFIG_CUSTOMER = [
 ];
 
 const SUGGESTIONS_CONFIG_ADMIN = [
+  'How do I add a new industry preset (colors, logo) to this demo?',
+  'What is agent_mcp_allowed_scopes and how does token exchange use it?',
   'What worker app credentials does the API server need in production?',
   'What redirect URIs should I register in PingOne for this demo?',
   'Show me last 5 errors',
@@ -482,16 +487,16 @@ function ResultsPanel({ panel, onClose, style }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-function welcomeMessage(u, focus = 'banking') {
+function welcomeMessage(u, focus = 'banking', brandShortName = 'BX Finance') {
   if (focus === 'config') {
     if (!u) {
-      return '⚙️ Ask about PingOne, redirect URIs, OAuth scopes, and environment variables for this demo.';
+      return `⚙️ Ask about PingOne, redirect URIs, OAuth scopes, **Agent MCP scopes** (limit transfers vs read-only), environment variables, and **industry branding** (${brandShortName} vs other presets) for this demo.`;
     }
     const name = u.firstName || u.name?.split(' ')[0] || 'there';
     if (u.role === 'admin') {
-      return `⚙️ Hi ${name} — you're on Application Configuration. Ask about environment IDs, worker apps, redirect URIs, or OAuth. Banking shortcuts are hidden here.`;
+      return `⚙️ Hi ${name} — you're on Application Configuration. Ask about environment IDs, worker apps, redirect URIs, OAuth, **Industry & branding** (\`ui_industry_preset\`), or **Agent MCP scopes** (\`agent_mcp_allowed_scopes\`) — turn off transfers for a read-only agent demo; the BFF runs RFC 8693 token exchange on each tool call with the selected scopes. Banking shortcuts are hidden here. Theme: **${brandShortName}**.`;
     }
-    return `⚙️ Hi ${name} — you're on Application Configuration. Ask how to connect this app to PingOne and what URLs to register.`;
+    return `⚙️ Hi ${name} — you're on Application Configuration. Ask how to connect PingOne, switch branding (e.g. FunnyBank), or limit the agent with **Agent MCP scopes** (e.g. disable transfers). Theme: **${brandShortName}**.`;
   }
   if (!u) return "👋 You're signed in! What would you like to do?";
   const name = u.firstName || u.name?.split(' ')[0] || 'there';
@@ -554,7 +559,7 @@ const TOPIC_MESSAGES = {
   'agent-gateway': `🌐 Agent Gateway / Resource Indicators (RFC 8707):\n\nRFC 8707: client specifies the resource URI when requesting a token\n  /as/token?resource=https://mcp.example.com\n  → token aud = "https://mcp.example.com"\n\nRFC 9728: Protected Resource Metadata\n  GET https://mcp.example.com/.well-known/oauth-protected-resource\n  → { resource, authorization_servers, scopes_supported }\n\nThis lets a dynamic AI agent discover what auth is needed before attempting a tool call — no hardcoded configuration.`,
   'pingone-authorize': `🔐 PingOne Authorize (DaVinci):\n\nPingOne Authorize evaluates access policies at runtime using DaVinci flows.\n\nIn this demo it drives:\n• Step-up MFA triggers (ACR values like "Multi_factor")\n• CIBA push notifications to the user's device\n• Dynamic consent for high-value transactions\n\nThe acr_values parameter in /as/authorize tells PingOne which DaVinci policy to run.`,
   'cimd': `📄 Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "▶ Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
-  'human-in-loop': `👤 Human-in-the-loop (HITL) for the banking agent:\n\n• Over $500 the server issues a consent challenge in your session; after you confirm on the consent page, POST /transactions must include matching consentChallengeId (one-time use).\n• The agent cannot complete that path without your browser session.\n• If you decline, this demo disables the assistant until you sign out and sign in again.\n• HITL ≠ MITM (attack). Open the drawer: What is HITL · Patterns & best practices · This app and the agent · Declining and lockout.`,
+  'human-in-loop': `👤 Human-in-the-loop (HITL) for the banking agent:\n\n• Over $500 the server issues a consent challenge in your session; after you confirm in the consent popup, POST /transactions must include matching consentChallengeId (one-time use).\n• The agent cannot complete that path without your browser session.\n• If you decline, this demo disables the assistant until you sign out and sign in again.\n• HITL ≠ MITM (attack). Open the drawer: What is HITL · Patterns & best practices · This app and the agent · Declining and lockout.`,
 };
 
 /**
@@ -575,6 +580,8 @@ export default function BankingAgent({
   const isInline = mode === 'inline';
   const isBottomDock = isInline && embeddedDockBottom;
   const isConfigEmbeddedFocus = embeddedFocus === 'config';
+  const { preset: industryPreset } = useIndustryBranding();
+  const brandShortName = industryPreset.shortName;
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   const {
@@ -693,7 +700,7 @@ export default function BankingAgent({
             setSessionUser(found);
             setMessages(prev => {
               if (prev.length > 0) return prev;
-              const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus) };
+              const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus, brandShortName) };
               if (cookieOnly) {
                 sessionFixBubbleShownRef.current = true;
                 return [
@@ -728,10 +735,10 @@ export default function BankingAgent({
     if (!user) return;
     setMessages(prev =>
       prev.length === 0
-        ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user, embeddedFocus) }]
+        ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user, embeddedFocus, brandShortName) }]
         : prev
     );
-  }, [user, embeddedFocus]);
+  }, [user, embeddedFocus, brandShortName]);
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
@@ -803,7 +810,7 @@ export default function BankingAgent({
       setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
-        const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus) };
+        const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus, brandShortName) };
         if (cookieOnly) {
           sessionFixBubbleShownRef.current = true;
           setMessages([
@@ -830,13 +837,13 @@ export default function BankingAgent({
       checkSelfAuth();
       setMessages(prev =>
         prev.length === 0
-          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUserRef.current, embeddedFocus) }]
+          ? [{ id: Date.now().toString(), role: 'assistant', content: welcomeMessage(user || sessionUserRef.current, embeddedFocus, brandShortName) }]
           : prev
       );
     };
     window.addEventListener('userAuthenticated', onAuth);
     return () => window.removeEventListener('userAuthenticated', onAuth);
-  }, [checkSelfAuth, user, isInline, embeddedFocus]);
+  }, [checkSelfAuth, user, isInline, embeddedFocus, brandShortName]);
 
   // Re-check when panel opens (catches sessions established after mount)
   useEffect(() => {
@@ -1124,7 +1131,7 @@ export default function BankingAgent({
         addMessage('assistant', formatResult(response.result), actionId);
         toast.dismiss(toastId);
         if (consent) {
-          notifyInfo('👤 Amount over $500 — complete consent on the dashboard (human-in-the-loop)', {
+          notifyInfo('👤 Amount over $500 — complete the consent popup on the dashboard (human-in-the-loop)', {
             autoClose: 7000,
           });
         } else {
@@ -1535,8 +1542,8 @@ export default function BankingAgent({
           type="button"
           className="banking-agent-fab"
           onClick={() => setIsOpen(true)}
-          aria-label="Open AI Banking Agent"
-          title="Open AI Banking Agent"
+          aria-label={`Open ${brandShortName} AI Agent`}
+          title={`Open ${brandShortName} AI Agent`}
         >
           <span className="banking-agent-fab-icon">🏦</span>
           <span className="banking-agent-fab-label">AI Agent</span>
@@ -1557,7 +1564,7 @@ export default function BankingAgent({
         <div
           className={`banking-agent-panel${isDark ? '' : ' ba-mode-light'}${isExpanded && !isInline ? ' ba-expanded' : ''}${isInline ? ' ba-mode-inline' : ''}${isBottomDock ? ' ba-embedded-bottom-dock' : ''}`}
           role="dialog"
-          aria-label={isConfigEmbeddedFocus ? 'Application setup assistant' : 'Banking AI Agent'}
+          aria-label={isConfigEmbeddedFocus ? 'Application setup assistant' : `${brandShortName} AI Agent`}
           ref={panelRef}
           style={panelStyle}
         >
@@ -1574,12 +1581,12 @@ export default function BankingAgent({
                 <span className="ba-status-dot" />
                 <div>
                   <div className="ba-title">
-                    {isConfigEmbeddedFocus ? 'Application setup assistant' : 'BX Finance AI Agent'}
+                    {isConfigEmbeddedFocus ? 'Application setup assistant' : `${brandShortName} AI Agent`}
                   </div>
                   <div className="ba-subtitle">
                     {isConfigEmbeddedFocus
                       ? isLoggedIn
-                        ? 'PingOne · OAuth · redirect URIs · environment variables'
+                        ? `PingOne · OAuth · branding (${brandShortName}) · environment variables`
                         : 'Sign in to get started'
                       : isLoggedIn
                         ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'}`
@@ -1946,7 +1953,7 @@ export default function BankingAgent({
                           setShowCommands(false);
                         }
                       }}
-                      placeholder={nlMeta?.groqConfigured ? 'Message BX Finance AI… (Groq AI)' : 'Message BX Finance AI…'}
+                      placeholder={nlMeta?.groqConfigured ? `Message ${brandShortName} AI… (Groq AI)` : `Message ${brandShortName} AI…`}
                       disabled={nlLoading || consentBlocked}
                     />
                     <button

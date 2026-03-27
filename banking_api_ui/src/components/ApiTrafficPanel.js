@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/ApiTrafficPanel.js
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { subscribe, getAll, clearTraffic, setPaused, isPausedNow } from '../services/apiTrafficStore';
+import React, { useState, useEffect } from 'react';
+import { subscribe, getAll } from '../services/apiTrafficStore';
 import './ApiTrafficPanel.css';
 
 const FILTERS = ['All', 'MCP', 'Token', 'HTTP', 'Errors'];
@@ -86,7 +86,6 @@ function StatusBadge({ entry }) {
 
 function MethodBadge({ entry }) {
   if (entry.kind === 'token-event') {
-    // Show a distinct badge per token event type
     const icons = {
       'user-token':               { label: 'T1', cls: 'TOKEN-T1' },
       'exchanged-token':          { label: 'XCHG', cls: 'TOKEN-XCHG' },
@@ -98,7 +97,6 @@ function MethodBadge({ entry }) {
     const { label, cls } = icons[entry.eventId] || { label: 'TOK', cls: 'TOKEN-T1' };
     return <span className={`api-method-badge api-method-badge--${cls}`}>{label}</span>;
   }
-  // MCP HTTP calls — show "MCP" badge instead of "POST"
   if (entry.url === '/api/mcp/tool' || entry.source === 'mcp') {
     return <span className="api-method-badge api-method-badge--MCP">MCP</span>;
   }
@@ -107,10 +105,8 @@ function MethodBadge({ entry }) {
   return <span className={`api-method-badge api-method-badge--${cls}`}>{m}</span>;
 }
 
-/** Human-readable label for the entry list. */
 function entryLabel(entry) {
-  if (entry.kind === 'token-event') return entry.url; // "[toolName] User Token"
-  // Annotate /api/mcp/tool with the tool name from the request body
+  if (entry.kind === 'token-event') return entry.url;
   if (entry.url === '/api/mcp/tool' && entry.requestBody?.tool)
     return `/api/mcp/tool → ${entry.requestBody.tool}`;
   return entry.url;
@@ -146,7 +142,7 @@ function TokenEventDetail({ entry }) {
 
   return (
     <>
-      <div className="api-detail-tabs">
+      <div className="api-detail-tabs" role="tablist" aria-label="Token event details">
         {tabs.map(t => (
           <button key={t.id} type="button"
             className={`api-detail-tab${tab === t.id ? ' api-detail-tab--active' : ''}`}
@@ -199,7 +195,7 @@ function HttpEntryDetail({ entry }) {
 
   return (
     <>
-      <div className="api-detail-tabs">
+      <div className="api-detail-tabs" role="tablist" aria-label="HTTP exchange details">
         {tabs.map(t => (
           <button key={t.id} type="button"
             className={`api-detail-tab${tab === t.id ? ' api-detail-tab--active' : ''}`}
@@ -242,64 +238,27 @@ function HttpEntryDetail({ entry }) {
   );
 }
 
-// ── Main Panel ────────────────────────────────────────────────────────────────
+// ── Full-page viewer ───────────────────────────────────────────────────────────
 
-/** Floating draggable API + MCP + Token-Exchange viewer. Also supports pageMode for full-window display. */
-export default function ApiTrafficPanel({ onClose, pageMode = false }) {
+/**
+ * Read-only API traffic viewer: list + detail. Search and filter only; no agent chrome.
+ */
+export default function ApiTrafficPanel() {
   const [entries, setEntries] = useState(() => getAll());
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
-  const [paused, setPausedState] = useState(() => isPausedNow());
-
-  const panelRef = useRef(null);
-  const dragging = useRef(false);
-  const dragOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => subscribe(setEntries), []);
 
-  const handleMouseDown = useCallback((e) => {
-    if (pageMode || e.button !== 0) return;
-    const rect = panelRef.current.getBoundingClientRect();
-    dragging.current = true;
-    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    e.preventDefault();
-  }, [pageMode]);
-
-  useEffect(() => {
-    if (pageMode) return;
-    const handleMouseMove = (e) => {
-      if (!dragging.current || !panelRef.current) return;
-      panelRef.current.style.left   = `${e.clientX - dragOffset.current.x}px`;
-      panelRef.current.style.top    = `${e.clientY - dragOffset.current.y}px`;
-      panelRef.current.style.right  = 'auto';
-      panelRef.current.style.bottom = 'auto';
-    };
-    const handleMouseUp = () => { dragging.current = false; };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [pageMode]);
-
-  const handleTogglePause = () => { const n = !paused; setPaused(n); setPausedState(n); };
-  const handleClear = () => { clearTraffic(); setSelected(null); };
-  const handlePopOut = () =>
-    window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes');
-
   const filtered = entries.filter(e => matchFilter(e, filter, search));
-  const panelClass = ['api-traffic-panel', pageMode ? 'api-traffic-panel--page' : ''].filter(Boolean).join(' ');
 
   return (
-    <div className={panelClass} ref={panelRef}>
-      {/* Header */}
-      <div className="api-traffic-header" onMouseDown={handleMouseDown}>
+    <div className="api-traffic-panel api-traffic-panel--page">
+      <header className="api-traffic-header api-traffic-header--page">
         <div className="api-traffic-title">
-          <span>🌐 API Traffic</span>
+          <span>API traffic</span>
           <span className="api-traffic-count">{filtered.length}</span>
-          {paused && <span className="api-traffic-paused">⏸ paused</span>}
         </div>
         <div className="api-traffic-toolbar">
           <input
@@ -307,35 +266,30 @@ export default function ApiTrafficPanel({ onClose, pageMode = false }) {
             placeholder="Filter by URL / tool…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            onMouseDown={e => e.stopPropagation()}
+            aria-label="Filter by URL or tool name"
           />
-          <button type="button" className={`api-traffic-btn${paused ? ' api-traffic-btn--pause' : ''}`} onClick={handleTogglePause}>
-            {paused ? '▶ Resume' : '⏸ Pause'}
-          </button>
-          <button type="button" className="api-traffic-btn" onClick={handleClear}>Clear</button>
-          {!pageMode && <button type="button" className="api-traffic-btn" onClick={handlePopOut} title="Pop out to separate window — drag that window to another monitor">⤢ Pop out</button>}
-          {onClose && <button type="button" className="api-traffic-btn api-traffic-btn--close" onClick={onClose}>✕</button>}
+          <label className="api-traffic-filter-label">
+            <span className="api-traffic-filter-sr">Category</span>
+            <select
+              className="api-traffic-filter-select"
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              aria-label="Category filter"
+            >
+              {FILTERS.map(f => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </label>
         </div>
-      </div>
+      </header>
 
-      {/* Filter chips */}
-      <div className="api-traffic-filter-row">
-        {FILTERS.map(f => (
-          <button key={f} type="button"
-            className={`api-traffic-chip${filter === f ? ' api-traffic-chip--active' : ''}`}
-            onClick={() => setFilter(f)}
-          >{f}</button>
-        ))}
-      </div>
-
-      {/* Body */}
       <div className="api-traffic-body">
-        {/* Entry list */}
         <div className="api-traffic-list">
           {filtered.length === 0 ? (
             <div className="api-traffic-empty">
               {entries.length === 0
-                ? 'No traffic captured yet.\nUse the agent or make an API call.'
+                ? 'No traffic captured yet.\nUse the main app in another tab or window — API calls will appear here via shared storage.'
                 : 'No entries match the current filter.'}
             </div>
           ) : (
@@ -350,6 +304,14 @@ export default function ApiTrafficPanel({ onClose, pageMode = false }) {
                     ? 'api-traffic-entry--error' : '',
                 ].filter(Boolean).join(' ')}
                 onClick={() => setSelected(entry)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelected(entry);
+                  }
+                }}
               >
                 <MethodBadge entry={entry} />
                 <StatusBadge entry={entry} />
@@ -363,7 +325,6 @@ export default function ApiTrafficPanel({ onClose, pageMode = false }) {
           )}
         </div>
 
-        {/* Detail pane */}
         <div className="api-traffic-detail">
           {!selected ? (
             <div className="api-detail-empty">← Select an entry to inspect</div>

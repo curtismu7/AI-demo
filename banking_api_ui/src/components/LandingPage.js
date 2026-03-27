@@ -2,9 +2,12 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import LoadingOverlay from './shared/LoadingOverlay';
 import AgentUiModeToggle from './AgentUiModeToggle';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import BrandLogo from './BrandLogo';
 import './LandingPage.css';
 
 const LandingPage = () => {
+  const { preset } = useIndustryBranding();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -75,8 +78,8 @@ const LandingPage = () => {
       <nav className={`navbar ${scrollY > 50 ? 'scrolled' : ''}`}>
         <div className="nav-container">
           <div className="nav-brand">
-            <img src="/logo.svg" alt="BX Finance Logo" style={{ height: 40, width: 40, marginRight: 12, borderRadius: 12, background: '#fff' }} />
-            <span className="brand-name">BX Finance</span>
+            <BrandLogo style={{ marginRight: 12, borderRadius: 12, background: '#fff' }} height={40} width={40} />
+            <span className="brand-name">{preset.shortName}</span>
           </div>
 
           <div className="nav-agent-ui-wrap">
@@ -327,7 +330,7 @@ const LandingPage = () => {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderBottom: '1px solid #1e293b', paddingBottom: '0.75rem' }}>
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981' }} />
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>BX Finance AI Agent</span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>{preset.shortName} AI Agent</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', flex: 1 }}>
                     <div style={{ alignSelf: 'flex-start', background: '#1e293b', color: '#e2e8f0', borderRadius: '0.75rem 0.75rem 0.75rem 0', padding: '0.6rem 0.9rem', fontSize: '0.85rem', maxWidth: '80%' }}>
@@ -377,8 +380,8 @@ const LandingPage = () => {
         <div className="container">
           <div className="footer-content">
             <div className="footer-brand">
-              <img src="/logo.svg" alt="BX Finance Logo" style={{ height: 40, width: 40, borderRadius: 10, background: '#fff', marginRight: 10, verticalAlign: 'middle' }} />
-              <span className="brand-name">BX Finance</span>
+              <BrandLogo style={{ borderRadius: 10, background: '#fff', marginRight: 10, verticalAlign: 'middle' }} height={40} width={40} />
+              <span className="brand-name">{preset.shortName}</span>
               <p>Powered by PingOne AI IAM Core</p>
             </div>
             
@@ -405,7 +408,7 @@ const LandingPage = () => {
           </div>
           
           <div className="footer-bottom">
-            <p>&copy; 2024 BX Finance. All rights reserved. Secured by PingOne AI IAM Core.</p>
+            <p>&copy; {new Date().getFullYear()} {preset.shortName}. All rights reserved. Secured by PingOne AI IAM Core.</p>
           </div>
         </div>
       </footer>

@@ -41,14 +41,15 @@ export function isDashboardQuickNavRoute(pathname, user) {
 /**
  * Whether the global corner FAB floating agent should render.
  *
- * - Only when signed in, floating mode, and on dashboard home routes (`/`, `/admin`, `/dashboard`).
+ * - Only when signed in, floating or both, and on dashboard home routes (`/`, `/admin`, `/dashboard`).
  * - Embedded mode: no FAB — assistant only as the bottom dock on those same routes.
+ * - `both`: FAB + dock; App hides duplicate FAB when customer uses split3 (inline agent) layout.
  *
- * @param {{ user?: { role?: string } | null | undefined; agentUiMode: 'floating' | 'embedded'; pathname?: string }} p
+ * @param {{ user?: { role?: string } | null | undefined; agentUiMode: 'floating' | 'embedded' | 'both'; pathname?: string }} p
  * @returns {boolean}
  */
 export function shouldShowGlobalFloatingBankingAgentFab({ user, agentUiMode, pathname = '' }) {
   if (!user) return false;
-  if (agentUiMode !== 'floating') return false;
+  if (agentUiMode !== 'floating' && agentUiMode !== 'both') return false;
   return isBankingAgentDashboardRoute(pathname);
 }

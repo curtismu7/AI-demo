@@ -91,6 +91,19 @@ const FIELD_DEFS = {
   // 'ciba'  → back-channel (CIBA) challenge shown inline on the dashboard
   // 'email' → OIDC re-authentication redirect (PingOne email / OTP MFA)
   step_up_method: { public: true, default: 'ciba' },
+
+  /** UI industry / white-label preset (client applies colors + logo). See banking_api_ui/src/config/industryPresets.js */
+  ui_industry_preset: { public: true, default: 'bx_finance' },
+
+  /**
+   * Space-separated OAuth scopes allowed for RFC 8693 exchange to MCP (agent capability).
+   * Subset of KNOWN scopes in agentMcpScopePolicy.js — disabling a scope blocks matching MCP tools.
+   */
+  agent_mcp_allowed_scopes: {
+    public: true,
+    default:
+      'banking:accounts:read banking:transactions:read banking:transactions:write ai_agent',
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -349,6 +362,7 @@ class ConfigStore {
       debug_oauth:            ['DEBUG_OAUTH'],
       ciba_enabled:           ['CIBA_ENABLED'],
       step_up_method:         ['STEP_UP_METHOD'],
+      agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
     };
 
     const envVars = envFallbackMap[key] || [];

@@ -21,6 +21,8 @@ const MCP_TOOL_SCOPES = {
   transfer: ['banking:transactions:write'],
   deposit: ['banking:transactions:write'],
   withdraw: ['banking:transactions:write'],
+  banking_get_account_balance: ['banking:accounts:read'],
+  banking_create_transfer: ['banking:transactions:write'],
 };
 
 function getMcpServerUrl() {

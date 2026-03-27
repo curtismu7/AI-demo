@@ -29,7 +29,7 @@ export default function ApiTrafficPage() {
 
   return (
     <div className="api-traffic-page-host">
-      <ApiTrafficPanel pageMode onClose={() => window.close()} />
+      <ApiTrafficPanel />
     </div>
   );
 }

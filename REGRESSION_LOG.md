@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Customer split dashboard; agent modes (Floating / Embedded / Both); HITL consent popup
+
+**Symptom**: Users lost the top-of-screen agent mode switch on `/dashboard`; they wanted token chain left, embedded assistant center, banking content right, with a way to revert to the previous layout. High-value HITL navigated away to a full consent page.
+
+**Root cause**: `/dashboard` did not render the same education/toolbar affordances as home; layout was single-column banking + floating zone. Consent flow used **`navigate('/transaction-consent?challenge=…')`** only.
+
+**Fix**: **`dashboardLayout.js`** + **`DashboardLayoutToggle`** — **`split3`** (default) vs **`classic`** in **`localStorage`**, event **`banking-dashboard-layout`** for **`App.js`** to re-evaluate FAB/dock vs inline agent. **`UserDashboard`** — three-column grid when **`split3`**, **`BankingAgent`** **`mode="inline"`** in center column. **`AgentUiModeContext`** + **`demoScenario.js`** — restore **`both`** (FAB + bottom dock) when not on split3 ( **`customerSplit3Dashboard`** suppresses duplicate chrome). **`TransactionConsentModal`** — modal + checkbox authorizing the assistant; **`openConsentFlowForPayload`** sets **`consentChallengeId`** instead of navigating; **`TransactionConsentPage`** thin route wrapper for deep links. **`App.js`** — hooks before loading return; **`split3Customer`** memo with **`dashboardLayoutTick`**.
+
+**Tests**: **`CI=true npm run build`** (`banking_api_ui`); **`AgentUiModeContext.test.js`**, **`embeddedAgentFabVisibility.test.js`**, **`demo-scenario-api.test.js`**. Manual: **`docs/runbooks/regression/post-deploy.md`** §2 (consent popup, Split/Classic, agent toggle).
+
+---
+
 ## 2026-03-26 — Embedded agent on `/config` (setup focus); Demo config page matches 2026 dashboard shell
 
 **Symptom**: Application Configuration had no embedded bottom dock when Agent UI mode was embedded; the dock copy and shortcuts were banking-centric everywhere. **`/demo-data`** still used the older **`app-page-shell`** layout (gradient hero + **`PageNav`**) instead of the customer **`UserDashboard`** header stack and toolbar.

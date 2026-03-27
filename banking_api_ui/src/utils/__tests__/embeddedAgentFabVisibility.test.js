@@ -77,6 +77,16 @@ describe('shouldShowGlobalFloatingBankingAgentFab', () => {
     ).toBe(true);
   });
 
+  it('shows FAB when both mode on dashboard home routes', () => {
+    expect(
+      shouldShowGlobalFloatingBankingAgentFab({
+        user: customer,
+        agentUiMode: 'both',
+        pathname: '/dashboard',
+      }),
+    ).toBe(true);
+  });
+
   it('hides FAB on tool routes when floating (dashboard homes only)', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
@@ -141,13 +151,13 @@ describe('shouldShowGlobalFloatingBankingAgentFab', () => {
     ).toBe(false);
   });
 
-  it('hides FAB when mode is legacy both (mutually exclusive layouts)', () => {
+  it('shows FAB on dashboard when mode is both (FAB + bottom dock; split3 suppression is in App.js)', () => {
     expect(
       shouldShowGlobalFloatingBankingAgentFab({
         user: customer,
         agentUiMode: 'both',
         pathname: '/dashboard',
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 });

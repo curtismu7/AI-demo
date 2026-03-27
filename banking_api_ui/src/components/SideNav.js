@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import './SideNav.css';
 
 const ADMIN_NAV = [
@@ -53,6 +54,7 @@ const USER_NAV = [
 ];
 
 export default function SideNav({ user, onLogout }) {
+  const { preset } = useIndustryBranding();
   const [collapsed, setCollapsed] = useState(false);
   const edu = useEducationUIOptional();
   const isAdmin = user?.role === 'admin';
@@ -88,7 +90,7 @@ export default function SideNav({ user, onLogout }) {
           </div>
         </div>
         {!collapsed && (
-          <span className="sidenav-brand-name">BX Finance</span>
+          <span className="sidenav-brand-name">{preset.shortName}</span>
         )}
         <button
           type="button"

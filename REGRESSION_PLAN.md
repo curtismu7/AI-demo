@@ -16,6 +16,7 @@
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
 | BankingAgent FAB | Agent disappears | `components/BankingAgent.js`, `App.js` |
 | Left rail + quick nav | Overlap or wrong routes | `App.js`, `App.css`, `DashboardQuickNav.js`, `embeddedAgentFabVisibility.js` |
+| Split vs Classic dashboard + HITL consent | Duplicate FAB/dock with inline agent, or consent navigates away | `dashboardLayout.js`, `customerSplit3Dashboard.js`, `UserDashboard.js`, `TransactionConsentModal.js`, `App.js` |
 | Vercel SPA routing | All non-API routes 404 on Vercel | `vercel.json` (SPA catch-all rewrite) |
 | OAuth redirect origin | Redirects go to localhost in production | `routes/oauth.js`, `routes/oauthUser.js` (`getOrigin`) |
 | Vercel build | Production deployment fails | `banking_api_ui/package.json`, `vercel.json` |

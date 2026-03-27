@@ -19,8 +19,7 @@ const BLOCKED_USER_FIELDS = new Set(['id', 'password', 'createdAt']);
 
 /** Legacy `both` in KV → floating (embedded and floating FAB are mutually exclusive in the UI). */
 function normalizeBankingAgentUiMode(stored) {
-  if (stored === 'embedded' || stored === 'floating') return stored;
-  if (stored === 'both') return 'floating';
+  if (stored === 'embedded' || stored === 'floating' || stored === 'both') return stored;
   return null;
 }
 
@@ -231,12 +230,11 @@ router.put('/', async (req, res) => {
       if (raw === null || raw === '') {
         await demoScenarioStore.save(uid, { bankingAgentUiMode: null });
       } else if (raw === 'embedded' || raw === 'floating' || raw === 'both') {
-        const normalized = raw === 'both' ? 'floating' : raw;
-        await demoScenarioStore.save(uid, { bankingAgentUiMode: normalized });
+        await demoScenarioStore.save(uid, { bankingAgentUiMode: raw });
       } else {
         return res.status(400).json({
           error: 'invalid_banking_agent_ui_mode',
-          message: 'bankingAgentUiMode must be embedded, floating, or null (legacy both is saved as floating).',
+          message: 'bankingAgentUiMode must be embedded, floating, both, or null.',
         });
       }
     }

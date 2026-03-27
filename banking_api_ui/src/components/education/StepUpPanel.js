@@ -20,7 +20,7 @@ export default function StepUpPanel({ isOpen, onClose, initialTabId }) {
           </p>
           <p>
             For <strong>mandatory human approval</strong> before large money movement (separate from MFA), see{' '}
-            <strong>Learn → Human-in-the-loop</strong> — it explains how the consent page and the AI agent interact.
+            <strong>Learn → Human-in-the-loop</strong> — it explains how the consent popup and the AI agent interact.
           </p>
         </>
       ),

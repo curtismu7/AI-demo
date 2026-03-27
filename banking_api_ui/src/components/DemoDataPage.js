@@ -7,6 +7,7 @@ import { fetchDemoScenario, saveDemoScenario, persistBankingAgentUiMode } from '
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import './UserDashboard.css';
 import './DemoDataPage.css';
 
@@ -25,6 +26,7 @@ const ACCOUNT_TYPE_OPTIONS = [
  * Lets demo users edit account labels, balances, and MFA step-up threshold for their sandbox data.
  */
 export default function DemoDataPage({ user, onLogout }) {
+  const { preset: industryPreset } = useIndustryBranding();
   const navigate = useNavigate();
   const { open } = useEducationUI();
   const { mode: agentUiMode, setMode: setAgentUiMode } = useAgentUiMode();
@@ -249,8 +251,8 @@ export default function DemoDataPage({ user, onLogout }) {
   };
 
   /**
-   * Persists floating vs embedded agent; only one layout is active. Reload so App picks up the change.
-   * @param {'floating' | 'embedded'} next
+   * Persists floating / embedded / both. Reload so App picks up the change.
+   * @param {'floating' | 'embedded' | 'both'} next
    */
   const handleAgentLayoutChange = async (next) => {
     if (next === agentUiMode) return;
@@ -288,7 +290,7 @@ export default function DemoDataPage({ user, onLogout }) {
                 <div className="logo-square" />
                 <div className="logo-square" />
               </div>
-              <span className="bank-name">BX Finance</span>
+              <span className="bank-name">{industryPreset.shortName}</span>
             </div>
             <div>
               <h1 className="dashboard-header__title">Demo config</h1>
@@ -404,9 +406,9 @@ export default function DemoDataPage({ user, onLogout }) {
           <section className="section demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
             <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
             <p className="demo-data-hint">
-              Choose one layout: <strong>floating</strong> (corner FAB — default) or <strong>embedded</strong> (full-width
-              bottom strip on home only; no floating FAB while signed in). On this page there is no embedded dock — use your
-              dashboard link below. Switching to embedded sends you home so the dock appears.
+              Choose <strong>floating</strong> (corner FAB), <strong>embedded</strong> (bottom dock on home; no FAB while
+              signed in), or <strong>both</strong> (FAB + dock on dashboard routes). On this page there is no dock — open
+              your dashboard below. Switching to embedded sends you home so the dock appears.
             </p>
             <div className="demo-data-agent-options" role="radiogroup" aria-label="Agent layout">
               <label className="demo-data-agent-option">
@@ -437,6 +439,21 @@ export default function DemoDataPage({ user, onLogout }) {
                   <span className="demo-data-agent-option-title">Floating panel</span>
                   <span className="demo-data-agent-option-desc">
                     Corner button opens the agent over whatever page you are on (default).
+                  </span>
+                </span>
+              </label>
+              <label className="demo-data-agent-option">
+                <input
+                  type="radio"
+                  name="demoDataAgentUiMode"
+                  value="both"
+                  checked={agentUiMode === 'both'}
+                  onChange={() => handleAgentLayoutChange('both')}
+                />
+                <span className="demo-data-agent-option-text">
+                  <span className="demo-data-agent-option-title">Both</span>
+                  <span className="demo-data-agent-option-desc">
+                    Floating FAB and bottom dock together on home dashboard routes.
                   </span>
                 </span>
               </label>

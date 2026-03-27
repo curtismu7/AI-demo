@@ -31,6 +31,82 @@
   overflow: visible;
 }
 
+/* Split view: Token chain | inline assistant | accounts & transactions */
+.user-dashboard--split3.user-dashboard--embed-agent {
+  padding-bottom: 12px;
+}
+
+.dashboard-toolbar__agent-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  padding-right: 0.75rem;
+  margin-right: 0.35rem;
+  border-right: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+.ud-body--dashboard-split3 {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(300px, 1.2fr) minmax(260px, 400px);
+  gap: 0;
+  align-items: stretch;
+  overflow: visible;
+  min-height: min(70vh, 900px);
+}
+
+.ud-agent-column {
+  min-width: 0;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 12px;
+  overflow: hidden;
+}
+
+.ud-banking-column.ud-center {
+  max-height: min(100vh, 1400px);
+  overflow-y: auto;
+}
+
+.ud-dashboard-inline-agent.embedded-banking-agent:not(.embedded-banking-agent--bottom) {
+  margin-top: 0;
+  flex: 1;
+  min-height: 320px;
+  height: min(72vh, 560px);
+  max-height: min(85vh, 640px);
+}
+
+@media (max-width: 1200px) {
+  .ud-body--dashboard-split3 {
+    grid-template-columns: minmax(220px, 260px) minmax(260px, 1fr) minmax(220px, 320px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .ud-body--dashboard-split3 {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .ud-agent-column {
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+    max-height: 480px;
+  }
+  .dashboard-toolbar__agent-layout {
+    border-right: none;
+    width: 100%;
+    padding-right: 0;
+    margin-right: 0;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  }
+}
+
 .ud-shell--floating-only {
   display: contents;
 }
@@ -60,7 +136,11 @@
 }
 
 .dashboard-header {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  background: linear-gradient(
+    135deg,
+    var(--brand-dashboard-header-start, #1e3a8a) 0%,
+    var(--brand-dashboard-header-end, #1e40af) 100%
+  );
   color: white;
   padding: 28px 32px;
   margin-bottom: 0;

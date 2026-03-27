@@ -11,9 +11,11 @@ import TokenChainDisplay from './TokenChainDisplay';
 import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
 
 const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
   const { open } = useEducationUI();
+  const { preset } = useIndustryBranding();
   const [stats, setStats] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -328,7 +330,7 @@ const Dashboard = ({ user, onLogout, agentUiMode = 'floating' }) => {
               <div className="admin-dashboard__logo-mark" aria-hidden="true">
                 <span /><span /><span /><span />
               </div>
-              <span className="admin-dashboard__brand-name">BX Finance</span>
+              <span className="admin-dashboard__brand-name">{preset.shortName}</span>
             </div>
             <div>
               <h1 className="app-page-shell__title">Admin Dashboard</h1>

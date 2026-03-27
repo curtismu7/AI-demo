@@ -42,7 +42,7 @@ Includes admin dashboard, Banking Agent, security settings, session regression.
 
 | Changed file | Run |
 |---|---|
-| `UserDashboard.js` | `test:e2e:customer` |
+| `UserDashboard.js` / `TransactionConsentModal.js` / `dashboardLayout.js` | `test:e2e:customer` + manual post-deploy §2 (HITL popup, Split/Classic) |
 | `LandingPage.js` | `test:e2e:landing` |
 | `BankingAgent.js` / `ActionForm.js` | `test:e2e:agent` |
 | `Dashboard.js` (admin) | `test:e2e:admin` |

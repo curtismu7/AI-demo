@@ -170,6 +170,37 @@ describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
   });
 });
 
+describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'agent_mcp_allowed_scopes') {
+        return 'banking:accounts:read banking:transactions:read';
+      }
+      return null;
+    });
+  });
+
+  it('throws agent_mcp_scope_denied when transfer scope is disabled in config', async () => {
+    await expect(
+      resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'create_transfer')
+    ).rejects.toMatchObject({
+      code: 'agent_mcp_scope_denied',
+      httpStatus: 403,
+    });
+  });
+
+  it('does not call performTokenExchange when policy blocks the tool', async () => {
+    try {
+      await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'create_transfer');
+    } catch {
+      /* expected */
+    }
+    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
+  });
+});
+
 describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (MCP_RESOURCE_URI set)', () => {
   beforeEach(() => {
     configStore.getEffective.mockImplementation((key) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
@@ -31,6 +31,7 @@ import { savePublicConfig } from './services/configService';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
 import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
+import { IndustryBrandingProvider } from './context/IndustryBrandingContext';
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
@@ -42,6 +43,8 @@ import {
   isDashboardQuickNavRoute,
   isEmbeddedAgentDockRoute,
 } from './utils/embeddedAgentFabVisibility';
+import { isCustomerSplit3Dashboard } from './utils/customerSplit3Dashboard';
+import { getDashboardLayout } from './utils/dashboardLayout';
 import { useDemoMode } from './hooks/useDemoMode';
 import SessionReauthBanner from './components/SessionReauthBanner';
 import { SESSION_REAUTH_EVENT } from './utils/authUi';
@@ -67,6 +70,8 @@ function AppRouteChrome({ user }) {
 
 function AppWithAuth() {
   const { pathname } = useLocation();
+  const pathNorm = pathname.replace(/\/$/, '') || '/';
+  const isApiTrafficOnlyPage = pathNorm === '/api-traffic';
   const { mode: agentUiMode } = useAgentUiMode();
   const demoMode = useDemoMode();
   const [user, setUser] = useState(null);
@@ -74,9 +79,17 @@ function AppWithAuth() {
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   /** On-page session prompt (replaces toast-only for “log in again” flows). */
   const [sessionReauth, setSessionReauth] = useState(null);
+  /** Bumps when customer toggles dashboard layout (localStorage) so App re-evaluates split3 vs floating/dock. */
+  const [dashboardLayoutTick, setDashboardLayoutTick] = useState(0);
   const pendingUserEmailRef = useRef(null);
   /** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
   const sessionEstablishedRef = useRef(false);
+
+  useEffect(() => {
+    const onLayout = () => setDashboardLayoutTick((n) => n + 1);
+    window.addEventListener('banking-dashboard-layout', onLayout);
+    return () => window.removeEventListener('banking-dashboard-layout', onLayout);
+  }, []);
 
   const injectEmailIntoNextSessionInit = useCallback((email) => {
     pendingUserEmailRef.current = email;
@@ -225,6 +238,25 @@ function AppWithAuth() {
     if (user) setSessionReauth(null);
   }, [user]);
 
+  /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
+  const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
+  const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
+  const split3Customer = useMemo(() => {
+    return isCustomerSplit3Dashboard(pathname, user, getDashboardLayout());
+    // dashboardLayoutTick: customer Split/Classic toggle updates localStorage without navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional bump from `banking-dashboard-layout`
+  }, [pathname, user, dashboardLayoutTick]);
+  const showFloatingAgent =
+    Boolean(user) &&
+    (agentUiMode === 'floating' || agentUiMode === 'both') &&
+    onDashboardAgentRoute &&
+    !split3Customer;
+  const hasEmbeddedDockLayout =
+    Boolean(user) &&
+    (agentUiMode === 'embedded' || agentUiMode === 'both') &&
+    onEmbeddedDockRoute &&
+    !split3Customer;
+
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
 
@@ -249,14 +281,6 @@ function AppWithAuth() {
     );
   }
 
-  /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
-  const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
-  const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
-  const showFloatingAgent =
-    Boolean(user) && agentUiMode === 'floating' && onDashboardAgentRoute;
-  const hasEmbeddedDockLayout =
-    Boolean(user) && agentUiMode === 'embedded' && onEmbeddedDockRoute;
-
   return (
     <EducationUIProvider>
       <TokenChainProvider>
@@ -273,7 +297,7 @@ function AppWithAuth() {
             />
           )}
           <DashboardQuickNav user={user} />
-          {user && <UIDesignNav user={user} />}
+          {user && !isApiTrafficOnlyPage && <UIDesignNav user={user} />}
           <Routes>
             <Route path="/config" element={<Config />} />
             <Route path="/onboarding" element={<Onboarding />} />
@@ -299,7 +323,7 @@ function AppWithAuth() {
                       path="/admin/banking"
                       element={user?.role === 'admin' ? <BankingAdminOps user={user} onLogout={logout} /> : <Navigate to="/" replace />}
                     />
-                    <Route path="/transaction-consent" element={<TransactionConsentPage user={user} onLogout={logout} />} />
+                    <Route path="/transaction-consent" element={<TransactionConsentPage user={user} />} />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/oauth-debug-logs"
@@ -318,11 +342,11 @@ function AppWithAuth() {
             <BankingAgent user={user} onLogout={logout} distinctFloatingChrome />
           )}
           <EmbeddedAgentDock user={user} onLogout={logout} agentUiMode={agentUiMode} />
-          <EducationPanelsHost />
-          <CIBAPanel />
-          <CimdSimPanel />
+          {!isApiTrafficOnlyPage && <EducationPanelsHost />}
+          {!isApiTrafficOnlyPage && <CIBAPanel />}
+          {!isApiTrafficOnlyPage && <CimdSimPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {user && demoMode !== true && (
+          {user && demoMode !== true && !isApiTrafficOnlyPage && (
             <button
               type="button"
               className="demo-config-fab"
@@ -332,7 +356,7 @@ function AppWithAuth() {
               Demo config
             </button>
           )}
-          <Footer user={user} />
+          {!isApiTrafficOnlyPage && <Footer user={user} />}
         </div>
       </TokenChainProvider>
     </EducationUIProvider>
@@ -343,7 +367,9 @@ export default function App() {
   return (
     <AgentUiModeProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AppWithAuth />
+        <IndustryBrandingProvider>
+          <AppWithAuth />
+        </IndustryBrandingProvider>
       </Router>
     </AgentUiModeProvider>
   );

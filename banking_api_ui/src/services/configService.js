@@ -25,6 +25,8 @@ export const PUBLIC_FIELDS = [
   'debug_oauth',
   'frontend_url',
   'mcp_server_url',
+  'ui_industry_preset',
+  'agent_mcp_allowed_scopes',
 ];
 
 function openDB() {

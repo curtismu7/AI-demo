@@ -10,14 +10,14 @@ const AgentUiModeContext = createContext({
 
 function normalizeMode(v) {
   if (v === 'embedded') return 'embedded';
-  // Legacy `both` — floating + dock together; we only support one at a time now.
-  if (v === 'both') return 'floating';
+  if (v === 'both') return 'both';
   return 'floating';
 }
 
 /**
- * floating — FAB + overlay panel (default); hidden on Demo config (`/demo-data`).
- * embedded — bottom dock only on `/`, `/admin`, `/dashboard`; no FAB while signed in.
+ * floating — FAB + overlay panel (default).
+ * embedded — bottom dock on dashboard routes + `/config`; no FAB while signed in.
+ * both — floating FAB and embedded dock together on those routes.
  */
 export function AgentUiModeProvider({ children }) {
   const [mode, setModeState] = useState(() => {
@@ -28,16 +28,6 @@ export function AgentUiModeProvider({ children }) {
     }
   });
 
-  /** One-time: rewrite legacy `both` in storage to `floating`. */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const n = normalizeMode(raw);
-      if (raw != null && raw !== n) localStorage.setItem(STORAGE_KEY, n);
-    } catch {
-      // ignore
-    }
-  }, []);
 
   const setMode = useCallback((next) => {
     const m = normalizeMode(next);

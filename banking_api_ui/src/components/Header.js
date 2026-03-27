@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import BrandLogo from './BrandLogo';
 import './Header.css';
 
 const Header = ({ user, onLogout }) => {
@@ -10,7 +11,7 @@ const Header = ({ user, onLogout }) => {
     <header className="header app-top-header">
       <div className="container">
         <div className="app-top-header__brand">
-          <img className="app-top-header__logo" src="/logo.svg" alt="Banking App Logo" />
+          <BrandLogo className="app-top-header__logo" height={32} width={32} />
           <h1 className="app-top-header__title">
             {isAdmin ? 'Accounts API Admin Dashboard' : 'Personal Account Dashboard'}
           </h1>

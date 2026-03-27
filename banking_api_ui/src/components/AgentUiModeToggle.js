@@ -8,10 +8,11 @@ import './AgentUiModeToggle.css';
 const MODES = [
   { id: 'floating', label: 'Floating' },
   { id: 'embedded', label: 'Embedded' },
+  { id: 'both', label: 'Both' },
 ];
 
 /**
- * Segmented control for banking agent UI: floating FAB or embedded bottom dock (mutually exclusive).
+ * Segmented control: floating FAB, embedded bottom dock, or both together.
  * Persists to demo scenario when signed in; always updates localStorage via context.
  *
  * @param {'landing' | 'eduBar' | 'config'} props.variant
@@ -56,7 +57,7 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
     <div
       className={`agent-ui-mode-toggle agent-ui-mode-toggle--${variant} ${className}`.trim()}
       role="group"
-      aria-label={ariaLabel || 'AI banking agent layout: floating or embedded dock'}
+      aria-label={ariaLabel || 'AI banking agent layout: floating, embedded dock, or both'}
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
         {label}
@@ -71,8 +72,10 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
             aria-pressed={mode === m.id}
             title={
               m.id === 'floating'
-                ? 'FAB in the corner on every screen (no bottom dock)'
-                : 'Bottom dock on home dashboard routes (no floating FAB while signed in)'
+                ? 'FAB in the corner on dashboard routes'
+                : m.id === 'embedded'
+                  ? 'Bottom dock on home dashboard routes (no FAB while signed in)'
+                  : 'FAB plus bottom dock together on dashboard routes'
             }
           >
             {m.label}

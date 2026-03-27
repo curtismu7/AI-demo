@@ -10,6 +10,12 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import TransactionConsentModal from './TransactionConsentModal';
+import BankingAgent from './BankingAgent';
+import AgentUiModeToggle from './AgentUiModeToggle';
+import DashboardLayoutToggle from './DashboardLayoutToggle';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import { getDashboardLayout } from '../utils/dashboardLayout';
 import './UserDashboard.css';
 
 const DEMO_ACCOUNTS = [
@@ -27,6 +33,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   const navigate = useNavigate();
   const location = useLocation();
   const { open } = useEducationUI();
+  const { preset } = useIndustryBranding();
+  const [dashboardLayout, setDashboardLayoutState] = useState(() => getDashboardLayout());
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -50,6 +58,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   });
   const [withdrawAccount, setWithdrawAccount] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  /** Server-issued id for high-value HITL — opens TransactionConsentModal on the dashboard. */
+  const [consentChallengeId, setConsentChallengeId] = useState(null);
   const [stepUpRequired, setStepUpRequired] = useState(false);
   // 'ciba' | 'email' — set from the 428 response step_up_method field
   const [stepUpMethod, setStepUpMethod] = useState('email');
@@ -76,6 +86,12 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
       /* ignore */
     }
   }, [dashTheme]);
+
+  useEffect(() => {
+    const onLayout = () => setDashboardLayoutState(getDashboardLayout());
+    window.addEventListener('banking-dashboard-layout', onLayout);
+    return () => window.removeEventListener('banking-dashboard-layout', onLayout);
+  }, []);
 
   const handleDashThemeToggle = useCallback(() => {
     setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
@@ -178,7 +194,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     // eslint-disable-next-line react-hooks/exhaustive-deps -- interval uses current fetchUserData; adding it would reset timer too often
   }, [autoRefresh]);
 
-  /** Toast when returning from transaction consent page (success or decline). */
+  /** Toast when returning from transaction consent route (success or decline). */
   useEffect(() => {
     const st = location.state;
     if (!st || typeof st !== 'object') return;
@@ -392,17 +408,22 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
   );
 
   const accountsAnchorRef = useRef(null);
+  const agentColumnRef = useRef(null);
 
   const handleScrollToAccounts = useCallback(() => {
     accountsAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
   const handleScrollToAssistant = useCallback(() => {
+    if (dashboardLayout === 'split3' && agentColumnRef.current) {
+      agentColumnRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
-  }, []);
+  }, [dashboardLayout]);
 
   /**
-   * High-value HITL: POST /transactions without consent returns 400; create a session challenge and open the consent route.
+   * High-value HITL: POST /transactions without consent returns 400; create a session challenge and open the consent popup.
    */
   const openConsentFlowForPayload = async (intentBody) => {
     try {
@@ -412,7 +433,7 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
         notifyError('Could not start consent — no challenge id from server.');
         return;
       }
-      navigate(`/transaction-consent?challenge=${encodeURIComponent(cid)}`);
+      setConsentChallengeId(cid);
     } catch (e) {
       const msg =
         e.response?.data?.message || e.response?.data?.error || e.message || 'Could not start consent flow.';
@@ -654,158 +675,8 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
     }
   };
 
-  if (loading) {
-    return (
-      <div className="user-dashboard">
-        <div className="loading">Loading your account information...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`user-dashboard user-dashboard--2026${agentUiMode === 'embedded' ? ' user-dashboard--embed-agent' : ''}`}
-    >
-      <a href="#main-dashboard-content" className="dash-skip-link">
-        Skip to main content
-      </a>
-      {/* ── Header stack: branding row + toolbar row ────────────────── */}
-      <div className="dashboard-header-stack">
-        <div className="dashboard-header dashboard-header--surface">
-          {/* LEFT: logo + title + nav shortcuts */}
-          <div className="bank-branding">
-            <div className="bank-logo">
-              <div className="logo-icon">
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-              </div>
-              <span className="bank-name">BX Finance</span>
-            </div>
-            <div>
-              <h1 className="dashboard-header__title">Overview</h1>
-              <div className="dashboard-header__crumbs">
-                <Link to="/" className="dashboard-header__crumb-link">Home</Link>
-                <span className="dashboard-header__crumb-sep" aria-hidden="true">›</span>
-                <Link to="/dashboard" className="dashboard-header__crumb-link dashboard-header__crumb-link--current">Dashboard</Link>
-              </div>
-            </div>
-          </div>
-          {/* RIGHT: greeting + email */}
-          <div className="header-right">
-            <div className="user-info">
-              <span className="user-greeting">
-                Hello, {
-                  (user?.firstName || user?.lastName)
-                    ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                    : user?.name || user?.username || user?.email?.split('@')[0] || 'there'
-                }
-              </span>
-              <span className="user-email">{user?.email || user?.username}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Toolbar row */}
-        <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-          >
-            How does login work?
-          </button>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.MAY_ACT, 'what')}
-          >
-            What is may_act?
-          </button>
-          <Link
-            to="/mcp-inspector"
-            className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
-            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
-          >
-            MCP Inspector
-          </Link>
-          <Link
-            to="/demo-data"
-            className="dashboard-toolbar-btn"
-            title="Sandbox accounts, balances, and MFA threshold"
-          >
-            Demo config
-          </Link>
-          <Link
-            to="/config"
-            className="dashboard-toolbar-btn"
-            title="PingOne environment and OAuth client settings"
-          >
-            PingOne config
-          </Link>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')}
-            title="Open API Traffic viewer (all /api/* calls)"
-          >
-            API Traffic
-          </button>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn dashboard-toolbar-btn--theme"
-            onClick={handleDashThemeToggle}
-            aria-pressed={dashTheme === 'dark'}
-            title={dashTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          >
-            {dashTheme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
-          <div className="dashboard-toolbar-toggle">
-            <label className="toggle-label toggle-label--toolbar">
-              <span className="toggle-text">Auto-refresh</span>
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={autoRefresh}
-                  onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="toggle-input"
-                />
-                <span className="toggle-slider"></span>
-              </div>
-            </label>
-          </div>
-          <button
-            type="button"
-            onClick={openTokenModal}
-            className="dashboard-toolbar-btn dashboard-toolbar-btn--icon"
-            title="View OAuth Token Info"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
-            </svg>
-            <span className="dashboard-toolbar-btn__sr">Token info</span>
-          </button>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="dashboard-toolbar-btn dashboard-toolbar-btn--danger"
-          >
-            Log out
-          </button>
-        </div>
-      </div>
-
-      {/* ── Token (left) · banking (center) · space for floating agent (right) · embedded dock in App ── */}
-      <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--design-3col">
-        <aside className="ud-token-rail" aria-label="Token chain">
-          <div className="section ud-token-rail__inner">
-            <TokenChainDisplay />
-          </div>
-        </aside>
-
-        <main className="ud-center" id="main-dashboard-content" tabIndex={-1}>
-
+  const renderBankingMain = () => (
+    <>
         {/* Hero: balance, AI insight, lightweight viz (2026 “financial butler” pattern) */}
         <div className="section ud-hero" aria-labelledby="ud-hero-heading">
           <div className="ud-hero__top">
@@ -815,7 +686,9 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
             <p className="ud-hero__insight" role="status">
               {isDemoMode
                 ? 'Demo snapshot — connect real accounts to unlock personalized cash-flow and savings nudges from the assistant.'
-                : 'Your balances update automatically. Ask the assistant below for transfers, explanations, or spending patterns.'}
+                : dashboardLayout === 'split3'
+                  ? 'Your balances update automatically. Ask the assistant in the center column for transfers, explanations, or spending patterns.'
+                  : 'Your balances update automatically. Ask the assistant below for transfers, explanations, or spending patterns.'}
             </p>
           </div>
           <p className="ud-hero__balance-label">Total balance</p>
@@ -1143,17 +1016,225 @@ const UserDashboard = ({ user: propUser, onLogout, agentUiMode = 'floating' }) =
           </div>
         </div>
 
-        </main>
 
-        <aside className="ud-float-reserve" aria-hidden="true">
-          <div className="ud-float-reserve__card">
-            <span className="ud-float-reserve__label">Floating assistant</span>
-            <p className="ud-float-reserve__hint">
-              The corner FAB and panel stay in this zone so your balances and token flow stay readable.
-            </p>
+    </>
+  );
+
+  if (loading) {
+    return (
+      <div className="user-dashboard">
+        <div className="loading">Loading your account information...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`user-dashboard user-dashboard--2026${
+        agentUiMode === 'embedded' && dashboardLayout === 'classic' ? ' user-dashboard--embed-agent' : ''
+      }${dashboardLayout === 'split3' ? ' user-dashboard--split3' : ''}`}
+    >
+      <a href="#main-dashboard-content" className="dash-skip-link">
+        Skip to main content
+      </a>
+      {/* ── Header stack: branding row + toolbar row ────────────────── */}
+      <div className="dashboard-header-stack">
+        <div className="dashboard-header dashboard-header--surface">
+          {/* LEFT: logo + title + nav shortcuts */}
+          <div className="bank-branding">
+            <div className="bank-logo">
+              <div className="logo-icon">
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+                <div className="logo-square"></div>
+              </div>
+              <span className="bank-name">{preset.shortName}</span>
+            </div>
+            <div>
+              <h1 className="dashboard-header__title">Overview</h1>
+              <div className="dashboard-header__crumbs">
+                <Link to="/" className="dashboard-header__crumb-link">Home</Link>
+                <span className="dashboard-header__crumb-sep" aria-hidden="true">›</span>
+                <Link to="/dashboard" className="dashboard-header__crumb-link dashboard-header__crumb-link--current">Dashboard</Link>
+              </div>
+            </div>
           </div>
-        </aside>
-      </div>{/* /ud-body */}
+          {/* RIGHT: greeting + email */}
+          <div className="header-right">
+            <div className="user-info">
+              <span className="user-greeting">
+                Hello, {
+                  (user?.firstName || user?.lastName)
+                    ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                    : user?.name || user?.username || user?.email?.split('@')[0] || 'there'
+                }
+              </span>
+              <span className="user-email">{user?.email || user?.username}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Toolbar row */}
+        <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
+          <div className="dashboard-toolbar__agent-layout">
+            <AgentUiModeToggle variant="eduBar" />
+            <DashboardLayoutToggle />
+          </div>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
+          >
+            How does login work?
+          </button>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => open(EDU.MAY_ACT, 'what')}
+          >
+            What is may_act?
+          </button>
+          <Link
+            to="/mcp-inspector"
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
+            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
+          >
+            MCP Inspector
+          </Link>
+          <Link
+            to="/demo-data"
+            className="dashboard-toolbar-btn"
+            title="Sandbox accounts, balances, and MFA threshold"
+          >
+            Demo config
+          </Link>
+          <Link
+            to="/config"
+            className="dashboard-toolbar-btn"
+            title="PingOne environment and OAuth client settings"
+          >
+            PingOne config
+          </Link>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn"
+            onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')}
+            title="Open API Traffic viewer (all /api/* calls)"
+          >
+            API Traffic
+          </button>
+          <button
+            type="button"
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--theme"
+            onClick={handleDashThemeToggle}
+            aria-pressed={dashTheme === 'dark'}
+            title={dashTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            {dashTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
+          <div className="dashboard-toolbar-toggle">
+            <label className="toggle-label toggle-label--toolbar">
+              <span className="toggle-text">Auto-refresh</span>
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+              </div>
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={openTokenModal}
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--icon"
+            title="View OAuth Token Info"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+            </svg>
+            <span className="dashboard-toolbar-btn__sr">Token info</span>
+          </button>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="dashboard-toolbar-btn dashboard-toolbar-btn--danger"
+          >
+            Log out
+          </button>
+        </div>
+      </div>
+
+      {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
+      {dashboardLayout === 'split3' ? (
+        <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
+          <aside className="ud-token-rail" aria-label="Token chain">
+            <div className="section ud-token-rail__inner">
+              <TokenChainDisplay />
+            </div>
+          </aside>
+
+          <section className="ud-agent-column" ref={agentColumnRef} aria-label="AI banking assistant">
+            <div className="embedded-banking-agent ud-dashboard-inline-agent">
+              <BankingAgent
+                user={user}
+                onLogout={onLogout}
+                mode="inline"
+                embeddedFocus="banking"
+                distinctFloatingChrome
+              />
+            </div>
+          </section>
+
+          <main className="ud-center ud-banking-column" id="main-dashboard-content" tabIndex={-1}>
+            {renderBankingMain()}
+          </main>
+        </div>
+      ) : (
+        <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--design-3col">
+          <aside className="ud-token-rail" aria-label="Token chain">
+            <div className="section ud-token-rail__inner">
+              <TokenChainDisplay />
+            </div>
+          </aside>
+
+          <main className="ud-center" id="main-dashboard-content" tabIndex={-1}>
+            {renderBankingMain()}
+          </main>
+
+          <aside className="ud-float-reserve" aria-hidden="true">
+            <div className="ud-float-reserve__card">
+              <span className="ud-float-reserve__label">Floating assistant</span>
+              <p className="ud-float-reserve__hint">
+                The corner FAB and panel stay in this zone so your balances and token flow stay readable.
+              </p>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {consentChallengeId && (
+        <TransactionConsentModal
+          open
+          challengeId={consentChallengeId}
+          user={user}
+          onClose={() => setConsentChallengeId(null)}
+          onTransactionSuccess={(msg) => {
+            setConsentChallengeId(null);
+            notifySuccess(msg);
+            void fetchUserData(true);
+          }}
+          onDeclinedConfirmed={() => {
+            setConsentChallengeId(null);
+            notifyInfo(
+              'You declined high-value consent. The AI banking assistant stays disabled until you sign out and sign in again.',
+            );
+          }}
+        />
+      )}
 
       {/* OAuth Token Info Modal */}
       {showTokenModal && (

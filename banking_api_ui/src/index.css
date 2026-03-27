@@ -10,6 +10,11 @@
   --app-primary-red-hover: #991b1b;
   --app-primary-red-mid: #dc2626;
   --app-primary-red-border: #7f1d1d;
+  /* IndustryBrandingContext overrides these + dashboard / config hero gradients */
+  --brand-dashboard-header-start: #1e3a8a;
+  --brand-dashboard-header-end: #1e40af;
+  --brand-app-shell-hero-start: #1e3a8a;
+  --brand-app-shell-hero-end: #2563eb;
 }
 
 body {

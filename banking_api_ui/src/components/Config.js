@@ -4,6 +4,12 @@ import axios from 'axios';
 import { notifySuccess, notifyError } from '../utils/appToast';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import { INDUSTRY_PRESETS, DEFAULT_INDUSTRY_ID } from '../config/industryPresets';
+import {
+  AGENT_MCP_SCOPE_CATALOG,
+  DEFAULT_AGENT_MCP_ALLOWED_SCOPES,
+} from '../config/agentMcpScopes';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
 import '../styles/appShellPages.css';
@@ -73,6 +79,10 @@ const EMPTY_FORM = {
   step_up_method: 'ciba',
   // Whether the CIBA feature is enabled globally (also surfaces in CIBA panel)
   ciba_enabled: 'false',
+  /** Industry / white-label UI preset (server + IndustryBrandingContext). */
+  ui_industry_preset: DEFAULT_INDUSTRY_ID,
+  /** OAuth scopes the BFF may request for the agent MCP token (RFC 8693) — space-separated. */
+  agent_mcp_allowed_scopes: DEFAULT_AGENT_MCP_ALLOWED_SCOPES,
 };
 
 // ─── Helper: secret field wrapper ────────────────────────────────────────────
@@ -245,6 +255,7 @@ function AgentLayoutPreferences() {
 
 export default function Config() {
   const navigate = useNavigate();
+  const { applyIndustryId } = useIndustryBranding();
   const [form, setForm]               = useState(EMPTY_FORM);
   const [secretMeta, setSecretMeta]   = useState({});   // { <key>_set: bool }
   const [showSecret, setShowSecret]   = useState({});   // { key: bool }
@@ -374,6 +385,8 @@ export default function Config() {
 
       // Persist public fields to IndexedDB
       await savePublicConfig(form);
+
+      applyIndustryId(form.ui_industry_preset || DEFAULT_INDUSTRY_ID);
 
       showToast('success', 'Configuration saved! Redirecting to sign in…');
       setTimeout(() => navigate('/', { state: { scrollToAgent: true } }), 1500);
@@ -613,6 +626,99 @@ export default function Config() {
         )}
 
         <form id="config-main-form" onSubmit={handleSave}>
+
+          <CollapsibleCard
+            title="Industry & branding"
+            subtitle="White-label colors and logo — stored with configuration (public field)"
+            className="config-page__card--industry"
+          >
+            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Choose a preset to change primary button colors, dashboard header gradient, and the logo shown across the app.
+              The setup assistant on this page can explain these options. Save configuration to apply everywhere.
+            </p>
+            <div className="config-page__industry-grid">
+              {INDUSTRY_PRESETS.map((p) => (
+                <label
+                  key={p.id}
+                  className={`config-page__industry-option${form.ui_industry_preset === p.id ? ' config-page__industry-option--active' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="ui_industry_preset"
+                    value={p.id}
+                    checked={form.ui_industry_preset === p.id}
+                    onChange={() => handleChange('ui_industry_preset', p.id)}
+                    disabled={readOnly}
+                    style={{ marginTop: '0.35rem', flexShrink: 0 }}
+                  />
+                  <span className="config-page__industry-option-body">
+                    <img src={p.logoPath} alt="" className="config-page__industry-logo" height={40} width={40} />
+                    <span className="config-page__industry-titles">
+                      <span className="config-page__industry-name">{p.shortName}</span>
+                      <span className="config-page__industry-desc">{p.description}</span>
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </CollapsibleCard>
+
+          <CollapsibleCard
+            title="Agent MCP scopes"
+            subtitle="Limit which capabilities the AI agent can use after RFC 8693 token exchange"
+            className="config-page__card--agent-scopes"
+            defaultOpen={false}
+          >
+            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Each scope maps to PingOne OAuth scopes on the delegated MCP token. Unchecking <strong>Transfers &amp; movement</strong>{' '}
+              removes <code>banking:transactions:write</code> (the transfer scope) so the agent cannot move money — read-only demos.
+              Save configuration to apply; the next tool call runs a new token exchange with the selected scopes.
+            </p>
+            <div className="config-page__agent-scope-list">
+              {AGENT_MCP_SCOPE_CATALOG.map((row) => {
+                const raw = String(form.agent_mcp_allowed_scopes || '').trim();
+                const selected = raw
+                  ? new Set(raw.split(/\s+/).filter(Boolean))
+                  : new Set(AGENT_MCP_SCOPE_CATALOG.map((c) => c.scope));
+                const checked = selected.has(row.scope);
+                return (
+                  <label
+                    key={row.scope}
+                    className={`config-page__agent-scope-row${checked ? ' config-page__agent-scope-row--on' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={readOnly}
+                      onChange={(e) => {
+                        const eff = new Set(
+                          String(form.agent_mcp_allowed_scopes || '').trim()
+                            ? form.agent_mcp_allowed_scopes.split(/\s+/).filter(Boolean)
+                            : AGENT_MCP_SCOPE_CATALOG.map((c) => c.scope)
+                        );
+                        if (e.target.checked) {
+                          eff.add(row.scope);
+                        } else {
+                          eff.delete(row.scope);
+                          if (eff.size === 0) {
+                            notifyError('Select at least one Agent MCP scope.');
+                            return;
+                          }
+                        }
+                        handleChange('agent_mcp_allowed_scopes', [...eff].join(' '));
+                      }}
+                      style={{ marginTop: '0.2rem', flexShrink: 0 }}
+                    />
+                    <span className="config-page__agent-scope-body">
+                      <span className="config-page__agent-scope-label">{row.label}</span>
+                      <code className="config-page__agent-scope-code">{row.scope}</code>
+                      <span className="config-page__agent-scope-desc">{row.description}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </CollapsibleCard>
 
           {/* ── Section 1: PingOne Environment ── */}
           <CollapsibleCard
