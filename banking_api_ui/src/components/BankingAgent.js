@@ -595,11 +595,15 @@ export default function BankingAgent({
     setAgentAppearance,
     effectiveAgentTheme,
   } = useTheme();
-  const [isOpen, setIsOpen] = useState(() =>
-    typeof window !== 'undefined'
-      ? isBankingAgentFloatingDefaultOpen(window.location.pathname)
-      : false
-  );
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (isInline) return false;
+    try {
+      const saved = localStorage.getItem('banking-agent-open');
+      if (saved !== null) return saved === 'true';
+    } catch {}
+    return isBankingAgentFloatingDefaultOpen(window.location.pathname);
+  });
   /** Panel light/dark: default follows page (`auto`); can override in header. */
   const isDark = effectiveAgentTheme === 'dark';
   const [isExpanded, setIsExpanded] = useState(false);
@@ -666,10 +670,21 @@ export default function BankingAgent({
     if (consentBlocked) setActiveAction(null);
   }, [consentBlocked]);
 
+  // Persist open state so the panel survives a page refresh
+  const hasMountedRef = useRef(false);
+  useEffect(() => {
+    if (isInline) return;
+    try { localStorage.setItem('banking-agent-open', String(isOpen)); } catch {}
+  }, [isOpen, isInline]);
+
   // Floating mode: follow **route changes** only — default collapsed on dashboard homes, open on tool routes.
   // Do not tie this to user/session (see REGRESSION_LOG — auth sync was resetting isOpen and closing the panel).
   useEffect(() => {
     if (isInline) return;
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return; // skip initial mount — let localStorage-restored value stand
+    }
     setIsOpen(isBankingAgentFloatingDefaultOpen(location.pathname));
   }, [location.pathname, isInline]);
 
