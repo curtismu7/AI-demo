@@ -15,6 +15,8 @@
 | Session persistence | User logged out on every refresh | `server.js` (session middleware), `routes/oauth.js` `req.session.save()` |
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
 | BankingAgent FAB | Agent disappears | `components/BankingAgent.js`, `App.js` |
+| Float panel resize | Panel capped at 560×720, won't grow larger | `BankingAgent.css` (`max-width`/`max-height` removed), `BankingAgent.js` (`handleResize` caps) |
+| Dashboard 401 / session banner | "Session expired" on valid PingOne session (cold-start `_cookie_session` stub) | `UserDashboard.js` (`fetchUserData` 401 handler → auto re-auth redirect) |
 | Left rail + quick nav | Overlap or wrong routes | `App.js`, `App.css`, `DashboardQuickNav.js`, `embeddedAgentFabVisibility.js` |
 | Split vs Classic dashboard + HITL consent | Duplicate FAB/dock with inline agent, or consent navigates away | `dashboardLayout.js`, `customerSplit3Dashboard.js`, `UserDashboard.js`, `TransactionConsentModal.js`, `App.js` |
 | Vercel SPA routing | All non-API routes 404 on Vercel | `vercel.json` (SPA catch-all rewrite) |
@@ -43,6 +45,26 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-27 — Float panel resize capped at 560×720 (commits `4d1ea23`, `9cc0654`)
+- **Symptom:** SE/E/S resize handles appeared to work but panel wouldn't grow beyond 560 px wide or 720 px tall.
+- **Root cause:** `max-width: 560px` and `max-height: min(85vh, 720px)` in `.banking-agent-panel` CSS always override JS-set inline `width`/`height`. `handleResize` also had matching `Math.min(560,…)` / `Math.min(720,…)` JS caps. Dead `resize: both` (ignored because `overflow: hidden`).
+- **Fix:** Removed CSS `max-width`, `max-height`, `resize: both`; JS caps replaced with `Math.floor(window.innerWidth * 0.9)` / `Math.floor(window.innerHeight * 0.9)`. anchor-on-resize added.
+- **Files:** `banking_api_ui/src/components/BankingAgent.css`, `banking_api_ui/src/components/BankingAgent.js`
+- **Regression check:** Open float panel → drag SE grip → panel must grow beyond 560 × 720 px.
+
+### 2026-03-27 — "Session expired" banner on valid PingOne session (commit `b7e806a`)
+- **Symptom:** Yellow "session expired" banner shown on `/dashboard` even though user just logged in.
+- **Root cause:** Vercel cold-start restores session from `_auth` cookie with `accessToken: '_cookie_session'` stub. `/api/auth/oauth/user/status` returns `authenticated: true`, but `/api/accounts/my` returns 401. `fetchUserData` treated any 401 as genuine expiry and fired the banner.
+- **Fix:** On non-silent 401, redirect to `/api/auth/oauth/user/login` (PingOne SSO re-auths silently). `sessionStorage` guard (`bx-dashboard-reauth`) prevents loops — falls back to banner after one failed round-trip.
+- **Files:** `banking_api_ui/src/components/UserDashboard.js`
+- **Regression check:** Load dashboard with stale/stub token → silent redirect back, no banner. Real expiry (SSO also expired) → one redirect then banner.
+
+### 2026-03-27 — Compact scrollable chips in float mode (commit `4d1ea23`)
+- **Symptom:** Chips / action buttons in the float left rail overflowed and were clipped (not scrollable), and individual chips were too large for the narrow column.
+- **Fix:** Float-mode left col narrowed to 130 px; chip `font-size: 11px; padding: 5px 7px; line-height: 1.3`. Rail already had `overflow-y: auto` — no JS change needed.
+- **Files:** `banking_api_ui/src/components/BankingAgent.css`
+- **Regression check:** Open float panel with many chips → rail should scroll; chips visibly smaller than inline mode.
 
 ### 2026-03-27 — BankingAgent Playwright E2E (`banking-agent.spec.js`)
 - **Symptom:** Multiple failures in `banking-agent.spec.js` (collapse strict mode, Transfer/Recent Transactions matching suggestions, outdated Account ID / input order assertions).

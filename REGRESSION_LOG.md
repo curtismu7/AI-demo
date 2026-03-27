@@ -5,6 +5,43 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-27 — Float panel: compact scrollable chips + free-resize (commits `4d1ea23`, `9cc0654`)
+
+**Symptoms**:
+1. Chips and action buttons in the float-mode left rail were too large — overflow was clipped, not scrollable.
+2. Dragging the SE / E / S resize handles appeared to work but the panel stopped growing at 560 × 720 px.
+
+**Root causes**:
+1. `.banking-agent-panel` base rule had `max-width: 560px` and `max-height: min(85vh, 720px)`. CSS `max-*` properties always win over inline `width`/`height` regardless of specificity, so the JS resize logic was correctly updating `panelSize` but the CSS caps silently clamped the rendered size.
+2. The base rule also included `resize: both`, which browsers ignore when `overflow: hidden` is set — dead code contributing to confusion.
+3. `handleResize` used `Math.min(560, …)` for width and `Math.min(720, …)` for height — the same hard caps in the JS.
+4. When `dragPos` was `null` (panel not yet dragged), `handleResize` did not anchor the panel position before resizing, so the first resize could shift the panel.
+5. Float-mode left rail was 148 px wide with full-size chips (font 13 px, padding 8 px 10 px) — too much for the compressed space.
+
+**Fixes**:
+- **`BankingAgent.css`** — Removed `max-width`, `max-height`, and `resize: both` from `.banking-agent-panel`. Lowered `min-height` from `260px` to `220px`. Added compact float-mode chip overrides: left rail `width: 130px`, chip `font-size: 11px; padding: 5px 7px`. SE handle redesigned (20 × 20, visible grip `::after` dots); E handle full-height `6px`; S handle full-width `6px`.
+- **`BankingAgent.js`** — `handleResize`: replaced `Math.min(560, …)` / `Math.min(720, …)` caps with `Math.floor(window.innerWidth * 0.9)` / `Math.floor(window.innerHeight * 0.9)`. Added `dragPos`-anchor logic: when `dragPos` is null, reads `panelRef.current.getBoundingClientRect()` and calls `setDragPos` synchronously before the first `mousemove`.
+
+**Tests**: `CI=false npm run build` — compiled successfully. Manual: drag SE grip — panel grows beyond old 560/720 limits up to 90 % of viewport; chips in left rail are smaller and the rail scrolls when content overflows.
+
+---
+
+## 2026-03-27 — "Session expired" banner showing when user is signed in (commit `b7e806a`)
+
+**Symptoms**:
+User sees a yellow "Your session has expired. Please log in again." banner on the dashboard even though they just signed in via PingOne OAuth.
+
+**Root cause**:
+The Vercel serverless deployment (and any cold-start scenario) can restore a session from the signed `_auth` cookie with `accessToken: '_cookie_session'` (a stub). `GET /api/auth/oauth/user/status` returns `authenticated: true` (cookie-based user data is present), but `GET /api/accounts/my` returns `401` because `authenticateToken` finds no real bearer token. `fetchUserData` in `UserDashboard.js` treated any 401 as a genuine session expiry and fired `toastCustomerError` — showing the banner even though the PingOne SSO session was still valid and a silent re-auth would succeed instantly.
+
+**Fix**:
+- **`UserDashboard.js`** — on non-silent `401` from `/api/accounts/my` or `/api/transactions/my`, redirect immediately to `/api/auth/oauth/user/login` instead of showing the banner. PingOne's SSO session makes this transparent (no credentials required). A `sessionStorage` guard key (`bx-dashboard-reauth`) prevents redirect loops: if re-auth still yields `401` after one redirect (broken PingOne config), the guard fires and the banner is shown as a fallback so the user can act.
+- On successful data fetch, the guard key is cleared so future expiry after a genuinely-expired SSO session still redirects once.
+
+**Tests**: `CI=false npm run build` — compiled successfully. Manual: open dashboard with expired/stub token — browser is silently redirected to PingOne and back, no banner shown; PingOne SSO session expired — banner appears after one redirect attempt.
+
+---
+
 ## 2026-03-27 — Float agent not visible + drag broken after expand button
 
 **Symptoms**:
