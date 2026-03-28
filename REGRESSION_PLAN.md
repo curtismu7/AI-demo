@@ -53,6 +53,13 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-28 — AgentGatewayPanel: switch to EducationDrawer slide-out (commit `226fc2e`)
+- **Symptom:** Agent Gateway panel opened as a centered full-screen modal; all other education panels slide in from the right.
+- **Root cause:** `AgentGatewayPanel` imported `EducationModal` while every other panel uses `EducationDrawer`.
+- **Fix:** Swapped `EducationModal` → `EducationDrawer` with `width="min(640px, 100vw)"`. No functional changes — same props, same tab structure, same overlay/close behaviour.
+- **Files:** `banking_api_ui/src/components/education/AgentGatewayPanel.js`
+- **Regression check:** Click Education Bar → Agent Gateway → panel must slide in from the right (not pop up as a centered modal). Close button and overlay click must dismiss it. All other edu panels (Login Flow, Token Exchange, etc.) must be unaffected.
+
 ### 2026-03-28 — Agent form sends wrong account IDs — ❌ Account chk-5 not found (commit `99d4718`)
 - **Symptom:** `get_account_balance` / deposit / withdraw / transfer all returned `❌ Account chk-5 not found`.
 - **Root cause:** `ActionForm` was populated by `generateFakeAccounts(effectiveUser)` which derives IDs as `chk-{user.sub.slice(0,10)}`. The server creates accounts using `req.user.id` (the internal dataStore ID), which can differ from the PingOne `sub` claim. Result: the form sent `chk-5` but the server stored `chk-abc1234567`.
