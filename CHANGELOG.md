@@ -24,6 +24,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `TokenExchangeSimulator` — now draggable and resizable (portal, starts viewport-filling, drag/resize freely)
 
 ### Fixed
+- **`DemoDataPage` build error** — `handleResetDefaults` called `setAccounts` (removed in type-slot refactor); replaced with `setTypeSlots` callback updating `checking`/`savings` slots from `defaults.checkingName/Balance` and `defaults.savingsName/Balance` — blocked every Vercel deploy (commit `0058450`)
+- **Button routing audit** — `LandingPage` Logs quick-link was calling `handleOAuthLogin('admin')` instead of opening `/logs`; `OAuthDebugLogViewer` "← Dashboard" always linked to `/` instead of role-aware `/admin` / `/dashboard`; 7 Dashboard Quick Action buttons used `window.location.href` (full-page reload) instead of React Router `<Link>` — 3 bugs fixed, 41 routing tests added (commit `b21dcf7`)
+- **`get_account_balance` type-name IDs** — tool returned `❌ Account checking not found` because it called `getAccountById` directly; now loads accounts via `ensureAccounts` and resolves via `resolveAccountId` (same as deposit/withdraw/transfer) (commit `3aaeee4`)
+- **`may_act absent` wording** — Token Chain panel and agent chat said "exchange **will** fail" as a hard guarantee; changed to "may fail" / "exchange will be attempted" in `TokenChainDisplay.js` (header, body, legend) and `agentMcpTokenService.js` `describeMayAct` (commit `f48120d`)
 - `DemoDataPage.js` JSX syntax error in template literal (invalid `${...}` interpolation)
 
 - **In-app Agent Consent** (`AgentConsentModal.js` / `AgentConsentModal.css`) — replaced PingOne ACR-gate consent with a fully self-contained in-app modal; `POST /api/auth/oauth/user/consent` records consent in session; `DELETE /consent` revokes for demo reset; `SKIP_AGENT_CONSENT=true` env var disables gate; no PingOne agreement or auth policy needed

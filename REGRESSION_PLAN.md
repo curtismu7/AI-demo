@@ -53,6 +53,35 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-28 — DemoDataPage build error: handleResetDefaults called missing setAccounts (commit `0058450`)
+- **Symptom:** `CI=true npm run build` failed with `'setAccounts' is not defined` (eslint `no-undef`), blocking every Vercel deploy.
+- **Root cause:** `handleResetDefaults` in `DemoDataPage.js` used a stale `setAccounts(prev => prev.filter(...).map(...))` call left over from before the array-of-accounts state was replaced by the object-keyed `typeSlots` model (`setTypeSlots`). The dev server runs with `CI=false` so the error was never caught locally.
+- **Fix:** Replaced `setAccounts(...)` with `setTypeSlots((prev) => { ... })` that updates the `checking` and `savings` slots using `defaults.checkingName/Balance` and `defaults.savingsName/Balance`.
+- **Files:** `banking_api_ui/src/components/DemoDataPage.js`
+- **Regression check:** `cd banking_api_ui && CI=false npm run build` must exit 0; "Reset to defaults" button on `/demo-data` must restore default account names and balances without JS errors.
+
+### 2026-03-28 — Routing audit: 3 bugs fixed, 41 button routing tests added (commit `b21dcf7`)
+- **Symptoms:** (1) LandingPage "Logs" button triggered `handleOAuthLogin('admin')` instead of opening `/logs`. (2) OAuthDebugLogViewer "← Dashboard" always navigated to `/` (landing page) regardless of user role. (3) Admin Dashboard Quick Actions (7 buttons) used `window.location.href` causing full page reloads that break SPA state.
+- **Root causes:** (1) Copy-paste error — `onClick` left wired to adjacent "Admin sign in" handler. (2) `<Link to="/">` hardcoded; role-aware path never applied. (3) `window.location.href` used instead of React Router `<Link>` components.
+- **Fix:** `LandingPage.js` — Logs button changed to `window.open('/logs', '_blank')`. `OAuthDebugLogViewer.js` — `dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard'`; link uses `<Link to={dashboardPath}>`. `Dashboard.js` — all 7 Quick Action buttons replaced with `<Link to="...">` for each route.
+- **Files:** `banking_api_ui/src/components/LandingPage.js`, `banking_api_ui/src/components/OAuthDebugLogViewer.js`, `banking_api_ui/src/components/Dashboard.js`
+- **Tests:** `src/components/__tests__/buttonRouting.test.js` — 41 tests, all passing.
+- **Regression check:** LandingPage Logs button must open `/logs` in a new tab (not start admin OAuth). OAuthDebugLogViewer back arrow must go to `/admin` for admin users and `/dashboard` for customers. Dashboard Quick Actions must navigate without full-page reload.
+
+### 2026-03-28 — get_account_balance: type-name IDs like 'checking'/'savings' now resolved (commit `3aaeee4`)
+- **Symptom:** 💰 Check Balance chip returned `❌ Account checking not found` when the ActionForm rendered before live accounts loaded (uses `generateFakeAccounts()` placeholder IDs like `'checking'`/`'savings'`).
+- **Root cause:** `mcpLocalTools.js::get_account_balance` called `dataStore.getAccountById(account_id)` directly; real IDs are UUIDs. `create_deposit`, `create_withdrawal`, and `create_transfer` all used `resolveAccountId()` first — `get_account_balance` was the only tool that was missed.
+- **Fix:** `get_account_balance` now loads user accounts via `ensureAccounts(userId)` then calls `resolveAccountId(rawStr, accounts)` before `getAccountById`, matching the pattern of the other write tools.
+- **Files:** `banking_api_server/services/mcpLocalTools.js`
+- **Regression check:** Open agent → click 💰 Check Balance chip before accounts load → must return balance, not "Account checking not found".
+
+### 2026-03-28 — may_act absent: "will fail" changed to "may fail" — exchange always attempted (commit `f48120d`)
+- **Symptom:** Token Chain panel and agent chat showed `may_act absent — exchange will fail` as a hard guarantee, confusing users whose PingOne policy accepts exchange without a `may_act` claim.
+- **Root cause:** `describeMayAct()` in `agentMcpTokenService.js` and `MayActEduBox` in `TokenChainDisplay.js` used deterministic language ("PingOne will reject") that contradicts actual server behaviour — the RFC 8693 exchange is always attempted regardless.
+- **Fix:** Changed to "may fail" in the edu-box header, body paragraph, legend item, and the server-side `describeMayAct` reason string.
+- **Files:** `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_server/services/agentMcpTokenService.js`
+- **Regression check:** Token Chain → `may_act absent` row must say "exchange **may** fail"; chat message for absent may_act must not say "PingOne **will** reject".
+
 ### 2026-03-28 — AgentGatewayPanel: switch to EducationDrawer slide-out (commit `226fc2e`)
 - **Symptom:** Agent Gateway panel opened as a centered full-screen modal; all other education panels slide in from the right.
 - **Root cause:** `AgentGatewayPanel` imported `EducationModal` while every other panel uses `EducationDrawer`.
