@@ -2218,6 +2218,24 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   color: var(--dash-text, #0f172a);
 }
 
+.user-dashboard--2026 .ud-hero__debt {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  color: #dc2626;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.user-dashboard--2026 .ud-hero__debt-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #ef4444;
+}
+
 .user-dashboard--2026 .ud-hero__spark {
   display: flex;
   align-items: flex-end;

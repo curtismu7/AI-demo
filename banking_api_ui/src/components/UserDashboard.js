@@ -20,6 +20,9 @@ import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import './UserDashboard.css';
 
+/** Account types whose balances represent money owed (liabilities), not assets. */
+const DEBT_TYPES = new Set(['car_loan', 'mortgage', 'credit']);
+
 const DEMO_ACCOUNTS = [
   { id: 'demo-chk', name: 'Checking Account', accountType: 'checking', accountNumber: 'CHK-DEMO-0001', balance: 4821.50, _demo: true },
   { id: 'demo-sav', name: 'Savings Account',  accountType: 'savings',  accountNumber: 'SAV-DEMO-0001', balance: 12340.00, _demo: true },
@@ -454,7 +457,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const isDemoMode = accounts.length > 0 && accounts.every(a => a._demo);
 
   const totalBalance = useMemo(
-    () => accounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0),
+    () => accounts
+      .filter(a => !DEBT_TYPES.has(a.type))
+      .reduce((sum, a) => sum + (Number(a.balance) || 0), 0),
+    [accounts]
+  );
+
+  const totalDebt = useMemo(
+    () => accounts
+      .filter(a => DEBT_TYPES.has(a.type))
+      .reduce((sum, a) => sum + Math.abs(Number(a.balance) || 0), 0),
     [accounts]
   );
 
@@ -746,6 +758,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <p className="ud-hero__balance" aria-live="polite">
             ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
+          {totalDebt > 0 && (
+            <p className="ud-hero__debt" aria-live="polite">
+              <span className="ud-hero__debt-label">Debt</span>
+              ${totalDebt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          )}
           <div className="ud-hero__spark" aria-hidden="true" title="Illustrative activity trend">
             <span style={{ height: '40%' }} /><span style={{ height: '65%' }} /><span style={{ height: '55%' }} />
             <span style={{ height: '78%' }} /><span style={{ height: '62%' }} /><span style={{ height: '88%' }} /><span style={{ height: '72%' }} />
