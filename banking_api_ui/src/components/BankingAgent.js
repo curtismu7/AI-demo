@@ -1383,7 +1383,9 @@ export default function BankingAgent({
             '   4. Sign out and sign in again',
           ].join('\n');
           // Info-only: tools still work via local fallback
-          notifyInfo('ℹ️ MCP resource URI not set — using local banking tools (no token exchange)', { autoClose: 4000 });
+          // Chat already gets the full RFC 8693 setup explanation via addMessage('token-event').
+          // Suppress the toast — the success toast is already shown and a concurrent info/error
+          // toast would confuse users who just saw "Deposit complete".
         } else if (badScopes) {
           tokenMsg = [
             '⚠️ User token has insufficient scopes for RFC 8693 exchange',

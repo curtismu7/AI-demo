@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+/* Toast notifications must sit above all fixed/portal UI (hamburger menu is z-index 10055). */
+.Toastify__toast-container {
+  z-index: 10100 !important;
+}
+
 /* App-wide primary actions: red fill, white label (floating FABs use their own classes). */
 :root {
   --app-primary-red: #b91c1c;
