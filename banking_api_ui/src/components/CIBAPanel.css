@@ -75,7 +75,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
-  z-index: 1210;
+  z-index: 10062;
 }
 
 /* ---------- Drawer ---------- */
@@ -87,7 +87,7 @@
   /* Width is set via inline style (resizable); fallback gives Token Chain / tokenx tab room */
   width: min(840px, 96vw);
   background: #fff;
-  z-index: 1220;
+  z-index: 10063;
   display: flex;
   flex-direction: column;
   box-shadow: -6px 0 40px rgba(0, 0, 0, 0.18);

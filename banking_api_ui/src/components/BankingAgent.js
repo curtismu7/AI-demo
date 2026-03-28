@@ -983,10 +983,13 @@ export default function BankingAgent({
     if (edu?.panel) setIsOpen(false);
   }, [edu?.panel]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mutual exclusion: close any open education panel when agent opens
+  // Mutual exclusion: close any open education panel when agent opens.
+  // Deps intentionally omit edu?.panel — if edu.panel is included, this effect fires when
+  // the user opens an edu panel (edu.panel null→set), sees isOpen=true (stale render snapshot),
+  // and immediately calls edu.close(), killing the panel before it renders.
   useEffect(() => {
     if (isOpen && edu?.panel) edu.close();
-  }, [isOpen, edu?.panel, edu.close]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check config status from IndexedDB cache whenever panel opens
   useEffect(() => {
