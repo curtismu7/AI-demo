@@ -805,7 +805,9 @@ app.use('/api/agent', agentIdentityRoutes);
 // needed here and causes invalid_token errors when JWKS fetch times out.
 app.use('/api/banking-agent', bankingAgentNlRoutes);
 app.use('/api/authorize', authorizeRoutes);
-app.use('/api/mcp/inspector', authenticateToken, mcpInspectorRoutes);
+// MCP Inspector: no auth gate at the router level — tools/list returns local catalog for
+// unauthenticated visitors; tools/call and context check auth inside each handler.
+app.use('/api/mcp/inspector', mcpInspectorRoutes);
 // Session preview uses session data only — no full JWT validation so it works even
 // when the session has a _cookie_session stub (Vercel cold-start / Upstash restore).
 // Must be registered BEFORE the auth-gated /api/tokens block.

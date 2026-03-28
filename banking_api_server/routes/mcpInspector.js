@@ -122,9 +122,6 @@ router.get('/tools', async (req, res) => {
   const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
 
   const respondLocalCatalog = (reason) => {
-    if (!effectiveUserId) {
-      return authRequired(res);
-    }
     return res.json({
       timingsMs: { roundTrip: 0 },
       tools: listLocalInspectorTools(),
