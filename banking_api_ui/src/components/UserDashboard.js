@@ -312,7 +312,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               return;
             }
             sessionStorage.removeItem(REAUTH_KEY);
-            toastCustomerError('Your session has expired. Please log in again.', navigateToCustomerOAuthLogin);
+            toastCustomerError(
+              'Session could not be restored after sign-in. Please try signing in again.',
+              navigateToCustomerOAuthLogin,
+            );
           }
           // silent refresh 401 — ignore; next explicit load will handle it
         } else if (dataErr.response?.status === 403) {

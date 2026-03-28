@@ -553,6 +553,20 @@ const authenticateToken = async (req, res, next) => {
       // This prevents token relay — the token never needs to leave the backend.
       const sessionToken = req.session?.oauthTokens?.accessToken;
       if (sessionToken) {
+        // Short-circuit the _cookie_session stub — it is a placeholder set by
+        // restoreSessionFromCookie when no real OAuth token is in the session
+        // (typically Upstash is unavailable).  There is no point running JWKS
+        // validation on it; return 401 immediately with a clear code.
+        if (sessionToken === '_cookie_session') {
+          logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Session token is _cookie_session stub — re-authentication required', requestContext);
+          throw new OAuthError(
+            OAUTH_ERROR_TYPES.AUTHENTICATION_REQUIRED,
+            'Session requires re-authentication (session not persisted to Redis)',
+            401,
+            { hint: 'Sign in again to refresh the session' },
+          );
+        }
+
         logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Using session token as fallback (no Authorization header)', requestContext);
         // Re-use the full validation pipeline below via reassignment
         const authHeader2 = `Bearer ${sessionToken}`;
