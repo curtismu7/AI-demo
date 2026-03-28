@@ -155,58 +155,90 @@
   margin: 0;
 }
 
-.demo-data-accounts {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.demo-data-accounts-hint {
+  font-size: 0.8rem;
+  color: #64748b;
 }
 
-.demo-data-account-card {
+/* ── Fixed type-slot grid ── */
+.demo-data-type-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.demo-data-type-slot {
   border: 1px solid var(--dash-border, #e2e8f0);
   border-radius: 8px;
-  padding: 1rem 1.1rem;
+  padding: 0.75rem 1rem;
   background: var(--dash-surface-2, #f8fafc);
+  transition: border-color 0.15s, background 0.15s;
 }
 
-.demo-data-account-meta {
+.demo-data-type-slot--on {
+  border-color: #2563eb;
+  background: #f0f5ff;
+}
+
+.demo-data-type-slot__toggle {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.8rem;
-  color: #6b7280;
-}
-
-.demo-data-type {
-  text-transform: capitalize;
-  font-weight: 600;
-  color: #111827;
-}
-
-.demo-data-account-type-select {
-  font: inherit;
-  font-weight: 600;
-  text-transform: capitalize;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #111827;
-}
-
-.demo-data-remove-draft {
-  margin-left: auto;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #475569;
   cursor: pointer;
+  margin-bottom: 0;
+  user-select: none;
 }
 
-.demo-data-remove-draft:hover {
-  background: #f1f5f9;
+.demo-data-type-slot--on .demo-data-type-slot__toggle {
+  margin-bottom: 0.75rem;
+}
+
+.demo-data-type-slot__icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.demo-data-type-slot__label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1e293b;
+  flex: 1;
+}
+
+.demo-data-type-slot__num {
+  font-size: 0.7rem;
+  color: #64748b;
+  background: #e2e8f0;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.demo-data-type-slot__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.demo-data-field--inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.demo-data-field--inline span {
+  flex-shrink: 0;
+  min-width: 68px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.demo-data-field--inline input {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-data-field--narrow input {
+  max-width: 120px;
 }
 
 .demo-data-actions-row {

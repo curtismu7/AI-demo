@@ -87,19 +87,21 @@ describe('DemoDataPage', () => {
     saveDemoScenario.mockResolvedValue({ ok: true, accounts: [], settings: {}, userData: {} });
   });
 
-  it('shows Add account and appends a draft row with type selector and remove', async () => {
+  it('shows a type-slot card for each account type with a toggle', async () => {
     renderPage();
 
     await screen.findByRole('heading', { name: 'Accounts' });
 
-    fireEvent.click(screen.getByRole('button', { name: /add account/i }));
+    // Checking slot should be enabled (from defaultScenarioPayload)
+    const checkingToggle = screen.getByRole('checkbox', { name: /checking/i });
+    expect(checkingToggle).toBeChecked();
 
-    expect(screen.getByRole('combobox', { name: /account type/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^remove$/i })).toBeInTheDocument();
-    expect(screen.getAllByLabelText(/account name/i).length).toBeGreaterThanOrEqual(2);
+    // Savings slot should be disabled (not in payload)
+    const savingsToggle = screen.getByRole('checkbox', { name: /savings/i });
+    expect(savingsToggle).not.toBeChecked();
   });
 
-  it('saveDemoScenario sends new rows without id and with accountType', async () => {
+  it('enabling a type slot from unchecked and saving sends row with accountType but no id', async () => {
     fetchDemoScenario.mockResolvedValue({
       ...defaultScenarioPayload,
       accounts: [],
@@ -108,19 +110,14 @@ describe('DemoDataPage', () => {
     renderPage();
 
     await screen.findByRole('heading', { name: 'Accounts' });
-    expect(fetchDemoScenario).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: /add account/i }));
-    await screen.findByRole('combobox', { name: /account type/i });
+    // Enable the savings slot
+    const savingsToggle = screen.getByRole('checkbox', { name: /savings/i });
+    fireEvent.click(savingsToggle);
 
-    const accountNameFields = screen.getAllByLabelText(/^account name$/i);
-    fireEvent.change(accountNameFields[accountNameFields.length - 1], {
-      target: { value: 'Rainy day' },
-    });
-
-    fireEvent.change(screen.getByRole('combobox', { name: /account type/i }), {
-      target: { value: 'savings' },
-    });
+    // Change the nickname
+    const nicknameInputs = screen.getAllByPlaceholderText(/savings account/i);
+    fireEvent.change(nicknameInputs[0], { target: { value: 'Rainy day fund' } });
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
@@ -129,10 +126,10 @@ describe('DemoDataPage', () => {
     await waitFor(() => expect(saveDemoScenario).toHaveBeenCalled());
 
     const body = saveDemoScenario.mock.calls[0][0];
-    const newRows = body.accounts.filter((a) => !a.id);
-    expect(newRows).toHaveLength(1);
-    expect(newRows[0].accountType).toBe('savings');
-    expect(newRows[0].name).toBe('Rainy day');
+    const savingsRow = body.accounts.find((a) => a.accountType === 'savings');
+    expect(savingsRow).toBeDefined();
+    expect(savingsRow.id).toBeUndefined();
+    expect(savingsRow.name).toBe('Rainy day fund');
   });
 });
 

@@ -308,8 +308,26 @@ router.put('/', async (req, res) => {
         if (!row || typeof row !== 'object') continue;
 
         if (!isExistingAccountId(row.id)) {
-          // New account — create it regardless of whether existing accounts are stale
+          // New account — but first check if one already exists for this type (upsert by type).
           const accountType = normalizeDemoAccountType(row.accountType);
+          const existingOfType = existingForUser.find(a => a.accountType === accountType);
+          if (existingOfType) {
+            // Treat as an update of the existing account instead of creating a duplicate.
+            const updates = {};
+            if (typeof row.name === 'string') updates.name = row.name.trim().slice(0, 120);
+            if (row.balance !== undefined && row.balance !== null) {
+              const b = parseFloat(row.balance);
+              if (!Number.isFinite(b) || b < 0 || b > 99_999_999) {
+                return res.status(400).json({ error: 'invalid_balance', message: 'Balance must be a valid non-negative number.' });
+              }
+              updates.balance = Math.round(b * 100) / 100;
+            }
+            if (Object.keys(updates).length > 0) {
+              await dataStore.updateAccount(existingOfType.id, updates);
+            }
+            continue;
+          }
+          // No existing account for this type — create it.
           let name = typeof row.name === 'string' ? row.name.trim().slice(0, 120) : '';
           if (!name) {
             name = DEMO_DEFAULT_ACCOUNT_NAMES[accountType] || 'Account';

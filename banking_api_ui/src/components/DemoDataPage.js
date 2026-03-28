@@ -14,16 +14,25 @@ import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import './UserDashboard.css';
 import './DemoDataPage.css';
 
-/** Account types for new rows (values stored lowercase; labels for the dropdown). */
-const ACCOUNT_TYPE_OPTIONS = [
-  { value: 'checking', label: 'Checking' },
-  { value: 'savings', label: 'Savings' },
-  { value: 'investment', label: 'Investment' },
-  { value: 'money_market', label: 'Money market' },
-  { value: 'credit', label: 'Credit card' },
-  { value: 'car_loan', label: 'Car loan' },
-  { value: 'mortgage', label: 'Mortgage (home loan)' },
+/** Account types — each type gets exactly one slot; accountType is the stable key. */
+const ACCOUNT_TYPE_SLOTS = [
+  { type: 'checking',     label: 'Checking',            icon: '🏦', defaultName: 'Checking Account' },
+  { type: 'savings',     label: 'Savings',             icon: '💰', defaultName: 'Savings Account' },
+  { type: 'investment',  label: 'Investment',          icon: '📈', defaultName: 'Investment Account' },
+  { type: 'money_market',label: 'Money market',        icon: '💵', defaultName: 'Money Market Account' },
+  { type: 'credit',      label: 'Credit card',         icon: '💳', defaultName: 'Credit Card' },
+  { type: 'car_loan',    label: 'Car loan',            icon: '🚗', defaultName: 'Car Loan' },
+  { type: 'mortgage',    label: 'Mortgage (home loan)',icon: '🏠', defaultName: 'Mortgage (Home Loan)' },
 ];
+
+/** Build an initial typeSlots map — all disabled, default names. */
+function defaultTypeSlots() {
+  const m = {};
+  for (const s of ACCOUNT_TYPE_SLOTS) {
+    m[s.type] = { enabled: false, name: s.defaultName, balance: '0', id: null, accountNumber: '' };
+  }
+  return m;
+}
 
 /**
  * Lets demo users edit account labels, balances, and MFA step-up threshold for their sandbox data.
@@ -60,7 +69,8 @@ export default function DemoDataPage({ user, onLogout }) {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [accounts, setAccounts] = useState([]);
+  // One slot per account type — keyed by accountType string.
+  const [typeSlots, setTypeSlots] = useState(defaultTypeSlots);
   const [threshold, setThreshold] = useState('');
   /** Editable profile fields (persisted as userData on save). */
   const [profile, setProfile] = useState({
@@ -144,17 +154,30 @@ export default function DemoDataPage({ user, onLogout }) {
   /** Stable React key for a row before the server assigns an account id. */
   const getAccountRowKey = (a) => a.id || a._clientKey;
 
+  /** Update a single field in a type slot. */
+  const handleSlotChange = (type, field, value) => {
+    setTypeSlots((prev) => ({ ...prev, [type]: { ...prev[type], [field]: value } }));
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchDemoScenario();
-      setAccounts(
-        (data.accounts || []).map((a) => ({
-          ...a,
-          _name: a.name || '',
-          _balance: String(a.balance ?? ''),
-        })),
-      );
+      // Map server accounts into type slots (first account per type wins).
+      const fresh = defaultTypeSlots();
+      for (const a of (data.accounts || [])) {
+        const t = (a.accountType || '').toLowerCase();
+        if (fresh[t] && !fresh[t].enabled) {
+          fresh[t] = {
+            enabled: true,
+            id: a.id || null,
+            name: a.name || ACCOUNT_TYPE_SLOTS.find(s => s.type === t)?.defaultName || t,
+            balance: String(a.balance ?? '0'),
+            accountNumber: a.accountNumber || '',
+          };
+        }
+      }
+      setTypeSlots(fresh);
       setThreshold(String(data.settings?.stepUpAmountThreshold ?? ''));
       const u = data.userData || {};
       setProfile({
@@ -185,34 +208,13 @@ export default function DemoDataPage({ user, onLogout }) {
 
   /** Updates a single account row (by id or draft _clientKey). */
   const handleAccountChange = (rowKey, field, value) => {
-    setAccounts((prev) =>
-      prev.map((a) => (getAccountRowKey(a) === rowKey ? { ...a, [field]: value } : a)),
-    );
+    // kept for any legacy callers; no-op in new model
   };
 
-  /** Appends a new row; it is created on the server when the user saves. */
-  const handleAddAccount = () => {
-    const c = typeof window !== 'undefined' ? window.crypto : null;
-    const ck =
-      c && typeof c.randomUUID === 'function' ? c.randomUUID() : `draft-${Date.now()}`;
-    setAccounts((prev) => [
-      ...prev,
-      {
-        id: '',
-        _clientKey: ck,
-        accountType: 'checking',
-        accountNumber: '—',
-        currency: 'USD',
-        _name: '',
-        _balance: '0',
-      },
-    ]);
-  };
-
-  /** Drops a not-yet-saved row from the form. */
-  const handleRemoveDraft = (rowKey) => {
-    setAccounts((prev) => prev.filter((a) => a.id || getAccountRowKey(a) !== rowKey));
-  };
+  /** @deprecated replaced by type-slot model */
+  const handleAddAccount = () => {};
+  /** @deprecated replaced by type-slot model */
+  const handleRemoveDraft = () => {};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -231,18 +233,23 @@ export default function DemoDataPage({ user, onLogout }) {
       }
       const body = {
         stepUpAmountThreshold,
-        accounts: accounts.map((a) => {
-          const row = {
-            name: a._name,
-            balance: a._balance === '' ? undefined : parseFloat(a._balance),
-          };
-          if (a.id) {
-            row.id = a.id;
-          } else {
-            row.accountType = (a.accountType || 'checking').toLowerCase();
-          }
-          return row;
-        }),
+        // Only include enabled type slots; each slot maps to one account row.
+        accounts: ACCOUNT_TYPE_SLOTS
+          .filter(s => typeSlots[s.type]?.enabled)
+          .map(s => {
+            const slot = typeSlots[s.type];
+            const row = {
+              name: slot.name,
+              balance: slot.balance === '' ? undefined : parseFloat(slot.balance),
+            };
+            if (slot.id) {
+              row.id = slot.id;
+            } else {
+              // No existing account for this type — create one.
+              row.accountType = s.type;
+            }
+            return row;
+          }),
         userData: {
           firstName: profile.firstName.trim(),
           lastName: profile.lastName.trim(),
@@ -590,70 +597,56 @@ export default function DemoDataPage({ user, onLogout }) {
               <section className="section demo-data-section">
                 <div className="demo-data-accounts-header">
                   <h2>Accounts</h2>
-                  <button type="button" className="demo-data-btn ghost" onClick={handleAddAccount}>
-                    Add account
-                  </button>
+                  <span className="demo-data-accounts-hint">Check a type to include it; uncheck to exclude. One account per type.</span>
                 </div>
-                {accounts.length === 0 ? (
-                  <p className="demo-data-hint">
-                    No accounts yet. Use <strong>Add account</strong> above, or open the dashboard once to provision the
-                    default checking and savings accounts.
-                  </p>
-                ) : (
-                  <div className="demo-data-accounts">
-                    {accounts.map((a) => {
-                      const rowKey = getAccountRowKey(a);
-                      const isNew = !a.id;
-                      return (
-                        <div key={rowKey} className="demo-data-account-card">
-                          <div className="demo-data-account-meta">
-                            {isNew ? (
-                              <select
-                                className="demo-data-account-type-select"
-                                aria-label="Account type"
-                                value={a.accountType || 'checking'}
-                                onChange={(e) => handleAccountChange(rowKey, 'accountType', e.target.value)}
-                              >
-                                {ACCOUNT_TYPE_OPTIONS.map((opt) => (
-                                  <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className="demo-data-type">{a.accountType}</span>
-                            )}
-                            <code>{a.accountNumber}</code>
-                            {isNew && (
-                              <button type="button" className="demo-data-remove-draft" onClick={() => handleRemoveDraft(rowKey)}>
-                                Remove
-                              </button>
-                            )}
+                <div className="demo-data-type-slots">
+                  {ACCOUNT_TYPE_SLOTS.map((s) => {
+                    const slot = typeSlots[s.type] || {};
+                    return (
+                      <div
+                        key={s.type}
+                        className={`demo-data-type-slot${slot.enabled ? ' demo-data-type-slot--on' : ''}`}
+                      >
+                        <label className="demo-data-type-slot__toggle" title={slot.enabled ? 'Disable this account type' : 'Enable this account type'}>
+                          <input
+                            type="checkbox"
+                            checked={!!slot.enabled}
+                            onChange={(e) => handleSlotChange(s.type, 'enabled', e.target.checked)}
+                          />
+                          <span className="demo-data-type-slot__icon">{s.icon}</span>
+                          <span className="demo-data-type-slot__label">{s.label}</span>
+                          {slot.enabled && slot.accountNumber && (
+                            <code className="demo-data-type-slot__num">{slot.accountNumber}</code>
+                          )}
+                        </label>
+                        {slot.enabled && (
+                          <div className="demo-data-type-slot__fields">
+                            <label className="demo-data-field demo-data-field--inline">
+                              <span>Nickname</span>
+                              <input
+                                type="text"
+                                value={slot.name}
+                                placeholder={s.defaultName}
+                                onChange={(e) => handleSlotChange(s.type, 'name', e.target.value)}
+                                maxLength={120}
+                              />
+                            </label>
+                            <label className="demo-data-field demo-data-field--inline demo-data-field--narrow">
+                              <span>Balance (USD)</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={slot.balance}
+                                onChange={(e) => handleSlotChange(s.type, 'balance', e.target.value)}
+                              />
+                            </label>
                           </div>
-                          <label className="demo-data-field">
-                            <span>Account name</span>
-                            <input
-                              type="text"
-                              value={a._name}
-                              onChange={(e) => handleAccountChange(rowKey, '_name', e.target.value)}
-                              maxLength={120}
-                            />
-                          </label>
-                          <label className="demo-data-field">
-                            <span>Balance ({a.currency || 'USD'})</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={a._balance}
-                              onChange={(e) => handleAccountChange(rowKey, '_balance', e.target.value)}
-                            />
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </section>
 
               <section className="section demo-data-actions-row">
