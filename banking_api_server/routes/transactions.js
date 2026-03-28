@@ -8,6 +8,26 @@ const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 const configStore = require('../services/configStore');
 const { sendTransactionConfirmation } = require('../services/emailService');
 const txConsent = require('../services/transactionConsentChallenge');
+const demoScenarioStore = require('../services/demoScenarioStore');
+
+/**
+ * Re-hydrate a user's accounts from the Redis snapshot on cold-start.
+ * Prevents 404 "From account not found" when a Vercel lambda is recycled
+ * between challenge creation and the consent-confirm POST.
+ */
+async function restoreAccountsFromSnapshot(userId) {
+  try {
+    const scenario = await demoScenarioStore.load(userId);
+    if (!Array.isArray(scenario.accountSnapshot) || scenario.accountSnapshot.length === 0) return;
+    for (const snap of scenario.accountSnapshot) {
+      if (!dataStore.getAccountById(snap.id)) {
+        await dataStore.createAccount({ ...snap, userId, createdAt: new Date() });
+      }
+    }
+  } catch (e) {
+    console.warn('[transactions] restoreAccountsFromSnapshot failed:', e.message);
+  }
+}
 
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -157,6 +177,12 @@ router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read'
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { fromAccountId, toAccountId, amount, type, description, userId } = req.body;
+
+    // Re-hydrate accounts from Redis snapshot in case this Lambda was cold-started.
+    // Must run before any getAccountById lookup below.
+    if (req.user.role !== 'admin') {
+      await restoreAccountsFromSnapshot(req.user.id);
+    }
 
     // Validate amount
     const parsedAmount = parseFloat(req.body.amount);

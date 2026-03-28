@@ -63,7 +63,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     description: ''
   });
   const [withdrawAccount, setWithdrawAccount] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   /** Server-issued id for high-value HITL — opens TransactionConsentModal on the dashboard. */
   const [consentChallengeId, setConsentChallengeId] = useState(null);
   const [stepUpRequired, setStepUpRequired] = useState(false);

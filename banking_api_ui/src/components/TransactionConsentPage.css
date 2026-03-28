@@ -212,7 +212,7 @@
 .transaction-consent-card__check {
   display: flex;
   align-items: flex-start;
-  gap: 0.65rem;
+  gap: 0.75rem;
   cursor: pointer;
   font-size: 0.95rem;
   color: #1e293b;
@@ -221,8 +221,9 @@
 }
 
 .transaction-consent-card__check input {
-  margin-top: 0.2rem;
+  margin-top: 0.25rem;
   flex-shrink: 0;
+  margin-right: 0.1rem;
 }
 
 .transaction-consent-card__error {
