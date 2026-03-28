@@ -20,8 +20,12 @@ const {
 const SKIP_TOKEN_SIGNATURE_VALIDATION = process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true';
 const DEBUG_TOKENS = process.env.DEBUG_TOKENS === 'true';
 const DEBUG_SCOPES = process.env.DEBUG_SCOPES === 'true';
-const ENDUSER_AUDIENCE = process.env.ENDUSER_AUDIENCE || 'banking_jk_enduser';
-const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || 'banking_mcp_01_JK';
+// Audience values — read from env only; no hardcoded fallbacks.
+// When not set, audience validation is skipped (tokens are still JWKS-verified).
+// Set ENDUSER_AUDIENCE and AI_AGENT_AUDIENCE in your deployment env to enforce
+// that tokens were issued for this specific resource server.
+const ENDUSER_AUDIENCE  = process.env.ENDUSER_AUDIENCE  || null;
+const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || null;
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
 const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 
@@ -489,13 +493,19 @@ const validatePingOneCoreToken = async (token, requestContext = {}) => {
       issuer: oauthConfig.issuer,
     });
 
-    // Audience validation: if the deployment has configured known audiences,
-    // reject tokens whose aud does not include at least one of them.
-    // This prevents tokens issued for other resources from being replayed here.
+    // Audience validation: only enforced when ENDUSER_AUDIENCE or AI_AGENT_AUDIENCE
+    // are explicitly set in the deployment environment.
+    // Tokens from PingOne without a custom resource server have aud='https://api.pingone.com'
+    // which is always accepted as a valid PingOne-issued token.
+    const PINGONE_DEFAULT_AUD = 'https://api.pingone.com';
     const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE].filter(Boolean);
     if (knownAudiences.length > 0 && payload.aud) {
       const tokenAuds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-      const hasMatch = knownAudiences.some((a) => tokenAuds.includes(a));
+      // Accept tokens issued for a configured custom resource server OR for the
+      // default PingOne API audience (no custom resource server configured).
+      const hasMatch =
+        knownAudiences.some((a) => tokenAuds.includes(a)) ||
+        tokenAuds.includes(PINGONE_DEFAULT_AUD);
       if (!hasMatch) {
         throw new Error(`Token audience [${tokenAuds.join(', ')}] does not match any known audience for this service.`);
       }
