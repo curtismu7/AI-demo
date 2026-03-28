@@ -546,7 +546,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       (t1Claims?.may_act
         ? 'may_act was present — check that PingOne has the token-exchange grant enabled on this client and the audience policy allows ' + mcpResourceUri + '.'
         : 'may_act was absent — add the may_act claim to the user token via PingOne token policy, then retry.'),
-      { error: err.message, rfc: 'RFC 8693' }
+      { error: err.message, rfc: 'RFC 8693', mayActPresent: !!t1Claims?.may_act }
     ));
 
     // Fallback: try subject-only if actor exchange failed

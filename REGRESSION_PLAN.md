@@ -51,6 +51,17 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-28 — may_act educational UI: clear validation state in Token Chain + API display
+- **What changed:** `may_act` / `act` claim status is now shown clearly in both the Token Chain panel and the inline chat messages.
+- **Token Chain row:** Each relevant event row shows a compact hint badge — `✅ may_act valid`, `⚠️ may_act absent`, or `❌ may_act mismatch` — visible without opening the inspector.
+- **Token Chain inspector panel:** Replaced the simple one-line pills with full `MayActEduBox` and `ActEduBox` components that show: the decoded JSON, RFC 8693 reference, what the claim means, fix steps when wrong. The `ExchangeCheckList` component shows the 4 checks PingOne performs during exchange (including specific error + absent-may_act callout for the failed case).
+- **Agent chat:** Token-event inline messages now include the detailed `may_act` validation state (valid / mismatch / absent with `mayActDetails`), structured act claim result, and step-by-step fix instructions for each failure mode (absent, mismatch, exchange not configured, insufficient scopes, failed).
+- **Server:** `exchange-failed` token event now carries `mayActPresent` so the UI can show precise absent-may_act guidance.
+- **Files:** `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/TokenChainDisplay.css`, `banking_api_ui/src/components/BankingAgent.js`, `banking_api_server/services/agentMcpTokenService.js`
+- **Regression check (may_act absent):** Go to `/demo-data` → click ❌ Clear may_act → re-login → run "🏦 My Accounts". Token Chain user-token row must show `⚠️ may_act absent` hint badge; inspector must show the full red educational box with fix steps. Chat must say "may_act was absent" with the 3 fix steps.
+- **Regression check (may_act valid):** Go to `/demo-data` → click ✅ Enable may_act → re-login → run "🏦 My Accounts". Token Chain user-token row must show `✅ may_act valid` hint badge; inspector must show the green educational box with JSON. Chat must say "✅ may_act valid — delegation authorised".
+- **Regression check (exchange complete):** With `MCP_RESOURCE_URI` set and valid may_act, run any tool. `exchanged-token` row must show `✅ act claimed`; inspector must show the teal educational box with JSON. Chat message must include both `✅ may_act valid` and `✅ act:` lines.
+
 ### 2026-03-27 — Float panel resize capped at 560×720 (commits `4d1ea23`, `9cc0654`)
 - **Symptom:** SE/E/S resize handles appeared to work but panel wouldn't grow beyond 560 px wide or 720 px tall.
 - **Root cause:** `max-width: 560px` and `max-height: min(85vh, 720px)` in `.banking-agent-panel` CSS always override JS-set inline `width`/`height`. `handleResize` also had matching `Math.min(560,…)` / `Math.min(720,…)` JS caps. Dead `resize: both` (ignored because `overflow: hidden`).
@@ -339,3 +350,7 @@ Use this pattern: **"Change X in [ComponentName] — do not touch anything else.
 3. Say "do not touch" for anything adjacent you want preserved
 4. One change per request — multiple changes in one ask is how regressions slip through
 5. Specify the exact value when known (`16px`, `#hex`, `bold`) — not "bigger" or "darker"
+
+after every update
+
+commit, push to git and vercel, update regression docs

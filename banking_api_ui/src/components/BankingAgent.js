@@ -1318,21 +1318,59 @@ export default function BankingAgent({
         const failed    = tokenEvents.find(e => e.id === 'exchange-failed');
         const userTokEv = tokenEvents.find(e => e.id === 'user-token');
 
+        // Build a detailed may_act status string from the user token event
+        const mayActLine = !userTokEv
+          ? '   ⚠️ user token not decoded'
+          : userTokEv.mayActPresent && userTokEv.mayActValid
+            ? `   ✅ may_act valid — ${userTokEv.mayActDetails || 'delegation authorised'}`
+            : userTokEv.mayActPresent && !userTokEv.mayActValid
+              ? `   ❌ may_act mismatch — ${userTokEv.mayActDetails || 'client_id does not match BFF'}`
+              : '   ⚠️ may_act absent from user token';
+
         let tokenMsg = null;
         if (exchanged) {
-          const mayActStatus = userTokEv?.mayActPresent ? '✅ may_act validated' : '⚠️ no may_act';
-          const actStatus    = exchanged.actPresent ? `✅ act: ${exchanged.actDetails}` : '⚠️ no act claim';
-          tokenMsg = `🔐 RFC 8693 Token Exchange\n${mayActStatus} → MCP token issued · ${actStatus}\nScope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`;
+          const actLine = exchanged.actPresent
+            ? `   ✅ act: ${exchanged.actDetails} — BFF confirmed as current actor`
+            : '   ⚠️ act absent — subject-only exchange (no delegation proof in MCP token; set AGENT_OAUTH_CLIENT_ID)';
+          tokenMsg = [
+            '🔐 RFC 8693 Token Exchange complete',
+            mayActLine,
+            actLine,
+            `   Scope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`,
+            '',
+            'Open Token Chain ↗ to inspect decoded claims.\nmay_act (user token) = prospective permission · act (MCP token) = current delegation fact.',
+          ].join('\n');
           notifyInfo(`🔐 Token Exchange complete — MCP token issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
         } else if (required) {
-          tokenMsg = '🔐 Token exchange not configured — tools ran via local fallback. Set MCP_RESOURCE_URI to enable RFC 8693 token exchange.';
-          // Info-only: tools still work via local fallback, so this is not an error
+          tokenMsg = [
+            '🔐 Token Exchange (RFC 8693): not configured',
+            '   Tools ran via local fallback — the User Token was NOT sent to the MCP server.',
+            '',
+            'To enable full RFC 8693 exchange:',
+            '   1. Create a PingOne Resource Server  audience: "banking_mcp_server"',
+            '   2. Set MCP_RESOURCE_URI=banking_mcp_server  (Config UI or Vercel env)',
+            '   3. Enable Token Exchange grant on the Admin OAuth app in PingOne',
+            '   4. Sign out and sign in again',
+          ].join('\n');
+          // Info-only: tools still work via local fallback
           notifyInfo('ℹ️ MCP resource URI not set — using local banking tools (no token exchange)', { autoClose: 4000 });
         } else if (badScopes) {
-          tokenMsg = `🔐 User token needs more OAuth scopes for MCP exchange (${badScopes.explanation || 'see Token Chain'})`;
+          tokenMsg = [
+            '⚠️ User token has insufficient scopes for RFC 8693 exchange',
+            `   ${badScopes.explanation || 'Need at least 5 OAuth scopes on the user token'}`,
+            '',
+            'Fix: Sign out → sign in again with a PingOne app that requests more scopes',
+            '(openid, profile, email + banking scopes like banking:read, banking:accounts:read).',
+          ].join('\n');
           notifyError('❌ Sign in again with broader scopes (at least 5) for MCP token exchange', { autoClose: 7000 });
         } else if (failed) {
-          tokenMsg = `🔐 Token Exchange failed: ${failed.error || 'unknown error'}`;
+          tokenMsg = [
+            `❌ Token Exchange (RFC 8693) failed: ${failed.error || 'unknown error'}`,
+            '',
+            userTokEv?.mayActPresent
+              ? '   may_act was present — check that:\n   • PingOne has Token Exchange grant enabled on the admin OAuth app\n   • Audience policy allows "banking_mcp_server"\n   • may_act.client_id matches the BFF client'
+              : '   may_act was absent — this is likely the cause.\n   Go to /demo-data → Enable may_act → sign out and sign in again.',
+          ].join('\n');
           notifyError(`❌ Token Exchange failed: ${failed.error || 'unknown error'}`, { autoClose: 6000 });
         }
         if (tokenMsg) {

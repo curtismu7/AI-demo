@@ -502,12 +502,25 @@ const InspectIcon = () => (
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
 function EventRow({ event, isLast, onInspect }) {
   const inspectBtnRef = useRef(null);
-  const hasDetail = event.claims || event.explanation || event.exchangeRequest || event.jwtFullDecode;
+  const hasDetail = event.claims || event.explanation || event.exchangeRequest || event.jwtFullDecode
+    || event.mayActPresent !== undefined || event.actPresent !== undefined;
 
   const handleOpen = () => {
     if (!hasDetail) return;
     onInspect(event, inspectBtnRef.current);
   };
+
+  // Compact hints shown on the row — click inspect for full educational detail
+  const mayActHint =
+    event.mayActPresent === true
+      ? (event.mayActValid ? { text: '✅ may_act valid', cls: 'ok' } : { text: '❌ may_act mismatch', cls: 'error' })
+      : event.mayActPresent === false
+        ? { text: '⚠️ may_act absent', cls: 'warn' }
+        : null;
+  const actHint =
+    event.actPresent === true  ? { text: '✅ act claimed', cls: 'ok' }
+    : event.actPresent === false ? { text: '⚠️ no act claim', cls: 'warn' }
+    : null;
 
   return (
     <div className="tcd-event-wrap">
@@ -532,6 +545,12 @@ function EventRow({ event, isLast, onInspect }) {
             {event.rfc ? <span className="tcd-event-rfc">{event.rfc}</span> : null}
             <StatusBadge status={event.status} />
           </div>
+          {(mayActHint || actHint) && (
+            <div className="tcd-event-hints">
+              {mayActHint && <span className={`tcd-event-hint tcd-event-hint--${mayActHint.cls}`}>{mayActHint.text}</span>}
+              {actHint    && <span className={`tcd-event-hint tcd-event-hint--${actHint.cls}`}>{actHint.text}</span>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -710,10 +729,11 @@ const TokenChainDisplay = () => {
         )}
 
         <div className="tcd-legend">
-          <span className="tcd-legend-item tcd-pill--may-act">may_act — prospective permission</span>
-          <span className="tcd-legend-item tcd-pill--act">act — current actor fact</span>
+          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ may_act valid — delegation authorised</span>
+          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--warn">⚠️ may_act absent — exchange will fail</span>
+          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--error">❌ may_act mismatch — client_id wrong</span>
+          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ act claimed — delegation proven</span>
           <span className="tcd-legend-item tcd-pill--consent">consent ✅ — agent delegation accepted</span>
-          <span className="tcd-legend-item tcd-pill--warn">consent ⚠️ — user has not accepted</span>
         </div>
       </div>
 
