@@ -68,7 +68,7 @@ export default function EducationModal({
               ))}
             </div>
             <button type="button" className="edu-drawer-close" onClick={onClose} aria-label="Close">
-              ×
+              ✕
             </button>
           </div>
           <div className="edu-drawer-title-row">

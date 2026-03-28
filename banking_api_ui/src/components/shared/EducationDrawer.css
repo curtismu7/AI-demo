@@ -30,11 +30,11 @@
 }
 
 .edu-drawer-topbar {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.65rem 0.75rem 0.5rem;
+  padding: 0.65rem 3rem 0.5rem 0.75rem; /* right padding keeps tabs from hiding under X */
   border-bottom: 1px solid #e5e7eb;
   background: #f8fafc;
 }
@@ -62,6 +62,9 @@
 }
 
 .edu-drawer-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.6rem;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -76,7 +79,7 @@
   cursor: pointer;
   color: #475569;
   padding: 0;
-  margin-top: 0.05rem;
+  z-index: 1;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 

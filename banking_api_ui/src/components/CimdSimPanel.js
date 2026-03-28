@@ -1112,6 +1112,14 @@ export default function CimdSimPanel() {
     return () => window.removeEventListener('education-open-cimd', onEdu);
   }, []);
 
+  // ESC key closes the drawer
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   // Drag-to-resize left edge
   const onMouseDown = useCallback((e) => {
     isResizing.current = true;
