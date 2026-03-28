@@ -791,51 +791,39 @@ const Dashboard = ({ user, onLogout }) => {
           <h2 className="card-title">Quick Actions</h2>
         </div>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <button 
-            className="btn btn-primary"
-            onClick={() => window.location.href = '/activity'}
-          >
+          <Link to="/activity" className="btn btn-primary">
             View All Activity Logs
-          </button>
-          <button 
-            className="btn btn-secondary"
-            onClick={() => window.location.href = '/users'}
-          >
+          </Link>
+          <Link to="/users" className="btn btn-secondary">
             Manage Users
-          </button>
-          <button
+          </Link>
+          <Link
+            to="/admin/banking"
             className="btn btn-secondary"
-            onClick={() => { window.location.href = '/admin/banking'; }}
             title="Look up accounts by fragment, seed demo charges, admin cleanup"
           >
             Banking admin
-          </button>
-          <button 
-            className="btn btn-secondary"
-            onClick={() => window.location.href = '/accounts'}
-          >
+          </Link>
+          <Link to="/accounts" className="btn btn-secondary">
             Manage Accounts
-          </button>
-          <button 
-            className="btn btn-secondary"
-            onClick={() => window.location.href = '/transactions'}
-          >
+          </Link>
+          <Link to="/transactions" className="btn btn-secondary">
             View Transactions
-          </button>
-          <button 
+          </Link>
+          <Link
+            to="/settings"
             className="btn btn-secondary"
-            onClick={() => window.location.href = '/settings'}
             style={{ borderLeft: '3px solid #f59e0b' }}
           >
             🔒 Security Settings
-          </button>
-          <button
+          </Link>
+          <Link
+            to="/mcp-inspector"
             className="btn btn-secondary"
-            onClick={() => (window.location.href = '/mcp-inspector')}
-            title="MCP discovery & tools/call via Backend-for-Frontend (BFF)"
+            title="MCP discovery &amp; tools/call via Backend-for-Frontend (BFF)"
           >
             🔌 MCP Inspector
-          </button>
+          </Link>
         </div>
       </div>
 

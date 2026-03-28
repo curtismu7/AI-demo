@@ -169,7 +169,7 @@ const LandingPage = () => {
               <button type="button" className="hql-btn hql-btn--red" onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')}>
                 API
               </button>
-              <button type="button" className="hql-btn hql-btn--blue" onClick={() => { handleOAuthLogin('admin'); }}>
+              <button type="button" className="hql-btn hql-btn--blue" onClick={() => window.open('/logs', '_blank')}>
                 Logs
               </button>
               <button type="button" className="hql-btn hql-btn--blue" onClick={() => navigate('/demo-data')}>

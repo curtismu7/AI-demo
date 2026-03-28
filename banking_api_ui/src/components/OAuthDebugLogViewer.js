@@ -10,6 +10,7 @@ import PageNav from './PageNav';
  * Admin-only viewer for OAuth verbose log lines (file / KV / memory on the API server).
  */
 export default function OAuthDebugLogViewer({ user, onLogout }) {
+  const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
   const [lines, setLines] = useState([]);
   const [backend, setBackend] = useState('');
   const [hint, setHint] = useState('');
@@ -63,7 +64,7 @@ export default function OAuthDebugLogViewer({ user, onLogout }) {
     >
       <PageNav user={user} onLogout={onLogout} title="OAuth Debug Log" />
       <div className="app-page-toolbar app-page-toolbar--start" style={{ flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-        <Link to="/" className="app-page-toolbar-btn app-page-toolbar-btn--accent">
+        <Link to={dashboardPath} className="app-page-toolbar-btn app-page-toolbar-btn--accent">
           ← Dashboard
         </Link>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: '#475569' }}>
