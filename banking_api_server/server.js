@@ -1064,8 +1064,10 @@ if (!process.env.VERCEL) {
   const fs = require('fs');
   if (fs.existsSync(buildPath)) {
     app.use(express.static(buildPath));
-    // SPA fallback — serve index.html for all non-API routes
+    // SPA fallback — serve index.html for all non-API routes.
+    // Must not be cached so browsers always fetch the latest asset hashes.
     app.get('*', (req, res) => {
+      res.set('Cache-Control', 'no-store');
       res.sendFile(path.join(buildPath, 'index.html'));
     });
     console.log('[static] Serving React build from', buildPath);
