@@ -67,6 +67,13 @@
 - **Files:** `services/exchangeAuditStore.js` (new), `services/oauthService.js`, `services/agentMcpTokenService.js`, `routes/logs.js`, `utils/logger.js`, `banking_api_ui/src/components/LogViewer.js`
 - **Regression check:** Trigger a token exchange failure (e.g. set `mcp_resource_uri` to a value PingOne rejects). Open Log Viewer → "All Sources" or "Exchange Audit" → should see an error entry with HTTP status code and PingOne `error` field. Token Chain panel → exchange-failed event should show "HTTP 4xx — error: <pingone_code>" in description. On success, Exchange Audit should show the method (with-actor / subject-only) and audience.
 
+### 2026-03-28 — Agent consent gate UX: open modal instead of showing error (commit `32e1667`)
+- **Symptom:** Typing "show me my accounts" (or clicking any tool chip) before accepting the agent consent agreement produced `❌ Agent consent required. Please accept the agent consent agreement in the banking assistant panel.` in the chat and a "Failed" tool step — a contradictory experience: the user can't consent via the message shown.
+- **Root cause:** The server-side MCP proxy returns HTTP 403 `{ error: "agent_consent_required" }` when consent hasn't been granted. `callMcpTool` throws this as an exception (`err.code === "agent_consent_required"`). The `catch` block in `runAction` had no handler for this code and fell through to the generic `❌ ${err.message}` path.
+- **Fix:** Added an early guard in the `catch` block for `err.code === 'agent_consent_required'`: opens `AgentConsentModal` and adds a friendly assistant message ("To use the AI banking assistant, I need your permission to access your accounts. A consent agreement has opened — please accept it and then try again."). No toast error.
+- **Files:** `banking_api_ui/src/components/BankingAgent.js`
+- **Regression check:** Sign in as customer → open AI Agent panel → before accepting consent, click "Accounts" chip or type "show me my accounts" → consent modal should appear with a friendly chat message, no "❌ Error" or "Failed" tool step. After accepting consent, retry → accounts are shown normally.
+
 ### 2026-03-28 — HITL: OTP email verification for high-value transactions (commit `b8cef49`)
 - **What changed:** After the user checks the consent checkbox and clicks "Agree & send code", the server generates a 6-digit OTP (HMAC-SHA256, per-challenge salt, timing-safe compare), sends it via PingOne email, and puts the challenge into `otp_pending` state. The transaction only executes once the user enters the correct code via `POST /consent-challenge/:id/verify-otp`.
 - **New route:** `POST /api/transactions/consent-challenge/:id/verify-otp { otpCode }`

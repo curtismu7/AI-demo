@@ -23,6 +23,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `TOKEN_EXCHANGE` category added to `LOG_CATEGORIES` in `utils/logger.js`
 
 ### Fixed
+- **Agent consent gate UX** — clicking a tool chip or typing a query before accepting consent now opens `AgentConsentModal` with a friendly message instead of showing `❌ Agent consent required...` error in chat (commit `32e1667`)
 - **Token exchange: full PingOne error now visible** — `oauthService.performTokenExchange`, `performTokenExchangeWithActor`, and `getAgentClientCredentialsToken` now attach `httpStatus`, `pingoneError`, `pingoneErrorDescription`, `pingoneErrorDetail`, `requestContext` as named properties on the thrown Error; `console.error` logs the full structured object; exchange-failed tokenEvent description shows HTTP status + PingOne error code + detail (commit `b4272ee`)
 - **Log viewer empty after cross-Lambda exchange failure** — Vercel serverless: the Lambda that ran the exchange and the Lambda serving `GET /api/logs/console` are separate processes with isolated `recentLogs[]` memory; `GET /api/logs/console` is now async and merges Redis exchange audit events, deduplicating messages already present from the same Lambda (commit `b4272ee`)
 
