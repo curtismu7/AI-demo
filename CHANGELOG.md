@@ -17,6 +17,14 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- Feature Flags system: `GET/PATCH /api/admin/feature-flags`, FLAG_REGISTRY with 5 flags
+- `FeatureFlagsPage` admin UI (`/feature-flags`) — toggle switches per flag, grouped by category, live save, warning badges for security-sensitive flags
+- "Feature Flags" accent button in admin Dashboard toolbar
+- New configStore fields: `ff_authorize_fail_open` (fail-open on Authorize errors, default ON), `ff_authorize_deposits` (apply Authorize to deposits, default OFF), `ff_hitl_enabled` (HITL agent consent gate, default ON)
+- `transactions.js`: `ff_authorize_fail_open` controls fail-open vs fail-closed behaviour; `ff_authorize_deposits` adds deposits to the Authorize evaluation scope
+
+### Fixed
+- Pre-existing `no-unused-vars` lint errors in `DemoDataPage.js` and `UserDashboard.js` (suppressed with eslint-disable-next-line)
 - **OTP email verification for high-value transactions** — after the user checks the consent checkbox and clicks "Agree & send code", a 6-digit OTP is generated (HMAC-SHA256/per-challenge salt, timing-safe compare) and sent via PingOne email; the transaction only executes once the correct code is verified; challenge state machine: `pending → otp_pending → confirmed → consumed`; max 3 attempts, 5-minute TTL; new route `POST /consent-challenge/:id/verify-otp`; dev fallback when email unconfigured; 7 unit tests added
 - **Exchange Audit Log** (`services/exchangeAuditStore.js`) — Redis-backed (Upstash KV) audit log for RFC 8693 token-exchange events; `writeExchangeEvent()` LPUSH+LTRIM to `banking:exchange-audit` (max 200 entries), `readExchangeEvents()` LRANGE; graceful no-op when KV env vars are absent
 - **`GET /api/logs/exchange`** — dedicated endpoint returning Redis exchange audit events in standard `{logs,total}` shape; LogViewer "Exchange Audit" dropdown option + included in "all sources" fetch
