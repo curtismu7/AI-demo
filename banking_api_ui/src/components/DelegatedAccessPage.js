@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/DelegatedAccessPage.js
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { notifySuccess, notifyInfo } from '../utils/appToast';
 import '../styles/appShellPages.css';
@@ -96,77 +96,273 @@ function AccountPill({ account }) {
   return <span className={`da-pill ${typeClass}`}>{account.name}</span>;
 }
 
-// ─── RFC 8693 "Act as" explainer panel ───────────────────────────────────────
+// ─── Token Exchange Simulator ─────────────────────────────────────────────────
 
-function ActAsPanel({ delegate, onClose }) {
-  const isGrantor = Boolean(delegate.ownerAccounts); // acting ON BEHALF of someone
-  const subjectName = isGrantor ? delegate.name : 'You';
-  const actorName   = isGrantor ? 'You (BFF)'       : 'BFF';
+/** Maps event status to badge CSS class. */
+const STATUS_BADGE = {
+  active:    'da-badge--active',
+  acquired:  'da-badge--active',
+  exchanged: 'da-badge--exchanged',
+  acquiring: 'da-badge--acquiring',
+  failed:    'da-badge--failed',
+  skipped:   'da-badge--skipped',
+  waiting:   'da-badge--waiting',
+};
+
+/** Highlight key claim names in the detail panel. */
+const CLAIM_CLASS = {
+  may_act: 'da-claim--may-act',
+  act:     'da-claim--act',
+  scope:   'da-claim--scope',
+  aud:     'da-claim--aud',
+};
+
+/**
+ * One row in the left-column token chain.
+ * Shows label + status badge; expander for explanation; connector line to next step.
+ */
+function SimEventRow({ event, isSelected, isLast, onClick }) {
+  return (
+    <div
+      className={`da-sim-row${isSelected ? ' da-sim-row--selected' : ''}`}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={e => e.key === 'Enter' && onClick()}
+    >
+      <div className="da-sim-row__top">
+        <span className="da-sim-row__label">{event.label}</span>
+        <span className={`da-badge ${STATUS_BADGE[event.status] || 'da-badge--waiting'}`}>
+          {event.status}
+        </span>
+      </div>
+      {event.explanation && (
+        <div className="da-sim-row__expl">{event.explanation}</div>
+      )}
+      {!isLast && <div className="da-sim-row__connector"><span>↓</span></div>}
+    </div>
+  );
+}
+
+/**
+ * Right-column detail panel for a selected token event.
+ * Shows exchange request (API call), JWT claims, explanation, and optionally full JWT.
+ */
+function SimEventDetail({ event }) {
+  const [showRaw, setShowRaw] = useState(false);
+  const claims = event.claims || {};
+  const hasClaims = Object.keys(claims).length > 0;
 
   return (
-    <div className="da-actpanel-overlay" onClick={onClose}>
-      <div className="da-actpanel" onClick={e => e.stopPropagation()} role="dialog" aria-label="Act as — token exchange">
-        <div className="da-actpanel__header">
-          <div className="da-actpanel__title">
-            <span className="da-actpanel__icon">⇄</span>
-            Act as {delegate.name}
-          </div>
-          <button type="button" className="da-actpanel__close" onClick={onClose} aria-label="Close">×</button>
+    <div className="da-sim-detail">
+      <div className="da-sim-detail__name">{event.label}</div>
+
+      {/* ── RFC 8693 exchange request ── */}
+      {event.exchangeRequest && (
+        <div className="da-sim-detail__section">
+          <div className="da-sim-detail__sec-title">📡 Token Exchange API Call</div>
+          <div className="da-sim-detail__api-badge">POST /as/token</div>
+          <pre className="da-sim-detail__pre">{event.exchangeRequest}</pre>
         </div>
+      )}
 
-        <div className="da-actpanel__body">
-          <p className="da-actpanel__lead">
-            Switching context uses <strong>RFC 8693 Token Exchange</strong> — your BFF presents the
-            delegated grant to PingOne and receives a narrowed MCP token carrying an{' '}
-            <code>act</code> claim that proves the delegation chain.
-          </p>
-
-          <div className="da-actpanel__flow">
-            <div className="da-actpanel__step">
-              <span className="da-actpanel__step-num">1</span>
-              <div>
-                <strong>Your User Token</strong> (stored in BFF session, never in browser)
-                contains <code>may_act: &#123; client_id: &quot;bff&quot; &#125;</code> — PingOne
-                pre-authorised the BFF to exchange on your behalf.
+      {/* ── JWT Claims ── */}
+      {hasClaims && (
+        <div className="da-sim-detail__section">
+          <div className="da-sim-detail__sec-title">🔑 Token Claims</div>
+          <div className="da-sim-detail__claims">
+            {Object.entries(claims).map(([k, v]) => (
+              <div key={k} className={`da-sim-claim ${CLAIM_CLASS[k] || ''}`}>
+                <span className="da-sim-claim__key">{k}</span>
+                <span className="da-sim-claim__sep">:</span>
+                <span className="da-sim-claim__val">
+                  {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                </span>
               </div>
-            </div>
-            <div className="da-actpanel__connector">↓ RFC 8693 exchange</div>
-            <div className="da-actpanel__step">
-              <span className="da-actpanel__step-num">2</span>
-              <div>
-                BFF calls PingOne token endpoint with
-                <pre className="da-actpanel__code">{`grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-subject_token=<user_token>
-actor_token=<bff_client_credentials>
-requested_token_type=urn:ietf:params:oauth:token-type:access_token
-scope=${isGrantor ? 'banking:read banking:write' : 'banking:read'}`}</pre>
-              </div>
-            </div>
-            <div className="da-actpanel__connector">↓ narrowed delegated token</div>
-            <div className="da-actpanel__step">
-              <span className="da-actpanel__step-num">3</span>
-              <div>
-                MCP Token issued with <code>sub: {subjectName}</code> · <code>act: &#123; sub: {actorName} &#125;</code><br />
-                Scoped only to accounts: <strong>{(delegate.ownerAccounts || DEMO_ACCOUNTS.filter(a => delegate.accountIds.includes(a.id))).map(a => a.name).join(', ')}</strong>
-              </div>
-            </div>
+            ))}
           </div>
+          {claims.may_act && (
+            <div className="da-sim-pill da-sim-pill--may">
+              may_act present → BFF is pre-authorised to exchange
+            </div>
+          )}
+          {claims.act && (
+            <div className="da-sim-pill da-sim-pill--act">
+              act present → delegation chain proven
+            </div>
+          )}
+        </div>
+      )}
 
-          <div className="da-actpanel__pills">
-            <span className="da-actpanel__pill da-actpanel__pill--may">may_act → proves pre-authorisation</span>
-            <span className="da-actpanel__pill da-actpanel__pill--act">act → proves delegation fact</span>
-          </div>
+      {/* ── Explanation ── */}
+      {event.explanation && (
+        <div className="da-sim-detail__section">
+          <div className="da-sim-detail__sec-title">ℹ️ What happened</div>
+          <div className="da-sim-detail__expl">{event.explanation}</div>
+        </div>
+      )}
 
+      {/* ── Full JWT ── */}
+      {event.jwtFullDecode && (
+        <div className="da-sim-detail__section">
           <button
             type="button"
-            className="da-actpanel__cta"
-            onClick={() => {
-              notifyInfo(`Demo: acting as ${delegate.name}. In production a narrowed MCP token with act claim would be issued via RFC 8693.`);
-              onClose();
-            }}
+            className="da-sim-detail__toggle"
+            onClick={() => setShowRaw(r => !r)}
           >
-            Simulate token exchange (demo)
+            {showRaw ? '▼' : '▶'} Full JWT (header + claims)
           </button>
+          {showRaw && (
+            <pre className="da-sim-detail__pre da-sim-detail__pre--raw">
+              {JSON.stringify(event.jwtFullDecode, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+
+      {!event.exchangeRequest && !hasClaims && !event.explanation && (
+        <div className="da-sim-detail__empty">No detail available for this step.</div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Full-screen token exchange simulator.
+ * Fires a real POST /api/mcp/tool to trigger the RFC 8693 chain,
+ * then renders the resulting tokenEvents as a 2-column inspector:
+ *   left  → token chain steps
+ *   right → selected event detail (API call + JWT claims)
+ */
+function TokenExchangeSimulator({ delegate, onClose }) {
+  const [loading, setLoading]         = useState(true);
+  const [tokenEvents, setTokenEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [callMeta, setCallMeta]       = useState(null); // { status, duration }
+  const [simError, setSimError]       = useState(null);
+
+  const runSimulation = useCallback(async () => {
+    setLoading(true);
+    setSimError(null);
+    const t0 = Date.now();
+    try {
+      const res = await fetch('/api/mcp/tool', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tool: 'get_my_accounts', params: {} }),
+      });
+      const duration = Date.now() - t0;
+      const data = await res.json();
+      const events = data.tokenEvents || [];
+      setTokenEvents(events);
+      setCallMeta({ status: res.status, duration });
+      // Auto-select the user-token (before) or first meaningful event
+      const auto = events.find(e => e.id === 'user-token')
+        || events.find(e => e.claims || e.exchangeRequest)
+        || events[0];
+      if (auto) setSelectedEvent(auto);
+    } catch (err) {
+      setSimError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { runSimulation(); }, [runSimulation]);
+
+  return (
+    <div className="da-sim-overlay" onClick={onClose}>
+      <div
+        className="da-sim"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-label="Token Exchange Simulator"
+        aria-modal="true"
+      >
+        {/* ── Header ── */}
+        <div className="da-sim__header">
+          <div className="da-sim__title">
+            <span className="da-sim__icon">⇄</span>
+            RFC 8693 Token Exchange — Act as {delegate.name}
+          </div>
+          <div className="da-sim__header-actions">
+            {callMeta && (
+              <span className="da-sim__meta">
+                HTTP {callMeta.status} · {callMeta.duration}ms
+              </span>
+            )}
+            <button
+              type="button"
+              className="da-sim__retry"
+              onClick={runSimulation}
+              disabled={loading}
+              title="Re-run exchange"
+            >
+              ↺
+            </button>
+            <button
+              type="button"
+              className="da-sim__close"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* ── Body: 2 columns ── */}
+        <div className="da-sim__body">
+          {/* Left: token chain */}
+          <div className="da-sim__chain">
+            <div className="da-sim__chain-hd">Token Chain</div>
+
+            {loading && (
+              <div className="da-sim__loading">
+                <span className="da-sim__spinner" />
+                Running RFC 8693 exchange…
+              </div>
+            )}
+
+            {simError && !loading && (
+              <div className="da-sim__error">
+                <strong>Error:</strong> {simError}
+                <button type="button" className="da-sim__retry-inline" onClick={runSimulation}>
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!loading && tokenEvents.length === 0 && !simError && (
+              <div className="da-sim__error">
+                No token events returned — you may need to log in or configure{' '}
+                <code>AGENT_OAUTH_CLIENT_ID</code> for actor-token exchange.
+              </div>
+            )}
+
+            {tokenEvents.map((ev, i) => (
+              <SimEventRow
+                key={ev.id || i}
+                event={ev}
+                isSelected={selectedEvent?.id === ev.id}
+                isLast={i === tokenEvents.length - 1}
+                onClick={() => setSelectedEvent(ev)}
+              />
+            ))}
+          </div>
+
+          {/* Right: detail */}
+          <div className="da-sim__detail-col">
+            {selectedEvent
+              ? <SimEventDetail event={selectedEvent} />
+              : (
+                <div className="da-sim__detail-empty">
+                  <span>←</span> Select a token step to inspect its claims and API call
+                </div>
+              )
+            }
+          </div>
         </div>
       </div>
     </div>
@@ -467,7 +663,9 @@ export default function DelegatedAccessPage({ user }) {
 
       {/* Modals */}
       {showAdd && <AddDelegateModal onClose={() => setShowAdd(false)} onSave={handleSave} />}
-      {actAsDelegate && <ActAsPanel delegate={actAsDelegate} onClose={() => setActAsDelegate(null)} />}
+      {actAsDelegate && (
+        <TokenExchangeSimulator delegate={actAsDelegate} onClose={() => setActAsDelegate(null)} />
+      )}
     </div>
   );
 }
