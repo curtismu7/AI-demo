@@ -55,6 +55,28 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-28 — HITL: from-account 404, auto-refresh on by default, checkbox gap (commit `11122a8`)
+- **Symptom (1):** Approving a high-value consent challenge returned `❌ From account not found` (or `To account not found`) even though the transaction was valid when the challenge was created.
+- **Root cause (1):** On Vercel, a new Lambda can be allocated between the time `POST /consent-challenge` is called (accounts in memory) and when the user clicks "Agree & submit" (new cold Lambda, empty `dataStore`). `POST /api/transactions` looked up accounts directly without re-hydrating from the Redis snapshot first.
+- **Fix (1):** Added `restoreAccountsFromSnapshot(req.user.id)` at the top of `POST /api/transactions` (before any `getAccountById` call), mirroring the same pattern in `GET /api/accounts/my` and `GET /api/demo-data`.
+- **Files (1):** `banking_api_server/routes/transactions.js`
+- **Symptom (2):** Dashboard auto-refreshed accounts every 30 seconds without the user enabling it — caused unnecessary Upstash quota usage and visible UI flicker.
+- **Root cause (2):** `autoRefresh` state was initialised as `useState(true)`, so the 30-second polling interval started immediately on every dashboard mount.
+- **Fix (2):** Changed to `useState(false)`. The "Auto-refresh" checkbox in the dashboard still lets the user enable it manually.
+- **Files (2):** `banking_api_ui/src/components/UserDashboard.js`
+- **Symptom (3):** The checkbox and "I agree to…" text in the consent modal were too close together — visually touching in some browsers.
+- **Fix (3):** Increased `gap` from `0.65rem` → `0.75rem` and added `margin-right: 0.1rem` on the checkbox input.
+- **Files (3):** `banking_api_ui/src/components/TransactionConsentPage.css`
+- **Regression check:** Open agent → attempt a transfer > $500 → consent modal appears → approve → transaction must succeed (not 404). Auto-refresh checkbox must be unchecked on fresh dashboard load. Checkbox in consent modal must have visible breathing room between box and label text.
+
+### 2026-03-28 — PAR, RAR, JWT client auth education panels added (commit `21306f0`)
+- **What changed:** Three new `EducationDrawer` slide-out panels available from the hamburger menu (OAuth flows + shortcuts), the Banking Agent "Learn & Explore" sidebar, and the RFC Index:
+  - **PAR (RFC 9126)** — Pushed Authorization Requests: What is PAR · Security benefits · Full flow · PingOne setup
+  - **RAR (RFC 9396)** — Rich Authorization Requests: What is RAR · authorization_details · Banking use case · Token claim · PingOne / FAPI 2.0
+  - **JWT client auth (RFC 7523)** — private_key_jwt: What is it · JWT assertion structure · vs client_secret · In token exchange · PingOne setup
+- **Files:** `educationIds.js` (3 new IDs), `PARPanel.js`, `RARPanel.js`, `JwtClientAuthPanel.js` (new), `EducationPanelsHost.js`, `educationCommands.js`, `EducationBar.js`, `RFCIndexPanel.js`
+- **Regression check:** Open hamburger → OAuth flows section shows PAR, RAR, JWT client auth buttons; each opens its drawer. Shortcuts section shows short-name buttons. RFC Index rows for RFC 7523, RFC 9126, RFC 9396 link to the correct panels.
+
 ### 2026-03-28 — CIBA education buttons did nothing: stale mutual-exclusion effect + z-index gap (commit `dcc906d`)
 - **Symptom:** All three CIBA buttons in the hamburger "Learn & agent" panel ("CIBA (OOB) — short (drawer)", "CIBA — full guide (floating)", "CIBA" shortcut) appeared to do nothing when clicked.
 - **Root cause (1) — stale effect deps:** `BankingAgent` had two mutual-exclusion effects. The second ("close edu panel when agent opens") listed `edu?.panel` in its deps. When `open(EDU.LOGIN_FLOW, 'ciba')` set `edu.panel`, React ran this effect with the stale `isOpen=true` snapshot and immediately called `edu.close()` in the same render cycle — killing the drawer before it could render.
