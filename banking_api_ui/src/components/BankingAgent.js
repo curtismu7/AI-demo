@@ -1332,15 +1332,23 @@ export default function BankingAgent({
           const actLine = exchanged.actPresent
             ? `   ✅ act: ${exchanged.actDetails} — BFF confirmed as current actor`
             : '   ⚠️ act absent — subject-only exchange (no delegation proof in MCP token; set AGENT_OAUTH_CLIENT_ID)';
+          const audLine = exchanged.audExpected !== undefined
+            ? (exchanged.audMatches
+                ? `   ✅ aud: "${exchanged.audActual ?? exchanged.audienceNarrowed}" — MCP server audience matched (RFC 8707)`
+                : `   ❌ aud mismatch — got "${exchanged.audActual}" expected "${exchanged.audExpected}" — MCP server will reject`)
+            : `   aud: ${exchanged.audienceNarrowed || '—'} (RFC 8707 resource indicator)`;
           tokenMsg = [
             '🔐 RFC 8693 Token Exchange complete',
             mayActLine,
             actLine,
-            `   Scope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`,
+            audLine,
+            `   Scope narrowed: ${exchanged.scopeNarrowed || '—'}`,
             '',
-            'Open Token Chain ↗ to inspect decoded claims.\nmay_act (user token) = prospective permission · act (MCP token) = current delegation fact.',
+            'Open Token Chain ↗ to inspect decoded claims.',
+            'aud (audience): which resource server accepts the token — narrowed on exchange.',
+            'may_act (user token) = prospective permission · act (MCP token) = current delegation fact.',
           ].join('\n');
-          notifyInfo(`🔐 Token Exchange complete — MCP token issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
+          notifyInfo(`🔐 Token Exchange complete — MCP token issued (aud: ${exchanged.audienceNarrowed || 'set'}, scope: ${exchanged.scopeNarrowed || 'narrowed'})`, { autoClose: 4500 });
         } else if (required) {
           tokenMsg = [
             '🔐 Token Exchange (RFC 8693): not configured',

@@ -508,6 +508,11 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     const inProgressIdx = tokenEvents.findIndex(e => e.id === 'exchange-in-progress');
     if (inProgressIdx !== -1) tokenEvents.splice(inProgressIdx, 1);
 
+    // Validate that the issued MCP token's aud actually matches what was requested.
+    const t2Aud = t2Claims?.aud;
+    const audMatches = t2Aud === mcpResourceUri ||
+      (Array.isArray(t2Aud) && t2Aud.includes(mcpResourceUri));
+
     tokenEvents.push(buildTokenEvent(
       'exchanged-token',
       'MCP Token (Delegated) → MCP Server',
@@ -518,7 +523,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         ? `act: ${JSON.stringify(t2Claims.act)} — this is the current fact: the Backend-for-Frontend (BFF) is acting on behalf of the user. ` +
           'Resource servers use act (not may_act) to identify the current actor for audit and policy decisions.'
         : 'act claim not present — PingOne may not have applied delegation policy. ') +
-      `Audience is narrowed to ${mcpResourceUri}, scope narrowed to "${effectiveToolScopes.join(' ')}". ` +
+      `Audience narrowed to ${mcpResourceUri} (aud=${JSON.stringify(t2Aud)}${audMatches ? ' ✅' : ' ❌ mismatch'}), scope narrowed to "${effectiveToolScopes.join(' ')}". ` +
       'The User Token (your original login token) NEVER leaves the Backend-for-Frontend (BFF) — only the MCP Token reaches the MCP Server.',
       {
         rfc: 'RFC 8693 · RFC 8707',
@@ -526,6 +531,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         actPresent: !!t2Claims?.act,
         actDetails: t2Claims?.act ? JSON.stringify(t2Claims.act) : null,
         audienceNarrowed: mcpResourceUri,
+        audMatches,
+        audExpected: mcpResourceUri,
+        audActual: t2Aud,
         scopeNarrowed: effectiveToolScopes.join(' '),
       }
     ));

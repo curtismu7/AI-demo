@@ -185,6 +185,119 @@ function ActEduBox({ event }) {
 }
 
 /**
+ * Rich educational callout for the aud (audience) claim (RFC 7519 §4.1.3, RFC 8707).
+ * Three contexts:
+ *   user-token:           broad aud from PingOne (informational)
+ *   exchange-in-progress: explains audience= parameter → RFC 8707 resource indicator
+ *   exchanged-token:      aud narrowed to mcp_resource_uri — validate match
+ */
+function AudienceEduBox({ event }) {
+  const audValue = event.claims?.aud;
+
+  // ── User token: informational aud explanation ─────────────────────────────
+  if (event.id === 'user-token') {
+    if (!audValue) return null;
+    const audDisplay = Array.isArray(audValue) ? audValue.join(', ') : String(audValue);
+    return (
+      <div className="tcd-edu-box tcd-edu-box--neutral">
+        <div className="tcd-edu-box-hd">
+          <span className="tcd-edu-icon">🎯</span>
+          <strong>aud — audience (which resource server accepts this token)</strong>
+          <span className="tcd-edu-ref">RFC 7519 §4.1.3</span>
+        </div>
+        <pre className="tcd-edu-code">{JSON.stringify({ aud: audValue }, null, 2)}</pre>
+        <div className="tcd-edu-body">
+          <p><code>aud</code> identifies the intended recipient(s) of the token. A resource server <strong>must reject</strong> any token whose <code>aud</code> does not include its own identifier.</p>
+          <ul>
+            <li>Current value: <strong>{audDisplay}</strong> — this token is accepted by the banking API</li>
+            <li>After RFC 8693 exchange, <code>aud</code> is <em>narrowed</em> to the MCP server audience only (principle of least privilege)</li>
+            <li>The MCP server will reject the user token directly — it only accepts tokens with its own audience</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Exchange-in-progress / exchange-failed: explain audience= parameter ──
+  if (event.id === 'exchange-in-progress' || event.id === 'exchange-failed') {
+    const requestedAud = event.exchangeRequest?.audience;
+    const failed = event.id === 'exchange-failed';
+    return (
+      <div className={`tcd-edu-box ${failed ? 'tcd-edu-box--error' : 'tcd-edu-box--neutral'}`}>
+        <div className="tcd-edu-box-hd">
+          <span className="tcd-edu-icon">{failed ? '❌' : '🎯'}</span>
+          <strong>audience= parameter — RFC 8707 Resource Indicator</strong>
+          <span className="tcd-edu-ref">RFC 8707</span>
+        </div>
+        {requestedAud && <pre className="tcd-edu-code">{JSON.stringify({ audience: requestedAud }, null, 2)}</pre>}
+        <div className="tcd-edu-body">
+          <p>The <code>audience</code> parameter in the token exchange request is a <strong>Resource Indicator</strong> (RFC 8707). It tells PingOne:</p>
+          <ul>
+            <li><em>"Issue a token whose <code>aud</code> is <code>{requestedAud || 'not set'}</code>"</em></li>
+            <li>Only a registered PingOne Resource Server with this audience will be accepted</li>
+            <li>Scopes are automatically narrowed to only what that Resource Server defines</li>
+          </ul>
+          {!requestedAud && (
+            <div className="tcd-edu-fix">
+              <strong>Fix:</strong> Set <code>mcp_resource_uri</code> in Config UI (or <code>MCP_RESOURCE_URI</code> env) to the MCP Resource Server audience — e.g. <code>banking_mcp_server</code>.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Exchanged MCP token: validate aud was narrowed correctly ──────────────
+  if (event.id === 'exchanged-token' || event.id === 'exchanged-token-fallback') {
+    if (audValue === undefined && event.audExpected === undefined) return null;
+    const audDisplay = Array.isArray(audValue) ? audValue.join(', ') : (audValue ? String(audValue) : 'not present');
+
+    if (event.audMatches) {
+      return (
+        <div className="tcd-edu-box tcd-edu-box--ok">
+          <div className="tcd-edu-box-hd">
+            <span className="tcd-edu-icon">✅</span>
+            <strong>aud — audience narrowed correctly to MCP server</strong>
+            <span className="tcd-edu-ref">RFC 8707 · RFC 7519 §4.1.3</span>
+          </div>
+          <pre className="tcd-edu-code">{JSON.stringify({ aud: audValue }, null, 2)}</pre>
+          <div className="tcd-edu-body">
+            <p>The MCP token's <code>aud</code> matches the expected MCP Resource Server audience. This means:</p>
+            <ul>
+              <li>✅ The MCP server will <strong>accept</strong> this token (aud matches its own identifier)</li>
+              <li>✅ The banking API will <strong>reject</strong> this token (wrong audience — prevents token reuse)</li>
+              <li>✅ Audience narrowing enforces <strong>least privilege</strong> — one token, one service</li>
+            </ul>
+            <p className="tcd-edu-detail">aud: {audDisplay} ✅ matches expected: {event.audExpected}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // aud mismatch or absent
+    return (
+      <div className="tcd-edu-box tcd-edu-box--error">
+        <div className="tcd-edu-box-hd">
+          <span className="tcd-edu-icon">❌</span>
+          <strong>aud mismatch — MCP server will reject this token</strong>
+          <span className="tcd-edu-ref">RFC 8707 · RFC 7519 §4.1.3</span>
+        </div>
+        {audValue && <pre className="tcd-edu-code">{JSON.stringify({ aud: audValue }, null, 2)}</pre>}
+        <div className="tcd-edu-body">
+          <p>The token's <code>aud</code> (<strong>{audDisplay}</strong>) does not match the requested audience (<strong>{event.audExpected}</strong>).</p>
+          <p>The MCP server validates <code>aud</code> on every request and will return 401 Unauthorized.</p>
+        </div>
+        <div className="tcd-edu-fix">
+          <strong>Fix:</strong> In PingOne, ensure a Resource Server exists with audience <code>{event.audExpected}</code> and that the token exchange policy maps to it. Check <code>MCP_RESOURCE_URI</code> matches the Resource Server audience exactly.
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/**
  * Shows the validation checks PingOne performs during RFC 8693 exchange.
  * Renders on exchange-in-progress and exchange-failed events.
  */
@@ -245,7 +358,8 @@ function EventDetail({ event }) {
           <pre>{JSON.stringify(event.exchangeRequest, null, 2)}</pre>
         </div>
       )}
-      {/* Educational sections — may_act, act, exchange validation */}
+      {/* Educational sections — aud, may_act, act, exchange validation */}
+      <AudienceEduBox event={event} />
       <MayActEduBox event={event} />
       <ActEduBox event={event} />
       <ExchangeCheckList event={event} />
@@ -521,6 +635,19 @@ function EventRow({ event, isLast, onInspect }) {
     event.actPresent === true  ? { text: '✅ act claimed', cls: 'ok' }
     : event.actPresent === false ? { text: '⚠️ no act claim', cls: 'warn' }
     : null;
+  // aud hint — only on tokens where we have explicit validation data
+  const audHintRaw = event.claims?.aud;
+  const audShort = audHintRaw
+    ? (Array.isArray(audHintRaw) ? audHintRaw[audHintRaw.length - 1] : String(audHintRaw)).split('/').pop()
+    : null;
+  const audHint =
+    (event.id === 'exchanged-token' || event.id === 'exchanged-token-fallback') && event.audExpected !== undefined
+      ? (event.audMatches
+          ? { text: `✅ aud: ${audShort || event.audExpected}`, cls: 'ok' }
+          : { text: `❌ aud mismatch`, cls: 'error' })
+      : event.id === 'user-token' && audHintRaw
+        ? { text: `aud: ${audShort || audHintRaw}`, cls: 'info' }
+        : null;
 
   return (
     <div className="tcd-event-wrap">
@@ -545,8 +672,9 @@ function EventRow({ event, isLast, onInspect }) {
             {event.rfc ? <span className="tcd-event-rfc">{event.rfc}</span> : null}
             <StatusBadge status={event.status} />
           </div>
-          {(mayActHint || actHint) && (
+          {(mayActHint || actHint || audHint) && (
             <div className="tcd-event-hints">
+              {audHint    && <span className={`tcd-event-hint tcd-event-hint--${audHint.cls}`}>{audHint.text}</span>}
               {mayActHint && <span className={`tcd-event-hint tcd-event-hint--${mayActHint.cls}`}>{mayActHint.text}</span>}
               {actHint    && <span className={`tcd-event-hint tcd-event-hint--${actHint.cls}`}>{actHint.text}</span>}
             </div>
@@ -729,6 +857,8 @@ const TokenChainDisplay = () => {
         )}
 
         <div className="tcd-legend">
+          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ aud — audience correct</span>
+          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--error">❌ aud mismatch — wrong resource server</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ may_act valid — delegation authorised</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--warn">⚠️ may_act absent — exchange will fail</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--error">❌ may_act mismatch — client_id wrong</span>
