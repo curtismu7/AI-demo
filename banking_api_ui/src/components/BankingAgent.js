@@ -70,23 +70,14 @@ function generateFakeAccounts(_user) {
 // ─── Suggested prompts — role-aware ──────────────────────────────────────────
 
 const SUGGESTIONS_CUSTOMER = [
-  'Check my account balance',
+  'Show me my accounts',
   'Transfer $100 to savings',
-  'What are my recent transactions?',
-  'List MCP tools',
-  'What is CIBA?',
-  'How does token exchange work?',
-  'What is MCP?',
+  'Deposit $50 into checking',
 ];
 
 const SUGGESTIONS_ADMIN = [
   'Show all customer accounts',
-  'List recent system transactions',
   'Show me last 5 errors',
-  'Show last success login for bankuser',
-  'List MCP tools',
-  'What is CIBA?',
-  'How does token exchange work?',
   'What is step-up auth?',
 ];
 
