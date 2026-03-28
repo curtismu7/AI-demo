@@ -55,6 +55,28 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-28 — CIBA education buttons did nothing: stale mutual-exclusion effect + z-index gap (commit `dcc906d`)
+- **Symptom:** All three CIBA buttons in the hamburger "Learn & agent" panel ("CIBA (OOB) — short (drawer)", "CIBA — full guide (floating)", "CIBA" shortcut) appeared to do nothing when clicked.
+- **Root cause (1) — stale effect deps:** `BankingAgent` had two mutual-exclusion effects. The second ("close edu panel when agent opens") listed `edu?.panel` in its deps. When `open(EDU.LOGIN_FLOW, 'ciba')` set `edu.panel`, React ran this effect with the stale `isOpen=true` snapshot and immediately called `edu.close()` in the same render cycle — killing the drawer before it could render.
+- **Root cause (2) — z-index below agent:** `CIBAPanel` overlay and drawer used `z-index: 1210`/`1220`, placing them behind `BankingAgent` (`z-index: 10059`–`10061`). The full-guide panel and "CIBA" shortcut (which dispatch `education-open-ciba` to `CIBAPanel`) were actually opening but invisible beneath the agent.
+- **Fix:** Removed `edu?.panel` and `edu.close` from the second effect's deps — it only needs to fire when `isOpen` changes (its sole purpose). Raised `CIBAPanel` overlay → `10062`, drawer → `10063` (above the agent stack).
+- **Files:** `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/CIBAPanel.css`
+- **Regression check:** Open hamburger → click "CIBA (OOB) — short (drawer)" → `LoginFlowPanel` must slide in to the CIBA tab. Click "CIBA — full guide (floating)" or "CIBA" shortcut → `CIBAPanel` must slide in fully visible above the agent panel. Closing either panel and re-opening the agent must work normally. All other edu panel buttons must be unaffected.
+
+### 2026-03-28 — MCP Inspector shows tools without auth (commit `16163e2`)
+- **Symptom:** `/api/mcp/inspector/tools` required a valid OAuth token; opening the inspector panel while unauthenticated returned 401 and showed no tools.
+- **Root cause:** `app.use('/api/mcp/inspector', authenticateToken, mcpInspectorRoutes)` — the auth middleware was applied to the inspector mount. `respondLocalCatalog` internally also guarded on `effectiveUserId`, returning empty tools when no user was present.
+- **Fix:** Removed `authenticateToken` from the `/api/mcp/inspector` mount in `server.js`. Removed `effectiveUserId` guard from `respondLocalCatalog` so the static tool catalog is always returned.
+- **Files:** `banking_api_server/server.js`, `banking_api_server/services/agentMcpToolService.js`
+- **Regression check:** Open MCP Inspector panel without logging in → must show the full tool list. Authenticated requests must be unaffected.
+
+### 2026-03-28 — Session preview bypasses auth: token chain blank before login (commit `a94e002`)
+- **Symptom:** `GET /api/tokens/session-preview` required an auth token, so the Token Chain panel always showed the placeholder until after a full tool call.
+- **Root cause:** The route was registered under `app.use('/api/tokens', authenticateToken, tokenRoutes)`, requiring authentication for the preview endpoint used on initial page load.
+- **Fix:** Registered `/api/tokens/session-preview` as a standalone `app.get(...)` route before the `authenticateToken` middleware block.
+- **Files:** `banking_api_server/server.js`
+- **Regression check:** Load `/dashboard` without running any tool → Token Chain must immediately show the session preview row. Running a tool must update the chain normally.
+
 ### 2026-03-28 — Middle agent not showing: middleAgentOpen always started false (commit `35c856c`)
 - **Symptom:** Selecting "Middle" layout via Agent UI toggle and reloading the dashboard showed the FAB only — the inline 3-column split never appeared even though `agentPlacement === 'middle'` in localStorage.
 - **Root cause:** `middleAgentOpen` was initialised as `useState(false)` unconditionally. On mount, placement was already `'middle'` (read from localStorage) but the state was always `false`, so `agentPlacement === 'middle' && middleAgentOpen` was always `false` and the split-3 layout was never rendered. The `useEffect` that syncs layout on placement change also forgot to set `middleAgentOpen(true)`.
