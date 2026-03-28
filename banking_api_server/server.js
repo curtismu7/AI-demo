@@ -171,6 +171,7 @@ const adminRoutes       = require('./routes/admin');
 const adminConfigRoutes = require('./routes/adminConfig');
 const cibaRoutes        = require('./routes/ciba');
 const authorizeRoutes   = require('./routes/authorize');
+const { router: featureFlagsRoutes } = require('./routes/featureFlags');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
@@ -778,6 +779,10 @@ app.get('/api/auth/debug', async (req, res) => {
 // unauthenticated requests to the config endpoint are not blocked by the
 // authenticateToken middleware that guards the broader /api/admin/* prefix.
 app.use('/api/admin/config', adminConfigRoutes);
+
+// Feature flags — admin-authenticated; registered before the broader /api/admin/* guard
+// so the route path is unambiguous.
+app.use('/api/admin/feature-flags', authenticateToken, featureFlagsRoutes);
 
 // PingOne redirect URI allowlist (JSON). Registered here BEFORE /api/auth so the path is not
 // handled only by routes/auth.js (avoids "Cannot GET" on some deployments).

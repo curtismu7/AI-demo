@@ -83,6 +83,12 @@ const FIELD_DEFS = {
   authorize_worker_client_id:       { public: true,  default: '' },
   authorize_worker_client_secret:   { public: false, default: '' },
 
+  // Feature flags — granular toggles for in-development features
+  // Each maps to a runtime behaviour controlled via /api/admin/feature-flags.
+  ff_authorize_fail_open:  { public: true, default: 'true'  }, // fail open (allow) on Authorize errors
+  ff_authorize_deposits:   { public: true, default: 'false' }, // apply Authorize to deposits too
+  ff_hitl_enabled:         { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
+
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
   // audience before forwarding to the MCP server (act claim identifies the Backend-for-Frontend (BFF)).

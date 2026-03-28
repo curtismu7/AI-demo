@@ -1,0 +1,163 @@
+// banking_api_server/routes/featureFlags.js
+'use strict';
+
+/**
+ * Feature Flags API — read/write toggles for in-development features.
+ *
+ * GET  /api/admin/feature-flags        → full registry with current values
+ * PATCH /api/admin/feature-flags       → update one or more flag values
+ *
+ * Values are persisted via configStore (survives restarts on Vercel+KV or SQLite).
+ * The FLAG_REGISTRY is the single source of truth for what flags exist.
+ */
+
+const express     = require('express');
+const router      = express.Router();
+const configStore = require('../services/configStore');
+
+// ---------------------------------------------------------------------------
+// Flag registry — add new flags here; they appear automatically in the UI.
+// ---------------------------------------------------------------------------
+
+/** @type {Array<{
+ *   id: string, name: string, category: string,
+ *   description: string, impact: string,
+ *   type: 'boolean', defaultValue: boolean,
+ *   envVar?: string, warnIfEnabled?: boolean
+ * }>} */
+const FLAG_REGISTRY = [
+  // ── PingOne Authorize ──────────────────────────────────────────────────────
+  {
+    id:           'authorize_enabled',
+    name:         'PingOne Authorize',
+    category:     'PingOne Authorize',
+    description:  'Route transaction decisions through PingOne Authorize. Requires a configured policy decision endpoint or policy ID.',
+    impact:       'Transfers and withdrawals call the Authorize API before being processed. PERMIT → proceed; DENY → 403; step-up obligation → 428.',
+    type:         'boolean',
+    defaultValue: false,
+    docsUrl:      'https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
+  },
+  {
+    id:           'ff_authorize_fail_open',
+    name:         'Authorize — Fail Open',
+    category:     'PingOne Authorize',
+    description:  'When the Authorize API call fails (network timeout, misconfiguration), allow the transaction to proceed.',
+    impact:       'ON = fail open (warn + allow). OFF = fail closed (deny transaction on any Authorize error). Recommended: ON during initial testing.',
+    type:         'boolean',
+    defaultValue: true,
+    warnIfDisabled: true, // warn in UI that OFF = hard fail
+  },
+  {
+    id:           'ff_authorize_deposits',
+    name:         'Authorize — Apply to Deposits',
+    category:     'PingOne Authorize',
+    description:  'Evaluate deposit transactions through the Authorize policy (in addition to transfers and withdrawals).',
+    impact:       'OFF = only transfers + withdrawals go through Authorize. ON = deposits also require PERMIT.',
+    type:         'boolean',
+    defaultValue: false,
+  },
+
+  // ── Step-Up Auth ───────────────────────────────────────────────────────────
+  {
+    id:           'step_up_enabled',
+    name:         'Step-Up MFA',
+    category:     'Step-Up Auth',
+    description:  'Require MFA step-up authentication for high-value transactions (transfers / withdrawals above the configured threshold).',
+    impact:       'OFF = step-up challenges are skipped for all transactions. ON = users are challenged for transactions over the threshold.',
+    type:         'boolean',
+    defaultValue: true,
+    runtimeKey:   'stepUpEnabled', // maps to runtimeSettings for live toggle
+  },
+
+  // ── HITL / Agent Consent ───────────────────────────────────────────────────
+  {
+    id:           'ff_hitl_enabled',
+    name:         'HITL — Agent Consent Gate',
+    category:     'HITL / Agent Consent',
+    description:  'Require explicit human approval before the AI agent can execute high-value transactions.',
+    impact:       'ON = agent-initiated transactions trigger a consent dialog. OFF = agent transactions bypass the approval gate (use only in development).',
+    type:         'boolean',
+    defaultValue: true,
+    warnIfDisabled: true,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve current value of a flag from configStore.
+ * Falls back to the registry's defaultValue if not set.
+ */
+function resolveFlag(flag) {
+  const raw = configStore.get(flag.id);
+  if (raw === null || raw === undefined) return flag.defaultValue;
+  if (flag.type === 'boolean') return raw === true || raw === 'true';
+  return raw;
+}
+
+/** Serialize a flag + its current value for the API response. */
+function serializeFlag(flag) {
+  return {
+    id:             flag.id,
+    name:           flag.name,
+    category:       flag.category,
+    description:    flag.description,
+    impact:         flag.impact,
+    type:           flag.type,
+    defaultValue:   flag.defaultValue,
+    value:          resolveFlag(flag),
+    ...(flag.docsUrl      && { docsUrl:      flag.docsUrl }),
+    ...(flag.warnIfDisabled && { warnIfDisabled: flag.warnIfDisabled }),
+    ...(flag.warnIfEnabled  && { warnIfEnabled:  flag.warnIfEnabled }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
+
+/** GET /api/admin/feature-flags — returns all flags with current values */
+router.get('/', async (req, res) => {
+  try {
+    const flags = FLAG_REGISTRY.map(serializeFlag);
+    const categories = [...new Set(FLAG_REGISTRY.map(f => f.category))];
+    res.json({ flags, categories });
+  } catch (err) {
+    console.error('[featureFlags] GET error:', err.message);
+    res.status(500).json({ error: 'Failed to read feature flags', message: err.message });
+  }
+});
+
+/** PATCH /api/admin/feature-flags — update one or more flag values */
+router.patch('/', async (req, res) => {
+  const { updates } = req.body;
+  if (!updates || typeof updates !== 'object') {
+    return res.status(400).json({ error: 'Body must be { updates: { flagId: value } }' });
+  }
+
+  const allowedIds = new Set(FLAG_REGISTRY.map(f => f.id));
+  const toSave     = {};
+
+  for (const [id, value] of Object.entries(updates)) {
+    if (!allowedIds.has(id)) continue;
+    // Normalise booleans to strings for configStore
+    toSave[id] = typeof value === 'boolean' ? String(value) : value;
+  }
+
+  if (Object.keys(toSave).length === 0) {
+    return res.status(400).json({ error: 'No valid flag IDs provided', allowed: [...allowedIds] });
+  }
+
+  try {
+    await configStore.setConfig(toSave);
+    const updatedFlags = FLAG_REGISTRY.filter(f => f.id in toSave).map(serializeFlag);
+    res.json({ updated: true, flags: updatedFlags });
+  } catch (err) {
+    console.error('[featureFlags] PATCH error:', err.message);
+    res.status(500).json({ error: 'Failed to save feature flags', message: err.message });
+  }
+});
+
+module.exports = { router, FLAG_REGISTRY };

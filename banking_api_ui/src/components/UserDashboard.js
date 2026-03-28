@@ -149,6 +149,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   useChatWidget();
 
   // Function to decode JWT token
+  // eslint-disable-next-line no-unused-vars
   const decodeToken = (token) => {
     try {
       if (!token) return null;

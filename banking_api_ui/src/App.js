@@ -27,6 +27,7 @@ import ApiTrafficPage from './components/ApiTrafficPage';
 import BankingAdminOps from './components/BankingAdminOps';
 import TransactionConsentPage from './components/TransactionConsentPage';
 import DelegatedAccessPage from './components/DelegatedAccessPage';
+import FeatureFlagsPage from './components/FeatureFlagsPage';
 
 import { savePublicConfig } from './services/configService';
 import { EducationUIProvider } from './context/EducationUIContext';
@@ -312,6 +313,9 @@ function AppWithAuth() {
                     />
                     <Route path="/transaction-consent" element={<TransactionConsentPage user={user} />} />
                     <Route path="/delegated-access" element={<DelegatedAccessPage user={user} onLogout={logout} />} />
+                    <Route path="/feature-flags"
+                      element={user?.role === 'admin' ? <FeatureFlagsPage /> : <Navigate to="/" replace />}
+                    />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/oauth-debug-logs"

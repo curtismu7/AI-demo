@@ -326,18 +326,22 @@ router.post('/', authenticateToken, async (req, res) => {
     // ── End step-up gate ──────────────────────────────────────────────────────
 
     // ── PingOne Authorize gate ────────────────────────────────────────────────
-    // When enabled, evaluates the transaction against the configured Authorize
-    // policy decision point. Applies to transfers and withdrawals only.
-    // configStore fields take precedence; runtimeSettings toggle allows live
-    // enable/disable without a config save.
+    // Controlled by feature flags:
+    //   authorize_enabled      — master switch (FF page + Config page)
+    //   ff_authorize_fail_open — fail open (warn+allow) vs fail closed (deny) on errors
+    //   ff_authorize_deposits  — extend Authorize evaluation to deposit transactions
     const AUTHORIZE_ENABLED =
       (configStore.get('authorize_enabled') === 'true' || configStore.get('authorize_enabled') === true) ||
       runtimeSettings.get('authorizeEnabled');
+    const AUTHORIZE_FAIL_OPEN = configStore.get('ff_authorize_fail_open') !== 'false'; // default true
+    const AUTHORIZE_DEPOSITS  = configStore.get('ff_authorize_deposits') === 'true';
     const AUTHORIZE_DECISION_ENDPOINT_ID = configStore.get('authorize_decision_endpoint_id');
     const AUTHORIZE_POLICY_ID =
       configStore.get('authorize_policy_id') ||
       runtimeSettings.get('authorizePolicyId');
-    const AUTHORIZE_TYPES = ['transfer', 'withdrawal'];
+    const AUTHORIZE_TYPES = AUTHORIZE_DEPOSITS
+      ? ['transfer', 'withdrawal', 'deposit']
+      : ['transfer', 'withdrawal'];
 
     if (AUTHORIZE_ENABLED && (AUTHORIZE_DECISION_ENDPOINT_ID || AUTHORIZE_POLICY_ID) && req.user.role !== 'admin' && AUTHORIZE_TYPES.includes(type)) {
       try {
@@ -374,10 +378,17 @@ router.post('/', authenticateToken, async (req, res) => {
           });
         }
       } catch (err) {
-        // Fail open with a warning so a misconfigured Authorize integration
-        // does not block all transactions. Change to fail-closed here if your
-        // security posture requires it.
-        console.warn(`[Authorize] Policy evaluation error — failing open: ${err.message}`);
+        if (AUTHORIZE_FAIL_OPEN) {
+          // ff_authorize_fail_open = true (default): warn + allow — safe during testing.
+          console.warn(`[Authorize] Policy evaluation error — failing open (ff_authorize_fail_open=true): ${err.message}`);
+        } else {
+          // ff_authorize_fail_open = false: fail closed — deny on any Authorize error.
+          console.error(`[Authorize] Policy evaluation error — failing closed (ff_authorize_fail_open=false): ${err.message}`);
+          return res.status(503).json({
+            error: 'authorize_unavailable',
+            error_description: 'Transaction policy evaluation failed and fail-open is disabled. Try again or contact an administrator.',
+          });
+        }
       }
     }
     // ── End Authorize gate ────────────────────────────────────────────────────

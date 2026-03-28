@@ -152,6 +152,7 @@ export default function DemoDataPage({ user, onLogout }) {
   };
 
   /** Stable React key for a row before the server assigns an account id. */
+  // eslint-disable-next-line no-unused-vars
   const getAccountRowKey = (a) => a.id || a._clientKey;
 
   /** Update a single field in a type slot. */
@@ -207,13 +208,16 @@ export default function DemoDataPage({ user, onLogout }) {
   }, [load, loadScopes]);
 
   /** Updates a single account row (by id or draft _clientKey). */
+  // eslint-disable-next-line no-unused-vars
   const handleAccountChange = (rowKey, field, value) => {
     // kept for any legacy callers; no-op in new model
   };
 
   /** @deprecated replaced by type-slot model */
+  // eslint-disable-next-line no-unused-vars
   const handleAddAccount = () => {};
   /** @deprecated replaced by type-slot model */
+  // eslint-disable-next-line no-unused-vars
   const handleRemoveDraft = () => {};
 
   const handleSubmit = async (e) => {

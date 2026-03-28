@@ -367,6 +367,13 @@ const Dashboard = ({ user, onLogout }) => {
             What is may_act?
           </button>
           <Link
+            to="/feature-flags"
+            className="app-page-toolbar-btn app-page-toolbar-btn--accent"
+            title="Toggle PingOne Authorize, step-up MFA, HITL consent, and other in-development features"
+          >
+            🚩 Feature Flags
+          </Link>
+          <Link
             to="/demo-data"
             className="app-page-toolbar-btn"
             title="Edit sandbox account names, balances, and MFA threshold"
