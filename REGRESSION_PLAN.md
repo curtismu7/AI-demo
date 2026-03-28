@@ -19,7 +19,7 @@
 | **REAUTH_KEY re-auth guard** | **Infinite PingOne redirect loop** | `UserDashboard.js` `fetchUserData` — key cleared ONLY on success path. Never clear it on `oauth=success` URL param (triggers immediate loop). |
 | **Agent form account IDs** | **'❌ Account chk-5 not found' on balance/deposit/withdraw/transfer** | `BankingAgent.js` — `liveAccounts` state hydrated from `GET /api/accounts/my` on login; passed to `ActionForm`; falls back to `generateFakeAccounts` only while fetch is pending |
 | **Extra accounts (investment etc.) lost on cold-start** | **Only checking+savings appear after Vercel cold-start; investment and other custom accounts missing** | `demoScenario PUT` must call `saveAccountSnapshot(userId)`; `GET /accounts/my` and `GET /demo-data` must call `restoreAccountsFromSnapshot(userId)` BEFORE `provisionDemoAccounts` — see `accounts.js` and `demoScenario.js`. `demoScenarioStore` (Redis/KV) is the persistence layer. |
-| **Middle layout start state** | **Middle column inline agent appears immediately on page load instead of starting collapsed** | `UserDashboard.js` (`middleAgentOpen` starts `false`; layout uses float-layout until FAB is clicked). `App.js` (`showFloatingAgent` suppressed for middle ON USER DASHBOARD ROUTES ONLY — admin Dashboard.js gets float in middle mode). |
+| **Middle layout start state** | **Middle column inline agent does not appear when placement is already 'middle'** | `UserDashboard.js` — `middleAgentOpen` must be initialised via `useState(() => agentPlacement === 'middle')` and set to `true` in the `agentPlacement` useEffect. `App.js` (`showFloatingAgent` suppressed for middle ON USER DASHBOARD ROUTES ONLY — admin Dashboard.js gets float in middle mode). |
 | **Bottom dock on dashboard routes** | **Bottom dock not showing — floating FAB shown instead** | `App.js` — skip App-level `<EmbeddedAgentDock>` on `onUserDashboardRoute` (UserDashboard mounts it internally). `EmbeddedAgentDock.js` — must NOT have `isBankingAgentDashboardRoute` guard (that returns null before the component can render). |
 | **Admin role detection** | **Admin users downgraded to customer on login** | `routes/oauthUser.js` 4-signal check: username allowlist → population ID → custom claim → existing record. Config fields: `admin_username`, `admin_population_id`, `admin_role_claim` in `configStore.js` + `Config.js`. |
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
@@ -54,6 +54,34 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-28 — Middle agent not showing: middleAgentOpen always started false (commit `35c856c`)
+- **Symptom:** Selecting "Middle" layout via Agent UI toggle and reloading the dashboard showed the FAB only — the inline 3-column split never appeared even though `agentPlacement === 'middle'` in localStorage.
+- **Root cause:** `middleAgentOpen` was initialised as `useState(false)` unconditionally. On mount, placement was already `'middle'` (read from localStorage) but the state was always `false`, so `agentPlacement === 'middle' && middleAgentOpen` was always `false` and the split-3 layout was never rendered. The `useEffect` that syncs layout on placement change also forgot to set `middleAgentOpen(true)`.
+- **Fix:** Changed initial state to `useState(() => agentPlacement === 'middle')` so it opens immediately when placement is already middle on mount. Added `setMiddleAgentOpen(true)` to the `useEffect` branch for `agentPlacement === 'middle'` to cover runtime switches.
+- **Files:** `banking_api_ui/src/components/UserDashboard.js`
+- **Regression check:** Set Agent UI → Middle → reload `/dashboard` → split-3 layout must appear immediately without clicking any FAB.
+
+### 2026-03-28 — Server chips cut off in bottom-right corner: moved below prompt bar (commit `f24d8b7`)
+- **Symptom:** "Banking Tools" / "PingOne Identity" status chips were positioned inside the panel header and clipped / not visible in constrained sizes.
+- **Root cause:** The `ba-server-chips` row was inside `.ba-header` which has fixed height and no overflow. In smaller panels the chips were pushed off screen or obscured by the resize handle.
+- **Fix:** Removed chips from the header entirely. Added a new `ba-chips-footer` div as the last child of `ba-right-col`, directly after `.ba-bottom` (the prompt input bar), with a subtle top border separating it from the input.
+- **Files:** `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/BankingAgent.css`
+- **Regression check:** Open agent panel → "Banking Tools" and "PingOne Identity" chips appear below the input bar, fully visible. Resize panel small → chips still visible (scroll if needed, not clipped off-screen).
+
+### 2026-03-28 — Demo config breadcrumbs illegible: grey text on gradient header (commit `aac2ebe`)
+- **Symptom:** Breadcrumb trail "Home › Dashboard › Demo config" on the `/demo-data` page header rendered in dark grey (`#64748b`) which was nearly invisible against the blue-to-red gradient background.
+- **Root cause:** `.dashboard-header__crumb-link` used `color: var(--dash-muted, #64748b)` (designed for white backgrounds). The Demo config header uses the same gradient as the main dashboard header.
+- **Fix:** Changed all crumb colours to white: inactive links `rgba(255,255,255,0.7)`, current-page link `#fff`, separators `rgba(255,255,255,0.5)`. Hover state `#fff`.
+- **Files:** `banking_api_ui/src/components/UserDashboard.css`
+- **Regression check:** Navigate to `/demo-data` → breadcrumb "Home › Dashboard › Demo config" must be clearly readable in white over the gradient header. Dark-mode and light-mode dashboard crumbs must also still be readable.
+
+### 2026-03-28 — Token chain blank after login: fetchSessionPreview never ran on mount (commit `8f16214`)
+- **Symptom:** After signing in, the Token Chain panel showed the "Sign in … to see your User Token" placeholder instead of the decoded user token, even though the session was fully established.
+- **Root cause:** `App.js` dispatches `userAuthenticated` inside `applyUser()` and then calls `setLoading(false)` — this means the dashboard renders AFTER the event fires. `TokenChainDisplay` therefore mounts AFTER `userAuthenticated` has already been dispatched. The mount effect had `if (didAuthRef.current) void fetchSessionPreview()` — `didAuthRef` was always `false` on mount so `fetchSessionPreview` never ran. The `userAuthenticated` listener registered too late to catch it.
+- **Fix:** Removed `didAuthRef` guard entirely. Mount effect now calls `void fetchSessionPreview()` unconditionally — the function already returns early on `!res.ok` (handles unauthenticated renders safely). `userAuthenticated` listener kept for session-expiry re-auth flows. Also added a "Legend" label above the static hint-badge key so it is clearly distinguished from live per-token status chips.
+- **Files:** `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/TokenChainDisplay.css`
+- **Regression check:** Sign in → Token Chain must immediately show the user token row with decoded claims (aud, may_act state). Refreshing the page while logged in must also show the token row. Placeholder text must not appear when authenticated.
 
 ### 2026-03-28 — Investment accounts lost on cold-start: dataStore in-memory, no snapshot persistence (commit `1a93c77`)
 - **Symptom:** Investment (and any extra) accounts saved via `/demo-data` disappear after Vercel cold-start / server restart. Only checking+savings survive.
