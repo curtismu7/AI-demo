@@ -58,7 +58,8 @@ git checkout <last-version-tag> -- <key-file>
 | PingOne Authorize — Recent Decisions API (Phase 3) | active | `banking_api_server/routes/authorize.js` | — |
 | Transaction consent challenge (high-value transfers — PingOne-style consent) | active | `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/TransactionConsentPage.js` | `s:transaction-consent-challenge.test.js` |
 | Agent blocked after consent decline (until re-auth) | active | `banking_api_ui/src/services/agentAccessConsent.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
-| Delegated Access — grant family member access to 1+ accounts; RFC 8693 Act-as explainer | active | `banking_api_ui/src/components/DelegatedAccessPage.js`, `banking_api_ui/src/components/DelegatedAccessPage.css` | — |
+| Delegated Access — grant family member access to 1+ accounts; RFC 8693 Act-as explainer | active | `banking_api_ui/src/components/DelegatedAccessPage.js`, `banking_api_ui/src/components/DelegatedAccessPage.css` | `u:components/__tests__/DelegatedAccessPage.test.js` |
+| Token Exchange Simulator — live 2-col Act-as inspector: token chain left, JWT claims + API call right; fires real POST /api/mcp/tool | active | `banking_api_ui/src/components/DelegatedAccessPage.js` (`TokenExchangeSimulator`, `SimEventRow`, `SimEventDetail`) | `u:components/__tests__/DelegatedAccessPage.test.js` |
 
 ---
 

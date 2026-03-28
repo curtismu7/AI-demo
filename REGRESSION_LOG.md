@@ -5,6 +5,22 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-28 — Delegated Access: static Act-as panel replaced with live Token Exchange Simulator
+
+**Symptoms**: The "Act as" panel on `/delegated-access` was purely static — it showed a hard-coded RFC 8693 explainer but did not make any real API call or display actual before/after tokens. There was no way to see the live exchange chain or inspect JWT claims.
+
+**Root cause**: `ActAsPanel` was intentionally a demo-only explainer; no live exchange integration had been wired up.
+
+**Fix**: Replaced `ActAsPanel` with `TokenExchangeSimulator`:
+- On open, fires `POST /api/mcp/tool` (→ BFF → RFC 8693 exchange chain → `tokenEvents[]`).
+- Left column renders the token chain steps (user-token → exchange-required → agent-actor-token → exchanged-token) with status badges.
+- Right column shows selected event's `POST /as/token` request body, JWT claims with `may_act`/`act` highlighting, explanation, and full JWT toggle.
+- Retry button, spinner, and error state handle network/auth failures.
+
+**Tests**: `u:components/__tests__/DelegatedAccessPage.test.js` — 17 tests covering: dialog open, `fetch` call params, chain label rendering, auto-select of user-token, row-click panel switch, exchangeRequest body display, error state, empty tokenEvents, retry re-fetch, close, Full JWT toggle, page structure, and tab navigation.
+
+---
+
 ## 2026-03-27 — Float panel: compact scrollable chips + free-resize (commits `4d1ea23`, `9cc0654`)
 
 **Symptoms**:
