@@ -36,7 +36,6 @@ import { IndustryBrandingProvider } from './context/IndustryBrandingContext';
 import EducationBar from './components/EducationBar';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
-import UIDesignNav from './components/UIDesignNav';
 import DashboardQuickNav from './components/DashboardQuickNav';
 import EmbeddedAgentDock from './components/EmbeddedAgentDock';
 import {
@@ -277,7 +276,6 @@ function AppWithAuth() {
             />
           )}
           <DashboardQuickNav user={user} />
-          {user && !isApiTrafficOnlyPage && <UIDesignNav user={user} />}
           <Routes>
             <Route path="*" element={
               !user ? (

@@ -370,7 +370,7 @@ class ConfigStore {
       session_secret:         ['SESSION_SECRET'],
       frontend_url:           ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],
-      mcp_resource_uri:                 ['MCP_SERVER_RESOURCE_URI'],
+      mcp_resource_uri:                 ['MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
       debug_oauth:                      ['DEBUG_OAUTH'],
       ciba_enabled:           ['CIBA_ENABLED'],

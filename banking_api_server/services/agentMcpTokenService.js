@@ -385,17 +385,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       'Token Exchange (RFC 8693) — Required',
       'failed',
       null,
-      'RFC 8693 token exchange is mandatory. Set mcp_resource_uri in the admin Config UI (or MCP_RESOURCE_URI env) ' +
-        'to the MCP server resource / audience URI. Configure token-exchange grant + may_act in PingOne. ' +
-        'The User Token is not sent to the MCP server.',
+      'RFC 8693 token exchange is not configured. Set mcp_resource_uri in the Admin → Config UI ' +
+        '(or MCP_RESOURCE_URI env) to the MCP resource audience URI. ' +
+        'The User Token is not sent to the MCP server. Banking tools are running via local fallback.',
       { rfc: 'RFC 8693 · RFC 8707' }
     ));
-    throwTokenResolutionError(
-      tokenEvents,
-      'mcp_resource_uri_required',
-      'MCP resource URI is not configured — RFC 8693 token exchange cannot run. Set mcp_resource_uri / MCP_RESOURCE_URI.',
-      503
-    );
+    // Return null token — server.js will route to the local tool handler.
+    // The User Token is never forwarded to MCP from this path.
+    return { token: null, tokenEvents, userSub };
   }
 
   const scopeCount = countJwtScopes(t1Claims);

@@ -1,11 +1,10 @@
 /* banking_api_ui/src/components/EducationBar.css
  * Top-right hamburger — learn topics + agent UI (replaces full-width pill bar). */
 
-/* Sit left of UIDesignNav “UI” (fixed ~40px + 12px inset + gap) */
 .edu-bar--dock {
   position: fixed;
   top: max(10px, env(safe-area-inset-top, 0px));
-  right: max(60px, calc(env(safe-area-inset-right, 0px) + 48px));
+  right: max(12px, env(safe-area-inset-right, 0px));
   z-index: 10055;
   width: auto;
   margin: 0;
