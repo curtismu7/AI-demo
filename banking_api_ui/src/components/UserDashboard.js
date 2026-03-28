@@ -36,6 +36,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
   const { preset } = useIndustryBranding();
   const { placement: agentPlacement } = useAgentUiMode();
+  /** Middle layout: starts collapsed (FAB) — expands to 3-column inline agent on first open. */
+  const [middleAgentOpen, setMiddleAgentOpen] = useState(false);
   const [dashboardLayout, setDashboardLayoutState] = useState(() => getDashboardLayout());
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -1105,7 +1107,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     <div
       className={`user-dashboard user-dashboard--2026${
         agentPlacement === 'bottom' && dashboardLayout === 'classic' ? ' user-dashboard--embed-agent' : ''
-      }${agentPlacement === 'middle' ? ' user-dashboard--split3' : ''}`}
+      }${agentPlacement === 'middle' && middleAgentOpen ? ' user-dashboard--split3' : ''}`}
     >
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
@@ -1261,7 +1263,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       </div>
 
       {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
-      {agentPlacement === 'middle' ? (
+      {agentPlacement === 'middle' && middleAgentOpen ? (
         <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
           <aside className="ud-token-rail" aria-label="Token chain">
             <div className="section ud-token-rail__inner">
@@ -1307,6 +1309,21 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </div>
           </aside>
         </div>
+      )}
+
+      {/* Middle-layout open FAB — shown when middle placement hasn't been expanded yet.
+          App.js global float is suppressed for middle so there is exactly one FAB. */}
+      {agentPlacement === 'middle' && !middleAgentOpen && (
+        <button
+          type="button"
+          className="banking-agent-fab"
+          onClick={() => setMiddleAgentOpen(true)}
+          aria-label="Open AI banking assistant in middle column"
+          title="Open AI Agent"
+        >
+          <span className="banking-agent-fab-icon">🏦</span>
+          <span className="banking-agent-fab-label">AI Agent</span>
+        </button>
       )}
 
       {consentChallengeId && (

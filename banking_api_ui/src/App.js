@@ -233,7 +233,9 @@ function AppWithAuth() {
   // Always render the float agent (FAB + panel) on dashboard routes when signed in.
   // Removing the agentPlacement gate so the FAB is never accidentally hidden by a
   // persisted placement preference (e.g. 'bottom'/'middle' with fab:false).
-  const showFloatingAgent = Boolean(user) && onDashboardAgentRoute;
+  // Middle placement has its own open-FAB in UserDashboard; suppress the global float
+  // so there is never a duplicate FAB when agentPlacement === 'middle'.
+  const showFloatingAgent = Boolean(user) && onDashboardAgentRoute && agentPlacement !== 'middle';
   const hasEmbeddedDockLayout =
     Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute;
 
