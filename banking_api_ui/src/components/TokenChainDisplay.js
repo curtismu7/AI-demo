@@ -752,6 +752,7 @@ const TokenChainDisplay = () => {
   const [sessionPreviewEvents, setSessionPreviewEvents] = useState(null);
   const [inspectedEvent, setInspectedEvent] = useState(null);
   const [inspectorPos, setInspectorPos] = useState({ x: 420, y: 100 });
+  const [copied, setCopied] = useState(false);
 
   /** Fetch session preview (called on mount, on login, and when live events reset). */
   const fetchSessionPreview = useCallback(async () => {
@@ -799,19 +800,84 @@ const TokenChainDisplay = () => {
     setInspectedEvent(event);
   }, []);
 
+  /** Copy the full token chain (current events + history) to the clipboard as pretty JSON. */
+  const handleCopyAll = useCallback(() => {
+    const payload = {
+      copied_at: new Date().toISOString(),
+      source: isLive ? 'live' : isSessionPreview ? 'session-preview' : 'placeholder',
+      current_events: currentEvents.map(ev => ({
+        id: ev.id,
+        label: ev.label,
+        status: ev.status,
+        alg: ev.alg,
+        claims: ev.claims,
+        jwtFullDecode: ev.jwtFullDecode,
+        mayActPresent: ev.mayActPresent,
+        mayActValid: ev.mayActValid,
+        mayActDetails: ev.mayActDetails,
+        actPresent: ev.actPresent,
+        actDetails: ev.actDetails,
+        audExpected: ev.audExpected,
+        audActual: ev.audActual,
+        audMatches: ev.audMatches,
+        exchangeRequest: ev.exchangeRequest,
+        explanation: ev.explanation,
+      })),
+      history: (ctx?.history || []).map(h => ({
+        tool: h.tool,
+        timestamp: h.timestamp,
+        events: h.events.map(ev => ({
+          id: ev.id,
+          label: ev.label,
+          status: ev.status,
+          claims: ev.claims,
+          mayActPresent: ev.mayActPresent,
+          mayActValid: ev.mayActValid,
+          actPresent: ev.actPresent,
+        })),
+      })),
+    };
+    navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      // fallback for older browsers / non-HTTPS
+      const ta = document.createElement('textarea');
+      ta.value = JSON.stringify(payload, null, 2);
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [currentEvents, ctx, isLive, isSessionPreview]);
+
   return (
     <>
       <div className="tcd-root">
         <div className="tcd-header">
-          <div className="tcd-header-title">
-            Token Chain
-            {isLive && <span className="tcd-live-dot" title="Live data from last tool call" />}
-            {isSessionPreview && (
-              <span
-                className="tcd-session-dot"
-                title="User token loaded from your Backend-for-Frontend (BFF) session. Use the AI Agent to run RFC 8693 exchange and see MCP token claims."
-              />
-            )}
+          <div className="tcd-header-title-row">
+            <div className="tcd-header-title">
+              Token Chain
+              {isLive && <span className="tcd-live-dot" title="Live data from last tool call" />}
+              {isSessionPreview && (
+                <span
+                  className="tcd-session-dot"
+                  title="User token loaded from your Backend-for-Frontend (BFF) session. Use the AI Agent to run RFC 8693 exchange and see MCP token claims."
+                />
+              )}
+            </div>
+            <button
+              type="button"
+              className={`tcd-copy-btn${copied ? ' tcd-copy-btn--ok' : ''}`}
+              onClick={handleCopyAll}
+              title="Copy full token chain as JSON (for debugging)"
+              aria-label="Copy token chain to clipboard"
+            >
+              {copied ? '✅ Copied' : '📋 Copy'}
+            </button>
           </div>
           <p className="tcd-header-sub">
             User Token stays in Backend-for-Frontend (BFF) → RFC 8693 Exchange → MCP Token → MCP Server → Banking API
