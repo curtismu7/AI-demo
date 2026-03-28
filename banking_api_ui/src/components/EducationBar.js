@@ -165,6 +165,36 @@ export default function EducationBar() {
             >
               Token Exchange (RFC 8693)
             </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.PAR, 'what');
+                close();
+              }}
+            >
+              PAR (RFC 9126)
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.RAR, 'what');
+                close();
+              }}
+            >
+              RAR (RFC 9396)
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.JWT_CLIENT_AUTH, 'what');
+                close();
+              }}
+            >
+              JWT client auth (RFC 7523)
+            </button>
           </div>
 
           <div className="edu-bar-panel__section">
@@ -264,6 +294,36 @@ export default function EducationBar() {
             </button>
             <button type="button" className="edu-bar-panel__btn" onClick={openCimd}>
               CIMD
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.PAR, 'what');
+                close();
+              }}
+            >
+              PAR
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.RAR, 'what');
+                close();
+              }}
+            >
+              RAR
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.JWT_CLIENT_AUTH, 'what');
+                close();
+              }}
+            >
+              JWT client auth
             </button>
             <button
               type="button"

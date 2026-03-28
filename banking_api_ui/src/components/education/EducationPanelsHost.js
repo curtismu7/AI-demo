@@ -14,6 +14,9 @@ import PingOneAuthorizePanel from './PingOneAuthorizePanel';
 import CimdPanel from './CimdPanel';
 import HumanInLoopPanel from './HumanInLoopPanel';
 import BestPracticesPanel from './BestPracticesPanel';
+import PARPanel from './PARPanel';
+import RARPanel from './RARPanel';
+import JwtClientAuthPanel from './JwtClientAuthPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -35,6 +38,9 @@ export default function EducationPanelsHost() {
       <CimdPanel isOpen={panel === EDU.CIMD} onClose={close} initialTabId={tab} />
       <HumanInLoopPanel isOpen={panel === EDU.HUMAN_IN_LOOP} onClose={close} initialTabId={tab} />
       <BestPracticesPanel isOpen={panel === EDU.BEST_PRACTICES} onClose={close} initialTabId={tab} />
+      <PARPanel isOpen={panel === EDU.PAR} onClose={close} initialTabId={tab} />
+      <RARPanel isOpen={panel === EDU.RAR} onClose={close} initialTabId={tab} />
+      <JwtClientAuthPanel isOpen={panel === EDU.JWT_CLIENT_AUTH} onClose={close} initialTabId={tab} />
     </>
   );
 }

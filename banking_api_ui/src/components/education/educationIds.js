@@ -14,4 +14,10 @@ export const EDU = {
   HUMAN_IN_LOOP: 'human-in-loop',
   /** Ping Identity five best practices for AI agent security */
   BEST_PRACTICES: 'best-practices',
+  /** Pushed Authorization Requests — RFC 9126 */
+  PAR: 'par',
+  /** Rich Authorization Requests — RFC 9396 */
+  RAR: 'rar',
+  /** JWT-based client authentication — RFC 7523 / private_key_jwt */
+  JWT_CLIENT_AUTH: 'jwt-client-auth',
 };

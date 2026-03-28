@@ -20,4 +20,7 @@ export const EDUCATION_COMMANDS = [
   { id: 'cimd', label: 'OAuth: Client ID Metadata Doc (CIMD)', panel: EDU.CIMD, tab: 'what' },
   { id: 'human-in-loop', label: 'Human-in-the-loop (agent)', panel: EDU.HUMAN_IN_LOOP, tab: 'what' },
   { id: 'best-practices', label: '⭐ AI Agent Best Practices', panel: EDU.BEST_PRACTICES, tab: 'overview' },
+  { id: 'par', label: 'PAR (RFC 9126)', panel: EDU.PAR, tab: 'what' },
+  { id: 'rar', label: 'RAR (RFC 9396)', panel: EDU.RAR, tab: 'what' },
+  { id: 'jwt-client-auth', label: 'JWT client auth (RFC 7523)', panel: EDU.JWT_CLIENT_AUTH, tab: 'what' },
 ];
