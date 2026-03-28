@@ -35,7 +35,8 @@ router.get('/', authenticateToken, requireScopes(['banking:transactions:read', '
 
 
 // Get user's own transactions (end users)
-router.get('/my', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
+// No banking:* scope required — consistent with accounts/my; standard PingOne tokens only carry openid/profile/email
+router.get('/my', authenticateToken, async (req, res) => {
   try {
     // Add cache headers for frequent polling
     res.set({
