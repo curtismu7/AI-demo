@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -58,6 +58,7 @@ function AppWithAuth() {
   const isApiTrafficOnlyPage = pathNorm === '/api-traffic' || pathNorm === '/logs';
   const { placement: agentPlacement } = useAgentUiMode();
   const demoMode = useDemoMode();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -293,7 +294,8 @@ function AppWithAuth() {
                     <Route path="/onboarding"  element={user?.role === 'admin' ? <Onboarding /> : <Navigate to="/" replace />} />
                     <Route path="/logs"        element={user?.role === 'admin' ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user?.role === 'admin' ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
-                    <Route path="/demo-data"   element={user?.role === 'admin' ? <DemoDataPage user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                    <Route path="/demo-data"   element={<DemoDataPage user={user} onLogout={logout} />} />
+                    <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />
                     <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
@@ -330,7 +332,7 @@ function AppWithAuth() {
             <button
               type="button"
               className="demo-config-fab"
-              onClick={() => { window.location.href = '/demo-data'; }}
+              onClick={() => navigate('/demo-data')}
               title="Open Demo config (sandbox accounts, balances, MFA)"
             >
               Demo config
