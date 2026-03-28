@@ -314,24 +314,28 @@ function formatResult(result) {
 
 // ─── Input form for actions that need parameters ──────────────────────────────
 
-function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
+function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser, liveAccounts }) {
   const fakeAccounts = generateFakeAccounts(effectiveUser);
-  const toAccounts = fakeAccounts.filter(a => a.id !== fakeAccounts[0]?.id);
+  // Prefer real accounts fetched from the server; fall back to generated placeholders only if
+  // the live list hasn't arrived yet (avoids the chk-{uid} vs server-ID mismatch that caused
+  // '❌ Account chk-5 not found')
+  const accounts = liveAccounts && liveAccounts.length > 0 ? liveAccounts : fakeAccounts;
+  const toAccounts = accounts.filter(a => a.id !== accounts[0]?.id);
 
   const fields = {
-    balance:  [{ key: 'accountId', label: 'Account', type: 'select', options: fakeAccounts }],
+    balance:  [{ key: 'accountId', label: 'Account', type: 'select', options: accounts }],
     deposit:  [
-      { key: 'accountId', label: 'Account', type: 'select', options: fakeAccounts },
+      { key: 'accountId', label: 'Account', type: 'select', options: accounts },
       { key: 'amount',    label: 'Amount ($)',  placeholder: '0.00', type: 'number' },
       { key: 'note',      label: 'Note',        placeholder: 'optional' },
     ],
     withdraw: [
-      { key: 'accountId', label: 'Account', type: 'select', options: fakeAccounts },
+      { key: 'accountId', label: 'Account', type: 'select', options: accounts },
       { key: 'amount',    label: 'Amount ($)',  placeholder: '0.00', type: 'number' },
       { key: 'note',      label: 'Note',        placeholder: 'optional' },
     ],
     transfer: [
-      { key: 'fromId',    label: 'From Account', type: 'select', options: fakeAccounts },
+      { key: 'fromId',    label: 'From Account', type: 'select', options: accounts },
       { key: 'toId',      label: 'To Account',   type: 'select', options: toAccounts },
       { key: 'amount',    label: 'Amount ($)',        placeholder: '0.00', type: 'number' },
       { key: 'note',      label: 'Note',              placeholder: 'optional' },
@@ -340,16 +344,16 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
 
   // Pre-populate selects with their visible default so submitting without touching dropdowns works
   const defaultForm = {
-    balance:  { accountId: fakeAccounts[0]?.id },
-    deposit:  { accountId: fakeAccounts[0]?.id },
-    withdraw: { accountId: fakeAccounts[0]?.id },
-    transfer: { fromId: fakeAccounts[0]?.id, toId: toAccounts[0]?.id },
+    balance:  { accountId: accounts[0]?.id },
+    deposit:  { accountId: accounts[0]?.id },
+    withdraw: { accountId: accounts[0]?.id },
+    transfer: { fromId: accounts[0]?.id, toId: toAccounts[0]?.id },
   }[action] || {};
 
   const [form, setForm] = useState(defaultForm);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // Keep select defaults in sync when effectiveUser resolves after mount (async session check)
+  // Keep select defaults in sync when effectiveUser resolves or live accounts arrive
   React.useEffect(() => {
     setForm(f => {
       const updated = { ...f };
@@ -361,7 +365,7 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser }) {
       }
       return updated;
     });
-  }, [effectiveUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveUser?.id, liveAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Build a normalized submit payload — resolve any missing select values to the displayed default. */
   const handleSubmit = () => {
@@ -644,6 +648,9 @@ export default function BankingAgent({
   const [resultPanel, setResultPanel] = useState(null);
   /** MCP server connection status for header display */
   const [mcpStatus, setMcpStatus] = useState({ toolCount: null, connected: false });
+  /** Real accounts from /api/accounts/my — used for the balance/deposit/withdraw/transfer form
+   *  dropdowns so IDs always match what the server has stored (avoids chk-{uid} mismatch). */
+  const [liveAccounts, setLiveAccounts] = useState([]);
   /**
    * Self-detected session user — populated by independent auth check so the
    * agent knows the session even if the parent App.js user prop hasn't resolved yet.
@@ -803,6 +810,30 @@ export default function BankingAgent({
   const effectiveUser = user || sessionUser;
   const isLoggedIn = !!effectiveUser;
   const isConfigured = oauthConfig && (oauthConfig.admin || oauthConfig.user);
+
+  // Fetch real account IDs from the server whenever the user is known.
+  // Stored in liveAccounts and passed to ActionForm so the balance/deposit/withdraw/transfer
+  // dropdowns always send the ID the server actually has (prevents '❌ Account chk-5 not found').
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    fetch('/api/accounts/my', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data?.accounts?.length) return;
+        setLiveAccounts(
+          data.accounts.map(a => ({
+            id: a.id,
+            name: a.name || (a.accountType === 'savings' ? 'Savings Account' : 'Checking Account'),
+            type: a.accountType || a.account_type || 'checking',
+            balance: a.balance || 0,
+            accountNumber: a.accountNumber || a.account_number || a.id,
+          }))
+        );
+      })
+      .catch(() => { /* silent — ActionForm falls back to generateFakeAccounts */ });
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
 
   const suggestionList = useMemo(() => {
     if (isConfigEmbeddedFocus) {
@@ -1398,6 +1429,22 @@ export default function BankingAgent({
         } catch {
           // keep write payload for inferAgentResultTypeAndData
         }
+        // Refresh live account balances after write operations so form dropdowns are current
+        fetch('/api/accounts/my', { credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (!data?.accounts?.length) return;
+            setLiveAccounts(
+              data.accounts.map(a => ({
+                id: a.id,
+                name: a.name || (a.accountType === 'savings' ? 'Savings Account' : 'Checking Account'),
+                type: a.accountType || a.account_type || 'checking',
+                balance: a.balance || 0,
+                accountNumber: a.accountNumber || a.account_number || a.id,
+              }))
+            );
+          })
+          .catch(() => {});
       }
 
       const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
@@ -2189,6 +2236,7 @@ export default function BankingAgent({
                     onSubmit={form => runAction(activeAction, form)}
                     onCancel={() => setActiveAction(null)}
                     effectiveUser={effectiveUser}
+                    liveAccounts={liveAccounts}
                   />
                 </div>
               )}
