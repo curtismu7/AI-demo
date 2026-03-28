@@ -11,6 +11,7 @@
 
 const configStore = require('./configStore');
 const oauthService = require('./oauthService');
+const { writeExchangeEvent } = require('./exchangeAuditStore');
 const {
   parseAllowedScopesFromConfig,
   isToolPermittedByAgentPolicy,
@@ -538,6 +539,18 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       }
     ));
 
+    // Write success to cross-Lambda audit log (fire-and-forget)
+    void writeExchangeEvent({
+      type: 'exchange-success',
+      level: 'info',
+      message: `[TokenExchange] Issued MCP token — audience=${mcpResourceUri} method=${exchangeMethod} act=${!!t2Claims?.act}`,
+      exchangeMethod,
+      mcpResourceUri,
+      scopeNarrowed: effectiveToolScopes.join(' '),
+      actPresent: !!t2Claims?.act,
+      audMatches,
+    });
+
     return { token: exchangedToken, tokenEvents, userSub };
 
   } catch (err) {
@@ -545,17 +558,52 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     const inProgressIdx = tokenEvents.findIndex(e => e.id === 'exchange-in-progress');
     if (inProgressIdx !== -1) tokenEvents.splice(inProgressIdx, 1);
 
+    // Build a human-readable summary from all available error detail
+    const failParts = [
+      `Exchange failed: ${err.message}`,
+      err.httpStatus              ? `HTTP ${err.httpStatus}` : null,
+      err.pingoneError            ? `error: ${err.pingoneError}` : null,
+      err.pingoneErrorDescription && err.pingoneErrorDescription !== err.message
+        ? `description: ${err.pingoneErrorDescription}` : null,
+      err.pingoneErrorDetail      ? `detail: ${JSON.stringify(err.pingoneErrorDetail)}` : null,
+    ].filter(Boolean).join(' — ');
+
+    const guidanceMsg = t1Claims?.may_act
+      ? `may_act was present — check that PingOne has the token-exchange grant enabled on this client and the audience policy allows ${mcpResourceUri}.`
+      : 'may_act was absent — add the may_act claim to the user token via PingOne token policy, then retry.';
+
     tokenEvents.push(buildTokenEvent(
       'exchange-failed',
       'Token Exchange (RFC 8693) — Failed',
       'failed',
       null,
-      `Exchange failed: ${err.message}. ` +
-      (t1Claims?.may_act
-        ? 'may_act was present — check that PingOne has the token-exchange grant enabled on this client and the audience policy allows ' + mcpResourceUri + '.'
-        : 'may_act was absent — add the may_act claim to the user token via PingOne token policy, then retry.'),
-      { error: err.message, rfc: 'RFC 8693', mayActPresent: !!t1Claims?.may_act }
+      `${failParts}. ${guidanceMsg}`,
+      {
+        error: err.message,
+        httpStatus: err.httpStatus,
+        pingoneError: err.pingoneError,
+        pingoneErrorDescription: err.pingoneErrorDescription,
+        pingoneErrorDetail: err.pingoneErrorDetail,
+        requestContext: err.requestContext,
+        rfc: 'RFC 8693',
+        mayActPresent: !!t1Claims?.may_act,
+      }
     ));
+
+    // Write failure to cross-Lambda Redis audit log (fire-and-forget)
+    void writeExchangeEvent({
+      type: 'exchange-failed',
+      level: 'error',
+      message: `[TokenExchange] Failed — ${failParts}`,
+      httpStatus: err.httpStatus,
+      pingoneError: err.pingoneError,
+      pingoneErrorDescription: err.pingoneErrorDescription,
+      pingoneErrorDetail: err.pingoneErrorDetail,
+      requestContext: err.requestContext,
+      mcpResourceUri,
+      mayActPresent: !!t1Claims?.may_act,
+      rfc: 'RFC 8693',
+    });
 
     // Fallback: try subject-only if actor exchange failed
     if (actorToken) {

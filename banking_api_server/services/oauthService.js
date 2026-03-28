@@ -205,8 +205,18 @@ class OAuthService {
       console.log(`[TokenExchange] Issued delegated token for audience=${audience} scope="${scopeStr}"`);
       return exchanged;
     } catch (error) {
-      console.error('[TokenExchange] Failed:', error.response?.data || error.message);
-      throw new Error(`Token exchange failed: ${error.response?.data?.error_description || error.message}`);
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[TokenExchange] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Token exchange failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, scope: scopeStr, client_id: this.config.clientId };
+      throw richErr;
     }
   }
 
@@ -243,8 +253,18 @@ class OAuthService {
       console.log(`[TokenExchange+Actor] Delegated token audience=${audience} scope="${scopeStr}"`);
       return exchanged;
     } catch (error) {
-      console.error('[TokenExchange+Actor] Failed:', error.response?.data || error.message);
-      throw new Error(`Actor token exchange failed: ${error.response?.data?.error_description || error.message}`);
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[TokenExchange+Actor] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Actor token exchange failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, scope: scopeStr, client_id: this.config.clientId };
+      throw richErr;
     }
   }
 
@@ -274,8 +294,18 @@ class OAuthService {
       if (!at) throw new Error('Client credentials response missing access_token');
       return at;
     } catch (error) {
-      console.error('[AgentClientCredentials] Failed:', error.response?.data || error.message);
-      throw new Error(`Agent client credentials failed: ${error.response?.data?.error_description || error.message}`);
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[AgentClientCredentials] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Agent client credentials failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { scope, client_id: clientId };
+      throw richErr;
     }
   }
 

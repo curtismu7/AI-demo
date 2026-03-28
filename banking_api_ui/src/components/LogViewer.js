@@ -100,7 +100,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
       };
 
       if (filter.source === 'all') {
-        const sources = ['console', 'app', 'vercel'];
+        const sources = ['console', 'app', 'vercel', 'exchange'];
         const results = await Promise.allSettled(
           sources.map(src => axios.get(`/api/logs/${src}`, { params }))
         );
@@ -329,6 +329,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
               <option value="console">Console Logs</option>
               <option value="app">Application Logs</option>
               <option value="vercel">Vercel Logs</option>
+              <option value="exchange">Exchange Audit</option>
             </select>
           </div>
 
