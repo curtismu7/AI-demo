@@ -129,7 +129,7 @@ function EventDetail({ event }) {
  */
 function TokenInspectorPanel({ event, initialPos, onClose }) {
   const [pos, setPos] = useState(initialPos);
-  const [size, setSize] = useState({ w: 400, h: 520 });
+  const [size, setSize] = useState({ w: 400, h: 720 });
   const [collapsed, setCollapsed] = useState(false);
 
   /** Drag from header. */
