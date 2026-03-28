@@ -132,39 +132,26 @@ describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
     else delete process.env.AGENT_OAUTH_CLIENT_SECRET;
   });
 
-  it('throws mcp_resource_uri_required — never forwards User token without RFC 8693', async () => {
-    await expect(resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts')).rejects.toMatchObject({
-      code: 'mcp_resource_uri_required',
-      httpStatus: 503,
-    });
+  it('returns null token (not throw) when MCP_RESOURCE_URI is unset — local fallback path', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    expect(token).toBeNull();
   });
 
   it('includes exchange-required token event when URI is unset', async () => {
-    try {
-      await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
-    } catch (e) {
-      const ev = e.tokenEvents.find((x) => x.id === 'exchange-required');
-      expect(ev).toBeDefined();
-      expect(ev.status).toBe('failed');
-    }
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const ev = tokenEvents.find((x) => x.id === 'exchange-required');
+    expect(ev).toBeDefined();
+    expect(ev.status).toBe('failed');
   });
 
   it('does not call performTokenExchange when MCP_RESOURCE_URI is unset', async () => {
-    try {
-      await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
-    } catch {
-      /* expected */
-    }
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
-  it('does not call getAgentClientCredentialsToken when MCP_RESOURCE_URI is unset (throws before actor step)', async () => {
-    try {
-      await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
-    } catch {
-      /* expected */
-    }
-    // mcp_resource_uri check fires before the actor token step
+  it('does not call getAgentClientCredentialsToken when MCP_RESOURCE_URI is unset (returns before actor step)', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    // mcp_resource_uri check returns early before the actor token step
     expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
   });
 });

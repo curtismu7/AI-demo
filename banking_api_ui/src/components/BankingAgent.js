@@ -1325,8 +1325,9 @@ export default function BankingAgent({
           tokenMsg = `🔐 RFC 8693 Token Exchange\n${mayActStatus} → MCP token issued · ${actStatus}\nScope: ${exchanged.scopeNarrowed || '—'} · Aud: ${exchanged.audienceNarrowed || '—'}`;
           notifyInfo(`🔐 Token Exchange complete — MCP token issued (${exchanged.scopeNarrowed || 'scoped'})`, { autoClose: 4500 });
         } else if (required) {
-          tokenMsg = '🔐 RFC 8693 token exchange is required — set mcp_resource_uri / MCP_RESOURCE_URI (MCP audience). User token is not sent to MCP without exchange.';
-          notifyError('❌ MCP resource URI missing — token exchange required', { autoClose: 6000 });
+          tokenMsg = '🔐 Token exchange not configured — tools ran via local fallback. Set MCP_RESOURCE_URI to enable RFC 8693 token exchange.';
+          // Info-only: tools still work via local fallback, so this is not an error
+          notifyInfo('ℹ️ MCP resource URI not set — using local banking tools (no token exchange)', { autoClose: 4000 });
         } else if (badScopes) {
           tokenMsg = `🔐 User token needs more OAuth scopes for MCP exchange (${badScopes.explanation || 'see Token Chain'})`;
           notifyError('❌ Sign in again with broader scopes (at least 5) for MCP token exchange', { autoClose: 7000 });
