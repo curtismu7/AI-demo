@@ -687,6 +687,16 @@
   background: rgba(248, 250, 252, 0.9);
 }
 
+.tcd-legend-title {
+  width: 100%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
 .tcd-legend-item {
   font-size: 0.8125rem;
   font-weight: 600;

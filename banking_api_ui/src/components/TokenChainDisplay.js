@@ -769,21 +769,18 @@ const TokenChainDisplay = () => {
   }, [ctx]);
 
   /**
-   * Run on mount ONLY if the user is already confirmed authenticated
-   * (userAuthenticated event fired before this component mounted).
-   * Avoids a guaranteed 401 on initial dashboard load before the session
-   * check completes, which clutters the console without any visible effect.
+   * Fetch on mount — App.js dispatches 'userAuthenticated' and sets loading=false
+   * BEFORE this component renders, so the event always fires before mount.
+   * fetchSessionPreview handles 401/non-OK gracefully (returns early, keeps placeholder).
    */
-  const didAuthRef = React.useRef(false);
   React.useEffect(() => {
-    if (didAuthRef.current) void fetchSessionPreview();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only runs once on mount
+    void fetchSessionPreview();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only runs once on mount
   }, []);
 
-  /** Also re-fetch immediately after a successful PingOne login. */
+  /** Also re-fetch immediately after a successful PingOne login (e.g. session expiry re-auth). */
   React.useEffect(() => {
     const onAuth = () => {
-      didAuthRef.current = true;
       setSessionPreviewEvents(null); // clear stale preview so new fetch replaces it
       void fetchSessionPreview();
     };
@@ -857,6 +854,7 @@ const TokenChainDisplay = () => {
         )}
 
         <div className="tcd-legend">
+          <span className="tcd-legend-title">Legend</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ aud — audience correct</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--error">❌ aud mismatch — wrong resource server</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ may_act valid — delegation authorised</span>
