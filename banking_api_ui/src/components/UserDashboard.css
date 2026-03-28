@@ -811,6 +811,31 @@
   border: 1px solid #d1d5db;
 }
 
+.account-type-badge.investment {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.account-type-badge.money_market {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+}
+
+.account-type-badge.credit {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.account-type-badge.car_loan,
+.account-type-badge.mortgage {
+  background-color: #faf5ff;
+  color: #7e22ce;
+  border: 1px solid #d8b4fe;
+}
+
 .account-number {
   color: #6b7280;
   font-size: 0.875rem;

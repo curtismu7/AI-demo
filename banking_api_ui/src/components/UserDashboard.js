@@ -214,6 +214,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only load
   }, []);
 
+  // Refresh accounts whenever the Demo config page saves (new/edited accounts, balances).
+  // UserDashboard stays mounted while the user navigates to /demo-data and back, so we
+  // can't rely on remount — we listen for the event instead.
+  useEffect(() => {
+    const onDemoSaved = () => fetchUserData(true);
+    window.addEventListener('demoScenarioUpdated', onDemoSaved);
+    return () => window.removeEventListener('demoScenarioUpdated', onDemoSaved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     let refreshInterval;
     
