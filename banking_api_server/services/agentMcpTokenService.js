@@ -355,31 +355,6 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // is NEVER forwarded to MCP — but the act claim is absent, weakening audit provenance).
   const useActor = !!process.env.AGENT_OAUTH_CLIENT_ID;
 
-  // ── Consent pre-flight: block when user has not accepted the in-app agent consent ──
-  // Set SKIP_AGENT_CONSENT=true to disable for demos / testing.
-  const skipConsent = process.env.SKIP_AGENT_CONSENT === 'true';
-  if (!skipConsent) {
-    const consentGiven = req.session?.agentConsentGiven === true;
-    if (!consentGiven) {
-      tokenEvents.push(buildTokenEvent(
-        'consent-required',
-        'Agent Consent Required',
-        'failed',
-        null,
-        'User has not accepted the in-app agent consent agreement. ' +
-          'Token exchange blocked. The user must accept the consent in the agent panel.',
-        { rfc: 'RFC 8693', inAppConsent: false }
-      ));
-      const consentErr = new Error(
-        'Agent consent required. Please accept the agent consent agreement in the banking assistant panel.'
-      );
-      consentErr.code        = 'AGENT_CONSENT_REQUIRED';
-      consentErr.tokenEvents = tokenEvents;
-      consentErr.httpStatus  = 403;
-      throw consentErr;
-    }
-  }
-
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
       'exchange-required',

@@ -69,6 +69,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [autoRefresh, setAutoRefresh] = useState(false);
   /** Server-issued id for high-value HITL — opens TransactionConsentModal on the dashboard. */
   const [consentChallengeId, setConsentChallengeId] = useState(null);
+  /** True when the HITL was triggered via AgentConsentModal — skip consent step, go straight to OTP. */
+  const [agentHitlAutoConfirm, setAgentHitlAutoConfirm] = useState(false);
   const [stepUpRequired, setStepUpRequired] = useState(false);
   // 'ciba' | 'email' — set from the 428 response step_up_method field
   const [stepUpMethod, setStepUpMethod] = useState('email');
@@ -107,13 +109,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   /** HITL: open the TransactionConsentModal when the floating agent requests consent. */
   useEffect(() => {
     const onAgentHitl = async (e) => {
-      const { intentPayload } = e.detail || {};
+      const { intentPayload, autoConfirm } = e.detail || {};
       if (!intentPayload) return;
       try {
         const { data } = await apiClient.post('/api/transactions/consent-challenge', intentPayload);
         const cid = data?.challengeId;
         if (!cid) { notifyError('Could not start consent — no challenge id from server.'); return; }
         setConsentChallengeId(cid);
+        setAgentHitlAutoConfirm(!!autoConfirm);
         // Store the original agent intent so we can pass it back on confirmation
         agentHitlDetailRef.current = e.detail;
       } catch (ex) {
@@ -1349,10 +1352,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           open
           challengeId={consentChallengeId}
           user={user}
-          onClose={() => { setConsentChallengeId(null); agentHitlDetailRef.current = null; }}
+          autoConfirm={agentHitlAutoConfirm}
+          onClose={() => { setConsentChallengeId(null); setAgentHitlAutoConfirm(false); agentHitlDetailRef.current = null; }}
           onTransactionSuccess={(msg) => {
             const agentDetail = agentHitlDetailRef.current;
             setConsentChallengeId(null);
+            setAgentHitlAutoConfirm(false);
             agentHitlDetailRef.current = null;
             notifySuccess(msg);
             void fetchUserData(true);
@@ -1366,6 +1371,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           }}
           onDeclinedConfirmed={() => {
             setConsentChallengeId(null);
+            setAgentHitlAutoConfirm(false);
             notifyInfo(
               'You declined high-value consent. The AI banking assistant stays disabled until you sign out and sign in again.',
             );

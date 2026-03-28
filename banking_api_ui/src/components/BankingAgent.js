@@ -656,9 +656,8 @@ export default function BankingAgent({
   /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
   const [consentBlocked, setConsentBlocked] = useState(() => isAgentBlockedByConsentDecline());
   /** True when the user has accepted the in-app agent consent agreement. */
-  const [consentGiven, setConsentGiven] = useState(true); // optimistic default — fetched on panel open
-  /** Whether to show the in-app AgentConsentModal. */
-  const [showConsentModal, setShowConsentModal] = useState(false);
+  /** Pending HITL intent — shows AgentConsentModal (transaction mode) before OTP. */
+  const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
 
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -910,17 +909,7 @@ export default function BankingAgent({
     }
   }, [checkSelfAuth]);
 
-  /** Open the in-app consent modal so the user can accept the agent delegation agreement. */
-  const handleGrantConsent = useCallback(() => {
-    setShowConsentModal(true);
-  }, []);
 
-  /** Called by AgentConsentModal after the server confirms consent. */
-  const handleConsentAccepted = useCallback(() => {
-    setConsentGiven(true);
-    setShowConsentModal(false);
-    notifySuccess('Agent permission granted. You can now use the AI assistant.');
-  }, []);
 
   // Check on mount — auto-open if already authenticated (e.g. page refresh after login)
   useEffect(() => {
@@ -931,11 +920,6 @@ export default function BankingAgent({
     ]).then(([admin, endUser, session]) => {
       const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
       setCookieOnlyBffSession(cookieOnly);
-      // Consent gate: consentGiven defaults true for graceful degradation when PingOne
-      // consent is not configured (AGENT_CONSENT_ACR='' disables the server-side check too).
-      if (endUser?.authenticated) {
-        setConsentGiven(endUser.consentGiven !== false);
-      }
       if (found) {
         setSessionUser(found);
         const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus, brandShortName) };
@@ -1303,18 +1287,13 @@ export default function BankingAgent({
         const consent =
           normalized.consent_challenge_required === true || normalized.error === 'consent_challenge_required';
         if (consent) {
-          // Dispatch to UserDashboard which owns the TransactionConsentModal.
-          // The payload mirrors what POST /api/transactions/consent-challenge expects.
           const intentPayload = buildConsentIntent(actionId, form);
           addMessage('assistant',
-            `👤 **Human approval required**\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} need your explicit consent.\n\nA consent dialog has opened — review the details and approve to continue.`,
+            `👤 **High-value transaction — your approval is needed.**\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} require your consent and email verification.\n\nReview the authorization popup, then enter the code sent to your email.`,
             actionId
           );
           toast.dismiss(toastId);
-          notifyInfo('👤 Consent required — review the popup that just appeared', { autoClose: 5000 });
-          window.dispatchEvent(new CustomEvent('banking-agent-hitl-consent', {
-            detail: { actionId, form, intentPayload },
-          }));
+          setHitlPendingIntent({ actionId, form, intentPayload });
         } else {
           addMessage('assistant', formatResult(response.result), actionId);
           toast.dismiss(toastId);
@@ -1470,17 +1449,6 @@ export default function BankingAgent({
     } catch (err) {
       markToolProgressOutcome(false);
       toast.dismiss(toastId);
-
-      // Agent consent gate — open the modal instead of showing a generic error
-      if (err?.code === 'agent_consent_required') {
-        setShowConsentModal(true);
-        addMessage('assistant',
-          'To use the AI banking assistant, I need your permission to access your accounts.\n\nA consent agreement has opened — please accept it and then try again.',
-          actionId
-        );
-        setLoading(false);
-        return;
-      }
 
       const isConnErr =
         err.message.includes('timed out') ||
@@ -1959,29 +1927,19 @@ export default function BankingAgent({
               </div>
             )}
 
-            {/* Agent consent modal — rendered at body root via portal */}
-            {showConsentModal && (
+            {/* High-value transaction consent — shown before OTP (HITL) */}
+            {hitlPendingIntent && (
               <AgentConsentModal
-                onAccept={handleConsentAccepted}
-                onDismiss={() => setShowConsentModal(false)}
+                transaction={hitlPendingIntent.intentPayload}
+                onAccept={() => {
+                  const { actionId, form, intentPayload } = hitlPendingIntent;
+                  setHitlPendingIntent(null);
+                  window.dispatchEvent(new CustomEvent('banking-agent-hitl-consent', {
+                    detail: { actionId, form, intentPayload, autoConfirm: true },
+                  }));
+                }}
+                onDismiss={() => setHitlPendingIntent(null)}
               />
-            )}
-
-            {/* Agent consent banner — shown when user hasn't accepted the in-app consent */}
-            {isLoggedIn && !consentBlocked && !consentGiven && (
-              <div className="ba-consent-required" role="alert">
-                <p>
-                  <strong>🔒 Agent permission required</strong><br />
-                  BX Finance AI needs your permission to act on your behalf.
-                </p>
-                <button
-                  type="button"
-                  className="ba-consent-btn"
-                  onClick={handleGrantConsent}
-                >
-                  Grant agent permission
-                </button>
-              </div>
             )}
 
             {/* ── Left column: suggestions + actions/auth ── */}
@@ -2008,7 +1966,7 @@ export default function BankingAgent({
                     type="button"
                     className="ba-action-item"
                     onClick={() => void handleSessionRefresh()}
-                    disabled={sessionRefreshing || loading || consentBlocked || !consentGiven}
+                    disabled={sessionRefreshing || loading || consentBlocked}
                     title="Refresh your access token using PingOne refresh token (no logout)"
                   >
                     {sessionRefreshing ? 'Refreshing…' : '🔄 Refresh access token'}
@@ -2017,7 +1975,7 @@ export default function BankingAgent({
                     type="button"
                     className="ba-action-item"
                     onClick={() => handleLoginAction(effectiveUser?.role === 'admin' ? 'login_admin' : 'login_user')}
-                    disabled={loading || consentBlocked || !consentGiven}
+                    disabled={loading || consentBlocked}
                     title="Sign in again if refresh fails"
                   >
                     🔐 Sign in again
@@ -2031,7 +1989,7 @@ export default function BankingAgent({
                   key={s}
                   type="button"
                   className="ba-suggestion"
-                  disabled={consentBlocked || !consentGiven}
+                  disabled={consentBlocked}
                   onClick={() => {
                     if (isAgentBlockedByConsentDecline()) {
                       addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
@@ -2064,7 +2022,7 @@ export default function BankingAgent({
                       type="button"
                       className="ba-action-item"
                       onClick={() => handleActionClick(a.id)}
-                      disabled={loading || ((consentBlocked || !consentGiven) && a.id !== 'logout')}
+                      disabled={loading || (consentBlocked && a.id !== 'logout')}
                       title={a.desc}
                     >
                       {a.label}
@@ -2080,7 +2038,7 @@ export default function BankingAgent({
                       type="button"
                       className="ba-action-item"
                       onClick={() => openEducationCommand(cmd)}
-                      disabled={consentBlocked || !consentGiven}
+                      disabled={consentBlocked}
                       title={cmd.label}
                     >
                       {cmd.label}
@@ -2238,7 +2196,7 @@ export default function BankingAgent({
                       onClick={() => setShowCommands(s => !s)}
                       title="Learn &amp; Explore topics"
                       aria-expanded={showCommands}
-                      disabled={consentBlocked || !consentGiven}
+                      disabled={consentBlocked}
                     >
                       ⚡
                     </button>
@@ -2260,13 +2218,13 @@ export default function BankingAgent({
                             ? `Message ${brandShortName} AI… (Groq AI)`
                             : `Message ${brandShortName} AI…`
                       }
-                      disabled={nlLoading || consentBlocked || !consentGiven}
+                      disabled={nlLoading || consentBlocked}
                     />
                     <button
                       type="button"
                       className="ba-send-btn"
                       onClick={() => { handleNaturalLanguage(); setShowCommands(false); }}
-                      disabled={nlLoading || !nlInput.trim() || consentBlocked || !consentGiven}
+                      disabled={nlLoading || !nlInput.trim() || consentBlocked}
                       aria-label="Send"
                     >
                       {nlLoading ? '…' : splitChrome ? 'Send' : '↑'}

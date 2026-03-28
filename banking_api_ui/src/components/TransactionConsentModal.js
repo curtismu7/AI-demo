@@ -36,6 +36,7 @@ export default function TransactionConsentModal({
   onClose,
   onTransactionSuccess,
   onDeclinedConfirmed,
+  autoConfirm = false,
 }) {
   const { preset } = useIndustryBranding();
   const { open: openEducation } = useEducationUI();
@@ -56,8 +57,11 @@ export default function TransactionConsentModal({
   const [otpExpiresAt, setOtpExpiresAt] = useState(null);
   const otpInputRef = useRef(null);
 
+  const autoConfirmFiredRef = useRef(null);
+
   useEffect(() => {
     if (!open) {
+      autoConfirmFiredRef.current = null;
       setAgreed(false);
       setDenialOpen(false);
       setLoadFailed(false);
@@ -120,6 +124,44 @@ export default function TransactionConsentModal({
       cancelled = true;
     };
   }, [open, user, challengeId]);
+
+  // Auto-confirm: when opened via AgentConsentModal (autoConfirm=true), skip the consent
+  // step and send the OTP immediately after the challenge snapshot loads.
+  useEffect(() => {
+    if (
+      !autoConfirm ||
+      loading ||
+      loadFailed ||
+      !snapshot ||
+      otpStep ||
+      submitting ||
+      !challengeId ||
+      !user?.id ||
+      autoConfirmFiredRef.current
+    ) return;
+    autoConfirmFiredRef.current = true;
+    (async () => {
+      setSubmitting(true);
+      try {
+        const { data } = await bffAxios.post(
+          `/api/transactions/consent-challenge/${encodeURIComponent(challengeId)}/confirm`
+        );
+        setOtpSent(data.otpSent !== false);
+        setOtpExpiresAt(data.otpExpiresAt);
+        setOtpStep(true);
+        if (data.otpSent === false) {
+          notifyWarning('Email delivery unavailable — enter any 6-digit code to proceed in dev mode.');
+        }
+      } catch (e) {
+        const d = e.response?.data;
+        notifyError(d?.message || d?.error_description || d?.error || e.message || 'Could not send verification code.');
+        onClose();
+      } finally {
+        setSubmitting(false);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoConfirm, loading, loadFailed, snapshot, otpStep, submitting, challengeId, user?.id]);
 
   const summaryLines = useMemo(() => {
     if (!snapshot) return [];
