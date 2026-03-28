@@ -120,12 +120,12 @@ function MayActEduBox({ event }) {
     <div className="tcd-edu-box tcd-edu-box--warn">
       <div className="tcd-edu-box-hd">
         <span className="tcd-edu-icon">⚠️</span>
-        <strong>may_act absent — token exchange will fail</strong>
+        <strong>may_act absent — exchange may fail</strong>
         <span className="tcd-edu-ref">RFC 8693 §4.1</span>
       </div>
       <div className="tcd-edu-body">
-        <p>The user token has no <code>may_act</code> claim. PingOne will reject the RFC 8693 Token Exchange — the agent cannot get a scoped MCP token.</p>
-        <p><strong>may_act</strong> is a prospective permission: it pre-authorises the BFF to exchange this token. It must be added by PingOne at login time.</p>
+        <p>The user token has no <code>may_act</code> claim. The RFC 8693 Token Exchange will be attempted — whether PingOne accepts it depends on your token policy. Without <code>may_act</code>, PingOne may reject the exchange.</p>
+        <p><strong>may_act</strong> is a prospective permission: it pre-authorises the BFF to exchange this token. It must be added by PingOne at login time via a token policy expression.</p>
         <div className="tcd-edu-steps">
           <strong>Fix steps:</strong>
           <ol>
@@ -860,7 +860,7 @@ const TokenChainDisplay = () => {
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ aud — audience correct</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--error">❌ aud mismatch — wrong resource server</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ may_act valid — delegation authorised</span>
-          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--warn">⚠️ may_act absent — exchange will fail</span>
+          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--warn">⚠️ may_act absent — exchange may fail</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--error">❌ may_act mismatch — client_id wrong</span>
           <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ act claimed — delegation proven</span>
           <span className="tcd-legend-item tcd-pill--consent">consent ✅ — agent delegation accepted</span>

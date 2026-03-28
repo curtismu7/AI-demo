@@ -142,7 +142,7 @@ function describeMayAct(claims, bffClientId) {
   if (!may_act) {
     return {
       valid: false,
-      reason: 'may_act claim absent — PingOne will reject the exchange unless policy allows it without the claim',
+      reason: 'may_act claim absent — PingOne may reject the exchange; add the may_act claim via a PingOne token policy to guarantee acceptance',
     };
   }
   if (typeof may_act !== 'object' || Array.isArray(may_act)) {
