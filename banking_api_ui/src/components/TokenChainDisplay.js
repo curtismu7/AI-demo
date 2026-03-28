@@ -853,16 +853,7 @@ const TokenChainDisplay = () => {
           </div>
         )}
 
-        <div className="tcd-legend">
-          <span className="tcd-legend-title">Legend</span>
-          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ aud — audience correct</span>
-          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--error">❌ aud mismatch — wrong resource server</span>
-          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ may_act valid — delegation authorised</span>
-          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--warn">⚠️ may_act absent — exchange may fail</span>
-          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--error">❌ may_act mismatch — client_id wrong</span>
-          <span className="tcd-legend-item tcd-event-hint tcd-event-hint--ok">✅ act claimed — delegation proven</span>
-          <span className="tcd-legend-item tcd-pill--consent">consent ✅ — agent delegation accepted</span>
-        </div>
+
       </div>
 
       {/* Inspector panel — portalled to document.body, draggable, resizable, collapsible */}

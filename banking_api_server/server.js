@@ -806,6 +806,19 @@ app.use('/api/agent', agentIdentityRoutes);
 app.use('/api/banking-agent', bankingAgentNlRoutes);
 app.use('/api/authorize', authorizeRoutes);
 app.use('/api/mcp/inspector', authenticateToken, mcpInspectorRoutes);
+// Session preview uses session data only — no full JWT validation so it works even
+// when the session has a _cookie_session stub (Vercel cold-start / Upstash restore).
+// Must be registered BEFORE the auth-gated /api/tokens block.
+app.get('/api/tokens/session-preview', (req, res) => {
+  try {
+    const { buildSessionPreviewTokenEvents } = require('./services/agentMcpTokenService');
+    const { tokenEvents } = buildSessionPreviewTokenEvents(req);
+    res.json({ tokenEvents });
+  } catch (err) {
+    console.error('Token session-preview error:', err);
+    res.json({ tokenEvents: [] });
+  }
+});
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/accounts', authenticateToken, accountRoutes);
