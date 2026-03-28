@@ -24,8 +24,46 @@
 .user-dashboard--embed-agent {
   display: flex;
   flex-direction: column;
-  min-height: min-content;
+  flex: 1;         /* fill the flex main-content column */
+  min-height: 0;
   padding-bottom: 0;
+}
+
+/* Outer wrapper that holds the 3-col grid + the full-width agent row */
+.ud-body-outer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ud-body-outer--with-bottom-agent {
+  /* Grid fills remaining viewport space; agent row attached at bottom, no gap */
+  overflow: hidden;
+}
+
+.ud-body-outer--with-bottom-agent .dashboard-content.ud-body {
+  flex: 1;
+  min-height: 200px;
+  overflow-y: auto;
+}
+
+/* Agent dock rendered inside the dashboard: flush with 3-col grid, full content width */
+.ud-body-outer--with-bottom-agent .global-embedded-agent-dock-wrap {
+  flex-shrink: 0;
+  border-radius: 0;
+  max-width: none;
+  margin: 0;
+}
+
+/* Float-reserve hidden: when dock is below, no need for right-column placeholder */
+.ud-float-reserve--hidden {
+  visibility: hidden;
+  pointer-events: none;
+  min-width: 0;
+  width: 0;
+  padding: 0;
+  border: none;
 }
 
 .user-dashboard--embed-agent .ud-shell--embed-bottom {

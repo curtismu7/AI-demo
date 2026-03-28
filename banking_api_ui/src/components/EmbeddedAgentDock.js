@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import BankingAgent from './BankingAgent';
-import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
+import { isEmbeddedAgentDockRoute, isBankingAgentDashboardRoute } from '../utils/embeddedAgentFabVisibility';
 
 const HEIGHT_KEY = 'embedded_agent_dock_height_px';
 const COLLAPSE_KEY = 'embedded_agent_dock_collapsed';
@@ -89,6 +89,11 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
   );
 
   if (!user || agentPlacement !== 'bottom' || !isEmbeddedAgentDockRoute(pathname)) {
+    return null;
+  }
+  // Dashboard routes (/, /admin, /dashboard) render the dock inside UserDashboard spanning
+  // all 3 content columns. Only render at App level for non-dashboard dock routes (e.g. /config).
+  if (isBankingAgentDashboardRoute(pathname)) {
     return null;
   }
 

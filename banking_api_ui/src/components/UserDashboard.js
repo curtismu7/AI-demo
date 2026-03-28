@@ -12,6 +12,7 @@ import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
 import TransactionConsentModal from './TransactionConsentModal';
 import BankingAgent from './BankingAgent';
+import EmbeddedAgentDock from './EmbeddedAgentDock';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import DashboardLayoutToggle from './DashboardLayoutToggle';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
@@ -1274,25 +1275,38 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           </main>
         </div>
       ) : (
-        <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--design-3col">
-          <aside className="ud-token-rail" aria-label="Token chain">
-            <div className="section ud-token-rail__inner">
-              <TokenChainDisplay />
-            </div>
-          </aside>
+        // Bottom-dock or float mode: 3-column grid + optional full-width agent row below
+        <div className={`ud-body-outer${agentPlacement === 'bottom' ? ' ud-body-outer--with-bottom-agent' : ''}`}>
+          <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--design-3col">
+            <aside className="ud-token-rail" aria-label="Token chain">
+              <div className="section ud-token-rail__inner">
+                <TokenChainDisplay />
+              </div>
+            </aside>
 
-          <main className="ud-center" id="main-dashboard-content" tabIndex={-1}>
-            {renderBankingMain()}
-          </main>
+            <main className="ud-center" id="main-dashboard-content" tabIndex={-1}>
+              {renderBankingMain()}
+            </main>
 
-          <aside className="ud-float-reserve" aria-hidden="true">
-            <div className="ud-float-reserve__card">
-              <span className="ud-float-reserve__label">Floating assistant</span>
-              <p className="ud-float-reserve__hint">
-                The corner FAB and panel stay in this zone so your balances and token flow stay readable.
-              </p>
-            </div>
-          </aside>
+            {agentPlacement === 'bottom' ? (
+              // No float-reserve column needed — agent is below spanning all 3 cols
+              <aside className="ud-float-reserve ud-float-reserve--hidden" aria-hidden="true" />
+            ) : (
+              <aside className="ud-float-reserve" aria-hidden="true">
+                <div className="ud-float-reserve__card">
+                  <span className="ud-float-reserve__label">Floating assistant</span>
+                  <p className="ud-float-reserve__hint">
+                    The corner FAB and panel stay in this zone so your balances and token flow stay readable.
+                  </p>
+                </div>
+              </aside>
+            )}
+          </div>
+
+          {/* Agent dock spans full content width — no App-level gap */}
+          {agentPlacement === 'bottom' && (
+            <EmbeddedAgentDock user={user} onLogout={onLogout} agentPlacement={agentPlacement} />
+          )}
         </div>
       )}
 
