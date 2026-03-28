@@ -625,6 +625,9 @@ function EventRow({ event, isLast, onInspect }) {
   };
 
   // Compact hints shown on the row — click inspect for full educational detail
+  const triggerHint =
+    event.trigger === 'high_risk' ? { text: '⚡ High-Risk Transaction', cls: 'warn' }
+    : null;
   const mayActHint =
     event.mayActPresent === true
       ? (event.mayActValid ? { text: '✅ may_act valid', cls: 'ok' } : { text: '❌ may_act mismatch', cls: 'error' })
@@ -672,8 +675,9 @@ function EventRow({ event, isLast, onInspect }) {
             {event.rfc ? <span className="tcd-event-rfc">{event.rfc}</span> : null}
             <StatusBadge status={event.status} />
           </div>
-          {(mayActHint || actHint || audHint) && (
+          {(triggerHint || mayActHint || actHint || audHint) && (
             <div className="tcd-event-hints">
+              {triggerHint && <span className={`tcd-event-hint tcd-event-hint--${triggerHint.cls}`}>{triggerHint.text}</span>}
               {audHint    && <span className={`tcd-event-hint tcd-event-hint--${audHint.cls}`}>{audHint.text}</span>}
               {mayActHint && <span className={`tcd-event-hint tcd-event-hint--${mayActHint.cls}`}>{mayActHint.text}</span>}
               {actHint    && <span className={`tcd-event-hint tcd-event-hint--${actHint.cls}`}>{actHint.text}</span>}

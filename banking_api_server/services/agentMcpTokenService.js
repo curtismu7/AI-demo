@@ -306,6 +306,12 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const agentAllowedRaw = configStore.getEffective('agent_mcp_allowed_scopes');
   const agentAllowedSet = parseAllowedScopesFromConfig(agentAllowedRaw);
 
+  // Classify tool as high-risk (write) so the UI can label the Token Chain accordingly.
+  const isHighRiskTool = toolCandidateScopes.some(
+    s => s.includes(':write') || s === 'banking:write'
+  );
+  const toolTrigger = isHighRiskTool ? 'high_risk' : 'read_only';
+
   if (
     scopesAreCatalogOnly(toolCandidateScopes) &&
     !isToolPermittedByAgentPolicy(toolCandidateScopes, agentAllowedSet)
@@ -358,13 +364,13 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
       'exchange-required',
-      'Token Exchange (RFC 8693) — Required',
-      'failed',
+      'Token Exchange (RFC 8693) — Not Configured',
+      'skipped',
       null,
       'RFC 8693 token exchange is not configured. Set mcp_resource_uri in the Admin → Config UI ' +
         '(or MCP_RESOURCE_URI env) to the MCP resource audience URI. ' +
-        'The User Token is not sent to the MCP server. Banking tools are running via local fallback.',
-      { rfc: 'RFC 8693 · RFC 8707' }
+        'Banking tools are running via local fallback — the User Token is not forwarded to MCP.',
+      { rfc: 'RFC 8693 · RFC 8707', trigger: toolTrigger }
     ));
     // Return null token — server.js will route to the local tool handler.
     // The User Token is never forwarded to MCP from this path.
@@ -450,6 +456,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       : 'PingOne will check exchange policy (may_act not present on User token — exchange may be rejected).'),
     {
       rfc: 'RFC 8693 · RFC 8707 (resource indicator)',
+      trigger: toolTrigger,
       exchangeRequest: {
         grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
         subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
@@ -503,6 +510,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       'The User Token (your original login token) NEVER leaves the Backend-for-Frontend (BFF) — only the MCP Token reaches the MCP Server.',
       {
         rfc: 'RFC 8693 · RFC 8707',
+        trigger: toolTrigger,
         exchangeMethod,
         actPresent: !!t2Claims?.act,
         actDetails: t2Claims?.act ? JSON.stringify(t2Claims.act) : null,
@@ -561,6 +569,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         pingoneErrorDetail: err.pingoneErrorDetail,
         requestContext: err.requestContext,
         rfc: 'RFC 8693',
+        trigger: toolTrigger,
         mayActPresent: !!t1Claims?.may_act,
       }
     ));
