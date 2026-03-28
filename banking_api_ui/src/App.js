@@ -57,7 +57,7 @@ function AppWithAuth() {
   const { pathname } = useLocation();
   const pathNorm = pathname.replace(/\/$/, '') || '/';
   const isApiTrafficOnlyPage = pathNorm === '/api-traffic' || pathNorm === '/logs';
-  const { placement: agentPlacement, fab: agentFab } = useAgentUiMode();
+  const { placement: agentPlacement } = useAgentUiMode();
   const demoMode = useDemoMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -270,10 +270,6 @@ function AppWithAuth() {
           <DashboardQuickNav user={user} />
           {user && !isApiTrafficOnlyPage && <UIDesignNav user={user} />}
           <Routes>
-            <Route path="/config" element={<Config />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/logs" element={<LogViewerPage />} />
-            <Route path="/api-traffic" element={<ApiTrafficPage />} />
             <Route path="*" element={
               !user ? (
                 <LandingPage />
@@ -284,7 +280,11 @@ function AppWithAuth() {
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
-                    <Route path="/demo-data" element={<DemoDataPage user={user} onLogout={logout} />} />
+                    <Route path="/config"      element={user?.role === 'admin' ? <Config /> : <Navigate to="/" replace />} />
+                    <Route path="/onboarding"  element={user?.role === 'admin' ? <Onboarding /> : <Navigate to="/" replace />} />
+                    <Route path="/logs"        element={user?.role === 'admin' ? <LogViewerPage /> : <Navigate to="/" replace />} />
+                    <Route path="/api-traffic" element={user?.role === 'admin' ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
+                    <Route path="/demo-data"   element={user?.role === 'admin' ? <DemoDataPage user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
