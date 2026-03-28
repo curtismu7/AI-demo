@@ -17,6 +17,7 @@
 | **Token audience check** | **All authenticated API calls return 401 — `aud` mismatch** | `middleware/auth.js` — never hardcode audience defaults; `https://api.pingone.com` is always accepted. Set `ENDUSER_AUDIENCE` / `AI_AGENT_AUDIENCE` only for custom resource servers. |
 | **Status endpoint token expiry** | **Dashboard loops: status returns `authenticated: true` for expired tokens** | `routes/oauthUser.js`, `routes/oauth.js` — both check `expiresAt` before responding `authenticated: true` |
 | **REAUTH_KEY re-auth guard** | **Infinite PingOne redirect loop** | `UserDashboard.js` `fetchUserData` — key cleared ONLY on success path. Never clear it on `oauth=success` URL param (triggers immediate loop). |
+| **Agent form account IDs** | **'❌ Account chk-5 not found' on balance/deposit/withdraw/transfer** | `BankingAgent.js` — `liveAccounts` state hydrated from `GET /api/accounts/my` on login; passed to `ActionForm`; falls back to `generateFakeAccounts` only while fetch is pending |
 | **Middle layout start state** | **Middle column inline agent appears immediately on page load instead of starting collapsed** | `UserDashboard.js` (`middleAgentOpen` starts `false`; layout uses float-layout until FAB is clicked). `App.js` (`showFloatingAgent` suppressed for middle). |
 | **Admin role detection** | **Admin users downgraded to customer on login** | `routes/oauthUser.js` 4-signal check: username allowlist → population ID → custom claim → existing record. Config fields: `admin_username`, `admin_population_id`, `admin_role_claim` in `configStore.js` + `Config.js`. |
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
@@ -51,6 +52,13 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-28 — Agent form sends wrong account IDs — ❌ Account chk-5 not found (commit `99d4718`)
+- **Symptom:** `get_account_balance` / deposit / withdraw / transfer all returned `❌ Account chk-5 not found`.
+- **Root cause:** `ActionForm` was populated by `generateFakeAccounts(effectiveUser)` which derives IDs as `chk-{user.sub.slice(0,10)}`. The server creates accounts using `req.user.id` (the internal dataStore ID), which can differ from the PingOne `sub` claim. Result: the form sent `chk-5` but the server stored `chk-abc1234567`.
+- **Fix:** `BankingAgent` now holds `liveAccounts` state. On `isLoggedIn` becoming true, `GET /api/accounts/my` is fetched and the result mapped to `{id, name, type, balance, accountNumber}`. This is passed to `ActionForm` as a prop; the form prefers `liveAccounts` over the fake generator. After deposit/withdraw/transfer, accounts are re-fetched to keep balances current.
+- **Files:** `banking_api_ui/src/components/BankingAgent.js`
+- **Regression check:** Open agent → click Balance → dropdown must show real account numbers; submitting must not return 404/not-found.
 
 ### 2026-03-28 — Middle layout starts floating collapsed (commit `25bb69f`)
 - **What changed:** When `agentPlacement='middle'`, the inline 3-column split no longer shows on first load. Instead the dashboard starts in float-layout (token + banking, no agent column), with a single corner FAB rendered directly by UserDashboard.
