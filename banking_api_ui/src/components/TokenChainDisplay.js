@@ -62,6 +62,164 @@ function ClaimsPanel({ claims, alg }) {
   );
 }
 
+// ─── Educational boxes ─────────────────────────────────────────────────────
+
+/**
+ * Rich educational callout for the may_act claim (RFC 8693 §4.1).
+ * Shows valid / mismatch / absent states with fix steps. Renders on user-token events.
+ */
+function MayActEduBox({ event }) {
+  const { mayActPresent, mayActValid, mayActDetails } = event;
+  if (mayActPresent === undefined) return null;
+  const mayActValue = event.claims?.may_act;
+
+  if (mayActPresent && mayActValid) {
+    return (
+      <div className="tcd-edu-box tcd-edu-box--ok">
+        <div className="tcd-edu-box-hd">
+          <span className="tcd-edu-icon">✅</span>
+          <strong>may_act — delegation permission granted</strong>
+          <span className="tcd-edu-ref">RFC 8693 §4.1</span>
+        </div>
+        {mayActValue && <pre className="tcd-edu-code">{JSON.stringify({ may_act: mayActValue }, null, 2)}</pre>}
+        <div className="tcd-edu-body">
+          <p>This claim pre-authorises the BFF to exchange this token on the user's behalf. PingOne validates it during RFC 8693 Token Exchange.</p>
+          <ul>
+            <li><code>client_id</code> must equal the BFF OAuth app client ID — ✅ matches</li>
+            <li>BFF presents its own credentials as <code>actor_token</code></li>
+            <li>PingOne issues an MCP token with an <code>act</code> claim (the delegation fact)</li>
+          </ul>
+          {mayActDetails && <p className="tcd-edu-detail">{mayActDetails}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (mayActPresent && !mayActValid) {
+    return (
+      <div className="tcd-edu-box tcd-edu-box--error">
+        <div className="tcd-edu-box-hd">
+          <span className="tcd-edu-icon">❌</span>
+          <strong>may_act — client_id mismatch</strong>
+          <span className="tcd-edu-ref">RFC 8693 §4.1</span>
+        </div>
+        {mayActValue && <pre className="tcd-edu-code">{JSON.stringify({ may_act: mayActValue }, null, 2)}</pre>}
+        <div className="tcd-edu-body">
+          <p>The claim is present but <code>may_act.client_id</code> does not match this BFF's OAuth app. PingOne will reject the RFC 8693 exchange.</p>
+          {mayActDetails && <p className="tcd-edu-detail">❌ {mayActDetails}</p>}
+        </div>
+        <div className="tcd-edu-fix">
+          <strong>Fix:</strong> In PingOne → token policy, update the <code>may_act</code> expression to reference your BFF client ID, then sign out and sign in again.
+        </div>
+      </div>
+    );
+  }
+
+  // absent
+  return (
+    <div className="tcd-edu-box tcd-edu-box--warn">
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">⚠️</span>
+        <strong>may_act absent — token exchange will fail</strong>
+        <span className="tcd-edu-ref">RFC 8693 §4.1</span>
+      </div>
+      <div className="tcd-edu-body">
+        <p>The user token has no <code>may_act</code> claim. PingOne will reject the RFC 8693 Token Exchange — the agent cannot get a scoped MCP token.</p>
+        <p><strong>may_act</strong> is a prospective permission: it pre-authorises the BFF to exchange this token. It must be added by PingOne at login time.</p>
+        <div className="tcd-edu-steps">
+          <strong>Fix steps:</strong>
+          <ol>
+            <li>Go to <strong>/demo-data</strong> → click <strong>Enable may_act</strong></li>
+            <li>Sign out and sign in again (the token is only updated at login)</li>
+            <li>Re-run the tool — this row will show ✅ may_act valid</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Rich educational callout for the act claim (RFC 8693 §4.4).
+ * Shows delegation proven / absent states. Renders on MCP token events.
+ */
+function ActEduBox({ event }) {
+  if (event.actPresent === undefined) return null;
+  const actValue = event.claims?.act;
+
+  if (event.actPresent) {
+    return (
+      <div className="tcd-edu-box tcd-edu-box--ok">
+        <div className="tcd-edu-box-hd">
+          <span className="tcd-edu-icon">✅</span>
+          <strong>act — delegation chain proven (current actor)</strong>
+          <span className="tcd-edu-ref">RFC 8693 §4.4</span>
+        </div>
+        {actValue && <pre className="tcd-edu-code">{JSON.stringify({ act: actValue }, null, 2)}</pre>}
+        <div className="tcd-edu-body">
+          <p><code>act</code> is the <em>current delegation fact</em>. Compare with <code>may_act</code> on the user token:</p>
+          <ul>
+            <li><code>may_act</code> (user token) — <em>prospective:</em> "this client is allowed to act"</li>
+            <li><code>act</code> (MCP token) — <em>current fact:</em> "this client IS acting right now"</li>
+          </ul>
+          <p>The MCP server validates <code>act.client_id</code> to confirm the BFF — not any random client — made this call, establishing a verifiable audit trail.</p>
+          {event.actDetails && <p className="tcd-edu-detail">✅ {event.actDetails} — BFF is confirmed current actor</p>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="tcd-edu-box tcd-edu-box--warn">
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">⚠️</span>
+        <strong>act absent — delegation not proven in MCP token</strong>
+        <span className="tcd-edu-ref">RFC 8693 §4.4</span>
+      </div>
+      <div className="tcd-edu-body">
+        <p>The MCP token has no <code>act</code> claim. The exchange ran, but PingOne did not include delegation evidence. The MCP server and audit logs cannot confirm which client acted.</p>
+        <p><strong>Typical cause:</strong> exchange ran without an <code>actor_token</code> (subject-only mode). Set <code>AGENT_OAUTH_CLIENT_ID</code> + <code>AGENT_OAUTH_CLIENT_SECRET</code> for full on-behalf-of semantics.</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shows the validation checks PingOne performs during RFC 8693 exchange.
+ * Renders on exchange-in-progress and exchange-failed events.
+ */
+function ExchangeCheckList({ event }) {
+  if (event.id !== 'exchange-in-progress' && event.id !== 'exchange-failed') return null;
+  const failed = event.id === 'exchange-failed';
+  const hasActorToken = event.exchangeRequest?.has_actor_token;
+
+  return (
+    <div className={`tcd-edu-box ${failed ? 'tcd-edu-box--error' : 'tcd-edu-box--neutral'}`}>
+      <div className="tcd-edu-box-hd">
+        <span className="tcd-edu-icon">{failed ? '❌' : '🔍'}</span>
+        <strong>{failed ? 'Exchange failed — PingOne validation' : 'What PingOne validates during exchange'}</strong>
+        <span className="tcd-edu-ref">RFC 8693 §2.1</span>
+      </div>
+      <div className="tcd-edu-body">
+        {failed && event.error && (
+          <p className="tcd-edu-detail" style={{ marginBottom: 8 }}>Error: {event.error}</p>
+        )}
+        {failed && event.mayActPresent === false && (
+          <p className="tcd-edu-absent-warn">⚠️ may_act was absent from the user token — this is likely why exchange failed. Go to /demo-data → Enable may_act → re-login, then try again.</p>
+        )}
+        <ul className="tcd-edu-checklist">
+          <li><span className="tcd-edu-check-lbl">1.</span><span><code>may_act.client_id</code> on subject token must match the requesting BFF client</span></li>
+          <li><span className="tcd-edu-check-lbl">2.</span><span><code>audience</code> must match a registered PingOne Resource Server</span></li>
+          <li><span className="tcd-edu-check-lbl">3.</span><span>Requested <code>scope</code> must be a subset of the subject token's scopes (PingOne narrows)</span></li>
+          {hasActorToken && (
+            <li><span className="tcd-edu-check-lbl">4.</span><span><code>actor_token</code> (client credentials) included → <code>act</code> claim added to the MCP token</span></li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 // ─── Event detail content (shared between inline + inspector panel) ──────────
 
 /** Renders the full detail for a token chain event. */
@@ -87,17 +245,10 @@ function EventDetail({ event }) {
           <pre>{JSON.stringify(event.exchangeRequest, null, 2)}</pre>
         </div>
       )}
-      {/* Status pills */}
-      {event.mayActPresent === true && (
-        <div className="tcd-pill tcd-pill--may-act">
-          may_act ✅ present — {event.mayActDetails}
-        </div>
-      )}
-      {event.mayActPresent === false && (
-        <div className="tcd-pill tcd-pill--warn">
-          may_act absent — exchange may be rejected by PingOne
-        </div>
-      )}
+      {/* Educational sections — may_act, act, exchange validation */}
+      <MayActEduBox event={event} />
+      <ActEduBox event={event} />
+      <ExchangeCheckList event={event} />
       {/* In-app consent pill — shown on user-token events */}
       {event.id === 'user-token' && event.consentGiven === true && (
         <div className="tcd-pill tcd-pill--consent">
@@ -109,11 +260,6 @@ function EventDetail({ event }) {
           consent ⚠️ — user has not yet accepted the agent delegation agreement
         </div>
       )}
-      {event.actPresent === true && (
-        <div className="tcd-pill tcd-pill--act">
-          act ✅ {event.actDetails} — Backend-for-Frontend (BFF) is the current actor
-        </div>
-      )}
       {event.explanation && (
         <p className="tcd-explanation">{event.explanation}</p>
       )}
@@ -122,6 +268,99 @@ function EventDetail({ event }) {
 }
 
 // ─── Floating inspector panel (portal, draggable, resizable, collapsible) ────
+
+/**
+ * Opens the token event in a standalone browser window.
+ * The user can move that window to any physical screen.
+ */
+function openInNewWindow(event) {
+  const claimsHtml = event.claims
+    ? Object.entries(event.claims).map(([k, v]) => {
+        const highlight = { may_act: '#1e40af', act: '#0f766e', scope: '#6d28d9', aud: '#166534' }[k] || '';
+        const bg = highlight ? `background:${highlight}22;` : '';
+        return `<div class="claim" style="${bg}">
+          <span class="key">${k}</span>
+          <span class="sep">:</span>
+          <span class="val">${typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+        </div>`;
+      }).join('')
+    : '';
+
+  const jwtHtml = event.jwtFullDecode
+    ? `<div class="section-title">JWT Decode — full JSON (header + claims)</div>
+       <pre class="pre">${JSON.stringify(event.jwtFullDecode, null, 2)}</pre>`
+    : '';
+
+  const exchangeHtml = event.exchangeRequest
+    ? `<div class="section-title">Exchange request (RFC 8693)</div>
+       <pre class="pre">${JSON.stringify(event.exchangeRequest, null, 2)}</pre>`
+    : '';
+
+  const pillHtml = [
+    event.mayActPresent === true  ? `<div class="pill pill-may">may_act ✅ present — ${event.mayActDetails}</div>` : '',
+    event.mayActPresent === false ? `<div class="pill pill-warn">may_act absent — exchange may be rejected by PingOne</div>` : '',
+    event.actPresent  === true    ? `<div class="pill pill-act">act ✅ ${event.actDetails} — BFF is current actor</div>` : '',
+  ].join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Token Inspector — ${event.label}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0f172a;color:#e2e8f0;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:0}
+    .header{background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:14px 18px;display:flex;flex-direction:column;gap:2px}
+    .title{font-size:1rem;font-weight:800;color:#fff}
+    .subtitle{font-size:0.78rem;color:#93c5fd}
+    .body{padding:16px;display:flex;flex-direction:column;gap:14px;overflow:auto;height:calc(100vh - 70px)}
+    .section-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:4px}
+    .claims{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:2px}
+    .claim{display:flex;gap:6px;padding:3px 6px;border-radius:5px;font-size:.8rem}
+    .key{color:#93c5fd;font-weight:700;font-family:monospace;white-space:nowrap}
+    .sep{color:#475569}
+    .val{color:#e2e8f0;font-family:monospace;word-break:break-all}
+    .pre{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;font-size:.76rem;color:#86efac;white-space:pre-wrap;word-break:break-all;font-family:monospace;max-height:300px;overflow:auto}
+    .pill{font-size:.75rem;font-weight:600;padding:5px 12px;border-radius:8px;width:fit-content}
+    .pill-may{background:rgba(37,99,235,.2);color:#bfdbfe;border:1px solid rgba(37,99,235,.4)}
+    .pill-act{background:rgba(20,184,166,.15);color:#99f6e4;border:1px solid rgba(20,184,166,.3)}
+    .pill-warn{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+    .explanation{font-size:.82rem;color:#94a3b8;line-height:1.6}
+    .alg{font-size:.7rem;color:#475569;margin-bottom:4px}
+    ::-webkit-scrollbar{width:6px;height:6px}
+    ::-webkit-scrollbar-track{background:#1e293b}
+    ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">⊕ OAuth Token Inspector</div>
+    <div class="subtitle">${event.label}${event.status ? ` · ${event.status}` : ''}</div>
+  </div>
+  <div class="body">
+    ${event.claims ? `<div>
+      ${event.alg ? `<div class="alg">alg: ${event.alg}</div>` : ''}
+      <div class="section-title">Decoded JWT claims</div>
+      <div class="claims">${claimsHtml}</div>
+    </div>` : ''}
+    ${jwtHtml}
+    ${exchangeHtml}
+    ${pillHtml}
+    ${event.explanation ? `<div class="explanation">${event.explanation}</div>` : ''}
+  </div>
+</body>
+</html>`;
+
+  const win = window.open(
+    '',
+    `tci-${event.id || 'token'}-${Date.now()}`,
+    `width=520,height=780,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`
+  );
+  if (!win) return; // popup blocker
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+}
 
 /**
  * Floats above the page as a draggable, resizable, collapsible inspector.
@@ -202,6 +441,15 @@ function TokenInspectorPanel({ event, initialPos, onClose }) {
             aria-label={collapsed ? 'Expand inspector' : 'Collapse inspector'}
           >
             {collapsed ? '□' : '—'}
+          </button>
+          <button
+            type="button"
+            className="tci-btn"
+            onClick={() => openInNewWindow(event)}
+            title="Pop out to new window (move to any screen)"
+            aria-label="Pop out to new window"
+          >
+            ⤢
           </button>
           <button
             type="button"
