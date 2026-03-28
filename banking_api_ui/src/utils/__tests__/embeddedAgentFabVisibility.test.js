@@ -44,8 +44,19 @@ describe('isDashboardQuickNavRoute', () => {
     expect(isDashboardQuickNavRoute('/admin/banking', customer)).toBe(false);
   });
 
-  it('does not match arbitrary tool routes', () => {
-    expect(isDashboardQuickNavRoute('/mcp-inspector', admin)).toBe(false);
+  it('includes secondary nav pages (logs, mcp-inspector, demo-data, config, activity)', () => {
+    // These were intentionally added so the nav rail stays accessible on key tool pages
+    expect(isDashboardQuickNavRoute('/mcp-inspector', admin)).toBe(true);
+    expect(isDashboardQuickNavRoute('/logs', admin)).toBe(true);
+    expect(isDashboardQuickNavRoute('/demo-data', customer)).toBe(true);
+    expect(isDashboardQuickNavRoute('/config', admin)).toBe(true);
+    expect(isDashboardQuickNavRoute('/activity', admin)).toBe(true);
+  });
+
+  it('does not match truly arbitrary routes', () => {
+    expect(isDashboardQuickNavRoute('/users', admin)).toBe(false);
+    expect(isDashboardQuickNavRoute('/accounts', admin)).toBe(false);
+    expect(isDashboardQuickNavRoute('/some-random-page', customer)).toBe(false);
   });
 });
 
