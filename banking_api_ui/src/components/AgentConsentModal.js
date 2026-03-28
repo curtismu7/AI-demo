@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useDraggablePanel } from '../hooks/useDraggablePanel';
+import '../styles/draggablePanel.css';
 import './AgentConsentModal.css';
 
 /**
@@ -7,6 +9,7 @@ import './AgentConsentModal.css';
  *
  * In-app consent gate for the AI banking agent.  Shown when the user is
  * authenticated but has not yet accepted the agent delegation agreement.
+ * Draggable from the header, resizable from the bottom-right grip.
  *
  * Props:
  *   onAccept  — async callback; called after the server confirms consent.
@@ -15,6 +18,14 @@ import './AgentConsentModal.css';
 export default function AgentConsentModal({ onAccept, onDismiss }) {
   const [accepting, setAccepting] = useState(false);
   const [error, setError]         = useState(null);
+
+  const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
+    () => ({
+      x: Math.max(20, (window.innerWidth  - 460) / 2),
+      y: Math.max(20, (window.innerHeight - 480) / 2),
+    }),
+    { w: 460, h: 480 }
+  );
 
   const handleAccept = useCallback(async () => {
     setAccepting(true);
@@ -38,34 +49,63 @@ export default function AgentConsentModal({ onAccept, onDismiss }) {
   }, [onAccept]);
 
   return createPortal(
-    <div className="acm-overlay" role="dialog" aria-modal="true" aria-labelledby="acm-title">
-      <div className="acm-card">
-        <div className="acm-icon" aria-hidden="true">🤖</div>
-        <h2 id="acm-title" className="acm-title">Allow AI Agent Access</h2>
-        <p className="acm-body">
-          The <strong>BX Finance AI Assistant</strong> is requesting permission to act
-          on your behalf — for example, checking balances, viewing transactions, and
-          initiating transfers.
-        </p>
-        <ul className="acm-list">
-          <li>✅ The agent can only use your account within this session</li>
-          <li>✅ All actions are logged and visible in the Token Chain display</li>
-          <li>✅ You can revoke access at any time by logging out</li>
-          <li>⛔ The agent cannot change your credentials or contact details</li>
-        </ul>
-        <p className="acm-legal">
-          By clicking <em>Allow</em> you consent to allow the BX Finance AI agent to act
-          on your behalf for the duration of this session, under the{' '}
-          <a
-            href="https://www.rfc-editor.org/rfc/rfc8693"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            RFC 8693 Token Exchange
-          </a>{' '}
-          delegation model.
-        </p>
-        {error && <p className="acm-error" role="alert">{error}</p>}
+    <>
+      {/* Dim backdrop — does NOT close on click (consent is an intentional gate) */}
+      <div className="drp-backdrop" />
+
+      {/* Draggable + resizable card */}
+      <div
+        className="acm-card"
+        style={{
+          position: 'fixed',
+          left:     pos.x,
+          top:      pos.y,
+          width:    size.w,
+          height:   size.h,
+          zIndex:   9991,
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="acm-title"
+      >
+        {/* Drag handle — header area */}
+        <div
+          className="acm-drag-handle"
+          onMouseDown={handleDragStart}
+          title="Drag to move"
+        >
+          <span className="acm-icon" aria-hidden="true">🤖</span>
+          <h2 id="acm-title" className="acm-title">Allow AI Agent Access</h2>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="acm-body-wrap">
+          <p className="acm-body">
+            The <strong>BX Finance AI Assistant</strong> is requesting permission to act
+            on your behalf — for example, checking balances, viewing transactions, and
+            initiating transfers.
+          </p>
+          <ul className="acm-list">
+            <li>✅ The agent can only use your account within this session</li>
+            <li>✅ All actions are logged and visible in the Token Chain display</li>
+            <li>✅ You can revoke access at any time by logging out</li>
+            <li>⛔ The agent cannot change your credentials or contact details</li>
+          </ul>
+          <p className="acm-legal">
+            By clicking <em>Allow</em> you consent to allow the BX Finance AI agent to act
+            on your behalf for the duration of this session, under the{' '}
+            <a
+              href="https://www.rfc-editor.org/rfc/rfc8693"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              RFC 8693 Token Exchange
+            </a>{' '}
+            delegation model.
+          </p>
+          {error && <p className="acm-error" role="alert">{error}</p>}
+        </div>
+
         <div className="acm-actions">
           <button
             type="button"
@@ -84,8 +124,16 @@ export default function AgentConsentModal({ onAccept, onDismiss }) {
             {accepting ? 'Saving…' : 'Allow'}
           </button>
         </div>
+
+        {/* Resize grip */}
+        <div
+          className="drp-resize-grip"
+          onMouseDown={handleResizeStart}
+          aria-hidden
+          title="Drag to resize"
+        />
       </div>
-    </div>,
+    </>,
     document.body
   );
 }

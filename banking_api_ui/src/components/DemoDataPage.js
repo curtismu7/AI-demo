@@ -777,7 +777,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   </li>
                   <li>
                     Find the <code>may_act</code> row and change the expression from:
-                    <pre className="demo-data-code-block">{`${"client_id": "<app-client-id>"}`}</pre>
+                    <pre className="demo-data-code-block">{'{"client_id": "<app-client-id>"}'}</pre>
                     to:
                     <pre className="demo-data-code-block">{`\${user.mayAct}`}</pre>
                   </li>

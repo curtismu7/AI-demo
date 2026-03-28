@@ -1,8 +1,11 @@
 // banking_api_ui/src/components/DelegatedAccessPage.js
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { notifySuccess, notifyInfo } from '../utils/appToast';
+import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import '../styles/appShellPages.css';
+import '../styles/draggablePanel.css';
 import './DelegatedAccessPage.css';
 
 // ─── Demo data ────────────────────────────────────────────────────────────────
@@ -241,6 +244,12 @@ function TokenExchangeSimulator({ delegate, onClose }) {
   const [callMeta, setCallMeta]       = useState(null); // { status, duration }
   const [simError, setSimError]       = useState(null);
 
+  const { pos: simPos, size: simSize, handleDragStart: simDragStart, handleResizeStart: simResizeStart } =
+    useDraggablePanel(
+      () => ({ x: Math.max(20, (window.innerWidth  - 1100) / 2), y: 30 }),
+      () => ({ w: Math.min(1100, window.innerWidth - 40), h: Math.min(780, window.innerHeight - 60) })
+    );
+
   const runSimulation = useCallback(async () => {
     setLoading(true);
     setSimError(null);
@@ -271,17 +280,31 @@ function TokenExchangeSimulator({ delegate, onClose }) {
 
   useEffect(() => { runSimulation(); }, [runSimulation]);
 
-  return (
-    <div className="da-sim-overlay" onClick={onClose}>
+  return createPortal(
+    <>
+      {/* Dim backdrop — click to close */}
+      <div className="drp-backdrop" onClick={onClose} />
+
       <div
         className="da-sim"
-        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'fixed',
+          left:     simPos.x,
+          top:      simPos.y,
+          width:    simSize.w,
+          height:   simSize.h,
+          zIndex:   9991,
+        }}
         role="dialog"
         aria-label="Token Exchange Simulator"
         aria-modal="true"
       >
-        {/* ── Header ── */}
-        <div className="da-sim__header">
+        {/* ── Header (drag handle) ── */}
+        <div
+          className="da-sim__header"
+          onMouseDown={simDragStart}
+          style={{ cursor: 'grab' }}
+        >
           <div className="da-sim__title">
             <span className="da-sim__icon">⇄</span>
             RFC 8693 Token Exchange — Act as {delegate.name}
@@ -296,6 +319,7 @@ function TokenExchangeSimulator({ delegate, onClose }) {
               type="button"
               className="da-sim__retry"
               onClick={runSimulation}
+              onMouseDown={e => e.stopPropagation()}
               disabled={loading}
               title="Re-run exchange"
             >
@@ -305,6 +329,7 @@ function TokenExchangeSimulator({ delegate, onClose }) {
               type="button"
               className="da-sim__close"
               onClick={onClose}
+              onMouseDown={e => e.stopPropagation()}
               aria-label="Close"
             >
               ×
@@ -364,8 +389,12 @@ function TokenExchangeSimulator({ delegate, onClose }) {
             }
           </div>
         </div>
+
+        {/* Resize grip */}
+        <div className="drp-resize-grip" onMouseDown={simResizeStart} aria-hidden title="Drag to resize" />
       </div>
-    </div>
+    </>,
+    document.body
   );
 }
 
@@ -377,6 +406,14 @@ function AddDelegateModal({ onClose, onSave }) {
   const [rel, setRel]           = useState(RELATIONSHIPS[0]);
   const [selected, setSelected] = useState({});
   const [error, setError]       = useState('');
+
+  const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
+    () => ({
+      x: Math.max(20, (window.innerWidth  - 500) / 2),
+      y: Math.max(20, (window.innerHeight - 560) / 2),
+    }),
+    { w: 500, h: 560 }
+  );
 
   const toggleAccount = (id) =>
     setSelected(prev => ({ ...prev, [id]: !prev[id] }));
@@ -391,12 +428,39 @@ function AddDelegateModal({ onClose, onSave }) {
     onSave({ name: name.trim(), email: email.trim(), relationship: rel, accountIds: chosenIds });
   };
 
-  return (
-    <div className="da-modal-overlay" onClick={onClose}>
-      <div className="da-modal" onClick={e => e.stopPropagation()} role="dialog" aria-label="Add delegation">
-        <div className="da-modal__header">
+  return createPortal(
+    <>
+      {/* Dim backdrop — click to close */}
+      <div className="drp-backdrop" onClick={onClose} />
+
+      <div
+        className="da-modal"
+        style={{
+          position: 'fixed',
+          left:     pos.x,
+          top:      pos.y,
+          width:    size.w,
+          height:   size.h,
+          zIndex:   9991,
+          maxWidth: 'none',
+          maxHeight: 'none',
+        }}
+        role="dialog"
+        aria-label="Add delegation"
+      >
+        <div
+          className="da-modal__header"
+          onMouseDown={handleDragStart}
+          style={{ cursor: 'grab' }}
+        >
           <h2 className="da-modal__title">Grant account access</h2>
-          <button type="button" className="da-modal__close" onClick={onClose} aria-label="Close">×</button>
+          <button
+            type="button"
+            className="da-modal__close"
+            onClick={onClose}
+            onMouseDown={e => e.stopPropagation()}
+            aria-label="Close"
+          >×</button>
         </div>
 
         <div className="da-modal__body">
@@ -460,8 +524,12 @@ function AddDelegateModal({ onClose, onSave }) {
             Send invitation
           </button>
         </div>
+
+        {/* Resize grip */}
+        <div className="drp-resize-grip" onMouseDown={handleResizeStart} aria-hidden title="Drag to resize" />
       </div>
-    </div>
+    </>,
+    document.body
   );
 }
 
