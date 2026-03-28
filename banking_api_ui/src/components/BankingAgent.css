@@ -2141,10 +2141,9 @@
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-body {
   flex-direction: column;
   flex-wrap: nowrap;
-  /* Fill full parent height so all 3 columns match */
+  /* flex: 1 1 0% fills the remaining space after header + chips; height: 100% removed — it resolved to the full panel height and caused the prompt to overflow below the viewport */
   flex: 1 1 0%;
   min-height: 0;
-  height: 100%;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-right-col {
