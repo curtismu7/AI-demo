@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/education/AgentGatewayPanel.js
 import React from 'react';
-import EducationModal from '../shared/EducationModal';
+import EducationDrawer from '../shared/EducationDrawer';
 import { AgentGatewayContent } from './educationContent';
 
 export default function AgentGatewayPanel({ isOpen, onClose, initialTabId }) {
@@ -13,12 +13,13 @@ export default function AgentGatewayPanel({ isOpen, onClose, initialTabId }) {
   ];
 
   return (
-    <EducationModal
+    <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
       title="Agent Gateway pattern (RFC 8707 + RFC 9728)"
       tabs={tabs}
       initialTabId={initialTabId}
+      width="min(640px, 100vw)"
     />
   );
 }
