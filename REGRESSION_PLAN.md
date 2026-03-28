@@ -55,6 +55,18 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — Token exchange: rich PingOne error detail + cross-Lambda log viewer (commit `b4272ee`)
+- **Symptom:** When RFC 8693 token exchange failed the UI showed only a generic message (e.g. "Token exchange failed: RFC 8693 token exchange is mandatory…") with no HTTP status code, no PingOne `error` code, and no `error_description`. The log viewer was completely empty because the Lambda that ran the exchange is different from the Lambda serving `GET /api/logs/console` (Vercel serverless — isolated in-process memory).
+- **Root cause (1) — stripped error:** `oauthService.performTokenExchange` catch block threw `new Error(error_description || message)`, discarding HTTP status, PingOne `error` field, `error_detail`, and request context.
+- **Root cause (2) — Lambda isolation:** `recentLogs[]` in `routes/logs.js` is module-level in-process memory. Lambda A (exchange request) captures the error. Lambda B (log viewer request) has a fresh empty array. `/api/logs/console` always returned 0 entries for cross-Lambda errors.
+- **Fix (1):** `performTokenExchange`, `performTokenExchangeWithActor`, and `getAgentClientCredentialsToken` now attach `httpStatus`, `pingoneError`, `pingoneErrorDescription`, `pingoneErrorDetail`, `requestContext` as named properties on the thrown Error. `console.error` logs the full structured object.
+- **Fix (2):** New `services/exchangeAuditStore.js` — Redis-backed audit log (Upstash KV, same env vars as `configStore`). `writeExchangeEvent()` does `LPUSH`+`LTRIM` on `banking:exchange-audit` (max 200 entries). `readExchangeEvents()` does `LRANGE`. Gracefully no-ops when KV env vars are absent.
+- **Fix (3):** `agentMcpTokenService.js` exchange-failed tokenEvent description now includes HTTP status + PingOne error code + detail. Both success and failure call `writeExchangeEvent()` fire-and-forget so events survive Lambda recycling.
+- **Fix (4):** `GET /api/logs/console` is now async and merges Redis audit events into the response, deduplicating messages already present from the same Lambda.
+- **Fix (5):** New `GET /api/logs/exchange` endpoint returns Redis events in standard `{logs, total}` shape. LogViewer dropdown and "all sources" fetch both include the new `exchange` source.
+- **Files:** `services/exchangeAuditStore.js` (new), `services/oauthService.js`, `services/agentMcpTokenService.js`, `routes/logs.js`, `utils/logger.js`, `banking_api_ui/src/components/LogViewer.js`
+- **Regression check:** Trigger a token exchange failure (e.g. set `mcp_resource_uri` to a value PingOne rejects). Open Log Viewer → "All Sources" or "Exchange Audit" → should see an error entry with HTTP status code and PingOne `error` field. Token Chain panel → exchange-failed event should show "HTTP 4xx — error: <pingone_code>" in description. On success, Exchange Audit should show the method (with-actor / subject-only) and audience.
+
 ### 2026-03-28 — HITL: from-account 404, auto-refresh on by default, checkbox gap (commit `11122a8`)
 - **Symptom (1):** Approving a high-value consent challenge returned `❌ From account not found` (or `To account not found`) even though the transaction was valid when the challenge was created.
 - **Root cause (1):** On Vercel, a new Lambda can be allocated between the time `POST /consent-challenge` is called (accounts in memory) and when the user clicks "Agree & submit" (new cold Lambda, empty `dataStore`). `POST /api/transactions` looked up accounts directly without re-hydrating from the Redis snapshot first.

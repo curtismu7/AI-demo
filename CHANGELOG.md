@@ -17,7 +17,15 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
-- Shared `useDraggablePanel` hook (`src/hooks/useDraggablePanel.js`) — drag-from-header + SE resize grip, no viewport clamping, reusable across all panels
+- **Exchange Audit Log** (`services/exchangeAuditStore.js`) — Redis-backed (Upstash KV) audit log for RFC 8693 token-exchange events; `writeExchangeEvent()` LPUSH+LTRIM to `banking:exchange-audit` (max 200 entries), `readExchangeEvents()` LRANGE; graceful no-op when KV env vars are absent
+- **`GET /api/logs/exchange`** — dedicated endpoint returning Redis exchange audit events in standard `{logs,total}` shape; LogViewer "Exchange Audit" dropdown option + included in "all sources" fetch
+- `TOKEN_EXCHANGE` category added to `LOG_CATEGORIES` in `utils/logger.js`
+
+### Fixed
+- **Token exchange: full PingOne error now visible** — `oauthService.performTokenExchange`, `performTokenExchangeWithActor`, and `getAgentClientCredentialsToken` now attach `httpStatus`, `pingoneError`, `pingoneErrorDescription`, `pingoneErrorDetail`, `requestContext` as named properties on the thrown Error; `console.error` logs the full structured object; exchange-failed tokenEvent description shows HTTP status + PingOne error code + detail (commit `b4272ee`)
+- **Log viewer empty after cross-Lambda exchange failure** — Vercel serverless: the Lambda that ran the exchange and the Lambda serving `GET /api/logs/console` are separate processes with isolated `recentLogs[]` memory; `GET /api/logs/console` is now async and merges Redis exchange audit events, deduplicating messages already present from the same Lambda (commit `b4272ee`)
+
+
 - Shared `draggablePanel.css` with `.drp-backdrop` (dim overlay) and `.drp-resize-grip` (SE corner)
 - `AgentConsentModal` — now draggable and resizable (portal, grab-handle header, resize grip)
 - `AddDelegateModal` — now draggable and resizable (portal, grab-handle header, resize grip)
