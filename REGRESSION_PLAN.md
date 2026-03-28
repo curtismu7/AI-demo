@@ -13,6 +13,11 @@
 | OAuth user login | Customers can't log in | `routes/oauthUser.js`, `config/oauthUser.js` |
 | CRA proxy setup | `/api/*` calls go to wrong port → 500 | `banking_api_ui/src/setupProxy.js`, `banking_api_ui/.env` |
 | Session persistence | User logged out on every refresh | `server.js` (session middleware), `routes/oauth.js` `req.session.save()` |
+| **Upstash session store** | **Every Vercel Lambda gets empty in-memory session → 401 on all API calls** | `services/upstashSessionStore.js` — must call `cb(err)` on failure; `KV_REST_API_URL` + `KV_REST_API_TOKEN` set in Vercel env. Use `update-upstash.sh` to rotate. |
+| **Token audience check** | **All authenticated API calls return 401 — `aud` mismatch** | `middleware/auth.js` — never hardcode audience defaults; `https://api.pingone.com` is always accepted. Set `ENDUSER_AUDIENCE` / `AI_AGENT_AUDIENCE` only for custom resource servers. |
+| **Status endpoint token expiry** | **Dashboard loops: status returns `authenticated: true` for expired tokens** | `routes/oauthUser.js`, `routes/oauth.js` — both check `expiresAt` before responding `authenticated: true` |
+| **REAUTH_KEY re-auth guard** | **Infinite PingOne redirect loop** | `UserDashboard.js` `fetchUserData` — key cleared ONLY on success path. Never clear it on `oauth=success` URL param (triggers immediate loop). |
+| **Admin role detection** | **Admin users downgraded to customer on login** | `routes/oauthUser.js` 4-signal check: username allowlist → population ID → custom claim → existing record. Config fields: `admin_username`, `admin_population_id`, `admin_role_claim` in `configStore.js` + `Config.js`. |
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
 | BankingAgent FAB | Agent disappears | `components/BankingAgent.js`, `App.js` |
 | Float panel resize | Panel capped at 560×720, won't grow larger | `BankingAgent.css` (`max-width`/`max-height` removed), `BankingAgent.js` (`handleResize` caps) |
@@ -220,3 +225,117 @@ bash /Users/cmuir/P1Import-apps/Banking/run-bank.sh
 tail -20 /tmp/bank-api-server.log   # no ERROR lines for /api/auth/oauth/status
 tail -20 /tmp/bank-ui.log           # no "Could not proxy" lines
 ```
+
+---
+
+## 8. UI Regression Prevention — 4 Layers of Protection
+
+> **Goal:** No unintended UI changes land unless explicitly requested.
+
+---
+
+### Layer 1 — Component Snapshot Tests
+
+Add `toMatchSnapshot()` to every significant component. The first run creates the baseline; future runs fail if the rendered structure drifts.
+
+**Priority targets (add in this order):**
+
+| Component | File | Why |
+|---|---|---|
+| `Header` | `components/Header.js` | Top nav — breaks everything if changed |
+| `SideNav` | `components/SideNav.js` | Layout frame |
+| `Footer` | `components/Footer.js` | Layout frame |
+| `UserDashboard` | `components/UserDashboard.js` | Core page, 1045 LOC |
+| `Transactions` | `components/Transactions.js` | Core data view |
+| `Accounts` | `components/Accounts.js` | Core data view |
+| `BankingAgent` | `components/BankingAgent.js` | FAB + chat panel |
+
+**How to add a snapshot test:**
+
+```js
+import { render } from '@testing-library/react';
+import Header from '../Header';
+
+test('Header renders without change', () => {
+  const { container } = render(<Header />);
+  expect(container).toMatchSnapshot();
+});
+```
+
+Run `npm run test:unit -- --updateSnapshot` **only** when a change is intentional and explicitly requested.
+
+---
+
+### Layer 2 — Playwright Visual Regression (CSS drift detection)
+
+Add `expect(page).toHaveScreenshot()` calls to existing E2E tests. Playwright stores `.png` baselines in git; CI fails on any pixel diff.
+
+**Key pages to screenshot:**
+
+| Page | Spec file | State to capture |
+|---|---|---|
+| Landing page | `landing-marketing.spec.js` | Unauthenticated, full viewport |
+| Customer dashboard | `customer-dashboard.spec.js` | Logged in, accounts loaded |
+| Admin dashboard | `admin-dashboard.spec.js` | Logged in, default view |
+| Agent panel open | `banking-agent.spec.js` | FAB clicked, panel expanded |
+
+**How to add a screenshot assertion:**
+
+```js
+await expect(page).toHaveScreenshot('landing-page.png', { maxDiffPixels: 50 });
+```
+
+Update baselines intentionally with:
+
+```bash
+npx playwright test --update-snapshots
+```
+
+---
+
+### Layer 3 — Strict Change Budget (process rule)
+
+Before making any UI change:
+
+1. Run `npm run test:e2e:ui:smoke` — must pass clean
+2. Make **only** the specific requested change — nothing adjacent
+3. Re-run smoke tests — must still pass
+4. Provide before/after screenshot as proof
+
+**Never touch layout, spacing, or shared CSS when fixing a component-specific bug.**
+
+---
+
+### Layer 4 — Pre-commit Smoke Hook
+
+Add a git pre-commit hook that runs UI smoke tests whenever a UI file changes. This catches regressions before they enter git history.
+
+Hook logic (`.git/hooks/pre-commit` or via `settings.json` hooks):
+
+```bash
+# If any banking_api_ui/src file changed, run smoke tests
+if git diff --cached --name-only | grep -q 'banking_api_ui/src'; then
+  echo "UI files changed — running smoke tests..."
+  cd banking_api_ui && npm run test:unit -- --watchAll=false --passWithNoTests
+fi
+```
+
+---
+
+### How to Request UI Changes Safely
+
+Use this pattern: **"Change X in [ComponentName] — do not touch anything else."**
+
+| Instead of... | Say... |
+|---|---|
+| "Make the dashboard look better" | "Change the card border-radius in `UserDashboard` to 8px — nothing else" |
+| "Fix the nav" | "The active state color in `SideNav` is wrong — change only that style" |
+| "Update the button" | "Change the FAB color in `BankingAgent` to `#1a73e8` — no layout changes" |
+| "Redesign the header" | "Move the logout button in `Header` to the right — preserve all existing styles" |
+
+**Rules:**
+1. Name the component (`UserDashboard`, `Header`, `SideNav`, etc.)
+2. Name the specific element (button, card, border, color, padding)
+3. Say "do not touch" for anything adjacent you want preserved
+4. One change per request — multiple changes in one ask is how regressions slip through
+5. Specify the exact value when known (`16px`, `#hex`, `bold`) — not "bigger" or "darker"

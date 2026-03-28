@@ -282,18 +282,46 @@ router.get('/callback', async (req, res) => {
     console.log('Looking for existing user:', oauthUser.username);
     console.log('Found user:', user);
     
-    if (!user) {
-      // Create new end user (customer role)
-      console.log('Creating new end user as customer:', oauthUser.username);
-      oauthUser.role = 'customer'; // Ensure customer role
+    // Resolve admin role using four signals (any one is sufficient):
+    //  1. admin_username allowlist  — permanent override (bankadmin, service accounts)
+    //  2. PingOne population ID     — admin users live in a dedicated PingOne population
+    //  3. PingOne custom claim      — attribute named by admin_role_claim matches admin_role value
+    //  4. Existing dataStore record — preserve admin granted in a previous session
+    const configuredAdminRole       = configStore.getEffective('admin_role') || 'admin';
+    const configuredAdminUsernames  = (configStore.getEffective('admin_username') || '')
+      .split(',').map(u => u.trim()).filter(Boolean);
+    const configuredAdminPopulation = (configStore.getEffective('admin_population_id') || '').trim();
+    const configuredRoleClaim       = (configStore.getEffective('admin_role_claim') || '').trim();
+
+    // Signal 1: username allowlist — always wins, no PingOne attribute needed
+    const usernameIsAdmin = configuredAdminUsernames.includes(oauthUser.username);
+
+    // Signal 2: population — PingOne includes population.id in userinfo when mapped;
+    // also check top-level populationId as some app configs surface it there.
+    let populationIsAdmin = false;
+    if (configuredAdminPopulation && !usernameIsAdmin) {
+      const popId = mergedUserInfo?.population?.id || mergedUserInfo?.populationId || null;
+      populationIsAdmin = popId === configuredAdminPopulation;
+    }
+
+    // Signal 3: custom claim — supports string or array (e.g. group membership list)
+    let claimIsAdmin = false;
+    if (configuredRoleClaim && !usernameIsAdmin && !populationIsAdmin) {
+      const claimValue = mergedUserInfo[configuredRoleClaim];
+      claimIsAdmin = Array.isArray(claimValue)
+        ? claimValue.includes(configuredAdminRole)
+        : claimValue === configuredAdminRole;
+    }
+
+    // Signal 4: existing record — don't downgrade someone already marked admin
+    const existingRoleAdmin = user?.role === 'admin';
+
+    if (usernameIsAdmin || populationIsAdmin || claimIsAdmin || existingRoleAdmin) {
+      oauthUser.role = 'admin';
+      console.log(`[oauth/user/callback] Granting admin to ${oauthUser.username} (allowlist=${usernameIsAdmin}, population=${populationIsAdmin}, claim[${configuredRoleClaim}]=${claimIsAdmin}, existing=${existingRoleAdmin})`);
     } else {
-      console.log('Found existing user:', user.username, 'with role:', user.role);
-      // Preserve existing role (don't downgrade admin users)
-      if (user.role === 'admin') {
-        oauthUser.role = 'admin';
-      } else {
-        oauthUser.role = 'customer';
-      }
+      oauthUser.role = 'customer';
+      console.log(`[oauth/user/callback] Granting customer role to ${oauthUser.username}`);
     }
     
     if (!user) {

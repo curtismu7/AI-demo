@@ -665,3 +665,88 @@ Replaced the PingOne ACR gate entirely with an in-app consent flag stored in the
 - New `AgentConsentModal.js` / `AgentConsentModal.css` renders a consent agreement modal without any PingOne dependency.
 
 **Files**: `banking_api_server/routes/oauthUser.js`, `banking_api_server/services/agentMcpTokenService.js`, `banking_api_ui/src/components/AgentConsentModal.js`, `banking_api_ui/src/components/BankingAgent.js`
+
+---
+
+## 2026-03-28 — Dead Upstash database; sessions not shared across Vercel Lambdas (commits `4b66502`)
+
+**Symptom**: Every login produced a working PingOne token but `GET /api/accounts/my` returned 401. Dashboard briefly showed "Session expired" on every cold page load, even immediately after signing in.
+
+**Root cause**:  
+Upstash database `steady-yeti-84614.upstash.io` no longer resolved in DNS (deleted/expired free-tier DB). `upstashSessionStore.set()` suppressed the Redis error by calling `cb(null)` unconditionally, so the OAuth callback thought the session was saved. Each Vercel Lambda had its own empty in-memory session; the shared Redis key was never written, so a different Lambda handling `/api/accounts/my` saw no session at all and returned 401.
+
+**Fix**:  
+- `upstashSessionStore.set()` now calls `cb(err)` on failure, surfacing Redis write errors to `req.session.save()` in the OAuth callback. Login now redirects to `/login?error=session_persist_failed` instead of silently continuing with a broken session.
+- Ran `update-upstash.sh` to provision new database `select-dinosaur-85186.upstash.io` and update `KV_REST_API_URL` + `KV_REST_API_TOKEN` in Vercel production.
+
+**Files**: `banking_api_server/services/upstashSessionStore.js`, `update-upstash.sh`
+
+**Regression check**: After sign-in call `GET /api/auth/debug?deep=1` → verify `sessionStoreHealthy: true` and `redisKeyPresent: true`.
+
+---
+
+## 2026-03-28 — Token audience mismatch: all API calls return 401 after login (commit `82b4213`)
+
+**Symptom**: Console: `Token audience [https://api.pingone.com] does not match any known audience for this service.` Every `/api/accounts/my` and `/api/transactions/my` returned 401 despite a valid PingOne access token.
+
+**Root cause**:  
+`auth.js` had hardcoded fallback defaults `ENDUSER_AUDIENCE = 'banking_jk_enduser'` and `AI_AGENT_AUDIENCE = 'banking_mcp_01_JK'` for environments where the env vars were not set. Standard PingOne environments without a custom resource server issue tokens with `aud: 'https://api.pingone.com'`. Neither hardcoded string matched, so the audience check failed on every request.
+
+**Fix**:  
+- Removed hardcoded defaults; both vars are now `null` when the env var is absent (skips strict audience check for that role).
+- Added `https://api.pingone.com` as an always-accepted fallback audience regardless of `ENDUSER_AUDIENCE` / `AI_AGENT_AUDIENCE`.
+
+**Files**: `banking_api_server/middleware/auth.js`
+
+**Regression check**: Sign in → accounts and transactions load. For custom resource server installs, set `ENDUSER_AUDIENCE` in Vercel env to the resource server audience value.
+
+---
+
+## 2026-03-28 — Infinite 401 redirect loop to PingOne (commits `28f2438`, `6c726c5`)
+
+**Symptom**: After login the browser looped between `/dashboard/accounts` and the PingOne login page indefinitely. Console showed `Data fetch 401 — server reason: ... | REAUTH_KEY: 1`, then redirect, then 401 again.
+
+**Root causes**:  
+1. `App.js` was calling `sessionStorage.removeItem('bx-dashboard-reauth')` when `?oauth=success` appeared in the URL. This cleared the one-shot guard the moment after it was set, so the next 401 triggered another redirect unconditionally.
+2. `/api/auth/oauth/user/status` was returning `authenticated: true` for sessions with expired tokens (only checked that the token existed, not `expiresAt`). `fetchUserData` called accounts/my → 401 → set key → redirect → status still authenticated → loop.
+
+**Fix**:  
+- Removed the `sessionStorage.removeItem` call from `App.js`. The guard is only cleared inside `fetchUserData`'s success code path.
+- Both status endpoints (`routes/oauthUser.js`, `routes/oauth.js`) now check `Date.now() < expiresAt` before returning `authenticated: true`.
+
+**Files**: `banking_api_ui/src/App.js`, `banking_api_server/routes/oauthUser.js`, `banking_api_server/routes/oauth.js`
+
+**Regression check**: Sign in → land on dashboard → accounts load without redirect loop. Let token expire → status returns `authenticated: false` → demo mode shown, no infinite redirect.
+
+---
+
+## 2026-03-28 — `session-preview` 401 noise on every dashboard mount (commit `0860bcb`)
+
+**Symptom**: `GET /api/tokens/session-preview 401` appeared in the browser console on every dashboard page load before the user was authenticated.
+
+**Root cause**:  
+`TokenChainDisplay` called `fetchSessionPreview()` unconditionally on component mount. Because the component mounts before auth state is confirmed, the request always fired unauthenticated.
+
+**Fix**:  
+Added `didAuthRef` boolean ref. Component skips `fetchSessionPreview` on initial mount. Actual first fetch is triggered by the `userAuthenticated` custom event (dispatched after successful login), which also sets `didAuthRef.current = true`.
+
+**Files**: `banking_api_ui/src/components/TokenChainDisplay.js`
+
+---
+
+## 2026-03-28 — Admin role detection: 4-signal resolution
+
+**Problem**: The previous logic only preserved admin role if the user **already existed** in the dataStore with role `admin`. A first-time admin login always got `customer`. The only workaround was to manually edit the dataStore JSON.
+
+**Fix**:  
+Replaced the single-signal check with four independent signals. Any one being true is sufficient to grant `admin`:
+1. **Username allowlist** (`admin_username` config) — comma-separated `preferred_username` values that always receive admin.
+2. **Population ID** (`admin_population_id` config) — PingOne population ID; members receive admin without any schema changes.
+3. **Custom claim** (`admin_role_claim` + `admin_role` config) — any userinfo/ID-token claim compared against the configured admin role value; supports string and array (group membership).
+4. **Existing record** — preserves admin granted in a previous session (prevents downgrade).
+
+New config fields added: `admin_username`, `admin_population_id`, `admin_role_claim` in `configStore.js` with corresponding UI fields in `Config.js`.
+
+**Files**: `banking_api_server/routes/oauthUser.js`, `banking_api_server/services/configStore.js`, `banking_api_ui/src/components/Config.js`
+
+**Regression check**: Log in as a user not in the allowlist → gets `customer`. Add their username to `admin_username` → next login grants `admin`. Existing admin users are not downgraded.

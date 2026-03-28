@@ -61,6 +61,12 @@ const FIELD_DEFS = {
   // Auth server
   admin_role:             { public: true,  default: 'admin' },
   user_role:              { public: true,  default: 'customer' },
+  // Comma-separated list of PingOne preferred_usernames that always receive admin role
+  admin_username:         { public: true,  default: '' },
+  // PingOne population ID whose members are treated as admin (no schema changes needed)
+  admin_population_id:    { public: true,  default: '' },
+  // PingOne userinfo/ID-token claim whose value is compared against admin_role (e.g. a custom attribute)
+  admin_role_claim:       { public: true,  default: '' },
 
   // Server / misc
   session_secret:         { public: false, default: '' },
@@ -358,6 +364,9 @@ class ConfigStore {
       user_pingone_authorize_pi_flow:  ['PINGONE_USER_AUTHORIZE_PI_FLOW'],
       admin_role:             ['ADMIN_ROLE'],
       user_role:              ['USER_ROLE'],
+      admin_username:         ['ADMIN_USERNAME'],
+      admin_population_id:    ['ADMIN_POPULATION_ID'],
+      admin_role_claim:       ['ADMIN_ROLE_CLAIM'],
       session_secret:         ['SESSION_SECRET'],
       frontend_url:           ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],

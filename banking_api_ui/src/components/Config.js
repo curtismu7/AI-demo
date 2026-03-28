@@ -64,6 +64,9 @@ const EMPTY_FORM = {
   user_redirect_uri: '',
   admin_role: 'admin',
   user_role: 'customer',
+  admin_username: '',
+  admin_population_id: '',
+  admin_role_claim: '',
   session_secret: '',
   frontend_url: '',
   mcp_server_url: '',           // populated from saved config; not defaulted to localhost
@@ -925,6 +928,35 @@ export default function Config() {
                 placeholder="customer"
                 disabled={readOnly}
               />
+              <TextField
+                label="Admin Population ID (PingOne)"
+                fieldKey="admin_population_id"
+                value={form.admin_population_id}
+                onChange={handleChange}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                helpText="ID of the PingOne population (e.g. bankAdmins) whose members receive admin role. Map population.id into your app's attribute contract in PingOne — no schema changes needed."
+                disabled={readOnly}
+              />
+              <TextField
+                label="Admin Role Claim (custom PingOne attribute)"
+                fieldKey="admin_role_claim"
+                value={form.admin_role_claim}
+                onChange={handleChange}
+                placeholder="bankingRole"
+                helpText="Name of a custom PingOne userinfo claim to inspect. Its value must match the Admin Role name above."
+                disabled={readOnly}
+              />
+              <div className="config-page__grid-span-2">
+                <TextField
+                  label="Admin usernames — permanent allowlist (comma-separated)"
+                  fieldKey="admin_username"
+                  value={form.admin_username}
+                  onChange={handleChange}
+                  placeholder="bankadmin, bankuser"
+                  helpText="preferred_username values that always get admin, regardless of PingOne claims. Use for service/test accounts."
+                  disabled={readOnly}
+                />
+              </div>
               <div className="config-page__grid-span-2">
                 <SecretField
                   label="Session Secret"
