@@ -17,6 +17,14 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- Shared `useDraggablePanel` hook (`src/hooks/useDraggablePanel.js`) — drag-from-header + SE resize grip, no viewport clamping, reusable across all panels
+- Shared `draggablePanel.css` with `.drp-backdrop` (dim overlay) and `.drp-resize-grip` (SE corner)
+- `AgentConsentModal` — now draggable and resizable (portal, grab-handle header, resize grip)
+- `AddDelegateModal` — now draggable and resizable (portal, grab-handle header, resize grip)
+- `TokenExchangeSimulator` — now draggable and resizable (portal, starts viewport-filling, drag/resize freely)
+
+### Fixed
+- `DemoDataPage.js` JSX syntax error in template literal (invalid `${...}` interpolation)
 
 - **In-app Agent Consent** (`AgentConsentModal.js` / `AgentConsentModal.css`) — replaced PingOne ACR-gate consent with a fully self-contained in-app modal; `POST /api/auth/oauth/user/consent` records consent in session; `DELETE /consent` revokes for demo reset; `SKIP_AGENT_CONSENT=true` env var disables gate; no PingOne agreement or auth policy needed
 - **3-column Split Dashboard layout** — Token Chain (slim `220px`) | AI Agent (`1fr`) | Customer Accounts (`1fr`); all three columns same height, same row; action/suggestion chips now render as horizontal pill strip below the chat prompt instead of side column; responsive collapse at ≤1024px
