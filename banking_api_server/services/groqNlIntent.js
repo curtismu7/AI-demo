@@ -29,7 +29,15 @@ Examples:
 User wants banking operations OR to open help topics (OAuth, MCP, CIBA, token exchange, CIMD client registration, etc.).
 Prefer banking when the user asks to move money or list data; prefer education when they ask how something works.
 For CIMD / client-id-metadata / dynamic client registration / register a client / DCR / RFC 7591 → use panel cimd.
-For "list tools", "show MCP tools", "what tools are available" → use action mcp_tools.`;
+CRITICAL: For ANY request that contains "list", "show", or "get" combined with "mcp tools", "tools available",
+"available tools", or the standalone phrases "list tools" / "show tools" → ALWAYS output {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}.
+NEVER route these to education — not even if "mcp" appears in the phrase.
+Examples of mcp_tools (always banking, never education):
+  "list of mcp tools" → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
+  "show mcp tools"    → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
+  "what tools are available" → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
+  "list tools"        → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
+Only route to education panel mcp-protocol when the user asks HOW MCP works or WHAT MCP is (no list/show/get verb).`;
 
 /**
  * @param {string} userMessage

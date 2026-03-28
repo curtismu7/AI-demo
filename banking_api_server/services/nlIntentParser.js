@@ -51,7 +51,7 @@ function parseEducation(t) {
   if (/\b(login flow|authorization code|sign in flow|oauth flow)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.LOGIN_FLOW, tab: 'what' } };
   }
-  if (/\b(mcp|model context|tools\/list|json-rpc)\b/.test(t)) {
+  if (/\b(mcp|model context|tools\/list|json-rpc)\b/.test(t) && !/\b(list|show|get)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.MCP_PROTOCOL, tab: 'what' } };
   }
   if (/\b(introspect|7662|rfc 7662)\b/.test(t)) {
@@ -142,6 +142,13 @@ function parseHeuristic(message) {
   const t = norm(message);
   if (!t) {
     return { kind: 'none', message: 'Say what you want to do or which topic to learn.' };
+  }
+
+  // Hard fast-path: "list/show/get mcp tools" is ALWAYS a banking action, never education.
+  // Runs before the what-is/explain guard and before parseEducation so that phrases like
+  // "list of mcp tools" are never swallowed by the broad \bmcp\b education regex.
+  if (/\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b/.test(t)) {
+    return { kind: 'banking', banking: { action: 'mcp_tools' } };
   }
 
   // Prefer education if user explicitly asks to explain / learn
