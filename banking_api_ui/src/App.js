@@ -231,12 +231,18 @@ function AppWithAuth() {
   /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
   const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
   const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
-  // Always render the float agent (FAB + panel) on dashboard routes when signed in.
-  // Removing the agentPlacement gate so the FAB is never accidentally hidden by a
-  // persisted placement preference (e.g. 'bottom'/'middle' with fab:false).
-  // Middle placement has its own open-FAB in UserDashboard; suppress the global float
-  // so there is never a duplicate FAB when agentPlacement === 'middle'.
-  const showFloatingAgent = Boolean(user) && onDashboardAgentRoute && agentPlacement !== 'middle';
+
+  // Routes where UserDashboard is rendered (handles its own middle FAB + split layout and its own bottom dock).
+  // Admin uses Dashboard.js on /admin and / — those routes need the global float/dock from App.
+  const onUserDashboardRoute =
+    pathname === '/dashboard' || (pathname === '/' && user?.role !== 'admin');
+
+  // Suppress the global float agent in middle mode ONLY when UserDashboard is active —
+  // UserDashboard provides its own FAB + split-3 layout for middle placement.
+  // Dashboard.js (admin view) has no inline middle layout, so the float agent must show there.
+  const showFloatingAgent =
+    Boolean(user) && onDashboardAgentRoute && !(agentPlacement === 'middle' && onUserDashboardRoute);
+
   const hasEmbeddedDockLayout =
     Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute;
 
@@ -324,7 +330,11 @@ function AppWithAuth() {
           {showFloatingAgent && (
             <BankingAgent user={user} onLogout={logout} distinctFloatingChrome />
           )}
-          <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
+          {/* UserDashboard renders EmbeddedAgentDock inside its own layout spanning all 3 columns.
+              App-level dock is only for admin dashboard (/admin, /) and /config. */}
+          {!onUserDashboardRoute && (
+            <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
+          )}
           {!isApiTrafficOnlyPage && <EducationPanelsHost />}
           {!isApiTrafficOnlyPage && <CIBAPanel />}
           {!isApiTrafficOnlyPage && <CimdSimPanel />}
