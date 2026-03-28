@@ -1946,7 +1946,8 @@ export default function BankingAgent({
                       return;
                     }
                     setHitlPendingIntent(null);
-                    setHitlChallengeId({ challengeId: cid, actionId });
+                    // Pass snapshot from POST response directly — avoids GET race on Vercel
+                    setHitlChallengeId({ challengeId: cid, actionId, snapshot: data.snapshot || null });
                   } catch (ex) {
                     const msg = ex.response?.data?.message || ex.response?.data?.error || ex.message || 'Could not start consent flow.';
                     notifyError(msg);
@@ -1962,6 +1963,7 @@ export default function BankingAgent({
               <TransactionConsentModal
                 open
                 challengeId={hitlChallengeId.challengeId}
+                preloadedSnapshot={hitlChallengeId.snapshot}
                 user={effectiveUser}
                 autoConfirm
                 onClose={() => setHitlChallengeId(null)}

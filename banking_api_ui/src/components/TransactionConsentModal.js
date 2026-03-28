@@ -37,6 +37,7 @@ export default function TransactionConsentModal({
   onTransactionSuccess,
   onDeclinedConfirmed,
   autoConfirm = false,
+  preloadedSnapshot = null,
 }) {
   const { preset } = useIndustryBranding();
   const { open: openEducation } = useEducationUI();
@@ -97,6 +98,17 @@ export default function TransactionConsentModal({
 
   useEffect(() => {
     if (!open || !challengeId || !user) return;
+    // If the caller already has the snapshot from the POST response, use it directly
+    // and skip the GET challenge fetch — avoids Vercel Lambda session race condition.
+    if (preloadedSnapshot) {
+      setSnapshot(preloadedSnapshot);
+      // Still fetch accounts for display names (non-critical — no challenge fetch needed)
+      bffAxios.get('/api/accounts/my')
+        .then(r => setAccounts(Array.isArray(r.data?.accounts) ? r.data.accounts : []))
+        .catch(() => {/* account names are cosmetic — proceed without them */})
+        .finally(() => setLoading(false));
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -123,7 +135,7 @@ export default function TransactionConsentModal({
     return () => {
       cancelled = true;
     };
-  }, [open, user, challengeId]);
+  }, [open, user, challengeId, preloadedSnapshot]);
 
   // Auto-confirm: when opened via AgentConsentModal (autoConfirm=true), skip the consent
   // step and send the OTP immediately after the challenge snapshot loads.
