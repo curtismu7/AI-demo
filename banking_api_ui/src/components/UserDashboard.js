@@ -37,8 +37,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
   const { preset } = useIndustryBranding();
   const { placement: agentPlacement } = useAgentUiMode();
-  /** Middle layout: starts collapsed (FAB) — expands to 3-column inline agent on first open. */
-  const [middleAgentOpen, setMiddleAgentOpen] = useState(false);
+  /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
+  const [middleAgentOpen, setMiddleAgentOpen] = useState(() => agentPlacement === 'middle');
   const [dashboardLayout, setDashboardLayoutState] = useState(() => getDashboardLayout());
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -126,6 +126,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   /** Keep localStorage layout aligned with Agent UI (Middle → split, Bottom → classic). */
   useEffect(() => {
     if (agentPlacement === 'middle') {
+      setMiddleAgentOpen(true);
       setDashboardLayoutState('split3');
       setDashboardLayout('split3');
     } else if (agentPlacement === 'bottom') {
