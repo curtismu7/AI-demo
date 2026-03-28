@@ -2149,23 +2149,23 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
 .dashboard-header__crumb-link {
   font-size: 0.78rem;
   text-decoration: none;
-  color: var(--dash-muted, #64748b);
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
 }
 
 .dashboard-header__crumb-link:hover {
-  color: var(--dash-text, #0f172a);
+  color: #fff;
 }
 
 .dashboard-header__crumb-link--current {
-  color: var(--dash-text, #0f172a);
+  color: #fff;
   font-weight: 600;
 }
 
 .dashboard-header__crumb-sep {
   font-size: 0.78rem;
-  color: var(--dash-muted, #94a3b8);
-  opacity: 0.7;
+  color: rgba(255, 255, 255, 0.5);
+  opacity: 1;
 }
 
 /* Hero + quick actions + trust (2026 single-page banking) */
