@@ -62,6 +62,24 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-28 — Bottom dock and admin middle agent lost: EmbeddedAgentDock guard bug (commit `db73404`)
+
+**Symptoms**: Selecting "Bottom" placement showed a floating FAB instead of the full-width bottom dock on `/dashboard`, `/admin`, and `/`. Selecting "Middle" placement on the admin dashboard (`/admin`) showed no agent at all.
+
+**Root cause**: Commit `669bf36` ("bottom-dock agent inside dashboard content") added an `isBankingAgentDashboardRoute(pathname)` guard to `EmbeddedAgentDock.js` intended to prevent the App-level dock from rendering on dashboard routes (since `UserDashboard` was supposed to render it internally). However:
+1. The same guard also caused `UserDashboard`'s own `<EmbeddedAgentDock>` render to return null — the dock never showed on any dashboard route.
+2. `App.js` suppressed the global float agent for ALL `middle` placements (`agentPlacement !== 'middle'`), including when the admin was on `Dashboard.js` which has no inline middle FAB of its own. Admin in middle mode ended up with no agent at all.
+
+**Fix**:
+- `EmbeddedAgentDock.js` — removed the `isBankingAgentDashboardRoute` guard and its import. The component now renders wherever it is mounted (App level or UserDashboard level) as long as the user and placement guards pass.
+- `App.js` — added `onUserDashboardRoute` flag (`pathname === '/dashboard'` OR `pathname === '/' && role !== 'admin'`). Used in two places:
+  1. App-level `<EmbeddedAgentDock>` is skipped on UserDashboard routes (UserDashboard renders it inside its own layout).
+  2. Middle-mode float suppression is scoped to UserDashboard routes only, so the admin Dashboard.js still receives the float agent in middle placement.
+
+**Tests**: `CI=false npm run build` — successful. Manual: bottom dock shows full-width below content on `/dashboard`; admin on `/admin` with middle placement sees the float FAB.
+
+---
+
 ## 2026-03-28 — Delegated Access: static Act-as panel replaced with live Token Exchange Simulator
 
 **Symptoms**: The "Act as" panel on `/delegated-access` was purely static — it showed a hard-coded RFC 8693 explainer but did not make any real API call or display actual before/after tokens. There was no way to see the live exchange chain or inspect JWT claims.

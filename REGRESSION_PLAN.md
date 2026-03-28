@@ -18,7 +18,8 @@
 | **Status endpoint token expiry** | **Dashboard loops: status returns `authenticated: true` for expired tokens** | `routes/oauthUser.js`, `routes/oauth.js` — both check `expiresAt` before responding `authenticated: true` |
 | **REAUTH_KEY re-auth guard** | **Infinite PingOne redirect loop** | `UserDashboard.js` `fetchUserData` — key cleared ONLY on success path. Never clear it on `oauth=success` URL param (triggers immediate loop). |
 | **Agent form account IDs** | **'❌ Account chk-5 not found' on balance/deposit/withdraw/transfer** | `BankingAgent.js` — `liveAccounts` state hydrated from `GET /api/accounts/my` on login; passed to `ActionForm`; falls back to `generateFakeAccounts` only while fetch is pending |
-| **Middle layout start state** | **Middle column inline agent appears immediately on page load instead of starting collapsed** | `UserDashboard.js` (`middleAgentOpen` starts `false`; layout uses float-layout until FAB is clicked). `App.js` (`showFloatingAgent` suppressed for middle). |
+| **Middle layout start state** | **Middle column inline agent appears immediately on page load instead of starting collapsed** | `UserDashboard.js` (`middleAgentOpen` starts `false`; layout uses float-layout until FAB is clicked). `App.js` (`showFloatingAgent` suppressed for middle ON USER DASHBOARD ROUTES ONLY — admin Dashboard.js gets float in middle mode). |
+| **Bottom dock on dashboard routes** | **Bottom dock not showing — floating FAB shown instead** | `App.js` — skip App-level `<EmbeddedAgentDock>` on `onUserDashboardRoute` (UserDashboard mounts it internally). `EmbeddedAgentDock.js` — must NOT have `isBankingAgentDashboardRoute` guard (that returns null before the component can render). |
 | **Admin role detection** | **Admin users downgraded to customer on login** | `routes/oauthUser.js` 4-signal check: username allowlist → population ID → custom claim → existing record. Config fields: `admin_username`, `admin_population_id`, `admin_role_claim` in `configStore.js` + `Config.js`. |
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
 | BankingAgent FAB | Agent disappears | `components/BankingAgent.js`, `App.js` |
@@ -52,6 +53,18 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-28 — Bottom dock and admin middle agent lost: EmbeddedAgentDock guard bug (commit `db73404`)
+- **Symptoms:** (1) Bottom placement showed a floating FAB on dashboard routes instead of the full-width dock. (2) Admin on `/admin` with middle placement saw no agent at all.
+- **Root cause:** `EmbeddedAgentDock.js` had an `isBankingAgentDashboardRoute` guard added in `669bf36` to stop the App-level dock from double-rendering. But the same guard also terminated UserDashboard's own `<EmbeddedAgentDock>` mount — dock never showed on any dashboard route. Separately, `showFloatingAgent` suppressed the float for ALL middle placements, including admin (`Dashboard.js`) which has no inline FAB of its own.
+- **Fix:** Removed `isBankingAgentDashboardRoute` guard and import from `EmbeddedAgentDock.js`. In `App.js`: added `onUserDashboardRoute` to skip App-level dock on `/dashboard`/`/` (customer) and to scope middle-mode float suppression to UserDashboard routes only.
+- **Files:** `banking_api_ui/src/components/EmbeddedAgentDock.js`, `banking_api_ui/src/App.js`
+- **Regression check:**
+  - Customer on `/dashboard`, bottom mode → full-width dock shows below content (no float FAB).
+  - Customer on `/dashboard`, middle mode → no global float; UserDashboard's corner FAB opens split-3.
+  - Admin on `/admin`, bottom mode → dock shows full-width below dashboard content.
+  - Admin on `/admin`, middle mode → global float FAB visible (Dashboard.js has no own FAB).
+  - `/config`, bottom mode → App-level dock still shows.
 
 ### 2026-03-28 — DemoDataPage build error: handleResetDefaults called missing setAccounts (commit `0058450`)
 - **Symptom:** `CI=true npm run build` failed with `'setAccounts' is not defined` (eslint `no-undef`), blocking every Vercel deploy.
