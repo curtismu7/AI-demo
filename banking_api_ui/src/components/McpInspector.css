@@ -5,6 +5,95 @@
   color: #0f172a;
 }
 
+/* ── MCP Session History panel ── */
+.mcp-history__header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.mcp-history__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.mcp-history__count {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.mcp-history__empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+.mcp-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.mcp-history__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 7px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.mcp-history__item--ok  { border-left: 3px solid #22c55e; }
+.mcp-history__item--err { border-left: 3px solid #ef4444; }
+.mcp-history__status-dot {
+  flex-shrink: 0;
+  margin-top: 0.3rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+.mcp-history__item--ok  .mcp-history__status-dot { background: #22c55e; }
+.mcp-history__item--err .mcp-history__status-dot { background: #ef4444; }
+.mcp-history__item-body {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.6rem;
+}
+.mcp-history__tool {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e40af;
+}
+.mcp-history__time {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+.mcp-history__badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+}
+.mcp-history__badge--ok  { background: #dcfce7; color: #166534; }
+.mcp-history__badge--err { background: #fee2e2; color: #991b1b; }
+.mcp-history__duration {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+.mcp-history__result {
+  width: 100%;
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #475569;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+
 .mcp-inspector-page .mcp-inspector__edu-toolbar {
   margin-bottom: 1rem;
 }
