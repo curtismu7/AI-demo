@@ -27,6 +27,8 @@ import {
 } from '../services/agentAccessConsent';
 import { isBankingAgentFloatingDefaultOpen } from '../utils/bankingAgentFloatingDefaultOpen';
 import AgentConsentModal from './AgentConsentModal';
+import TransactionConsentModal from './TransactionConsentModal';
+import bffAxios from '../services/bffAxios';
 import './BankingAgent.css';
 
 // ─── Action definitions ────────────────────────────────────────────────────────
@@ -658,6 +660,8 @@ export default function BankingAgent({
   /** True when the user has accepted the in-app agent consent agreement. */
   /** Pending HITL intent — shows AgentConsentModal (transaction mode) before OTP. */
   const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
+  /** Challenge ID issued after the user clicks Authorize in AgentConsentModal. */
+  const [hitlChallengeId, setHitlChallengeId] = useState(null);
 
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -1931,14 +1935,50 @@ export default function BankingAgent({
             {hitlPendingIntent && (
               <AgentConsentModal
                 transaction={hitlPendingIntent.intentPayload}
-                onAccept={() => {
-                  const { actionId, form, intentPayload } = hitlPendingIntent;
-                  setHitlPendingIntent(null);
-                  window.dispatchEvent(new CustomEvent('banking-agent-hitl-consent', {
-                    detail: { actionId, form, intentPayload, autoConfirm: true },
-                  }));
+                onAccept={async () => {
+                  const { actionId, intentPayload } = hitlPendingIntent;
+                  try {
+                    const { data } = await bffAxios.post('/api/transactions/consent-challenge', intentPayload);
+                    const cid = data?.challengeId;
+                    if (!cid) {
+                      notifyError('Could not start consent — no challenge id from server.');
+                      setHitlPendingIntent(null);
+                      return;
+                    }
+                    setHitlPendingIntent(null);
+                    setHitlChallengeId({ challengeId: cid, actionId });
+                  } catch (ex) {
+                    const msg = ex.response?.data?.message || ex.response?.data?.error || ex.message || 'Could not start consent flow.';
+                    notifyError(msg);
+                    setHitlPendingIntent(null);
+                  }
                 }}
                 onDismiss={() => setHitlPendingIntent(null)}
+              />
+            )}
+
+            {/* OTP + transaction execution — rendered once challenge is created */}
+            {hitlChallengeId && (
+              <TransactionConsentModal
+                open
+                challengeId={hitlChallengeId.challengeId}
+                user={effectiveUser}
+                autoConfirm
+                onClose={() => setHitlChallengeId(null)}
+                onTransactionSuccess={(msg) => {
+                  const { actionId } = hitlChallengeId;
+                  setHitlChallengeId(null);
+                  addMessage('assistant', `✅ **Transaction approved and completed.**\n\n${msg}`, actionId);
+                  notifySuccess(`✅ ${msg}`);
+                  // Notify UserDashboard to refresh accounts if it happens to be mounted
+                  window.dispatchEvent(new CustomEvent('banking-agent-hitl-confirmed', {
+                    detail: { actionId, successMsg: msg },
+                  }));
+                }}
+                onDeclinedConfirmed={() => {
+                  setHitlChallengeId(null);
+                  notifyInfo('Transaction declined. The AI assistant stays active for read-only actions.');
+                }}
               />
             )}
 
