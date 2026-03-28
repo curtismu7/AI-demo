@@ -363,17 +363,6 @@ function EventDetail({ event }) {
       <MayActEduBox event={event} />
       <ActEduBox event={event} />
       <ExchangeCheckList event={event} />
-      {/* In-app consent pill — shown on user-token events */}
-      {event.id === 'user-token' && event.consentGiven === true && (
-        <div className="tcd-pill tcd-pill--consent">
-          consent ✅ user accepted in-app agent delegation — {event.consentedAt ? new Date(event.consentedAt).toLocaleTimeString() : 'this session'}
-        </div>
-      )}
-      {event.id === 'user-token' && event.consentGiven === false && (
-        <div className="tcd-pill tcd-pill--warn">
-          consent ⚠️ — user has not yet accepted the agent delegation agreement
-        </div>
-      )}
       {event.explanation && (
         <p className="tcd-explanation">{event.explanation}</p>
       )}

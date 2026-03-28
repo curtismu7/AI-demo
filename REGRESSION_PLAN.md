@@ -27,6 +27,7 @@
 | Float panel resize | Panel capped at 560×720, won't grow larger | `BankingAgent.css` (`max-width`/`max-height` removed), `BankingAgent.js` (`handleResize` caps) |
 | Dashboard 401 / session banner | "Session expired" on valid PingOne session (cold-start `_cookie_session` stub) | `UserDashboard.js` (`fetchUserData` 401 handler → auto re-auth redirect) |
 | Left rail + quick nav | Overlap or wrong routes | `App.js`, `App.css`, `DashboardQuickNav.js`, `embeddedAgentFabVisibility.js` |
+| **Agent startup consent gate** | **"Grant Agent permission" modal must NEVER appear on first open; only HITL modal for write > $500** | `BankingAgent.js` — `hitlPendingIntent` only set on `consent_challenge_required` from server (write tools); `buildConsentIntent` null guard prevents modal without valid payload; `setAgentBlockedByConsentDecline(false)` called on login. Server: no `AGENT_CONSENT_REQUIRED` throw anywhere. |
 | Split vs Classic dashboard + HITL consent | Duplicate FAB/dock with inline agent, or consent navigates away | `dashboardLayout.js`, `customerSplit3Dashboard.js`, `UserDashboard.js`, `TransactionConsentModal.js`, `App.js` |
 | Vercel SPA routing | All non-API routes 404 on Vercel | `vercel.json` (SPA catch-all rewrite) |
 | OAuth redirect origin | Redirects go to localhost in production | `routes/oauth.js`, `routes/oauthUser.js` (`getOrigin`) |
@@ -54,6 +55,26 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-28 — Agent consent gate fully removed; HITL modal guard + stale consent cleared (commit TBD)
+- **Symptom (1):** Every tool call (including read-only `get_my_transactions`) returned "Error: Agent consent required. Please accept the agent consent agreement in the banking assistant panel." The agent opened with a "Grant Agent permission" modal before any tool was used.
+- **Symptom (2):** Deposit / withdraw / transfer > $500 showed "A consent dialog has opened" in chat but no `AgentConsentModal` appeared.
+- **Symptom (3):** After a previous session where a high-value consent was declined, `consentBlocked` state persisted across new logins (localStorage key `banking_agent_blocked_consent_decline`) and disabled the entire agent UI.
+- **Root cause (1):** The server-side `AGENT_CONSENT_REQUIRED` gate was previously removed from `agentMcpTokenService.js`, but the dead handler remained in `server.js`. Old Vercel deployments still had the check in the token service. The client `catch` block in `BankingAgent.js.runAction` had no handler for `err.code === 'agent_consent_required'`, falling through to a raw `Error: …` red chat bubble. No modal opened.
+- **Root cause (2):** `buildConsentIntent(actionId, form)` returns `null` for unexpected action IDs (not deposit/withdraw/transfer). The old code called `setHitlPendingIntent({ actionId, form, intentPayload: null })` without checking — when `intentPayload` is null, `AgentConsentModal` rendered without a `transaction` prop (showing "Allow AI Agent Access" UI) but users were confused by the mismatch.
+- **Root cause (3):** `setAgentBlockedByConsentDecline(false)` was never called on new login, so a stale `true` value from a previous declined HITL would persist and disable all buttons.
+- **Fix (1):** Removed the dead `AGENT_CONSENT_REQUIRED` block from `server.js`. Added `agent_consent_required` handler to `runAction` catch block — shows a clear "Legacy server consent gate — sign out and sign in again" message instead of a raw error or old modal.
+- **Fix (2):** Added null-check guard: if `buildConsentIntent` returns null (unexpected actionId), show a fallback message instead of setting `hitlPendingIntent` with null payload. Prevents the "Allow AI Agent Access" modal from ever appearing outside the explicit HITL flow.
+- **Fix (3):** `setAgentBlockedByConsentDecline(false)` is now called in the mount `checkSelfAuth` flow when a valid session user is found — clears any stale block on new login. Also imported `setAgentBlockedByConsentDecline` in `BankingAgent.js`.
+- **Fix (4):** Removed `consentGiven`/`consentedAt` fields from `appendUserTokenEvent` token event (dead fields referencing old gate). Removed corresponding `consentGiven` pills from `TokenChainDisplay.js`.
+- **Files:** `banking_api_server/server.js`, `banking_api_server/services/agentMcpTokenService.js`, `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/TokenChainDisplay.js`
+- **Regression check:**
+  - Sign in as customer → open AI Agent → NO consent modal should appear on open.
+  - Click "📋 Recent Transactions" → must succeed (no "Agent consent required" error).
+  - Deposit / withdraw / transfer > $500 → **AgentConsentModal opens** with amount + account details (💸 Authorize Withdrawal), NOT "Allow AI Agent Access".
+  - Click Authorize → TransactionConsentModal opens at OTP step → enter code → transaction completes.
+  - If user previously declined HITL in old session: sign out, sign in → consent-blocked state cleared → all actions enabled.
+
 
 ### 2026-03-29 — Token exchange: rich PingOne error detail + cross-Lambda log viewer (commit `b4272ee`)
 - **Symptom:** When RFC 8693 token exchange failed the UI showed only a generic message (e.g. "Token exchange failed: RFC 8693 token exchange is mandatory…") with no HTTP status code, no PingOne `error` code, and no `error_description`. The log viewer was completely empty because the Lambda that ran the exchange is different from the Lambda serving `GET /api/logs/console` (Vercel serverless — isolated in-process memory).

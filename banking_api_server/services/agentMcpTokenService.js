@@ -203,9 +203,6 @@ function appendUserTokenEvent(tokenEvents, userToken, req = null) {
       mayActPresent: !!t1Claims?.may_act,
       mayActValid: mayActInfo.valid,
       mayActDetails: mayActInfo.reason,
-      // In-app consent gate
-      consentGiven: req?.session?.agentConsentGiven === true,
-      consentedAt: req?.session?.agentConsentedAt || null,
     }
   ));
 

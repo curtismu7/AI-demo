@@ -973,16 +973,6 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
     const status = err.httpStatus || 502;
     const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-    // AGENT_CONSENT_REQUIRED — surface the consent URL so the UI can prompt the user
-    if (err.code === 'AGENT_CONSENT_REQUIRED') {
-      const origin = getFrontendOrigin(req);
-      return res.status(403).json({
-        error: 'agent_consent_required',
-        message: err.message,
-        consentUrl: `${origin}/api/auth/oauth/user/consent-url`,
-        tokenEvents: events,
-      });
-    }
     return res.status(status).json({
       error: err.code || 'token_exchange_failed',
       message: err.message,

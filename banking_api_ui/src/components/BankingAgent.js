@@ -24,6 +24,7 @@ import LoadingOverlay from './shared/LoadingOverlay';
 import {
   AGENT_CONSENT_BLOCK_USER_MESSAGE,
   isAgentBlockedByConsentDecline,
+  setAgentBlockedByConsentDecline,
 } from '../services/agentAccessConsent';
 import { isBankingAgentFloatingDefaultOpen } from '../utils/bankingAgentFloatingDefaultOpen';
 import AgentConsentModal from './AgentConsentModal';
@@ -926,6 +927,8 @@ export default function BankingAgent({
       setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
+        // Clear any stale consent-decline block from previous sessions.
+        setAgentBlockedByConsentDecline(false);
         const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus, brandShortName) };
         if (cookieOnly) {
           sessionFixBubbleShownRef.current = true;
@@ -1292,6 +1295,13 @@ export default function BankingAgent({
           normalized.consent_challenge_required === true || normalized.error === 'consent_challenge_required';
         if (consent) {
           const intentPayload = buildConsentIntent(actionId, form);
+          if (!intentPayload) {
+            // Unexpected: consent required but no intent builder for this action.
+            addMessage('assistant', `⚠️ This action requires consent but the transaction details could not be determined. Please use the dashboard to complete it.`, actionId);
+            toast.dismiss(toastId);
+            setLoading(false);
+            return;
+          }
           addMessage('assistant',
             `👤 **High-value transaction — your approval is needed.**\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} require your consent and email verification.\n\nReview the authorization popup, then enter the code sent to your email.`,
             actionId
@@ -1492,6 +1502,11 @@ export default function BankingAgent({
           'Session missing or expired on the server. Try Refresh access token, or Sign in again.',
           { autoClose: 9000 },
         );
+      } else if (err?.code === 'agent_consent_required') {
+        // Old server deployment still enforcing startup consent gate.
+        // The consent gate has been removed — sign out and sign in to refresh the session,
+        // or ask the admin to redeploy the latest server code.
+        notifyError('Server configuration: please sign out and sign in again to clear the consent state.', { autoClose: 10000 });
       } else {
         notifyError(`❌ ${err.message}`, { autoClose: 6000 });
       }
@@ -1516,6 +1531,12 @@ export default function BankingAgent({
           sessionFixBubbleShownRef.current = true;
           addMessage('error', SESSION_NOT_HYDRATED_CHAT, actionId, { showSessionFixActions: true });
         }
+      } else if (err?.code === 'agent_consent_required') {
+        // Legacy startup consent gate — no longer enforced in current server code.
+        addMessage('assistant',
+          'The server is requesting consent to use the agent, but this gate has been removed in the current version.\n\nPlease **sign out and sign in again** to clear the old session state.',
+          actionId
+        );
       } else {
         addMessage(
           'error',
