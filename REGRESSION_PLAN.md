@@ -17,6 +17,7 @@
 | **Token audience check** | **All authenticated API calls return 401 — `aud` mismatch** | `middleware/auth.js` — never hardcode audience defaults; `https://api.pingone.com` is always accepted. Set `ENDUSER_AUDIENCE` / `AI_AGENT_AUDIENCE` only for custom resource servers. |
 | **Status endpoint token expiry** | **Dashboard loops: status returns `authenticated: true` for expired tokens** | `routes/oauthUser.js`, `routes/oauth.js` — both check `expiresAt` before responding `authenticated: true` |
 | **REAUTH_KEY re-auth guard** | **Infinite PingOne redirect loop** | `UserDashboard.js` `fetchUserData` — key cleared ONLY on success path. Never clear it on `oauth=success` URL param (triggers immediate loop). |
+| **Middle layout start state** | **Middle column inline agent appears immediately on page load instead of starting collapsed** | `UserDashboard.js` (`middleAgentOpen` starts `false`; layout uses float-layout until FAB is clicked). `App.js` (`showFloatingAgent` suppressed for middle). |
 | **Admin role detection** | **Admin users downgraded to customer on login** | `routes/oauthUser.js` 4-signal check: username allowlist → population ID → custom claim → existing record. Config fields: `admin_username`, `admin_population_id`, `admin_role_claim` in `configStore.js` + `Config.js`. |
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
 | BankingAgent FAB | Agent disappears | `components/BankingAgent.js`, `App.js` |
@@ -50,6 +51,19 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-28 — Middle layout starts floating collapsed (commit `25bb69f`)
+- **What changed:** When `agentPlacement='middle'`, the inline 3-column split no longer shows on first load. Instead the dashboard starts in float-layout (token + banking, no agent column), with a single corner FAB rendered directly by UserDashboard.
+- **Clicking the FAB** sets `middleAgentOpen=true`, switching to the full split-3 layout with the inline BankingAgent.
+- **App.js global float is suppressed** (`agentPlacement !== 'middle'` guard on `showFloatingAgent`) so there is never a duplicate FAB.
+- **`user-dashboard--split3` CSS class** is only applied when `middleAgentOpen=true`.
+- **Other placements unchanged** (float and bottom behave as before).
+- **Files:** `banking_api_ui/src/components/UserDashboard.js`, `banking_api_ui/src/App.js`
+- **Regression check:**
+  - Select Middle layout → page shows float layout with corner FAB (not the inline column).
+  - Click FAB → layout transitions to 3-column split with inline BankingAgent.
+  - Refresh → returns to collapsed state (FAB only) — `middleAgentOpen` is not persisted.
+  - Float and Bottom layouts show global float FAB as before.
 
 ### 2026-03-28 — /demo-data may_act section: static-mode notice + dynamic explainer (commit `5ecf83e`)
 - **What changed:** The may_act toggle section on `/demo-data` now accurately reflects the static PingOne mapping mode.
