@@ -62,6 +62,22 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-28 — Investment accounts lost on cold-start: dataStore in-memory with no snapshot persistence (commit `1a93c77`)
+
+**Symptoms**: Investment account (and any non-default account type saved via `/demo-data`) appeared immediately after saving but disappeared after the next Vercel cold-start or server restart. Only checking and savings accounts survived.
+
+**Root cause**: `dataStore` is an in-memory `Map` — `persistAllData()` is a no-op by design. On cold-start `GET /api/accounts/my` found 0 accounts and called `provisionDemoAccounts(userId)`, which **deleted all existing accounts** and re-created only checking+savings. Investment accounts had no way to survive across Lambda invocations because `demoScenarioStore` (Redis/KV) only persisted settings, not accounts.
+
+**Fix**:
+- `demoScenario.js` — added `saveAccountSnapshot(userId)` helper that writes all current user accounts to `demoScenarioStore` (Redis/KV) as an `accountSnapshot` array. Called at the end of every `PUT /api/demo-data` and after fresh provisioning on `GET /api/demo-data`.
+- `demoScenario.js` — added `restoreAccountsFromSnapshot(userId)` helper that reads the snapshot and recreates any accounts missing from the in-memory store. Called in `GET /api/demo-data` before `provisionDemoAccounts`.
+- `accounts.js` — `GET /my` now calls `restoreAccountsFromSnapshot` before `provisionDemoAccounts`; saves snapshot after provisioning so even first-login cold-starts persist.
+- `accounts.js` — `POST /reset-demo` saves the fresh 2-account snapshot after provisioning, so post-reset cold-starts restore the reset state (not the old custom configuration).
+
+**Tests**: Node require-checks passing; `CI=false npm run build` successful. Manual: save investment account in `/demo-data` → simulate cold-start → `/dashboard` and `/demo-data` show all 3 accounts.
+
+---
+
 ## 2026-03-28 — Bottom dock and admin middle agent lost: EmbeddedAgentDock guard bug (commit `db73404`)
 
 **Symptoms**: Selecting "Bottom" placement showed a floating FAB instead of the full-width bottom dock on `/dashboard`, `/admin`, and `/`. Selecting "Middle" placement on the admin dashboard (`/admin`) showed no agent at all.
