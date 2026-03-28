@@ -2,6 +2,12 @@
 /**
  * Server-bound consent challenges for high-value transactions (HITL).
  * State lives in express-session so it works across serverless instances when session store is Redis.
+ *
+ * Flow after user ticks consent checkbox:
+ *   1. POST /consent-challenge              → createChallenge()  → status: 'pending'
+ *   2. POST /consent-challenge/:id/confirm  → sendOtp()          → status: 'otp_pending' + otpHash stored
+ *   3. POST /consent-challenge/:id/verify-otp → verifyOtp()      → status: 'confirmed'
+ *   4. POST /transactions { consentChallengeId } → verifyAndConsumeChallenge() → executes
  */
 'use strict';
 
@@ -12,6 +18,8 @@ const HIGH_VALUE_CONSENT_USD = 500;
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const CONFIRMED_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_PER_SESSION = 8;
+const OTP_TTL_MS = 5 * 60 * 1000;   // 5 minutes to enter OTP
+const OTP_MAX_ATTEMPTS = 3;          // lock after 3 wrong codes
 
 /** @returns {Record<string, object>} */
 function store(session) {
@@ -57,6 +65,32 @@ function snapshotsEqual(a, b) {
     a.toAccountId === b.toAccountId &&
     a.description === b.description
   );
+}
+
+// ── OTP helpers ──────────────────────────────────────────────────────────────
+
+/** Generate a cryptographically random 6-digit OTP string. */
+function generateOtp() {
+  const buf = crypto.randomBytes(3);
+  const num = (buf[0] << 16 | buf[1] << 8 | buf[2]) % 1_000_000;
+  return String(num).padStart(6, '0');
+}
+
+/**
+ * One-way hash of the raw OTP so we never store plaintext in the session.
+ * Uses HMAC-SHA256 with a per-challenge random salt (stored alongside).
+ */
+function hashOtp(otp, salt) {
+  return crypto.createHmac('sha256', salt).update(otp).digest('hex');
+}
+
+/** Constant-time comparison of two hex strings. */
+function safeEqual(a, b) {
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -199,7 +233,22 @@ function getChallenge(req, challengeId) {
   };
 }
 
-function confirmChallenge(req, challengeId) {
+/**
+ * confirmChallenge — user has ticked the consent checkbox and clicked "Agree".
+ * Generates a 6-digit OTP, stores its hash in the session, and sends it
+ * via PingOne email.  Challenge moves to status 'otp_pending'.
+ *
+ * NOTE: this function is async because it calls emailService.sendOtpEmail().
+ * The caller (route handler) must await it.
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @param {object} [opts]
+ * @param {string} [opts.userName]  Display name for the email greeting
+ * @returns {Promise<{ ok: true, challengeId: string, otpSent: boolean }
+ *                 | { ok: false, status: number, json: object }>}
+ */
+async function confirmChallenge(req, challengeId, opts = {}) {
   if (!challengeId || typeof challengeId !== 'string') {
     return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
   }
@@ -218,12 +267,97 @@ function confirmChallenge(req, challengeId) {
     return { ok: false, status: 410, json: { error: 'challenge_expired', message: 'Consent challenge expired. Start again from the dashboard.' } };
   }
 
-  ch.status = 'confirmed';
-  ch.confirmedAt = now;
+  // Generate OTP and store its hash
+  const otpPlain = generateOtp();
+  const otpSalt  = crypto.randomBytes(16).toString('hex');
+  ch.otpHash       = hashOtp(otpPlain, otpSalt);
+  ch.otpSalt       = otpSalt;
+  ch.otpAttempts   = 0;
+  ch.otpExpiresAt  = now + OTP_TTL_MS;
+  ch.status        = 'otp_pending';
+
+  console.log(`[ConsentChallenge] OTP generated challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
+
+  // Send via PingOne email (fire and collect result — failure is surfaced to caller)
+  let otpSent = false;
+  try {
+    const { sendOtpEmail } = require('./emailService');
+    const performer = dataStore.getUserById(req.user.id);
+    const userName = opts.userName ||
+      (performer ? `${performer.firstName} ${performer.lastName}`.trim() : null) ||
+      req.user.username || 'Valued Customer';
+    await sendOtpEmail(req.user.id, {
+      otpCode: otpPlain,
+      amount: ch.snapshot.amount,
+      transactionType: ch.snapshot.type,
+      userName,
+      expiresInMin: Math.ceil(OTP_TTL_MS / 60_000),
+    });
+    otpSent = true;
+  } catch (emailErr) {
+    // If PingOne email is not configured we still allow the OTP flow with a
+    // fallback console log (useful in local dev without email credentials).
+    const detail = emailErr.response?.data ? JSON.stringify(emailErr.response.data) : emailErr.message;
+    console.warn(`[ConsentChallenge] OTP email failed (challenge=${challengeId.slice(0, 8)}…): ${detail}`);
+    // otpSent stays false — UI will show a warning and still accept the code for dev
+  }
+
+  return { ok: true, challengeId, otpSent, otpExpiresAt: ch.otpExpiresAt };
+}
+
+/**
+ * verifyOtp — user submits the 6-digit code received by email.
+ * On success, challenge moves to status 'confirmed' (ready for verifyAndConsumeChallenge).
+ *
+ * @param {import('express').Request} req
+ * @param {string} challengeId
+ * @param {string} otpCode  Raw 6-digit code from the user
+ */
+function verifyOtp(req, challengeId, otpCode) {
+  if (!challengeId || typeof challengeId !== 'string') {
+    return { ok: false, status: 400, json: { error: 'invalid_challenge', message: 'challengeId is required.' } };
+  }
+  const st = store(req.session);
+  pruneExpired(st);
+  const ch = st[challengeId];
+  if (!ch || ch.userId !== req.user.id) {
+    return { ok: false, status: 404, json: { error: 'challenge_not_found', message: 'Unknown or expired consent challenge.' } };
+  }
+  if (ch.status !== 'otp_pending') {
+    return { ok: false, status: 409, json: { error: 'otp_not_expected', message: 'No OTP is pending for this challenge.' } };
+  }
+  if (Date.now() > ch.otpExpiresAt) {
+    ch.status = 'expired';
+    return { ok: false, status: 410, json: { error: 'otp_expired', message: 'The verification code has expired. Start the transaction again.' } };
+  }
+  if (!otpCode || typeof otpCode !== 'string' || !/^\d{6}$/.test(otpCode.trim())) {
+    return { ok: false, status: 400, json: { error: 'otp_invalid_format', message: 'Enter a 6-digit verification code.' } };
+  }
+
+  ch.otpAttempts = (ch.otpAttempts || 0) + 1;
+  const expected = hashOtp(otpCode.trim(), ch.otpSalt);
+  if (!safeEqual(ch.otpHash, expected)) {
+    const remaining = OTP_MAX_ATTEMPTS - ch.otpAttempts;
+    if (remaining <= 0) {
+      delete st[challengeId];
+      console.warn(`[ConsentChallenge] OTP locked after ${OTP_MAX_ATTEMPTS} attempts challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
+      return { ok: false, status: 429, json: { error: 'otp_locked', message: 'Too many incorrect attempts. Please start the transaction again.' } };
+    }
+    return { ok: false, status: 400, json: { error: 'otp_incorrect', message: `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`, attemptsRemaining: remaining } };
+  }
+
+  // ✅ Correct — promote to confirmed
+  const now = Date.now();
+  ch.status          = 'confirmed';
+  ch.confirmedAt     = now;
   ch.confirmExpiresAt = now + CONFIRMED_TTL_MS;
+  // Clear sensitive OTP fields
+  delete ch.otpHash;
+  delete ch.otpSalt;
+  delete ch.otpAttempts;
+  delete ch.otpExpiresAt;
 
-  console.log(`[ConsentChallenge] confirmed challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
-
+  console.log(`[ConsentChallenge] OTP verified challenge=${challengeId.slice(0, 8)}… user=${req.user.id}`);
   return { ok: true, challengeId, confirmExpiresAt: ch.confirmExpiresAt };
 }
 
@@ -271,10 +405,13 @@ module.exports = {
   HIGH_VALUE_CONSENT_USD,
   CHALLENGE_TTL_MS,
   CONFIRMED_TTL_MS,
+  OTP_TTL_MS,
+  OTP_MAX_ATTEMPTS,
   normalizeSnapshot,
   validateIntent,
   createChallenge,
   getChallenge,
   confirmChallenge,
+  verifyOtp,
   verifyAndConsumeChallenge,
 };

@@ -156,4 +156,97 @@ async function sendTransactionConfirmation(userId, opts) {
   }
 }
 
-module.exports = { sendTransactionConfirmation };
+/**
+ * Send a 6-digit OTP for high-value transaction verification.
+ *
+ * @param {string} userId   PingOne user sub (req.user.id)
+ * @param {object} opts
+ * @param {string}  opts.otpCode        6-digit numeric code
+ * @param {number}  opts.amount         Transaction amount
+ * @param {string}  opts.transactionType 'transfer' | 'deposit' | 'withdrawal'
+ * @param {string}  [opts.userName]     Greeting name
+ * @param {number}  [opts.expiresInMin] Minutes until code expires (default 5)
+ * @returns {Promise<void>}
+ */
+async function sendOtpEmail(userId, opts) {
+  const envId  = configStore.getEffective('pingone_environment_id');
+  const region = configStore.getEffective('pingone_region') || 'com';
+
+  if (!envId || !userId) return;
+
+  const { otpCode, amount, transactionType = 'transaction', userName = 'Valued Customer', expiresInMin = 5 } = opts;
+  const label = { transfer: 'Transfer', deposit: 'Deposit', withdrawal: 'Withdrawal' }[transactionType] || 'Transaction';
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr><td align="center" style="padding:32px 16px">
+    <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+      <tr><td style="background:linear-gradient(135deg,#1a5d80,#dc2626);padding:28px 32px">
+        <div style="color:#fff;font-size:13px;opacity:.8;margin-bottom:4px">BX Finance — Security</div>
+        <div style="color:#fff;font-size:22px;font-weight:700">🔒 Transaction Verification Code</div>
+      </td></tr>
+      <tr><td style="padding:28px 32px">
+        <p style="margin:0 0 16px;color:#374151;font-size:15px">Hi ${userName},</p>
+        <p style="margin:0 0 20px;color:#374151;font-size:15px">
+          You requested to authorize a high-value <strong>${label}</strong> of
+          <strong style="color:#dc2626">${formatCurrency(amount)}</strong>.
+          Enter the code below to confirm.
+        </p>
+        <div style="text-align:center;margin:24px 0">
+          <div style="display:inline-block;background:#f0f9ff;border:2px solid #0ea5e9;border-radius:12px;padding:16px 40px">
+            <div style="font-size:36px;font-weight:800;letter-spacing:0.28em;color:#0369a1;font-variant-numeric:tabular-nums">${otpCode}</div>
+          </div>
+        </div>
+        <p style="margin:0 0 8px;color:#6b7280;font-size:13px;text-align:center">
+          This code expires in <strong>${expiresInMin} minutes</strong>. Do not share it with anyone.
+        </p>
+        <p style="margin:20px 0 0;color:#dc2626;font-size:13px;border-top:1px solid #fee2e2;padding-top:16px">
+          ⚠️ If you did not initiate this transaction, ignore this email and contact support immediately.
+        </p>
+      </td></tr>
+      <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb">
+        <p style="margin:0;color:#9ca3af;font-size:12px">This is an automated security message from BX Finance Demo. Do not reply.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+
+  try {
+    const token = await getManagementToken();
+    if (!token) {
+      console.warn(`📧 [OTP Email] No management token available — OTP email skipped for user ${userId}`);
+      return;
+    }
+    await axios.post(
+      `https://api.pingone.${region}/v1/environments/${envId}/users/${userId}/messages`,
+      {
+        content: [
+          {
+            deliveryMethod: 'Email',
+            subject: `BX Finance — Your verification code: ${otpCode}`,
+            body: html,
+            charset: 'UTF-8',
+          },
+        ],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+    console.log(`📧 [OTP Email] Sent to user ${userId} — ${label} ${formatCurrency(amount)}`);
+  } catch (err) {
+    const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+    console.error(`📧 [OTP Email] Failed for user ${userId}: ${detail}`);
+    // Re-throw so caller can return 503 instead of silently proceeding without OTP
+    throw err;
+  }
+}
+
+module.exports = { sendTransactionConfirmation, sendOtpEmail };

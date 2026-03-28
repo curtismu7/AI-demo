@@ -123,8 +123,23 @@ router.post(
 router.post(
   '/consent-challenge/:challengeId/confirm',
   authenticateToken,
+  async (req, res) => {
+    const result = await txConsent.confirmChallenge(req, req.params.challengeId);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    return res.status(200).json({
+      challengeId: result.challengeId,
+      otpSent: result.otpSent,
+      otpExpiresAt: result.otpExpiresAt,
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/verify-otp',
+  authenticateToken,
   (req, res) => {
-    const result = txConsent.confirmChallenge(req, req.params.challengeId);
+    const { otpCode } = req.body || {};
+    const result = txConsent.verifyOtp(req, req.params.challengeId, otpCode);
     if (!result.ok) return res.status(result.status).json(result.json);
     return res.status(200).json({
       challengeId: result.challengeId,
