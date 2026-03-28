@@ -124,19 +124,24 @@ async function get_my_accounts(params, userId) {
 
 async function get_account_balance(params, userId) {
   const raw = params.account_id;
-  const account_id =
+  const rawStr =
     raw &&
     typeof raw === 'string' &&
     !/^(optional|omit|n\/a|none|unknown)$/i.test(String(raw).trim())
       ? raw
       : undefined;
+
+  // Always load the user's accounts so we can resolve type-name IDs like 'checking'/'savings'
+  // (the UI may submit these when liveAccounts hasn't loaded yet — resolveAccountId handles it).
+  const accounts = await ensureAccounts(userId);
+  const account_id = rawStr ? resolveAccountId(rawStr, accounts) : null;
+
   let account = null;
   if (account_id) {
     account = dataStore.getAccountById(account_id);
     if (!account) return { error: `Account ${account_id} not found` };
     if (account.userId !== userId) return { error: 'Access denied — not your account' };
   } else {
-    const accounts = await ensureAccounts(userId);
     account = accounts.find((a) => String(a.accountType || '').toLowerCase() === 'checking') || accounts[0];
     if (!account) return { error: 'No accounts found for this user' };
   }
