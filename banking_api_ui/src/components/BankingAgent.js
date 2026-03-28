@@ -1468,6 +1468,18 @@ export default function BankingAgent({
     } catch (err) {
       markToolProgressOutcome(false);
       toast.dismiss(toastId);
+
+      // Agent consent gate — open the modal instead of showing a generic error
+      if (err?.code === 'agent_consent_required') {
+        setShowConsentModal(true);
+        addMessage('assistant',
+          'To use the AI banking assistant, I need your permission to access your accounts.\n\nA consent agreement has opened — please accept it and then try again.',
+          actionId
+        );
+        setLoading(false);
+        return;
+      }
+
       const isConnErr =
         err.message.includes('timed out') ||
         err.message.includes('ECONNREFUSED') ||
