@@ -85,10 +85,10 @@ router.get('/my', authenticateToken, async (req, res) => {
 });
 
 // Session-bound consent challenge for high-value transactions (HITL). Registered before /:id so "consent-challenge" is not captured as an id.
+// No banking:* scope required — same reasoning as POST /; session ownership is enforced inside txConsent.
 router.post(
   '/consent-challenge',
   authenticateToken,
-  requireScopes(['banking:transactions:write', 'banking:write']),
   (req, res) => {
     const result = txConsent.createChallenge(req, req.body);
     if (!result.ok) return res.status(result.status).json(result.json);
@@ -103,7 +103,6 @@ router.post(
 router.post(
   '/consent-challenge/:challengeId/confirm',
   authenticateToken,
-  requireScopes(['banking:transactions:write', 'banking:write']),
   (req, res) => {
     const result = txConsent.confirmChallenge(req, req.params.challengeId);
     if (!result.ok) return res.status(result.status).json(result.json);
@@ -118,7 +117,6 @@ router.post(
 router.get(
   '/consent-challenge/:challengeId',
   authenticateToken,
-  requireScopes(['banking:transactions:read', 'banking:read']),
   (req, res) => {
     const result = txConsent.getChallenge(req, req.params.challengeId);
     if (!result.ok) return res.status(result.status).json(result.json);
@@ -152,7 +150,11 @@ router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read'
 });
 
 // Create new transaction (admin or end user)
-router.post('/', authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
+// No banking:* scope required — standard PingOne tokens without a custom resource server
+// only carry openid/profile/email. Once a resource server is configured in PingOne and
+// ENDUSER_AUDIENCE is set, restore requireScopes(['banking:transactions:write', 'banking:write']).
+// Ownership is enforced below (non-admin users can only act on their own accounts).
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { fromAccountId, toAccountId, amount, type, description, userId } = req.body;
 
