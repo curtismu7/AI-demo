@@ -109,13 +109,23 @@ router.get('/my', authenticateToken, async (req, res) => {
 router.post(
   '/consent-challenge',
   authenticateToken,
-  (req, res) => {
+  async (req, res) => {
+    // Re-hydrate accounts from Redis snapshot in case this Lambda was cold-started.
+    if (req.user.role !== 'admin') {
+      await restoreAccountsFromSnapshot(req.user.id);
+    }
     const result = txConsent.createChallenge(req, req.body);
     if (!result.ok) return res.status(result.status).json(result.json);
-    return res.status(201).json({
-      challengeId: result.challengeId,
-      expiresAt: result.expiresAt,
-      snapshot: result.snapshot,
+    // Explicitly save session to Redis before responding — on Vercel the next
+    // GET /consent-challenge/:id may land on a different Lambda and must find
+    // the challenge already persisted (auto-save races with the next request).
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error:', saveErr);
+      return res.status(201).json({
+        challengeId: result.challengeId,
+        expiresAt: result.expiresAt,
+        snapshot: result.snapshot,
+      });
     });
   },
 );
@@ -126,10 +136,13 @@ router.post(
   async (req, res) => {
     const result = await txConsent.confirmChallenge(req, req.params.challengeId);
     if (!result.ok) return res.status(result.status).json(result.json);
-    return res.status(200).json({
-      challengeId: result.challengeId,
-      otpSent: result.otpSent,
-      otpExpiresAt: result.otpExpiresAt,
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (confirm):', saveErr);
+      return res.status(200).json({
+        challengeId: result.challengeId,
+        otpSent: result.otpSent,
+        otpExpiresAt: result.otpExpiresAt,
+      });
     });
   },
 );
@@ -141,9 +154,12 @@ router.post(
     const { otpCode } = req.body || {};
     const result = txConsent.verifyOtp(req, req.params.challengeId, otpCode);
     if (!result.ok) return res.status(result.status).json(result.json);
-    return res.status(200).json({
-      challengeId: result.challengeId,
-      confirmExpiresAt: result.confirmExpiresAt,
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (verify-otp):', saveErr);
+      return res.status(200).json({
+        challengeId: result.challengeId,
+        confirmExpiresAt: result.confirmExpiresAt,
+      });
     });
   },
 );
