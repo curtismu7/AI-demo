@@ -68,9 +68,26 @@ function ClaimsPanel({ claims, alg }) {
 function EventDetail({ event }) {
   return (
     <>
-      {event.explanation && (
-        <p className="tcd-explanation">{event.explanation}</p>
+      {/* Claims + JWT decode first — most useful content visible without scrolling */}
+      {event.claims && (
+        <>
+          <div className="tcd-section-title">Decoded JWT claims</div>
+          <ClaimsPanel claims={event.claims} alg={event.alg} />
+        </>
       )}
+      {event.jwtFullDecode && (
+        <div className="tcd-exchange-req">
+          <div className="tcd-exchange-req-title">JWT decode — full JSON (header + claims)</div>
+          <pre className="tcd-jwt-dump">{JSON.stringify(event.jwtFullDecode, null, 2)}</pre>
+        </div>
+      )}
+      {event.exchangeRequest && (
+        <div className="tcd-exchange-req">
+          <div className="tcd-exchange-req-title">Exchange request (RFC 8693)</div>
+          <pre>{JSON.stringify(event.exchangeRequest, null, 2)}</pre>
+        </div>
+      )}
+      {/* Status pills */}
       {event.mayActPresent === true && (
         <div className="tcd-pill tcd-pill--may-act">
           may_act ✅ present — {event.mayActDetails}
@@ -97,23 +114,8 @@ function EventDetail({ event }) {
           act ✅ {event.actDetails} — Backend-for-Frontend (BFF) is the current actor
         </div>
       )}
-      {event.exchangeRequest && (
-        <div className="tcd-exchange-req">
-          <div className="tcd-exchange-req-title">Exchange request (RFC 8693)</div>
-          <pre>{JSON.stringify(event.exchangeRequest, null, 2)}</pre>
-        </div>
-      )}
-      {event.jwtFullDecode && (
-        <div className="tcd-exchange-req">
-          <div className="tcd-exchange-req-title">JWT decode — full JSON (header + claims)</div>
-          <pre className="tcd-jwt-dump">{JSON.stringify(event.jwtFullDecode, null, 2)}</pre>
-        </div>
-      )}
-      {event.claims && (
-        <>
-          <div className="tcd-section-title">Decoded JWT claims</div>
-          <ClaimsPanel claims={event.claims} alg={event.alg} />
-        </>
+      {event.explanation && (
+        <p className="tcd-explanation">{event.explanation}</p>
       )}
     </>
   );
