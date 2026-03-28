@@ -31,6 +31,13 @@ export default function EducationModal({
     }
   }, [isOpen, initialTabId, tabs]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const active = tabs.find((t) => t.id === activeId) || tabs[0];

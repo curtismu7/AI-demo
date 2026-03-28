@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import '../styles/draggablePanel.css';
@@ -18,6 +18,12 @@ import './AgentConsentModal.css';
 export default function AgentConsentModal({ onAccept, onDismiss }) {
   const [accepting, setAccepting] = useState(false);
   const [error, setError]         = useState(null);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onDismiss?.(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onDismiss]);
 
   const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
     () => ({

@@ -400,6 +400,13 @@ export default function CIBAPanel() {
     return () => window.removeEventListener('education-open-ciba', onEdu);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   // ── Resize drag (left edge handle) ────────────────────────────────────────
   const handleResizeMouseDown = useCallback((e) => {
     isResizingRef.current = true;
