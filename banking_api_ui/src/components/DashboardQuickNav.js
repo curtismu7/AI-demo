@@ -26,7 +26,7 @@ export default function DashboardQuickNav({ user }) {
     window.open('/logs', 'BankingLogs', POPOUT);
   };
 
-  const homeActive = pathname === '/';
+  const homeActive = pathname === '/marketing';
   const dashActive = user
     ? (isAdmin ? pathname === '/admin' : pathname === '/dashboard')
     : pathname === '/dashboard';
@@ -35,7 +35,7 @@ export default function DashboardQuickNav({ user }) {
   return (
     <nav className="dashboard-quick-nav" aria-label="Quick navigation">
       <Link
-        to="/"
+        to="/marketing"
         className={`dashboard-quick-nav__btn${homeActive ? ' dashboard-quick-nav__btn--active' : ''}`}
         title="Home"
       >

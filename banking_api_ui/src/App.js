@@ -314,6 +314,7 @@ function AppWithAuth() {
                     <Route path="/client-registration"
                       element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
                     />
+                    <Route path="/marketing" element={<LandingPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </main>
