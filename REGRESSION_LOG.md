@@ -750,6 +750,24 @@ Added `didAuthRef` boolean ref. Component skips `fetchSessionPreview` on initial
 
 ---
 
+## 2026-03-28 — /demo-data may_act section: static-mode notice + dynamic explainer (commit `5ecf83e`)
+
+**Change**: The `/demo-data` may_act toggle section now clearly reflects that `may_act` is always present in the token when using the static PingOne attribute mapping expression.
+
+**What was added:**
+- Amber notice banner (🔒) at the top of the section: "Static mapping active — `may_act` is always present in your token via the PingOne attribute mapping expression."
+- Status messages updated to say "mayAct attribute set/cleared on user record" (no longer implies the token changes).
+- `<details>` explainer (collapsed by default): step-by-step instructions for switching from the static hardcoded expression to the dynamic `${user.mayAct}` expression in PingOne → Applications → bankingAdmin → Attribute Mappings.
+- CSS: `.demo-data-static-notice`, `.demo-data-dynamic-explainer`, `.demo-data-code-block`.
+
+**Background**: PingOne rejects `${user.mayAct}` as an expression even though the `mayAct` JSON attribute exists in the user schema. Keeping a static hardcoded expression (e.g. `${"client_id": "<app-client-id>"}`) ensures `may_act` always appears in every token issued by the bankingAdmin app, making the Token Chain `✅ may_act valid` state reliable without user-attribute manipulation.
+
+**Files**: `banking_api_ui/src/components/DemoDataPage.js`, `banking_api_ui/src/components/DemoDataPage.css`
+
+**Regression check**: Go to `/demo-data` → may_act section must show amber notice banner; Enable/Clear buttons still fire `PATCH /api/demo/may-act` (call succeeds, no error); `<details>` expander opens and shows PingOne steps.
+
+---
+
 ## 2026-03-28 — Admin role detection: 4-signal resolution
 
 **Problem**: The previous logic only preserved admin role if the user **already existed** in the dataStore with role `admin`. A first-time admin login always got `customer`. The only workaround was to manually edit the dataStore JSON.

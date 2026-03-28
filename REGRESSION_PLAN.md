@@ -51,6 +51,13 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-28 — /demo-data may_act section: static-mode notice + dynamic explainer (commit `5ecf83e`)
+- **What changed:** The may_act toggle section on `/demo-data` now accurately reflects the static PingOne mapping mode.
+- **Added:** Amber notice banner explaining `may_act` is always in the token via a hardcoded PingOne expression; updated button status messages to refer to the user-attribute record (not the token); `<details>` explainer with PingOne steps for switching to dynamic mode.
+- **CSS added:** `.demo-data-static-notice`, `.demo-data-dynamic-explainer`, `.demo-data-code-block`.
+- **Files:** `banking_api_ui/src/components/DemoDataPage.js`, `banking_api_ui/src/components/DemoDataPage.css`
+- **Regression check:** `/demo-data` → may_act section shows amber banner; buttons call PATCH without error; details expander shows dynamic-mode steps.
+
 ### 2026-03-28 — may_act educational UI: clear validation state in Token Chain + API display
 - **What changed:** `may_act` / `act` claim status is now shown clearly in both the Token Chain panel and the inline chat messages.
 - **Token Chain row:** Each relevant event row shows a compact hint badge — `✅ may_act valid`, `⚠️ may_act absent`, or `❌ may_act mismatch` — visible without opening the inspector.
