@@ -79,13 +79,32 @@ async function ensureAccounts(userId) {
 
 /**
  * Resolve a value that may be an account type name ('checking', 'savings') or partial
- * name to the actual account ID. Returns the original value if it already looks like an ID.
+ * name to the actual account ID. Returns the original value if it already looks like an ID
+ * AND that ID exists in the user's provisioned accounts.
+ *
+ * If the value looks like a real ID (chk-*, sav-*, UUID) but is NOT in the user's accounts
+ * (e.g. a stale/fake ID from the UI fallback like 'chk-5'), we fall back to type-based
+ * resolution so that create_deposit/create_withdrawal still work without an error.
  */
 function resolveAccountId(idOrType, accounts) {
   if (!idOrType) return null;
   const s = String(idOrType).trim();
   // Already looks like an ID (chk-*, sav-*, or UUID)
-  if (/^(chk-|sav-)/i.test(s) || /^[0-9a-f]{8}-/i.test(s)) return s;
+  if (/^(chk-|sav-)/i.test(s) || /^[0-9a-f]{8}-/i.test(s)) {
+    // Only trust it when it's actually in this user's account list.
+    if (accounts.some(a => a.id === s)) return s;
+    // Stale / fake ID (e.g. 'chk-5' from UI generateFakeAccounts): fall back by prefix type.
+    if (/^chk-/i.test(s)) {
+      const byType = accounts.find(a => String(a.accountType || '').toLowerCase() === 'checking');
+      if (byType) return byType.id;
+    }
+    if (/^sav-/i.test(s)) {
+      const byType = accounts.find(a => String(a.accountType || '').toLowerCase() === 'savings');
+      if (byType) return byType.id;
+    }
+    // No type match — return as-is and let the caller report 'not found'.
+    return s;
+  }
   const lower = s.toLowerCase().replace(/^(my|the|primary|main)\s+/, '');
   const byType = accounts.find(a => String(a.accountType || '').toLowerCase() === lower);
   if (byType) return byType.id;

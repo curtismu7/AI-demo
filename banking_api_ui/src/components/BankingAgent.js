@@ -44,30 +44,27 @@ const ACTIONS = [
 
 // ─── Fake account data generator ────────────────────────────────────────────────
 
-function generateFakeAccounts(user) {
-  const userId = user?.sub || user?.id || 'user123';
-  
-  // Match server's account ID pattern: chk-{uid} and sav-{uid}
-  const uid = userId.replace(/-/g, '').slice(0, 10);
-  
-  const accounts = [
+function generateFakeAccounts(_user) {
+  // Use plain type names ('checking', 'savings') as IDs — NOT chk-/sav-prefixed fake IDs.
+  // The server's resolveAccountId resolves 'checking' → real checking account by type,
+  // so submissions while liveAccounts are still loading will succeed instead of returning
+  // '❌ Account chk-5 not found' (stale fake IDs bypass type-resolution on the server).
+  return [
     {
-      id: `chk-${uid}`,
-      name: 'Primary Checking',
+      id: 'checking',
+      name: 'Checking Account',
       type: 'checking',
-      balance: 3000.00,
-      accountNumber: `CHK-${uid.toUpperCase()}`,
+      balance: 0,
+      accountNumber: 'CHECKING',
     },
     {
-      id: `sav-${uid}`,
-      name: 'Emergency Savings',
+      id: 'savings',
+      name: 'Savings Account',
       type: 'savings',
-      balance: 2000.00,
-      accountNumber: `SAV-${uid.toUpperCase()}`,
+      balance: 0,
+      accountNumber: 'SAVINGS',
     },
   ];
-  
-  return accounts;
 }
 
 // ─── Suggested prompts — role-aware ──────────────────────────────────────────
