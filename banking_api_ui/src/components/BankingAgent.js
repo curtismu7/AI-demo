@@ -1916,25 +1916,7 @@ export default function BankingAgent({
                 )}
               </div>
             </div>
-            {/* Connected services row — hidden in split column to maximize chat height */}
-            {!splitChrome && (
-              <div className="ba-server-chips">
-                <span
-                  className="ba-server-chip ba-server-chip--active"
-                  title={isConfigEmbeddedFocus ? 'MCP tools (same server — use for discovery)' : 'Banking AI tools service — connected'}
-                >
-                  <span className="ba-chip-dot" />
-                  {isConfigEmbeddedFocus ? 'MCP tools' : 'Banking Tools'}
-                  {mcpStatus.connected && mcpStatus.toolCount != null && (
-                    <span className="ba-chip-count">{mcpStatus.toolCount} actions</span>
-                  )}
-                </span>
-                <span className="ba-server-chip ba-server-chip--active" title="PingOne Identity — connected">
-                  <span className="ba-chip-dot" />
-                  PingOne Identity
-                </span>
-              </div>
-            )}
+
           </div>
 
           {/* Two-column body */}
@@ -2278,6 +2260,24 @@ export default function BankingAgent({
                     Sign in using the buttons on the left to start chatting
                   </div>
                 )}
+              </div>
+
+              {/* Connected services chips — below prompt */}
+              <div className="ba-chips-footer">
+                <span
+                  className="ba-server-chip ba-server-chip--active"
+                  title={isConfigEmbeddedFocus ? 'MCP tools (same server — use for discovery)' : 'Banking AI tools service — connected'}
+                >
+                  <span className="ba-chip-dot" />
+                  {isConfigEmbeddedFocus ? 'MCP tools' : 'Banking Tools'}
+                  {mcpStatus.connected && mcpStatus.toolCount != null && (
+                    <span className="ba-chip-count">{mcpStatus.toolCount} actions</span>
+                  )}
+                </span>
+                <span className="ba-server-chip ba-server-chip--active" title="PingOne Identity — connected">
+                  <span className="ba-chip-dot" />
+                  PingOne Identity
+                </span>
               </div>
             </div>
           </div>

@@ -583,6 +583,16 @@
   gap: 6px;
   flex-wrap: wrap;
 }
+
+/* Chips row below the prompt input */
+.ba-chips-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--ba-border);
+}
 .ba-server-chip {
   display: inline-flex;
   align-items: center;
