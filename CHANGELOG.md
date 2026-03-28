@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **OTP email verification for high-value transactions** — after the user checks the consent checkbox and clicks "Agree & send code", a 6-digit OTP is generated (HMAC-SHA256/per-challenge salt, timing-safe compare) and sent via PingOne email; the transaction only executes once the correct code is verified; challenge state machine: `pending → otp_pending → confirmed → consumed`; max 3 attempts, 5-minute TTL; new route `POST /consent-challenge/:id/verify-otp`; dev fallback when email unconfigured; 7 unit tests added
 - **Exchange Audit Log** (`services/exchangeAuditStore.js`) — Redis-backed (Upstash KV) audit log for RFC 8693 token-exchange events; `writeExchangeEvent()` LPUSH+LTRIM to `banking:exchange-audit` (max 200 entries), `readExchangeEvents()` LRANGE; graceful no-op when KV env vars are absent
 - **`GET /api/logs/exchange`** — dedicated endpoint returning Redis exchange audit events in standard `{logs,total}` shape; LogViewer "Exchange Audit" dropdown option + included in "all sources" fetch
 - `TOKEN_EXCHANGE` category added to `LOG_CATEGORIES` in `utils/logger.js`

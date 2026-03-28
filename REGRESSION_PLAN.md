@@ -67,6 +67,16 @@
 - **Files:** `services/exchangeAuditStore.js` (new), `services/oauthService.js`, `services/agentMcpTokenService.js`, `routes/logs.js`, `utils/logger.js`, `banking_api_ui/src/components/LogViewer.js`
 - **Regression check:** Trigger a token exchange failure (e.g. set `mcp_resource_uri` to a value PingOne rejects). Open Log Viewer → "All Sources" or "Exchange Audit" → should see an error entry with HTTP status code and PingOne `error` field. Token Chain panel → exchange-failed event should show "HTTP 4xx — error: <pingone_code>" in description. On success, Exchange Audit should show the method (with-actor / subject-only) and audience.
 
+### 2026-03-28 — HITL: OTP email verification for high-value transactions (commit `b8cef49`)
+- **What changed:** After the user checks the consent checkbox and clicks "Agree & send code", the server generates a 6-digit OTP (HMAC-SHA256, per-challenge salt, timing-safe compare), sends it via PingOne email, and puts the challenge into `otp_pending` state. The transaction only executes once the user enters the correct code via `POST /consent-challenge/:id/verify-otp`.
+- **New route:** `POST /api/transactions/consent-challenge/:id/verify-otp { otpCode }`
+- **Security:** Max 3 attempts → challenge auto-locks (429 while locked, then 404 once deleted); 5-minute TTL on the OTP.
+- **Dev fallback:** If PingOne email is not configured, `confirmChallenge` catches the error and returns `{ otpSent: false }`; the UI shows a warning message but the OTP is still stored in session so `verify-otp` still works in dev.
+- **Challenge state machine:** `pending → otp_pending → confirmed → (consumed/deleted)`
+- **Files:** `banking_api_server/services/emailService.js`, `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/TransactionConsentModal.js`, `banking_api_ui/src/components/TransactionConsentPage.css`
+- **Tests added (7):** missing consentChallengeId guard · otpSent flag on confirm · full 4-step happy path · wrong code → otp_incorrect + attemptsRemaining · lockout after 3 wrong attempts · skip verify-otp (consent_not_confirmed) · one-time consume guard
+- **Regression check:** Open agent → attempt a transfer > $500 → consent modal says "Agree & send code" → check checkbox → click button → OTP panel appears with 6-digit input → enter correct code from email → transaction succeeds; entering wrong code shows "Incorrect code, X attempts remaining"; entering wrong code 3 times locks the challenge; clicking "← Back" returns to consent panel without submitting.
+
 ### 2026-03-28 — HITL: from-account 404, auto-refresh on by default, checkbox gap (commit `11122a8`)
 - **Symptom (1):** Approving a high-value consent challenge returned `❌ From account not found` (or `To account not found`) even though the transaction was valid when the challenge was created.
 - **Root cause (1):** On Vercel, a new Lambda can be allocated between the time `POST /consent-challenge` is called (accounts in memory) and when the user clicks "Agree & submit" (new cold Lambda, empty `dataStore`). `POST /api/transactions` looked up accounts directly without re-hydrating from the Redis snapshot first.
