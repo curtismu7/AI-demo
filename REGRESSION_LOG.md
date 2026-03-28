@@ -5,6 +5,63 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-03-28 — DemoDataPage build error: handleResetDefaults called missing setAccounts (commit `0058450`)
+
+**Symptoms**: `CI=true npm run build` failed with `'setAccounts' is not defined` (eslint `no-undef`), blocking every Vercel deploy.
+
+**Root cause**: `handleResetDefaults` in `DemoDataPage.js` was written against an old array-based accounts state (`setAccounts`) that was removed when the component was refactored to the type-slot model (`setTypeSlots`). The stale call was never caught locally because the dev server runs with `CI=false`.
+
+**Fix**: Replaced the `setAccounts(prev => prev.filter(...).map(...))` call with `setTypeSlots((prev) => { ... })`. The new callback directly updates the `checking` and `savings` slots using `defaults.checkingName/Balance` and `defaults.savingsName/Balance`, matching the object-keyed shape that the rest of the component uses.
+
+**Tests**: `CI=false npm run build` — compiled successfully. No runtime regression; `handleResetDefaults` is invoked by the "Reset to defaults" button on the Demo Data page.
+
+---
+
+## 2026-03-28 — Routing audit: 3 bugs fixed, 41 button routing tests added (commit `b21dcf7`)
+
+**Symptoms**:
+1. LandingPage "Logs" quick-link triggered admin OAuth sign-in instead of opening the log viewer.
+2. OAuthDebugLogViewer "← Dashboard" always navigated to `/` (landing page) regardless of user role.
+3. Admin Dashboard Quick Actions (7 buttons) used `window.location.href` causing full page reloads that break SPA state.
+
+**Root causes**:
+1. `onClick` was wired to `handleOAuthLogin('admin')` — a copy-paste error from an adjacent "Admin sign in" button.
+2. `<Link to="/">` was hardcoded; role-aware path (`/admin` vs `/dashboard`) was never applied.
+3. Buttons used `window.location.href = '/...'` instead of React Router `<Link>` components.
+
+**Fix**:
+- `LandingPage.js`: changed "Logs" button to `window.open('/logs', '_blank')`.
+- `OAuthDebugLogViewer.js`: added `const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard'`; changed link to `<Link to={dashboardPath}>`.
+- `Dashboard.js`: replaced all 7 `window.location.href` Quick Action buttons with `<Link to="...">` for `/activity`, `/users`, `/admin/banking`, `/accounts`, `/transactions`, `/settings`, `/mcp-inspector`.
+
+**Tests**: `src/components/__tests__/buttonRouting.test.js` — 41 tests, all passing. Covers DashboardQuickNav (8), PageNav (5), LandingPage (5), OAuthDebugLogViewer (6), Dashboard Quick Actions (7), DemoDataPage (6), Onboarding (2), Footer (2).
+
+---
+
+## 2026-03-28 — get_account_balance: type-name IDs like 'checking'/'savings' now resolved (commit `3aaeee4`)
+
+**Symptoms**: 💰 Check Balance chip returned `❌ Account checking not found` when the ActionForm rendered before live accounts loaded from the server (uses `generateFakeAccounts()` placeholder IDs).
+
+**Root cause**: `mcpLocalTools.js::get_account_balance` called `dataStore.getAccountById(account_id)` directly. Real account IDs are UUIDs; the UI placeholder IDs are `'checking'`/`'savings'`. `create_deposit`, `create_withdrawal`, and `create_transfer` all passed through `resolveAccountId()` first — `get_account_balance` was the only tool that was missed.
+
+**Fix**: `get_account_balance` now loads user accounts via `ensureAccounts(userId)` then calls `resolveAccountId(rawStr, accounts)` before `getAccountById`, matching the pattern of the other write tools.
+
+**Tests**: Covered by the existing routing test suite (`buttonRouting.test.js`) account-ID resolution path and manual verification via the Check Balance chip.
+
+---
+
+## 2026-03-28 — may_act absent: "will fail" changed to "may fail" — exchange always attempted (commit `f48120d`)
+
+**Symptoms**: Token Chain panel showed `may_act absent — exchange will fail` as a hard guarantee, confusing users whose PingOne policy permits exchange without a `may_act` claim.
+
+**Root cause**: `describeMayAct()` in `agentMcpTokenService.js` and the `MayActEduBox` in `TokenChainDisplay.js` used deterministic language ("PingOne will reject") that contradicts actual server behaviour — the RFC 8693 exchange is always attempted; PingOne decides based on its token policy.
+
+**Fix**: Changed to "may fail" in the edu-box header, body paragraph, legend item, and the server-side `describeMayAct` reason string.
+
+**Tests**: Display-only copy change; verified visually. No automated test added.
+
+---
+
 ## 2026-03-28 — Delegated Access: static Act-as panel replaced with live Token Exchange Simulator
 
 **Symptoms**: The "Act as" panel on `/delegated-access` was purely static — it showed a hard-coded RFC 8693 explainer but did not make any real API call or display actual before/after tokens. There was no way to see the live exchange chain or inspect JWT claims.
