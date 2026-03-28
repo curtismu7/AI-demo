@@ -299,8 +299,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setAccounts(acctRes.data.accounts || []);
         setTransactions(txRes.data.transactions || []);
       } catch (dataErr) {
-        console.error('Data fetch failed:', dataErr);
         if (dataErr.response?.status === 401) {
+          // Log the server-side reason for easier diagnosis — visible in browser console
+          const serverReason = dataErr.response?.data?.error_description
+            || dataErr.response?.data?.message
+            || dataErr.response?.data?.error
+            || '(no body)';
+          console.warn('Data fetch 401 — server reason:', serverReason, '| REAUTH_KEY:', sessionStorage.getItem(REAUTH_KEY));
           if (!silent) {
             // Token expired or cold-start stub. Redirect to re-auth.
             // PingOne's SSO session usually makes this seamless (no credentials needed).

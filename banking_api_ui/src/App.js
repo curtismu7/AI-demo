@@ -163,13 +163,14 @@ function AppWithAuth() {
       typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search || '').get('oauth') === 'success';
 
-    // Fresh return from PingOne — clear any stale reauth guard so UserDashboard
-    // gets a clean state.  Without this, a REAUTH_KEY left from a previous
-    // redirect would immediately show the "session expired" banner on the very
-    // first 401 after a successful PingOne login.
-    if (oauthSuccess) {
-      try { sessionStorage.removeItem('bx-dashboard-reauth'); } catch (_) { /* ignore */ }
-    }
+    // NOTE: do NOT clear bx-dashboard-reauth on oauth=success.
+    // The REAUTH_KEY guard is intentional: redirect once automatically (seamless
+    // SSO re-auth), then show the banner if still failing.  Clearing the key
+    // here re-enables the redirect on the very next 401, creating an infinite loop:
+    //   accounts/my 401 → set key → redirect → oauth=success → key cleared →
+    //   accounts/my 401 → set key → redirect → …
+    // The key is cleared correctly in UserDashboard's fetchUserData try-block
+    // when data actually loads successfully.
 
     const RETRY_DELAYS_MS = [450, 950, 1900, 3000];
     let retryIndex = 0;
