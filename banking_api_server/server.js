@@ -815,6 +815,9 @@ app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
 app.use('/api/logs', logsRoutes);
 
+// PATCH /api/demo/may-act — set/clear mayAct attribute on the signed-in PingOne user
+app.patch('/api/demo/may-act', express.json(), authenticateToken, demoScenarioRoutes.patchMayAct);
+
 // Public CIMD well-known endpoint — no authentication required.
 // Mounted after session/auth middleware but before static files.
 app.get('/.well-known/oauth-client/:clientId', wellKnownHandler);

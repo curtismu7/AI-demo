@@ -123,6 +123,24 @@ export default function DemoDataPage({ user, onLogout }) {
     }
   };
 
+  /** may_act demo toggle — set/clear the PingOne user mayAct attribute */
+  const [mayActEnabled, setMayActEnabled] = useState(null); // null = unknown
+  const [mayActSaving, setMayActSaving] = useState(false);
+
+  const handleSetMayAct = async (enable) => {
+    setMayActSaving(true);
+    try {
+      const { data } = await axios.patch('/api/demo/may-act', { enabled: enable });
+      setMayActEnabled(enable);
+      notifySuccess(data.message || (enable ? 'may_act enabled' : 'may_act cleared'));
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Failed to update may_act';
+      notifyError(msg);
+    } finally {
+      setMayActSaving(false);
+    }
+  };
+
   /** Stable React key for a row before the server assigns an account id. */
   const getAccountRowKey = (a) => a.id || a._clientKey;
 
@@ -693,6 +711,44 @@ export default function DemoDataPage({ user, onLogout }) {
                 >
                   {scopeSaving ? 'Saving…' : 'Save scope permissions'}
                 </button>
+              </div>
+            </section>
+
+            {/* ── may_act demo toggle ─────────────────────────────────────── */}
+            <section className="section demo-data-section" aria-labelledby="demo-mayact-heading">
+              <h2 className="demo-data-section__heading" id="demo-mayact-heading">Token Exchange — may_act demo</h2>
+              <p className="demo-data-hint">
+                The <code>may_act</code> claim in a PingOne access token pre-authorises the BFF to exchange
+                that token on behalf of the user (RFC&nbsp;8693). Enable it to demo a <strong>successful</strong>{' '}
+                token exchange with full <code>act</code> claim provenance; disable it to demo the{' '}
+                <strong>failed / degraded</strong> path.
+                <br /><br />
+                This calls the PingOne Management API to set the <code>mayAct</code> attribute on your user
+                record. <strong>You must re-login</strong> after changing this for your token to reflect the
+                new value.
+              </p>
+              <div className="demo-data-mayact-row">
+                <button
+                  type="button"
+                  className={`demo-data-btn${mayActEnabled === true ? ' primary' : ' ghost'}`}
+                  disabled={mayActSaving || mayActEnabled === true}
+                  onClick={() => handleSetMayAct(true)}
+                >
+                  {mayActSaving && mayActEnabled !== true ? 'Saving…' : '✅ Enable may_act'}
+                </button>
+                <button
+                  type="button"
+                  className={`demo-data-btn${mayActEnabled === false ? ' primary' : ' ghost'}`}
+                  disabled={mayActSaving || mayActEnabled === false}
+                  onClick={() => handleSetMayAct(false)}
+                >
+                  {mayActSaving && mayActEnabled !== false ? 'Saving…' : '❌ Clear may_act'}
+                </button>
+                {mayActEnabled !== null && (
+                  <span className={`demo-data-mayact-status${mayActEnabled ? ' demo-data-mayact-status--on' : ' demo-data-mayact-status--off'}`}>
+                    {mayActEnabled ? 'may_act active — re-login to see it in your token' : 'may_act cleared — re-login to verify'}
+                  </span>
+                )}
               </div>
             </section>
             </>

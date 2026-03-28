@@ -6,11 +6,14 @@
 'use strict';
 
 const express = require('express');
+const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const dataStore = require('../data/store');
 const runtimeSettings = require('../config/runtimeSettings');
 const demoScenarioStore = require('../services/demoScenarioStore');
 const accountsRouter = require('./accounts');
+const { getManagementToken } = require('../services/pingOneClientService');
+const configStore = require('../services/configStore');
 
 const router = express.Router();
 
@@ -427,3 +430,83 @@ router.put('/', async (req, res) => {
 });
 
 module.exports = router;
+
+// ── may_act demo helper ────────────────────────────────────────────────────────
+// Re-exported so server.js can mount at /api/demo/may-act (no auth middleware
+// duplication — server.js wraps everything under authenticateToken already).
+
+/**
+ * PATCH /api/demo/may-act
+ * Body: { enabled: boolean }
+ *
+ * Sets or clears the `mayAct` custom attribute on the signed-in PingOne user.
+ * When enabled:  mayAct = { "client_id": "<admin_client_id>" }
+ * When disabled: mayAct set to null / empty object so PingOne omits may_act from tokens.
+ *
+ * The user must re-login after this change for their token to reflect the new may_act value.
+ */
+async function patchMayAct(req, res) {
+  const enabled = req.body?.enabled !== false; // default true
+  const pingOneUserId = req.user?.id;
+  if (!pingOneUserId) {
+    return res.status(401).json({ error: 'unauthenticated', message: 'No user session' });
+  }
+
+  const envId = configStore.getEffective('pingone_environment_id');
+  const region = configStore.getEffective('pingone_region') || 'com';
+  const bffClientId = configStore.getEffective('admin_client_id');
+
+  if (!envId || !bffClientId) {
+    return res.status(503).json({
+      error: 'not_configured',
+      message: 'pingone_environment_id or admin_client_id not set — cannot update user attribute',
+    });
+  }
+
+  let token;
+  try {
+    token = await getManagementToken();
+  } catch (err) {
+    return res.status(503).json({
+      error: 'management_token_failed',
+      message: `Could not obtain PingOne management token: ${err.message}`,
+    });
+  }
+
+  const url = `https://api.pingone.${region}/v1/environments/${envId}/users/${pingOneUserId}`;
+  // PingOne custom attributes live under the schema extension namespace.
+  // We use a PATCH with the top-level attribute name (no namespace needed for
+  // attributes added via Schema → User Schema in the admin console).
+  const patchBody = {
+    mayAct: enabled ? { client_id: bffClientId } : null,
+  };
+
+  try {
+    await axios.patch(url, patchBody, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 12000,
+    });
+    console.log(`[DemoMayAct] ${enabled ? 'Set' : 'Cleared'} mayAct for user ${pingOneUserId}`);
+    return res.json({
+      ok: true,
+      enabled,
+      mayAct: enabled ? { client_id: bffClientId } : null,
+      message: enabled
+        ? `may_act set to {"client_id":"${bffClientId}"}. Re-login to see the updated token.`
+        : 'may_act cleared. Re-login to see token without may_act.',
+    });
+  } catch (err) {
+    const status = err.response?.status;
+    const detail = err.response?.data?.message || err.response?.data?.details?.[0]?.message || err.message;
+    console.error(`[DemoMayAct] PingOne PATCH failed (${status}):`, detail);
+    return res.status(status || 502).json({
+      error: 'pingone_patch_failed',
+      message: `PingOne returned ${status}: ${detail}`,
+    });
+  }
+}
+
+module.exports.patchMayAct = patchMayAct;

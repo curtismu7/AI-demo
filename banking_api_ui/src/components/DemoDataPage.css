@@ -420,3 +420,29 @@
   margin: 0 0 0.35rem;
   color: var(--app-text-primary, #111827);
 }
+
+/* ── may_act demo section ───────────────────────────────────────────────────── */
+.demo-data-mayact-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.demo-data-mayact-status {
+  font-size: 0.82rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.demo-data-mayact-status--on {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.demo-data-mayact-status--off {
+  background: #fee2e2;
+  color: #991b1b;
+}
