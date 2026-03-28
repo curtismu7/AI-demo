@@ -298,32 +298,24 @@ export default function DemoDataPage({ user, onLogout }) {
         isActive: true,
       });
     }
-    setAccounts((prev) =>
-      prev
-        .filter((a) => a.id)
-        .map((a) => {
-          const idStr = typeof a.id === 'string' ? a.id : '';
-          if (idStr.startsWith('chk-')) {
-            return {
-              ...a,
-              _name: defaults.checkingName,
-              _balance: String(defaults.checkingBalance ?? ''),
-            };
-          }
-          if (idStr.startsWith('sav-')) {
-            return {
-              ...a,
-              _name: defaults.savingsName,
-              _balance: String(defaults.savingsBalance ?? ''),
-            };
-          }
-          return {
-            ...a,
-            _name: a.name != null ? String(a.name) : a._name || '',
-            _balance: String(a.balance ?? a._balance ?? ''),
-          };
-        }),
-    );
+    setTypeSlots((prev) => {
+      const next = { ...prev };
+      if (next.checking) {
+        next.checking = {
+          ...next.checking,
+          name: defaults.checkingName ?? next.checking.name,
+          balance: String(defaults.checkingBalance ?? next.checking.balance),
+        };
+      }
+      if (next.savings) {
+        next.savings = {
+          ...next.savings,
+          name: defaults.savingsName ?? next.savings.name,
+          balance: String(defaults.savingsBalance ?? next.savings.balance),
+        };
+      }
+      return next;
+    });
     notifyInfo('Form reset to defaults — click Save to apply');
   };
 
