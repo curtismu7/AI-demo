@@ -371,14 +371,22 @@ const TokenChainDisplay = () => {
     }
   }, [ctx]);
 
-  /** Run on mount and whenever ctx events reset (e.g. after page navigation). */
+  /**
+   * Run on mount ONLY if the user is already confirmed authenticated
+   * (userAuthenticated event fired before this component mounted).
+   * Avoids a guaranteed 401 on initial dashboard load before the session
+   * check completes, which clutters the console without any visible effect.
+   */
+  const didAuthRef = React.useRef(false);
   React.useEffect(() => {
-    void fetchSessionPreview();
-  }, [fetchSessionPreview]);
+    if (didAuthRef.current) void fetchSessionPreview();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only runs once on mount
+  }, []);
 
   /** Also re-fetch immediately after a successful PingOne login. */
   React.useEffect(() => {
     const onAuth = () => {
+      didAuthRef.current = true;
       setSessionPreviewEvents(null); // clear stale preview so new fetch replaces it
       void fetchSessionPreview();
     };

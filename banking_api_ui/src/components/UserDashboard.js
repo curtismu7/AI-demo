@@ -216,11 +216,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     let refreshInterval;
     
     if (autoRefresh) {
-      // Set up auto-refresh every 5 seconds
+      // Refresh every 30 seconds — frequent enough to catch real-time changes,
+      // slow enough not to burn Upstash quota or clutter the console.
       refreshInterval = setInterval(() => {
-        console.log('🔄 Auto-refreshing dashboard data...');
         fetchUserData(true); // Silent refresh - no loading spinner
-      }, 5000); // 5 seconds
+      }, 30000); // 30 seconds
     }
     
     // Cleanup interval on component unmount or when autoRefresh changes
@@ -784,6 +784,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <span className="ud-trust-strip__item">Step-up when risk warrants</span>
           <span className="ud-trust-strip__dot" aria-hidden="true" />
           <span className="ud-trust-strip__item">Biometrics on supported devices</span>
+          <span className="ud-trust-strip__dot" aria-hidden="true" />
+          <a
+            href="/api/auth/debug?deep=1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ud-trust-strip__item ud-trust-strip__item--debug"
+            title="Inspect session and Upstash store health"
+          >Session debug</a>
         </div>
         <div className="ud-super-pills" aria-label="More capabilities (demo)">
           <span className="ud-super-pill" title="Demo placeholder">Insights</span>

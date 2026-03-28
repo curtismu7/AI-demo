@@ -2251,6 +2251,17 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   opacity: 0.6;
 }
 
+.user-dashboard--2026 .ud-trust-strip__item--debug {
+  color: var(--dash-accent, #3b82f6);
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.user-dashboard--2026 .ud-trust-strip__item--debug:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 .user-dashboard--2026 .ud-super-pills {
   display: flex;
   flex-wrap: wrap;
