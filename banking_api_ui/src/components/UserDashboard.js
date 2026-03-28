@@ -165,35 +165,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   // Function to fetch current OAuth tokens
   const fetchTokenData = async () => {
     try {
-      console.log('🔍 Fetching current OAuth token data...');
-      
-      // Try both admin and user status endpoints
-      let response;
-      try {
-        response = await axios.get('/api/auth/oauth/user/status');
-        if (!response.data.authenticated) {
-          response = await axios.get('/api/auth/oauth/status');
-        }
-      } catch (error) {
-        response = await axios.get('/api/auth/oauth/status');
-      }
-      
-      if (response.data.authenticated && response.data.accessToken) {
-        const decodedAccessToken = decodeToken(response.data.accessToken);
-        
-        const tokenInfo = {
-          accessToken: decodedAccessToken,
-          tokenType: response.data.tokenType,
-          expiresAt: response.data.expiresAt,
-          clientType: response.data.clientType,
-          oauthProvider: response.data.oauthProvider,
-          user: response.data.user
-        };
-        
-        console.log('✅ Token data fetched:', tokenInfo);
-        setTokenData(tokenInfo);
+      const { data } = await axios.get('/api/auth/oauth/token-claims');
+      if (data.authenticated && data.decoded) {
+        setTokenData(data);
       } else {
-        console.log('❌ No authenticated session found');
         setTokenData(null);
       }
     } catch (error) {
@@ -1371,141 +1346,88 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <div className="token-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Your Token Chain</h3>
-              <button className="close-btn" onClick={() => setShowTokenModal(false)}>×</button>
+              <button className="close-btn" onClick={() => setShowTokenModal(false)} aria-label="Close">✕</button>
             </div>
             <div className="modal-content">
-              {tokenData ? (
-                <div className="token-info">
-                  {/* Session summary */}
-                  <div className="token-section">
-                    <h4>Session</h4>
-                    <div className="session-info-grid">
-                      <div className="session-row">
-                        <span className="session-label">User:</span>
-                        <span className="session-value">{tokenData.user?.username} ({tokenData.user?.email})</span>
-                      </div>
-                      <div className="session-row">
-                        <span className="session-label">Role:</span>
-                        <span className="session-value">{tokenData.user?.role}</span>
-                        <span className="session-label">Provider:</span>
-                        <span className="session-value">{tokenData.oauthProvider}</span>
-                      </div>
-                      <div className="session-row">
-                        <span className="session-label">Expires:</span>
-                        <span className="session-value">{tokenData.expiresAt ? new Date(tokenData.expiresAt).toLocaleString() : 'N/A'}</span>
+              {tokenData ? (() => {
+                const { decoded, user, tokenType, expiresAt, hasRefreshToken } = tokenData;
+                const payload = decoded?.payload || {};
+                const header  = decoded?.header  || {};
+                const mayAct  = payload.may_act;
+                return (
+                  <div className="token-info">
+                    {/* Session summary */}
+                    <div className="token-section">
+                      <h4>Session</h4>
+                      <div className="session-info-grid">
+                        <div className="session-row">
+                          <span className="session-label">User:</span>
+                          <span className="session-value">{user?.firstName} {user?.lastName} ({user?.email})</span>
+                        </div>
+                        <div className="session-row">
+                          <span className="session-label">Role:</span>
+                          <span className="session-value">{user?.role}</span>
+                          <span className="session-label">Type:</span>
+                          <span className="session-value">{tokenType || 'Bearer'}</span>
+                          {hasRefreshToken && <span className="session-value" style={{ color: '#22c55e' }}>✓ refresh token</span>}
+                        </div>
+                        <div className="session-row">
+                          <span className="session-label">Expires:</span>
+                          <span className="session-value">{expiresAt ? new Date(expiresAt).toLocaleString() : 'N/A'}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* User Token section */}
-                  {tokenData.accessToken && (
+                    {/* Key claims */}
                     <div className="token-section">
                       <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#93c5fd' }}>👤 User Token</span>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 'normal' }}>— stays in Backend-for-Frontend (BFF) session, never forwarded to MCP</span>
-                        <button type="button" className="token-payload-hint" title="Learn about token exchange" onClick={() => open(EDU.MAY_ACT, 'lifecycle')}>ⓘ</button>
+                        <span style={{ background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#93c5fd' }}>👤 Access Token Claims</span>
+                        <button type="button" className="token-payload-hint" title="Learn about tokens" onClick={() => open(EDU.LOGIN_FLOW, 'tokens')}>ⓘ</button>
                       </h4>
-                      <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '10px 14px', fontSize: '0.78rem', marginBottom: '8px' }}>
-                        <strong style={{ color: '#93c5fd' }}>JWT Header</strong>
-                        <pre className="token-json" style={{ margin: '6px 0 0' }}>
-                          {JSON.stringify(tokenData.accessToken.header, null, 2)}
-                        </pre>
+                      <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '10px 14px', fontSize: '0.8rem', marginBottom: '8px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <tbody>
+                            {[
+                              ['alg', header.alg],
+                              ['sub', payload.sub],
+                              ['aud', Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud],
+                              ['scope', payload.scope],
+                              ['iss', payload.iss],
+                              ['exp', payload.exp ? new Date(payload.exp * 1000).toLocaleString() : null],
+                            ].filter(([, v]) => v).map(([k, v]) => (
+                              <tr key={k} style={{ borderBottom: '1px solid #1e2d3d' }}>
+                                <td style={{ padding: '3px 8px', color: '#94a3b8', fontFamily: 'monospace', width: '5rem' }}>{k}</td>
+                                <td style={{ padding: '3px 8px', color: '#e2e8f0', fontFamily: 'monospace', wordBreak: 'break-all' }}>{String(v)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                      <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '10px 14px', fontSize: '0.78rem', marginBottom: '8px' }}>
-                        <strong style={{ color: '#93c5fd' }}>JWT Payload</strong>
-                        <button type="button" className="token-payload-hint" title="scope" onClick={() => open(EDU.LOGIN_FLOW, 'tokens')}>ⓘ</button>
-                        <pre className="token-json" style={{ margin: '6px 0 0' }}>
-                          {JSON.stringify(tokenData.accessToken.payload, null, 2)}
-                        </pre>
-                      </div>
-                      {tokenData.accessToken.payload?.may_act && (
+
+                      {mayAct ? (
                         <div style={{ background: '#1e3a5f', borderRadius: '6px', padding: '8px 12px', fontSize: '0.8rem', color: '#93c5fd', marginBottom: '8px' }}>
-                          ✅ <strong>may_act present</strong> — PingOne will allow the Backend-for-Frontend (BFF) to exchange this User Token.
-                          <pre style={{ margin: '4px 0 0', background: 'none', fontSize: '0.75rem' }}>{JSON.stringify(tokenData.accessToken.payload.may_act, null, 2)}</pre>
+                          ✅ <strong>may_act present</strong> — BFF can exchange this token (RFC 8693)
+                          <pre style={{ margin: '4px 0 0', background: 'none', fontSize: '0.75rem' }}>{JSON.stringify(mayAct, null, 2)}</pre>
                         </div>
-                      )}
-                      {!tokenData.accessToken.payload?.may_act && (
+                      ) : (
                         <div style={{ background: '#7f1d1d', borderRadius: '6px', padding: '8px 12px', fontSize: '0.8rem', color: '#fca5a5', marginBottom: '8px' }}>
-                          ⚠️ <strong>may_act absent</strong> — configure the may_act claim in your PingOne token policy to enable token exchange (RFC 8693).
+                          ⚠️ <strong>may_act absent</strong> — add the may_act claim in your PingOne token policy to enable token exchange
                         </div>
                       )}
                     </div>
-                  )}
 
-                  {/* What changes in the exchange */}
-                  <div className="token-section">
-                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.8rem' }}>→</span>
-                      <span style={{ background: '#2d1b69', border: '1px solid #8b5cf6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#c4b5fd' }}>Token Exchange (RFC 8693)</span>
-                    </h4>
-                    <div style={{ background: '#0f172a', border: '1px solid #2d1b69', borderRadius: '6px', padding: '10px 14px', fontSize: '0.82rem' }}>
-                      <p style={{ margin: '0 0 8px', color: '#c4b5fd' }}>What changes when the Backend-for-Frontend (BFF) exchanges the User Token for an MCP Token:</p>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid #334155' }}>
-                            <th style={{ textAlign: 'left', padding: '4px 8px', color: '#94a3b8' }}>Claim</th>
-                            <th style={{ textAlign: 'left', padding: '4px 8px', color: '#93c5fd' }}>User Token (before)</th>
-                            <th style={{ textAlign: 'left', padding: '4px 8px', color: '#34d399' }}>MCP Token (after)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>aud</code></td>
-                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.aud ? (Array.isArray(tokenData.accessToken.payload.aud) ? tokenData.accessToken.payload.aud.join(', ') : String(tokenData.accessToken.payload.aud)).substring(0, 40) + '…' : 'Backend-for-Frontend (BFF) / PingOne client'}</td>
-                            <td style={{ padding: '4px 8px', color: '#34d399' }}>MCP Server Resource URI (narrowed)</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>scope</code></td>
-                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.scope ? String(tokenData.accessToken.payload.scope).substring(0, 40) + '…' : 'broad scopes'}</td>
-                            <td style={{ padding: '4px 8px', color: '#34d399' }}>banking:read banking:write (narrowed)</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>may_act</code></td>
-                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>{tokenData.accessToken?.payload?.may_act ? '✅ present' : '⚠️ absent'}</td>
-                            <td style={{ padding: '4px 8px', color: '#34d399' }}>removed (no longer needed)</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>act</code></td>
-                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>absent</td>
-                            <td style={{ padding: '4px 8px', color: '#34d399' }}>added: {'{ "client_id": "bff" }'}</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '4px 8px', color: '#94a3b8' }}><code>sub</code></td>
-                            <td style={{ padding: '4px 8px', color: '#93c5fd' }}>user sub (unchanged)</td>
-                            <td style={{ padding: '4px 8px', color: '#34d399' }}>user sub (preserved)</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* MCP Token section */}
-                  <div className="token-section">
-                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ background: '#1a2e1a', border: '1px solid #22c55e', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#86efac' }}>🤖 MCP Token</span>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 'normal' }}>— sent to MCP Server &amp; Banking API</span>
-                    </h4>
-                    <div style={{ background: '#0f172a', border: '1px solid #1a2e1a', borderRadius: '6px', padding: '10px 14px', fontSize: '0.82rem', color: '#86efac' }}>
-                      <p style={{ margin: 0 }}>
-                        🔒 The MCP Token is minted server-side on each tool call — it is never stored in the browser or exposed via the API.
-                        Make a request via the <strong>AI Agent</strong> panel to see the live MCP Token claims in the <strong>Token Chain</strong> display above.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Raw token */}
-                  {tokenData.accessToken && (
+                    {/* Full payload */}
                     <div className="token-section">
-                      <h4>Raw User Token (JWT)</h4>
-                      <div className="token-raw-display">
-                        {tokenData.accessToken.raw}
-                      </div>
+                      <h4>Full JWT Payload</h4>
+                      <pre className="token-json" style={{ background: '#0f172a', color: '#e2e8f0', borderRadius: '6px', padding: '10px', fontSize: '0.73rem', overflowX: 'auto', border: '1px solid #1e3a5f' }}>
+                        {JSON.stringify(payload, null, 2)}
+                      </pre>
                     </div>
-                  )}
-                </div>
-              ) : (
+                  </div>
+                );
+              })() : (
                 <div className="no-token">
-                  <p>No OAuth token data available</p>
+                  <p>No OAuth token data available — make sure you are signed in.</p>
                 </div>
               )}
             </div>
