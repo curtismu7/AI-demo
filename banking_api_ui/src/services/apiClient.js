@@ -149,6 +149,14 @@ class ApiClient {
   }
 
   async refreshToken() {
+    // BFF pattern: the server holds the access token and refreshes it transparently
+    // via the refreshIfExpiring middleware before every authenticated request.
+    // The client never has the token, so there is nothing to refresh here.
+    // Returning null causes the interceptor to re-raise the original error without
+    // noisy fallback refresh attempts to /api/auth/oauth/refresh.
+    return null;
+
+    // eslint-disable-next-line no-unreachable
     try {
       // Try to refresh the end user token first
       try {

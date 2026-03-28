@@ -504,7 +504,13 @@ router.get('/stepup', (req, res) => {
 router.get('/status', (req, res) => {
   const token = req.session.oauthTokens?.accessToken;
   const hasOAuthToken = !!(token && token !== '_cookie_session');
-  const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
+  // Check expiry so that an expired session token does not report authenticated:true
+  // and then cause every downstream API call to return 401 (producing a redirect loop).
+  // refreshIfExpiring middleware runs first; if refresh succeeded the token is already
+  // updated in req.session before we get here, so this check is transparent for valid sessions.
+  const expiresAt = req.session.oauthTokens?.expiresAt;
+  const tokenNotExpired = !expiresAt || Date.now() < expiresAt;
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && tokenNotExpired && req.session.oauthType === 'user');
 
   // In-app consent flag — set by POST /api/auth/oauth/user/consent (no PingOne dependency)
   const consentGiven = isAuthenticated && req.session.agentConsentGiven === true;

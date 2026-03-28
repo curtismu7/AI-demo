@@ -336,7 +336,11 @@ router.get('/logout', (req, res) => {
 router.get('/status', (req, res) => {
   const token = req.session.oauthTokens?.accessToken;
   const hasOAuthToken = !!(token && token !== '_cookie_session');
-  const isAuthenticated = !!(req.session.user && hasOAuthToken);
+  // Check expiry — expired token → authenticated: false so callers don't attempt
+  // protected API routes and enter a 401 redirect loop.
+  const expiresAt = req.session.oauthTokens?.expiresAt;
+  const tokenNotExpired = !expiresAt || Date.now() < expiresAt;
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && tokenNotExpired);
   
   res.json({
     authenticated: isAuthenticated,
