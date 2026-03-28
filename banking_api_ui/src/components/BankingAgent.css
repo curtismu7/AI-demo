@@ -1814,6 +1814,60 @@
   background: rgba(65, 105, 225, 0.15);
 }
 
+/* Top edge — leave 16px on each side for NE/NW corners */
+.ba-resize-handle--n {
+  top: 0;
+  left: 16px;
+  width: calc(100% - 32px);
+  height: 6px;
+  cursor: n-resize;
+  background: transparent;
+}
+.ba-resize-handle--n:hover {
+  background: rgba(65, 105, 225, 0.15);
+}
+
+/* Top-right corner */
+.ba-resize-handle--ne {
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: ne-resize;
+}
+
+/* Top-left corner */
+.ba-resize-handle--nw {
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nw-resize;
+}
+
+/* Left edge — leave 16px on top/bottom for corners */
+.ba-resize-handle--w {
+  top: 16px;
+  left: 0;
+  width: 6px;
+  height: calc(100% - 32px);
+  cursor: w-resize;
+  background: transparent;
+  border-radius: 16px 0 0 16px;
+}
+.ba-resize-handle--w:hover {
+  background: rgba(65, 105, 225, 0.15);
+}
+
+/* Bottom-left corner */
+.ba-resize-handle--sw {
+  bottom: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  cursor: sw-resize;
+}
+
 .ba-mode-light .ba-resize-handle--se {
   background: linear-gradient(135deg, transparent 50%, #e5e7eb 50%);
 }

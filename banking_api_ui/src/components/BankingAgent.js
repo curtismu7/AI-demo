@@ -1033,7 +1033,9 @@ export default function BankingAgent({
     };
   }, []);
 
-  // Resize handler — works whether the panel is at CSS default position or has been dragged
+  // Resize handler — works whether the panel is at CSS default position or has been dragged.
+  // Supports all 8 directions: n, ne, e, se, s, sw, w, nw.
+  // N/W/NW/NE/SW directions shift dragPos so the opposite edge stays fixed.
   const handleResize = useCallback((e, direction) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1042,32 +1044,58 @@ export default function BankingAgent({
     const startWidth = panelSize.width;
     const startHeight = panelSize.height;
 
-    // If the panel hasn't been dragged yet, anchor it now at its current position
-    // so resizing doesn't shift it. We must do this synchronously before the first
-    // mousemove fires.
-    if (!dragPos) {
-      const rect = panelRef.current?.getBoundingClientRect();
-      if (rect) setDragPos({ x: rect.left, y: rect.top });
+    // Exit expanded mode on resize (same as drag)
+    setIsExpanded(false);
+
+    // Capture starting position from current dragPos or from getBoundingClientRect.
+    // Must be done synchronously so onMove calculations are anchored correctly.
+    let startPosX, startPosY;
+    const rect = panelRef.current?.getBoundingClientRect();
+    if (dragPos) {
+      startPosX = dragPos.x;
+      startPosY = dragPos.y;
+    } else if (rect) {
+      startPosX = rect.left;
+      startPosY = rect.top;
+      setDragPos({ x: rect.left, y: rect.top });
+    } else {
+      startPosX = 0;
+      startPosY = 0;
     }
 
     function onMove(ev) {
       const deltaX = ev.clientX - startX;
       const deltaY = ev.clientY - startY;
       const MIN_W = 280, MIN_H = 220;
-      const MAX_W = Math.floor(window.innerWidth * 0.9);
-      const MAX_H = Math.floor(window.innerHeight * 0.9);
+      const MAX_W = Math.floor(window.innerWidth * 0.95);
+      const MAX_H = Math.floor(window.innerHeight * 0.95);
 
       let newWidth  = startWidth;
       let newHeight = startHeight;
+      let newX = startPosX;
+      let newY = startPosY;
 
-      if (direction === 'e' || direction === 'se') {
+      // Right edge — grows rightward, position unchanged
+      if (direction === 'e' || direction === 'se' || direction === 'ne') {
         newWidth = Math.min(MAX_W, Math.max(MIN_W, startWidth + deltaX));
       }
-      if (direction === 's' || direction === 'se') {
+      // Left edge — grows leftward, left position shifts
+      if (direction === 'w' || direction === 'sw' || direction === 'nw') {
+        newWidth = Math.min(MAX_W, Math.max(MIN_W, startWidth - deltaX));
+        newX = startPosX + (startWidth - newWidth);
+      }
+      // Bottom edge — grows downward, position unchanged
+      if (direction === 's' || direction === 'se' || direction === 'sw') {
         newHeight = Math.min(MAX_H, Math.max(MIN_H, startHeight + deltaY));
+      }
+      // Top edge — grows upward, top position shifts
+      if (direction === 'n' || direction === 'ne' || direction === 'nw') {
+        newHeight = Math.min(MAX_H, Math.max(MIN_H, startHeight - deltaY));
+        newY = startPosY + (startHeight - newHeight);
       }
 
       setPanelSize({ width: newWidth, height: newHeight });
+      setDragPos({ x: newX, y: newY });
     }
 
     function onUp() {
@@ -2170,12 +2198,17 @@ export default function BankingAgent({
               </div>
             </div>
           </div>
-          {/* Resize handles */}
+          {/* Resize handles — all 8 directions, float mode only */}
           {!isInline && (
             <>
               <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--se" onMouseDown={(e) => handleResize(e, 'se')} aria-label="Resize southeast" />
-              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--e" onMouseDown={(e) => handleResize(e, 'e')} aria-label="Resize east" />
-              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--s" onMouseDown={(e) => handleResize(e, 's')} aria-label="Resize south" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--e"  onMouseDown={(e) => handleResize(e, 'e')}  aria-label="Resize east" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--s"  onMouseDown={(e) => handleResize(e, 's')}  aria-label="Resize south" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--n"  onMouseDown={(e) => handleResize(e, 'n')}  aria-label="Resize north" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--ne" onMouseDown={(e) => handleResize(e, 'ne')} aria-label="Resize northeast" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--nw" onMouseDown={(e) => handleResize(e, 'nw')} aria-label="Resize northwest" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--w"  onMouseDown={(e) => handleResize(e, 'w')}  aria-label="Resize west" />
+              <div role="button" tabIndex="0" className="ba-resize-handle ba-resize-handle--sw" onMouseDown={(e) => handleResize(e, 'sw')} aria-label="Resize southwest" />
             </>
           )}
         </div>
