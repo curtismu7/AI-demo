@@ -227,11 +227,12 @@ function buildSessionPreviewTokenEvents(req) {
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
       'exchange-required',
-      'Token Exchange (RFC 8693) — Required',
-      'failed',
+      'Token Exchange (RFC 8693) — Not Configured',
+      'skipped',
       null,
-      'RFC 8693 token exchange is mandatory for MCP: set mcp_resource_uri (Config UI or MCP_RESOURCE_URI env) ' +
-        'to the MCP resource audience URI. The User Token must never be sent to the MCP server without exchange.',
+      'mcp_resource_uri is not set — RFC 8693 token exchange is not active. ' +
+        'Banking tools run via local fallback; the User Token is never forwarded to MCP. ' +
+        'Token exchange (and human-in-the-loop consent) only applies to deposit, withdrawal, and transfer transactions over $500.',
       { rfc: 'RFC 8693 · RFC 8707' }
     ));
     return { tokenEvents };
@@ -259,7 +260,8 @@ function buildSessionPreviewTokenEvents(req) {
     'Token Exchange (RFC 8693): User Token → MCP Token',
     'waiting',
     null,
-    'Your session has a User Token (above). The exchange runs when the AI Agent or another MCP-backed call invokes a tool — then the live RFC 8693 request and result appear here.',
+    'Your session has a User Token (above). The exchange runs when the AI Agent invokes a banking tool. ' +
+      'For deposit, withdrawal, and transfer over $500 the exchange is paired with human-in-the-loop consent (OTP).',
     { rfc: 'RFC 8693 · RFC 8707' }
   ));
 
