@@ -11,7 +11,7 @@ export default function EducationDrawer({
   title,
   tabs,
   initialTabId,
-  width = 'min(520px, 100vw)',
+  width = 'clamp(320px, 50vw, 100vw)',
 }) {
   const [activeId, setActiveId] = useState(tabs[0]?.id);
   /** Only apply initialTabId when the drawer opens — not on every render (tabs[] is often a new array reference per parent render). */
@@ -64,7 +64,7 @@ export default function EducationDrawer({
             ))}
           </div>
           <button type="button" className="edu-drawer-close" onClick={onClose} aria-label="Close">
-            ×
+            ✕
           </button>
         </div>
         <div className="edu-drawer-title-row">

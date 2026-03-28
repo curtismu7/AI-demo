@@ -63,18 +63,27 @@
 
 .edu-drawer-close {
   flex-shrink: 0;
-  border: none;
-  background: transparent;
-  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
-  color: #64748b;
-  padding: 0.15rem 0.35rem;
-  margin-top: 0.1rem;
+  color: #475569;
+  padding: 0;
+  margin-top: 0.05rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .edu-drawer-close:hover {
-  color: #0f172a;
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
 }
 
 .edu-drawer-tab {
