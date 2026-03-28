@@ -717,16 +717,26 @@ export default function DemoDataPage({ user, onLogout }) {
             {/* ── may_act demo toggle ─────────────────────────────────────── */}
             <section className="section demo-data-section" aria-labelledby="demo-mayact-heading">
               <h2 className="demo-data-section__heading" id="demo-mayact-heading">Token Exchange — may_act demo</h2>
+
+              {/* Static-mode notice */}
+              <div className="demo-data-static-notice">
+                <span className="demo-data-static-notice__icon">🔒</span>
+                <div>
+                  <strong>Static mapping active</strong> — <code>may_act</code> is always present in your
+                  token. The PingOne attribute mapping for the <em>bankingAdmin</em> app uses a hardcoded
+                  expression, so <code>may_act</code> is injected regardless of the <code>mayAct</code>{' '}
+                  user attribute. The buttons below still write to your user record and are useful for
+                  exploring the concept, but they will not change what appears in your token.
+                </div>
+              </div>
+
               <p className="demo-data-hint">
                 The <code>may_act</code> claim in a PingOne access token pre-authorises the BFF to exchange
                 that token on behalf of the user (RFC&nbsp;8693). Enable it to demo a <strong>successful</strong>{' '}
                 token exchange with full <code>act</code> claim provenance; disable it to demo the{' '}
                 <strong>failed / degraded</strong> path.
-                <br /><br />
-                This calls the PingOne Management API to set the <code>mayAct</code> attribute on your user
-                record. <strong>You must re-login</strong> after changing this for your token to reflect the
-                new value.
               </p>
+
               <div className="demo-data-mayact-row">
                 <button
                   type="button"
@@ -746,10 +756,42 @@ export default function DemoDataPage({ user, onLogout }) {
                 </button>
                 {mayActEnabled !== null && (
                   <span className={`demo-data-mayact-status${mayActEnabled ? ' demo-data-mayact-status--on' : ' demo-data-mayact-status--off'}`}>
-                    {mayActEnabled ? 'may_act active — re-login to see it in your token' : 'may_act cleared — re-login to verify'}
+                    {mayActEnabled
+                      ? 'mayAct attribute set on user record'
+                      : 'mayAct attribute cleared on user record'}
                   </span>
                 )}
               </div>
+
+              {/* Dynamic mode explainer */}
+              <details className="demo-data-dynamic-explainer">
+                <summary>How to enable dynamic toggle (advanced)</summary>
+                <p>
+                  To make the Enable / Clear buttons actually control what appears in the token,
+                  switch the PingOne attribute mapping from the static expression to a dynamic one:
+                </p>
+                <ol>
+                  <li>
+                    Open <strong>PingOne console → Applications → bankingAdmin → Edit →
+                    Attribute Mappings</strong>
+                  </li>
+                  <li>
+                    Find the <code>may_act</code> row and change the expression from:
+                    <pre className="demo-data-code-block">{`${"client_id": "<app-client-id>"}`}</pre>
+                    to:
+                    <pre className="demo-data-code-block">{`\${user.mayAct}`}</pre>
+                  </li>
+                  <li>
+                    Save, then use the Enable / Clear buttons here and re-login to see the
+                    claim appear or disappear in the Token Chain view.
+                  </li>
+                </ol>
+                <p>
+                  <strong>Note:</strong> PingOne may reject <code>{`\${user.mayAct}`}</code> if the
+                  attribute type is JSON — in that case use a worker app script to set a string
+                  value and map it with <code>{`\${user.mayAct}`}</code> once the type is confirmed.
+                </p>
+              </details>
             </section>
             </>
           )}
