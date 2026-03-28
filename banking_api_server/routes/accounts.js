@@ -3,15 +3,41 @@ const router = express.Router();
 const dataStore = require('../data/store');
 const { authenticateToken, requireScopes } = require('../middleware/auth');
 const { blockInDemoMode } = require('../middleware/demoMode');
+const demoScenarioStore = require('../services/demoScenarioStore');
+
+/**
+ * Rebuild a user's accounts from a snapshot saved in demoScenarioStore (Redis/KV).
+ * Called on cold-start when the in-memory store is empty so restored accounts
+ * (e.g. investment accounts added via /demo-data) aren't lost.
+ * Returns the restored accounts array, or [] if no snapshot exists.
+ */
+async function restoreAccountsFromSnapshot(userId) {
+  try {
+    const scenario = await demoScenarioStore.load(userId);
+    if (!Array.isArray(scenario.accountSnapshot) || scenario.accountSnapshot.length === 0) return [];
+    const restored = [];
+    for (const snap of scenario.accountSnapshot) {
+      const existing = dataStore.getAccountById(snap.id);
+      if (existing) {
+        restored.push(existing);
+      } else {
+        const acct = await dataStore.createAccount({ ...snap, userId, createdAt: new Date() });
+        restored.push(acct);
+      }
+    }
+    return restored;
+  } catch (e) {
+    console.warn('[accounts] restoreAccountsFromSnapshot failed:', e.message);
+    return [];
+  }
+}
 
 // Get all accounts (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:accounts:read', 'banking:read']), async (req, res) => {
   try {
-    // Check if user is admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
     }
-    
     const accounts = dataStore.getAllAccounts();
     res.json({ accounts });
   } catch (error) {
@@ -79,7 +105,18 @@ router.get('/my', authenticateToken, async (req, res) => {
   try {
     let userAccounts = dataStore.getAccountsByUserId(req.user.id);
     if (userAccounts.length === 0 && req.user.id) {
-      userAccounts = await provisionDemoAccounts(req.user.id);
+      // On cold-start the in-memory store is empty.  Try to restore from the persisted
+      // account snapshot (Redis/KV) before falling back to fresh 2-account provisioning.
+      userAccounts = await restoreAccountsFromSnapshot(req.user.id);
+      if (userAccounts.length === 0) {
+        userAccounts = await provisionDemoAccounts(req.user.id);
+        // Persist the freshly provisioned accounts so future cold-starts can restore them.
+        const snapshot = userAccounts.map(a => ({
+          id: a.id, accountType: a.accountType, accountNumber: a.accountNumber,
+          name: a.name || '', balance: a.balance, currency: a.currency || 'USD', isActive: true,
+        }));
+        await demoScenarioStore.save(req.user.id, { accountSnapshot: snapshot });
+      }
     }
     res.json({ accounts: userAccounts });
   } catch (error) {
@@ -92,6 +129,13 @@ router.get('/my', authenticateToken, async (req, res) => {
 router.post('/reset-demo', authenticateToken, async (req, res) => {
   try {
     const accounts = await provisionDemoAccounts(req.user.id);
+    // Clear the account snapshot so cold-start restores the fresh 2-account defaults,
+    // not the old custom configuration that was just reset.
+    const snapshot = accounts.map(a => ({
+      id: a.id, accountType: a.accountType, accountNumber: a.accountNumber,
+      name: a.name || '', balance: a.balance, currency: a.currency || 'USD', isActive: true,
+    }));
+    await demoScenarioStore.save(req.user.id, { accountSnapshot: snapshot });
     res.json({ message: 'Demo reset successfully', accounts });
   } catch (error) {
     console.error('Error resetting demo:', error);

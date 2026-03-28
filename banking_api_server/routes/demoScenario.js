@@ -72,6 +72,54 @@ function isExistingAccountId(id) {
   return String(id).trim().length > 0;
 }
 
+/**
+ * Persist a snapshot of the user's current accounts to demoScenarioStore (Redis/KV).
+ * Called after any PUT that modifies accounts so cold-start restarts can recover them.
+ */
+async function saveAccountSnapshot(userId) {
+  const accounts = dataStore.getAccountsByUserId(userId);
+  const snapshot = accounts.map(a => ({
+    id: a.id,
+    accountType: a.accountType,
+    accountNumber: a.accountNumber,
+    name: a.name || '',
+    balance: a.balance,
+    currency: a.currency || 'USD',
+    isActive: a.isActive !== false,
+  }));
+  await demoScenarioStore.save(userId, { accountSnapshot: snapshot });
+}
+
+/**
+ * On cold-start, the in-memory dataStore loses all accounts.  Rebuild them from
+ * the last snapshot stored in demoScenarioStore (Redis/KV).
+ * Returns the restored accounts array, or [] if no snapshot is available.
+ */
+async function restoreAccountsFromSnapshot(userId) {
+  try {
+    const scenario = await demoScenarioStore.load(userId);
+    if (!Array.isArray(scenario.accountSnapshot) || scenario.accountSnapshot.length === 0) return [];
+    const restored = [];
+    for (const snap of scenario.accountSnapshot) {
+      const existing = dataStore.getAccountById(snap.id);
+      if (existing) {
+        restored.push(existing);
+      } else {
+        const acct = await dataStore.createAccount({
+          ...snap,
+          userId,
+          createdAt: new Date(),
+        });
+        restored.push(acct);
+      }
+    }
+    return restored;
+  } catch (e) {
+    console.warn('[demoScenario] restoreAccountsFromSnapshot failed:', e.message);
+    return [];
+  }
+}
+
 /** Allowed account types from the Demo config UI (new rows). */
 const DEMO_ACCOUNT_TYPES = new Set([
   'checking',
@@ -189,8 +237,14 @@ function sanitizeUserUpdates(raw) {
 router.get('/', async (req, res) => {
   try {
     let accounts = dataStore.getAccountsByUserId(req.user.id);
-    if (accounts.length === 0 && req.user.id && typeof accountsRouter.provisionDemoAccounts === 'function') {
-      accounts = await accountsRouter.provisionDemoAccounts(req.user.id);
+    if (accounts.length === 0 && req.user.id) {
+      // Try restoring persisted snapshot (Redis/KV) before provisioning fresh defaults.
+      accounts = await restoreAccountsFromSnapshot(req.user.id);
+      if (accounts.length === 0 && typeof accountsRouter.provisionDemoAccounts === 'function') {
+        accounts = await accountsRouter.provisionDemoAccounts(req.user.id);
+        // Persist the freshly provisioned accounts so future cold-starts can restore them.
+        await saveAccountSnapshot(req.user.id);
+      }
     }
     const scenario = await demoScenarioStore.load(req.user.id);
     const currentUser = dataStore.getUserById(req.user.id) || {};
@@ -417,6 +471,8 @@ router.put('/', async (req, res) => {
     }
 
     const accounts = dataStore.getAccountsByUserId(uid);
+    // Persist account snapshot to Redis/KV so cold-start restarts (Vercel, etc.) can recover all accounts.
+    await saveAccountSnapshot(uid);
     const scenario = await demoScenarioStore.load(uid);
     const currentUser = dataStore.getUserById(uid) || {};
     const { password: _password, ...savedUserData } = currentUser;
