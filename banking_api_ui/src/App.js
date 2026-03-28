@@ -292,7 +292,7 @@ function AppWithAuth() {
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/config"      element={user?.role === 'admin' ? <Config /> : <Navigate to="/" replace />} />
                     <Route path="/onboarding"  element={user?.role === 'admin' ? <Onboarding /> : <Navigate to="/" replace />} />
-                    <Route path="/logs"        element={user?.role === 'admin' ? <LogViewerPage /> : <Navigate to="/" replace />} />
+                    <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
                     <Route path="/demo-data"   element={<DemoDataPage user={user} onLogout={logout} />} />
                     <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />
