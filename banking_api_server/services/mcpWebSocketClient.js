@@ -6,23 +6,29 @@
 const WebSocket = require('ws');
 const configStore = require('./configStore');
 
-/** Scopes requested for RFC 8693 token exchange per MCP tool (must match BankingToolRegistry names). */
+/** Scopes requested for RFC 8693 token exchange per MCP tool (must match BankingToolRegistry names).
+ *  Each tool lists [specific, broad] so either the precise scope OR the umbrella scope is sufficient.
+ *  banking:read  = view own data (accounts, balances, transactions)
+ *  banking:write = mutate data (transfer, deposit, withdrawal) */
 const MCP_TOOL_SCOPES = {
-  get_my_accounts: ['banking:accounts:read'],
-  get_account_balance: ['banking:accounts:read'],
-  get_my_transactions: ['banking:transactions:read'],
-  create_transfer: ['banking:transactions:write'],
-  create_deposit: ['banking:transactions:write'],
-  create_withdrawal: ['banking:transactions:write'],
-  query_user_by_email: ['ai_agent'],
+  // Read tools — specific scope OR broad banking:read
+  get_my_accounts:             ['banking:accounts:read', 'banking:read'],
+  get_account_balance:         ['banking:accounts:read', 'banking:read'],
+  get_my_transactions:         ['banking:transactions:read', 'banking:read'],
+  // Write tools — specific scope OR broad banking:write
+  create_transfer:             ['banking:transactions:write', 'banking:write'],
+  create_deposit:              ['banking:transactions:write', 'banking:write'],
+  create_withdrawal:           ['banking:transactions:write', 'banking:write'],
+  // Query tool — agent identity lookup scope
+  query_user_by_email:         ['ai_agent'],
   // Legacy aliases (if still used anywhere)
-  list_accounts: ['banking:accounts:read'],
-  list_transactions: ['banking:transactions:read'],
-  transfer: ['banking:transactions:write'],
-  deposit: ['banking:transactions:write'],
-  withdraw: ['banking:transactions:write'],
-  banking_get_account_balance: ['banking:accounts:read'],
-  banking_create_transfer: ['banking:transactions:write'],
+  list_accounts:               ['banking:accounts:read', 'banking:read'],
+  list_transactions:           ['banking:transactions:read', 'banking:read'],
+  transfer:                    ['banking:transactions:write', 'banking:write'],
+  deposit:                     ['banking:transactions:write', 'banking:write'],
+  withdraw:                    ['banking:transactions:write', 'banking:write'],
+  banking_get_account_balance: ['banking:accounts:read', 'banking:read'],
+  banking_create_transfer:     ['banking:transactions:write', 'banking:write'],
 };
 
 function getMcpServerUrl() {

@@ -301,15 +301,15 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const { userSub, t1Claims } = appendUserTokenEvent(tokenEvents, userToken, req);
 
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
-  const toolScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
+  const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
   const agentAllowedRaw = configStore.getEffective('agent_mcp_allowed_scopes');
   const agentAllowedSet = parseAllowedScopesFromConfig(agentAllowedRaw);
 
   if (
-    scopesAreCatalogOnly(toolScopes) &&
-    !isToolPermittedByAgentPolicy(toolScopes, agentAllowedSet)
+    scopesAreCatalogOnly(toolCandidateScopes) &&
+    !isToolPermittedByAgentPolicy(toolCandidateScopes, agentAllowedSet)
   ) {
-    const missing = missingAgentPolicyScopes(toolScopes, agentAllowedSet);
+    const missing = missingAgentPolicyScopes(toolCandidateScopes, agentAllowedSet);
     tokenEvents.push(buildTokenEvent(
       'agent-scope-denied',
       'Agent MCP scope policy — action blocked',
@@ -329,6 +329,24 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       403
     );
   }
+
+  // Narrow toolCandidateScopes to only scopes the user token actually carries.
+  // PingOne can only narrow — it cannot grant a scope the subject token doesn't have.
+  // Example: tool needs ['banking:accounts:read','banking:read']; user has 'banking:read'
+  //          → toolScopes = ['banking:read']  (exchanges successfully for the broad scope)
+  const userTokenScopes = new Set(
+    (typeof t1Claims?.scope === 'string'
+      ? t1Claims.scope.split(' ')
+      : (t1Claims?.scope || [])
+    ).filter(Boolean)
+  );
+  const toolScopes = toolCandidateScopes.filter((s) => userTokenScopes.has(s));
+  // If none of the tool's scopes are present in the user token, fall back to any allowed
+  // scope in the user token so the exchange still has something to request.  PingOne will
+  // return only what is actually permitted — the missing tool scope will surface at the MCP layer.
+  const effectiveToolScopes = toolScopes.length > 0
+    ? toolScopes
+    : toolCandidateScopes;
 
   // Always use actor token when agent OAuth client is configured — ensures on_behalf_of semantics
   // (the exchanged MCP token carries act: { client_id: <agent> } proving which client is acting).
@@ -453,7 +471,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     'acquiring',
     null,
     `Backend-for-Frontend (BFF) is exchanging the User Token for a delegated MCP Token scoped to audience=${mcpResourceUri}, ` +
-    `scope="${toolScopes.join(' ')}". ` +
+    `scope="${effectiveToolScopes.join(' ')}". ` +
     (t1Claims?.may_act
       ? `PingOne will validate may_act.client_id="${t1Claims.may_act.client_id}" against the authenticated Backend-for-Frontend (BFF) client.`
       : 'PingOne will check exchange policy (may_act not present on User token — exchange may be rejected).'),
@@ -463,7 +481,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
         subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
         audience: mcpResourceUri,
-        scope: toolScopes.join(' '),
+        scope: effectiveToolScopes.join(' '),
         has_actor_token: !!actorToken,
       },
     }
@@ -476,12 +494,12 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   try {
     if (actorToken) {
       exchangedToken = await oauthService.performTokenExchangeWithActor(
-        userToken, actorToken, mcpResourceUri, toolScopes
+        userToken, actorToken, mcpResourceUri, effectiveToolScopes
       );
       exchangeMethod = 'with-actor';
     } else {
       exchangedToken = await oauthService.performTokenExchange(
-        userToken, mcpResourceUri, toolScopes
+        userToken, mcpResourceUri, effectiveToolScopes
       );
     }
 
@@ -503,7 +521,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         ? `act: ${JSON.stringify(t2Claims.act)} — this is the current fact: the Backend-for-Frontend (BFF) is acting on behalf of the user. ` +
           'Resource servers use act (not may_act) to identify the current actor for audit and policy decisions.'
         : 'act claim not present — PingOne may not have applied delegation policy. ') +
-      `Audience is narrowed to ${mcpResourceUri}, scope narrowed to "${toolScopes.join(' ')}". ` +
+      `Audience is narrowed to ${mcpResourceUri}, scope narrowed to "${effectiveToolScopes.join(' ')}". ` +
       'The User Token (your original login token) NEVER leaves the Backend-for-Frontend (BFF) — only the MCP Token reaches the MCP Server.',
       {
         rfc: 'RFC 8693 · RFC 8707',
@@ -511,7 +529,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         actPresent: !!t2Claims?.act,
         actDetails: t2Claims?.act ? JSON.stringify(t2Claims.act) : null,
         audienceNarrowed: mcpResourceUri,
-        scopeNarrowed: toolScopes.join(' '),
+        scopeNarrowed: effectiveToolScopes.join(' '),
       }
     ));
 
@@ -537,7 +555,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     // Fallback: try subject-only if actor exchange failed
     if (actorToken) {
       try {
-        exchangedToken = await oauthService.performTokenExchange(userToken, mcpResourceUri, toolScopes);
+        exchangedToken = await oauthService.performTokenExchange(userToken, mcpResourceUri, effectiveToolScopes);
         const t2Decoded = decodeJwtClaims(exchangedToken);
         tokenEvents.push(buildTokenEvent(
           'exchanged-token',

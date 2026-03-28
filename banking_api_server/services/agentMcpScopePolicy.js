@@ -7,6 +7,10 @@
 
 /** Scopes this demo understands for MCP banking tools (must match PingOne + MCP registry). */
 const KNOWN_AGENT_MCP_SCOPES = [
+  // Broad umbrella scopes — accepted by any matching tool; easier to configure in PingOne
+  'banking:read',              // accounts + transactions read
+  'banking:write',             // transfers, deposits, withdrawals
+  // Specific scopes — finer-grained; accepted as an alternative to the broad scope
   'banking:accounts:read',
   'banking:transactions:read',
   'banking:transactions:write',
@@ -33,22 +37,26 @@ function parseAllowedScopesFromConfig(configStr) {
 }
 
 /**
- * True when every scope required by the MCP tool is enabled in admin config.
+ * True when the admin config has enabled at least one of the tool's required scopes.
+ * OR logic: if a tool accepts ['banking:accounts:read', 'banking:read'], enabling EITHER
+ * broad or specific scope in admin policy is sufficient to allow the tool.
  */
 function isToolPermittedByAgentPolicy(toolRequiredScopes, allowedSet) {
   if (!toolRequiredScopes || toolRequiredScopes.length === 0) {
     return true;
   }
-  return toolRequiredScopes.every((s) => allowedSet.has(s));
+  return toolRequiredScopes.some((s) => allowedSet.has(s));
 }
 
 /**
- * Scopes the tool still needs but that are disabled in config.
+ * Tool scopes that are NOT covered by the admin allowed set (none of the alternatives enabled).
  */
 function missingAgentPolicyScopes(toolRequiredScopes, allowedSet) {
   if (!toolRequiredScopes || toolRequiredScopes.length === 0) {
     return [];
   }
+  // If any scope satisfies the tool, nothing is "missing"
+  if (toolRequiredScopes.some((s) => allowedSet.has(s))) return [];
   return toolRequiredScopes.filter((s) => !allowedSet.has(s));
 }
 

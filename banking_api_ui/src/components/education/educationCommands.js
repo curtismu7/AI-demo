@@ -19,4 +19,5 @@ export const EDUCATION_COMMANDS = [
   { id: 'authorize', label: 'PingOne Authorize', panel: EDU.PINGONE_AUTHORIZE, tab: 'what' },
   { id: 'cimd', label: 'OAuth: Client ID Metadata Doc (CIMD)', panel: EDU.CIMD, tab: 'what' },
   { id: 'human-in-loop', label: 'Human-in-the-loop (agent)', panel: EDU.HUMAN_IN_LOOP, tab: 'what' },
+  { id: 'best-practices', label: '⭐ AI Agent Best Practices', panel: EDU.BEST_PRACTICES, tab: 'overview' },
 ];

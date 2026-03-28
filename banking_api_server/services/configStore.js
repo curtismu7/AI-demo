@@ -111,7 +111,7 @@ const FIELD_DEFS = {
   agent_mcp_allowed_scopes: {
     public: true,
     default:
-      'banking:accounts:read banking:transactions:read banking:transactions:write ai_agent',
+      'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write ai_agent',
   },
 };
 

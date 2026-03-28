@@ -73,8 +73,9 @@ jest.mock('../../services/oauthService', () => ({
 
 jest.mock('../../services/mcpWebSocketClient', () => ({
   MCP_TOOL_SCOPES: {
-    get_my_accounts: ['banking:accounts:read'],
-    create_transfer: ['banking:transactions:write'],
+    // Reflect the new dual-scope structure (specific + broad)
+    get_my_accounts:  ['banking:accounts:read', 'banking:read'],
+    create_transfer:  ['banking:transactions:write', 'banking:write'],
   },
   getSessionAccessToken: (req) => req._mockToken || null,
   getSessionBearerForMcp: (req) => {
@@ -97,7 +98,7 @@ const { resolveMcpAccessTokenWithEvents, buildSessionPreviewTokenEvents } = requ
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makeReq(token) {
-  return { _mockToken: token, session: {} };
+  return { _mockToken: token, session: { agentConsentGiven: true } };
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -423,6 +424,101 @@ describe('buildSessionPreviewTokenEvents', () => {
     expect(tokenEvents[1].status).toBe('waiting');
     expect(tokenEvents[2].id).toBe('exchanged-token');
     expect(tokenEvents[2].status).toBe('waiting');
+    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
+  });
+});
+
+// ── Broad scope (banking:read / banking:write) support ───────────────────────
+
+/** User token that has banking:read but NOT banking:accounts:read */
+const MOCK_USER_TOKEN_BROAD_READ = makeJwt({
+  sub: USER_SUB,
+  aud: 'banking_enduser',
+  scope: 'openid profile email offline_access banking:read banking:write',
+  iss: 'https://auth.pingone.com/test-env/as',
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+});
+
+describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token', () => {
+  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.AGENT_OAUTH_CLIENT_ID;
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      // Allow all scopes including broad ones
+      if (key === 'agent_mcp_allowed_scopes')
+        return 'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write ai_agent';
+      return null;
+    });
+    mockPerformTokenExchange.mockResolvedValue(EXCHANGED_TOKEN);
+  });
+
+  afterEach(() => {
+    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
+    else delete process.env.AGENT_OAUTH_CLIENT_ID;
+  });
+
+  it('calls performTokenExchange with banking:read when user token has broad scope', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'get_my_accounts');
+    expect(mockPerformTokenExchange).toHaveBeenCalledWith(
+      MOCK_USER_TOKEN_BROAD_READ,
+      'https://mcp.example.com/api',
+      expect.arrayContaining(['banking:read'])
+    );
+    // Specific scope not in user token — must NOT be requested
+    const callArgs = mockPerformTokenExchange.mock.calls[0][2];
+    expect(callArgs).not.toContain('banking:accounts:read');
+  });
+
+  it('calls performTokenExchange with banking:write for write tool when user has broad scope', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'create_transfer');
+    expect(mockPerformTokenExchange).toHaveBeenCalledWith(
+      MOCK_USER_TOKEN_BROAD_READ,
+      'https://mcp.example.com/api',
+      expect.arrayContaining(['banking:write'])
+    );
+    const callArgs = mockPerformTokenExchange.mock.calls[0][2];
+    expect(callArgs).not.toContain('banking:transactions:write');
+  });
+
+  it('returns the exchanged token (not user token) for broad-scope token', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'get_my_accounts');
+    expect(token).toBe(EXCHANGED_TOKEN);
+    expect(token).not.toBe(MOCK_USER_TOKEN_BROAD_READ);
+  });
+});
+
+describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables tool', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.AGENT_OAUTH_CLIENT_ID;
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      // Admin allows broad scope but NOT the specific scope
+      if (key === 'agent_mcp_allowed_scopes') return 'banking:read banking:write ai_agent';
+      return null;
+    });
+    mockPerformTokenExchange.mockResolvedValue(EXCHANGED_TOKEN);
+  });
+
+  it('does NOT deny get_my_accounts when banking:read is in allowed set (OR policy)', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'get_my_accounts');
+    expect(token).toBe(EXCHANGED_TOKEN);
+    expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
+  });
+
+  it('denies create_transfer when neither banking:write nor banking:transactions:write is allowed', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'agent_mcp_allowed_scopes') return 'banking:read ai_agent'; // write intentionally excluded
+      return null;
+    });
+    await expect(
+      resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'create_transfer')
+    ).rejects.toMatchObject({ code: 'agent_mcp_scope_denied' });
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 });

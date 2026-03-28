@@ -35,7 +35,9 @@ router.get('/', authenticateToken, requireScopes(['banking:transactions:read', '
 
 
 // Get user's own transactions (end users)
-// No banking:* scope required — consistent with accounts/my; standard PingOne tokens only carry openid/profile/email
+// No banking:* scope required — standard PingOne tokens without a custom resource server
+// only carry openid/profile/email. Once a resource server is configured in PingOne and
+// ENDUSER_AUDIENCE is set, restore: requireScopes(['banking:transactions:read', 'banking:read'])
 router.get('/my', authenticateToken, async (req, res) => {
   try {
     // Add cache headers for frequent polling

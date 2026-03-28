@@ -3,7 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
+import axios from 'axios';
 import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioService';
+import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../config/agentMcpScopes';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import { useEducationUI } from '../context/EducationUIContext';
@@ -73,6 +75,54 @@ export default function DemoDataPage({ user, onLogout }) {
   const [defaults, setDefaults] = useState(null);
   const [persistenceNote, setPersistenceNote] = useState(null);
 
+  /** Agent MCP scope toggles — loaded from admin config, saved separately */
+  const [allowedScopes, setAllowedScopes] = useState(() => {
+    const raw = DEFAULT_AGENT_MCP_ALLOWED_SCOPES;
+    return new Set(raw.split(/\s+/).filter(Boolean));
+  });
+  const [scopeSaving, setScopeSaving] = useState(false);
+
+  /** Load current scope config from server */
+  const loadScopes = useCallback(async () => {
+    try {
+      const { data } = await axios.get('/api/admin/config');
+      const raw = data?.agent_mcp_allowed_scopes || DEFAULT_AGENT_MCP_ALLOWED_SCOPES;
+      setAllowedScopes(new Set(raw.split(/\s+/).filter(Boolean)));
+    } catch {
+      // silently keep client default
+    }
+  }, []);
+
+  const handleScopeToggle = (scope, checked) => {
+    setAllowedScopes((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(scope);
+      } else {
+        if (next.size === 1) {
+          notifyError('Select at least one Agent MCP scope.');
+          return prev;
+        }
+        next.delete(scope);
+      }
+      return next;
+    });
+  };
+
+  const handleSaveScopes = async () => {
+    setScopeSaving(true);
+    try {
+      await axios.post('/api/admin/config', {
+        agent_mcp_allowed_scopes: [...allowedScopes].join(' '),
+      });
+      notifySuccess('Scope permissions saved');
+    } catch (err) {
+      notifyError(err?.response?.data?.message || 'Failed to save scopes');
+    } finally {
+      setScopeSaving(false);
+    }
+  };
+
   /** Stable React key for a row before the server assigns an account id. */
   const getAccountRowKey = (a) => a.id || a._clientKey;
 
@@ -112,7 +162,8 @@ export default function DemoDataPage({ user, onLogout }) {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadScopes();
+  }, [load, loadScopes]);
 
   /** Updates a single account row (by id or draft _clientKey). */
   const handleAccountChange = (rowKey, field, value) => {
@@ -427,6 +478,7 @@ export default function DemoDataPage({ user, onLogout }) {
               <p className="demo-data-loading">Loading…</p>
             </section>
           ) : (
+            <>
             <form className="demo-data-form" onSubmit={handleSubmit}>
               <section className="section demo-data-section">
                 <h2>User profile</h2>
@@ -597,6 +649,53 @@ export default function DemoDataPage({ user, onLogout }) {
                 </div>
               </section>
             </form>
+
+            {/* ── Agent Scope Permissions (separate save — calls /api/admin/config) ── */}
+            <section className="section demo-data-section" aria-labelledby="demo-scope-heading">
+              <h2 className="demo-data-section__heading" id="demo-scope-heading">Agent scope permissions</h2>
+              <p className="demo-data-hint">
+                Controls which OAuth scopes are included in the RFC 8693 token exchange when the AI agent calls a tool.
+                <br />
+                <strong>banking:read</strong> — agent can view accounts, balances, and transactions.
+                <strong> banking:write</strong> — agent can transfer funds and make deposits.
+                Broad scopes (<em>banking:read</em>, <em>banking:write</em>) satisfy any matching tool;
+                specific scopes are finer-grained alternatives.
+              </p>
+              <div className="demo-data-scope-list">
+                {AGENT_MCP_SCOPE_CATALOG.map((row) => {
+                  const checked = allowedScopes.has(row.scope);
+                  return (
+                    <label
+                      key={row.scope}
+                      className={`demo-data-scope-row${checked ? ' demo-data-scope-row--on' : ''}${row.group === 'broad' ? ' demo-data-scope-row--broad' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => handleScopeToggle(row.scope, e.target.checked)}
+                        style={{ marginTop: '0.2rem', flexShrink: 0 }}
+                      />
+                      <span className="demo-data-scope-body">
+                        <span className="demo-data-scope-label">{row.label}</span>
+                        <code className="demo-data-scope-code">{row.scope}</code>
+                        <span className="demo-data-scope-desc">{row.description}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="demo-data-actions" style={{ marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  className="demo-data-btn primary"
+                  disabled={scopeSaving}
+                  onClick={handleSaveScopes}
+                >
+                  {scopeSaving ? 'Saving…' : 'Save scope permissions'}
+                </button>
+              </div>
+            </section>
+            </>
           )}
         </main>
       </div>

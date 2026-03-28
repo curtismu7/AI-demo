@@ -5,6 +5,13 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom';
 import DemoDataPage from '../DemoDataPage';
 
+jest.mock('axios', () => ({
+  get: jest.fn(() => Promise.resolve({ data: { agent_mcp_allowed_scopes: 'banking:read banking:write ai_agent' } })),
+  post: jest.fn(() => Promise.resolve({ data: {} })),
+}));
+
+const axiosMock = require('axios');
+
 jest.mock('../../services/demoScenarioService', () => ({
   fetchDemoScenario: jest.fn(() => Promise.resolve({})),
   saveDemoScenario: jest.fn(() => Promise.resolve({ ok: true })),
@@ -126,5 +133,61 @@ describe('DemoDataPage', () => {
     expect(newRows).toHaveLength(1);
     expect(newRows[0].accountType).toBe('savings');
     expect(newRows[0].name).toBe('Rainy day');
+  });
+});
+
+describe('DemoDataPage — scope permissions section', () => {
+  beforeEach(() => {
+    fetchDemoScenario.mockResolvedValue(defaultScenarioPayload);
+    saveDemoScenario.mockResolvedValue({ ok: true, accounts: [], settings: {}, userData: {} });
+    axiosMock.get.mockResolvedValue({
+      data: { agent_mcp_allowed_scopes: 'banking:read banking:write ai_agent' },
+    });
+    axiosMock.post.mockResolvedValue({ data: {} });
+  });
+
+  afterEach(() => jest.clearAllMocks());
+
+  it('renders the "Agent scope permissions" heading', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: /agent scope permissions/i });
+  });
+
+  it('renders checkboxes for each scope in the catalog', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: /agent scope permissions/i });
+    // Each scope has a <code> element with its exact value
+    const bankingReadCodes = screen.getAllByText('banking:read');
+    expect(bankingReadCodes.length).toBeGreaterThanOrEqual(1);
+    const bankingWriteCodes = screen.getAllByText('banking:write');
+    expect(bankingWriteCodes.length).toBeGreaterThanOrEqual(1);
+    // The scope section renders checkboxes (one per catalog entry)
+    const scopeCheckboxes = screen.getAllByRole('checkbox');
+    expect(scopeCheckboxes.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('calls GET /api/admin/config on mount to load allowed scopes', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: /agent scope permissions/i });
+    await waitFor(() => {
+      expect(axiosMock.get).toHaveBeenCalledWith('/api/admin/config');
+    });
+  });
+
+  it('calls POST /api/admin/config with updated scopes when "Save scope permissions" is clicked', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: /agent scope permissions/i });
+
+    const saveBtn = screen.getByRole('button', { name: /save scope permissions/i });
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    await waitFor(() =>
+      expect(axiosMock.post).toHaveBeenCalledWith(
+        '/api/admin/config',
+        expect.objectContaining({ agent_mcp_allowed_scopes: expect.any(String) })
+      )
+    );
   });
 });

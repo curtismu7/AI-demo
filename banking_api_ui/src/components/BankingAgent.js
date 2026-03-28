@@ -1469,7 +1469,7 @@ export default function BankingAgent({
       return;
     }
     // No form needed for read-only queries
-    if (actionId === 'accounts' || actionId === 'transactions') {
+    if (actionId === 'accounts' || actionId === 'transactions' || actionId === 'mcp_tools') {
       runAction(actionId, {});
     } else {
       setActiveAction(actionId);
