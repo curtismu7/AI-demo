@@ -66,7 +66,7 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-03-29 — End-user OAuth errors: redirect to marketing + toast (not `/login`)
+### 2026-03-29 — End-user OAuth errors: redirect to marketing + toast (not `/login`) (commit `3a762ae`)
 
 - **Symptom:** After PingOne returned an error (e.g. unsupported **pi.flow**), BFF sent users to **`/login?error=oauth_error`** — the SPA does not treat **`/login`** as a marketing path, so **BankingAgent FAB + bottom dock disappeared**; no inline error on the marketing surface.
 - **Root cause:** `routes/oauthUser.js` always redirected failures to **`/login`**. **`App.js`** only shows floating/dock agents on **`/`** and **`/marketing`** (`isPublicMarketingAgentPath`).
