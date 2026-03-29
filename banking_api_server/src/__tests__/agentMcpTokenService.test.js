@@ -39,6 +39,16 @@ const sampleJwtUserAccessNarrowScopes = makeJwt({
   iat: Math.floor(Date.now() / 1000),
 });
 
+// Token with no scopes — triggers user_token_insufficient_scopes (MIN is 1, 0 < 1)
+const sampleJwtUserAccessNoScopes = makeJwt({
+  sub: USER_SUB,
+  aud: 'banking_enduser',
+  scope: '',
+  iss: 'https://auth.pingone.com/test-env/as',
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+});
+
 const sampleJwtAgentAccessToken = makeJwt({
   sub: 'agent-client-id',
   aud: 'banking_mcp_server',
@@ -196,9 +206,9 @@ describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (MCP_RESO
     });
   });
 
-  it('throws user_token_insufficient_scopes when JWT has fewer than 5 scopes', async () => {
+  it('throws user_token_insufficient_scopes when JWT has zero scopes', async () => {
     await expect(
-      resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessNarrowScopes), 'get_my_accounts')
+      resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessNoScopes), 'get_my_accounts')
     ).rejects.toMatchObject({
       code: 'user_token_insufficient_scopes',
       httpStatus: 403,
@@ -207,7 +217,7 @@ describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (MCP_RESO
 
   it('does not call performTokenExchange when scopes insufficient', async () => {
     try {
-      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessNarrowScopes), 'get_my_accounts');
+      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessNoScopes), 'get_my_accounts');
     } catch {
       /* expected */
     }
@@ -392,12 +402,12 @@ describe('buildSessionPreviewTokenEvents', () => {
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
-  it('returns user-scopes-insufficient when URI is set but JWT has too few scopes', () => {
+  it('returns user-scopes-insufficient when URI is set but JWT has no scopes', () => {
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
-    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessNarrowScopes));
+    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessNoScopes));
     expect(tokenEvents.some(e => e.id === 'user-scopes-insufficient')).toBe(true);
   });
 

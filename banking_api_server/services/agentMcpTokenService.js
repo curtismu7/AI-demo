@@ -28,7 +28,7 @@ const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClien
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
 const MIN_USER_SCOPES_FOR_MCP = Math.max(
   1,
-  parseInt(process.env.MIN_USER_SCOPES_FOR_MCP_EXCHANGE || '5', 10) || 5
+  parseInt(process.env.MIN_USER_SCOPES_FOR_MCP_EXCHANGE || '1', 10) || 1
 );
 
 /**
