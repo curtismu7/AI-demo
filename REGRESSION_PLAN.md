@@ -527,6 +527,9 @@ Before every `vercel --prod`:
 | `REACT_APP_CLIENT_URL` | Frontend URL used in OAuth redirect URIs |
 | `FRONTEND_ADMIN_URL` | Admin dashboard URL after OAuth callback |
 | `FRONTEND_DASHBOARD_URL` | User dashboard URL after OAuth callback |
+| `PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID` | PingOne Authorize decision endpoint for transaction auth (Phase 2 preferred path) |
+| `PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID` | PingOne Authorize decision endpoint for MCP first-tool gate (`authorize_mcp_decision_endpoint_id`) |
+| `SIMULATED_MCP_DENY_TOOLS` | Comma-separated tool names to force DENY in simulated MCP first-tool gate (e.g. `create_transfer,create_withdrawal`) |
 
 ### `banking_api_ui/.env` (local / not in git)
 | Variable | Purpose |
@@ -582,7 +585,15 @@ bash /Users/cmuir/P1Import-apps/Banking/run-bank.sh
 #    → AgentConsentModal opens with amount + account details (NOT "Allow AI Agent Access")
 #    → Check box → "Agree & send code" → OTP input appears
 
-# 7. Check logs
+# 7a. MCP first-tool gate (default: gate is OFF — skip if ff_authorize_mcp_first_tool=false)
+#    [Optional — enable via Admin → Feature Flags → "Authorize — First MCP tool"]
+#    → With gate ON + ff_authorize_simulated ON:
+#       - First MCP tool call per session → response includes mcpAuthorizeEvaluation field (permit)
+#       - Second MCP tool call → no mcpAuthorizeEvaluation in response (session skip)
+#    → Admin GET /api/authorize/evaluation-status → mcpFirstToolGateEnabled: true
+#    → PingOneAuthorizePanel → Recent Decisions → Refresh Status → mcpFirstTool* fields visible
+
+# 7b. Check logs
 tail -20 /tmp/bank-api-server.log   # no ERROR lines for /api/auth/oauth/status
 tail -20 /tmp/bank-ui.log           # no "Could not proxy" lines
 ```
