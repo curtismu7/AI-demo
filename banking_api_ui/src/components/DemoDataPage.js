@@ -134,8 +134,19 @@ export default function DemoDataPage({ user, onLogout }) {
   };
 
   /** may_act demo toggle — set/clear the PingOne user mayAct attribute */
-  const [mayActEnabled, setMayActEnabled] = useState(null); // null = unknown
+  const [mayActEnabled, setMayActEnabled] = useState(null); // null = unknown, true/false = known
   const [mayActSaving, setMayActSaving] = useState(false);
+
+  // Seed the initial may_act status from the current session's token claims so the
+  // status badge is populated on page load without the user having to click anything.
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include', _silent: true })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) setMayActEnabled(data.mayAct != null && data.mayAct !== false);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSetMayAct = async (enable) => {
     setMayActSaving(true);
@@ -156,6 +167,13 @@ export default function DemoDataPage({ user, onLogout }) {
   const [p1azFlagsLoading, setP1azFlagsLoading] = useState(false);
   const [p1azFlagsError, setP1azFlagsError] = useState(null);
   const [p1azFlagSaving, setP1azFlagSaving] = useState(null);
+
+  /** PingOne Authorize — bootstrap decision endpoints via worker + Platform API */
+  const [p1azBootstrapPolicyId, setP1azBootstrapPolicyId] = useState('');
+  const [p1azBootstrapAuthVer, setP1azBootstrapAuthVer] = useState('');
+  const [p1azBootstrapEnableLive, setP1azBootstrapEnableLive] = useState(true);
+  const [p1azBootstrapEnableMcp, setP1azBootstrapEnableMcp] = useState(false);
+  const [p1azBootstrapBusy, setP1azBootstrapBusy] = useState(false);
 
   const loadP1azFlags = useCallback(async () => {
     if (user?.role !== 'admin') return;
@@ -193,6 +211,32 @@ export default function DemoDataPage({ user, onLogout }) {
       notifyError(err?.response?.data?.error || err.message || 'Failed to save flag');
     } finally {
       setP1azFlagSaving(null);
+    }
+  };
+
+  const handleP1azAuthorizeBootstrap = async () => {
+    setP1azBootstrapBusy(true);
+    try {
+      const { data } = await axios.post('/api/authorize/bootstrap-demo-endpoints', {
+        policyId: p1azBootstrapPolicyId.trim() || undefined,
+        authorizationVersionId: p1azBootstrapAuthVer.trim() || undefined,
+        enableLiveAuthorize: p1azBootstrapEnableLive,
+        enableMcpFirstTool: p1azBootstrapEnableMcp,
+      });
+      notifySuccess(data.message || 'PingOne Authorize demo endpoints ready.');
+      if (data.copyEnvHint) {
+        notifyInfo(data.copyEnvHint, { autoClose: 12000 });
+      }
+      await loadP1azFlags();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err.message ||
+        'Authorize bootstrap failed';
+      notifyError(msg);
+    } finally {
+      setP1azBootstrapBusy(false);
     }
   };
 
@@ -762,6 +806,80 @@ export default function DemoDataPage({ user, onLogout }) {
                   evaluation in-process (education). <strong>First MCP tool</strong> adds a policy check on the first
                   BankingAgent tool call per session when configured.
                 </p>
+
+                <div
+                  className="demo-data-static-notice"
+                  style={{ marginTop: '0.75rem', marginBottom: '0.75rem', borderColor: '#93c5fd', background: '#eff6ff' }}
+                >
+                  <span className="demo-data-static-notice__icon">⚙️</span>
+                  <div style={{ flex: 1 }}>
+                    <strong>Configure PingOne Authorize (worker + Management API)</strong>
+                    <p className="demo-data-hint" style={{ margin: '0.35rem 0 0.5rem' }}>
+                      Uses your <strong>Authorize worker</strong> app (client credentials) to call PingOne{' '}
+                      <code>POST …/decisionEndpoints</code> and create two endpoints:{' '}
+                      <em>BX Finance Demo — Transactions</em> and <em>BX Finance Demo — MCP first tool</em>. If they
+                      already exist, their IDs are reused. Optionally pass a <strong>policy ID</strong> or{' '}
+                      <strong>authorization version ID</strong> from PingOne Authorize (published policy); otherwise
+                      PingOne attaches the latest policy version at runtime per PingOne docs.
+                    </p>
+                    <div className="demo-data-field-row" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <label className="demo-data-field" style={{ flex: '1 1 200px' }}>
+                        <span className="demo-data-field__label">Policy ID (optional)</span>
+                        <input
+                          type="text"
+                          className="demo-data-input"
+                          value={p1azBootstrapPolicyId}
+                          onChange={(e) => setP1azBootstrapPolicyId(e.target.value)}
+                          placeholder="PingOne policy UUID"
+                          autoComplete="off"
+                        />
+                      </label>
+                      <label className="demo-data-field" style={{ flex: '1 1 200px' }}>
+                        <span className="demo-data-field__label">Authorization version ID (optional)</span>
+                        <input
+                          type="text"
+                          className="demo-data-input"
+                          value={p1azBootstrapAuthVer}
+                          onChange={(e) => setP1azBootstrapAuthVer(e.target.value)}
+                          placeholder="Pinned policy version UUID"
+                          autoComplete="off"
+                        />
+                      </label>
+                    </div>
+                    <label className="demo-data-field demo-data-field--checkbox" style={{ marginTop: '0.5rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={p1azBootstrapEnableLive}
+                        onChange={(e) => setP1azBootstrapEnableLive(e.target.checked)}
+                      />
+                      <span>
+                        After bootstrap: turn <strong>on</strong> live transaction Authorize and turn <strong>off</strong>{' '}
+                        simulated Authorize (saved with endpoint IDs when config persistence is available)
+                      </span>
+                    </label>
+                    <label className="demo-data-field demo-data-field--checkbox">
+                      <input
+                        type="checkbox"
+                        checked={p1azBootstrapEnableMcp}
+                        onChange={(e) => setP1azBootstrapEnableMcp(e.target.checked)}
+                      />
+                      <span>
+                        Also enable <strong>First MCP tool</strong> Authorize flag and save MCP endpoint ID
+                      </span>
+                    </label>
+                    <div className="demo-data-actions" style={{ marginTop: '0.75rem' }}>
+                      <button
+                        type="button"
+                        className="demo-data-btn primary"
+                        disabled={p1azBootstrapBusy}
+                        onClick={handleP1azAuthorizeBootstrap}
+                      >
+                        {p1azBootstrapBusy ? 'Calling PingOne…' : 'Create / link Authorize decision endpoints'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {p1azFlagsLoading && <p className="demo-data-loading">Loading Authorize flags…</p>}
                 {p1azFlagsError && (
                   <p style={{ color: '#b91c1c', fontSize: '0.9rem' }} role="alert">
@@ -845,7 +963,7 @@ export default function DemoDataPage({ user, onLogout }) {
                         <button
                           type="button"
                           className={`demo-data-btn${isOn ? ' ghost' : ' primary'}`}
-                          disabled={p1azFlagSaving === 'ff_inject_may_act' || !isOn && !injectFlag}
+                          disabled={p1azFlagSaving === 'ff_inject_may_act' || (!isOn && !injectFlag)}
                           onClick={() => handleP1azFlagToggle('ff_inject_may_act', false)}
                         >
                           {p1azFlagSaving === 'ff_inject_may_act' && !isOn ? 'Saving…' : '❌ Disable injection'}
@@ -900,13 +1018,13 @@ export default function DemoDataPage({ user, onLogout }) {
                 >
                   {mayActSaving && mayActEnabled !== false ? 'Saving…' : '❌ Clear may_act'}
                 </button>
-                {mayActEnabled !== null && (
-                  <span className={`demo-data-mayact-status${mayActEnabled ? ' demo-data-mayact-status--on' : ' demo-data-mayact-status--off'}`}>
-                    {mayActEnabled
-                      ? 'mayAct attribute set on user record'
-                      : 'mayAct attribute cleared on user record'}
-                  </span>
-                )}
+                <span className={`demo-data-mayact-status${mayActEnabled === true ? ' demo-data-mayact-status--on' : mayActEnabled === false ? ' demo-data-mayact-status--off' : ''}`}>
+                  {mayActEnabled === true
+                    ? '✅ may_act present in token'
+                    : mayActEnabled === false
+                      ? '❌ may_act absent from token'
+                      : 'Checking…'}
+                </span>
               </div>
 
               {/* Dynamic mode explainer */}
