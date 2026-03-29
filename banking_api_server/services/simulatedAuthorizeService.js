@@ -53,6 +53,103 @@ function recordSimulatedDecision(entry) {
   );
 }
 
+/** Tools denied in simulated MCP first-tool policy (comma-separated env). */
+function _simulatedMcpDenyToolSet() {
+  const raw = process.env.SIMULATED_MCP_DENY_TOOLS || '';
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
+/**
+ * Simulated PingOne Authorize for MCP first tool use (DecisionContext=McpFirstTool).
+ * Default PERMIT; optional DENY when tool name is listed in SIMULATED_MCP_DENY_TOOLS.
+ *
+ * @param {object} params
+ * @param {string} params.userId
+ * @param {string} params.toolName
+ * @param {string} [params.tokenAudience]
+ * @param {string} [params.actClientId]
+ * @param {string} [params.nestedActClientId]
+ * @param {string} [params.mcpResourceUri]
+ * @param {string} [params.acr]
+ */
+async function evaluateMcpFirstTool({
+  userId,
+  toolName,
+  tokenAudience,
+  actClientId,
+  nestedActClientId,
+  mcpResourceUri,
+  acr,
+}) {
+  const decisionId = `sim-mcp-${Date.now()}-${++_seq}`;
+  const parameters = {
+    DecisionContext: 'McpFirstTool',
+    UserId: userId,
+    ToolName: toolName || '',
+    TokenAudience: tokenAudience != null ? String(tokenAudience) : '',
+    ActClientId: actClientId || '',
+    NestedActClientId: nestedActClientId || '',
+    McpResourceUri: mcpResourceUri || '',
+    ...(acr ? { Acr: acr } : {}),
+    Timestamp: new Date().toISOString(),
+  };
+
+  const denySet = _simulatedMcpDenyToolSet();
+  const denied = toolName && denySet.has(toolName);
+
+  const rawBase = {
+    engine: 'simulated',
+    requestShape: 'decision-endpoint',
+    kind: 'mcp_first_tool',
+    parameters,
+    educationNote:
+      'Simulated MCP first-tool policy. Set SIMULATED_MCP_DENY_TOOLS=comma,separated,tool_names to force DENY for demos.',
+  };
+
+  let out;
+  if (denied) {
+    out = {
+      decision: 'DENY',
+      stepUpRequired: false,
+      path: 'simulated',
+      decisionId,
+      raw: {
+        ...rawBase,
+        decision: 'DENY',
+        reason: `Simulated policy DENY: tool "${toolName}" is in SIMULATED_MCP_DENY_TOOLS.`,
+      },
+    };
+  } else {
+    out = {
+      decision: 'PERMIT',
+      stepUpRequired: false,
+      path: 'simulated',
+      decisionId,
+      raw: {
+        ...rawBase,
+        decision: 'PERMIT',
+        obligations: [],
+      },
+    };
+  }
+
+  recordSimulatedDecision({
+    decisionId: out.decisionId,
+    decision: out.decision,
+    stepUpRequired: out.stepUpRequired,
+    parameters,
+    path: out.path,
+    kind: 'mcp_first_tool',
+  });
+
+  return out;
+}
+
 /**
  * @param {number} [limit=20]
  * @returns {object[]}
@@ -166,6 +263,7 @@ function isSimulatedModeEnabled(configStore) {
 
 module.exports = {
   evaluateTransaction,
+  evaluateMcpFirstTool,
   isSimulatedModeEnabled,
   getSimulatedRecentDecisions,
   buildTrustFrameworkParameters,

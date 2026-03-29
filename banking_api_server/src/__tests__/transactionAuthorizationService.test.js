@@ -6,6 +6,7 @@
 jest.mock('../../services/configStore');
 jest.mock('../../services/pingOneAuthorizeService', () => ({
   isConfigured: jest.fn(),
+  isMcpDelegationDecisionReady: jest.fn(() => false),
 }));
 
 const configStore = require('../../services/configStore');

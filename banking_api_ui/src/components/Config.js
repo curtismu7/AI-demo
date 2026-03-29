@@ -75,6 +75,7 @@ const EMPTY_FORM = {
   // PingOne Authorize (in-app authorization policy gate)
   authorize_enabled: 'false',
   authorize_decision_endpoint_id: '', // Phase 2 — preferred path
+  authorize_mcp_decision_endpoint_id: '', // MCP first-tool gate (DecisionContext=McpFirstTool)
   authorize_policy_id: '',            // Phase 1 — legacy fallback
   authorize_worker_client_id: '',
   authorize_worker_client_secret: '',
@@ -1046,6 +1047,15 @@ export default function Config() {
                 onChange={handleChange}
                 placeholder="e.g. 87554d55-a7cf-…"
                 help="Endpoint ID from PingOne Authorize → Decision Endpoints. When set, uses the current Decision Endpoints API (POST /decisionEndpoints/{id}). Takes priority over Policy Decision Point ID below."
+                disabled={readOnly}
+              />
+              <TextField
+                label="MCP first-tool Decision Endpoint ID (optional)"
+                fieldKey="authorize_mcp_decision_endpoint_id"
+                value={form.authorize_mcp_decision_endpoint_id}
+                onChange={handleChange}
+                placeholder="Separate endpoint for MCP delegation policy"
+                help="When **Feature flag: Authorize — First MCP tool** is ON and Simulated Authorize is OFF, the BFF POSTs Trust Framework parameters with **DecisionContext=McpFirstTool**, **UserId**, **ToolName**, **TokenAudience**, **ActClientId**, **NestedActClientId**, **McpResourceUri**. Create this decision endpoint and matching policy in PingOne Authorize."
                 disabled={readOnly}
               />
               <TextField

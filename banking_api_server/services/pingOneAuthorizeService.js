@@ -25,9 +25,11 @@
  *
  * Exported functions:
  *   evaluateTransaction(params)   — full policy evaluation returning PERMIT/DENY/INDETERMINATE
+ *   evaluateMcpToolDelegation(params) — MCP first-tool gate (DecisionContext=McpFirstTool); requires authorize_mcp_decision_endpoint_id
  *   checkStepUpRequired(params)   — lightweight check: returns { stepUpRequired, reason }
  *   getRecentDecisions(endpointId, limit) — Phase 3: last N decisions for an endpoint
  *   isConfigured()                — returns true if all required credentials are present
+ *   isMcpDelegationDecisionReady()  — worker + MCP decision endpoint ID configured
  *   getDecisionEndpoints()        — list all decision endpoints in the environment
  */
 
@@ -73,9 +75,14 @@ function _getCredentials() {
     configStore.get('authorize_policy_id') ||
     process.env.PINGONE_AUTHORIZE_POLICY_ID;
 
+  /** Optional second decision endpoint for MCP first-tool delegation (Trust Framework: DecisionContext=McpFirstTool). */
+  const mcpDecisionEndpointId =
+    configStore.get('authorize_mcp_decision_endpoint_id') ||
+    process.env.PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID;
+
   const regionTld = REGION_TLD_MAP[(region || 'com').toLowerCase()] || 'com';
 
-  return { envId, clientId, clientSecret, decisionEndpointId, policyId, regionTld };
+  return { envId, clientId, clientSecret, decisionEndpointId, policyId, mcpDecisionEndpointId, regionTld };
 }
 
 const apiBase  = (tld) => `https://api.pingone.${tld}`;
@@ -132,6 +139,42 @@ async function getWorkerToken() {
 // ---------------------------------------------------------------------------
 
 /**
+ * POST a Trust Framework parameters object to a decision endpoint (Phase 2).
+ * @param {string} endpointId
+ * @param {Record<string, unknown>} parameters
+ * @returns {Promise<{ decision, stepUpRequired, raw, decisionId, path }>}
+ */
+async function _postDecisionEndpoint(endpointId, parameters) {
+  const { envId, regionTld } = _getCredentials();
+
+  const workerToken = await getWorkerToken();
+
+  const url = `${apiBase(regionTld)}/v1/environments/${envId}/decisionEndpoints/${endpointId}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${workerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ parameters }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`PingOne Authorize decision endpoint evaluation failed (${response.status}): ${text}`);
+  }
+
+  const raw = await response.json();
+  const decision = raw.decision || raw.status || 'INDETERMINATE';
+  const stepUpRequired = _extractStepUpRequired(raw);
+
+  const decisionId = raw.id || raw.decisionId || null;
+
+  return { decision, stepUpRequired, raw, decisionId, path: 'decision-endpoint' };
+}
+
+/**
  * Evaluate using the Decision Endpoints API (Phase 2 path).
  * Parameters map to Trust Framework attribute names defined in PingOne Authorize.
  *
@@ -145,47 +188,67 @@ async function getWorkerToken() {
  * @returns {Promise<{ decision, stepUpRequired, raw, decisionId, path }>}
  */
 async function _evaluateViaDecisionEndpoint({ endpointId, userId, amount, type, acr, extra = {} }) {
-  const { envId, regionTld } = _getCredentials();
-
-  const workerToken = await getWorkerToken();
-
-  const url = `${apiBase(regionTld)}/v1/environments/${envId}/decisionEndpoints/${endpointId}`;
-
-  // Parameters must match Trust Framework attribute names configured in PingOne Authorize.
-  // The defaults below assume a standard banking policy with Amount, TransactionType, UserId.
-  const payload = {
-    parameters: {
-      Amount: amount,
-      TransactionType: type,
-      UserId: userId,
-      ...(acr ? { Acr: acr } : {}),
-      Timestamp: new Date().toISOString(),
-      ...extra,
-    },
+  const parameters = {
+    Amount: amount,
+    TransactionType: type,
+    UserId: userId,
+    ...(acr ? { Acr: acr } : {}),
+    Timestamp: new Date().toISOString(),
+    ...extra,
   };
+  return _postDecisionEndpoint(endpointId, parameters);
+}
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${workerToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+/**
+ * MCP first-tool delegation evaluation (separate Trust Framework shape).
+ * Requires authorize_mcp_decision_endpoint_id (or explicit decisionEndpointId).
+ * PingOne policy should key off DecisionContext === "McpFirstTool" and attributes below.
+ *
+ * @param {object} opts
+ * @param {string} [opts.decisionEndpointId] - overrides config authorize_mcp_decision_endpoint_id
+ * @param {string} opts.userId
+ * @param {string} opts.toolName
+ * @param {string} [opts.tokenAudience] - MCP access token aud (string)
+ * @param {string} [opts.actClientId] - act.client_id from MCP token
+ * @param {string} [opts.nestedActClientId] - nested act.act.client_id or act.act.sub when present
+ * @param {string} [opts.mcpResourceUri] - expected MCP resource audience
+ * @param {string} [opts.acr] - end-user ACR from session when available
+ */
+async function evaluateMcpToolDelegation({
+  decisionEndpointId,
+  userId,
+  toolName,
+  tokenAudience,
+  actClientId,
+  nestedActClientId,
+  mcpResourceUri,
+  acr,
+}) {
+  const creds = _getCredentials();
+  const endpointId = decisionEndpointId || creds.mcpDecisionEndpointId;
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`PingOne Authorize decision endpoint evaluation failed (${response.status}): ${text}`);
+  if (!creds.envId) {
+    throw new Error('PingOne environment ID is not configured.');
+  }
+  if (!endpointId) {
+    throw new Error(
+      'MCP delegation decision endpoint is not configured. Set authorize_mcp_decision_endpoint_id in Admin → Config.',
+    );
   }
 
-  const raw = await response.json();
-  const decision = raw.decision || raw.status || 'INDETERMINATE';
-  const stepUpRequired = _extractStepUpRequired(raw);
+  const parameters = {
+    DecisionContext: 'McpFirstTool',
+    UserId: userId,
+    ToolName: toolName || '',
+    TokenAudience: tokenAudience != null ? String(tokenAudience) : '',
+    ActClientId: actClientId || '',
+    NestedActClientId: nestedActClientId || '',
+    McpResourceUri: mcpResourceUri || '',
+    ...(acr ? { Acr: acr } : {}),
+    Timestamp: new Date().toISOString(),
+  };
 
-  // Decision endpoints return an `id` field for the recorded decision
-  const decisionId = raw.id || raw.decisionId || null;
-
-  return { decision, stepUpRequired, raw, decisionId, path: 'decision-endpoint' };
+  return _postDecisionEndpoint(endpointId, parameters);
 }
 
 // ---------------------------------------------------------------------------
@@ -415,6 +478,14 @@ function isConfigured() {
   return !!(envId && clientId && clientSecret && (decisionEndpointId || policyId));
 }
 
+/**
+ * True when worker credentials and authorize_mcp_decision_endpoint_id are set (live MCP first-tool gate).
+ */
+function isMcpDelegationDecisionReady() {
+  const { envId, clientId, clientSecret, mcpDecisionEndpointId } = _getCredentials();
+  return !!(envId && clientId && clientSecret && mcpDecisionEndpointId && String(mcpDecisionEndpointId).trim());
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -438,9 +509,11 @@ function _extractStepUpRequired(raw) {
 
 module.exports = {
   evaluateTransaction,
+  evaluateMcpToolDelegation,
   checkStepUpRequired,
   getRecentDecisions,
   getDecisionEndpoints,
   isConfigured,
+  isMcpDelegationDecisionReady,
   getWorkerToken,
 };

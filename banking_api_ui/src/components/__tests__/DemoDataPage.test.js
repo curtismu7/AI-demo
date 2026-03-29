@@ -8,6 +8,7 @@ import DemoDataPage from '../DemoDataPage';
 jest.mock('axios', () => ({
   get: jest.fn(() => Promise.resolve({ data: { agent_mcp_allowed_scopes: 'banking:read banking:write ai_agent' } })),
   post: jest.fn(() => Promise.resolve({ data: {} })),
+  patch: jest.fn(() => Promise.resolve({ data: { updated: true, flags: [] } })),
 }));
 
 const axiosMock = require('axios');
@@ -171,6 +172,16 @@ describe('DemoDataPage — scope permissions section', () => {
     });
   });
 
+  it('does not load feature flags for non-admin (no PingOne Authorize demo section)', async () => {
+    axiosMock.get.mockResolvedValue({
+      data: { agent_mcp_allowed_scopes: 'banking:read banking:write ai_agent' },
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: /accounts/i });
+    expect(screen.queryByRole('heading', { name: /pingone authorize — demo toggles/i })).not.toBeInTheDocument();
+    expect(axiosMock.get).not.toHaveBeenCalledWith('/api/admin/feature-flags');
+  });
+
   it('calls POST /api/admin/config with updated scopes when "Save scope permissions" is clicked', async () => {
     renderPage();
     await screen.findByRole('heading', { name: /agent scope permissions/i });
@@ -186,5 +197,46 @@ describe('DemoDataPage — scope permissions section', () => {
         expect.objectContaining({ agent_mcp_allowed_scopes: expect.any(String) })
       )
     );
+  });
+});
+
+describe('DemoDataPage — PingOne Authorize toggles (admin)', () => {
+  beforeEach(() => {
+    fetchDemoScenario.mockResolvedValue(defaultScenarioPayload);
+    axiosMock.get.mockImplementation((url) => {
+      if (url === '/api/admin/feature-flags') {
+        return Promise.resolve({
+          data: {
+            flags: [
+              {
+                id: 'authorize_enabled',
+                category: 'PingOne Authorize',
+                name: 'Transaction authorization (master)',
+                value: false,
+                description: 'Turn on policy evaluation before certain transactions.',
+                impact: 'imp',
+                type: 'boolean',
+                defaultValue: false,
+              },
+            ],
+            categories: ['PingOne Authorize'],
+          },
+        });
+      }
+      return Promise.resolve({ data: { agent_mcp_allowed_scopes: 'banking:read' } });
+    });
+  });
+
+  it('loads feature flags and shows PingOne Authorize demo toggles', async () => {
+    render(
+      <BrowserRouter>
+        <DemoDataPage user={{ role: 'admin' }} onLogout={jest.fn()} />
+      </BrowserRouter>,
+    );
+    await screen.findByRole('heading', { name: /pingone authorize — demo toggles/i });
+    await waitFor(() => {
+      expect(axiosMock.get).toHaveBeenCalledWith('/api/admin/feature-flags');
+    });
+    expect(screen.getByText('Transaction authorization (master)')).toBeInTheDocument();
   });
 });

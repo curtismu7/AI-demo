@@ -145,6 +145,20 @@ function RecentDecisionsViewer() {
             <dd style={{ margin: 0 }}>{String(evalStatus.simulatedMode)}</dd>
             <dt style={{ color: '#64748b' }}>PingOne configured</dt>
             <dd style={{ margin: 0 }}>{String(evalStatus.pingoneConfigured)}</dd>
+            {evalStatus.mcpFirstToolGateEnabled !== undefined && (
+              <>
+                <dt style={{ color: '#64748b' }}>MCP first-tool gate</dt>
+                <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolGateEnabled)}</dd>
+                <dt style={{ color: '#64748b' }}>MCP decision endpoint set</dt>
+                <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolDecisionEndpointConfigured)}</dd>
+                <dt style={{ color: '#64748b' }}>MCP gate live ready</dt>
+                <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolPingOneReady)}</dd>
+                <dt style={{ color: '#64748b' }}>MCP gate would run (simulated)</dt>
+                <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolWouldRunSimulated)}</dd>
+                <dt style={{ color: '#64748b' }}>MCP gate would run (live)</dt>
+                <dd style={{ margin: 0 }}>{String(evalStatus.mcpFirstToolWouldRunLive)}</dd>
+              </>
+            )}
           </dl>
         )}
       </div>
@@ -367,12 +381,30 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}><code>authorize_policy_id</code></td>
                 <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', color: '#b45309' }}>⚠️ Legacy fallback</td>
               </tr>
+              <tr>
+                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}>Phase 2 — MCP</td>
+                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '0.75rem' }}>/decisionEndpoints/{'{endpointId}'}</td>
+                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}><code>authorize_mcp_decision_endpoint_id</code></td>
+                <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', color: '#0369a1' }}>Optional — first MCP tool</td>
+              </tr>
             </tbody>
           </table>
           <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: 8 }}>
             The BFF picks Phase 2 if <code>authorize_decision_endpoint_id</code> is set; falls back
             to Phase 1 otherwise. Both paths return <code>{'{ decision, stepUpRequired, raw }'}</code>
             so no other code changes.
+          </p>
+          <h3 style={{ marginTop: '1.25rem' }}>MCP first tool (BankingAgent)</h3>
+          <p style={{ fontSize: '0.85rem', lineHeight: 1.6 }}>
+            Feature flag <code>ff_authorize_mcp_first_tool</code> (Admin → Feature Flags) runs Authorize once per session on{' '}
+            <code>POST /api/mcp/tool</code> when a delegated MCP access token is used. Live PingOne requires{' '}
+            <strong>Application Configuration</strong> → <code>authorize_mcp_decision_endpoint_id</code> (or env{' '}
+            <code>PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID</code>) pointing at a <strong>separate</strong> decision endpoint
+            whose policy understands Trust Framework parameters including <code>DecisionContext: McpFirstTool</code>,{' '}
+            <code>ToolName</code>, <code>TokenAudience</code>, <code>ActClientId</code>, <code>NestedActClientId</code>,{' '}
+            <code>McpResourceUri</code>. With <strong>Simulated Authorize</strong> on, the same flag uses in-process rules;
+            optional <code>SIMULATED_MCP_DENY_TOOLS</code> can force DENY per tool name. <strong>Refresh status</strong> on the
+            Recent Decisions tab surfaces <code>mcpFirstTool*</code> fields from <code>/api/authorize/evaluation-status</code>.
           </p>
         </>
       ),

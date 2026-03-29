@@ -14,6 +14,7 @@ const {
 } = require('../services/pingOneAuthorizeService');
 const { getSimulatedRecentDecisions } = require('../services/simulatedAuthorizeService');
 const { getAuthorizationStatusSummary } = require('../services/transactionAuthorizationService');
+const { getMcpFirstToolGateStatus } = require('../services/mcpToolAuthorizationService');
 
 const router = express.Router();
 
@@ -101,7 +102,10 @@ router.get('/evaluation-status', authenticateToken, requireScopes(['openid']), a
     return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
   }
   try {
-    return res.json(getAuthorizationStatusSummary());
+    return res.json({
+      ...getAuthorizationStatusSummary(),
+      ...getMcpFirstToolGateStatus(),
+    });
   } catch (err) {
     console.error('[authorize/evaluation-status] Error:', err.message);
     return res.status(500).json({ error: 'internal_error', message: err.message });

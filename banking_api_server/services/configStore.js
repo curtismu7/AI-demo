@@ -78,6 +78,8 @@ const FIELD_DEFS = {
   authorize_enabled:                { public: true,  default: 'false' },
   // Phase 2: Decision Endpoints API — preferred path (set this in PingOne Authorize → Decision Endpoints)
   authorize_decision_endpoint_id:   { public: true,  default: '' },
+  // Optional: second decision endpoint for MCP first-tool delegation (DecisionContext=McpFirstTool in TF params)
+  authorize_mcp_decision_endpoint_id: { public: true, default: '' },
   // Phase 1: Legacy PDP path — fallback when decision endpoint ID is not set
   authorize_policy_id:              { public: true,  default: '' },
   authorize_worker_client_id:       { public: true,  default: '' },
@@ -89,6 +91,8 @@ const FIELD_DEFS = {
   ff_authorize_deposits:   { public: true, default: 'false' }, // apply Authorize to deposits too
   // When true with authorize_enabled: run in-process simulated Authorize (education); no PingOne call
   ff_authorize_simulated:  { public: true, default: 'false' },
+  // PingOne Authorize (or simulated) once per session on first BankingAgent MCP tool call — see docs/PINGONE_AUTHORIZE_PLAN.md §7
+  ff_authorize_mcp_first_tool: { public: true, default: 'false' },
   ff_hitl_enabled:         { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
 
   // RFC 8693 Token Exchange — MCP server resource URI
@@ -380,6 +384,7 @@ class ConfigStore {
       mcp_server_url:                   ['MCP_SERVER_URL'],
       mcp_resource_uri:                 ['MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
+      authorize_mcp_decision_endpoint_id: ['PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID'],
       debug_oauth:                      ['DEBUG_OAUTH'],
       ciba_enabled:           ['CIBA_ENABLED'],
       step_up_method:         ['STEP_UP_METHOD'],

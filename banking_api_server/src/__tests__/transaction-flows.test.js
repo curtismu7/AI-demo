@@ -60,6 +60,8 @@ jest.mock('../../middleware/auth', () => ({
 // ─── Mock PingOne Authorize (disabled via settings, but still mock the module) ─
 jest.mock('../../services/pingOneAuthorizeService', () => ({
   evaluateTransaction: jest.fn().mockResolvedValue({ decision: 'PERMIT', raw: {} }),
+  evaluateMcpToolDelegation: jest.fn().mockResolvedValue({ decision: 'PERMIT', stepUpRequired: false, raw: {} }),
+  isMcpDelegationDecisionReady: jest.fn(() => false),
 }));
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────

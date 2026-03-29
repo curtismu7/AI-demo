@@ -949,6 +949,7 @@ const { oauthErrorHandler } = require('./middleware/oauthErrorHandler');
 // scoped to the MCP server audience — the user's raw token never leaves the Backend-for-Frontend (BFF).
 
 const { resolveMcpAccessTokenWithEvents } = require('./services/agentMcpTokenService');
+const mcpToolAuthorizationService = require('./services/mcpToolAuthorizationService');
 const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./services/mcpWebSocketClient');
 const { callToolLocal } = require('./services/mcpLocalTools');
 const { introspectToken } = require('./middleware/tokenIntrospection');
@@ -1001,6 +1002,56 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     return res.status(r.status).json(r.body);
   }
 
+  // PingOne Authorize (or simulated) on first MCP tool use per session — docs/PINGONE_AUTHORIZE_PLAN.md §7
+  /** @type {object|undefined} */
+  let mcpAuthorizeEvaluationThisRequest;
+  try {
+    const mcpAuthz = await mcpToolAuthorizationService.evaluateMcpFirstToolGate({
+      req,
+      tool,
+      agentToken,
+      userSub,
+      userAcr: req.session?.user?.acr,
+    });
+    if (mcpAuthz.ran && mcpAuthz.block) {
+      return res.status(mcpAuthz.block.status).json({
+        ...mcpAuthz.block.body,
+        tokenEvents,
+        mcpAuthorizeEvaluation: {
+          decisionContext: mcpAuthz.block.body.decisionContext,
+          decisionId: mcpAuthz.block.body.decisionId,
+        },
+      });
+    }
+    if (mcpAuthz.ran && mcpAuthz.simulatedError) {
+      console.error(`[MCP Authorize][Simulated] unexpected error: ${mcpAuthz.simulatedError.message}`);
+      return res.status(500).json({
+        error: 'mcp_authorize_error',
+        error_description: 'Simulated MCP authorization evaluation failed unexpectedly.',
+        tokenEvents,
+      });
+    }
+    if (mcpAuthz.ran && mcpAuthz.pingoneError) {
+      console.error(`[MCP Authorize] PingOne error — failing closed: ${mcpAuthz.pingoneError.message}`);
+      return res.status(503).json({
+        error: 'mcp_authorize_unavailable',
+        error_description: 'PingOne Authorize is unavailable for MCP tool access.',
+        tokenEvents,
+      });
+    }
+    if (mcpAuthz.ran && mcpAuthz.permit) {
+      req.session.mcpFirstToolAuthorizeDone = true;
+      mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
+    }
+  } catch (mcpAuthzErr) {
+    console.error('[MCP Authorize] Unexpected error in gate:', mcpAuthzErr.message);
+    return res.status(500).json({
+      error: 'mcp_authorize_internal',
+      message: mcpAuthzErr.message,
+      tokenEvents,
+    });
+  }
+
   // Introspect session token for zero-trust validation (RFC 7662)
   const sessionAccessToken = getSessionAccessToken(req);
   const introspectionConfigured = !!process.env.PINGONE_INTROSPECTION_ENDPOINT;
@@ -1036,7 +1087,11 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       throw Object.assign(new Error('MCP_SERVER_URL not configured; using local tool handler'), { useLocal: true });
     }
     const result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
-    return res.json({ result, tokenEvents });
+    const out = { result, tokenEvents };
+    if (mcpAuthorizeEvaluationThisRequest) {
+      out.mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
+    }
+    return res.json(out);
   } catch (err) {
     const isConnErr =
       err.useLocal ||

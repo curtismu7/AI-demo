@@ -73,6 +73,20 @@ const FLAG_REGISTRY = [
     type:         'boolean',
     defaultValue: false,
   },
+  {
+    id:           'ff_authorize_mcp_first_tool',
+    name:         'Authorize — First MCP tool (BankingAgent)',
+    category:     'PingOne Authorize',
+    description:
+      'On the **first** MCP tool call per signed-in session (POST /api/mcp/tool with a delegated MCP access token), ' +
+      'evaluate **PingOne Authorize** using Trust Framework **DecisionContext=McpFirstTool** — or **Simulated Authorize** when that flag is on. ' +
+      'Requires **MCP decision endpoint ID** in Application Configuration for live PingOne. Skips admins and local MCP fallback (no bearer).',
+    impact:
+      'OFF = no extra Authorize round-trip for MCP (MCP server still introspects tokens). ON = first tool may return 403/428 from policy.',
+    type:         'boolean',
+    defaultValue: false,
+    docsUrl:      'https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
+  },
 
   // ── Step-Up Auth ───────────────────────────────────────────────────────────
   {

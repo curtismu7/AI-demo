@@ -63,6 +63,8 @@ jest.mock('../../middleware/auth', () => ({
 
 jest.mock('../../services/pingOneAuthorizeService', () => ({
   evaluateTransaction: jest.fn().mockResolvedValue({ decision: 'PERMIT', raw: {} }),
+  evaluateMcpToolDelegation: jest.fn().mockResolvedValue({ decision: 'PERMIT', stepUpRequired: false, raw: {} }),
+  isMcpDelegationDecisionReady: jest.fn(() => false),
 }));
 
 const app = require('../../server');

@@ -66,6 +66,8 @@ jest.mock('../../data/store', () => ({
 
 jest.mock('../../services/pingOneAuthorizeService', () => ({
   evaluateTransaction: jest.fn().mockResolvedValue({ decision: 'PERMIT', raw: {} }),
+  evaluateMcpToolDelegation: jest.fn().mockResolvedValue({ decision: 'PERMIT', stepUpRequired: false, raw: {} }),
+  isMcpDelegationDecisionReady: jest.fn(() => false),
 }));
 
 // Mock emailService so no real PingOne calls are made.

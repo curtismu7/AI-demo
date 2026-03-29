@@ -151,6 +151,49 @@ export default function DemoDataPage({ user, onLogout }) {
     }
   };
 
+  /** PingOne Authorize feature flags — same registry as /feature-flags; admin-only on this page. */
+  const [p1azFlags, setP1azFlags] = useState([]);
+  const [p1azFlagsLoading, setP1azFlagsLoading] = useState(false);
+  const [p1azFlagsError, setP1azFlagsError] = useState(null);
+  const [p1azFlagSaving, setP1azFlagSaving] = useState(null);
+
+  const loadP1azFlags = useCallback(async () => {
+    if (user?.role !== 'admin') return;
+    setP1azFlagsLoading(true);
+    setP1azFlagsError(null);
+    try {
+      const { data } = await axios.get('/api/admin/feature-flags');
+      const list = (data.flags || []).filter((f) => f.category === 'PingOne Authorize');
+      setP1azFlags(list);
+    } catch (err) {
+      setP1azFlagsError(err?.response?.data?.error || err.message || 'Failed to load feature flags');
+    } finally {
+      setP1azFlagsLoading(false);
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      loadP1azFlags();
+    }
+  }, [user?.role, loadP1azFlags]);
+
+  const handleP1azFlagToggle = async (flagId, nextBool) => {
+    setP1azFlagSaving(flagId);
+    try {
+      const { data } = await axios.patch('/api/admin/feature-flags', {
+        updates: { [flagId]: nextBool },
+      });
+      const updatedMap = new Map((data.flags || []).map((f) => [f.id, f]));
+      setP1azFlags((prev) => prev.map((f) => (updatedMap.has(f.id) ? updatedMap.get(f.id) : f)));
+      notifySuccess('Feature flag saved');
+    } catch (err) {
+      notifyError(err?.response?.data?.error || err.message || 'Failed to save flag');
+    } finally {
+      setP1azFlagSaving(null);
+    }
+  };
+
   /** Stable React key for a row before the server assigns an account id. */
   // eslint-disable-next-line no-unused-vars
   const getAccountRowKey = (a) => a.id || a._clientKey;
@@ -702,6 +745,75 @@ export default function DemoDataPage({ user, onLogout }) {
                 </button>
               </div>
             </section>
+
+            {/* ── PingOne Authorize flags (admin — live vs simulated, MCP first tool, etc.) ── */}
+            {user?.role === 'admin' && (
+              <section className="section demo-data-section" aria-labelledby="demo-p1az-flags-heading">
+                <h2 className="demo-data-section__heading" id="demo-p1az-flags-heading">
+                  PingOne Authorize — demo toggles
+                </h2>
+                <p className="demo-data-hint">
+                  These are the same switches as <Link to="/feature-flags">Feature Flags</Link> (PingOne Authorize
+                  category). <strong>Live PingOne</strong> calls the real decision API when{' '}
+                  <strong>Simulated Authorize</strong> is <strong>off</strong> and you have a decision endpoint + worker
+                  app in <Link to="/config">Application Configuration</Link>. <strong>Simulated Authorize on</strong> keeps
+                  evaluation in-process (education). <strong>First MCP tool</strong> adds a policy check on the first
+                  BankingAgent tool call per session when configured.
+                </p>
+                {p1azFlagsLoading && <p className="demo-data-loading">Loading Authorize flags…</p>}
+                {p1azFlagsError && (
+                  <p style={{ color: '#b91c1c', fontSize: '0.9rem' }} role="alert">
+                    {p1azFlagsError}
+                  </p>
+                )}
+                {!p1azFlagsLoading && p1azFlags.length > 0 && (
+                  <div className="demo-data-scope-list" style={{ marginTop: '0.75rem' }}>
+                    {p1azFlags.map((flag) => {
+                      const isOn = flag.value === true;
+                      const showWarn =
+                        (!isOn && flag.warnIfDisabled) || (isOn && flag.warnIfEnabled);
+                      const warnMsg = flag.warnIfDisabled
+                        ? 'Disabling may block transactions or reduce safety.'
+                        : 'Enabling may reduce security — use for demos only.';
+                      return (
+                        <div
+                          key={flag.id}
+                          className={`demo-data-scope-row${isOn ? ' demo-data-scope-row--on' : ''}`}
+                        >
+                          <label className="demo-data-field demo-data-field--checkbox" style={{ alignItems: 'flex-start' }}>
+                            <input
+                              type="checkbox"
+                              checked={isOn}
+                              disabled={p1azFlagSaving === flag.id}
+                              onChange={(e) => handleP1azFlagToggle(flag.id, e.target.checked)}
+                              style={{ marginTop: '0.25rem', flexShrink: 0 }}
+                            />
+                            <span className="demo-data-scope-body">
+                              <span className="demo-data-scope-label">{flag.name}</span>
+                              <code className="demo-data-scope-code">{flag.id}</code>
+                              <span className="demo-data-scope-desc">{flag.description}</span>
+                              {showWarn && (
+                                <span className="demo-data-scope-desc" style={{ color: '#b45309' }}>
+                                  ⚠️ {warnMsg}
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                          {p1azFlagSaving === flag.id && (
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Saving…</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="demo-data-hint" style={{ marginTop: '0.75rem' }}>
+                  <Link to="/feature-flags">Open full Feature Flags</Link>
+                  {' · '}
+                  <Link to="/config">PingOne / OAuth config</Link>
+                </p>
+              </section>
+            )}
 
             {/* ── may_act demo toggle ─────────────────────────────────────── */}
             <section className="section demo-data-section" aria-labelledby="demo-mayact-heading">

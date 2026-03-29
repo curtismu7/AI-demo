@@ -115,6 +115,108 @@ If product or field teams require **Authorize policies** that consume introspect
 
 ---
 
+## Plan: PAZ parity with the AI Agent / MCP reference architecture
+
+This section is the actionable plan to move **closer to architecture diagrams** (e.g. **PAZ** after MCP token exchange) where policy evaluation is explicitly tied to **introspection-backed identity**, **audience**, and **delegation chain** (`act` / nested `act`), not only to **transaction** attributes (amount, type).
+
+### 1. Target behavior (what “the same as PAZ” means)
+
+From the reference model, **PAZ** should effectively enforce:
+
+| Check | Intent |
+|--------|--------|
+| **Token validity** | Access token is **active** (e.g. via **RFC 7662 introspection** or equivalent JWT validation with JWKS). |
+| **Subject / identity** | **`sub`** represents an end user that **exists and is eligible** in the IdP directory (policy may use directory / attribute services PingOne exposes). |
+| **Audience** | **`aud`** matches the **resource** this access is for (in our demo: **MCP resource URI** / downstream **Banking API** audience, depending on policy scope). |
+| **Chain of custody** | **`act`** (and if issued, **nested `act`**) match **allowed actors** — e.g. MCP layer vs agent/BFF — so delegation is not arbitrary. |
+
+**Important:** PingOne Authorize **decision APIs** in this repo are invoked with **Trust Framework parameters** (JSON), not by “uploading” a raw Bearer token into PAZ. The plan therefore assumes we **derive parameters from introspection/JWT claims** (same facts PAZ would use after introspection in the diagram) and send them to a **decision endpoint** whose **policy** implements the checks above.
+
+### 2. Where we are today (matrix)
+
+| Capability | Reference diagram | BX Finance today | Gap |
+|------------|-------------------|------------------|-----|
+| Introspection | Before / as input to PAZ | **`banking_mcp_server`** `TokenIntrospector` calls PingOne **`/as/introspect`**; validates **`active`**, **`aud`** vs `MCP_SERVER_RESOURCE_URI`, optional **`may_act`** vs `BFF_CLIENT_ID` | Strong for **MCP**; **not** wired through **Authorize**. |
+| SUB / user | PAZ + directory | Introspection returns **`sub`**; MCP uses it in session; **transaction** Authorize passes **`UserId`** | **MCP path** does not call **Authorize** to assert “user allowed for this tool/resource”. |
+| AUD | PAZ policy | Enforced in **MCP** introspection path | Not duplicated in **Authorize** for MCP. |
+| `act` / nested `act` | Explicit policy steps | **`act.client_id`** logged; **`may_act`** optional; **no** enforcement of **nested `act`** chain like `act.act.sub` in reference | **Policy + code** gap vs multi-hop diagram. |
+| PAZ diamond | Single policy point for resource access | **PAZ** used only for **`routes/transactions.js`** (**Amount**, **TransactionType**, **UserId**, **Acr**, …) | **Second decision path** needed for “**MCP / tool / delegation**” if we want diagram-level PAZ. |
+
+### 3. Design choices (pick one primary pattern)
+
+**Recommended (keeps worker secrets on the BFF):**
+
+1. **`banking_api_server`** exposes an internal or session-authenticated route, e.g. **`POST /api/authorize/mcp-delegation`** (name TBD), callable **only** from trusted paths (same-origin MCP proxy flow, or server-to-server from MCP with a shared secret / mTLS if MCP is not co-located).
+2. Handler **introspects** the presented **MCP access token** (or validates JWT + uses claims) and maps to Trust Framework parameters, e.g. **`SubjectId`**, **`TokenAudience`**, **`ActClientId`**, **`NestedActClientId`** (if present), **`McpResourceUri`**, **`ToolName`** (optional).
+3. Calls **`pingOneAuthorizeService`** with a **dedicated `authorize_mcp_decision_endpoint_id`** (or reuses endpoint if PingOne policy branches on a **DecisionType** parameter).
+4. **PERMIT / DENY / obligations** returned to caller; **MCP** or **BFF** blocks the tool call accordingly.
+
+**Alternative (MCP holds Authorize worker credentials):** MCP calls decision endpoint directly after introspection. **Not recommended** for this demo: duplicates **worker client secret**, widens blast radius, complicates rotation.
+
+### 4. Phased implementation
+
+| Phase | Scope | Deliverables |
+|-------|--------|--------------|
+| **4a — PingOne policy & Trust Framework** | No app code yet | New **decision endpoint** (or policy branch) in PingOne Authorize with attributes matching §3. Document attribute names **identical** to what the BFF will send. Optionally model **directory / user-exists** and **actor allow-lists** in policy (PingOne UI / Trust Framework docs). |
+| **4b — BFF service API** | `banking_api_server` | ✅ **`pingOneAuthorizeService.evaluateMcpToolDelegation`** posts **`DecisionContext: McpFirstTool`** plus **`UserId`**, **`ToolName`**, **`TokenAudience`**, **`ActClientId`**, **`NestedActClientId`**, **`McpResourceUri`**, optional **`Acr`**. Config: **`authorize_mcp_decision_endpoint_id`** / **`PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID`**. **`simulatedAuthorizeService.evaluateMcpFirstTool`** for education; optional **`SIMULATED_MCP_DENY_TOOLS`** (comma-separated tool names) for forced DENY. |
+| **4c — Call site** | Wire the gate | ✅ **`POST /api/mcp/tool`** (BankingAgent → BFF): after MCP access token resolution, **`mcpToolAuthorizationService.evaluateMcpFirstToolGate`** runs once per session (**`req.session.mcpFirstToolAuthorizeDone`**). Feature flag **`ff_authorize_mcp_first_tool`**; reuses **`ff_authorize_fail_open`** for live PingOne errors. Skips admins and paths without a bearer MCP token (local fallback). Success JSON may include **`mcpAuthorizeEvaluation`** when the gate ran this request. **`GET /api/authorize/evaluation-status`** merges **`getMcpFirstToolGateStatus()`**. |
+| **4d — MCP hardening (parallel)** | `banking_mcp_server` | If PingOne can issue **nested `act`**, extend **`TokenIntrospector`** (and tests) to **enforce** `act` / nested actor IDs against env allow-lists — **defense in depth** even when PAZ also evaluates. |
+| **4e — Observability & education** | Admin + docs | **`authorizeEvaluation`-style** payload or header on MCP-related responses; **PingOneAuthorizePanel** tab or subsection for **“MCP / delegation decisions”**; update **`BX_Finance_AI_Agent_Tokens.drawio`** PAZ note to show **transaction PAZ** vs **delegation PAZ** (two use cases or one branched policy). |
+
+### 5. Out of scope / explicit non-goals (unless product asks)
+
+- Replacing **JWT validation** on **`/api/*`** with Authorize on every read — different product story (**API Access Management** / gateway).
+- Storing **Authorize worker** credentials in **`banking_mcp_server`** without a security review.
+
+### 6. Success criteria
+
+- A **policy decision** in PingOne Authorize can **DENY** an MCP access scenario based on **aud**, **actor chain**, or **user eligibility**, with **recent decisions** visible for demos.
+- **Transaction** Authorize path remains unchanged unless intentionally consolidated into one endpoint with a **DecisionType** parameter.
+
+### 7. Call-site decision — **first MCP tool use** (Option B)
+
+**What we chose:** Run the **MCP / delegation** Authorize evaluation when the user (or agent) is about to execute **MCP tooling** for the first time in a flow — e.g. first **`tools/call`** after a valid MCP session/token, not immediately after the BFF finishes **RFC 8693** token exchange.
+
+**Product impact:**
+
+- **Latency:** Users pay the Authorize round-trip on the **first** tool invocation (or first per session), not on every page load or exchange.
+- **PingOne load:** Fewer evaluations than **per tool** or **post-exchange** if sessions run multiple tools.
+- **Policy semantics:** PingOne sees a decision **in the context of “someone is actually using MCP tools”**, which matches demos where PAZ sits **before** tools/resources.
+
+**Security nuance:** The **MCP access token** is still **validated at the MCP server** (introspection / JWT, **`aud`**, scopes, optional **`may_act`**) **before** any tool runs. Adding Authorize on **first tool use** does not remove that; it **adds** a **central policy** layer. The short window between “token minted” and “first tool” is only material if something could use the token **without** going through MCP tool execution — in our architecture, **MCP is the consumer** of that token, so **first tool use** is a practical gate.
+
+**Follow-up choice:** **Once per MCP session** vs **once per tool** — per-tool gives finer policy (e.g. deny specific tools) at higher cost; per-session matches “first MCP use” with lower latency.
+
+### 8. Security comparison, MCP spec, and best use of PAZ
+
+**Is our current approach better, worse, or the same for security?**
+
+It is **not** strictly “worse” or “better” in isolation — it is **different**:
+
+| Aspect | **Today (MCP introspection + scopes + optional `may_act`, transactions → PAZ)** | **After adding PAZ on first MCP tool use** |
+|--------|----------------------------------------------------------------------------------|--------------------------------------------|
+| **Token authenticity** | MCP proves token **active**, **`aud`**, expiry, scopes | **Unchanged** — still required; PAZ does not replace introspection. |
+| **Delegation / actor** | **`act`** logged; **`may_act`** optional; limited **nested `act`** enforcement | PAZ policy can **codify** allow-lists and **audit** delegation decisions in **recent decisions**. |
+| **Central governance** | Policy changes often need **code/config** on MCP (scopes, env) | IAM can tune **PingOne Authorize** policies **without** redeploying MCP (subject to Trust Framework attributes you pass). |
+| **Risk if misconfigured** | Weak scopes / disabled checks | **Fail-open** on Authorize errors would be **weaker** than fail-closed; must align with risk appetite. |
+
+**Summary:** For **pure cryptographic / OAuth correctness**, a **well-locked-down** MCP server alone can be **sufficient**. Adding PAZ is **better for organizational security** when you need **one policy engine**, **auditable decisions**, and **dynamic rules** (risk, geography, step-up obligations). It is **worse** only if implemented **sloppily** (e.g. fail-open in production, wrong parameters, or exposing **worker** credentials broadly).
+
+**Proper MCP use (spec / practice)**
+
+- The **MCP protocol** specifies **how** clients and servers talk (capabilities, tools, transports). It does **not** mandate PingOne Authorize.
+- **Best practice** is still: **authenticate** the session (e.g. **Bearer** token), **validate** it on the server, **least-privilege** tool scopes, **TLS**, and **no** long-lived secrets in the browser for MCP-bound tokens when using a BFF.
+- **PAZ is an add-on** to MCP: it satisfies **enterprise IAM** needs; it is not required to claim “spec-compliant MCP.”
+
+**How to best use PAZ (in this demo and similar apps)**
+
+1. **High-impact actions** — Already: **money movement** (**transactions**) → strong fit for PERMIT / DENY / step-up.
+2. **Sensitive delegation** — **Next:** **first MCP tool use** (this plan) when IAM should own **who may act through MCP** and **under what conditions**.
+3. **Avoid** calling PAZ on **every read** of static data unless product requires it — cost, latency, and **API Access Management** / gateway patterns may fit better at scale.
+4. **Keep worker credentials** on the **BFF** (or a dedicated policy service), **not** in the browser and ideally **not** duplicated on MCP without review.
+
+---
+
 ## Gap analysis (plan vs product docs)
 
 1. **API surface:** The service uses **Policy Decision Points — evaluate** under the governance path. The **Decision Endpoints** doc describes the **decision endpoint** resource and **evaluate decision request** as the product’s policy decision service. **Action:** Confirm in the latest [PingOne Authorize API reference](https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html) (Developer resources) whether banking should call **decision endpoint ID** + *Evaluate a Decision Request* as the primary path, and whether the current PDP `evaluate` URL remains supported or is legacy. Update `pingOneAuthorizeService.js` to match **one** supported contract.
@@ -151,6 +253,7 @@ If product or field teams require **Authorize policies** that consume introspect
 
 ### Phase 4 — Broader Authorize features (optional / future)
 
+- **PAZ / MCP / delegation alignment** — see **§ Plan: PAZ parity with the AI Agent / MCP reference architecture** above (Trust Framework parameters from introspection claims, second decision endpoint, BFF-mediated evaluation).
 - **API Access Management** (API services, operations, gateway sidecars) — aligns with `docs/MCP_GATEWAY_PLAN.md`.
 - **Step-up for APIs** and **external OAuth** token sources — tie to existing OAuth/token exchange work in the **Backend-for-Frontend (BFF)** (`banking_api_server`).
 
