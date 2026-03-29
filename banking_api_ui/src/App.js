@@ -15,6 +15,7 @@ import Transactions from './components/Transactions';
 import SecuritySettings from './components/SecuritySettings';
 import Config from './components/Config';
 import Onboarding from './components/Onboarding';
+import SetupPage from './components/SetupPage';
 import CIBAPanel from './components/CIBAPanel';
 import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
@@ -282,6 +283,13 @@ function AppWithAuth() {
           )}
           <DashboardQuickNav user={user} />
           <Routes>
+            <Route path="/setup" element={<SetupPage />} />
+            <Route
+              path="/onboarding"
+              element={
+                user && user.role !== 'admin' ? <Navigate to="/" replace /> : <Onboarding />
+              }
+            />
             <Route path="*" element={
               !user ? (
                 <LandingPage />
@@ -293,7 +301,6 @@ function AppWithAuth() {
                     <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/config"      element={user?.role === 'admin' ? <Config /> : <Navigate to="/" replace />} />
-                    <Route path="/onboarding"  element={user?.role === 'admin' ? <Onboarding /> : <Navigate to="/" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
                     <Route path="/demo-data"   element={<DemoDataPage user={user} onLogout={logout} />} />

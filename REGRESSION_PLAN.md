@@ -65,6 +65,17 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — feat: `/setup` page, PingOne bootstrap plan API + CLI, token inspector sizing (commit `5d7384b`)
+
+- **Setup:** Public **`/setup`** (Vercel command copy buttons, **`GET /api/setup/plan`** checklist from `config/pingone-bootstrap.manifest.example.json`, copy targets for **`npm run pingone:bootstrap`** / **`pingone:bootstrap:probe`**, admin-only **`GET /api/admin/setup/management-probe`** — read-only PingOne Management API **`listApplications`** when `pingone_client_*` / CIMD worker creds exist). **`/onboarding`** is registered at the app root so signed-out users see the checklist; signed-in **customers** are redirected to **`/`**.
+- **Backend:** `banking_api_server/routes/setup.js` (mounted at **`/api/setup`**, rate-limited), `services/pingoneBootstrapService.js`, `routes/admin.js` probe route; `server.js` wires setup router. **Root:** `scripts/pingone-bootstrap.js`, `package.json` scripts **`pingone:bootstrap`** / **`pingone:bootstrap:probe`** (loads dotenv from **`banking_api_server/node_modules/dotenv`**).
+- **UI:** `SetupPage.js`, `App.js` routes, `LandingPage.js` / `Login.js` / `Onboarding.js` links; **OAuth Token Inspector** default size **800×960**, JWT full-JSON **`pre`** max-height **~2×** (CSS + pop-out window).
+- **Docs:** `docs/SETUP_AUTOMATION_PLAN.md`
+- **Do not break:** OAuth routes, session, **BankingAgent FAB** (`App.js` only adds routes; inspector is `TokenChainDisplay` only). **`GET /api/mcp/inspector/tools`** unchanged.
+- **Regression check:** `cd banking_api_ui && npm run build` exits **0**; `cd banking_api_server && npm test -- --testPathPattern=pingoneBootstrapService --forceExit` passes; **`/api/setup/plan`** returns **`ok: true`** + **`steps`** without authentication; management probe returns **401** until admin session (expected).
+
+---
+
 ### 2026-03-29 — feat(spinner): show full absolute URL in spinner endpoint chip (commit `cecd291`)
 
 - **Problem:** The spinner loading overlay showed a bare relative path like `GET /api/accounts/my` — not useful for debugging as it lacked the host and scheme.

@@ -423,7 +423,7 @@ function openInNewWindow(event) {
     .key{color:#93c5fd;font-weight:700;font-family:monospace;white-space:nowrap}
     .sep{color:#475569}
     .val{color:#e2e8f0;font-family:monospace;word-break:break-all}
-    .pre{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;font-size:.76rem;color:#86efac;white-space:pre-wrap;word-break:break-all;font-family:monospace;max-height:300px;overflow:auto}
+    .pre{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;font-size:.76rem;color:#86efac;white-space:pre-wrap;word-break:break-all;font-family:monospace;max-height:600px;overflow:auto}
     .pill{font-size:.75rem;font-weight:600;padding:5px 12px;border-radius:8px;width:fit-content}
     .pill-may{background:rgba(37,99,235,.2);color:#bfdbfe;border:1px solid rgba(37,99,235,.4)}
     .pill-act{background:rgba(20,184,166,.15);color:#99f6e4;border:1px solid rgba(20,184,166,.3)}
@@ -457,7 +457,7 @@ function openInNewWindow(event) {
   const win = window.open(
     '',
     `tci-${event.id || 'token'}-${Date.now()}`,
-    `width=520,height=780,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`
+    `width=1040,height=960,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`
   );
   if (!win) return; // popup blocker
   win.document.write(html);
@@ -471,7 +471,7 @@ function openInNewWindow(event) {
  */
 function TokenInspectorPanel({ event, initialPos, onClose }) {
   const [pos, setPos] = useState(initialPos);
-  const [size, setSize] = useState({ w: 400, h: 720 });
+  const [size, setSize] = useState({ w: 800, h: 960 });
   const [collapsed, setCollapsed] = useState(false);
 
   /** Drag from header. */
@@ -501,8 +501,8 @@ function TokenInspectorPanel({ event, initialPos, onClose }) {
     const startW = size.w;
     const startH = size.h;
     const onMove = (ev) => setSize({
-      w: Math.max(300, startW + ev.clientX - startX),
-      h: Math.max(200, startH + ev.clientY - startY),
+      w: Math.max(400, startW + ev.clientX - startX),
+      h: Math.max(320, startH + ev.clientY - startY),
     });
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
@@ -732,11 +732,11 @@ const PLACEHOLDER_EVENTS = [
 function calcInitialPos(triggerEl) {
   if (triggerEl) {
     const rect = triggerEl.getBoundingClientRect();
-    const x = Math.min(rect.right + 16, window.innerWidth - 420);
+    const x = Math.min(rect.right + 16, window.innerWidth - 820);
     const y = Math.max(60, rect.top - 40);
     return { x, y };
   }
-  return { x: Math.max(60, window.innerWidth - 460), y: 100 };
+  return { x: Math.max(60, window.innerWidth - 900), y: 100 };
 }
 
 const TokenChainDisplay = () => {
@@ -744,7 +744,7 @@ const TokenChainDisplay = () => {
   const [tab, setTab] = useState('current');
   const [sessionPreviewEvents, setSessionPreviewEvents] = useState(null);
   const [inspectedEvent, setInspectedEvent] = useState(null);
-  const [inspectorPos, setInspectorPos] = useState({ x: 420, y: 100 });
+  const [inspectorPos, setInspectorPos] = useState({ x: 120, y: 100 });
   const [copied, setCopied] = useState(false);
 
   /** Fetch session preview (called on mount, on login, and when live events reset). */

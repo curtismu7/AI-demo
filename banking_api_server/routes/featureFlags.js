@@ -130,6 +130,23 @@ const FLAG_REGISTRY = [
     defaultValue: false,
     warnIfEnabled: true,
   },
+  {
+    id:           'ff_inject_audience',
+    name:         'Token Exchange — Auto-inject audience (BFF synthetic)',
+    category:     'Token Exchange',
+    description:
+      'When the user access token\'s `aud` claim does not include `mcp_resource_uri`, the BFF **adds it** ' +
+      'to the local claim snapshot before validation. This mirrors the behaviour when PingOne is configured to ' +
+      'include the resource URI in issued access tokens (RFC 8707 resource indicators). ' +
+      '**Educational only** — the JWT itself is unchanged; only the BFF\'s internal claim snapshot is updated for ' +
+      'Token Chain display. Disable in production once PingOne is configured to issue tokens with the correct audience.',
+    impact:
+      'OFF (default) = missing resource URI in aud is shown as-is; exchange may fail with audience mismatch. ' +
+      'ON = BFF adds mcp_resource_uri to the aud snapshot; Token Chain shows an "injected" badge.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

@@ -427,6 +427,47 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     return { token: null, tokenEvents, userSub };
   }
 
+  // ── Optional BFF synthetic audience injection ─────────────────────────────
+  // When ff_inject_audience is true and the user token's aud claim does not already
+  // include mcp_resource_uri, the BFF adds it to the local claim snapshot in memory.
+  // Some PingOne token-exchange policies require the subject token to be valid for the
+  // requested audience (RFC 8707 resource indicators). Educational/demo only — the JWT
+  // itself is unchanged; only the BFF's internal snapshot is updated for Token Chain display.
+  const ffInjectAudience =
+    configStore.getEffective('ff_inject_audience') === true ||
+    configStore.getEffective('ff_inject_audience') === 'true';
+
+  if (ffInjectAudience && userAccessTokenClaims) {
+    const currentAud = userAccessTokenClaims.aud;
+    const audArr = Array.isArray(currentAud) ? currentAud : (currentAud ? [currentAud] : []);
+    const audAlreadyPresent = audArr.includes(mcpResourceUri);
+
+    if (!audAlreadyPresent) {
+      userAccessTokenClaims = { ...userAccessTokenClaims, aud: [...audArr, mcpResourceUri] };
+      const utEvent = tokenEvents.find(e => e.id === 'user-token');
+      if (utEvent) {
+        utEvent.audInjected = true;
+        utEvent.explanation =
+          (utEvent.explanation || '') +
+          ` [BFF-INJECTED aud: "${mcpResourceUri}" — enable ff_inject_audience is ON]`;
+      }
+      tokenEvents.push(buildTokenEvent(
+        'audience-injected',
+        'Audience — BFF synthetic injection',
+        'active',
+        null,
+        `ff_inject_audience is ON. The user access token's aud claim (${JSON.stringify(currentAud)}) did not include ` +
+          `the MCP resource URI "${mcpResourceUri}". ` +
+          `The BFF has added "${mcpResourceUri}" to the aud claim snapshot in memory before RFC 8693 exchange. ` +
+          'Some PingOne token-exchange policies require the subject token to carry the resource URI in its aud ' +
+          '(RFC 8707 resource indicators). The JWT itself is unchanged — only the local claim snapshot is updated. ' +
+          'Configure PingOne to include the resource URI in issued access tokens to remove this shortcut.',
+        { rfc: 'RFC 8693 §2.1 · RFC 8707', synthetic: true, injectedValue: mcpResourceUri }
+      ));
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const scopeCount = countJwtScopes(userAccessTokenClaims);
   if (scopeCount < MIN_USER_SCOPES_FOR_MCP) {
     tokenEvents.push(buildTokenEvent(

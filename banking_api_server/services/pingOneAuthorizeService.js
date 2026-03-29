@@ -31,11 +31,18 @@
  *   isConfigured()                — returns true if all required credentials are present
  *   isMcpDelegationDecisionReady()  — worker + MCP decision endpoint ID configured
  *   getDecisionEndpoints()        — list all decision endpoints in the environment
+ *   isWorkerCredentialReady()   — env + worker client id/secret (no decision endpoint required)
+ *   provisionDemoDecisionEndpoints(opts) — create/link BX Finance demo decision endpoints via Platform API
  */
 
 'use strict';
 
+const crypto = require('crypto');
 const configStore = require('./configStore');
+
+/** Stable names — idempotent GET list + create if missing */
+const DEMO_TX_ENDPOINT_NAME = 'BX Finance Demo — Transactions';
+const DEMO_MCP_ENDPOINT_NAME = 'BX Finance Demo — MCP first tool';
 
 const REGION_TLD_MAP = {
   com: 'com',
@@ -479,6 +486,132 @@ function isConfigured() {
 }
 
 /**
+ * True when PingOne Authorize worker app credentials are present (can call Management API).
+ */
+function isWorkerCredentialReady() {
+  const { envId, clientId, clientSecret } = _getCredentials();
+  return !!(envId && clientId && clientSecret);
+}
+
+/**
+ * Find a decision endpoint returned from getDecisionEndpoints() by exact name.
+ * @param {Array<{ id?: string, name?: string }>} endpoints
+ * @param {string} name
+ */
+function _findEndpointByName(endpoints, name) {
+  if (!Array.isArray(endpoints)) return null;
+  return endpoints.find((e) => String(e?.name || '') === name) || null;
+}
+
+/**
+ * POST /v1/environments/{envId}/decisionEndpoints — create a policy decision endpoint.
+ * @see https://developer.pingidentity.com/pingone-api/authorize/authorization-decisions/decision-endpoints/create-decision-endpoint.html
+ * @param {{ name: string, description: string, policyId?: string, authorizationVersionId?: string }} opts
+ * @returns {Promise<{ id: string, raw: object }>}
+ */
+async function _createDecisionEndpointResource(opts) {
+  const { envId, regionTld } = _getCredentials();
+  const workerToken = await getWorkerToken();
+  const url = `${apiBase(regionTld)}/v1/environments/${envId}/decisionEndpoints`;
+
+  const base = {
+    name: opts.name,
+    description: opts.description,
+    recordRecentRequests: true,
+  };
+  if (opts.policyId) base.policyId = opts.policyId;
+  if (opts.authorizationVersionId) {
+    base.authorizationVersion = { id: opts.authorizationVersionId };
+  }
+
+  async function postWithPayload(payload) {
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${workerToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Prefer server-assigned id; some tenants require a client UUID — retry with id on 400.
+  let response = await postWithPayload(base);
+  if (!response.ok && response.status === 400) {
+    const withId = { ...base, id: crypto.randomUUID() };
+    response = await postWithPayload(withId);
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Create decision endpoint failed (${response.status}): ${text}`);
+  }
+
+  const raw = await response.json();
+  const id = raw.id;
+  if (!id) throw new Error('PingOne did not return decision endpoint id');
+  return { id, raw };
+}
+
+/**
+ * Ensure two demo decision endpoints exist in PingOne (transactions + MCP first-tool).
+ * Reuses existing endpoints if names match (idempotent).
+ *
+ * @param {{ policyId?: string, authorizationVersionId?: string }} [options]
+ * @returns {Promise<{ transactionEndpointId: string, mcpEndpointId: string, created: { transaction: boolean, mcp: boolean } }>}
+ */
+async function provisionDemoDecisionEndpoints(options = {}) {
+  if (!isWorkerCredentialReady()) {
+    throw new Error(
+      'PingOne Authorize worker is not configured. Set authorize_worker_client_id and ' +
+        'authorize_worker_client_secret (or PINGONE_AUTHORIZE_WORKER_* env vars) in Application Configuration.'
+    );
+  }
+
+  const policyId = options.policyId && String(options.policyId).trim() ? String(options.policyId).trim() : undefined;
+  const authorizationVersionId =
+    options.authorizationVersionId && String(options.authorizationVersionId).trim()
+      ? String(options.authorizationVersionId).trim()
+      : undefined;
+
+  const list = await getDecisionEndpoints();
+  let tx = _findEndpointByName(list, DEMO_TX_ENDPOINT_NAME);
+  let mcp = _findEndpointByName(list, DEMO_MCP_ENDPOINT_NAME);
+
+  const created = { transaction: false, mcp: false };
+
+  if (!tx) {
+    const r = await _createDecisionEndpointResource({
+      name: DEMO_TX_ENDPOINT_NAME,
+      description:
+        'BX Finance demo — transactions (Trust Framework: Amount, TransactionType, UserId, Acr, Timestamp). Created by Application Configuration bootstrap.',
+      policyId,
+      authorizationVersionId,
+    });
+    tx = { id: r.id, name: DEMO_TX_ENDPOINT_NAME };
+    created.transaction = true;
+  }
+
+  if (!mcp) {
+    const r = await _createDecisionEndpointResource({
+      name: DEMO_MCP_ENDPOINT_NAME,
+      description:
+        'BX Finance demo — first MCP tool gate (DecisionContext=McpFirstTool). Created by Application Configuration bootstrap.',
+      policyId,
+      authorizationVersionId,
+    });
+    mcp = { id: r.id, name: DEMO_MCP_ENDPOINT_NAME };
+    created.mcp = true;
+  }
+
+  return {
+    transactionEndpointId: tx.id,
+    mcpEndpointId: mcp.id,
+    created,
+  };
+}
+
+/**
  * True when worker credentials and authorize_mcp_decision_endpoint_id are set (live MCP first-tool gate).
  */
 function isMcpDelegationDecisionReady() {
@@ -515,5 +648,7 @@ module.exports = {
   getDecisionEndpoints,
   isConfigured,
   isMcpDelegationDecisionReady,
+  isWorkerCredentialReady,
+  provisionDemoDecisionEndpoints,
   getWorkerToken,
 };

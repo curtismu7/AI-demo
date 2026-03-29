@@ -211,6 +211,15 @@ describe('PageNav', () => {
 import LandingPage from '../LandingPage';
 
 describe('LandingPage', () => {
+  it('Vercel setup nav button navigates to /setup', () => {
+    renderAt(LandingPage, '/');
+    const vercelBtn = screen.getAllByRole('button').find(
+      b => /vercel setup/i.test(b.textContent),
+    );
+    fireEvent.click(vercelBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('/setup');
+  });
+
   it('Application setup nav button navigates to /config', () => {
     renderAt(LandingPage, '/');
     const [setupBtn] = screen.getAllByRole('button').filter(

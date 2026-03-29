@@ -93,6 +93,14 @@ const LandingPage = () => {
               type="button"
               className="nav-link"
               style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.5rem', color: 'inherit', fontSize: 'inherit' }}
+              onClick={() => navigate('/setup')}
+            >
+              Vercel setup
+            </button>
+            <button
+              type="button"
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.5rem', color: 'inherit', fontSize: 'inherit' }}
               onClick={() => navigate('/config')}
             >
               ⚙ Application setup

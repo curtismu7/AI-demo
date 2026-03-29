@@ -240,3 +240,162 @@ describe('DemoDataPage — PingOne Authorize toggles (admin)', () => {
     expect(screen.getByText('Transaction authorization (master)')).toBeInTheDocument();
   });
 });
+
+// ─── may_act session-seed tests ──────────────────────────────────────────────
+describe('DemoDataPage — may_act status seeded from session on mount', () => {
+  beforeEach(() => {
+    fetchDemoScenario.mockResolvedValue(defaultScenarioPayload);
+    axiosMock.get.mockResolvedValue({
+      data: { agent_mcp_allowed_scopes: 'banking:read' },
+    });
+  });
+  afterEach(() => {
+    jest.clearAllMocks();
+    delete global.fetch;
+  });
+
+  it('shows "Checking…" immediately after mount (before session fetch resolves)', async () => {
+    // fetch never resolves — status stays at "Checking…"
+    global.fetch = jest.fn(() => new Promise(() => {}));
+    render(
+      <BrowserRouter>
+        <DemoDataPage user={{ role: 'customer' }} onLogout={jest.fn()} />
+      </BrowserRouter>,
+    );
+    // Wait for the page loading state to clear (fetchDemoScenario resolves)
+    await screen.findByRole('heading', { name: /accounts/i });
+    // Session fetch is still pending — status pill should show "Checking…"
+    expect(screen.getByText(/checking…/i)).toBeInTheDocument();
+  });
+
+  it('shows ✅ pill after session fetch returns mayAct present', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ mayAct: { client_id: 'bff-client' }, authenticated: true }),
+    });
+    render(
+      <BrowserRouter>
+        <DemoDataPage user={{ role: 'customer' }} onLogout={jest.fn()} />
+      </BrowserRouter>,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/may_act present in token/i)).toBeInTheDocument()
+    );
+    // Enable button disabled (already enabled)
+    const enableBtn = screen.getByRole('button', { name: /enable may_act/i });
+    expect(enableBtn).toBeDisabled();
+  });
+
+  it('shows ❌ pill after session fetch returns no mayAct', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ mayAct: null, authenticated: true }),
+    });
+    render(
+      <BrowserRouter>
+        <DemoDataPage user={{ role: 'customer' }} onLogout={jest.fn()} />
+      </BrowserRouter>,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/may_act absent from token/i)).toBeInTheDocument()
+    );
+    // Clear button disabled (already cleared)
+    const clearBtn = screen.getByRole('button', { name: /clear may_act/i });
+    expect(clearBtn).toBeDisabled();
+  });
+
+  it('shows ❌ pill when session fetch returns ok:false', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    render(
+      <BrowserRouter>
+        <DemoDataPage user={{ role: 'customer' }} onLogout={jest.fn()} />
+      </BrowserRouter>,
+    );
+    // Non-ok response → setMayActEnabled not called → stays 'Checking…' (null state renders Checking)
+    // Allow time for async completion
+    await new Promise(r => setTimeout(r, 50));
+    expect(screen.getByText(/checking…/i)).toBeInTheDocument();
+  });
+});
+
+// ─── ff_inject_audience UI toggle tests ──────────────────────────────────────
+describe('DemoDataPage — ff_inject_audience toggle (admin)', () => {
+  beforeEach(() => {
+    fetchDemoScenario.mockResolvedValue(defaultScenarioPayload);
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ mayAct: null }),
+    });
+    axiosMock.get.mockImplementation((url) => {
+      if (url === '/api/admin/feature-flags') {
+        return Promise.resolve({
+          data: {
+            flags: [
+              {
+                id: 'ff_inject_audience',
+                category: 'Token Exchange',
+                name: 'Token Exchange — Auto-inject audience (BFF synthetic)',
+                value: false,
+                currentValue: false,
+                description: 'Inject audience',
+                impact: '',
+                type: 'boolean',
+                defaultValue: false,
+              },
+            ],
+            categories: ['Token Exchange'],
+          },
+        });
+      }
+      return Promise.resolve({ data: { agent_mcp_allowed_scopes: 'banking:read' } });
+    });
+  });
+  afterEach(() => {
+    jest.clearAllMocks();
+    delete global.fetch;
+  });
+
+  it('renders the audience auto-inject banner for admin users', async () => {
+    render(
+      <BrowserRouter>
+        <DemoDataPage user={{ role: 'admin' }} onLogout={jest.fn()} />
+      </BrowserRouter>,
+    );
+    // The <strong> in the banner has exactly this text; the flag-list span has a prefix
+    await waitFor(() =>
+      expect(screen.getByText('Auto-inject audience (BFF synthetic)')).toBeInTheDocument()
+    );
+  });
+
+  it('does NOT render audience inject banner for non-admin users', async () => {
+    render(
+      <BrowserRouter>
+        <DemoDataPage user={{ role: 'customer' }} onLogout={jest.fn()} />
+      </BrowserRouter>,
+    );
+    await screen.findByRole('heading', { name: /token exchange/i });
+    expect(screen.queryByText(/auto-inject audience/i)).not.toBeInTheDocument();
+  });
+
+  it('calls PATCH /api/admin/feature-flags when enable audience injection is clicked', async () => {
+    axiosMock.patch.mockResolvedValue({
+      data: { updated: true, flags: [{ id: 'ff_inject_audience', value: true, currentValue: true }] },
+    });
+    render(
+      <BrowserRouter>
+        <DemoDataPage user={{ role: 'admin' }} onLogout={jest.fn()} />
+      </BrowserRouter>,
+    );
+    await waitFor(() => screen.getByText('Auto-inject audience (BFF synthetic)'));
+    // There may be multiple "Enable injection" buttons (one per inject toggle)
+    const enableBtns = screen.getAllByRole('button', { name: /enable injection/i });
+    // Click the one inside the audience banner (last Enable injection button)
+    await act(async () => { fireEvent.click(enableBtns[enableBtns.length - 1]); });
+    await waitFor(() =>
+      expect(axiosMock.patch).toHaveBeenCalledWith(
+        '/api/admin/feature-flags',
+        expect.objectContaining({ updates: { ff_inject_audience: true } })
+      )
+    );
+  });
+});

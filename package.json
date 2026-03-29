@@ -22,7 +22,9 @@
     "test:e2e:ui:smoke": "cd banking_api_ui && npm run test:e2e:ui:smoke",
     "release": "node scripts/release.js",
     "setup:vercel": "node scripts/setup-vercel-env.js",
-    "setup:vercel:check": "node scripts/setup-vercel-env.js --check"
+    "setup:vercel:check": "node scripts/setup-vercel-env.js --check",
+    "pingone:bootstrap": "node scripts/pingone-bootstrap.js",
+    "pingone:bootstrap:probe": "node scripts/pingone-bootstrap.js --probe"
   },
   "dependencies": {
     "@upstash/redis": "^1.37.0",

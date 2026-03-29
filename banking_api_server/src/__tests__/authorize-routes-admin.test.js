@@ -22,10 +22,16 @@ jest.mock('../../middleware/auth', () => ({
   requireScopes: () => (req, res, next) => next(),
 }));
 
-jest.mock('../../services/configStore');
+jest.mock('../../services/configStore', () => ({
+  get: jest.fn(),
+  isReadOnly: jest.fn(() => false),
+  setConfig: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('../../services/pingOneAuthorizeService', () => ({
   isConfigured: jest.fn(() => false),
   isMcpDelegationDecisionReady: jest.fn(() => false),
+  isWorkerCredentialReady: jest.fn(() => false),
+  provisionDemoDecisionEndpoints: jest.fn(),
 }));
 
 const configStore = require('../../services/configStore');
@@ -37,6 +43,7 @@ describe('authorize routes (admin)', () => {
   /** Builds a minimal Express app with the authorize router mounted. */
   function createApp() {
     const app = express();
+    app.use(express.json());
     app.use('/api/authorize', authorizeRouter);
     return app;
   }
@@ -88,5 +95,80 @@ describe('authorize routes (admin)', () => {
       .get('/api/authorize/evaluation-status')
       .set('X-Test-User', JSON.stringify({ role: 'user', scopes: ['openid'] }));
     expect(res.status).toBe(403);
+  });
+
+  describe('POST bootstrap-demo-endpoints', () => {
+    beforeEach(() => {
+      pingOneAuthorizeService.isWorkerCredentialReady.mockReturnValue(true);
+      pingOneAuthorizeService.provisionDemoDecisionEndpoints.mockResolvedValue({
+        transactionEndpointId: 'tx-endpoint-uuid',
+        mcpEndpointId: 'mcp-endpoint-uuid',
+        created: { transaction: true, mcp: true },
+      });
+      configStore.isReadOnly.mockReturnValue(false);
+      configStore.setConfig.mockClear();
+    });
+
+    it('returns 403 for non-admin', async () => {
+      const app = createApp();
+      const res = await request(app)
+        .post('/api/authorize/bootstrap-demo-endpoints')
+        .set('X-Test-User', JSON.stringify({ role: 'user', scopes: ['openid'] }))
+        .send({});
+      expect(res.status).toBe(403);
+      expect(pingOneAuthorizeService.provisionDemoDecisionEndpoints).not.toHaveBeenCalled();
+    });
+
+    it('returns 422 when worker credentials are not configured', async () => {
+      pingOneAuthorizeService.isWorkerCredentialReady.mockReturnValue(false);
+      const app = createApp();
+      const res = await request(app)
+        .post('/api/authorize/bootstrap-demo-endpoints')
+        .set('X-Test-User', JSON.stringify({ role: 'admin', scopes: ['openid'] }))
+        .send({});
+      expect(res.status).toBe(422);
+      expect(res.body.error).toBe('worker_not_configured');
+    });
+
+    it('provisions endpoints and saves config when writable', async () => {
+      const app = createApp();
+      const res = await request(app)
+        .post('/api/authorize/bootstrap-demo-endpoints')
+        .set('X-Test-User', JSON.stringify({ role: 'admin', scopes: ['openid'] }))
+        .send({
+          enableLiveAuthorize: true,
+          enableMcpFirstTool: true,
+          policyId: 'pol-1',
+          authorizationVersionId: 'ver-1',
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+      expect(res.body.transactionEndpointId).toBe('tx-endpoint-uuid');
+      expect(res.body.configSaved).toBe(true);
+      expect(pingOneAuthorizeService.provisionDemoDecisionEndpoints).toHaveBeenCalledWith({
+        policyId: 'pol-1',
+        authorizationVersionId: 'ver-1',
+      });
+      expect(configStore.setConfig).toHaveBeenCalledWith({
+        authorize_decision_endpoint_id: 'tx-endpoint-uuid',
+        authorize_mcp_decision_endpoint_id: 'mcp-endpoint-uuid',
+        authorize_enabled: 'true',
+        ff_authorize_simulated: 'false',
+        ff_authorize_mcp_first_tool: 'true',
+      });
+    });
+
+    it('does not call setConfig when config store is read-only', async () => {
+      configStore.isReadOnly.mockReturnValue(true);
+      const app = createApp();
+      const res = await request(app)
+        .post('/api/authorize/bootstrap-demo-endpoints')
+        .set('X-Test-User', JSON.stringify({ role: 'admin', scopes: ['openid'] }))
+        .send({});
+      expect(res.status).toBe(200);
+      expect(res.body.configSaved).toBe(false);
+      expect(res.body.copyEnvHint).toContain('PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID');
+      expect(configStore.setConfig).not.toHaveBeenCalled();
+    });
   });
 });

@@ -9,6 +9,7 @@ const {
   resolvePingOneUserForLookup,
   phoneLast4Matches,
 } = require('../services/pingOneUserLookupService');
+const { probeManagementApiAccess } = require('../services/pingoneBootstrapService');
 
 // Get system statistics
 router.get('/stats', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
@@ -618,6 +619,20 @@ router.post('/banking/accounts/:accountId/seed-charges', requireAdmin, requireSc
   } catch (error) {
     console.error('seed-charges error:', error);
     res.status(500).json({ error: 'seed_failed', message: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/setup/management-probe — list OIDC apps via PingOne Management API (read-only).
+ * Requires admin session + bearer auth via authenticateToken on /api/admin.
+ */
+router.get('/setup/management-probe', requireAdmin, async (_req, res) => {
+  try {
+    const result = await probeManagementApiAccess();
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('management-probe error:', error);
+    res.status(500).json({ ok: false, error: error.message || 'probe_failed' });
   }
 });
 

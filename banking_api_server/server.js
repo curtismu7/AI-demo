@@ -171,6 +171,7 @@ const adminRoutes       = require('./routes/admin');
 const adminConfigRoutes = require('./routes/adminConfig');
 const cibaRoutes        = require('./routes/ciba');
 const authorizeRoutes   = require('./routes/authorize');
+const setupRoutes       = require('./routes/setup');
 const { router: featureFlagsRoutes } = require('./routes/featureFlags');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const agentIdentityRoutes = require('./routes/agentIdentity');
@@ -810,6 +811,7 @@ app.use('/api/agent', agentIdentityRoutes);
 // needed here and causes invalid_token errors when JWKS fetch times out.
 app.use('/api/banking-agent', bankingAgentNlRoutes);
 app.use('/api/authorize', authorizeRoutes);
+app.use('/api/setup', setupRoutes);
 // MCP Inspector: no auth gate at the router level — tools/list returns local catalog for
 // unauthenticated visitors; tools/call and context check auth inside each handler.
 app.use('/api/mcp/inspector', mcpInspectorRoutes);

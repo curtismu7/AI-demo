@@ -156,6 +156,8 @@ const Login = () => {
             <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
               <Link to="/onboarding">Setup checklist</Link>
               {' · '}
+              <Link to="/setup">Vercel setup</Link>
+              {' · '}
               <span>Admin vs customer: use the Learn bar after sign-in, or the CIBA guide (floating).</span>
             </span>
           </div>

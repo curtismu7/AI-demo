@@ -982,6 +982,49 @@ export default function DemoDataPage({ user, onLogout }) {
                 );
               })()}
 
+              {/* Auto-inject audience toggle (admin only, sourced from feature-flag ff_inject_audience) */}
+              {user?.role === 'admin' && (() => {
+                const audFlag = p1azFlags.find((f) => f.id === 'ff_inject_audience');
+                if (!audFlag) return null;
+                const isOn = audFlag.currentValue === true;
+                return (
+                  <div className="demo-data-static-notice" style={{ marginBottom: '1rem', borderColor: isOn ? '#f59e0b' : undefined, background: isOn ? '#fffbeb' : undefined }}>
+                    <span className="demo-data-static-notice__icon">{isOn ? '🔧' : '💡'}</span>
+                    <div style={{ flex: 1 }}>
+                      <strong>Auto-inject audience (BFF synthetic)</strong>
+                      {' — '}
+                      {isOn
+                        ? <span style={{ color: '#b45309' }}>ON — BFF is adding <code>mcp_resource_uri</code> to the <code>aud</code> claim snapshot before token exchange. Token Chain shows an injected badge.</span>
+                        : <span style={{ color: '#6b7280' }}>OFF — if PingOne doesn&apos;t include the resource URI in <code>aud</code>, exchange may fail validation.</span>}
+                      <br />
+                      <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+                        When <strong>ON</strong>, the BFF adds <code>mcp_resource_uri</code> to the token&apos;s <code>aud</code> snapshot in memory
+                        before RFC&nbsp;8693 exchange — useful when PingOne isn&apos;t yet configured with RFC&nbsp;8707 resource indicators.
+                        Educational/demo only; disable once PingOne issues tokens with the correct audience.
+                      </span>
+                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className={`demo-data-btn${isOn ? ' ghost' : ' primary'}`}
+                          disabled={p1azFlagSaving === 'ff_inject_audience' || (!isOn && !audFlag)}
+                          onClick={() => handleP1azFlagToggle('ff_inject_audience', false)}
+                        >
+                          {p1azFlagSaving === 'ff_inject_audience' && !isOn ? 'Saving…' : '❌ Disable injection'}
+                        </button>
+                        <button
+                          type="button"
+                          className={`demo-data-btn${isOn ? ' primary' : ' ghost'}`}
+                          disabled={p1azFlagSaving === 'ff_inject_audience' || isOn}
+                          onClick={() => handleP1azFlagToggle('ff_inject_audience', true)}
+                        >
+                          {p1azFlagSaving === 'ff_inject_audience' && isOn ? 'Saving…' : '🔧 Enable injection'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Static-mode notice */}
               <div className="demo-data-static-notice">
                 <span className="demo-data-static-notice__icon">🔒</span>

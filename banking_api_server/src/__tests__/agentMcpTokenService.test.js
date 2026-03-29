@@ -511,3 +511,167 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 });
+
+// ─── ff_inject_may_act injection tests ───────────────────────────────────────
+
+/** User token without a may_act claim */
+const sampleJwtNoMayAct = makeJwt({
+  sub: USER_SUB,
+  aud: 'banking_enduser',
+  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  iss: 'https://auth.pingone.com/test-env/as',
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+  // may_act intentionally absent
+});
+
+/** User token WITH a may_act claim */
+const sampleJwtWithMayAct = makeJwt({
+  sub: USER_SUB,
+  aud: 'banking_enduser',
+  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  may_act: { client_id: 'bff-client-id' },
+  iss: 'https://auth.pingone.com/test-env/as',
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+});
+
+describe('resolveMcpAccessTokenWithEvents — ff_inject_may_act', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.AGENT_OAUTH_CLIENT_ID;
+    mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
+  });
+
+  it('pushes may-act-injected event when flag ON and may_act absent', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_may_act')   return 'true';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtNoMayAct), 'get_my_accounts');
+    const injEv = tokenEvents.find(e => e.id === 'may-act-injected');
+    expect(injEv).toBeDefined();
+    expect(injEv.status).toBe('active');
+    expect(injEv.synthetic).toBe(true);
+  });
+
+  it('patches user-token event with mayActInjected=true when flag ON and may_act absent', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_may_act')   return 'true';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtNoMayAct), 'get_my_accounts');
+    const utEv = tokenEvents.find(e => e.id === 'user-token');
+    expect(utEv.mayActInjected).toBe(true);
+    expect(utEv.mayActPresent).toBe(true);
+    expect(utEv.mayActValid).toBe(true);
+  });
+
+  it('does NOT push may-act-injected event when flag ON but may_act already present', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_may_act')   return 'true';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtWithMayAct), 'get_my_accounts');
+    expect(tokenEvents.find(e => e.id === 'may-act-injected')).toBeUndefined();
+  });
+
+  it('does NOT push may-act-injected event when flag OFF (default)', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_may_act')   return 'false';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtNoMayAct), 'get_my_accounts');
+    expect(tokenEvents.find(e => e.id === 'may-act-injected')).toBeUndefined();
+  });
+});
+
+// ─── ff_inject_audience injection tests ──────────────────────────────────────
+
+/** User token whose aud does NOT include the MCP resource URI */
+const sampleJwtAudMismatch = makeJwt({
+  sub: USER_SUB,
+  aud: 'banking_enduser',  // only the admin client; not the MCP URI
+  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  iss: 'https://auth.pingone.com/test-env/as',
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+});
+
+/** User token whose aud already includes the MCP resource URI */
+const sampleJwtAudIncludes = makeJwt({
+  sub: USER_SUB,
+  aud: ['banking_enduser', 'https://mcp.example.com/api'],
+  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  iss: 'https://auth.pingone.com/test-env/as',
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+});
+
+describe('resolveMcpAccessTokenWithEvents — ff_inject_audience', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.AGENT_OAUTH_CLIENT_ID;
+    mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
+  });
+
+  it('pushes audience-injected event when flag ON and aud missing resource URI', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_audience')  return 'true';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAudMismatch), 'get_my_accounts');
+    const injEv = tokenEvents.find(e => e.id === 'audience-injected');
+    expect(injEv).toBeDefined();
+    expect(injEv.status).toBe('active');
+    expect(injEv.synthetic).toBe(true);
+    expect(injEv.injectedValue).toBe('https://mcp.example.com/api');
+  });
+
+  it('patches user-token event with audInjected=true when flag ON and aud missing', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_audience')  return 'true';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAudMismatch), 'get_my_accounts');
+    const utEv = tokenEvents.find(e => e.id === 'user-token');
+    expect(utEv.audInjected).toBe(true);
+  });
+
+  it('does NOT push audience-injected when flag ON but aud already contains resource URI', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_audience')  return 'true';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAudIncludes), 'get_my_accounts');
+    expect(tokenEvents.find(e => e.id === 'audience-injected')).toBeUndefined();
+  });
+
+  it('does NOT push audience-injected event when flag OFF (default)', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_audience')  return 'false';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAudMismatch), 'get_my_accounts');
+    expect(tokenEvents.find(e => e.id === 'audience-injected')).toBeUndefined();
+  });
+
+  it('still calls performTokenExchange even when audience is injected', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'ff_inject_audience')  return 'true';
+      return null;
+    });
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAudMismatch), 'get_my_accounts');
+    expect(token).toBe(sampleJwtMcpAccessToken);
+    expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
+  });
+});

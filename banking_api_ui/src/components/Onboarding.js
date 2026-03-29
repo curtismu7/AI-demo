@@ -75,6 +75,11 @@ export default function Onboarding() {
 
         <div style={{ ...cardStyle, borderColor: '#a7f3d0', background: '#f0fdf4' }}>
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#166534' }}>Hosted demo (Vercel, Replit, …)</h2>
+          <p style={{ margin: '0 0 0.75rem 0', color: '#166534', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+            <strong>Vercel:</strong> run the env wizard from the repo root — open the{' '}
+            <Link to="/setup" style={{ color: '#15803d', fontWeight: 600 }}>Deployment setup</Link>{' '}
+            page for copy-paste commands (<code>npm run setup:vercel</code>).
+          </p>
           <ol style={olStyle}>
             <li>
               <strong>Always two PingOne applications</strong> — admin staff app and end-user app — each with its own client ID (and secret if confidential). Deployment env vars supply both (e.g. <code>PINGONE_ADMIN_*</code> and <code>PINGONE_USER_*</code>); Authorize worker, environment ID, etc. are <strong>stored on the backend</strong> — not typed in by visitors.

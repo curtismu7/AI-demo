@@ -3,11 +3,13 @@
 //
 // Interactive Vercel environment setup for the Banking Demo.
 // Detects conflicts, validates Upstash connectivity, generates secrets,
-// writes a .env.vercel.local file, and optionally pushes to Vercel CLI.
+// writes .env.vercel.local, and optionally pushes every non-empty var to Vercel
+// (vercel env add … --yes --force; --sensitive for tokens) for production / preview / development.
 //
 // Usage:
+//   npm run setup:vercel
 //   node scripts/setup-vercel-env.js          # interactive wizard
-//   node scripts/setup-vercel-env.js --check   # check only (no prompts)
+//   node scripts/setup-vercel-env.js --check  # check only (no prompts)
 
 'use strict';
 
@@ -127,21 +129,52 @@ async function testUpstash(url, token) {
 }
 
 // ── Vercel CLI helpers ───────────────────────────────────────────────────────
-function vercelCliAvailable() {
-  try { execSync('vercel --version', { stdio: 'pipe' }); return true; }
-  catch { return false; }
+/** @returns {'vercel'|'npx vercel'|null} */
+function vercelResolveCommand() {
+  try {
+    execSync('vercel --version', { stdio: 'pipe' });
+    return 'vercel';
+  } catch { /* try npx */ }
+  try {
+    execSync('npx vercel --version', { stdio: 'pipe' });
+    return 'npx vercel';
+  } catch { /* none */ }
+  return null;
 }
 
-/** Push a key=value to Vercel via CLI. */
-function vercelEnvAdd(key, value, env = 'production') {
+const SECRET_ENV_KEYS = new Set([
+  'SESSION_SECRET',
+  'UPSTASH_REDIS_REST_TOKEN',
+  'KV_REST_API_TOKEN',
+  'REDIS_URL',
+  'KV_URL',
+  'PINGONE_AI_CORE_CLIENT_SECRET',
+  'PINGONE_AI_CORE_USER_CLIENT_SECRET',
+  'AGENT_OAUTH_CLIENT_SECRET',
+  'PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET',
+]);
+
+function shellSingleQuote(s) {
+  return `'${String(s).replace(/'/g, `'\"'\"'`)}'`;
+}
+
+/**
+ * Push one variable to Vercel (--yes --force overwrite; --sensitive for tokens).
+ * Uses a temp file + bash stdin redirect so values are not mangled by the shell.
+ */
+function vercelEnvAdd(cmdPrefix, key, value, envTarget) {
+  const isSecret = SECRET_ENV_KEYS.has(key);
+  const tmpFile = path.join(ROOT, `.vercel-env-tmp-${Date.now()}-${key.replace(/[^a-z0-9_-]/gi, '_')}.txt`);
   try {
-    const tmpFile = path.join(ROOT, `.vercel-env-tmp-${Date.now()}`);
-    fs.writeFileSync(tmpFile, value, 'utf8');
-    execSync(`vercel env add ${key} ${env} < "${tmpFile}"`, { stdio: 'pipe', cwd: ROOT });
-    fs.unlinkSync(tmpFile);
+    fs.writeFileSync(tmpFile, String(value), 'utf8');
+    const sens = isSecret ? ' --sensitive' : '';
+    const line = `${cmdPrefix} env add ${shellSingleQuote(key)} ${shellSingleQuote(envTarget)} --yes --force${sens} < ${shellSingleQuote(tmpFile)}`;
+    execSync(line, { cwd: ROOT, shell: '/bin/bash', stdio: 'pipe' });
     return true;
   } catch {
     return false;
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
   }
 }
 
@@ -158,11 +191,13 @@ function writeEnvFile(vars) {
   ];
 
   const sections = [
-    { title: 'SESSION STORE (required for OAuth on Vercel)', keys: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN', 'SESSION_SECRET'] },
-    { title: 'PINGONE OAUTH (required)', keys: ['PINGONE_ENVIRONMENT_ID', 'PINGONE_REGION', 'PINGONE_AI_CORE_CLIENT_ID', 'PINGONE_AI_CORE_CLIENT_SECRET', 'PINGONE_AI_CORE_REDIRECT_URI', 'PINGONE_AI_CORE_USER_CLIENT_ID', 'PINGONE_AI_CORE_USER_CLIENT_SECRET', 'PINGONE_AI_CORE_USER_REDIRECT_URI', 'REACT_APP_CLIENT_URL'] },
+    { title: 'SESSION STORE (required for OAuth on Vercel)', keys: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN', 'KV_REST_API_URL', 'KV_REST_API_TOKEN', 'REDIS_URL', 'SESSION_SECRET'] },
+    { title: 'PINGONE OAUTH (required)', keys: ['PINGONE_ENVIRONMENT_ID', 'PINGONE_REGION', 'PINGONE_AI_CORE_CLIENT_ID', 'PINGONE_AI_CORE_CLIENT_SECRET', 'PINGONE_AI_CORE_REDIRECT_URI', 'PINGONE_AI_CORE_USER_CLIENT_ID', 'PINGONE_AI_CORE_USER_CLIENT_SECRET', 'PINGONE_AI_CORE_USER_REDIRECT_URI', 'REACT_APP_CLIENT_URL', 'PUBLIC_APP_URL', 'FRONTEND_ADMIN_URL', 'FRONTEND_DASHBOARD_URL'] },
     { title: 'MCP SERVER (required for banking agent)', keys: ['MCP_SERVER_URL'] },
     { title: 'SERVER CONFIG', keys: ['NODE_ENV', 'CORS_ORIGIN', 'DEMO_MODE'] },
-    { title: 'OPTIONAL', keys: ['MCP_SERVER_RESOURCE_URI', 'AGENT_OAUTH_CLIENT_ID', 'AGENT_OAUTH_CLIENT_SECRET', 'USE_AGENT_ACTOR_FOR_MCP', 'DEBUG_OAUTH', 'STEP_UP_AMOUNT_THRESHOLD', 'STEP_UP_ACR_VALUE'] },
+    { title: 'RFC 8693 / MCP TOKEN EXCHANGE (optional)', keys: ['AGENT_OAUTH_CLIENT_ID', 'AGENT_OAUTH_CLIENT_SECRET', 'MCP_SERVER_RESOURCE_URI', 'MCP_RESOURCE_URI', 'BFF_CLIENT_ID', 'USE_AGENT_ACTOR_FOR_MCP', 'REQUIRE_MAY_ACT'] },
+    { title: 'PINGONE AUTHORIZE (optional)', keys: ['PINGONE_AUTHORIZE_WORKER_CLIENT_ID', 'PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET', 'PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID', 'PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID', 'PINGONE_AUTHORIZE_POLICY_ID'] },
+    { title: 'OPTIONAL', keys: ['DEBUG_OAUTH', 'DEBUG_TOKENS', 'STEP_UP_AMOUNT_THRESHOLD', 'STEP_UP_ACR_VALUE'] },
   ];
 
   const written = new Set();
@@ -344,6 +379,8 @@ async function main() {
         console.log(ok('Connected! Session store is healthy.\n'));
         vars.UPSTASH_REDIS_REST_URL   = restUrl;
         vars.UPSTASH_REDIS_REST_TOKEN = restToken;
+        vars.KV_REST_API_URL          = restUrl;
+        vars.KV_REST_API_TOKEN        = restToken;
         // Remove conflicting wire-protocol vars if they were wrong
         if (vars.REDIS_URL && !vars.REDIS_URL.startsWith('redis')) delete vars.REDIS_URL;
       } else {
@@ -351,8 +388,20 @@ async function main() {
         console.log(warn('Saving URL/token anyway — fix credentials in Vercel dashboard.\n'));
         vars.UPSTASH_REDIS_REST_URL   = restUrl;
         vars.UPSTASH_REDIS_REST_TOKEN = restToken;
+        vars.KV_REST_API_URL          = restUrl;
+        vars.KV_REST_API_TOKEN        = restToken;
       }
     }
+  }
+
+  if (!vars.REDIS_URL) {
+    const wire = await ask('REDIS_URL  (optional rediss://… — skip if using REST above)', '');
+    if (wire) vars.REDIS_URL = wire;
+  }
+
+  if (vars.UPSTASH_REDIS_REST_URL && vars.UPSTASH_REDIS_REST_TOKEN) {
+    vars.KV_REST_API_URL   = vars.KV_REST_API_URL   || vars.UPSTASH_REDIS_REST_URL;
+    vars.KV_REST_API_TOKEN = vars.KV_REST_API_TOKEN || vars.UPSTASH_REDIS_REST_TOKEN;
   }
 
   // ── Step 3: Session secret ────────────────────────────────────────────────
@@ -394,6 +443,22 @@ async function main() {
     }
   }
 
+  const baseClient = (vars.REACT_APP_CLIENT_URL || '').replace(/\/$/, '');
+  if (baseClient) {
+    if (!(vars.PUBLIC_APP_URL || '').trim()) {
+      vars.PUBLIC_APP_URL = baseClient;
+      console.log(ok(`PUBLIC_APP_URL → ${baseClient} (OAuth / redirect canonical)`));
+    }
+    if (!(vars.FRONTEND_ADMIN_URL || '').trim()) {
+      vars.FRONTEND_ADMIN_URL = `${baseClient}/admin`;
+      console.log(ok(`FRONTEND_ADMIN_URL → ${vars.FRONTEND_ADMIN_URL}`));
+    }
+    if (!(vars.FRONTEND_DASHBOARD_URL || '').trim()) {
+      vars.FRONTEND_DASHBOARD_URL = `${baseClient}/dashboard`;
+      console.log(ok(`FRONTEND_DASHBOARD_URL → ${vars.FRONTEND_DASHBOARD_URL}`));
+    }
+  }
+
   // ── Step 5: MCP Server ────────────────────────────────────────────────────
   console.log(hdr('MCP Server'));
   console.log(info('Deploy banking_mcp_server to Railway/Render/Fly — Vercel does not support WebSocket.'));
@@ -404,6 +469,27 @@ async function main() {
     const mcp = await ask('MCP_SERVER_URL  (wss://… — skip if not deployed yet)', '');
     if (mcp) vars.MCP_SERVER_URL = mcp;
     else console.log(warn('  MCP_SERVER_URL not set — banking agent will show "connecting…"'));
+  }
+
+  const doTok = await askYN('Add RFC 8693 / MCP token exchange (Agent client + MCP resource URI)?', false);
+  if (doTok) {
+    vars.AGENT_OAUTH_CLIENT_ID = await ask('AGENT_OAUTH_CLIENT_ID', vars.AGENT_OAUTH_CLIENT_ID || '');
+    vars.AGENT_OAUTH_CLIENT_SECRET = await ask('AGENT_OAUTH_CLIENT_SECRET', vars.AGENT_OAUTH_CLIENT_SECRET || '', true);
+    vars.MCP_SERVER_RESOURCE_URI = await ask('MCP_SERVER_RESOURCE_URI (MCP token audience)', vars.MCP_SERVER_RESOURCE_URI || '');
+    const mcpAud = vars.MCP_SERVER_RESOURCE_URI.trim();
+    if (mcpAud) vars.MCP_RESOURCE_URI = mcpAud;
+    vars.BFF_CLIENT_ID = await ask('BFF_CLIENT_ID (often same as admin OAuth client id)', vars.BFF_CLIENT_ID || vars.PINGONE_AI_CORE_CLIENT_ID || '');
+    vars.USE_AGENT_ACTOR_FOR_MCP = (await ask('USE_AGENT_ACTOR_FOR_MCP', vars.USE_AGENT_ACTOR_FOR_MCP || 'true')) || 'true';
+    vars.REQUIRE_MAY_ACT = (await ask('REQUIRE_MAY_ACT', vars.REQUIRE_MAY_ACT || 'false')) || 'false';
+  }
+
+  const doPaz = await askYN('Add PingOne Authorize (worker + decision endpoints)?', false);
+  if (doPaz) {
+    vars.PINGONE_AUTHORIZE_WORKER_CLIENT_ID = await ask('PINGONE_AUTHORIZE_WORKER_CLIENT_ID', vars.PINGONE_AUTHORIZE_WORKER_CLIENT_ID || '');
+    vars.PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET = await ask('PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET', vars.PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET || '', true);
+    vars.PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID = await ask('PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID (transactions)', vars.PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID || '');
+    vars.PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID = await ask('PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID (MCP first-tool)', vars.PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID || '');
+    vars.PINGONE_AUTHORIZE_POLICY_ID = await ask('PINGONE_AUTHORIZE_POLICY_ID (legacy PDP, optional)', vars.PINGONE_AUTHORIZE_POLICY_ID || '');
   }
 
   // ── Step 6: NODE_ENV + CORS ───────────────────────────────────────────────
@@ -419,30 +505,32 @@ async function main() {
   console.log(info('Copy these values to Vercel Dashboard → Settings → Environment Variables\n'));
 
   // ── Step 8: Optionally push to Vercel CLI ────────────────────────────────
-  if (vercelCliAvailable()) {
-    const push = await askYN('Push all vars to Vercel now via CLI (vercel env add)?', false);
+  const vercelCmd = vercelResolveCommand();
+  if (vercelCmd) {
+    const push = await askYN('Push all non-empty vars to Vercel now via CLI (vercel env add --yes --force)?', false);
     if (push) {
-      const envTarget = await ask('Environment target', 'production');
-      console.log('');
-      const required = ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN', 'SESSION_SECRET',
-        'PINGONE_ENVIRONMENT_ID', 'PINGONE_REGION',
-        'PINGONE_AI_CORE_CLIENT_ID', 'PINGONE_AI_CORE_CLIENT_SECRET',
-        'PINGONE_AI_CORE_REDIRECT_URI', 'PINGONE_AI_CORE_USER_CLIENT_ID',
-        'PINGONE_AI_CORE_USER_CLIENT_SECRET', 'PINGONE_AI_CORE_USER_REDIRECT_URI',
-        'REACT_APP_CLIENT_URL', 'NODE_ENV', 'CORS_ORIGIN', 'DEMO_MODE',
-      ];
-      if (vars.MCP_SERVER_URL) required.push('MCP_SERVER_URL');
+      console.log(info('Targets: 1 = production only · 2 = production + preview · 3 = all (incl. development)'));
+      const tgt = (await ask('Choice', '2')).trim();
+      const targets = tgt === '1' ? ['production'] : tgt === '3' ? ['production', 'preview', 'development'] : ['production', 'preview'];
 
-      for (const key of required) {
-        if (!vars[key]) continue;
-        const pushed = vercelEnvAdd(key, vars[key], envTarget);
-        console.log(pushed ? ok(`  Pushed ${key}`) : warn(`  Failed to push ${key} — set manually in dashboard`));
+      const pushKeys = Object.keys(vars).filter((k) => {
+        const v = vars[k];
+        return v !== undefined && v !== null && String(v).trim() !== '';
+      }).sort();
+
+      console.log('');
+      for (const envTarget of targets) {
+        console.log(hdr(`Vercel → ${envTarget}`));
+        for (const key of pushKeys) {
+          const pushed = vercelEnvAdd(vercelCmd, key, vars[key], envTarget);
+          console.log(pushed ? ok(`  ${key}`) : warn(`  ${key} — failed (set in dashboard or run again with --force)`));
+        }
       }
-      console.log(`\n${ok('Done! Redeploy Vercel, then sign out and sign in again.')}`);
+      console.log(`\n${ok('Done! Redeploy: vercel --prod — then sign out and sign in again.')}`);
     }
   } else {
     console.log(warn('Vercel CLI not found — copy values from .env.vercel.local to the Vercel dashboard.'));
-    console.log(info('Install CLI: npm i -g vercel\n'));
+    console.log(info('Install: npm i -g vercel   (or use npx vercel)\n'));
   }
 
   // ── Final checklist ──────────────────────────────────────────────────────
