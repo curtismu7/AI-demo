@@ -859,6 +859,8 @@ export default function BankingAgent({
       setCookieOnlyBffSession(cookieOnly);
       if (found) {
         setSessionUser(found);
+        // Clear any stale consent-decline block — user has a fresh session.
+        setAgentBlockedByConsentDecline(false);
       }
     });
   }, []);
