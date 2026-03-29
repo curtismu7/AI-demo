@@ -14,6 +14,19 @@ const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie'
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
 /**
+ * Same-origin SPA path only — used after customer OAuth to return to marketing home instead of /dashboard.
+ * @param {unknown} raw
+ * @returns {string|null}
+ */
+function sanitizePostLoginReturnPath(raw) {
+  if (raw == null || typeof raw !== 'string') return null;
+  const t = raw.trim();
+  if (!t.startsWith('/') || t.startsWith('//') || t.length > 160) return null;
+  if (!/^[/a-zA-Z0-9._~-]+$/.test(t)) return null;
+  return t;
+}
+
+/**
  * Create sample accounts and transactions for new customers
  */
 async function createSampleDataForCustomer(userId, firstName, lastName) {
@@ -143,6 +156,13 @@ router.get('/login', (req, res) => {
       // Also clear the _auth cookie so the session-restore middleware cannot
       // resurrect the admin identity on a different Vercel instance.
       clearAuthCookie(res, _isProd());
+    }
+
+    const returnPath = sanitizePostLoginReturnPath(req.query.return_to);
+    if (returnPath) {
+      req.session.postLoginReturnToPath = returnPath;
+    } else {
+      delete req.session.postLoginReturnToPath;
     }
 
     const state = oauthService.generateState();
@@ -398,6 +418,7 @@ router.get('/callback', async (req, res) => {
     const origin = getFrontendOrigin(req);
     // Preserve step-up return destination across session regeneration
     const stepUpReturnTo = req.session.stepUpReturnTo || null;
+    const postLoginReturnToPath = sanitizePostLoginReturnPath(req.session.postLoginReturnToPath) || null;
 
     // Decode access token to extract consent ACR and may_act for session storage.
     // These are used by the consent gate in agentMcpTokenService and the agent UI.
@@ -466,6 +487,8 @@ router.get('/callback', async (req, res) => {
 
         if (authedUser.role === 'admin') {
           res.redirect(`${origin}/admin?oauth=success`);
+        } else if (postLoginReturnToPath) {
+          res.redirect(`${origin}${postLoginReturnToPath}?oauth=success`);
         } else {
           res.redirect(`${origin}/dashboard?oauth=success`);
         }

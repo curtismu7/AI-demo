@@ -27,14 +27,31 @@ const LandingPage = () => {
     }
   }, [location.state]);
 
-  const handleOAuthLogin = (userType = 'user') => {
+  /** Customer stays on marketing UI after OAuth; header CTAs omit return_to → /dashboard. */
+  React.useEffect(() => {
+    const onScrollLogin = () => {
+      const el = document.getElementById('marketing-login');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    window.addEventListener('marketing-scroll-login', onScrollLogin);
+    return () => window.removeEventListener('marketing-scroll-login', onScrollLogin);
+  }, []);
+
+  const handleOAuthLogin = (userType = 'user', opts = {}) => {
+    const { returnToMarketing = false } = opts;
     const label = userType === 'admin' ? 'Admin' : 'Customer';
     spinner.show(`Signing in as ${label}…`, 'Redirecting to PingOne');
     const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-    const url = userType === 'admin'
-      ? `${apiUrl}/api/auth/oauth/login`
-      : `${apiUrl}/api/auth/oauth/user/login`;
-    setTimeout(() => { window.location.href = url; }, 150);
+    let url =
+      userType === 'admin'
+        ? `${apiUrl}/api/auth/oauth/login`
+        : `${apiUrl}/api/auth/oauth/user/login`;
+    if (userType === 'user' && returnToMarketing) {
+      url += `?return_to=${encodeURIComponent('/marketing')}`;
+    }
+    setTimeout(() => {
+      window.location.href = url;
+    }, 150);
   };
 
   const features = [
@@ -70,9 +87,8 @@ const LandingPage = () => {
     }
   ];
 
-  // Marketing home stays dark (.landing-page #0a0a0a); global light/dark theme applies inside the app after sign-in.
   return (
-    <div className="landing-page">
+    <div className="landing-page landing-page--light">
       {/* Navigation */}
       <nav className={`navbar ${scrollY > 50 ? 'scrolled' : ''}`}>
         <div className="nav-container">
@@ -231,6 +247,31 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Inline sign-in for agent-driven banking on this page (OAuth return_to /marketing) */}
+      <section id="marketing-login" className="marketing-login" aria-labelledby="marketing-login-heading">
+        <div className="container">
+          <div className="marketing-login-card">
+            <h2 id="marketing-login-heading">Sign in on this page</h2>
+            <p>
+              Use the AI assistant below or in the corner for balances and transfers. Customer sign-in here returns you to
+              this marketing view after PingOne. Prefer the full app? Use <strong>Customer sign in</strong> in the header
+              to open your dashboard.
+            </p>
+            <div className="marketing-login-actions">
+              <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user', { returnToMarketing: true })}>
+                Customer — stay on this page
+              </button>
+              <button type="button" className="cta-secondary" onClick={() => handleOAuthLogin('user')}>
+                Customer — full dashboard
+              </button>
+              <button type="button" className="nav-cta nav-cta--ghost" onClick={() => handleOAuthLogin('admin')}>
+                Admin sign in
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="features">
         <div className="container">
@@ -281,16 +322,16 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* AI Agent Section */}
-      <section id="agent-section" className="agent-section">
+      {/* AI Agent Section — dark showcase card on light marketing page (matches product mock) */}
+      <section id="agent-section" className="agent-section agent-section--showcase">
         <div className="container">
-          <div className="section-header">
+          <div className="section-header section-header--showcase">
             <h2>Try Our AI Banking Assistant</h2>
             <p>Experience the future of banking—no forms, no menus, just conversation</p>
           </div>
           
-          <div className="agent-demo">
-            <div className="demo-tabs">
+          <div className="agent-demo agent-demo--showcase">
+            <div className="demo-tabs demo-tabs--pill">
               <button 
                 type="button"
                 className={`tab ${activeTab === 'personal' ? 'active' : ''}`}
@@ -327,17 +368,17 @@ const LandingPage = () => {
                     </>
                   )}
                 </div>
-                <div className="auth-notice">
+                <div className="auth-notice auth-notice--showcase">
                   <p>🔐 Sign in required to access AI banking features</p>
-                  <div className="auth-buttons">
-                    <button 
+                  <div className="auth-buttons auth-buttons--showcase-pair">
+                    <button
                       type="button"
                       className="auth-btn primary"
-                      onClick={() => handleOAuthLogin('user')}
+                      onClick={() => handleOAuthLogin('user', { returnToMarketing: true })}
                     >
                       Customer Sign In
                     </button>
-                    <button 
+                    <button
                       type="button"
                       className="auth-btn secondary"
                       onClick={() => handleOAuthLogin('admin')}
@@ -345,36 +386,34 @@ const LandingPage = () => {
                       Admin Sign In
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    className="auth-showcase-dashboard-link"
+                    onClick={() => handleOAuthLogin('user')}
+                  >
+                    Prefer the full app? Sign in for dashboard →
+                  </button>
                 </div>
               </div>
               
-              <div className="demo-chat">
-                <div style={{
-                  background: '#0f172a',
-                  borderRadius: '1rem',
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.75rem',
-                  minHeight: '260px',
-                  boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderBottom: '1px solid #1e293b', paddingBottom: '0.75rem' }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981' }} />
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>{preset.shortName} AI Agent</span>
+              <div className="demo-chat demo-chat--showcase">
+                <div className="landing-demo-chat-sim landing-demo-chat-sim--showcase">
+                  <div className="landing-demo-chat-sim__header">
+                    <div className="landing-demo-chat-sim__dot" />
+                    <span className="landing-demo-chat-sim__title">{preset.shortName} AI Agent</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', flex: 1 }}>
-                    <div style={{ alignSelf: 'flex-start', background: '#1e293b', color: '#e2e8f0', borderRadius: '0.75rem 0.75rem 0.75rem 0', padding: '0.6rem 0.9rem', fontSize: '0.85rem', maxWidth: '80%' }}>
+                  <div className="landing-demo-chat-sim__body">
+                    <div className="landing-demo-chat-sim__bubble landing-demo-chat-sim__bubble--bot">
                       Hi! I can check balances, move money, and explain how OAuth works. Sign in to get started.
                     </div>
-                    <div style={{ alignSelf: 'flex-end', background: '#6366f1', color: '#fff', borderRadius: '0.75rem 0.75rem 0 0.75rem', padding: '0.6rem 0.9rem', fontSize: '0.85rem', maxWidth: '80%' }}>
-                      What's my account balance?
+                    <div className="landing-demo-chat-sim__bubble landing-demo-chat-sim__bubble--user">
+                      What&apos;s my account balance?
                     </div>
-                    <div style={{ alignSelf: 'flex-start', background: '#1e293b', color: '#e2e8f0', borderRadius: '0.75rem 0.75rem 0.75rem 0', padding: '0.6rem 0.9rem', fontSize: '0.85rem', maxWidth: '80%' }}>
-                      I'll need to verify your identity first. Click <strong>Customer Sign In</strong> →
+                    <div className="landing-demo-chat-sim__bubble landing-demo-chat-sim__bubble--bot">
+                      I&apos;ll need to verify your identity first. Click <strong>Customer Sign In</strong> →
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem', color: '#64748b', fontSize: '0.78rem' }}>
+                  <div className="landing-demo-chat-sim__footer">
                     <span>💬</span>
                     <span>Chat opens in the bottom-right corner after sign in</span>
                   </div>

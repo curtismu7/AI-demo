@@ -2,6 +2,7 @@
 // Education drawer — JWT-based client authentication (RFC 7523 / private_key_jwt)
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EduImplIntro, SNIP_JWT_CLIENT_AUTH_MOCK } from './educationImplementationSnippets';
 
 const Code = ({ children }) => (
   <code style={{
@@ -182,6 +183,19 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
             <code>token_endpoint_auth_methods_supported</code> in
             <code>/.well-known/openid-configuration</code>.
           </p>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>JWT client auth in BX Finance</h3>
+          <EduImplIntro mock>
+            Token and exchange calls in this demo use <code>client_id</code> + <code>client_secret</code> (or public client + PKCE for users). Below is what a <code>private_key_jwt</code> upgrade would look like at <code>/as/token</code>.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_JWT_CLIENT_AUTH_MOCK}</pre>
         </>
       ),
     },

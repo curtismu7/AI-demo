@@ -1,6 +1,25 @@
 /* ─── BankingAgent — theme-aware chat widget ────────────────────────────── */
 /* Royal blue primary (#4169E1) — distinct from slate / navy. */
 
+/*
+ * Float UI is portaled to document.body (sits outside .App). Ping end-user-nano and other
+ * globals can affect bare <button>s — keep the FAB + panel visible and on top.
+ */
+body > .banking-agent-float-root .banking-agent-fab,
+body > .banking-agent-float-root .banking-agent-panel {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+body > .banking-agent-float-root .banking-agent-fab {
+  z-index: 100060 !important;
+}
+
+body > .banking-agent-float-root .banking-agent-panel {
+  z-index: 100059 !important;
+}
+
 /* Root wrapper — must stretch to fill its container in inline/embedded modes */
 .banking-agent-float-root {
   display: contents; /* transparent wrapper — children fill the layout context directly */
@@ -2340,4 +2359,101 @@
 .banking-agent-panel.ba-mode-inline.ba-split-column .banking-agent-msg.assistant.typing .banking-agent-msg-bubble {
   background: #e2e8f0;
   color: #475569;
+}
+
+/* ─── Marketing page: white site chrome → agents read as bold black/dark widgets ─ */
+.App--marketing-page .global-embedded-agent-dock-wrap {
+  background: #030712 !important;
+  border-top: 3px solid #000000 !important;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.App--marketing-page .global-embedded-agent-dock-wrap--collapsed {
+  background: #111827 !important;
+  border-top-color: #000000 !important;
+}
+
+.App--marketing-page .embedded-agent-dock__toolbar {
+  background: #1f2937 !important;
+  border-bottom-color: #374151 !important;
+  border-left-color: #3b82f6 !important;
+}
+
+.App--marketing-page .embedded-agent-dock__title {
+  color: #f9fafb !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.08em !important;
+}
+
+.App--marketing-page .embedded-dock-collapse-btn {
+  color: #e5e7eb !important;
+  border-color: #4b5563 !important;
+}
+
+.App--marketing-page .embedded-dock-collapse-btn:hover {
+  background: #374151 !important;
+  color: #ffffff !important;
+}
+
+.App--marketing-page .embedded-dock-resize-handle {
+  border-top-color: #4b5563 !important;
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%) !important;
+}
+
+.App--marketing-page .embedded-dock-resize-handle__label {
+  color: #d1d5db !important;
+}
+
+.App--marketing-page .embedded-banking-agent.embedded-banking-agent--bottom {
+  background: #0a0a0a !important;
+  border: 2px solid #000000 !important;
+  border-radius: 10px !important;
+}
+
+/* Force high-contrast dark chat on marketing (float + bottom) even if ba-mode-light */
+.App--marketing-page .banking-agent-panel {
+  --ba-bg: #0a0a0a;
+  --ba-surface: #171717;
+  --ba-border: rgba(148, 163, 184, 0.35);
+  --ba-text: #fafafa;
+  --ba-muted: #a3a3a3;
+  --ba-user-bg: #2563eb;
+  --ba-user-txt: #ffffff;
+  --ba-agent-bg: #262626;
+  --ba-agent-txt: #fafafa;
+  --ba-accent: #dc2626;
+  --ba-accent-h: #b91c1c;
+  --ba-input-bg: #0a0a0a;
+  --ba-input-bd: #404040;
+  --ba-chip-bg: rgba(64, 64, 64, 0.55);
+  --ba-chip-bd: #525252;
+  --ba-chip-txt: #e5e5e5;
+  --ba-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+.App--marketing-page .banking-agent-fab {
+  background: #0a0a0a !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+}
+
+.App--marketing-page .banking-agent-fab::before {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+.App--marketing-page .banking-agent-fab:hover,
+.App--marketing-page .banking-agent-fab.open {
+  background: #171717 !important;
+}
+
+html[data-theme='dark'] .App--marketing-page .global-embedded-agent-dock-wrap {
+  background: #030712 !important;
+}
+
+html[data-theme='dark'] .App--marketing-page .embedded-agent-dock[data-agent-theme='light'] .embedded-banking-agent {
+  background: #0a0a0a !important;
+  border-color: #000000 !important;
 }

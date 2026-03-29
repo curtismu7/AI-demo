@@ -22,6 +22,7 @@ import {
   CibaFullStackContent,
   TokenExchangeContent,
 } from './education/educationContent';
+import { EduImplIntro, SNIP_CIBA_INITIATE } from './education/educationImplementationSnippets';
 
 // ---------------------------------------------------------------------------
 // Static content
@@ -387,10 +388,11 @@ export default function CIBAPanel() {
     { id: 'tryit',     label: '▶ Try It' },
     { id: 'appflow',   label: 'App Flows' },
     { id: 'setup',     label: 'PingOne Setup' },
+    { id: 'bffcode',   label: 'BFF code' },
   ];
 
   useEffect(() => {
-    const valid = new Set(['what', 'roles', 'fullstack', 'tokenx', 'vslogin', 'tryit', 'appflow', 'setup']);
+    const valid = new Set(['what', 'roles', 'fullstack', 'tokenx', 'vslogin', 'tryit', 'appflow', 'setup', 'bffcode']);
     const onEdu = (e) => {
       setOpen(true);
       const t = e.detail?.tab;
@@ -672,6 +674,19 @@ CIBA_AUTH_REQUEST_EXPIRY=300`}</CodeBlock>
                 still resolves the user. For <strong>email-only</strong> CIBA, no extra device is required. For a{' '}
                 <strong>push</strong> path, users may already have Microsoft Authenticator via Azure AD — depends on your IdP and DaVinci flow.
               </div>
+            </div>
+          )}
+
+          {activeTab === 'bffcode' && (
+            <div className="ciba-tab-content">
+              <h3 className="ciba-section-title">CIBA routes in the Banking API</h3>
+              <p className="ciba-section-desc">
+                The floating panel&apos;s <strong>Try It</strong> tab calls these endpoints; tokens stay in the BFF session.
+              </p>
+              <EduImplIntro repoPath="banking_api_server/routes/ciba.js + services/cibaService.js">
+                Initiate requires an authenticated session with a <code>login_hint</code> (email).
+              </EduImplIntro>
+              <pre className="ciba-code-pre">{SNIP_CIBA_INITIATE}</pre>
             </div>
           )}
 

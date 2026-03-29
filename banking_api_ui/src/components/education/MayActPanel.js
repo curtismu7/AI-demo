@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/education/MayActPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EduImplIntro, SNIP_MAY_ACT_SANITIZE } from './educationImplementationSnippets';
 
 export default function MayActPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
@@ -109,6 +110,19 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
             institutions use it to let AI agents and automation tools act on behalf of customers without
             compromising security.
           </p>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Where <code>may_act</code> / <code>act</code> appear in code</h3>
+          <EduImplIntro repoPath="banking_api_server/services/agentMcpTokenService.js">
+            Sanitized claims feed the Token Chain UI; exchange uses the real JWT from session.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_MAY_ACT_SANITIZE}</pre>
         </>
       ),
     },

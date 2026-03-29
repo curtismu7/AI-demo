@@ -3,6 +3,7 @@ import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import { useEducationUI } from '../../context/EducationUIContext';
 import { EDU } from './educationIds';
+import { EduImplIntro, SNIP_RESOLVE_MCP_TOKEN, SNIP_CIBA_INITIATE } from './educationImplementationSnippets';
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
@@ -467,6 +468,23 @@ POST /token { grant_type: urn:openid:params:grant-type:ciba, auth_req_id }
             <EduLink label="Step-Up Auth" panelId={EDU.STEP_UP} tabId="what" onClick={handleEduLink} />
             <EduLink label="CIMD Simulator" panelId={EDU.CIMD} tabId="what" onClick={handleEduLink} />
           </div>
+        </>
+      ),
+    },
+
+    {
+      id: 'snippets',
+      label: 'Code snippets',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Cross-cutting implementation hooks</h3>
+          <p style={{ fontSize: '0.84rem', color: '#64748b' }}>
+            These are the same patterns the individual Learn drawers explain — collected here for a quick scan.
+          </p>
+          <EduImplIntro repoPath="agentMcpTokenService.js">Delegated MCP token</EduImplIntro>
+          <pre className="edu-code">{SNIP_RESOLVE_MCP_TOKEN}</pre>
+          <EduImplIntro repoPath="routes/ciba.js">Step-up / OOB approval entry point</EduImplIntro>
+          <pre className="edu-code">{SNIP_CIBA_INITIATE}</pre>
         </>
       ),
     },

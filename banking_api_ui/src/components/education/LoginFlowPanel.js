@@ -6,6 +6,7 @@ import {
   LoginFlowPkceContent,
   LoginFlowSecurityContent,
 } from './educationContent';
+import { EduImplIntro, SNIP_USER_LOGIN_EXCHANGE } from './educationImplementationSnippets';
 
 export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
@@ -98,6 +99,19 @@ export default function LoginFlowPanel({ isOpen, onClose, initialTabId }) {
       id: 'security',
       label: 'Security notes',
       content: <LoginFlowSecurityContent />,
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Redeeming the authorization code</h3>
+          <EduImplIntro repoPath="banking_api_server/services/oauthUserService.js (and admin oauthService.js)">
+            PingOne returns a <code>code</code> to the BFF callback; the server exchanges it with <code>code_verifier</code> (PKCE).
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_USER_LOGIN_EXCHANGE}</pre>
+        </>
+      ),
     },
   ];
 

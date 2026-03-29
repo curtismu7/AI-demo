@@ -11,6 +11,11 @@
 
 import React from 'react';
 import TokenChainPanel from './TokenChainPanel';
+import {
+  EduImplIntro,
+  SNIP_RESOLVE_MCP_TOKEN,
+  SNIP_TOKEN_EXCHANGE_PINGONE,
+} from './educationImplementationSnippets';
 
 // ---------------------------------------------------------------------------
 // Raw content strings (shared between components)
@@ -483,6 +488,25 @@ export function CibaMcpFlowContent() {
 export function TokenExchangeContent() {
   return (
     <>
+      <div
+        style={{
+          marginBottom: 14,
+          padding: '12px 14px',
+          background: '#f0fdf4',
+          borderRadius: 8,
+          border: '1px solid #86efac',
+        }}
+      >
+        <h4 style={{ margin: '0 0 8px', fontSize: '0.95rem' }}>Implementation in this monorepo</h4>
+        <EduImplIntro repoPath="banking_api_server/services/agentMcpTokenService.js">
+          Runs when the banking agent calls <code>POST /api/mcp/tool</code> with a session bearer token.
+        </EduImplIntro>
+        <pre className="edu-code" style={{ marginBottom: 10 }}>{SNIP_RESOLVE_MCP_TOKEN}</pre>
+        <EduImplIntro repoPath="banking_api_server/services/oauthService.js">
+          Form body for PingOne <code>POST …/as/token</code> (optional <code>actor_token</code> for delegation).
+        </EduImplIntro>
+        <pre className="edu-code" style={{ marginBottom: 0 }}>{SNIP_TOKEN_EXCHANGE_PINGONE}</pre>
+      </div>
       <TokenChainPanel />
       <h3>Token exchange for MCP (RFC 8693)</h3>
       <p>

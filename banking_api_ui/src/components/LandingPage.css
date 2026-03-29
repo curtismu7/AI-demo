@@ -865,15 +865,18 @@
   }
 }
 
-/* ─── Light marketing variant (global app theme = light) ───────────────── */
-.landing-page--light {
-  background: #f8fafc;
+/* ─── Light marketing variant (always used with .landing-page) ─────────── */
+/* White canvas; survives html[data-theme=dark] via globalTheme overrides */
+.landing-page.landing-page--light {
+  --landing-canvas: #ffffff;
+  --landing-canvas-soft: #f8fafc;
+  background: #ffffff;
   color: #0f172a;
 }
 
 .landing-page--light .navbar {
-  background: rgba(248, 250, 252, 0.92);
-  border-bottom-color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: #e5e7eb;
 }
 
 .landing-page--light .navbar.scrolled {
@@ -908,7 +911,7 @@
 }
 
 .landing-page--light .features {
-  background: linear-gradient(to bottom, #f1f5f9, #e2e8f0);
+  background: linear-gradient(to bottom, #ffffff, #f1f5f9);
 }
 
 .landing-page--light .section-header h2 {
@@ -936,7 +939,7 @@
 }
 
 .landing-page--light .how-it-works {
-  background: #fff;
+  background: #ffffff;
 }
 
 .landing-page--light .step h3 {
@@ -945,21 +948,6 @@
 
 .landing-page--light .step p {
   color: #64748b;
-}
-
-.landing-page--light .agent-section {
-  background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
-}
-
-.landing-page--light .agent-demo {
-  background: #fff;
-  border-color: #e2e8f0;
-}
-
-.landing-page--light .tab {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #475569;
 }
 
 .landing-page--light .message-bubble {
@@ -981,16 +969,16 @@
 }
 
 .landing-page--light .testimonials {
-  background: #f1f5f9;
+  background: #f8fafc;
 }
 
 .landing-page--light .cta {
-  background: linear-gradient(to bottom, #e0e7ff, #f8fafc);
+  background: linear-gradient(to bottom, #eff6ff, #ffffff);
 }
 
 .landing-page--light .footer {
-  background: #fff;
-  border-top-color: #e2e8f0;
+  background: #ffffff;
+  border-top-color: #e5e7eb;
   color: #475569;
 }
 
@@ -1023,3 +1011,344 @@
 .hql-btn--red  { background: #b91c1c; }
 .hql-btn--blue { background: #2563eb; }
 .hql-btn--dark { background: #1e3a3a; }
+
+/* Sign-in strip (agent nudges scroll here) */
+.marketing-login {
+  padding: 3rem 2rem;
+  background: linear-gradient(to bottom, #f8fafc, #ffffff);
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.marketing-login-card {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+}
+
+.marketing-login-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.marketing-login-card p {
+  margin: 0 0 1.25rem;
+  color: #475569;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.marketing-login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* Fake chat preview — matches light landing */
+.landing-demo-chat-sim {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 260px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+}
+
+.landing-demo-chat-sim__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.75rem;
+}
+
+.landing-demo-chat-sim__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.landing-demo-chat-sim__title {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.landing-demo-chat-sim__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+}
+
+.landing-demo-chat-sim__bubble {
+  max-width: 80%;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  border-radius: 0.75rem;
+}
+
+.landing-demo-chat-sim__bubble--bot {
+  align-self: flex-start;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem 0.75rem 0.75rem 0;
+}
+
+.landing-demo-chat-sim__bubble--user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  border-radius: 0.75rem 0.75rem 0 0.75rem;
+}
+
+.landing-demo-chat-sim__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.75rem;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.landing-page--light .brand-name {
+  color: #0f172a;
+}
+
+.landing-page--light .nav-cta--ghost {
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.landing-page--light .nav-cta--ghost:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.landing-page--light .cta-secondary {
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.landing-page--light .cta-secondary:hover {
+  color: #0f172a;
+  background: #f3f4f6;
+  border-color: #94a3b8;
+}
+
+.landing-page--light .cta-content h2 {
+  color: #0f172a;
+}
+
+
+.landing-page--light .link-group h4 {
+  color: #0f172a;
+}
+
+.landing-page--light .link-group a:hover {
+  color: #2563eb;
+}
+
+.landing-page--light .auth-buttons {
+  flex-wrap: wrap;
+}
+
+.landing-page--light .auth-btn.secondary {
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.landing-page--light .auth-btn.secondary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ─── Agent showcase (dark card on light marketing page) — matches product mock ─ */
+.landing-page--light .agent-section--showcase {
+  background: #000000;
+  padding: 5rem 2rem;
+}
+
+.landing-page--light .agent-section--showcase .section-header--showcase {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.landing-page--light .agent-section--showcase .section-header--showcase h2 {
+  background: none;
+  -webkit-text-fill-color: #ffffff;
+  color: #ffffff;
+  background-clip: border-box;
+}
+
+.landing-page--light .agent-section--showcase .section-header--showcase p {
+  color: #9ca3af;
+  font-size: 1.125rem;
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.landing-page--light .agent-demo--showcase {
+  background: #0a0a0a;
+  border: 1px solid #374151;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.landing-page--light .demo-tabs--pill {
+  gap: 0.75rem;
+}
+
+.landing-page--light .agent-section--showcase .tab {
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: #9ca3af;
+  border-radius: 9999px;
+  padding: 0.65rem 1.35rem;
+  font-weight: 600;
+}
+
+.landing-page--light .agent-section--showcase .tab:hover {
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+.landing-page--light .agent-section--showcase .tab.active {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
+}
+
+.landing-page--light .agent-section--showcase .demo-prompts h4 {
+  color: #e5e7eb;
+  font-weight: 600;
+}
+
+.landing-page--light .agent-section--showcase .prompt {
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: #9ca3af;
+}
+
+.landing-page--light .agent-section--showcase .prompt:hover {
+  background: #374151;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+.landing-page--light .auth-notice--showcase {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  border-radius: 10px;
+}
+
+.landing-page--light .auth-notice--showcase > p {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.landing-page--light .auth-buttons--showcase-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+@media (min-width: 480px) {
+  .landing-page--light .auth-buttons--showcase-pair {
+    flex-direction: row;
+  }
+}
+
+.landing-page--light .agent-section--showcase .auth-btn.primary,
+.landing-page--light .agent-section--showcase .auth-btn.secondary {
+  flex: 1;
+  padding: 0.65rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: none;
+  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  color: #fff !important;
+  border: 1px solid var(--app-primary-red-border);
+}
+
+.landing-page--light .agent-section--showcase .auth-btn.primary:hover,
+.landing-page--light .agent-section--showcase .auth-btn.secondary:hover {
+  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  color: #fff !important;
+}
+
+.landing-page--light .auth-showcase-dashboard-link {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.landing-page--light .auth-showcase-dashboard-link:hover {
+  color: #d1d5db;
+}
+
+.landing-page--light .demo-chat--showcase {
+  background: transparent;
+  border: none;
+  height: auto;
+  min-height: 280px;
+}
+
+.landing-page--light .landing-demo-chat-sim--showcase {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  min-height: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.landing-page--light .landing-demo-chat-sim--showcase .landing-demo-chat-sim__header {
+  border-bottom-color: #1e293b;
+}
+
+.landing-page--light .landing-demo-chat-sim--showcase .landing-demo-chat-sim__title {
+  color: #94a3b8;
+}
+
+.landing-page--light .landing-demo-chat-sim--showcase .landing-demo-chat-sim__bubble--bot {
+  background: #262626;
+  color: #e5e7eb;
+  border: 1px solid #404040;
+}
+
+.landing-page--light .landing-demo-chat-sim--showcase .landing-demo-chat-sim__bubble--user {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #fff;
+  border: none;
+}
+
+.landing-page--light .landing-demo-chat-sim--showcase .landing-demo-chat-sim__footer {
+  border-top-color: #1e293b;
+  color: #64748b;
+}

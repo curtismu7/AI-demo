@@ -2,6 +2,7 @@
 // Education drawer — Pushed Authorization Requests (RFC 9126)
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EduImplIntro, SNIP_PAR_MOCK } from './educationImplementationSnippets';
 
 const Code = ({ children }) => (
   <code style={{
@@ -148,6 +149,19 @@ client_id=myapp&response_type=code&scope=openid banking:read
             <code>/.well-known/openid-configuration</code> under the key
             <code>pushed_authorization_request_endpoint</code>.
           </p>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>PAR in BX Finance</h3>
+          <EduImplIntro mock>
+            Sign-in here uses Authorization Code + PKCE without pushing parameters via PAR first. The snippet shows the pattern you would add on the BFF before redirecting the browser.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_PAR_MOCK}</pre>
         </>
       ),
     },

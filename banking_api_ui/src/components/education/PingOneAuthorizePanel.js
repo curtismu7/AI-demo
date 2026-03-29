@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/education/PingOneAuthorizePanel.js
 import React, { useState, useCallback } from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EduImplIntro, SNIP_AUTHORIZE_GATE } from './educationImplementationSnippets';
 
 // ─── Recent Decisions viewer (Phase 3) ───────────────────────────────────────
 
@@ -523,6 +524,20 @@ POST /v1/environments/{envId}/decisionEndpoints/{endpointId}
               Making decision requests and examining recent decisions
             </a>.
           </p>
+        </>
+      ),
+    },
+
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>MCP first-tool gate (optional)</h3>
+          <EduImplIntro repoPath="banking_api_server/services/mcpToolAuthorizationService.js">
+            Transactions use a separate path in <code>routes/transactions.js</code>; this snippet is the MCP mirror when <code>ff_authorize_mcp_first_tool</code> is on.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_AUTHORIZE_GATE}</pre>
         </>
       ),
     },

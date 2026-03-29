@@ -2,6 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import EducationDrawer from '../shared/EducationDrawer';
+import {
+  EduImplIntro,
+  SNIP_RESOLVE_MCP_TOKEN,
+  SNIP_TOKEN_EXCHANGE_PINGONE,
+} from './educationImplementationSnippets';
 
 // ─── Token Exchange Flow Diagram ──────────────────────────────────────────────
 
@@ -436,6 +441,23 @@ BFF_CLIENT_ID=<your-bff-oauth-client-id>`}</pre>
             <li><strong>Existing Backend-for-Frontend (BFF) client</strong> (unchanged) — handles Authorization Code + PKCE for user login, performs the exchange</li>
             <li><strong>New Agent Token client</strong> — Client Credentials only, provides actor_token for delegation</li>
           </ul>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>How the BFF performs exchange</h3>
+          <EduImplIntro repoPath="banking_api_server/services/agentMcpTokenService.js">
+            Resolves the user&apos;s session access token, checks scopes / demo flags, then calls PingOne.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_RESOLVE_MCP_TOKEN}</pre>
+          <EduImplIntro repoPath="banking_api_server/services/oauthService.js">
+            The actual <code>POST …/as/token</code> body (with optional <code>actor_token</code>).
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_TOKEN_EXCHANGE_PINGONE}</pre>
         </>
       ),
     },

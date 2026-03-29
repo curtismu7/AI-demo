@@ -78,7 +78,8 @@
   margin-right: auto;
   margin-top: 0;
   box-sizing: border-box;
-  z-index: 2;
+  /* Above .footer (z-index 10) when the layout stacks at the bottom of the viewport */
+  z-index: 12;
   pointer-events: auto;
   background: #fff;
   border-top: 2px solid #e2e8f0;
@@ -225,6 +226,15 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+}
+
+/* Signed-in /marketing: <main> must stay white when html[data-theme=dark] */
+.App--marketing-page .main-content {
+  background-color: #ffffff;
+}
+
+html[data-theme='dark'] .App--marketing-page .main-content {
+  background-color: #ffffff;
 }
 
 /* When the bottom agent is embedded inside the dashboard (not App-level),

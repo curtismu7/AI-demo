@@ -2,6 +2,7 @@
 // Education drawer — Rich Authorization Requests (RFC 9396)
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EduImplIntro, SNIP_RAR_MOCK } from './educationImplementationSnippets';
 
 const Code = ({ children }) => (
   <code style={{
@@ -176,6 +177,19 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
           <p>
             FAPI 2.0 profiles mandate RAR + PAR together for open-banking grade security.
           </p>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>RAR in BX Finance</h3>
+          <EduImplIntro mock>
+            Authorization requests from this app do not send <code>authorization_details</code> today; use this shape when integrating a PingOne policy that expects RAR.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_RAR_MOCK}</pre>
         </>
       ),
     },

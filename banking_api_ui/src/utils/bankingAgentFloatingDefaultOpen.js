@@ -13,5 +13,8 @@ import { isBankingAgentDashboardRoute } from './embeddedAgentFabVisibility';
  */
 export function isBankingAgentFloatingDefaultOpen(pathname) {
   if (pathname == null || typeof pathname !== 'string') return false;
+  const p = pathname.replace(/\/$/, '') || '/';
+  // Marketing-only route: open the real floating agent by default (FAB alone was easy to miss).
+  if (p === '/marketing') return true;
   return !isBankingAgentDashboardRoute(pathname);
 }

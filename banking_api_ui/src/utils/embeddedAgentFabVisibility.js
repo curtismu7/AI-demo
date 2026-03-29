@@ -8,7 +8,7 @@
 export function isBankingAgentDashboardRoute(pathname) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
-  return p === '/' || p === '/admin' || p === '/dashboard';
+  return p === '/' || p === '/admin' || p === '/dashboard' || p === '/marketing';
 }
 
 /**
@@ -22,6 +22,32 @@ export function isEmbeddedAgentDockRoute(pathname) {
   const p = pathname.replace(/\/$/, '') || '/';
   if (p === '/config') return true;
   return isBankingAgentDashboardRoute(pathname);
+}
+
+/**
+ * Marketing / landing surfaces where we show the banking agent before sign-in (SPA path only).
+ * @param {string} [pathname]
+ * @returns {boolean}
+ */
+export function isPublicMarketingAgentPath(pathname) {
+  if (pathname == null || typeof pathname !== 'string') return false;
+  const p = pathname.replace(/\/$/, '') || '/';
+  return p === '/' || p === '/marketing';
+}
+
+/**
+ * App-level bottom dock on marketing: guests on `/` or `/marketing`, or any user on `/marketing`.
+ * Does not include signed-in `/` (that is UserDashboard or admin home).
+ * @param {string} [pathname]
+ * @param {unknown} user
+ * @returns {boolean}
+ */
+export function isMarketingEmbeddedDockSurface(pathname, user) {
+  if (pathname == null || typeof pathname !== 'string') return false;
+  const p = pathname.replace(/\/$/, '') || '/';
+  if (!user && (p === '/' || p === '/marketing')) return true;
+  if (user && p === '/marketing') return true;
+  return false;
 }
 
 /**

@@ -47,6 +47,8 @@ import {
   isBankingAgentDashboardRoute,
   isDashboardQuickNavRoute,
   isEmbeddedAgentDockRoute,
+  isMarketingEmbeddedDockSurface,
+  isPublicMarketingAgentPath,
 } from './utils/embeddedAgentFabVisibility';
 import { useDemoMode } from './hooks/useDemoMode';
 import SessionReauthBanner from './components/SessionReauthBanner';
@@ -241,17 +243,28 @@ function AppWithAuth() {
 
   // Routes where UserDashboard is rendered (handles its own middle FAB + split layout and its own bottom dock).
   // Admin uses Dashboard.js on /admin and / — those routes need the global float/dock from App.
+  // Require a signed-in user: guests on `/` see LandingPage but must not be treated as "on UserDashboard"
+  // (otherwise App-level EmbeddedAgentDock is suppressed and marketing loses the bottom agent).
   const onUserDashboardRoute =
-    pathname === '/dashboard' || (pathname === '/' && user?.role !== 'admin');
+    Boolean(user) &&
+    (pathname === '/dashboard' || (pathname === '/' && user.role !== 'admin'));
 
-  // Suppress the global float agent in middle mode ONLY when UserDashboard is active —
-  // UserDashboard provides its own FAB + split-3 layout for middle placement.
-  // Dashboard.js (admin view) has no inline middle layout, so the float agent must show there.
+  // Marketing home (/ or /marketing): show floating agent even when signed out; signed-in /marketing too.
+  // Suppress float on signed-in / only when UserDashboard owns middle placement.
+  const marketingAgentSurface =
+    isPublicMarketingAgentPath(pathname) && (!user || pathNorm === '/marketing');
+
   const showFloatingAgent =
-    Boolean(user) && onDashboardAgentRoute && !(agentPlacement === 'middle' && onUserDashboardRoute);
+    !isApiTrafficOnlyPage &&
+    (marketingAgentSurface ||
+      (Boolean(user) &&
+        onDashboardAgentRoute &&
+        !(agentPlacement === 'middle' && onUserDashboardRoute)));
 
+  // Marketing `/` + `/marketing`: always reserve bottom dock (float + bottom) regardless of agent UI toggle.
   const hasEmbeddedDockLayout =
-    Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute;
+    isMarketingEmbeddedDockSurface(pathname, user) ||
+    (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute);
 
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
@@ -273,7 +286,7 @@ function AppWithAuth() {
     <EducationUIProvider>
       <TokenChainProvider>
         <div
-          className={`App end-user-nano${showQuickNav ? ' App--has-quick-nav' : ''}${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}`}
+          className={`App end-user-nano${showQuickNav ? ' App--has-quick-nav' : ''}${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}${isMarketingEmbeddedDockSurface(pathname, user) ? ' App--marketing-page' : ''}`}
         >
           <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {sessionReauth && (
@@ -291,6 +304,20 @@ function AppWithAuth() {
               path="/onboarding"
               element={
                 user && user.role !== 'admin' ? <Navigate to="/" replace /> : <Onboarding />
+              }
+            />
+            {/* Explicit /marketing so the SPA always resolves the real agents (float + dock), not only splat * */}
+            <Route
+              path="/marketing"
+              element={
+                !user ? (
+                  <LandingPage />
+                ) : (
+                  <main className="main-content">
+                    <EducationBar />
+                    <LandingPage />
+                  </main>
+                )
               }
             />
             <Route path="*" element={
@@ -329,7 +356,6 @@ function AppWithAuth() {
                     <Route path="/client-registration"
                       element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
                     />
-                    <Route path="/marketing" element={<LandingPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </main>
@@ -338,11 +364,6 @@ function AppWithAuth() {
           </Routes>
           {showFloatingAgent && (
             <BankingAgent user={user} onLogout={logout} distinctFloatingChrome />
-          )}
-          {/* UserDashboard renders EmbeddedAgentDock inside its own layout spanning all 3 columns.
-              App-level dock is only for admin dashboard (/admin, /) and /config. */}
-          {!onUserDashboardRoute && (
-            <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
           )}
           {!isApiTrafficOnlyPage && <EducationPanelsHost />}
           {!isApiTrafficOnlyPage && <CIBAPanel />}
@@ -358,6 +379,11 @@ function AppWithAuth() {
             >
               Demo config
             </button>
+          )}
+          {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
+              order directly above the footer on marketing and other non-dashboard routes. */}
+          {!onUserDashboardRoute && (
+            <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
           )}
           {!isApiTrafficOnlyPage && <Footer user={user} />}
           <SpinnerHost />

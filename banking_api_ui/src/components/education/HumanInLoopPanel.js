@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/education/HumanInLoopPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EduImplIntro, SNIP_HITL_CONSENT } from './educationImplementationSnippets';
 
 export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
@@ -172,6 +173,19 @@ export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
             <strong>user attestation</strong> — refusing required consent can trigger a controlled lockout of
             automated channels while leaving the normal dashboard (and sign-out) available.
           </p>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Consent challenge from the server</h3>
+          <EduImplIntro repoPath="banking_api_server/services/mcpLocalTools.js (and transaction consent routes)">
+            Large agent-initiated writes return an error payload the UI turns into a modal; retry includes <code>consentChallengeId</code>.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_HITL_CONSENT}</pre>
         </>
       ),
     },

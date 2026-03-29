@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import BankingAgent from './BankingAgent';
-import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
+import { isEmbeddedAgentDockRoute, isMarketingEmbeddedDockSurface } from '../utils/embeddedAgentFabVisibility';
 
 const HEIGHT_KEY = 'embedded_agent_dock_height_px';
 const COLLAPSE_KEY = 'embedded_agent_dock_collapsed';
@@ -62,6 +62,11 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Marketing: expand bottom agent — collapsed toolbar looked like “no real agent”.
+  useEffect(() => {
+    if (isMarketingEmbeddedDockSurface(pathname, user)) setCollapsed(false);
+  }, [pathname, user]);
+
   const onResizeMouseDown = useCallback(
     (e) => {
       if (e.button !== 0) return;
@@ -88,7 +93,11 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
     [dockHeight]
   );
 
-  if (!user || agentPlacement !== 'bottom' || !isEmbeddedAgentDockRoute(pathname)) {
+  const marketingDockSurface = isMarketingEmbeddedDockSurface(pathname, user);
+  const authenticatedStandardDock =
+    Boolean(user) && agentPlacement === 'bottom' && isEmbeddedAgentDockRoute(pathname);
+
+  if (!marketingDockSurface && !authenticatedStandardDock) {
     return null;
   }
 

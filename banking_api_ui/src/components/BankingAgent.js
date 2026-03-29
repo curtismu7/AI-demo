@@ -28,6 +28,7 @@ import {
   setAgentBlockedByConsentDecline,
 } from '../services/agentAccessConsent';
 import { isBankingAgentFloatingDefaultOpen } from '../utils/bankingAgentFloatingDefaultOpen';
+import { isPublicMarketingAgentPath } from '../utils/embeddedAgentFabVisibility';
 import AgentConsentModal from './AgentConsentModal';
 import TransactionConsentModal from './TransactionConsentModal';
 import bffAxios from '../services/bffAxios';
@@ -526,14 +527,6 @@ function welcomeMessage(u, focus = 'banking', brandShortName = 'BX Finance') {
     return `👑 Welcome, ${name}! As an admin you can query accounts system-wide, view all transactions, manage users, and explore PingOne OAuth flows. What would you like to do?`;
   }
   return `👋 Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
-}
-
-/** Module-level stub — replaced by the in-component handleLoginAction below. */
-function _handleLoginActionDirect(actionId) {
-  const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-  window.location.href = actionId === 'login_admin'
-    ? `${apiUrl}/api/auth/oauth/login`
-    : `${apiUrl}/api/auth/oauth/user/login`;
 }
 
 function normalizeBankingParams(params) {
@@ -1215,7 +1208,18 @@ export default function BankingAgent({
   function handleLoginAction(actionId) {
     const label = actionId === 'login_admin' ? 'Admin' : 'Customer';
     spinner.show(`Signing in as ${label}…`, 'Redirecting to PingOne');
-    setTimeout(() => _handleLoginActionDirect(actionId), 150);
+    setTimeout(() => {
+      const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
+      if (actionId === 'login_admin') {
+        window.location.href = `${apiUrl}/api/auth/oauth/login`;
+        return;
+      }
+      const p = (location.pathname || '').replace(/\/$/, '') || '/';
+      const q = isPublicMarketingAgentPath(p)
+        ? `?return_to=${encodeURIComponent('/marketing')}`
+        : '';
+      window.location.href = `${apiUrl}/api/auth/oauth/user/login${q}`;
+    }, 150);
   }
 
   /**
@@ -1598,6 +1602,29 @@ export default function BankingAgent({
           actionId
         );
       }
+
+      const pathNorm = (location.pathname || '').replace(/\/$/, '') || '/';
+      const onMarketingPublic = isPublicMarketingAgentPath(pathNorm);
+      const authRelatedMarketingNudge =
+        onMarketingPublic &&
+        !isConnErr &&
+        err?.code !== 'agent_consent_required' &&
+        (hydrationAuthFailure ||
+          err?.statusCode === 401 ||
+          err?.code === 'authentication_required' ||
+          err?.code === 'session_not_hydrated' ||
+          mcpToolsUnauthorized ||
+          /sign in to use the banking agent/i.test(String(err?.message || '')));
+      if (authRelatedMarketingNudge) {
+        window.dispatchEvent(new CustomEvent('marketing-scroll-login'));
+        if (!isLoggedIn) {
+          addMessage(
+            'assistant',
+            '**Sign in on this page** (Customer — stay on this page) to use banking here after PingOne. For the full dashboard, use **Customer sign in** in the header.',
+            actionId,
+          );
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -1731,6 +1758,10 @@ export default function BankingAgent({
         sessionFixBubbleShownRef.current = true;
         addMessage('error', SESSION_NOT_HYDRATED_CHAT, null, { showSessionFixActions: true });
       }
+      const pSess = (location.pathname || '').replace(/\/$/, '') || '/';
+      if (isPublicMarketingAgentPath(pSess)) {
+        window.dispatchEvent(new CustomEvent('marketing-scroll-login'));
+      }
       return;
     }
     if (err?.statusCode === 401 || err?.code === 'authentication_required') {
@@ -1749,6 +1780,10 @@ export default function BankingAgent({
         'assistant',
         'You need an active server session to use the agent. If you already signed in, refresh the page (session may have expired or cookies may not have reached the API).',
       );
+      const p401 = (location.pathname || '').replace(/\/$/, '') || '/';
+      if (isPublicMarketingAgentPath(p401)) {
+        window.dispatchEvent(new CustomEvent('marketing-scroll-login'));
+      }
       return;
     }
     notifyError(`❌ Could not parse request: ${err.message}`, { autoClose: 5000 });

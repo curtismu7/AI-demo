@@ -3,6 +3,7 @@ import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import { useEducationUI } from '../../context/EducationUIContext';
 import { EDU } from './educationIds';
+import { EduImplIntro, SNIP_RFC_INDEX } from './educationImplementationSnippets';
 
 const ROWS = [
   { rfc: 'RFC 6749', name: 'OAuth 2.0 Authorization Framework', app: 'Authorization Code flow', href: 'https://datatracker.ietf.org/doc/html/rfc6749', panel: EDU.LOGIN_FLOW, tab: 'what' },
@@ -80,12 +81,25 @@ export default function RFCIndexPanel({ isOpen, onClose, initialTabId }) {
     </>
   );
 
+  const implTab = (
+    <>
+      <h3 style={{ marginTop: 0 }}>What this panel does in code</h3>
+      <EduImplIntro repoPath="banking_api_ui/src/components/education/RFCIndexPanel.js">
+        Rows dispatch <code>open(panel, tab)</code> or the CIBA window event — they do not implement OAuth by themselves.
+      </EduImplIntro>
+      <pre className="edu-code">{SNIP_RFC_INDEX}</pre>
+    </>
+  );
+
   return (
     <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
       title="RFC & spec index"
-      tabs={[{ id: 'index', label: 'Index', content }]}
+      tabs={[
+        { id: 'index', label: 'Index', content },
+        { id: 'inrepo', label: 'This panel', content: implTab },
+      ]}
       initialTabId={initialTabId || 'index'}
     />
   );

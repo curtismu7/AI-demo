@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import EducationDrawer from '../shared/EducationDrawer';
 import { McpProtocolContent, OAuthApiCheatsheet } from './educationContent';
+import { EduImplIntro, SNIP_MCP_BROWSER, SNIP_MCP_BFF } from './educationImplementationSnippets';
 
 const TOOLS = [
   { name: 'get_my_accounts', scopes: 'banking read', returns: 'List of accounts for the user' },
@@ -89,6 +90,23 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
             Use the in-app <Link to="/mcp-inspector">MCP Inspector</Link> to see all available tools in real time
             and try calling them directly through your current session.
           </p>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Browser vs BFF</h3>
+          <EduImplIntro repoPath="banking_api_ui/src/services/bankingAgentService.js">
+            The React app only POSTs JSON; cookies carry the session.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_MCP_BROWSER}</pre>
+          <EduImplIntro repoPath="banking_api_server/server.js">
+            After resolving the MCP access token (and gates), the BFF calls the MCP WebSocket client.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_MCP_BFF}</pre>
         </>
       ),
     },

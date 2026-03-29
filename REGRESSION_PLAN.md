@@ -66,6 +66,15 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — Marketing `/marketing` + home: OAuth `return_to`, dual agents, light page, showcase UI (commit `b3ddd95`)
+
+- **Symptom:** Marketing page needed inline sign-in after agent banking prompts; users wanted float + bottom BankingAgent on `/` and `/marketing`; bottom dock missing for guests on `/` (wrong `onUserDashboardRoute` when `user` null); `/marketing` sometimes showed no real agents (splat route, collapsed dock, float default closed); mock agent block did not match product dark-card design.
+- **Root cause:** No `return_to` post-login path for customer OAuth; dock gated on `agentPlacement === 'bottom'` only; `pathname === '/' && user?.role !== 'admin'` was true for guests; marketing visibility and portal FAB stacking; light global theme overrode marketing chrome.
+- **Fix:** `oauthUser.js` — `sanitizePostLoginReturnPath` + session `postLoginReturnToPath` from `return_to` on login, redirect after callback (non-admin). UI — `isMarketingEmbeddedDockSurface`, explicit `Route path="/marketing"`, fix `onUserDashboardRoute` to require signed-in user, `App--marketing-page` high-contrast agent chrome, LandingPage `#marketing-login` + white/dark showcase section, `EmbeddedAgentDock` expand on marketing, `isBankingAgentFloatingDefaultOpen('/marketing')` true, body portal FAB visibility CSS. Education panels: optional implementation snippets module.
+- **Files:** `banking_api_server/routes/oauthUser.js`, `banking_api_ui/src/App.js`, `App.css`, `EmbeddedAgentDock.js`, `LandingPage.js`, `LandingPage.css`, `BankingAgent.js`, `BankingAgent.css`, `globalTheme.css`, `embeddedAgentFabVisibility.js`, `bankingAgentFloatingDefaultOpen.js` (+ test), education `*Panel.js` / `educationContent.js` / `educationImplementationSnippets.js`, `CIBAPanel.js` / `.css`, `REGRESSION_PLAN.md`
+- **Regression check:** `cd banking_api_ui && npm run build` exits 0. Guest `/` and `/marketing`: float + bottom agent visible; customer login without `return_to` → `/dashboard`; with “stay on page” → `/marketing?oauth=success`. `sanitizePostLoginReturnPath` rejects `//` and off-site paths. Admin OAuth callback still `/admin?oauth=success`. UserDashboard middle/bottom unchanged for signed-in `/`.
+- **Do not break:** OAuth session regenerate, step-up `return_to`, `routes/oauthUser.js` token expiry on status, BankingAgent FAB on dashboard, `vercel.json` SPA rewrite.
+
 ### 2026-03-29 — feat: MCP tool flow SSE + agent flow diagram panel
 
 - **Primary commit:** `6f0bc60` on `fix/dashboard-fab-positioning` (includes REGRESSION_PLAN critical-row + log body).

@@ -465,3 +465,126 @@ html[data-theme='dark'] .mcp-inspector__banner--error {
   border-color: #7f1d1d;
   color: #fecaca;
 }
+
+/* ─── Marketing landing (/ , /marketing): always light page (ignore app dark theme) ─ */
+html[data-theme='dark']:has(.App--marketing-page) body {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .navbar {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-bottom-color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .navbar.scrolled {
+  background: rgba(255, 255, 255, 0.99) !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .nav-link {
+  color: #475569 !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .nav-link:hover {
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .brand-name {
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .hero-subtitle,
+html[data-theme='dark'] .landing-page.landing-page--light .section-header p,
+html[data-theme='dark'] .landing-page.landing-page--light .feature-card p,
+html[data-theme='dark'] .landing-page.landing-page--light .step p {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .feature-card h3,
+html[data-theme='dark'] .landing-page.landing-page--light .step h3,
+html[data-theme='dark'] .landing-page.landing-page--light .cta-content h2 {
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .features {
+  background: linear-gradient(to bottom, #ffffff, #f1f5f9) !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .how-it-works {
+  background: #ffffff !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .agent-section:not(.agent-section--showcase) {
+  background: linear-gradient(to bottom, #f8fafc, #ffffff) !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .agent-section--showcase {
+  background: #000000 !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .agent-demo--showcase {
+  background: #0a0a0a !important;
+  border-color: #374151 !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .agent-section--showcase .section-header--showcase h2 {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: none !important;
+  background-clip: border-box !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .agent-section--showcase .section-header--showcase p {
+  color: #9ca3af !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .feature-card {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .floating-card {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .message-bubble {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light footer.footer {
+  background: #ffffff !important;
+  border-top-color: #e5e7eb !important;
+  color: #475569 !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer {
+  background: #ffffff !important;
+  border-top-color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer .footer-brand-text {
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer .footer-copyright {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer .footer-theme-toggle {
+  background: #f8fafc !important;
+  border-color: #e5e7eb !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer .footer-demo-config {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1d4ed8 !important;
+}
