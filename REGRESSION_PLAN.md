@@ -66,7 +66,7 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-03-29 — Marketing `/marketing` + home: OAuth `return_to`, dual agents, light page, showcase UI (commit `b3ddd95`)
+### 2026-03-29 — Marketing `/marketing` + home: OAuth `return_to`, dual agents, light page, showcase UI (commit `1b5e743`)
 
 - **Symptom:** Marketing page needed inline sign-in after agent banking prompts; users wanted float + bottom BankingAgent on `/` and `/marketing`; bottom dock missing for guests on `/` (wrong `onUserDashboardRoute` when `user` null); `/marketing` sometimes showed no real agents (splat route, collapsed dock, float default closed); mock agent block did not match product dark-card design.
 - **Root cause:** No `return_to` post-login path for customer OAuth; dock gated on `agentPlacement === 'bottom'` only; `pathname === '/' && user?.role !== 'admin'` was true for guests; marketing visibility and portal FAB stacking; light global theme overrode marketing chrome.
