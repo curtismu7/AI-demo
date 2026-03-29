@@ -68,6 +68,7 @@
 
 ### 2026-03-29 — feat: MCP tool flow SSE + agent flow diagram panel
 
+- **Primary commit:** `6f0bc60` on `fix/dashboard-fab-positioning` (includes REGRESSION_PLAN critical-row + log body).
 - **Feature:** **Server-Sent Events** stream BFF pipeline phases for each banking agent MCP tool call. Client sends **`flowTraceId`** on **`POST /api/mcp/tool`** and opens **`GET /api/mcp/tool/events?trace=`** first (same session cookie). **Agent flow diagram** panel (draggable/resizable) shows the static hop diagram plus a **“Live server phases (SSE)”** timeline. Hub buffers recent events for subscribers that connect slightly after the first publish.
 - **Fix / design:** **`endTrace`** runs on **`res.finish` / `res.close`** so every response path closes the stream. Payloads are phase labels and flags only (no tokens).
 - **Files:** `banking_api_server/services/mcpFlowSseHub.js`, `banking_api_server/server.js`, `banking_api_ui/src/services/mcpFlowSseClient.js`, `agentFlowDiagramService.js`, `bankingAgentService.js`, `AgentFlowDiagramPanel.js` + `.css`, `App.js`, `EducationBar.js`, `BankingAgent.js` (inspector/diagram wiring as applicable).
