@@ -28,6 +28,10 @@
 | Dashboard 401 / session banner | "Session expired" on valid PingOne session (cold-start `_cookie_session` stub) | `UserDashboard.js` (`fetchUserData` 401 handler → auto re-auth redirect) |
 | Left rail + quick nav | Overlap or wrong routes | `App.js`, `App.css`, `DashboardQuickNav.js`, `embeddedAgentFabVisibility.js` |
 | **Agent startup consent gate** | **"Grant Agent permission" modal must NEVER appear on first open; only HITL modal for write > $500** | `BankingAgent.js` — `hitlPendingIntent` only set on `consent_challenge_required` from server (write tools); `buildConsentIntent` null guard prevents modal without valid payload; `setAgentBlockedByConsentDecline(false)` called on login. Server: no `AGENT_CONSENT_REQUIRED` throw anywhere. |
+| **HITL OTP email flow** | **OTP never sent; `{ otpSent: false }` with no email; transaction blocked** | `emailService.js` — must use `admin_client_id` / `admin_client_secret` (not `pingone_client_id`). `transactionConsentChallenge.js` — returns `otpCodeFallback` in response when email throws so dev flow still works. |
+| **consentBlocked persists across logout** | **Agent fully disabled on fresh login after prior HITL decline** | `BankingAgent.js` — `useState` initializer always returns `false` (clears stale localStorage); `checkSelfAuth` calls `setAgentBlockedByConsentDecline(false)` on valid session. |
+| **Cross-Lambda exchange audit** | **Log Viewer always empty after token exchange failure on Vercel (Lambda isolation)** | `services/exchangeAuditStore.js` — Redis-backed LPUSH/LTRIM on `banking:exchange-audit`. `routes/logs.js` `GET /api/logs/console` merges Redis events. `GET /api/logs/exchange` endpoint must exist. Both success and failure paths call `writeExchangeEvent()` fire-and-forget. |
+| **Token Chain blank on login** | **Token Chain shows placeholder instead of decoded user token after sign-in** | `TokenChainDisplay.js` — mount effect calls `fetchSessionPreview()` unconditionally (no `didAuthRef` guard). Function returns early on `!res.ok` (safe when unauthenticated). |
 | Split vs Classic dashboard + HITL consent | Duplicate FAB/dock with inline agent, or consent navigates away | `dashboardLayout.js`, `customerSplit3Dashboard.js`, `UserDashboard.js`, `TransactionConsentModal.js`, `App.js` |
 | Vercel SPA routing | All non-API routes 404 on Vercel | `vercel.json` (SPA catch-all rewrite) |
 | OAuth redirect origin | Redirects go to localhost in production | `routes/oauth.js`, `routes/oauthUser.js` (`getOrigin`) |
@@ -56,7 +60,7 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-04-XX — Full UX walkthrough: ActionForm transfer bug + money formatting + test suite fixes
+### 2026-03-29 — Full UX walkthrough: ActionForm transfer bug + money formatting + test suite fixes
 
 #### ActionForm transfer "To" account always excluded the wrong account
 - **Symptom:** When the user changed the "From" account in the Transfer form, the "To" dropdown still excluded the first account instead of the newly-selected "From" account.
@@ -425,17 +429,44 @@
 
 Before every `vercel --prod`:
 
+**Build**
 - [ ] `npm run build` succeeds in `banking_api_ui/` (exit 0, no compile errors)
 - [ ] No new `console.error` or unhandled promise rejections in browser console
+
+**Auth & Routing**
 - [ ] Admin login flow works end-to-end: login → callback → `/admin` dashboard
 - [ ] User login flow works end-to-end: login → callback → `/dashboard`
+- [ ] OAuth callback redirects to Vercel hostname — not localhost
+- [ ] Direct navigation to `/config`, `/login`, `/dashboard` on Vercel returns page (not 404)
+- [ ] Config UI at `/config` loads and saves PingOne credentials
+
+**Agent — Basic**
 - [ ] BankingAgent FAB visible on login page with Admin/Customer login buttons
 - [ ] BankingAgent FAB shows banking actions after login (Accounts, Balance, Transfer, etc.)
 - [ ] BankingAgent "⚙️ Configure" button navigates to `/config`
-- [ ] Config UI at `/config` loads and saves PingOne credentials
-- [ ] Direct navigation to `/config`, `/login`, `/dashboard` on Vercel returns page (not 404)
-- [ ] OAuth callback redirects to Vercel hostname — not localhost
 - [ ] MCP tool calls succeed (Accounts, Transactions, Balance via agent chat)
+- [ ] MCP Inspector panel shows tool list without being logged in
+
+**Agent — Consent & HITL**
+- [ ] Open agent panel → NO consent modal appears on first open (no "Grant Agent permission")
+- [ ] Transfer / withdraw / deposit > $500 → HITL `AgentConsentModal` opens with amount + account (not "Allow AI Agent Access")
+- [ ] HITL: check consent checkbox → click "Agree & send code" → OTP panel appears → enter correct code → transaction completes
+- [ ] HITL: enter wrong OTP code → "Incorrect code, X attempts remaining" shown
+- [ ] HITL: decline consent → sign out → sign in → agent fully enabled (no consent-blocked banner)
+
+**Token Chain & Exchange Audit**
+- [ ] Token Chain panel shows decoded user token immediately on login (no "Sign in to see your token" placeholder)
+- [ ] `may_act` hint badge shows correctly: `✅ may_act valid` or `⚠️ may_act absent`
+- [ ] Token exchange failure → Log Viewer "All Sources" / "Exchange Audit" shows error entry with HTTP status + PingOne error code
+- [ ] Token exchange success → Exchange Audit shows method (with-actor / subject-only) and audience
+
+**Dashboard & Layout**
+- [ ] Customer `/dashboard` in bottom mode → full-width dock shows; no floating FAB
+- [ ] Customer `/dashboard` in middle mode → reload → split-3 layout appears immediately
+- [ ] Admin `/admin` in middle mode → global float FAB visible
+- [ ] Investment/extra accounts survive server restart (cold-start snapshot restore)
+- [ ] Dashboard hero balance shows only checking + savings (no debt/loan accounts included)
+- [ ] Auto-refresh checkbox unchecked on fresh dashboard load
 
 ---
 
@@ -482,7 +513,7 @@ Before every `vercel --prod`:
 
 ---
 
-## 7. Quick Smoke Test (5 min)
+## 7. Quick Smoke Test (10 min)
 
 Run after any change before committing:
 
@@ -500,7 +531,24 @@ bash /Users/cmuir/P1Import-apps/Banking/run-bank.sh
 #    → After auth → /admin dashboard loads
 #    → FAB still visible → banking actions available
 
-# 4. Check logs
+# 4. Click "👤 Customer Login" → redirected to PingOne
+#    → After auth → /dashboard loads
+#    → Token Chain panel shows decoded user token (not placeholder)
+#    → may_act hint badge visible (✅ valid or ⚠️ absent)
+#    → Hero balance shows checking + savings only (no loan accounts)
+
+# 5. Open AI Agent on customer dashboard
+#    → NO consent modal on open
+#    → Click "🏦 My Accounts" chip → accounts listed (real balances, not fake IDs)
+#    → Click "💰 Check Balance" → returns balance without error
+#    → Click "📋 Recent Transactions" → transaction list returned
+
+# 6. HITL check (requires account with balance > $500)
+#    → In agent: Transfer > $500
+#    → AgentConsentModal opens with amount + account details (NOT "Allow AI Agent Access")
+#    → Check box → "Agree & send code" → OTP input appears
+
+# 7. Check logs
 tail -20 /tmp/bank-api-server.log   # no ERROR lines for /api/auth/oauth/status
 tail -20 /tmp/bank-ui.log           # no "Could not proxy" lines
 ```
@@ -514,6 +562,8 @@ tail -20 /tmp/bank-ui.log           # no "Could not proxy" lines
 ---
 
 ### Layer 1 — Component Snapshot Tests
+
+> ⚠️ **NOT YET IMPLEMENTED** — none of the snapshot tests below exist yet. Add them in priority order.
 
 Add `toMatchSnapshot()` to every significant component. The first run creates the baseline; future runs fail if the rendered structure drifts.
 
@@ -546,6 +596,8 @@ Run `npm run test:unit -- --updateSnapshot` **only** when a change is intentiona
 ---
 
 ### Layer 2 — Playwright Visual Regression (CSS drift detection)
+
+> ⚠️ **NOT YET IMPLEMENTED** — spec files exist but `toHaveScreenshot()` calls have not been added. Add them to the existing specs listed below.
 
 Add `expect(page).toHaveScreenshot()` calls to existing E2E tests. Playwright stores `.png` baselines in git; CI fails on any pixel diff.
 
@@ -587,16 +639,26 @@ Before making any UI change:
 
 ### Layer 4 — Pre-commit Smoke Hook
 
-Add a git pre-commit hook that runs UI smoke tests whenever a UI file changes. This catches regressions before they enter git history.
+> ⚠️ **NOT YET IMPLEMENTED** — `.git/hooks/pre-commit` does not exist. Create it to activate this layer.
 
-Hook logic (`.git/hooks/pre-commit` or via `settings.json` hooks):
+Run UI unit tests automatically whenever a UI file is staged. Catches regressions before they enter git history.
+
+**To install:**
 
 ```bash
-# If any banking_api_ui/src file changed, run smoke tests
+cat > /Users/cmuir/P1Import-apps/Banking/.git/hooks/pre-commit << 'EOF'
+#!/bin/sh
+# If any banking_api_ui/src file changed, run unit tests
 if git diff --cached --name-only | grep -q 'banking_api_ui/src'; then
-  echo "UI files changed — running smoke tests..."
-  cd banking_api_ui && npm run test:unit -- --watchAll=false --passWithNoTests
+  echo "UI files changed — running unit tests..."
+  cd banking_api_ui && npm run test:unit -- --watchAll=false --passWithNoTests --forceExit
+  if [ $? -ne 0 ]; then
+    echo "❌ Unit tests failed — commit blocked. Fix tests before committing."
+    exit 1
+  fi
 fi
+EOF
+chmod +x /Users/cmuir/P1Import-apps/Banking/.git/hooks/pre-commit
 ```
 
 ---
@@ -622,3 +684,51 @@ Use this pattern: **"Change X in [ComponentName] — do not touch anything else.
 after every update
 
 commit, push to git and vercel, update regression docs
+
+---
+
+## 9. Full Regression Pass
+
+Run this ordered sequence to verify everything before a major release or after a large refactor. Each command maps to a layer of the test pyramid.
+
+```bash
+cd /Users/cmuir/P1Import-apps/Banking
+
+# Step 1 — Build check (catches compile errors and ESLint no-undef)
+cd banking_api_ui && CI=true npm run build
+cd ..
+
+# Step 2 — Unit tests (all 215+ tests must pass, 0 failures)
+cd banking_api_ui && npm run test:unit -- --watchAll=false --forceExit
+cd ..
+
+# Step 3 — E2E: routing & navigation
+cd banking_api_ui && npm run test:e2e:agent -- --reporter=list
+cd ..
+
+# Step 4 — E2E: landing page
+cd banking_api_ui && npm run test:e2e:landing -- --reporter=list
+cd ..
+
+# Step 5 — E2E: customer dashboard
+cd banking_api_ui && npm run test:e2e:customer -- --reporter=list
+cd ..
+
+# Step 6 — E2E: admin dashboard
+cd banking_api_ui && npm run test:e2e:admin -- --reporter=list
+cd ..
+
+# Step 7 — Manual smoke (see Section 7)
+# Start app: bash run-bank.sh
+# Follow the 10-minute manual checklist
+
+# Step 8 — Manual pre-deploy checklist (see Section 4)
+# Tick every item before: vercel --prod
+```
+
+**Expected pass criteria:**
+- Build: exit 0, no compile errors
+- Unit tests: 0 failures (currently ~215 tests)
+- All E2E specs: 0 failures
+- Manual smoke: all 7 steps pass
+- Pre-deploy checklist: all boxes checked
