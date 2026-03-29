@@ -987,7 +987,10 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     if (sessionUser?.id) {
       console.log(`[MCP Local] ${tool} — no bearer token (cookie-only session), using local handler`);
       try {
-        const result = await callToolLocal(tool, params || {}, sessionUser.id);
+        // Use oauthId (PingOne sub/UUID) when available — accounts are stored under the UUID
+        // not the local sequential dataStore id, matching what authenticateToken sets on req.user.id.
+        const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+        const result = await callToolLocal(tool, params || {}, effectiveUserId);
         return res.json({ result, tokenEvents, _localFallback: true });
       } catch (localErr) {
         console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
@@ -1057,7 +1060,9 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
 
     console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);
     try {
-      const result = await callToolLocal(tool, params || {}, sessionUser.id);
+      // Use oauthId (PingOne sub/UUID) — accounts are keyed by UUID (same as authenticateToken / REST routes).
+      const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+      const result = await callToolLocal(tool, params || {}, effectiveUserId);
       return res.json({ result, tokenEvents, _localFallback: true });
     } catch (localErr) {
       console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
