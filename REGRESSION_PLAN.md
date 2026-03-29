@@ -76,6 +76,34 @@
 
 ---
 
+### 2026-03-29 — fix: lower MIN_USER_SCOPES_FOR_MCP default 5 → 1 (commit `5b9b6d4`)
+
+- **Problem:** Token exchange returned `"User token must include at least 5 distinct OAuth scopes (found 1)"` even when the user's PingOne access token had valid banking scopes. The **Agent MCP scopes** checkboxes on the Demo Config page control BFF-level exchange policy — they do NOT add scopes to the user's PingOne access token.
+- **Root cause:** `MIN_USER_SCOPES_FOR_MCP` in `agentMcpTokenService.js` defaulted to **5** (env-var only override). A PingOne OAuth app configured without a custom resource server typically grants 1–3 scopes in the user access token. The BFF guard was too strict for a demo environment.
+- **Fix:** Changed default from `'5'` → `'1'`. Any user token with ≥1 scope now reaches PingOne for RFC 8693 exchange. PingOne itself enforces real scope narrowing (can only grant in the exchanged token what the subject token already contains). `Math.max(1, …)` ensures the guard never drops below 1 (guards against completely empty tokens).
+- **Test update:** Replaced `sampleJwtUserAccessNarrowScopes` (3 scopes) with new `sampleJwtUserAccessNoScopes` (0 scopes) fixture for the two threshold-check tests. Both tests now verify the guard triggers only at 0 scopes. 39/39 tests passing.
+- **Files:** `banking_api_server/services/agentMcpTokenService.js`, `banking_api_server/src/__tests__/agentMcpTokenService.test.js`
+- **Regression check:** `cd banking_api_server && npx jest --testPathPattern=agentMcpTokenService --no-coverage` → **39 passing, 0 failing**. `MIN_USER_SCOPES_FOR_MCP_EXCHANGE` env var can still raise the threshold if needed (e.g. set to `3` for custom resource server demos).
+
+---
+
+### 2026-03-29 — fix(demo-data): correct may_act toggle explainer (commit `1641215`)
+
+- **Problem:** The `<details>` explainer in the `may_act` toggle section on the Demo Config page incorrectly stated users should add `${user.mayAct}` as a PingOne expression. PingOne Expressions do not support that syntax and it would always produce a literal string, not a dynamic value.
+- **Fix:** Replaced the incorrect expression instruction with an accurate explanation: the `may_act` claim value (e.g. `{"client_id":"<bff-client-id>"}`) must be **hardcoded** in a PingOne token policy attribute mapping. The explainer now shows the correct static JSON string to paste into the PingOne admin console.
+- **Files:** `banking_api_ui/src/components/DemoDataPage.js`
+- **Regression check:** Build exits 0. Open `/demo-data` as admin → Token Exchange → expand the `may_act` explainer → confirm instructions say to hardcode a static JSON value, not use a `${…}` expression.
+
+---
+
+### 2026-03-29 — feat: PingOne setup guide page + bootstrap service improvements (commit `d4a77a4`)
+
+- **Extends** the `/setup` page work from `3fc11c4`. Added `PingOneSetupGuidePage.js` — a step-by-step interactive checklist for configuring a PingOne environment from scratch (OAuth app, scopes, users, token policies). Extended `pingoneBootstrapService.js` with additional provisioning logic; updated `configStore.js`, `admin.js` probe route, `pingOneClientService.js`. Wired into `SetupPage.js`, `SideNav.js`, `Login.js`, `Onboarding.js`, `App.js`. Added 66 new `pingoneBootstrapService.test.js` assertions.
+- **Files:** `banking_api_ui/src/components/PingOneSetupGuidePage.js` (new), `banking_api_ui/src/components/SetupPage.js`, `banking_api_ui/src/components/SideNav.js`, `banking_api_ui/src/components/Login.js`, `banking_api_ui/src/components/Onboarding.js`, `banking_api_ui/src/App.js`, `banking_api_server/services/pingoneBootstrapService.js`, `banking_api_server/services/pingOneClientService.js`, `banking_api_server/routes/admin.js`, `banking_api_server/services/configStore.js`, `banking_api_server/src/__tests__/pingoneBootstrapService.test.js`
+- **Regression check:** `cd banking_api_ui && CI=false npm run build` exits **0**. `cd banking_api_server && npx jest --testPathPattern=pingoneBootstrapService --no-coverage --forceExit` passes. OAuth routes, BankingAgent FAB, and MCP inspector endpoint unchanged.
+
+---
+
 ### 2026-03-29 — feat: `/setup` page, PingOne bootstrap plan API + CLI, token inspector sizing (commit `3fc11c4`)
 
 - **Setup:** Public **`/setup`** (Vercel command copy buttons, **`GET /api/setup/plan`** checklist from `config/pingone-bootstrap.manifest.example.json`, copy targets for **`npm run pingone:bootstrap`** / **`pingone:bootstrap:probe`**, admin-only **`GET /api/admin/setup/management-probe`** — read-only PingOne Management API **`listApplications`** when `pingone_client_*` / CIMD worker creds exist). **`/onboarding`** is registered at the app root so signed-out users see the checklist; signed-in **customers** are redirected to **`/`**.
