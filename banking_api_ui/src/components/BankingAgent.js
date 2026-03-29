@@ -21,6 +21,7 @@ import { EDUCATION_COMMANDS } from './education/educationCommands';
 import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
 import { getToolStepsForAction } from '../utils/agentToolSteps';
 import { spinner } from '../services/spinnerService';
+import { agentFlowDiagram } from '../services/agentFlowDiagramService';
 import {
   AGENT_CONSENT_BLOCK_USER_MESSAGE,
   isAgentBlockedByConsentDecline,
@@ -1276,10 +1277,39 @@ export default function BankingAgent({
           break;
         case 'mcp_tools': {
           toast.update(toastId, { render: '🔧 Fetching MCP tool list…' });
-          const mcpRes = await fetch('/api/mcp/inspector/tools', { credentials: 'include' });
-          if (!mcpRes.ok) throw new Error(`MCP tools fetch failed: ${mcpRes.status}`);
-          const data = await mcpRes.json();
+          agentFlowDiagram.startInspectorToolsList();
+          let mcpRes;
+          try {
+            mcpRes = await fetch('/api/mcp/inspector/tools', { credentials: 'include' });
+          } catch (netErr) {
+            agentFlowDiagram.completeInspectorToolsList({
+              ok: false,
+              errorMessage: netErr.message || 'Network error',
+            });
+            throw netErr;
+          }
+          if (!mcpRes.ok) {
+            agentFlowDiagram.completeInspectorToolsList({
+              ok: false,
+              errorMessage: `HTTP ${mcpRes.status}`,
+            });
+            throw new Error(`MCP tools fetch failed: ${mcpRes.status}`);
+          }
+          let data;
+          try {
+            data = await mcpRes.json();
+          } catch (parseErr) {
+            agentFlowDiagram.completeInspectorToolsList({
+              ok: false,
+              errorMessage: parseErr.message || 'Invalid JSON',
+            });
+            throw parseErr;
+          }
           const tools = data.tools || [];
+          agentFlowDiagram.completeInspectorToolsList({
+            ok: true,
+            source: data._source || 'mcp_server',
+          });
           const toolText = tools.length === 0
             ? 'No tools found — is the MCP server running?'
             : tools.map((t, i) =>
@@ -1475,6 +1505,16 @@ export default function BankingAgent({
     } catch (err) {
       markToolProgressOutcome(false);
       toast.dismiss(toastId);
+
+      if (actionId === 'mcp_tools') {
+        const st = agentFlowDiagram.getState();
+        if (st.phase === 'running' && st.toolName === 'tools/list') {
+          agentFlowDiagram.completeInspectorToolsList({
+            ok: false,
+            errorMessage: err.message || 'Request failed',
+          });
+        }
+      }
 
       const isConnErr =
         err.message.includes('timed out') ||

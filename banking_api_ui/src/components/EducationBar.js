@@ -81,6 +81,16 @@ export default function EducationBar() {
               Agent UI
             </h2>
             <AgentUiModeToggle variant="eduBar" className="edu-bar-agent-toggle" />
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('agent-flow-diagram-open'));
+                close();
+              }}
+            >
+              Agent flow diagram
+            </button>
           </div>
         )}
       </div>
@@ -332,6 +342,16 @@ export default function EducationBar() {
               title="Open API Traffic Viewer in new window"
             >
               🌐 API
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('agent-flow-diagram-open'));
+                close();
+              }}
+            >
+              Agent flow diagram
             </button>
           </div>
         </div>

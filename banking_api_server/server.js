@@ -955,25 +955,69 @@ const mcpToolAuthorizationService = require('./services/mcpToolAuthorizationServ
 const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./services/mcpWebSocketClient');
 const { callToolLocal } = require('./services/mcpLocalTools');
 const { introspectToken } = require('./middleware/tokenIntrospection');
+const mcpFlowSseHub = require('./services/mcpFlowSseHub');
+
+// GET /api/mcp/tool/events?trace=<uuid> — Server-Sent Events for live MCP tool pipeline phases
+app.get('/api/mcp/tool/events', (req, res) => {
+  mcpFlowSseHub.handleSseGet(req, res);
+});
 
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), async (req, res) => {
-  const { tool, params } = req.body || {};
+  const { tool, params, flowTraceId: bodyFlowTrace } = req.body || {};
+  const flowTraceId = typeof bodyFlowTrace === 'string' ? bodyFlowTrace.trim() : '';
 
   if (!tool || typeof tool !== 'string') {
     return res.status(400).json({ error: 'tool name is required' });
   }
 
+  if (flowTraceId) {
+    if (mcpFlowSseHub.ensurePostTrace(flowTraceId, req.sessionID) !== 'ok') {
+      return res.status(403).json({
+        error: 'invalid_flow_trace',
+        message: 'flowTraceId is not valid for this session.',
+      });
+    }
+  }
+
+  const emit = (payload) => {
+    if (flowTraceId) {
+      mcpFlowSseHub.publish(flowTraceId, { ...payload, tool: payload.tool || tool });
+    }
+  };
+
+  if (flowTraceId) {
+    let traceEnded = false;
+    const endFlowTraceOnce = () => {
+      if (traceEnded) return;
+      traceEnded = true;
+      mcpFlowSseHub.endTrace(flowTraceId);
+    };
+    res.on('finish', endFlowTraceOnce);
+    res.on('close', endFlowTraceOnce);
+  }
+
+  emit({ phase: 'request_accepted' });
+
   let agentToken;
   let userSub = null;
   let tokenEvents = [];
   try {
+    emit({ phase: 'resolving_access_token' });
     const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
     agentToken = resolved.token;
     tokenEvents = resolved.tokenEvents;
     userSub = resolved.userSub || null;
+    const evs = tokenEvents || [];
+    emit({
+      phase: 'access_token_ready',
+      hasUserToken: evs.some((e) => e && e.id === 'user-token'),
+      exchanged: evs.some((e) => e && e.id === 'exchanged-token'),
+      exchangeRequired: evs.some((e) => e && e.id === 'exchange-required'),
+    });
   } catch (err) {
     console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
+    emit({ phase: 'access_token_error', code: err.code || 'token_exchange_failed' });
     const status = err.httpStatus || 502;
     const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
     return res.status(status).json({
@@ -984,22 +1028,27 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   }
 
   if (!agentToken) {
+    emit({ phase: 'no_bearer_token_branch' });
     // No bearer token (cookie-only or degraded session) — use local handler if session user present.
     // This lets the banking agent work for basic operations even without a fully-hydrated Redis session.
     const sessionUser = req.session?.user;
     if (sessionUser?.id) {
       console.log(`[MCP Local] ${tool} — no bearer token (cookie-only session), using local handler`);
       try {
+        emit({ phase: 'local_tool_start', path: 'no_bearer' });
         // Use oauthId (PingOne sub/UUID) when available — accounts are stored under the UUID
         // not the local sequential dataStore id, matching what authenticateToken sets on req.user.id.
         const effectiveUserId = sessionUser.oauthId || sessionUser.id;
         const result = await callToolLocal(tool, params || {}, effectiveUserId);
+        emit({ phase: 'local_tool_done', path: 'no_bearer' });
         return res.json({ result, tokenEvents, _localFallback: true });
       } catch (localErr) {
         console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
+        emit({ phase: 'local_tool_error', path: 'no_bearer' });
         return res.status(502).json({ error: 'mcp_error', message: localErr.message, tokenEvents });
       }
     }
+    emit({ phase: 'no_bearer_no_user' });
     const r = mcpNoBearerResponse(req, tokenEvents);
     return res.status(r.status).json(r.body);
   }
@@ -1008,6 +1057,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   /** @type {object|undefined} */
   let mcpAuthorizeEvaluationThisRequest;
   try {
+    emit({ phase: 'authorize_gate_begin' });
     const mcpAuthz = await mcpToolAuthorizationService.evaluateMcpFirstToolGate({
       req,
       tool,
@@ -1016,6 +1066,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       userAcr: req.session?.user?.acr,
     });
     if (mcpAuthz.ran && mcpAuthz.block) {
+      emit({ phase: 'authorize_denied', status: mcpAuthz.block.status });
       return res.status(mcpAuthz.block.status).json({
         ...mcpAuthz.block.body,
         tokenEvents,
@@ -1026,6 +1077,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       });
     }
     if (mcpAuthz.ran && mcpAuthz.simulatedError) {
+      emit({ phase: 'authorize_simulated_error' });
       console.error(`[MCP Authorize][Simulated] unexpected error: ${mcpAuthz.simulatedError.message}`);
       return res.status(500).json({
         error: 'mcp_authorize_error',
@@ -1034,6 +1086,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       });
     }
     if (mcpAuthz.ran && mcpAuthz.pingoneError) {
+      emit({ phase: 'authorize_unavailable' });
       console.error(`[MCP Authorize] PingOne error — failing closed: ${mcpAuthz.pingoneError.message}`);
       return res.status(503).json({
         error: 'mcp_authorize_unavailable',
@@ -1042,10 +1095,15 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       });
     }
     if (mcpAuthz.ran && mcpAuthz.permit) {
+      emit({ phase: 'authorize_permitted' });
       req.session.mcpFirstToolAuthorizeDone = true;
       mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
     }
+    if (!mcpAuthz.ran) {
+      emit({ phase: 'authorize_gate_skipped' });
+    }
   } catch (mcpAuthzErr) {
+    emit({ phase: 'authorize_internal_error' });
     console.error('[MCP Authorize] Unexpected error in gate:', mcpAuthzErr.message);
     return res.status(500).json({
       error: 'mcp_authorize_internal',
@@ -1058,13 +1116,16 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   const sessionAccessToken = getSessionAccessToken(req);
   const introspectionConfigured = !!process.env.PINGONE_INTROSPECTION_ENDPOINT;
   if (introspectionConfigured) {
+    emit({ phase: 'introspection_begin' });
     if (!sessionAccessToken || sessionAccessToken === '_cookie_session') {
+      emit({ phase: 'introspection_skipped_no_session_token' });
       const r = mcpNoBearerResponse(req, tokenEvents);
       return res.status(r.status).json(r.body);
     }
     try {
       const introspectionResult = await introspectToken(sessionAccessToken);
       if (!introspectionResult.active) {
+        emit({ phase: 'introspection_inactive' });
         console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
         return res.status(401).json({
           error: 'token_inactive',
@@ -1072,10 +1133,14 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
           tokenEvents,
         });
       }
+      emit({ phase: 'introspection_active_ok' });
     } catch (err) {
+      emit({ phase: 'introspection_error_degraded' });
       console.error(`[MCP Proxy] Session token introspection error for tool ${tool}:`, err.message);
       // Continue on introspection failure (graceful degradation) but log the error
     }
+  } else {
+    emit({ phase: 'introspection_not_configured' });
   }
 
   // ── Try remote MCP server first; fall back to local handler if unreachable ──
@@ -1086,9 +1151,12 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     // Skip the WebSocket attempt entirely when running on Vercel with no MCP_SERVER_URL
     // configured — localhost:8080 is guaranteed to be unreachable serverless.
     if (isLocalDefault && process.env.VERCEL) {
+      emit({ phase: 'mcp_remote_skipped_vercel' });
       throw Object.assign(new Error('MCP_SERVER_URL not configured; using local tool handler'), { useLocal: true });
     }
+    emit({ phase: 'mcp_remote_begin' });
     const result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
+    emit({ phase: 'mcp_remote_done' });
     const out = { result, tokenEvents };
     if (mcpAuthorizeEvaluationThisRequest) {
       out.mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
@@ -1104,24 +1172,30 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       (err.code && ['ECONNREFUSED', 'ENETUNREACH', 'ETIMEDOUT'].includes(err.code));
 
     if (!isConnErr) {
+      emit({ phase: 'mcp_remote_tool_error' });
       console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
       return res.status(502).json({ error: 'mcp_error', message: err.message, tokenEvents });
     }
 
+    emit({ phase: 'mcp_remote_unreachable' });
     // ── Local fallback ──────────────────────────────────────────────────────
     const sessionUser = req.session?.user;
     if (!sessionUser?.id) {
+      emit({ phase: 'local_fallback_blocked_no_user' });
       const r = mcpNoBearerResponse(req, tokenEvents);
       return res.status(r.status).json(r.body);
     }
 
     console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);
     try {
+      emit({ phase: 'local_tool_start', path: 'remote_fallback' });
       // Use oauthId (PingOne sub/UUID) — accounts are keyed by UUID (same as authenticateToken / REST routes).
       const effectiveUserId = sessionUser.oauthId || sessionUser.id;
       const result = await callToolLocal(tool, params || {}, effectiveUserId);
+      emit({ phase: 'local_tool_done', path: 'remote_fallback' });
       return res.json({ result, tokenEvents, _localFallback: true });
     } catch (localErr) {
+      emit({ phase: 'local_tool_error', path: 'remote_fallback' });
       console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
       return res.status(502).json({ error: 'mcp_error', message: localErr.message, tokenEvents });
     }

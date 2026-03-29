@@ -12,6 +12,8 @@
  */
 import { appendTokenEvents } from './apiTrafficStore';
 import { appendMcpCall } from './mcpCallStore';
+import { agentFlowDiagram } from './agentFlowDiagramService';
+import { openMcpFlowSse } from './mcpFlowSseClient';
 
 // ─── Session refresh (RFC 6749 §6) — same endpoints as Backend-for-Frontend (BFF) auto-refresh ───────
 
@@ -47,7 +49,18 @@ export async function refreshOAuthSession() {
  * @returns {Promise<{ result: any, tokenEvents: Array }>}
  */
 export async function callMcpTool(tool, params = {}) {
-  const body = JSON.stringify({ tool, params });
+  agentFlowDiagram.startMcpToolCall(tool);
+
+  const flowTraceId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+  const closeSse = openMcpFlowSse(flowTraceId, (data) => {
+    agentFlowDiagram.applyServerEvent(data);
+  });
+
+  const body = JSON.stringify({ tool, params, flowTraceId });
   const fetchOpts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -56,42 +69,65 @@ export async function callMcpTool(tool, params = {}) {
   };
 
   const t0 = Date.now();
-  let response = await fetch('/api/mcp/tool', fetchOpts);
-  if (response.status === 401) {
-    const err401 = await response.clone().json().catch(() => ({}));
-    // Cookie-only / empty Redis session: refresh cannot add tokens — avoid spamming refresh endpoints.
-    if (err401.error !== 'session_not_hydrated') {
-      const refreshed = await refreshOAuthSession();
-      if (refreshed.ok) {
-        response = await fetch('/api/mcp/tool', fetchOpts);
+  try {
+    let response = await fetch('/api/mcp/tool', fetchOpts);
+    if (response.status === 401) {
+      const err401 = await response.clone().json().catch(() => ({}));
+      // Cookie-only / empty Redis session: refresh cannot add tokens — avoid spamming refresh endpoints.
+      if (err401.error !== 'session_not_hydrated') {
+        const refreshed = await refreshOAuthSession();
+        if (refreshed.ok) {
+          response = await fetch('/api/mcp/tool', fetchOpts);
+        }
       }
     }
-  }
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ message: response.statusText }));
-    const tokenEvents = err.tokenEvents || [];
-    // Record in the dedicated MCP call history store (synchronous, no patchFetch race)
-    appendMcpCall(tool, response.status, Date.now() - t0, null, err.message || `HTTP ${response.status}`);
-    // Surface any partial token events (e.g. exchange-failed) in the API Traffic viewer
-    appendTokenEvents(tool, tokenEvents);
-    const e = Object.assign(new Error(err.message || `MCP error: ${response.status}`), {
-      tokenEvents,
-      statusCode: response.status,
-      code: err.error,
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: response.statusText }));
+      const tokenEvents = err.tokenEvents || [];
+      appendMcpCall(tool, response.status, Date.now() - t0, null, err.message || `HTTP ${response.status}`);
+      appendTokenEvents(tool, tokenEvents);
+      agentFlowDiagram.completeMcpToolCall({
+        toolName: tool,
+        tokenEvents,
+        ok: false,
+        errorMessage: err.message || `HTTP ${response.status}`,
+      });
+      const e = Object.assign(new Error(err.message || `MCP error: ${response.status}`), {
+        tokenEvents,
+        statusCode: response.status,
+        code: err.error,
+      });
+      throw e;
+    }
+
+    const data = await response.json();
+    appendMcpCall(tool, response.status, Date.now() - t0, data.result);
+    appendTokenEvents(tool, data.tokenEvents || []);
+    agentFlowDiagram.completeMcpToolCall({
+      toolName: tool,
+      tokenEvents: data.tokenEvents || [],
+      ok: true,
+      errorMessage: null,
     });
+    return {
+      result: data.result,
+      tokenEvents: data.tokenEvents || [],
+    };
+  } catch (e) {
+    // HTTP error path already completed the diagram before throw
+    if (e.statusCode == null) {
+      agentFlowDiagram.completeMcpToolCall({
+        toolName: tool,
+        tokenEvents: e.tokenEvents || [],
+        ok: false,
+        errorMessage: e.message || 'Network error',
+      });
+    }
     throw e;
+  } finally {
+    closeSse();
   }
-
-  const data = await response.json();
-  // Record in the dedicated MCP call history store (synchronous, reliable)
-  appendMcpCall(tool, response.status, Date.now() - t0, data.result);
-  // Push token-event entries (user token, RFC 8693 exchange, MCP token) to API Traffic viewer
-  appendTokenEvents(tool, data.tokenEvents || []);
-  return {
-    result: data.result,
-    tokenEvents: data.tokenEvents || [],
-  };
 }
 
 // ─── Named tool helpers ───────────────────────────────────────────────────────

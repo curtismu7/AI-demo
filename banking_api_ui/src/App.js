@@ -50,6 +50,7 @@ import {
 } from './utils/embeddedAgentFabVisibility';
 import { useDemoMode } from './hooks/useDemoMode';
 import SessionReauthBanner from './components/SessionReauthBanner';
+import AgentFlowDiagramPanel from './components/AgentFlowDiagramPanel';
 import { SESSION_REAUTH_EVENT } from './utils/authUi';
 import './App.css';
 
@@ -346,6 +347,7 @@ function AppWithAuth() {
           {!isApiTrafficOnlyPage && <EducationPanelsHost />}
           {!isApiTrafficOnlyPage && <CIBAPanel />}
           {!isApiTrafficOnlyPage && <CimdSimPanel />}
+          {!isApiTrafficOnlyPage && <AgentFlowDiagramPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
           {user && demoMode !== true && !isApiTrafficOnlyPage && (
             <button
