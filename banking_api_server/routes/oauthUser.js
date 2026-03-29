@@ -27,6 +27,30 @@ function sanitizePostLoginReturnPath(raw) {
 }
 
 /**
+ * After end-user OAuth failure, redirect to an SPA path where App still mounts BankingAgent
+ * (`/` and `/marketing`). `/login` is not in that set — users lose FAB + dock there.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {Record<string, string>} params query keys (values truncated)
+ * @param {string|null} [pathOverride] e.g. postLoginReturnToPath || '/marketing'
+ */
+function redirectEndUserOAuthSpaFailure(req, res, params, pathOverride) {
+  const origin = getFrontendOrigin(req);
+  const path =
+    typeof pathOverride === 'string' && pathOverride.startsWith('/')
+      ? pathOverride
+      : (sanitizePostLoginReturnPath(req.session?.postLoginReturnToPath) || '/marketing');
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v == null) continue;
+    const s = String(v);
+    if (!s) continue;
+    q.set(k, s.length > 400 ? s.slice(0, 400) : s);
+  }
+  res.redirect(`${origin}${path}?${q.toString()}`);
+}
+
+/**
  * Create sample accounts and transactions for new customers
  */
 async function createSampleDataForCustomer(userId, firstName, lastName) {
@@ -215,7 +239,7 @@ router.get('/login', (req, res) => {
     });
   } catch (error) {
     console.error('OAuth login error:', error);
-    res.redirect(`${getFrontendOrigin(req)}/login?error=oauth_init_failed`);
+    redirectEndUserOAuthSpaFailure(req, res, { error: 'oauth_init_failed' });
   }
 });
 
@@ -238,10 +262,14 @@ router.get('/callback', async (req, res) => {
       }
     }
 
-    // Check for OAuth errors
+    // Check for OAuth errors (PingOne sends error + optional error_description)
     if (error) {
-      console.error('OAuth error:', error);
-      return res.redirect(`${getFrontendOrigin(req)}/login?error=oauth_error`);
+      console.error('[oauth/user/callback] IdP error:', error, req.query.error_description || '');
+      return redirectEndUserOAuthSpaFailure(req, res, {
+        error:           'oauth_provider',
+        idp_error:       String(error).slice(0, 120),
+        error_description: String(req.query.error_description || '').slice(0, 400),
+      });
     }
     
     // Validate state — prefer session, fall back to PKCE cookie (Vercel serverless)
@@ -252,14 +280,14 @@ router.get('/callback', async (req, res) => {
     if (!state || state !== resolvedState) {
       console.error('[oauth/user/callback] Invalid state. session:', sessionState, 'cookie:', pkceCookie?.state, 'received:', state);
       clearPkceCookie(res, _isProd());
-      return res.redirect(`${getFrontendOrigin(req)}/login?error=invalid_state`);
+      return redirectEndUserOAuthSpaFailure(req, res, { error: 'invalid_state' });
     }
 
     // Validate code parameter
     if (!code) {
-      console.error('No authorization code received');
+      console.error('[oauth/user/callback] No authorization code (pi.flow may use a different callback shape than code flow)');
       clearPkceCookie(res, _isProd());
-      return res.redirect(`${getFrontendOrigin(req)}/login?error=no_code`);
+      return redirectEndUserOAuthSpaFailure(req, res, { error: 'no_code' });
     }
 
     // Retrieve and clear the PKCE code verifier and redirect URI from session / cookie
@@ -290,7 +318,7 @@ router.get('/callback', async (req, res) => {
     if (expectedNonce && idTokenClaims.nonce) {
       if (idTokenClaims.nonce !== expectedNonce) {
         console.error('[oauth/user/callback] Nonce mismatch — possible ID token replay attack');
-        return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
+        return redirectEndUserOAuthSpaFailure(req, res, { error: 'nonce_mismatch' });
       }
     } else if (expectedNonce && tokenData.id_token && !idTokenClaims.nonce) {
       console.warn('[oauth/user/callback] ID token has no nonce claim');
@@ -449,7 +477,12 @@ router.get('/callback', async (req, res) => {
       if (regenErr) {
         console.error('[oauth/user/callback] Session regenerate FAILED — aborting login:', regenErr.message);
         clearAuthCookie(res, _isProd());
-        return res.redirect(`${origin}/login?error=session_regenerate_failed`);
+        return redirectEndUserOAuthSpaFailure(
+          req,
+          res,
+          { error: 'session_regenerate_failed' },
+          postLoginReturnToPath || '/marketing'
+        );
       }
 
       req.session.oauthTokens = oauthTokens;
@@ -472,7 +505,12 @@ router.get('/callback', async (req, res) => {
               console.error('[oauth/user/callback] session.destroy after failed save:', destroyErr.message);
             }
             clearAuthCookie(res, _isProd());
-            return res.redirect(`${origin}/login?error=session_persist_failed`);
+            return redirectEndUserOAuthSpaFailure(
+              req,
+              res,
+              { error: 'session_persist_failed' },
+              postLoginReturnToPath || '/marketing'
+            );
           });
         }
         console.log('[oauth/user/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
@@ -507,10 +545,11 @@ router.get('/callback', async (req, res) => {
     console.error('OAuth callback error:', error);
     const detail = error.pingoneError || 'unknown';
     const desc   = error.pingoneDesc   || '';
-    const query  = desc
-      ? `error=callback_failed&detail=${encodeURIComponent(detail)}&info=${encodeURIComponent(desc)}`
-      : `error=callback_failed&detail=${encodeURIComponent(detail)}`;
-    res.redirect(`${getFrontendOrigin(req)}/login?${query}`);
+    redirectEndUserOAuthSpaFailure(req, res, {
+      error:  'callback_failed',
+      detail: String(detail).slice(0, 120),
+      ...(desc ? { info: String(desc).slice(0, 400) } : {}),
+    });
   }
 });
 

@@ -824,10 +824,11 @@ export default function DemoDataPage({ user, onLogout }) {
                 Marketing page customer sign-in
               </h2>
               <p className="demo-data-hint">
-                Controls how <strong>Customer sign in</strong> behaves on the home / marketing page.{' '}
-                <strong>Slide panel + pi.flow</strong> shows demo username/password hints in a panel that slides in from
-                the right, then continues to PingOne with <code>use_pi_flow=1</code> (your PingOne app must support pi.flow).
-                Also available under <Link to="/config">Application setup</Link>.
+                Controls how <strong>Customer sign in</strong> behaves on the home / marketing page (dropdown, not a
+                separate checkbox). <strong>Redirect</strong> uses standard authorization code + PKCE.{' '}
+                <strong>Slide panel + pi.flow</strong> opens hints then calls PingOne with <code>use_pi_flow=1</code> —{' '}
+                requires a PingOne app that supports pi.flow; if sign-in fails, switch back to <strong>Redirect</strong>.
+                Also under <Link to="/config">Application setup</Link>.
               </p>
               <label className="demo-data-field">
                 <span>Customer login mode</span>

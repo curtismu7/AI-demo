@@ -942,6 +942,10 @@ export default function Config() {
                       <option value="redirect">Redirect — standard authorize (code + PKCE)</option>
                       <option value="slide_pi_flow">Slide panel — hints + Continue with pi.flow (?use_pi_flow=1)</option>
                     </select>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      <strong>Redirect</strong> is the safe default. <strong>pi.flow</strong> requires a PingOne OIDC app
+                      that supports it — otherwise use <strong>Redirect</strong> (same choice as Demo config).
+                    </p>
                   </div>
                   <div className="config-page__grid-span-2">
                     <TextField

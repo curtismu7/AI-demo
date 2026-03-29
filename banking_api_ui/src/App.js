@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -54,6 +54,7 @@ import { useDemoMode } from './hooks/useDemoMode';
 import SessionReauthBanner from './components/SessionReauthBanner';
 import AgentFlowDiagramPanel from './components/AgentFlowDiagramPanel';
 import { SESSION_REAUTH_EVENT } from './utils/authUi';
+import { showEndUserOAuthErrorToast, stripEndUserOAuthErrorParamsFromUrl } from './utils/endUserOAuthErrorToast';
 import './App.css';
 
 /** Prevents re-auth after logout when effects re-run (matches f8393a7 session guard). */
@@ -62,6 +63,7 @@ let _didLogOut = false;
 
 function AppWithAuth() {
   const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
   const pathNorm = pathname.replace(/\/$/, '') || '/';
   const isApiTrafficOnlyPage = pathNorm === '/api-traffic' || pathNorm === '/logs';
   const { placement: agentPlacement } = useAgentUiMode();
@@ -232,6 +234,13 @@ function AppWithAuth() {
   useEffect(() => {
     if (user) setSessionReauth(null);
   }, [user]);
+
+  /** End-user OAuth BFF failures redirect to /marketing (not /login) so FAB/dock stay mounted — toast here. */
+  useEffect(() => {
+    if (showEndUserOAuthErrorToast(searchParams)) {
+      stripEndUserOAuthErrorParamsFromUrl();
+    }
+  }, [searchParams]);
 
   /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
   const showQuickNav = Boolean(user) && isDashboardQuickNavRoute(pathname, user);

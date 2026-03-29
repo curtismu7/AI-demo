@@ -66,6 +66,15 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — End-user OAuth errors: redirect to marketing + toast (not `/login`)
+
+- **Symptom:** After PingOne returned an error (e.g. unsupported **pi.flow**), BFF sent users to **`/login?error=oauth_error`** — the SPA does not treat **`/login`** as a marketing path, so **BankingAgent FAB + bottom dock disappeared**; no inline error on the marketing surface.
+- **Root cause:** `routes/oauthUser.js` always redirected failures to **`/login`**. **`App.js`** only shows floating/dock agents on **`/`** and **`/marketing`** (`isPublicMarketingAgentPath`).
+- **Fix:** **`redirectEndUserOAuthSpaFailure`** — redirect to **`session.postLoginReturnToPath`** (e.g. **`/marketing`**) or **`/marketing`**, with query params; forward PingOne **`error` / `error_description`** as **`oauth_provider`** + **`idp_error`**. **`App.js`** + **`endUserOAuthErrorToast.js`** toast and strip params.
+- **Files:** `banking_api_server/routes/oauthUser.js`, `banking_api_ui/src/App.js`, `banking_api_ui/src/utils/endUserOAuthErrorToast.js`, `REGRESSION_PLAN.md`
+- **Regression check:** `npm run build` in `banking_api_ui/`. Trigger a deliberate IdP error → land on **`/marketing?...`** with FAB visible and toast.
+- **Do not break:** Successful **`/callback`** redirect to **`/dashboard`** / **`postLoginReturnToPath`**; **admin** **`routes/oauth.js`** (unchanged).
+
 ### 2026-03-29 — Marketing pi.flow slide sign-in + compact landing layout (commit `e5611a3`)
 
 - **Feature — demo / config:** **`marketing_customer_login_mode`** (`redirect` default vs **`slide_pi_flow`**): home page can open a **right-hand drawer** with **username/password hints** (public config; not secrets), then **Continue to PingOne** with **`use_pi_flow=1`**. **`BankingAgent`** customer login on marketing paths adds **`use_pi_flow=1`** when the mode is slide. New **`configStore`** keys **`marketing_demo_username_hint`**, **`marketing_demo_password_hint`** (empty string allowed on save to clear). **`GET /api/auth/oauth/user/login?use_pi_flow=1`** forces pi.flow authorize via **`oauthUserService.generateAuthorizationUrl`** **`forcePiFlow`** even when global user pi.flow is off.
