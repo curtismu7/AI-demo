@@ -2020,21 +2020,6 @@ export default function BankingAgent({
 
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">
-              {/* Dashboard navigation button — shown when logged in */}
-              {isLoggedIn && (
-                <button
-                  type="button"
-                  className="ba-left-auth-btn primary"
-                  style={{ marginBottom: 2 }}
-                  onClick={() => {
-                    setIsOpen(false);
-                    navigate(effectiveUser?.role === 'admin' ? '/admin' : '/dashboard');
-                  }}
-                >
-                  {effectiveUser?.role === 'admin' ? '👑 Admin Dashboard' : '📊 My Dashboard'}
-                </button>
-              )}
-
               {isLoggedIn && (
                 <>
                   <div className="ba-left-label">Session</div>
@@ -2312,6 +2297,21 @@ export default function BankingAgent({
                   </div>
                 )}
               </div>
+
+              {/* Dashboard navigation button — pinned below prompt */}
+              {isLoggedIn && (
+                <button
+                  type="button"
+                  className="ba-left-auth-btn primary"
+                  style={{ margin: '6px 12px 0', width: 'calc(100% - 24px)', display: 'block' }}
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate(effectiveUser?.role === 'admin' ? '/admin' : '/dashboard');
+                  }}
+                >
+                  {effectiveUser?.role === 'admin' ? '👑 Admin Dashboard' : '📊 My Dashboard'}
+                </button>
+              )}
 
               {/* Connected services chips — below prompt */}
               <div className="ba-chips-footer">
