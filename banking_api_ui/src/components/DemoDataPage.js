@@ -1072,31 +1072,27 @@ export default function DemoDataPage({ user, onLogout }) {
 
               {/* Dynamic mode explainer */}
               <details className="demo-data-dynamic-explainer">
-                <summary>How to enable dynamic toggle (advanced)</summary>
+                <summary>Why can't the Enable / Clear buttons control the token? (advanced)</summary>
                 <p>
-                  To make the Enable / Clear buttons actually control what appears in the token,
-                  switch the PingOne attribute mapping from the static expression to a dynamic one:
+                  The <code>may_act</code> claim is controlled by a <strong>hardcoded expression</strong> in
+                  the PingOne attribute mapping — it always evaluates to the same{' '}
+                  <code>{`{"client_id": "<app-client-id>"}`}</code> value regardless of the
+                  user&apos;s <code>mayAct</code> attribute. PingOne attribute mapping expressions
+                  for <code>may_act</code> must be a static JSON literal; there is no supported
+                  dynamic expression that reads a custom user attribute and injects it as a JSON object.
                 </p>
-                <ol>
-                  <li>
-                    Open <strong>PingOne console → Applications → bankingAdmin → Edit →
-                    Attribute Mappings</strong>
-                  </li>
-                  <li>
-                    Find the <code>may_act</code> row and change the expression from:
-                    <pre className="demo-data-code-block">{'{"client_id": "<app-client-id>"}'}</pre>
-                    to:
-                    <pre className="demo-data-code-block">{`\${user.mayAct}`}</pre>
-                  </li>
-                  <li>
-                    Save, then use the Enable / Clear buttons here and re-login to see the
-                    claim appear or disappear in the Token Chain view.
-                  </li>
-                </ol>
                 <p>
-                  <strong>Note:</strong> PingOne may reject <code>{`\${user.mayAct}`}</code> if the
-                  attribute type is JSON — in that case use a worker app script to set a string
-                  value and map it with <code>{`\${user.mayAct}`}</code> once the type is confirmed.
+                  The Enable / Clear buttons write to the user&apos;s <code>mayAct</code> custom
+                  attribute in PingOne, but because the token mapping is hardcoded they will not
+                  change what appears in the token. They are kept here for conceptual exploration
+                  only.
+                </p>
+                <p>
+                  To demote <code>may_act</code> to absent (for the failed path demo) use the{' '}
+                  <strong>Auto-inject may_act (BFF synthetic)</strong> toggle above to{' '}
+                  <strong>disable</strong> injection, then re-login with a client that has no
+                  static <code>may_act</code> mapping. Alternatively, remove the{' '}
+                  <code>may_act</code> attribute mapping from the PingOne app and re-login.
                 </p>
               </details>
             </section>
