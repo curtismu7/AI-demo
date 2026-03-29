@@ -36,11 +36,15 @@
     "test:e2e:agent": "playwright test tests/e2e/banking-agent.spec.js --reporter=list",
     "test:e2e:customer": "playwright test tests/e2e/customer-dashboard.spec.js --reporter=list",
     "test:e2e:landing": "playwright test tests/e2e/landing-marketing.spec.js --reporter=list",
-    "test:e2e:ui:smoke": "playwright test tests/e2e/customer-dashboard.spec.js tests/e2e/landing-marketing.spec.js --reporter=list"
+    "test:e2e:ui:smoke": "playwright test tests/e2e/customer-dashboard.spec.js tests/e2e/landing-marketing.spec.js --reporter=list",
+    "test:e2e:real": "playwright test --config=playwright.real.config.js --reporter=list",
+    "test:e2e:real:local": "E2E_BASE_URL=http://localhost:3000 playwright test --config=playwright.real.config.js --reporter=list",
+    "test:e2e:real:vercel": "E2E_BASE_URL=https://banking-demo-puce.vercel.app playwright test --config=playwright.real.config.js --reporter=list"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
     "@resvg/resvg-js": "^2.6.2",
+    "dotenv": "^16.6.1",
     "wait-on": "^9.0.4"
   },
   "eslintConfig": {
