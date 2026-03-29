@@ -122,9 +122,15 @@ export const spinner = {
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
 
     if (!_visible && !_showTimer) {
-      const message  = resolveMessage(method.toUpperCase(), url);
-      const color    = pick(SPINNER_COLORS);
-      const endpoint = method && url ? `${method.toUpperCase()} ${url}` : null;
+      const message = resolveMessage(method.toUpperCase(), url);
+      const color   = pick(SPINNER_COLORS);
+      // Expand relative /api/* paths to the full absolute URL so the spinner
+      // shows e.g. "GET https://banking-demo-puce.vercel.app/api/accounts/my"
+      // rather than the bare relative path.
+      const fullUrl = (typeof window !== 'undefined' && url && url.startsWith('/'))
+        ? `${window.location.origin}${url}`
+        : url;
+      const endpoint = method && url ? `${method.toUpperCase()} ${fullUrl}` : null;
       _showTimer = setTimeout(() => show(message, color, endpoint), DEBOUNCE_MS);
     }
   },
