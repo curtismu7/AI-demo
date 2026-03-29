@@ -34,6 +34,9 @@ import TransactionConsentModal from './TransactionConsentModal';
 import bffAxios from '../services/bffAxios';
 import './BankingAgent.css';
 
+/** NL message to replay after customer OAuth redirect from marketing agent (sessionStorage). */
+const BX_AGENT_PENDING_NL_KEY = 'bx_agent_pending_nl';
+
 // ─── Action definitions ────────────────────────────────────────────────────────
 
 const ACTIONS = [
@@ -625,6 +628,8 @@ export default function BankingAgent({
   const [nlInput, setNlInput] = useState('');
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
+  /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
+  const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -736,6 +741,11 @@ export default function BankingAgent({
   // Auto-open when redirected back from OAuth login (?oauth=success in URL)
   useEffect(() => {
     if (searchParams.get('oauth') === 'success') {
+      let pendingNl = null;
+      try {
+        pendingNl = sessionStorage.getItem(BX_AGENT_PENDING_NL_KEY);
+      } catch (_) {}
+
       setIsOpen(true);
       // Strip oauth params from URL so they don't re-trigger on navigation
       const url = new URL(window.location.href);
@@ -760,6 +770,12 @@ export default function BankingAgent({
           if (found) {
             setCookieOnlyBffSession(cookieOnly);
             setSessionUser(found);
+            if (pendingNl && String(pendingNl).trim()) {
+              try {
+                sessionStorage.removeItem(BX_AGENT_PENDING_NL_KEY);
+              } catch (_) {}
+              setNlResumeAfterAuth(String(pendingNl).trim());
+            }
             setMessages(prev => {
               if (prev.length > 0) return prev;
               const welcome = { id: `${Date.now()}-w`, role: 'assistant', content: welcomeMessage(found, embeddedFocus, brandShortName) };
@@ -805,6 +821,11 @@ export default function BankingAgent({
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
   const isLoggedIn = !!effectiveUser;
+  /** Marketing `/` + `/marketing` guests may chat (education / hints); banking triggers PingOne + return here. */
+  const marketingGuestChatEnabled = useMemo(() => {
+    const p = (location.pathname || '').replace(/\/$/, '') || '/';
+    return !isLoggedIn && isPublicMarketingAgentPath(p);
+  }, [isLoggedIn, location.pathname]);
   const isConfigured = oauthConfig && (oauthConfig.admin || oauthConfig.user);
 
   // Fetch real account IDs from the server whenever the user is known.
@@ -1010,9 +1031,10 @@ export default function BankingAgent({
   }, [messages, isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !isLoggedIn) return;
+    if (!isOpen) return;
+    if (!isLoggedIn && !marketingGuestChatEnabled) return;
     fetchNlStatus().then(setNlMeta).catch(() => setNlMeta({ geminiConfigured: false }));
-  }, [isOpen, isLoggedIn]);
+  }, [isOpen, isLoggedIn, marketingGuestChatEnabled]);
 
   // Keep MCP status lightweight here to avoid auth/noise calls while browsing dashboards.
   useEffect(() => {
@@ -1667,7 +1689,7 @@ export default function BankingAgent({
    * Shared NL dispatch: education panels, banking tools, or fallback hint.
    * Used by the input bar and by left-column suggestion chips (same behavior).
    */
-  async function dispatchNlResult(result, source = 'heuristic') {
+  async function dispatchNlResult(result, source = 'heuristic', nlUserText = '') {
     setShowCommands(false);
     if (result.kind === 'education' && result.ciba) {
       openEducationCommand({ ciba: true, tab: result.tab });
@@ -1715,6 +1737,19 @@ export default function BankingAgent({
       if (action === 'logout') {
         addMessage('assistant', 'Signing you out…');
         setTimeout(() => onLogout?.(), 800);
+        return;
+      }
+      if (marketingGuestChatEnabled) {
+        try {
+          if (nlUserText && nlUserText.trim()) {
+            sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, nlUserText.trim());
+          }
+        } catch (_) {}
+        addMessage(
+          'assistant',
+          '**Taking you to PingOne** — after you sign in you’ll return here and we’ll continue with that banking request.',
+        );
+        handleLoginAction('login_user');
         return;
       }
       const p = normalizeBankingParams(params);
@@ -1792,7 +1827,8 @@ export default function BankingAgent({
 
   async function handleNaturalLanguage() {
     const text = nlInput.trim();
-    if (!text || !isLoggedIn) return;
+    if (!text) return;
+    if (!isLoggedIn && !marketingGuestChatEnabled) return;
     if (isAgentBlockedByConsentDecline()) {
       addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
       return;
@@ -1860,13 +1896,39 @@ export default function BankingAgent({
         return;
       }
       const { source, result } = await parseNaturalLanguage(text);
-      await dispatchNlResult(result, source);
+      await dispatchNlResult(result, source, text);
     } catch (err) {
       reportNlFailure(err);
     } finally {
       setNlLoading(false);
     }
   }
+
+  // After marketing OAuth return: replay NL that triggered the login redirect.
+  useEffect(() => {
+    if (!nlResumeAfterAuth || !isLoggedIn) return;
+    const text = nlResumeAfterAuth;
+    setNlResumeAfterAuth(null);
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+      addMessage('user', text);
+      setNlLoading(true);
+      try {
+        const { source, result } = await parseNaturalLanguage(text);
+        if (!cancelled) await dispatchNlResult(result, source, '');
+      } catch (e) {
+        if (!cancelled) reportNlFailure(e);
+      } finally {
+        if (!cancelled) setNlLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot replay when nlResumeAfterAuth is set after OAuth
+  }, [nlResumeAfterAuth, isLoggedIn]);
 
   // Float mode should return nothing when the dedicated /agent page is active
   if (!isInline && isAgentPage) return null;
@@ -1943,10 +2005,14 @@ export default function BankingAgent({
                       : splitChrome
                         ? isLoggedIn
                           ? `${effectiveUser.role === 'admin' ? 'Admin' : 'Customer'} · ${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'}`
-                          : 'Sign in to get started'
+                          : marketingGuestChatEnabled
+                            ? 'Chat here — PingOne when you use banking'
+                            : 'Sign in to get started'
                         : isLoggedIn
                           ? `${effectiveUser.firstName || effectiveUser.name?.split(' ')[0] || 'Signed in'} · ${effectiveUser.role === 'admin' ? '👑 Admin' : '👤 Customer'}`
-                          : 'Sign in to get started'}
+                          : marketingGuestChatEnabled
+                            ? 'Chat here — PingOne when you use banking'
+                            : 'Sign in to get started'}
                   </div>
                 </div>
               </div>
@@ -2131,12 +2197,12 @@ export default function BankingAgent({
                       return;
                     }
                     setNlInput(s);
-                    if (isLoggedIn) {
+                    if (isLoggedIn || marketingGuestChatEnabled) {
                       setNlInput('');
                       addMessage('user', s);
                       setNlLoading(true);
                       parseNaturalLanguage(s)
-                        .then(({ source, result }) => dispatchNlResult(result, source))
+                        .then(({ source, result }) => dispatchNlResult(result, source, s))
                         .catch(err => reportNlFailure(err))
                         .finally(() => setNlLoading(false));
                     }
@@ -2183,7 +2249,9 @@ export default function BankingAgent({
               ) : (
                 <div className="ba-left-auth">
                   <div className="ba-left-auth-notice">
-                    🔐 Sign in required to access AI banking features
+                    {marketingGuestChatEnabled
+                      ? '🔐 Banking uses PingOne — we’ll redirect you when you ask for accounts, transfers, etc.'
+                      : '🔐 Sign in required to access AI banking features'}
                   </div>
                   <button
                     type="button"
@@ -2225,9 +2293,13 @@ export default function BankingAgent({
                         ? 'Type a message or pick an action on the left.'
                         : oauthConfig === null
                           ? 'Checking configuration…'
-                          : isConfigured
-                            ? 'PingOne is configured — sign in to get started.'
-                            : 'Set up your PingOne credentials to get started.'}
+                          : marketingGuestChatEnabled
+                            ? isConfigured
+                              ? 'Ask about OAuth or try a suggestion — we’ll open PingOne only when you need banking.'
+                              : 'Set up PingOne in Application setup — you can still ask general questions once configured.'
+                            : isConfigured
+                              ? 'PingOne is configured — sign in to get started.'
+                              : 'Set up your PingOne credentials to get started.'}
                     </p>
                   </div>
                 )}
@@ -2323,7 +2395,7 @@ export default function BankingAgent({
 
               {/* Bottom input bar */}
               <div className="ba-bottom">
-                {isLoggedIn ? (
+                {isLoggedIn || marketingGuestChatEnabled ? (
                   <div className="ba-input-row">
                     <button
                       type="button"
@@ -2331,7 +2403,7 @@ export default function BankingAgent({
                       onClick={() => setShowCommands(s => !s)}
                       title="Learn &amp; Explore topics"
                       aria-expanded={showCommands}
-                      disabled={consentBlocked}
+                      disabled={consentBlocked || !isLoggedIn}
                     >
                       ⚡
                     </button>
@@ -2347,11 +2419,13 @@ export default function BankingAgent({
                         }
                       }}
                       placeholder={
-                        splitChrome && !nlMeta?.groqConfigured
-                          ? 'Ask about your accounts…'
-                          : nlMeta?.groqConfigured
-                            ? `Message ${brandShortName} AI… (Groq AI)`
-                            : `Message ${brandShortName} AI…`
+                        marketingGuestChatEnabled && !isLoggedIn
+                          ? `Ask about OAuth or type a banking request…`
+                          : splitChrome && !nlMeta?.groqConfigured
+                            ? 'Ask about your accounts…'
+                            : nlMeta?.groqConfigured
+                              ? `Message ${brandShortName} AI… (Groq AI)`
+                              : `Message ${brandShortName} AI…`
                       }
                       disabled={nlLoading || consentBlocked}
                     />

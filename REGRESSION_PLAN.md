@@ -66,6 +66,15 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — Marketing agent: chat before PingOne; banking intent auto-redirects + NL replay (commit `TBD`)
+
+- **Symptom:** Guest agent UI blocked chat until manual sign-in (“Sign in to get started”, no input); user wanted PingOne only when a banking action is needed, then return to the same agent on the marketing page.
+- **Root cause:** `POST /api/banking-agent/nl` required `req.session.user`; agent hid the NL input when `!isLoggedIn`.
+- **Fix:** BFF `bankingAgentNl.js` allows anonymous NL with `context: { anonymous: true }` (parsing only — tools still session-backed). `BankingAgent`: on `/` and `/marketing` when signed out, show NL input; `dispatchNlResult` for `kind: banking` stores pending text in `sessionStorage`, messages user, calls `handleLoginAction('login_user')` (`return_to` unchanged). After `?oauth=success`, replay pending NL once session exists. Subtitle / empty state / left-rail copy updated; ⚡ Learn chips disabled until signed in.
+- **Files:** `banking_api_server/routes/bankingAgentNl.js`, `banking_api_server/src/__tests__/bankingAgentNl.test.js`, `banking_api_ui/src/components/BankingAgent.js`, `REGRESSION_PLAN.md`
+- **Regression check:** `npm test` `bankingAgentNl.test.js`; `npm run build` in `banking_api_ui/`. Signed-in agent unchanged. Dashboard guests (non-marketing paths) still require sign-in for NL input.
+- **Do not break:** OAuth `handleLoginAction` return_to for `isPublicMarketingAgentPath`; `oauth=success` retry loop; banking `runAction` / MCP still require session.
+
 ### 2026-03-29 — Marketing sign-in: `return_to=/marketing` only from BankingAgent, not LandingPage buttons (commit `e372ff2`)
 
 - **Symptom:** Inline marketing card offered “Customer — stay on this page” with `return_to=/marketing`, blurring the rule that staying on marketing is for agent-driven banking only.

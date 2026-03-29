@@ -1,7 +1,9 @@
 // banking_api_server/routes/bankingAgentNl.js
 /**
  * POST /api/banking-agent/nl — natural language → education or banking intent.
- * Session required. LLM priority: Groq (GROQ_API_KEY) → Gemini (GEMINI_API_KEY) → heuristic regex.
+ * Authenticated users get role context. Anonymous calls are allowed (marketing agent UX):
+ * the SPA routes education + NL hints without PingOne; banking execution still requires sign-in client-side.
+ * LLM priority: Groq (GROQ_API_KEY) → Gemini (GEMINI_API_KEY) → heuristic regex.
  */
 'use strict';
 
@@ -11,19 +13,16 @@ const { parseNaturalLanguage } = require('../services/geminiNlIntent');
 const router = express.Router();
 
 router.post('/nl', async (req, res) => {
-  if (!req.session?.user) {
-    return res.status(401).json({ error: 'authentication_required', message: 'Sign in to use the agent.' });
-  }
   const message = typeof req.body?.message === 'string' ? req.body.message : '';
   if (!message.trim()) {
     return res.status(400).json({ error: 'invalid_body', message: 'message is required' });
   }
 
   try {
-    const context = {
-      role:      req.session.user.role,
-      firstName: req.session.user.firstName,
-    };
+    const u = req.session?.user;
+    const context = u
+      ? { role: u.role, firstName: u.firstName }
+      : { anonymous: true };
     const { source, result } = await parseNaturalLanguage(message.trim(), context);
     return res.json({ source, result });
   } catch (e) {
