@@ -311,7 +311,13 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser, liveAc
   // the live list hasn't arrived yet (avoids the chk-{uid} vs server-ID mismatch that caused
   // '❌ Account chk-5 not found')
   const accounts = liveAccounts && liveAccounts.length > 0 ? liveAccounts : fakeAccounts;
-  const toAccounts = accounts.filter(a => a.id !== accounts[0]?.id);
+
+  // Transfer: toAccounts is state-driven so it excludes whichever fromId is selected.
+  // We keep it as a separate state to re-derive when fromId changes.
+  const [selectedFromId, setSelectedFromId] = React.useState(() => accounts[0]?.id);
+  const toAccounts = accounts.filter(a => a.id !== (selectedFromId || accounts[0]?.id));
+  // Ensure toId stays valid when fromId changes
+  const defaultToId = toAccounts[0]?.id;
 
   const fields = {
     balance:  [{ key: 'accountId', label: 'Account', type: 'select', options: accounts }],
@@ -326,7 +332,7 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser, liveAc
       { key: 'note',      label: 'Note',        placeholder: 'optional' },
     ],
     transfer: [
-      { key: 'fromId',    label: 'From Account', type: 'select', options: accounts },
+      { key: 'fromId',    label: 'From Account', type: 'select', options: accounts,   onChange: (v) => { setSelectedFromId(v); set('toId', toAccounts.find(a => a.id !== v)?.id || defaultToId); } },
       { key: 'toId',      label: 'To Account',   type: 'select', options: toAccounts },
       { key: 'amount',    label: 'Amount ($)',        placeholder: '0.00', type: 'number' },
       { key: 'note',      label: 'Note',              placeholder: 'optional' },
@@ -379,12 +385,12 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser, liveAc
             <select
               id={`field-${f.key}`}
               value={form[f.key] || (f.options[0]?.id || '')}
-              onChange={e => set(f.key, e.target.value)}
+              onChange={e => { set(f.key, e.target.value); f.onChange?.(e.target.value); }}
               className="banking-agent-select"
             >
               {f.options.map(option => (
                 <option key={option.id} value={option.id}>
-                  {option.name} ({option.accountNumber}) - ${option.balance.toFixed(2)}
+                  {option.name} ({option.accountNumber}) - {formatCurrency(option.balance)}
                 </option>
               ))}
             </select>

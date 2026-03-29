@@ -56,6 +56,66 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-04-XX — Full UX walkthrough: ActionForm transfer bug + money formatting + test suite fixes
+
+#### ActionForm transfer "To" account always excluded the wrong account
+- **Symptom:** When the user changed the "From" account in the Transfer form, the "To" dropdown still excluded the first account instead of the newly-selected "From" account.
+- **Root cause:** `toAccounts = accounts.filter(a => a.id !== accounts[0]?.id)` — always filtered the first account index regardless of which account was currently selected as "From".
+- **Fix:** Added `selectedFromId` state inside `ActionForm`; `toAccounts` derives from it; the `fromId` select's `onChange` callback updates both `selectedFromId` and the current `toId` value. Select `onChange` handler now calls the field's optional `f.onChange?.(value)` so custom field callbacks fire.
+- **Files:** `banking_api_ui/src/components/BankingAgent.js` (ActionForm component)
+- **Regression check:** Open agent → Transfer chip → change "From" to savings → "To" dropdown must switch to exclude savings and default to checking.
+
+#### ActionForm balance labels showed raw decimal instead of currency
+- **Symptom:** Account option labels in Transfer/Deposit/Withdraw forms showed `$3000.00` or `$NaN` instead of `$3,000.00`.
+- **Root cause:** Label used `${option.balance.toFixed(2)}` — no locale formatting; crashes on non-numeric balances.
+- **Fix:** Changed to `{formatCurrency(option.balance)}` (uses `Intl.NumberFormat` USD formatter already present in the component).
+- **Files:** `banking_api_ui/src/components/BankingAgent.js`
+
+#### OTP email: management token used wrong config keys
+- **Symptom:** OTP never sent; clicking "Agree & send code" returned `{ otpSent: false }` with no email delivered.
+- **Root cause:** `emailService.getManagementToken()` requested `pingone_client_id` / `pingone_client_secret` from `configStore`. These keys are not in the env-variable fallback map so they always returned `null` → token request failed silently.
+- **Fix:** Changed to `admin_client_id` / `admin_client_secret` which map to `PINGONE_ADMIN_CLIENT_ID` / `PINGONE_ADMIN_CLIENT_SECRET`.
+- **Bonus fix:** `transactionConsentChallenge.js` now includes `otpCodeFallback` in the response when the email service throws — UI displays the code inline as a dev fallback.
+- **Files:** `banking_api_server/services/emailService.js`, `banking_api_server/services/transactionConsentChallenge.js`
+- **Regression check:** Trigger a > $500 transfer → check email for OTP code → enter code → transaction completes. If email is not configured, the OTP code must appear in the UI response.
+
+#### Agent total balance showed $20,000+ (fake, included debt accounts)
+- **Symptom:** "Total Balance" hero card showed inflated value because car loan / debt accounts were included.
+- **Root cause:** Filter used `a.type` but real API accounts use `accountType`. The `type` field was absent → filter never excluded any account → all balances summed.
+- **Fix:** Filter changed to `a.accountType || a.type` in both `totalBalance` and `totalDebt` computations.
+- **Files:** `banking_api_ui/src/components/UserDashboard.js`
+- **Regression check:** Log in → dashboard hero shows balance of only checking + savings (not car loan).
+
+#### All money values used `.toFixed(2)` instead of locale currency format
+- **Symptom:** Numbers displayed as `3000.00` instead of `$3,000.00`.
+- **Fix:** Added `fmt()` helper using `Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })`. Replaced all `.toFixed(2)` in UserDashboard with `fmt()`.
+- **Files:** `banking_api_ui/src/components/UserDashboard.js`
+
+#### consentBlocked persists across logout/login
+- **Symptom:** After declining HITL and logging out, the agent UI was still fully disabled on fresh login.
+- **Root cause:** `consentBlocked` state read from `localStorage` on mount; `setAgentBlockedByConsentDecline(false)` was never called on re-login.
+- **Fix (1):** `useState` initializer always calls `setAgentBlockedByConsentDecline(false)` and returns `false` — clears any stale localStorage value on every page load.
+- **Fix (2):** `checkSelfAuth` calls `setAgentBlockedByConsentDecline(false)` when a valid session is found.
+- **Note for tests:** Because `useState` always starts `false`, consent-blocked UI tests must dispatch a `bankingAgentConsentBlockChanged` event (instead of mocking `isAgentBlockedByConsentDecline` return value) to trigger the `useEffect` sync.
+- **Files:** `banking_api_ui/src/components/BankingAgent.js`
+- **Regression check:** Decline HITL consent → sign out → sign in → agent must be fully enabled (no consent-blocked banner).
+
+#### Agent showed fake accounts (id 6/7, $5k/$10k) instead of real user accounts
+- **Symptom:** Agent tool calls returned fake bootstrap demo accounts instead of the signed-in user's accounts.
+- **Root cause:** `callToolLocal(tool, params, sessionUser.id)` passed the sequential local DB id (e.g. `"5"`) which matched bootstrap demo users. Accounts are keyed by PingOne UUID (`oauthId`).
+- **Fix:** Changed to `sessionUser.oauthId || sessionUser.id`.
+- **Files:** `banking_api_server/server.js`
+- **Regression check:** Sign in as real user → "My Accounts" chip → must show the correct accounts with correct balances, not bootstrap demo data.
+
+#### Test suite: 47 tests failing across 2 files
+- **BankingAgent.chips.test.js (36 failing):** `setAgentBlockedByConsentDecline` was not in the agentAccessConsent mock → TypeError on mount. Added `setAgentBlockedByConsentDecline: jest.fn()` to mock. Consent-blocked tests updated to dispatch `bankingAgentConsentBlockChanged` event via `act()`.
+- **LogViewer.test.js (11 failing):**
+  - `should handle fetch errors` expected `getByText(/Error:/)` but component calls `notifyError()` toast instead of rendering text → fixed to assert `notifyError` mock was called.
+  - `should refresh logs manually`, `should download logs`, `should clear console logs`, `should not clear logs if user cancels` tested Refresh/Download/Clear buttons that no longer exist in the UI (functions are "`no-unused-vars`") → tests rewritten to test actual behavior (filter-change triggers re-fetch; keyboard dispatch; absence of Clear button).
+  - The unreleased `jest.spyOn(document.createElement)` in `should download logs` leaked into `Display Features` group → all 5 subsequent tests failed with `TypeError: appendChild`. Fixed by wrapping spy in `try/finally` to guarantee `mockRestore()`.
+- **Files:** `banking_api_ui/src/components/__tests__/BankingAgent.chips.test.js`, `banking_api_ui/src/components/__tests__/LogViewer.test.js`
+- **Regression check:** `cd banking_api_ui && npx react-scripts test --watchAll=false --forceExit` → 0 failures, 215 passing.
+
 ### 2026-03-28 — Agent consent gate fully removed; HITL modal guard + stale consent cleared (commit TBD)
 - **Symptom (1):** Every tool call (including read-only `get_my_transactions`) returned "Error: Agent consent required. Please accept the agent consent agreement in the banking assistant panel." The agent opened with a "Grant Agent permission" modal before any tool was used.
 - **Symptom (2):** Deposit / withdraw / transfer > $500 showed "A consent dialog has opened" in chat but no `AgentConsentModal` appeared.

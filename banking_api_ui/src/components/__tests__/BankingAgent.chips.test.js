@@ -64,6 +64,7 @@ jest.mock('../../services/configService', () => ({
 
 jest.mock('../../services/agentAccessConsent', () => ({
   isAgentBlockedByConsentDecline: jest.fn(() => false),
+  setAgentBlockedByConsentDecline: jest.fn(),
   AGENT_CONSENT_BLOCK_USER_MESSAGE: 'Blocked by consent decline.',
   getConsentState: jest.fn(() => null),
   setConsentDeclined: jest.fn(),
@@ -300,6 +301,9 @@ describe('Action chips — disabled when consent blocked', () => {
 
   it('disables action buttons when consent is blocked (except Log Out)', () => {
     renderAgent({ user: customerUser, mode: 'inline' });
+    act(() => {
+      window.dispatchEvent(new Event('bankingAgentConsentBlockChanged'));
+    });
     const depositBtn = screen.getByText('⬇ Deposit').closest('button');
     expect(depositBtn).toBeDisabled();
   });
@@ -312,6 +316,9 @@ describe('Action chips — disabled when consent blocked', () => {
 
   it('suggestion chips are disabled when consent blocked', () => {
     renderAgent({ user: customerUser, mode: 'inline' });
+    act(() => {
+      window.dispatchEvent(new Event('bankingAgentConsentBlockChanged'));
+    });
     const chip = screen.getByText('"Show me my accounts"').closest('button');
     expect(chip).toBeDisabled();
   });
