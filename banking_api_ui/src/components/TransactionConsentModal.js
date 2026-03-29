@@ -52,7 +52,8 @@ export default function TransactionConsentModal({
   // OTP step
   const [otpStep, setOtpStep] = useState(false);   // true = show OTP input panel
   const [otpCode, setOtpCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);   // false = email failed (dev fallback)
+  const [otpSent, setOtpSent] = useState(false);   // false = email failed
+  const [otpFallbackCode, setOtpFallbackCode] = useState(null); // plaintext code when email unavailable
   const [otpError, setOtpError] = useState('');
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpExpiresAt, setOtpExpiresAt] = useState(null);
@@ -160,10 +161,10 @@ export default function TransactionConsentModal({
         );
         setOtpSent(data.otpSent !== false);
         setOtpExpiresAt(data.otpExpiresAt);
-        setOtpStep(true);
-        if (data.otpSent === false) {
-          notifyWarning('Email delivery unavailable — enter any 6-digit code to proceed in dev mode.');
+        if (data.otpSent === false && data.otpCodeFallback) {
+          setOtpFallbackCode(data.otpCodeFallback);
         }
+        setOtpStep(true);
       } catch (e) {
         const d = e.response?.data;
         notifyError(d?.message || d?.error_description || d?.error || e.message || 'Could not send verification code.');
@@ -237,10 +238,10 @@ export default function TransactionConsentModal({
       );
       setOtpSent(data.otpSent !== false);
       setOtpExpiresAt(data.otpExpiresAt);
-      setOtpStep(true);
-      if (data.otpSent === false) {
-        notifyWarning('Email delivery unavailable — enter any 6-digit code to proceed in dev mode.');
+      if (data.otpSent === false && data.otpCodeFallback) {
+        setOtpFallbackCode(data.otpCodeFallback);
       }
+      setOtpStep(true);
     } catch (e) {
       const d = e.response?.data;
       notifyError(d?.message || d?.error_description || d?.error || e.message || 'Could not send verification code.');
@@ -341,9 +342,17 @@ export default function TransactionConsentModal({
               <p className="tx-otp-panel__lead">
                 A 6-digit verification code was sent to your email address via PingOne. Enter it below to authorise this transaction.
               </p>
+            ) : otpFallbackCode ? (
+              <div className="tx-otp-panel__lead tx-otp-panel__lead--warn">
+                <p style={{ margin: '0 0 0.5rem' }}>⚠️ Email delivery unavailable (PingOne Notifications not configured).</p>
+                <p style={{ margin: '0 0 0.5rem' }}>Your verification code is:</p>
+                <div style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '0.25em', fontVariantNumeric: 'tabular-nums', color: '#0369a1', background: '#f0f9ff', border: '2px solid #0ea5e9', borderRadius: 8, padding: '0.5rem 1rem', display: 'inline-block', marginBottom: '0.5rem' }}>
+                  {otpFallbackCode}
+                </div>
+              </div>
             ) : (
               <p className="tx-otp-panel__lead tx-otp-panel__lead--warn">
-                ⚠️ Email delivery unavailable. For local dev: enter any 6-digit code.
+                ⚠️ Email delivery unavailable. Check server logs for the OTP code.
               </p>
             )}
 

@@ -280,6 +280,7 @@ async function confirmChallenge(req, challengeId, opts = {}) {
 
   // Send via PingOne email (fire and collect result — failure is surfaced to caller)
   let otpSent = false;
+  let otpCodeFallback = null; // only set when email fails — returned to UI for demo display
   try {
     const { sendOtpEmail } = require('./emailService');
     const performer = dataStore.getUserById(req.user.id);
@@ -295,14 +296,14 @@ async function confirmChallenge(req, challengeId, opts = {}) {
     });
     otpSent = true;
   } catch (emailErr) {
-    // If PingOne email is not configured we still allow the OTP flow with a
-    // fallback console log (useful in local dev without email credentials).
+    // Email delivery unavailable (PingOne not configured or API error).
+    // Return the plaintext code so the UI can display it inline for demo purposes.
     const detail = emailErr.response?.data ? JSON.stringify(emailErr.response.data) : emailErr.message;
     console.warn(`[ConsentChallenge] OTP email failed (challenge=${challengeId.slice(0, 8)}…): ${detail}`);
-    // otpSent stays false — UI will show a warning and still accept the code for dev
+    otpCodeFallback = otpPlain;
   }
 
-  return { ok: true, challengeId, otpSent, otpExpiresAt: ch.otpExpiresAt };
+  return { ok: true, challengeId, otpSent, otpExpiresAt: ch.otpExpiresAt, otpCodeFallback };
 }
 
 /**

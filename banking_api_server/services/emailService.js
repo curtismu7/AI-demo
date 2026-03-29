@@ -23,8 +23,10 @@ const configStore = require('./configStore');
 async function getManagementToken() {
   const envId        = configStore.getEffective('pingone_environment_id');
   const region       = configStore.getEffective('pingone_region') || 'com';
-  const clientId     = configStore.getEffective('pingone_client_id');
-  const clientSecret = configStore.getEffective('pingone_client_secret');
+  // Use admin_client_id / admin_client_secret — the keys that map to PINGONE_*_CLIENT_ID env vars.
+  // 'pingone_client_id' is not in the configStore env-fallback map and always returns null.
+  const clientId     = configStore.getEffective('admin_client_id');
+  const clientSecret = configStore.getEffective('admin_client_secret');
 
   if (!envId || !clientId || !clientSecret) return null;
 
