@@ -20,6 +20,12 @@ import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import './UserDashboard.css';
 
+/** Format a number as USD currency — $1,234.56 */
+const fmt = (n) =>
+  typeof n === 'number'
+    ? n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '$0.00';
+
 /** Account types whose balances represent money owed (liabilities), not assets. */
 const DEBT_TYPES = new Set(['car_loan', 'mortgage', 'credit']);
 
@@ -761,12 +767,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           </div>
           <p className="ud-hero__balance-label">Total balance</p>
           <p className="ud-hero__balance" aria-live="polite">
-            ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {fmt(totalBalance)}
           </p>
           {totalDebt > 0 && (
             <p className="ud-hero__debt" aria-live="polite">
               <span className="ud-hero__debt-label">Debt</span>
-              ${totalDebt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {fmt(totalDebt)}
             </p>
           )}
           <div className="ud-hero__spark" aria-hidden="true" title="Illustrative activity trend">
@@ -860,7 +866,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   {account._demo && <span style={{ marginLeft: 6, fontSize: '0.7rem', background: '#e5e7eb', color: '#6b7280', borderRadius: 4, padding: '1px 5px' }}>demo</span>}
                 </div>
                 <p className="account-number">Account: {account.accountNumber}</p>
-                <p className="balance">Balance: ${account.balance.toFixed(2)}</p>
+                <p className="balance">Balance: {fmt(account.balance)}</p>
                 <div className="account-actions">
                   <button
                     className="select-account-btn"
@@ -891,7 +897,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <div className="section">
             <h2>Transfer Money</h2>
             <div className="transfer-form">
-              <p>From: {selectedAccount.accountType} - {selectedAccount.accountNumber} (${selectedAccount.balance.toFixed(2)})</p>
+              <p>From: {selectedAccount.accountType} - {selectedAccount.accountNumber} ({fmt(selectedAccount.balance)})</p>
               <form onSubmit={handleTransfer}>
                 <div className="form-group">
                   <label>To Account:</label>
@@ -905,7 +911,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       .filter(account => account.id !== selectedAccount.id)
                       .map(account => (
                         <option key={account.id} value={account.id}>
-                          {account.accountType} - {account.accountNumber} (${account.balance.toFixed(2)})
+                          {account.accountType} - {account.accountNumber} ({fmt(account.balance)})
                         </option>
                       ))
                     }
@@ -954,7 +960,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <div className="section">
             <h2>Deposit Money</h2>
             <div className="deposit-form">
-              <p>To: {depositAccount.accountType} - {depositAccount.accountNumber} (${depositAccount.balance.toFixed(2)})</p>
+              <p>To: {depositAccount.accountType} - {depositAccount.accountNumber} ({fmt(depositAccount.balance)})</p>
               <form onSubmit={handleDeposit}>
                 <div className="form-group">
                   <label>Amount:</label>
@@ -999,7 +1005,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <div className="section">
             <h2>Withdraw Money</h2>
             <div className="withdraw-form">
-              <p>From: {withdrawAccount.accountType} - {withdrawAccount.accountNumber} (${withdrawAccount.balance.toFixed(2)})</p>
+              <p>From: {withdrawAccount.accountType} - {withdrawAccount.accountNumber} ({fmt(withdrawAccount.balance)})</p>
               <form onSubmit={handleWithdraw}>
                 <div className="form-group">
                   <label>Amount:</label>
@@ -1080,7 +1086,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       <div className="transaction-cell">
                         <span className={`transaction-amount ${isTransactionNegative(transaction) ? 'negative' : 'positive'}`}>
                           {isTransactionNegative(transaction) ? '-' : '+'}
-                          ${transaction.amount.toFixed(2)}
+                          {fmt(transaction.amount)}
                         </span>
                       </div>
                       <div className="transaction-cell">
