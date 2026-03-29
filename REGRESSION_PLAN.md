@@ -66,7 +66,7 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-03-29 — Marketing sign-in: `return_to=/marketing` only from BankingAgent, not LandingPage buttons (commit `TBD`)
+### 2026-03-29 — Marketing sign-in: `return_to=/marketing` only from BankingAgent, not LandingPage buttons (commit `e372ff2`)
 
 - **Symptom:** Inline marketing card offered “Customer — stay on this page” with `return_to=/marketing`, blurring the rule that staying on marketing is for agent-driven banking only.
 - **Root cause:** `LandingPage.handleOAuthLogin` accepted `returnToMarketing`; showcase and `#marketing-login` used it for buttons.
