@@ -1700,9 +1700,9 @@
   flex-shrink: 0;
 }
 
-/* Chat column left, suggestions / actions right (DOM is left-col | right-col; reverse for UX) */
+/* Bottom dock: chat fills top, tiles strip pinned at bottom */
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-body {
-  flex-direction: row-reverse;
+  flex-direction: column-reverse;  /* ba-left-col (DOM-first) lands at bottom; ba-right-col fills top */
   flex: 1 1 0%;
   min-height: 0;
   overflow: hidden;
@@ -1715,6 +1715,12 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* In bottom dock, the chips-footer and dashboard nav button steal vertical space from messages+input — hide them */
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-chips-footer,
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-right-col > .ba-left-auth-btn {
+  display: none;
 }
 
 /* Scrollable transcript + tool chips; input bar stays pinned at bottom */
@@ -1751,45 +1757,68 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Horizontal tile strip at the bottom — scrolls left/right if tiles overflow */
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col {
-  width: min(240px, 34vw);
+  width: 100%;
   flex-shrink: 0;
-  border-right: 1px solid var(--ba-border);
-  border-left: none;
-  border-top: none;
-  max-height: none;
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex-direction: column;
+  height: auto;
+  min-height: 44px;
+  flex-direction: row;
   flex-wrap: nowrap;
-  align-content: flex-start;
-  align-items: stretch;
-  gap: 4px;
-  padding: 10px 10px 10px 12px;
+  align-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-top: 1px solid var(--ba-border);
+  border-right: none;
+  border-left: none;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ba-border) transparent;
+}
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col::-webkit-scrollbar {
+  height: 4px;
+}
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col::-webkit-scrollbar-thumb {
+  background: var(--ba-border);
+  border-radius: 2px;
 }
 
-.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col > .ba-left-auth-btn.primary:first-of-type {
-  width: 100%;
-}
-
+/* Section labels (SESSION / TRY ASKING / ACTIONS) become thin vertical separators in the strip */
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-label {
-  width: 100%;
-  margin-bottom: 2px;
+  display: none;
 }
 
+/* Dividers become narrow vertical bars between tile groups */
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-divider {
+  width: 1px;
+  min-width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  flex-shrink: 0;
+  background: var(--ba-border);
+}
+
+/* All buttons/chips in the strip: compact, non-wrapping, auto width */
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-suggestion,
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-action-item {
-  width: 100%;
-  max-width: 100%;
   flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  white-space: nowrap;
   text-align: left;
-  white-space: normal;
 }
 
-.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-divider {
-  width: 100%;
-  margin: 4px 0;
+/* Auth buttons (Refresh access token / Sign in again) compact in the strip */
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-left-col .ba-left-auth-btn {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: unset;
+  white-space: nowrap;
+  padding: 5px 10px;
+  font-size: 11px;
 }
 
 /* ─── Resize handles ───────────────────────────────────────────────────────── */
