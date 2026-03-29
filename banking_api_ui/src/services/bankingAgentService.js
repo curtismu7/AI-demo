@@ -11,6 +11,7 @@
  *   - MCP Token (delegated) decoded claims + act status (+ jwtFullDecode JSON)
  */
 import { appendTokenEvents } from './apiTrafficStore';
+import { appendMcpCall } from './mcpCallStore';
 
 // ─── Session refresh (RFC 6749 §6) — same endpoints as Backend-for-Frontend (BFF) auto-refresh ───────
 
@@ -54,6 +55,7 @@ export async function callMcpTool(tool, params = {}) {
     credentials: 'include',
   };
 
+  const t0 = Date.now();
   let response = await fetch('/api/mcp/tool', fetchOpts);
   if (response.status === 401) {
     const err401 = await response.clone().json().catch(() => ({}));
@@ -69,6 +71,8 @@ export async function callMcpTool(tool, params = {}) {
   if (!response.ok) {
     const err = await response.json().catch(() => ({ message: response.statusText }));
     const tokenEvents = err.tokenEvents || [];
+    // Record in the dedicated MCP call history store (synchronous, no patchFetch race)
+    appendMcpCall(tool, response.status, Date.now() - t0, null, err.message || `HTTP ${response.status}`);
     // Surface any partial token events (e.g. exchange-failed) in the API Traffic viewer
     appendTokenEvents(tool, tokenEvents);
     const e = Object.assign(new Error(err.message || `MCP error: ${response.status}`), {
@@ -80,6 +84,8 @@ export async function callMcpTool(tool, params = {}) {
   }
 
   const data = await response.json();
+  // Record in the dedicated MCP call history store (synchronous, reliable)
+  appendMcpCall(tool, response.status, Date.now() - t0, data.result);
   // Push token-event entries (user token, RFC 8693 exchange, MCP token) to API Traffic viewer
   appendTokenEvents(tool, data.tokenEvents || []);
   return {

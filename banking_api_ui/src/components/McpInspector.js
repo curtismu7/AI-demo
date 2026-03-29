@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
 import { notifyError, notifyWarning } from '../utils/appToast';
-import { subscribe, getAll } from '../services/apiTrafficStore';
+import { getCalls, subscribe as subscribeMcpCalls, appendMcpCall } from '../services/mcpCallStore';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import PageNav from './PageNav';
@@ -49,14 +49,11 @@ const McpInspector = ({ user, onLogout }) => {
 
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
 
-  const [mcpHistory, setMcpHistory] = useState(() =>
-    getAll().filter(e => e.url === '/api/mcp/tool' || e.url?.startsWith('/api/mcp/inspector/invoke'))
-  );
+  // Dedicated MCP call history — updated synchronously by bankingAgentService + Invoke button
+  const [mcpHistory, setMcpHistory] = useState(getCalls);
 
   useEffect(() => {
-    const unsub = subscribe(all => {
-      setMcpHistory(all.filter(e => e.url === '/api/mcp/tool' || e.url?.startsWith('/api/mcp/inspector/invoke')));
-    });
+    const unsub = subscribeMcpCalls(setMcpHistory);
     return unsub;
   }, []);
 
@@ -112,13 +109,16 @@ const McpInspector = ({ user, onLogout }) => {
       return;
     }
     setBusy(true);
+    const t0 = Date.now();
     try {
       const { data } = await apiClient.post('/api/mcp/inspector/invoke', {
         tool: selectedTool.name,
         params,
       });
+      appendMcpCall(selectedTool.name, 200, Date.now() - t0, data.result ?? data);
       setLastInvoke(data);
     } catch (e) {
+      appendMcpCall(selectedTool.name, e.response?.status ?? 0, Date.now() - t0, null, formatAxiosError(e, 'Invoke failed'));
       setLastInvoke(null);
       notifyError(formatAxiosError(e, 'Invoke failed'));
     } finally {
@@ -181,13 +181,15 @@ const McpInspector = ({ user, onLogout }) => {
             ) : (
               <ol className="mcp-history__list">
                 {mcpHistory.map(entry => {
-                  const toolName = entry.requestBody?.tool || entry.url?.split('/').pop() || '—';
                   const ok = entry.status >= 200 && entry.status < 300;
                   const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '';
+                  // Extract a short summary from the result (content array → text, or message)
                   const resultText = (() => {
-                    const rb = entry.responseBody;
-                    if (!rb) return null;
-                    const content = typeof rb === 'object' ? (rb.content?.[0]?.text || rb.result?.content?.[0]?.text || rb.message) : null;
+                    const r = entry.result;
+                    if (!r) return entry.errorMsg || null;
+                    const content = typeof r === 'object'
+                      ? (r.content?.[0]?.text || r.message || null)
+                      : (typeof r === 'string' ? r : null);
                     if (typeof content === 'string') return content.length > 120 ? content.slice(0, 120) + '…' : content;
                     return null;
                   })();
@@ -195,7 +197,7 @@ const McpInspector = ({ user, onLogout }) => {
                     <li key={entry.id} className={`mcp-history__item${ok ? ' mcp-history__item--ok' : ' mcp-history__item--err'}`}>
                       <span className="mcp-history__status-dot" aria-hidden="true" />
                       <div className="mcp-history__item-body">
-                        <span className="mcp-history__tool">{toolName}</span>
+                        <span className="mcp-history__tool">{entry.tool}</span>
                         {ts && <span className="mcp-history__time">{ts}</span>}
                         <span className={`mcp-history__badge${ok ? ' mcp-history__badge--ok' : ' mcp-history__badge--err'}`}>
                           {ok ? `${entry.status} OK` : `${entry.status || 'ERR'}`}
