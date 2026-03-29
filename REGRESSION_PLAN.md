@@ -65,7 +65,7 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-03-29 — PingOne UX: global wait overlay + config test gate + setup reference
+### 2026-03-29 — PingOne UX: global wait overlay + config test gate + setup reference (commit `b5714f2`)
 
 - **Symptom:** Calls that ultimately hit PingOne (Management API, discovery test, Authorize bootstrap, CIMD register) did not show the same global spinner as other `apiClient` traffic; `/setup` flows used `_silent: true`. `POST /api/admin/config/test` was callable without the same gate as other config writes once the app was configured.
 - **Root cause:** Raw `axios` bypasses `apiClient` interceptors; `_silent` disabled the spinner; `/test` lacked `requireAdminOrUnconfigured`.
