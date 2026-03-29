@@ -157,7 +157,7 @@ let fetchPatched = false;
 
 /**
  * Patch window.fetch once to capture /api/* calls into the traffic store
- * and show the global spinner for same-origin API requests.
+ * and show the global spinner for same-origin API requests (unless `init._silent`).
  * Call from index.js before React renders.
  */
 export function patchFetch() {
@@ -174,6 +174,8 @@ export function patchFetch() {
     if (!url || !url.startsWith('/api/')) return origFetch(input, init);
 
     const method = (init?.method || 'GET').toUpperCase();
+    /** When true, skip global spinner (parity with axios `config._silent` — background session polls). */
+    const silent = !!(init && init._silent);
     const start = Date.now();
     const reqHeaders = redactHeaders(
       init?.headers instanceof Headers
@@ -194,15 +196,18 @@ export function patchFetch() {
     }
     if (reqBody && typeof reqBody === 'object') reqBody = redactBody(reqBody);
 
-    // Show global spinner for API fetch calls
-    try { spinner.increment(method, url); } catch (_) {}
+    if (!silent) {
+      try { spinner.increment(method, url); } catch (_) {}
+    }
 
     try {
       const response = await origFetch(input, init);
       const duration = Date.now() - start;
       const resHeaders = Object.fromEntries(response.headers.entries());
 
-      try { spinner.decrement(false); } catch (_) {}
+      if (!silent) {
+        try { spinner.decrement(false); } catch (_) {}
+      }
 
       // Clone so the original body is still readable by the caller
       response.clone().text().then(text => {
@@ -226,7 +231,9 @@ export function patchFetch() {
 
       return response;
     } catch (err) {
-      try { spinner.decrement(true); } catch (_) {}
+      if (!silent) {
+        try { spinner.decrement(true); } catch (_) {}
+      }
       appendTrafficEntry({
         method, url, status: 0, duration: Date.now() - start,
         requestHeaders: reqHeaders, requestBody: reqBody,

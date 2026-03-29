@@ -757,9 +757,9 @@ export default function BankingAgent({
       retryDelays.forEach((delay, i) => {
         const t = setTimeout(async () => {
           const result = await Promise.all([
-            fetch('/api/auth/oauth/status',      { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-            fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-            fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch('/api/auth/oauth/status',      { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch('/api/auth/oauth/user/status', { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch('/api/auth/session',           { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
           ]);
           const [admin, endUser, session] = result;
           const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
@@ -819,7 +819,7 @@ export default function BankingAgent({
   useEffect(() => {
     if (!isLoggedIn) return;
     let cancelled = false;
-    fetch('/api/accounts/my', { credentials: 'include' })
+    fetch('/api/accounts/my', { credentials: 'include', _silent: true })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (cancelled || !data?.accounts?.length) return;
@@ -861,9 +861,9 @@ export default function BankingAgent({
    */
   const checkSelfAuth = useCallback(() => {
     Promise.all([
-      fetch('/api/auth/oauth/status',      { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/status',      { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/user/status', { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/session',           { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([admin, endUser, session]) => {
       const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
       setCookieOnlyBffSession(cookieOnly);
@@ -889,7 +889,7 @@ export default function BankingAgent({
     const interval = setInterval(async () => {
       attempts += 1;
       try {
-        const r = await fetch('/api/auth/session', { credentials: 'include' });
+        const r = await fetch('/api/auth/session', { credentials: 'include', _silent: true });
         if (r.ok) {
           const data = await r.json();
           if (!data.cookieOnlyBffSession) {
@@ -931,9 +931,9 @@ export default function BankingAgent({
   // Check on mount — auto-open if already authenticated (e.g. page refresh after login)
   useEffect(() => {
     Promise.all([
-      fetch('/api/auth/oauth/status',      { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/oauth/user/status', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/session',           { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/status',      { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/oauth/user/status', { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/auth/session',           { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([admin, endUser, session]) => {
       const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
       setCookieOnlyBffSession(cookieOnly);
@@ -1428,7 +1428,7 @@ export default function BankingAgent({
           // keep write payload for inferAgentResultTypeAndData
         }
         // Refresh live account balances after write operations so form dropdowns are current
-        fetch('/api/accounts/my', { credentials: 'include' })
+        fetch('/api/accounts/my', { credentials: 'include', _silent: true })
           .then(r => r.ok ? r.json() : null)
           .then(data => {
             if (!data?.accounts?.length) return;
