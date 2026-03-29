@@ -36,6 +36,8 @@
 | **Cross-Lambda exchange audit** | **Log Viewer always empty after token exchange failure on Vercel (Lambda isolation)** | `services/exchangeAuditStore.js` — Redis-backed LPUSH/LTRIM on `banking:exchange-audit`. `routes/logs.js` `GET /api/logs/console` merges Redis events. `GET /api/logs/exchange` endpoint must exist. Both success and failure paths call `writeExchangeEvent()` fire-and-forget. |
 | **Token Chain blank on login** | **Token Chain shows placeholder instead of decoded user token after sign-in** | `TokenChainDisplay.js` — mount effect calls `fetchSessionPreview()` unconditionally (no `didAuthRef` guard). Function returns early on `!res.ok` (safe when unauthenticated). |
 | Split vs Classic dashboard + HITL consent | Duplicate FAB/dock with inline agent, or consent navigates away | `dashboardLayout.js`, `customerSplit3Dashboard.js`, `UserDashboard.js`, `TransactionConsentModal.js`, `App.js` |
+| **Bottom dock — tile strip direction** | **Re-adding `flex-direction: row-reverse` to `.ba-embedded-bottom-dock .ba-body` puts tiles back on the right sidebar, hiding the prompt input** | `banking_api_ui/src/components/BankingAgent.css` — `.ba-body` must be `column-reverse`; `.ba-left-col` must be `flex-direction: row; overflow-x: auto; border-top` (horizontal strip). `ba-chips-footer` and nav button are `display:none` in bottom dock to prevent input cut-off. |
+| **ff_inject_may_act — synthetic may_act (demo only)** | **If changed to inject unconditionally (not gated by flag) it would forge may_act on real tokens** | `banking_api_server/services/agentMcpTokenService.js` — injection only runs when `configStore.getEffective('ff_inject_may_act') === 'true'` AND `userAccessTokenClaims.may_act` is absent. Toggle only in `/demo-data` or Feature Flags (admin). Never enable in production. |
 | Vercel SPA routing | All non-API routes 404 on Vercel | `vercel.json` (SPA catch-all rewrite) |
 | OAuth redirect origin | Redirects go to localhost in production | `routes/oauth.js`, `routes/oauthUser.js` (`getOrigin`) |
 | Vercel build | Production deployment fails | `banking_api_ui/package.json`, `vercel.json` |
@@ -62,6 +64,26 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-29 — feat: auto-inject may_act when absent (ff_inject_may_act flag) (commit `3d8ae67`)
+
+- **Problem:** When PingOne is not configured to emit a `may_act` claim in the user access token, the Token Chain panel shows a `⚠️ may_act absent` warning and RFC 8693 token exchange may fail. This required a PingOne token-policy change that is not always practical in a demo environment.
+- **Fix:** New opt-in feature flag **`ff_inject_may_act`** (default `false`, category "Token Exchange"). When enabled, the BFF synthesises `{ client_id: "<bff-user-client-id>" }` in memory immediately after decoding the user access token. The JWT itself is never modified — PingOne receives the real token unchanged; only the BFF's internal claims snapshot is patched before the RFC 8693 exchange request is built. A new **`may-act-injected`** token event with `synthetic: true` appears in Token Chain so the shortcut is clearly visible.
+- **Toggle location:** `/demo-data` → **Token Exchange — may_act demo** section → **🔧 Enable injection** / **❌ Disable injection** buttons; also at Admin → Feature Flags → Token Exchange category.
+- **Files:** `banking_api_server/services/agentMcpTokenService.js`, `banking_api_server/services/configStore.js`, `banking_api_server/routes/featureFlags.js`, `banking_api_ui/src/components/DemoDataPage.js`
+- **Regression check:** Flag OFF (default) → Token Chain warns `may_act absent` as before; no injection event. Flag ON + may_act absent → Token Chain shows `may-act-injected` event + `✅ may_act valid`; exchange proceeds. Flag ON + may_act already present → no injection (guards prevent double-inject). API server 818 passing, 0 failing.
+
+---
+
+### 2026-03-29 — fix: bottom dock tiles → horizontal scrollable strip; fix input cut-off (commit `5b1881c`)
+
+- **Problem:** In bottom-dock mode the action tiles (SESSION / TRY ASKING / ACTIONS) were rendered as a vertical sidebar on the right of the chat panel. Tiles overflowed, the prompt input was clipped/invisible, and many tiles could not be reached without scrolling the sidebar.
+- **Root cause:** `.ba-embedded-bottom-dock .ba-body` used `flex-direction: row-reverse`, placing `ba-left-col` as a right-side column. The `ba-chips-footer` and dashboard nav button inside `ba-right-col` consumed vertical space, pushing the prompt input below the viewport.
+- **Fix:** Changed `.ba-body` to `flex-direction: column-reverse` so `ba-left-col` (DOM first) lands at the bottom and `ba-right-col` fills the height above. `ba-left-col` is now a horizontal scrollable strip (`flex-direction: row; overflow-x: auto; border-top; 44px min-height`). Section labels (`SESSION` / `TRY ASKING` / `ACTIONS`) are hidden (`display:none`); dividers become narrow vertical bars. All chips are `flex: 0 0 auto; white-space: nowrap`. `ba-chips-footer` and the dashboard nav button are `display:none` in bottom-dock mode — they were stealing vertical space from messages + input.
+- **Files:** `banking_api_ui/src/components/BankingAgent.css`
+- **Regression check:** Set agent placement to **Bottom** → reload dashboard → tiles appear as a horizontal scrollable row below the prompt input; prompt input fully visible; scrolling the tile strip shows all actions; chat messages scroll above input; float and middle modes unchanged.
+
+---
 
 ### 2026-03-29 — PingOne Authorize: MCP first-tool gate, demo-data toggles, config UI, docs/diagram
 
@@ -90,7 +112,7 @@
 - **Scope tests — `GET /transactions/my` and `POST /transactions` have no `requireScopes()`:** Standard PingOne tokens without a custom resource server only carry `openid/profile/email`, not `banking:*` scopes. 10 assertions across 3 test files were expecting 403 scope errors; updated to expect data-layer responses (200 or 404). See **Critical Do-Not-Break Areas** row.
   - *Files:* `banking_api_server/src/__tests__/scope-integration.test.js`, `banking_api_server/src/__tests__/oauth-scope-integration.test.js`, `banking_api_server/src/__tests__/oauth-e2e-integration.test.js`
 
-- **Regression check:** `cd banking_api_server && npm test -- --watchAll=false --forceExit` → 818 passing, 5 skipped, 0 failing. `cd banking_api_ui && npm test -- --watchAll=false --forceExit` → 230 passing, 21 skipped, 0 failing.
+- **Regression check:** `cd banking_api_server && npm test -- --watchAll=false --forceExit` → 818 passing, 5 skipped, 0 failing. `cd banking_api_ui && npm test -- --watchAll=false --forceExit` → 235 passing, 21 skipped, 0 failing.
 
 ---
 
@@ -480,6 +502,8 @@ Before every `vercel --prod`:
 - [ ] BankingAgent "⚙️ Configure" button navigates to `/config`
 - [ ] MCP tool calls succeed (Accounts, Transactions, Balance via agent chat)
 - [ ] MCP Inspector panel shows tool list without being logged in
+- [ ] Bottom dock mode: action tiles visible as horizontal scrollable strip below input; prompt input not cut off
+- [ ] `/demo-data` (admin) → Token Exchange — may_act section shows inject toggle; enabling it makes Token Chain show `may-act-injected` event
 
 **Agent — Consent & HITL**
 - [ ] Open agent panel → NO consent modal appears on first open (no "Grant Agent permission")
@@ -743,7 +767,7 @@ cd /Users/cmuir/P1Import-apps/Banking
 cd banking_api_ui && CI=true npm run build
 cd ..
 
-# Step 2 — Unit tests (all 251 UI + 818 API server tests must pass, 0 failures)
+# Step 2 — Unit tests (all 256 UI + 818 API server tests must pass, 0 failures)
 cd banking_api_ui && npm test -- --watchAll=false --forceExit --passWithNoTests
 cd ..
 cd banking_api_server && npm test -- --watchAll=false --forceExit
@@ -775,7 +799,7 @@ cd ..
 
 **Expected pass criteria:**
 - Build: exit 0, no compile errors
-- UI unit tests: 0 failures (251 tests: 230 pass, 21 skipped)
+- UI unit tests: 0 failures (256 tests: 235 pass, 21 skipped)
 - API server unit tests: 0 failures (818 tests: 813 pass, 5 skipped)
 - All E2E specs: 0 failures
 - Manual smoke: all 7 steps pass
