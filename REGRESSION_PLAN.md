@@ -66,6 +66,15 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — docs: marketing login draw.io (agent-first vs button-first); fix `DemoDataPage` Jest axios mock for `apiClient` (commit `TBD`)
+
+- **Symptom:** `CI=true npm run test:unit` failed — `DemoDataPage.test.js` did not load: `TypeError: _axios.default.create is not a function` because `apiClient` constructs `axios.create()` at module load while the test mock only stubbed `get` / `post` / `patch`.
+- **Root cause:** Incomplete `axios` Jest mock after `DemoDataPage` began importing `apiClient` (singleton uses `axios.create` + interceptors).
+- **Fix:** Mock `axios.create()` to return an instance with `interceptors.request/response.use` and stubbed HTTP methods; export `default` + named fields for `import axios from 'axios'` and `require('axios').default`. Added `docs/Marketing_Login_Agent_vs_Button.drawio` (swimlanes: BankingAgent-initiated OAuth vs `#marketing-login` / header / showcase button-first).
+- **Files:** `docs/Marketing_Login_Agent_vs_Button.drawio`, `banking_api_ui/src/components/__tests__/DemoDataPage.test.js`, `REGRESSION_PLAN.md`
+- **Regression check:** `cd banking_api_server && CI=true npm test` exits 0. `cd banking_api_ui && CI=true npm run test:unit` exits 0. `cd banking_api_ui && npm run build` exits 0.
+- **Do not break:** `apiClient` interceptors and real `axios` in production; OAuth routes unchanged (this change is test + docs only).
+
 ### 2026-03-29 — Marketing `/marketing` + home: OAuth `return_to`, dual agents, light page, showcase UI (commit `1b5e743`)
 
 - **Symptom:** Marketing page needed inline sign-in after agent banking prompts; users wanted float + bottom BankingAgent on `/` and `/marketing`; bottom dock missing for guests on `/` (wrong `onUserDashboardRoute` when `user` null); `/marketing` sometimes showed no real agents (splat route, collapsed dock, float default closed); mock agent block did not match product dark-card design.

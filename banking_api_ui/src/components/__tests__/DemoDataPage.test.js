@@ -5,13 +5,30 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom';
 import DemoDataPage from '../DemoDataPage';
 
-jest.mock('axios', () => ({
-  get: jest.fn(() => Promise.resolve({ data: { agent_mcp_allowed_scopes: 'banking:read banking:write ai_agent' } })),
-  post: jest.fn(() => Promise.resolve({ data: {} })),
-  patch: jest.fn(() => Promise.resolve({ data: { updated: true, flags: [] } })),
-}));
+jest.mock('axios', () => {
+  const mockClientInstance = () => ({
+    get: jest.fn(() => Promise.resolve({ data: {} })),
+    post: jest.fn(() => Promise.resolve({ data: {} })),
+    patch: jest.fn(() => Promise.resolve({ data: { updated: true, flags: [] } })),
+    put: jest.fn(() => Promise.resolve({ data: {} })),
+    delete: jest.fn(() => Promise.resolve({ data: {} })),
+    interceptors: {
+      request: { use: jest.fn(), eject: jest.fn() },
+      response: { use: jest.fn(), eject: jest.fn() },
+    },
+    defaults: { headers: { common: {} } },
+  });
+  const impl = {
+    create: jest.fn(() => mockClientInstance()),
+    get: jest.fn(() => Promise.resolve({ data: { agent_mcp_allowed_scopes: 'banking:read banking:write ai_agent' } })),
+    post: jest.fn(() => Promise.resolve({ data: {} })),
+    patch: jest.fn(() => Promise.resolve({ data: { updated: true, flags: [] } })),
+    defaults: { headers: { common: {} } },
+  };
+  return { __esModule: true, default: impl, ...impl };
+});
 
-const axiosMock = require('axios');
+const axiosMock = require('axios').default || require('axios');
 
 jest.mock('../../services/demoScenarioService', () => ({
   fetchDemoScenario: jest.fn(() => Promise.resolve({})),
