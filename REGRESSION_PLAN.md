@@ -66,7 +66,7 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-03-29 — Marketing agent: chat before PingOne; banking intent auto-redirects + NL replay (commit `TBD`)
+### 2026-03-29 — Marketing agent: chat before PingOne; banking intent auto-redirects + NL replay (commit `36d9e73`)
 
 - **Symptom:** Guest agent UI blocked chat until manual sign-in (“Sign in to get started”, no input); user wanted PingOne only when a banking action is needed, then return to the same agent on the marketing page.
 - **Root cause:** `POST /api/banking-agent/nl` required `req.session.user`; agent hid the NL input when `!isLoggedIn`.
