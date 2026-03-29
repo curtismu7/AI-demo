@@ -87,7 +87,7 @@ class OAuthUserService {
    * Pass acr_values to trigger step-up MFA (e.g. 'Multi_factor' — must match the PingOne Sign-On Policy name).
    */
   generateAuthorizationUrl(state, codeVerifier, options = {}, redirectUri) {
-    const usePiFlow = !!this.config.authorizeUsesPiFlow;
+    const usePiFlow = Boolean(options.forcePiFlow) || Boolean(this.config.authorizeUsesPiFlow);
     const responseType = usePiFlow ? 'pi.flow' : 'code';
     const params = new URLSearchParams({
       response_type: responseType,

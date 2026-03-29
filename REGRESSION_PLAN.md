@@ -66,6 +66,15 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — Marketing pi.flow slide sign-in + compact landing layout
+
+- **Feature — demo / config:** **`marketing_customer_login_mode`** (`redirect` default vs **`slide_pi_flow`**): home page can open a **right-hand drawer** with **username/password hints** (public config; not secrets), then **Continue to PingOne** with **`use_pi_flow=1`**. **`BankingAgent`** customer login on marketing paths adds **`use_pi_flow=1`** when the mode is slide. New **`configStore`** keys **`marketing_demo_username_hint`**, **`marketing_demo_password_hint`** (empty string allowed on save to clear). **`GET /api/auth/oauth/user/login?use_pi_flow=1`** forces pi.flow authorize via **`oauthUserService.generateAuthorizationUrl`** **`forcePiFlow`** even when global user pi.flow is off.
+- **UX:** **Landing page** vertical rhythm **condensed** — hero no longer **`min-height: 100vh`** or vertically centered; **tighter section padding**, **smaller hero/section type**, **shorter** PingOne tagline block — to cut total scroll height.
+- **Files:** `banking_api_server/services/configStore.js`, `oauthUserService.js`, `routes/oauthUser.js`, `src/__tests__/oauthUserService.test.js`, `banking_api_ui/src/components/LandingPage.js`, `LandingPage.css`, `BankingAgent.js`, `Config.js`, `DemoDataPage.js`, `DemoDataPage.css`, `services/configService.js`, `REGRESSION_PLAN.md`
+- **Regression check:** `cd banking_api_server && npm test -- --testPathPattern=oauthUserService`; `cd banking_api_ui && npm run build` exits **0**. Verify **default** mode: customer buttons redirect without drawer. **slide_pi_flow**: drawer → PingOne with pi.flow. **Agent** customer login on `/` or `/marketing` still uses **`return_to=/marketing`** when applicable.
+- **Do not break:** **BankingAgent FAB** / **`App.js`** placement; **OAuth** user callback and **`sanitizePostLoginReturnPath`**; **admin** login; **Upstash** session store (unchanged).
+- **Git:** Verify exact hash with `git log -1 --oneline` on branch **`fix/dashboard-fab-positioning`** after pull.
+
 ### 2026-03-29 — Marketing agent: chat before PingOne; banking intent auto-redirects + NL replay (commit `36d9e73`)
 
 - **Symptom:** Guest agent UI blocked chat until manual sign-in (“Sign in to get started”, no input); user wanted PingOne only when a banking action is needed, then return to the same agent on the marketing page.

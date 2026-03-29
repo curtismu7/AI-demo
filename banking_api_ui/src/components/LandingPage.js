@@ -13,11 +13,37 @@ const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('personal');
   const [scrollY, setScrollY] = React.useState(0);
+  const [marketingCfg, setMarketingCfg] = React.useState({
+    mode: 'redirect',
+    userHint: '',
+    passHint: '',
+  });
+  const [loginPanelOpen, setLoginPanelOpen] = React.useState(false);
+  const marketingModeRef = React.useRef('redirect');
 
   React.useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  React.useEffect(() => {
+    marketingModeRef.current = marketingCfg.mode;
+  }, [marketingCfg.mode]);
+
+  React.useEffect(() => {
+    fetch('/api/admin/config')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        const c = body?.config || {};
+        const mode = c.marketing_customer_login_mode === 'slide_pi_flow' ? 'slide_pi_flow' : 'redirect';
+        setMarketingCfg({
+          mode,
+          userHint: String(c.marketing_demo_username_hint || '').trim(),
+          passHint: String(c.marketing_demo_password_hint || '').trim(),
+        });
+      })
+      .catch(() => {});
   }, []);
 
   React.useEffect(() => {
@@ -27,9 +53,13 @@ const LandingPage = () => {
     }
   }, [location.state]);
 
-  /** When the agent nudges sign-in, scroll here for context (stay-on-page is agent-only, not these buttons). */
+  /** When the agent nudges sign-in, open slide panel (pi.flow marketing mode) or scroll to the sign-in strip. */
   React.useEffect(() => {
     const onScrollLogin = () => {
+      if (marketingModeRef.current === 'slide_pi_flow') {
+        setLoginPanelOpen(true);
+        return;
+      }
       const el = document.getElementById('marketing-login');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
@@ -37,18 +67,43 @@ const LandingPage = () => {
     return () => window.removeEventListener('marketing-scroll-login', onScrollLogin);
   }, []);
 
+  React.useEffect(() => {
+    if (!loginPanelOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLoginPanelOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [loginPanelOpen]);
+
+  /** Customer → PingOne (optional return_to + pi.flow). Admin → admin OAuth. */
+  const redirectCustomerToPingOne = (opts = {}) => {
+    const { usePiFlow = false } = opts;
+    spinner.show('Signing in as Customer…', 'Redirecting to PingOne');
+    const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
+    setTimeout(() => {
+      const params = new URLSearchParams();
+      if (usePiFlow) params.set('use_pi_flow', '1');
+      const q = params.toString();
+      window.location.href = `${apiUrl}/api/auth/oauth/user/login${q ? `?${q}` : ''}`;
+    }, 150);
+  };
+
   /** Customer → PingOne without return_to (dashboard after callback). Admin → admin OAuth. */
   const handleOAuthLogin = (userType = 'user') => {
-    const label = userType === 'admin' ? 'Admin' : 'Customer';
-    spinner.show(`Signing in as ${label}…`, 'Redirecting to PingOne');
     const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-    const url =
-      userType === 'admin'
-        ? `${apiUrl}/api/auth/oauth/login`
-        : `${apiUrl}/api/auth/oauth/user/login`;
-    setTimeout(() => {
-      window.location.href = url;
-    }, 150);
+    if (userType === 'admin') {
+      spinner.show('Signing in as Admin…', 'Redirecting to PingOne');
+      setTimeout(() => {
+        window.location.href = `${apiUrl}/api/auth/oauth/login`;
+      }, 150);
+      return;
+    }
+    if (marketingCfg.mode === 'slide_pi_flow') {
+      setLoginPanelOpen(true);
+      return;
+    }
+    redirectCustomerToPingOne({});
   };
 
   const features = [
@@ -200,12 +255,8 @@ const LandingPage = () => {
               Application setup (PingOne, redirects, local dev) — optional
             </button>
             <div className="hero-note">
-              <p style={{ fontSize: '2rem', color: '#ef4444', fontWeight: 800, margin: 0, lineHeight: 1.1 }}>
-                Powered by PingOne AI IAM Core
-              </p>
-              <p style={{ color: '#6b7280', fontSize: '1rem', margin: 0, marginTop: 4 }}>
-                No passwords required
-              </p>
+              <p className="hero-note__powered">Powered by PingOne AI IAM Core</p>
+              <p className="hero-note__tag">No passwords required</p>
             </div>
           </div>
           
@@ -255,6 +306,13 @@ const LandingPage = () => {
               <strong>from the assistant</strong>, you come back to this marketing page to keep chatting. If you use{' '}
               <strong>Customer sign in</strong> here or in the header, you land on the <strong>customer dashboard</strong>{' '}
               after PingOne.
+              {marketingCfg.mode === 'slide_pi_flow' && (
+                <>
+                  {' '}
+                  <strong>Demo mode:</strong> customer sign-in opens a panel on the right with demo username/password hints,
+                  then continues with <code>response_type=pi.flow</code> at PingOne.
+                </>
+              )}
             </p>
             <div className="marketing-login-actions">
               <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user')}>
@@ -267,6 +325,68 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {loginPanelOpen && (
+        <>
+          <div
+            className="marketing-login-drawer-backdrop"
+            aria-hidden="true"
+            onClick={() => setLoginPanelOpen(false)}
+            role="presentation"
+          />
+          <aside
+            className="marketing-login-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="marketing-drawer-title"
+          >
+            <div className="marketing-login-drawer__head">
+              <h2 id="marketing-drawer-title">Customer sign in</h2>
+              <button
+                type="button"
+                className="marketing-login-drawer__close"
+                onClick={() => setLoginPanelOpen(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p className="marketing-login-drawer__lede">
+              Use your PingOne demo user. The next step uses <strong>pi.flow</strong> (non-redirect authorize) when your app
+              supports it.
+            </p>
+            <div className="marketing-login-drawer__hints" aria-label="Demo credentials hint">
+              <div className="marketing-login-drawer__field">
+                <span className="marketing-login-drawer__label">Username (hint)</span>
+                <div className="marketing-login-drawer__value">
+                  {marketingCfg.userHint || 'Set hints under Demo config or Application setup.'}
+                </div>
+              </div>
+              <div className="marketing-login-drawer__field">
+                <span className="marketing-login-drawer__label">Password (hint)</span>
+                <div className="marketing-login-drawer__value">
+                  {marketingCfg.passHint || '—'}
+                </div>
+              </div>
+            </div>
+            <div className="marketing-login-drawer__actions">
+              <button
+                type="button"
+                className="cta-primary marketing-login-drawer__cta"
+                onClick={() => {
+                  setLoginPanelOpen(false);
+                  redirectCustomerToPingOne({ usePiFlow: true });
+                }}
+              >
+                Continue to PingOne
+              </button>
+              <button type="button" className="nav-cta nav-cta--ghost" onClick={() => setLoginPanelOpen(false)}>
+                Cancel
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* Features Section */}
       <section id="features" className="features">

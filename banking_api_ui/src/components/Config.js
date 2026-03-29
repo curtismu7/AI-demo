@@ -90,6 +90,9 @@ const EMPTY_FORM = {
   ui_industry_preset: DEFAULT_INDUSTRY_ID,
   /** OAuth scopes the BFF may request for the agent MCP token (RFC 8693) — space-separated. */
   agent_mcp_allowed_scopes: DEFAULT_AGENT_MCP_ALLOWED_SCOPES,
+  marketing_customer_login_mode: 'redirect',
+  marketing_demo_username_hint: '',
+  marketing_demo_password_hint: '',
 };
 
 // ─── Helper: secret field wrapper ────────────────────────────────────────────
@@ -901,6 +904,62 @@ export default function Config() {
                       value={form.user_redirect_uri}
                       onChange={handleChange}
                       placeholder={`${window.location.origin}/api/auth/oauth/user/callback`}
+                      disabled={readOnly}
+                    />
+                  </div>
+                  <div className="form-group config-page__grid-span-2">
+                    <label className="form-label">PingOne authorize — pi.flow (end-user)</label>
+                    <select
+                      className="form-input"
+                      value={form.user_pingone_authorize_pi_flow}
+                      onChange={(e) => handleChange('user_pingone_authorize_pi_flow', e.target.value)}
+                      disabled={readOnly}
+                    >
+                      <option value="false">Standard (response_type=code)</option>
+                      <option value="true">pi.flow — response_type=pi.flow + response_mode=pi.flow</option>
+                    </select>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      Applies to <strong>all</strong> customer logins when enabled. For marketing-only pi.flow, use{' '}
+                      <strong>Marketing customer sign-in</strong> below instead.
+                    </p>
+                  </div>
+                </div>
+              </CollapsibleCard>
+
+              <CollapsibleCard
+                title="Marketing customer sign-in"
+                subtitle="Home / marketing page — redirect vs slide-over + demo hints + use_pi_flow=1"
+              >
+                <div className="config-page__grid">
+                  <div className="form-group config-page__grid-span-2">
+                    <label className="form-label">Customer login on marketing page</label>
+                    <select
+                      className="form-input"
+                      value={form.marketing_customer_login_mode}
+                      onChange={(e) => handleChange('marketing_customer_login_mode', e.target.value)}
+                      disabled={readOnly}
+                    >
+                      <option value="redirect">Redirect — standard authorize (code + PKCE)</option>
+                      <option value="slide_pi_flow">Slide panel — hints + Continue with pi.flow (?use_pi_flow=1)</option>
+                    </select>
+                  </div>
+                  <div className="config-page__grid-span-2">
+                    <TextField
+                      label="Demo username hint (shown in slide panel — not a secret)"
+                      fieldKey="marketing_demo_username_hint"
+                      value={form.marketing_demo_username_hint}
+                      onChange={handleChange}
+                      placeholder="e.g. bankuser or your PingOne preferred_username"
+                      disabled={readOnly}
+                    />
+                  </div>
+                  <div className="config-page__grid-span-2">
+                    <TextField
+                      label="Demo password hint (shown in slide panel — not a secret)"
+                      fieldKey="marketing_demo_password_hint"
+                      value={form.marketing_demo_password_hint}
+                      onChange={handleChange}
+                      placeholder="e.g. use your sandbox password policy"
                       disabled={readOnly}
                     />
                   </div>

@@ -139,7 +139,7 @@
 }
 
 .hero-setup-link {
-  margin-top: 1rem;
+  margin-top: 0.45rem;
   background: none;
   border: none;
   padding: 0;
@@ -170,13 +170,13 @@
   transition: all 0.3s ease;
 }
 
-/* Hero Section */
+/* Hero Section — compact vertical rhythm (marketing page) */
 .hero {
   position: relative;
-  min-height: 100vh;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  padding: 6rem 2rem 2rem;
+  align-items: flex-start;
+  padding: 4.5rem 2rem 1.25rem;
   overflow: hidden;
 }
 
@@ -223,15 +223,15 @@
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  align-items: center;
+  gap: 1.5rem;
+  align-items: start;
 }
 
 .hero-title {
-  font-size: 3.5rem;
+  font-size: clamp(1.85rem, 4vw, 2.65rem);
   font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 1.5rem;
+  line-height: 1.12;
+  margin-bottom: 0.6rem;
   background: linear-gradient(to right, #ffffff, #e5e7eb);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -246,27 +246,45 @@
 }
 
 .hero-subtitle {
-  font-size: 1.25rem;
+  font-size: 1.02rem;
   color: #9ca3af;
-  line-height: 1.6;
-  margin-bottom: 2rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
 }
 
 .hero-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.65rem;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.55rem;
 }
 
 .hero-note {
-  text-align: center;
+  text-align: left;
 }
 
-.hero-note p {
-  color: #6b7280;
-  font-size: 0.875rem;
+.hero-note__powered {
+  font-size: 1.15rem;
+  color: #ef4444;
+  font-weight: 800;
   margin: 0;
+  line-height: 1.15;
+}
+
+.hero-note__tag {
+  color: #6b7280;
+  font-size: 0.8125rem;
+  margin: 0.2rem 0 0;
+}
+
+.hero .cta-primary {
+  padding: 0.65rem 1.35rem;
+  font-size: 1rem;
+}
+
+.hero .cta-secondary {
+  padding: 0.65rem 1.25rem;
+  font-size: 0.95rem;
 }
 
 .cta-primary {
@@ -319,7 +337,7 @@
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 1.5rem;
+  padding: 1rem 1.1rem;
   animation: float-card 6s ease-in-out infinite;
 }
 
@@ -333,8 +351,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.55rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -360,8 +378,8 @@
 
 .chat-message {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
   align-items: flex-start;
 }
 
@@ -381,11 +399,11 @@
 
 .message-bubble {
   background: rgba(255, 255, 255, 0.1);
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
   max-width: 80%;
-  font-size: 0.875rem;
-  line-height: 1.4;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .chat-message.user .message-bubble {
@@ -394,7 +412,7 @@
 
 /* Features Section */
 .features {
-  padding: 6rem 2rem;
+  padding: 2.5rem 2rem;
   background: linear-gradient(to bottom, #0a0a0a, #111111);
 }
 
@@ -405,13 +423,13 @@
 
 .section-header {
   text-align: center;
-  margin-bottom: 4rem;
+  margin-bottom: 1.25rem;
 }
 
 .section-header h2 {
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 3.5vw, 1.9rem);
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 0.4rem;
   background: linear-gradient(to right, #ffffff, #e5e7eb);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -419,21 +437,21 @@
 }
 
 .section-header p {
-  font-size: 1.25rem;
+  font-size: 0.98rem;
   color: #9ca3af;
 }
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
 .feature-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 1.15rem 1.1rem;
   text-align: center;
   transition: all 0.3s ease;
 }
@@ -445,14 +463,14 @@
 }
 
 .feature-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  font-size: 2rem;
+  margin-bottom: 0.4rem;
 }
 
 .feature-card h3 {
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 0.35rem;
 }
 
 .feature-card p {
@@ -462,7 +480,7 @@
 
 /* How It Works */
 .how-it-works {
-  padding: 6rem 2rem;
+  padding: 2.5rem 2rem;
   background: #111111;
 }
 
@@ -470,7 +488,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  gap: 1rem;
   max-width: 900px;
   margin: 0 auto;
 }
@@ -481,22 +499,22 @@
 }
 
 .step-number {
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
   background: linear-gradient(135deg, #3b82f6, #8b5cf6);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  margin: 0 auto 1.5rem;
+  margin: 0 auto 0.65rem;
 }
 
 .step h3 {
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin-bottom: 0.35rem;
 }
 
 .step p {
@@ -525,7 +543,7 @@
 
 /* Agent Section */
 .agent-section {
-  padding: 6rem 2rem;
+  padding: 2.5rem 2rem;
   background: linear-gradient(to bottom, #111111, #0a0a0a);
 }
 
@@ -533,15 +551,15 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  padding: 2rem;
+  padding: 1.25rem;
   max-width: 1000px;
   margin: 0 auto;
 }
 
 .demo-tabs {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
   justify-content: center;
 }
 
@@ -565,19 +583,19 @@
 .demo-content {
   display: grid;
   grid-template-columns: 1fr 2fr;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .demo-prompts h4 {
   color: #e5e7eb;
-  margin-bottom: 1rem;
+  margin-bottom: 0.45rem;
 }
 
 .prompt-suggestions {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 2rem;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
 }
 
 .auth-notice {
@@ -655,27 +673,27 @@
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  height: 400px;
+  height: 220px;
   overflow: hidden;
 }
 
 /* Testimonials */
 .testimonials {
-  padding: 6rem 2rem;
+  padding: 2.5rem 2rem;
   background: #111111;
 }
 
 .testimonials-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
 }
 
 .testimonial-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 1.15rem;
   transition: all 0.3s ease;
 }
 
@@ -685,15 +703,15 @@
 }
 
 .testimonial-avatar {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
+  font-size: 2rem;
+  margin-bottom: 0.4rem;
 }
 
 .testimonial-content p {
   font-style: italic;
   color: #e5e7eb;
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  margin-bottom: 0.65rem;
 }
 
 .testimonial-author strong {
@@ -709,28 +727,28 @@
 
 /* CTA Section */
 .cta {
-  padding: 6rem 2rem;
+  padding: 2.5rem 2rem;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
   text-align: center;
 }
 
 .cta-content h2 {
-  font-size: 2.5rem;
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 0.4rem;
 }
 
 .cta-content p {
-  font-size: 1.25rem;
+  font-size: 0.98rem;
   color: #9ca3af;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 /* Footer */
 .footer {
   background: #0a0a0a;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 3rem 2rem 1rem;
+  padding: 1.5rem 2rem 0.75rem;
 }
 
 .footer-content {
@@ -738,8 +756,8 @@
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 2fr;
-  gap: 3rem;
-  margin-bottom: 2rem;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .footer-brand {
@@ -780,11 +798,11 @@
 .footer-bottom {
   max-width: 1200px;
   margin: 0 auto;
-  padding-top: 2rem;
+  padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   text-align: center;
   color: #6b7280;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 /* Responsive Design */
@@ -799,12 +817,16 @@
   
   .hero-content {
     grid-template-columns: 1fr;
-    gap: 2rem;
+    gap: 1.15rem;
+    text-align: center;
+  }
+
+  .hero-note {
     text-align: center;
   }
   
   .hero-title {
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
   
   .hero-actions {
@@ -845,15 +867,15 @@
 
 @media (max-width: 480px) {
   .hero {
-    padding: 4rem 1rem 2rem;
+    padding: 3.5rem 1rem 1rem;
   }
   
   .hero-title {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
   
   .section-header h2 {
-    font-size: 2rem;
+    font-size: 1.65rem;
   }
   
   .features,
@@ -861,7 +883,7 @@
   .agent-section,
   .testimonials,
   .cta {
-    padding: 4rem 1rem;
+    padding: 2rem 1rem;
   }
 }
 
@@ -906,7 +928,7 @@
   color: #475569;
 }
 
-.landing-page--light .hero-note p {
+.landing-page--light .hero-note__tag {
   color: #64748b;
 }
 
@@ -986,15 +1008,15 @@
 .hero-quick-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 18px;
+  gap: 6px;
+  margin-top: 0.55rem;
 }
 
 .hql-btn {
-  padding: 9px 18px;
+  padding: 6px 12px;
   border-radius: 8px;
   border: none;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -1014,7 +1036,7 @@
 
 /* Sign-in strip (agent nudges scroll here) */
 .marketing-login {
-  padding: 3rem 2rem;
+  padding: 1.35rem 2rem;
   background: linear-gradient(to bottom, #f8fafc, #ffffff);
   border-top: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
@@ -1023,7 +1045,7 @@
 .marketing-login-card {
   max-width: 720px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1.15rem 1.25rem;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
@@ -1031,17 +1053,17 @@
 }
 
 .marketing-login-card h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.75rem;
+  margin: 0 0 0.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #0f172a;
 }
 
 .marketing-login-card p {
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.65rem;
   color: #475569;
-  line-height: 1.6;
-  font-size: 1rem;
+  line-height: 1.45;
+  font-size: 0.9rem;
 }
 
 .marketing-login-actions {
@@ -1051,16 +1073,139 @@
   align-items: center;
 }
 
+.marketing-login-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1990;
+  background: rgba(15, 23, 42, 0.5);
+  animation: marketing-drawer-backdrop-in 0.22s ease;
+}
+
+@keyframes marketing-drawer-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.marketing-login-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 2000;
+  width: min(420px, 100vw);
+  height: 100%;
+  max-height: 100dvh;
+  padding: 1.5rem 1.35rem 2rem;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: -16px 0 48px rgba(15, 23, 42, 0.18);
+  overflow-y: auto;
+  animation: marketing-drawer-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes marketing-drawer-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.marketing-login-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.marketing-login-drawer__head h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.marketing-login-drawer__close {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.marketing-login-drawer__close:hover {
+  background: #f1f5f9;
+}
+
+.marketing-login-drawer__lede {
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.marketing-login-drawer__hints {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.marketing-login-drawer__field {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+}
+
+.marketing-login-drawer__label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 0.35rem;
+}
+
+.marketing-login-drawer__value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.marketing-login-drawer__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.marketing-login-drawer__cta {
+  width: 100%;
+  justify-content: center;
+}
+
 /* Fake chat preview — matches light landing */
 .landing-demo-chat-sim {
   background: #f3f4f6;
   border: 1px solid #d1d5db;
   border-radius: 1rem;
-  padding: 1.25rem;
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 260px;
+  gap: 0.45rem;
+  min-height: 150px;
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
 }
 
@@ -1181,12 +1326,12 @@
 /* ─── Agent showcase (dark card on light marketing page) — matches product mock ─ */
 .landing-page--light .agent-section--showcase {
   background: #000000;
-  padding: 5rem 2rem;
+  padding: 2.25rem 2rem;
 }
 
 .landing-page--light .agent-section--showcase .section-header--showcase {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1rem;
 }
 
 .landing-page--light .agent-section--showcase .section-header--showcase h2 {
@@ -1194,11 +1339,13 @@
   -webkit-text-fill-color: #ffffff;
   color: #ffffff;
   background-clip: border-box;
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  margin-bottom: 0.35rem;
 }
 
 .landing-page--light .agent-section--showcase .section-header--showcase p {
   color: #9ca3af;
-  font-size: 1.125rem;
+  font-size: 0.95rem;
   max-width: 42rem;
   margin-left: auto;
   margin-right: auto;
@@ -1208,8 +1355,16 @@
   background: #0a0a0a;
   border: 1px solid #374151;
   border-radius: 20px;
-  padding: 2rem;
+  padding: 1.2rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.landing-page--light .agent-demo--showcase .demo-content {
+  gap: 0.75rem;
+}
+
+.landing-page--light .agent-demo--showcase .demo-tabs--pill {
+  margin-bottom: 0.65rem;
 }
 
 .landing-page--light .demo-tabs--pill {
@@ -1317,14 +1472,14 @@
   background: transparent;
   border: none;
   height: auto;
-  min-height: 280px;
+  min-height: 160px;
 }
 
 .landing-page--light .landing-demo-chat-sim--showcase {
   background: #0f172a;
   border: 1px solid #334155;
   border-radius: 14px;
-  min-height: 320px;
+  min-height: 190px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 

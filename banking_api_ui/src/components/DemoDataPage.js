@@ -93,12 +93,22 @@ export default function DemoDataPage({ user, onLogout }) {
   });
   const [scopeSaving, setScopeSaving] = useState(false);
 
+  /** Marketing home sign-in mode + demo hints (persisted in admin config). */
+  const [marketingLoginMode, setMarketingLoginMode] = useState('redirect');
+  const [marketingUserHint, setMarketingUserHint] = useState('');
+  const [marketingPassHint, setMarketingPassHint] = useState('');
+  const [marketingSaving, setMarketingSaving] = useState(false);
+
   /** Load current scope config from server */
   const loadScopes = useCallback(async () => {
     try {
       const { data } = await axios.get('/api/admin/config');
-      const raw = data?.agent_mcp_allowed_scopes || DEFAULT_AGENT_MCP_ALLOWED_SCOPES;
+      const cfg = data?.config || data;
+      const raw = cfg?.agent_mcp_allowed_scopes || DEFAULT_AGENT_MCP_ALLOWED_SCOPES;
       setAllowedScopes(new Set(raw.split(/\s+/).filter(Boolean)));
+      setMarketingLoginMode(cfg?.marketing_customer_login_mode === 'slide_pi_flow' ? 'slide_pi_flow' : 'redirect');
+      setMarketingUserHint(String(cfg?.marketing_demo_username_hint ?? ''));
+      setMarketingPassHint(String(cfg?.marketing_demo_password_hint ?? ''));
     } catch {
       // silently keep client default
     }
@@ -131,6 +141,22 @@ export default function DemoDataPage({ user, onLogout }) {
       notifyError(err?.response?.data?.message || 'Failed to save scopes');
     } finally {
       setScopeSaving(false);
+    }
+  };
+
+  const handleSaveMarketingLogin = async () => {
+    setMarketingSaving(true);
+    try {
+      await axios.post('/api/admin/config', {
+        marketing_customer_login_mode: marketingLoginMode,
+        marketing_demo_username_hint: marketingUserHint.trim(),
+        marketing_demo_password_hint: marketingPassHint.trim(),
+      });
+      notifySuccess('Marketing sign-in settings saved');
+    } catch (err) {
+      notifyError(err?.response?.data?.message || err.message || 'Failed to save marketing sign-in settings');
+    } finally {
+      setMarketingSaving(false);
     }
   };
 
@@ -789,6 +815,60 @@ export default function DemoDataPage({ user, onLogout }) {
                   onClick={handleSaveScopes}
                 >
                   {scopeSaving ? 'Saving…' : 'Save scope permissions'}
+                </button>
+              </div>
+            </section>
+
+            <section className="section demo-data-section" aria-labelledby="demo-marketing-login-heading">
+              <h2 className="demo-data-section__heading" id="demo-marketing-login-heading">
+                Marketing page customer sign-in
+              </h2>
+              <p className="demo-data-hint">
+                Controls how <strong>Customer sign in</strong> behaves on the home / marketing page.{' '}
+                <strong>Slide panel + pi.flow</strong> shows demo username/password hints in a panel that slides in from
+                the right, then continues to PingOne with <code>use_pi_flow=1</code> (your PingOne app must support pi.flow).
+                Also available under <Link to="/config">Application setup</Link>.
+              </p>
+              <label className="demo-data-field">
+                <span>Customer login mode</span>
+                <select
+                  value={marketingLoginMode}
+                  onChange={(e) => setMarketingLoginMode(e.target.value)}
+                >
+                  <option value="redirect">Redirect — standard authorize (code + PKCE)</option>
+                  <option value="slide_pi_flow">Slide panel — hints + pi.flow (?use_pi_flow=1)</option>
+                </select>
+              </label>
+              <label className="demo-data-field">
+                <span>Demo username hint (not a secret)</span>
+                <input
+                  type="text"
+                  value={marketingUserHint}
+                  onChange={(e) => setMarketingUserHint(e.target.value)}
+                  maxLength={500}
+                  placeholder="e.g. bankuser"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="demo-data-field">
+                <span>Demo password hint (not a secret)</span>
+                <input
+                  type="text"
+                  value={marketingPassHint}
+                  onChange={(e) => setMarketingPassHint(e.target.value)}
+                  maxLength={500}
+                  placeholder="e.g. your sandbox password"
+                  autoComplete="off"
+                />
+              </label>
+              <div className="demo-data-actions" style={{ marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  className="demo-data-btn primary"
+                  disabled={marketingSaving}
+                  onClick={handleSaveMarketingLogin}
+                >
+                  {marketingSaving ? 'Saving…' : 'Save marketing sign-in'}
                 </button>
               </div>
             </section>

@@ -68,6 +68,10 @@ const FIELD_DEFS = {
   // See https://developer.pingidentity.com/pingone-api/auth/auth-config-options/browserless-authentication-flow-options.html
   admin_pingone_authorize_pi_flow: { public: true, default: 'false' },
   user_pingone_authorize_pi_flow:  { public: true, default: 'false' },
+  /** Marketing home: redirect (standard code+PKCE) vs slide-over panel + authorize with use_pi_flow=1 */
+  marketing_customer_login_mode:   { public: true, default: 'redirect' },
+  marketing_demo_username_hint:    { public: true, default: '' },
+  marketing_demo_password_hint:    { public: true, default: '' },
 
   // Auth server
   admin_role:             { public: true,  default: 'admin' },
@@ -283,9 +287,11 @@ class ConfigStore {
     const updates = {};        // what goes into storage (encrypted secrets)
     const cacheUpdates = {};   // what goes into the in-memory cache (plaintext)
 
+    const allowEmptyStringKeys = new Set(['marketing_demo_username_hint', 'marketing_demo_password_hint']);
     for (const [key, value] of Object.entries(data)) {
       if (!(key in FIELD_DEFS)) continue;          // ignore unknown keys
-      if (value === null || value === undefined || value === '') continue;
+      if (value === null || value === undefined) continue;
+      if (value === '' && !allowEmptyStringKeys.has(key)) continue;
       // Value is a non-empty string
       const stored = SECRET_KEYS.has(key) ? _encrypt(value) : value;
       updates[key]      = stored;
@@ -404,6 +410,9 @@ class ConfigStore {
       ciba_enabled:           ['CIBA_ENABLED'],
       step_up_method:         ['STEP_UP_METHOD'],
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
+      marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
+      marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],
+      marketing_demo_password_hint: ['MARKETING_DEMO_PASSWORD_HINT'],
     };
 
     const envVars = envFallbackMap[key] || [];

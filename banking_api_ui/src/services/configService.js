@@ -27,6 +27,9 @@ export const PUBLIC_FIELDS = [
   'mcp_server_url',
   'ui_industry_preset',
   'agent_mcp_allowed_scopes',
+  'marketing_customer_login_mode',
+  'marketing_demo_username_hint',
+  'marketing_demo_password_hint',
 ];
 
 function openDB() {

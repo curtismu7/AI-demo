@@ -182,7 +182,15 @@ router.get('/login', (req, res) => {
 
     // Generate a nonce for OIDC replay protection (RFC 6749 / OIDC Core §3.1.2.1)
     const nonce = crypto.randomBytes(16).toString('hex');
-    const url = oauthService.generateAuthorizationUrl(state, codeVerifier, { nonce }, redirectUri) + resourceParam;
+    const forcePiFlow =
+      req.query.use_pi_flow === '1' || String(req.query.use_pi_flow || '').toLowerCase() === 'true';
+    const url =
+      oauthService.generateAuthorizationUrl(
+        state,
+        codeVerifier,
+        { nonce, ...(forcePiFlow ? { forcePiFlow: true } : {}) },
+        redirectUri
+      ) + resourceParam;
 
     // Store state, verifier and redirect URI in session for CSRF protection and PKCE
     req.session.oauthState = state;

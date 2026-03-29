@@ -1227,20 +1227,32 @@ export default function BankingAgent({
   }
 
   /** Show overlay then redirect to PingOne login. */
-  function handleLoginAction(actionId) {
+  async function handleLoginAction(actionId) {
     const label = actionId === 'login_admin' ? 'Admin' : 'Customer';
     spinner.show(`Signing in as ${label}…`, 'Redirecting to PingOne');
-    setTimeout(() => {
-      const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-      if (actionId === 'login_admin') {
+    const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
+    if (actionId === 'login_admin') {
+      setTimeout(() => {
         window.location.href = `${apiUrl}/api/auth/oauth/login`;
-        return;
-      }
+      }, 150);
+      return;
+    }
+    let usePiFlow = false;
+    try {
+      const r = await fetch('/api/admin/config', { credentials: 'include' });
+      const j = await r.json();
+      const cfg = j?.config || {};
+      if (cfg.marketing_customer_login_mode === 'slide_pi_flow') usePiFlow = true;
+    } catch (_) {
+      /* keep default redirect */
+    }
+    setTimeout(() => {
       const p = (location.pathname || '').replace(/\/$/, '') || '/';
-      const q = isPublicMarketingAgentPath(p)
-        ? `?return_to=${encodeURIComponent('/marketing')}`
-        : '';
-      window.location.href = `${apiUrl}/api/auth/oauth/user/login${q}`;
+      const params = new URLSearchParams();
+      if (isPublicMarketingAgentPath(p)) params.set('return_to', '/marketing');
+      if (usePiFlow) params.set('use_pi_flow', '1');
+      const q = params.toString();
+      window.location.href = `${apiUrl}/api/auth/oauth/user/login${q ? `?${q}` : ''}`;
     }, 150);
   }
 
