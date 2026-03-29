@@ -657,7 +657,12 @@ export default function BankingAgent({
   /** Avoid repeating the session-fix error bubble after we showed it on load or after a failed action. */
   const sessionFixBubbleShownRef = useRef(false);
   /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
-  const [consentBlocked, setConsentBlocked] = useState(() => isAgentBlockedByConsentDecline());
+  // Always start false — the block is session-scoped, not page-load-scoped.
+  // Clear any stale localStorage value immediately so refresh/login never shows the banner.
+  const [consentBlocked, setConsentBlocked] = useState(() => {
+    setAgentBlockedByConsentDecline(false);
+    return false;
+  });
   /** True when the user has accepted the in-app agent consent agreement. */
   /** Pending HITL intent — shows AgentConsentModal (transaction mode) before OTP. */
   const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
