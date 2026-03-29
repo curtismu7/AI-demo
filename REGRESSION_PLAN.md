@@ -65,6 +65,15 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — feat(spinner): show full absolute URL in spinner endpoint chip (commit `cecd291`)
+
+- **Problem:** The spinner loading overlay showed a bare relative path like `GET /api/accounts/my` — not useful for debugging as it lacked the host and scheme.
+- **Fix:** In `spinnerService.js` `increment()`, the `endpoint` string is now built with the full absolute URL: `window.location.origin` is prepended to any relative `/api/*` path, giving e.g. `GET https://banking-demo-puce.vercel.app/api/accounts/my`. The `API_MESSAGES` prefix matching is unaffected (still uses relative path).
+- **Files:** `banking_api_ui/src/services/spinnerService.js`
+- **Regression check:** All 5 `spinnerService.test.js` tests pass. Build exits 0. Spinner endpoint chip shows full `https://` URL while any `/api/*` call is in flight.
+
+---
+
 ### 2026-03-29 — feat: auto-inject may_act when absent (ff_inject_may_act flag) (commit `3d8ae67`)
 
 - **Problem:** When PingOne is not configured to emit a `may_act` claim in the user access token, the Token Chain panel shows a `⚠️ may_act absent` warning and RFC 8693 token exchange may fail. This required a PingOne token-policy change that is not always practical in a demo environment.
