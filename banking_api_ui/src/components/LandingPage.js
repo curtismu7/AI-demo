@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import LoadingOverlay from './shared/LoadingOverlay';
+import { spinner } from '../services/spinnerService';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import BrandLogo from './BrandLogo';
@@ -13,7 +13,6 @@ const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('personal');
   const [scrollY, setScrollY] = React.useState(0);
-  const [loginOverlay, setLoginOverlay] = React.useState({ show: false, message: '', sub: '' });
 
   React.useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -30,7 +29,7 @@ const LandingPage = () => {
 
   const handleOAuthLogin = (userType = 'user') => {
     const label = userType === 'admin' ? 'Admin' : 'Customer';
-    setLoginOverlay({ show: true, message: `Signing in as ${label}…`, sub: 'Redirecting to PingOne' });
+    spinner.show(`Signing in as ${label}…`, 'Redirecting to PingOne');
     const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
     const url = userType === 'admin'
       ? `${apiUrl}/api/auth/oauth/login`
@@ -436,7 +435,6 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
-      <LoadingOverlay show={loginOverlay.show} message={loginOverlay.message} sub={loginOverlay.sub} />
     </div>
   );
 };

@@ -4,6 +4,8 @@ Standalone AI-powered banking demo using PingOne for authentication and **RFC 86
 
 This is a **completely standalone** project — it can be handed to anyone and run independently.
 
+**AI assistants / agents:** follow **[CLAUDE.md](CLAUDE.md)** (repo conventions, regression guard, verification).
+
 ## Components
 
 | Component | Port | Description |
@@ -104,30 +106,30 @@ or Vercel KV in production — **no `.env` file required**.
 The **Backend-for-Frontend (BFF)** — the `banking_api_server` — performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
 
 ```
-1. Retrieve user's access token (T1) from server-side session
+1. Retrieve the user access token (end-user OAuth access token from PingOne, stored in server-side session)
 2. POST {issuer}/as/token
      grant_type = urn:ietf:params:oauth:grant-type:token-exchange
-     subject_token = T1  (user's access token)
+     subject_token = <user access token>
      subject_token_type = urn:ietf:params:oauth:token-type:access_token
      audience = <MCP_RESOURCE_URI>          ← binds audience to MCP server
      scope = <tool-specific scopes>         ← e.g. banking:accounts:read
-3. PingOne validates may_act claim on T1, issues T2 (MCP-audience token)
-4. Backend-for-Frontend (BFF) opens WebSocket to banking_mcp_server with T2 as Bearer
+3. PingOne validates may_act on the user access token, issues the MCP access token (delegated, MCP audience)
+4. Backend-for-Frontend (BFF) opens WebSocket to banking_mcp_server with the MCP access token as Bearer
 ```
 
 Optional delegation path (`USE_AGENT_ACTOR_FOR_MCP=true`):
 ```
-     actor_token = <agent client_credentials token>   ← agent acts on behalf of user
+     actor_token = <agent access token>   ← client-credentials token; agent acts on behalf of user
      actor_token_type = urn:ietf:params:oauth:token-type:access_token
-     → T2 carries  act: { sub: "<agent-client-id>" }  per RFC 8693 §4.1
+     → MCP access token carries act: { sub: "<agent-client-id>" }  per RFC 8693 §4.1
 ```
 
-The exchange is **dormant until configured** — if `MCP_RESOURCE_URI` is not set, T1 is forwarded directly (safe for local dev). To activate:
+The exchange is **dormant until configured** — if `MCP_RESOURCE_URI` is not set, the BFF does not send a token to MCP for that path (local tool fallback; user access token stays on the BFF). To activate:
 
 | Env var | Purpose |
 |---|---|
 | `MCP_RESOURCE_URI` | Audience URI for the MCP server (activates the exchange) |
-| `USE_AGENT_ACTOR_FOR_MCP` | `true` to add `actor_token` (adds `act` claim to T2) |
+| `USE_AGENT_ACTOR_FOR_MCP` | `true` to add `actor_token` (adds `act` claim to the MCP access token) |
 | `AGENT_OAUTH_CLIENT_ID` | Agent OAuth client ID (required when actor path is on) |
 
 Required in PingOne: enable the token-exchange grant type on the Backend-for-Frontend (BFF) client and configure a `may_act` / actor policy so PingOne will accept the exchange.

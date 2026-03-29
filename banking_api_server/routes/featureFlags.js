@@ -29,13 +29,30 @@ const FLAG_REGISTRY = [
   // ── PingOne Authorize ──────────────────────────────────────────────────────
   {
     id:           'authorize_enabled',
-    name:         'PingOne Authorize',
+    name:         'Transaction authorization (master)',
     category:     'PingOne Authorize',
-    description:  'Route transaction decisions through PingOne Authorize. Requires a configured policy decision endpoint or policy ID.',
-    impact:       'Transfers and withdrawals call the Authorize API before being processed. PERMIT → proceed; DENY → 403; step-up obligation → 428.',
+    description:
+      'Turn on policy-style evaluation before certain transactions (transfers/withdrawals; deposits optional). ' +
+      'Use **Simulated Authorize** for education (no PingOne credentials), or turn simulation off and set a decision endpoint / policy ID for live PingOne Authorize.',
+    impact:
+      'ON + Simulated → in-process PERMIT/DENY/428 identical HTTP shape to PingOne. ' +
+      'ON + not simulated → calls PingOne (requires worker app + endpoint or policy ID). OFF → no Authorize gate.',
     type:         'boolean',
     defaultValue: false,
     docsUrl:      'https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
+  },
+  {
+    id:           'ff_authorize_simulated',
+    name:         'Simulated Authorize (education)',
+    category:     'PingOne Authorize',
+    description:
+      'When **Transaction authorization** is ON, evaluate with an in-process policy that mimics PingOne Authorize outcomes (PERMIT, DENY, policy step-up → 428). No worker token or PingOne API call. ' +
+      'Turn **OFF** to use real PingOne Authorize (requires decision endpoint or policy ID + worker credentials).',
+    impact:
+      'ON = education mode: deny above $50k (configurable via SIMULATED_AUTHORIZE_DENY_AMOUNT); policy step-up for large transfers/withdrawals without strong ACR (see simulatedAuthorizeService.js). OFF = live PingOne only.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: true,
   },
   {
     id:           'ff_authorize_fail_open',

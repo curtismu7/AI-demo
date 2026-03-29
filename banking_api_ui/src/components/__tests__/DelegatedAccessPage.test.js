@@ -19,7 +19,7 @@ jest.mock('../DelegatedAccessPage.css',      () => ({}), { virtual: true });
 const MOCK_TOKEN_EVENTS = [
   {
     id:            'user-token',
-    label:         'User Token',
+    label:         'User access token',
     status:        'active',
     timestamp:     new Date().toISOString(),
     explanation:   'User access token stored in BFF session.',
@@ -37,7 +37,7 @@ const MOCK_TOKEN_EVENTS = [
   },
   {
     id:              'exchanged-token',
-    label:           'Exchanged Token',
+    label:           'MCP access token (delegated) → MCP server',
     status:          'exchanged',
     timestamp:       new Date().toISOString(),
     explanation:     'Narrowed MCP token with act claim proving delegation.',
@@ -110,9 +110,9 @@ describe('TokenExchangeSimulator', () => {
     // Each label appears in the da-sim-row__label spans (left chain)
     const dialog = screen.getByRole('dialog', { name: /token exchange simulator/i });
     const chainCol = dialog.querySelector('.da-sim__chain');
-    expect(within(chainCol).getByText('User Token')).toBeInTheDocument();
+    expect(within(chainCol).getByText('User access token')).toBeInTheDocument();
     expect(within(chainCol).getByText('Exchange Required')).toBeInTheDocument();
-    expect(within(chainCol).getByText('Exchanged Token')).toBeInTheDocument();
+    expect(within(chainCol).getByText('MCP access token (delegated) → MCP server')).toBeInTheDocument();
   });
 
   it('auto-selects user-token and shows may_act claim in right panel', async () => {
@@ -130,9 +130,9 @@ describe('TokenExchangeSimulator', () => {
     const dialog = screen.getByRole('dialog', { name: /token exchange simulator/i });
     const chainCol = dialog.querySelector('.da-sim__chain');
 
-    // Click the "Exchanged Token" row
+    // Click the MCP access token row
     await act(async () => {
-      fireEvent.click(within(chainCol).getByText('Exchanged Token'));
+      fireEvent.click(within(chainCol).getByText('MCP access token (delegated) → MCP server'));
     });
 
     // Right panel should now show the API call section and act claim
@@ -149,7 +149,7 @@ describe('TokenExchangeSimulator', () => {
     const chainCol = dialog.querySelector('.da-sim__chain');
 
     await act(async () => {
-      fireEvent.click(within(chainCol).getByText('Exchanged Token'));
+      fireEvent.click(within(chainCol).getByText('MCP access token (delegated) → MCP server'));
     });
 
     await waitFor(() => {

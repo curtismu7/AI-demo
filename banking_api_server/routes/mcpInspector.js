@@ -164,7 +164,7 @@ router.get('/tools', async (req, res) => {
         _source: 'mcp_server',
       });
     } catch (err) {
-      if (isMcpUnreachableError(err) && effectiveUserId) {
+      if (isMcpUnreachableError(err)) {
         console.warn('[MCP Inspector] tools/list MCP unreachable, using local catalog:', err.message);
         return respondLocalCatalog(`mcp_unreachable: ${err.message}`);
       }

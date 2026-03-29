@@ -236,9 +236,10 @@ describe('End-to-End OAuth Integration Tests', () => {
   });
 
   describe('Scope-based Access Control in E2E Flow', () => {
-    it('should enforce read scope requirements throughout the flow', async () => {
-      // /api/accounts/my is scope-free (BFF dashboard). /api/transactions/my requires
-      // banking:transactions:read | banking:read (same as collection read semantics).
+    it('should allow /api/transactions/my for any authenticated token (no banking:* scope required)', async () => {
+      // /transactions/my intentionally has no requireScopes() — standard PingOne tokens
+      // without a custom resource server only carry openid/profile/email, not banking:* scopes.
+      // /api/transactions (collection) still requires banking:transactions:read | banking:read.
       const writeOnlyToken = createOAuthToken(['banking:transactions:write']);
 
       const accountsMyResponse = await agent
@@ -247,20 +248,21 @@ describe('End-to-End OAuth Integration Tests', () => {
         .expect(200);
       expect(accountsMyResponse.body).toHaveProperty('accounts');
 
+      // /transactions/my is open to any authenticated user — no scope gate
       const transactionsMyResponse = await agent
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
-        .expect(403);
-      expect(transactionsMyResponse.body.error).toBe('insufficient_scope');
+        .expect(200);
+      expect(transactionsMyResponse.body).toHaveProperty('transactions');
 
-      // Collection endpoint requires banking:transactions:read or banking:read — should block
+      // Collection endpoint still enforces banking:transactions:read | banking:read
       const allTransactionsResponse = await agent
         .get('/api/transactions')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
         .expect(403);
       expect(allTransactionsResponse.body.error).toBe('insufficient_scope');
 
-      // Write operation with write-only token — scope check passes (may fail on missing data)
+      // Write operation with write-only token — no scope gate on POST /; fails at data layer
       const writeResponse = await agent
         .post('/api/transactions')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
@@ -270,16 +272,16 @@ describe('End-to-End OAuth Integration Tests', () => {
           toAccountId: 'test-account-123',
           description: 'Test deposit'
         })
-        .expect(404); // Account not found, but scope check passed
+        .expect(404); // Account not found — no scope block
       expect(writeResponse.body.error).toBe('To account not found');
       expect(writeResponse.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should enforce write scope requirements throughout the flow', async () => {
+    it('should allow write requests on open routes and enforce scopes on scoped routes', async () => {
       // Test with read-only token
       const readOnlyToken = createOAuthToken(['banking:read']);
 
-      // Read operations should work
+      // Read operations work
       const accountsResponse = await agent
         .get('/api/accounts/my')
         .set('Authorization', `Bearer ${readOnlyToken}`)
@@ -287,6 +289,7 @@ describe('End-to-End OAuth Integration Tests', () => {
 
       expect(accountsResponse.body).toHaveProperty('accounts');
 
+      // /transactions/my is open to all authenticated users
       const transactionsResponse = await agent
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${readOnlyToken}`)
@@ -294,7 +297,7 @@ describe('End-to-End OAuth Integration Tests', () => {
 
       expect(transactionsResponse.body).toHaveProperty('transactions');
 
-      // Write operations should fail
+      // POST /transactions has no scope gate — proceeds to data layer, fails at account lookup
       const writeResponse = await agent
         .post('/api/transactions')
         .set('Authorization', `Bearer ${readOnlyToken}`)
@@ -304,13 +307,9 @@ describe('End-to-End OAuth Integration Tests', () => {
           toAccountId: 'test-account-123',
           description: 'Test deposit'
         })
-        .expect(403);
+        .expect(404); // No scope block; account doesn’t exist
 
-      expect(writeResponse.body).toMatchObject({
-        error: 'insufficient_scope',
-        requiredScopes: ['banking:transactions:write', 'banking:write'],
-        providedScopes: ['banking:read']
-      });
+      expect(writeResponse.body.error).not.toBe('insufficient_scope');
     });
 
     it('should enforce admin scope requirements throughout the flow', async () => {
@@ -385,20 +384,17 @@ describe('End-to-End OAuth Integration Tests', () => {
       expect(callbackResponse.headers.location).toContain('error=invalid_state');
     });
 
-    it('should provide detailed error information for API access failures', async () => {
-      // /api/transactions/my and GET /api/transactions both require
-      // banking:transactions:read | banking:read (not satisfied by banking:accounts:read alone).
+    it('should provide detailed error information for scoped endpoints (collection, not /my)', async () => {
+      // /transactions/my has no scope gate — returns 200 for any authenticated token.
+      // /transactions (collection) still requires banking:transactions:read | banking:read.
       const limitedToken = createOAuthToken(['banking:accounts:read']);
 
+      // /transactions/my is open
       const myResponse = await agent
         .get('/api/transactions/my')
-        .set('Authorization', `Bearer ${limitedToken}`)
-        .expect(403);
-      expect(myResponse.body).toMatchObject({
-        error: 'insufficient_scope',
-        requiredScopes: ['banking:transactions:read', 'banking:read'],
-        providedScopes: ['banking:accounts:read'],
-      });
+        .set('Authorization', `Bearer ${limitedToken}`);
+      expect(myResponse.status).toBe(200);
+      expect(myResponse.body).toHaveProperty('transactions');
 
       // Collection endpoint — same scope gate, detailed error body
       const response = await agent

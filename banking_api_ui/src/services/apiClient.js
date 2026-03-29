@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl';
 import { appendTrafficEntry, redactHeaders, redactBody, tryParseJson, normalizeHeaders } from './apiTrafficStore';
+import { spinner } from './spinnerService';
 
 class ApiClient {
   constructor() {
@@ -14,6 +15,32 @@ class ApiClient {
   }
 
   setupInterceptors() {
+    // ── Spinner — show overlay for every non-silent API request ───────────────
+    this.client.interceptors.request.use(
+      (config) => {
+        if (!config._silent) {
+          try { spinner.increment((config.method || 'GET').toUpperCase(), config.url || ''); } catch (_) {}
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    this.client.interceptors.response.use(
+      (response) => {
+        if (!response.config?._silent) {
+          try { spinner.decrement(false); } catch (_) {}
+        }
+        return response;
+      },
+      (error) => {
+        if (!error.config?._silent) {
+          try { spinner.decrement(true); } catch (_) {} // isError → skip min display so toasts show
+        }
+        return Promise.reject(error);
+      }
+    );
+
     // ── Traffic capture — stamp request start time ────────────────────────────
     this.client.interceptors.request.use(
       (config) => { config._trafficStart = Date.now(); return config; },

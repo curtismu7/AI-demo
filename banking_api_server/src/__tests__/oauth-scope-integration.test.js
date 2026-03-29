@@ -182,13 +182,15 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('accounts');
     });
 
-    it('should require transaction read scope for GET /api/transactions/my (accounts read alone is insufficient)', async () => {
+    it('should allow GET /api/transactions/my with any authenticated token (no banking:* scope required)', async () => {
+      // /transactions/my intentionally has no requireScopes() — standard PingOne tokens
+      // without a custom resource server only carry openid/profile/email, not banking:* scopes.
       const token = createOAuthToken(['banking:accounts:read']);
       const response = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
-      expect(response.status).toBe(403);
-      expect(response.body.error).toBe('insufficient_scope');
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('transactions');
     });
   });
 
@@ -251,7 +253,8 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should deny transaction creation without required write scopes', async () => {
+    it('POST /api/transactions proceeds to data layer regardless of scope (no banking:write scope required)', async () => {
+      // POST /transactions intentionally omits requireScopes() — see route comment.
       const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
@@ -264,15 +267,13 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
           description: 'Test deposit'
         });
       
-      expect(response.status).toBe(403);
-      expect(response.body).toMatchObject({
-        error: 'insufficient_scope',
-        requiredScopes: ['banking:transactions:write', 'banking:write'],
-        providedScopes: ['banking:read']
-      });
+      // No scope block; reaches data layer, gets 404 for missing account
+      expect(response.status).toBe(404);
+      expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should deny transfer operations without banking:transactions:write scope', async () => {
+    it('POST /api/transactions transfer proceeds to data layer with read-only scope (no scope block)', async () => {
+      // See route comment: no requireScopes() on POST /transactions.
       const token = createOAuthToken(['banking:accounts:read']);
       
       const response = await request(app)
@@ -286,8 +287,8 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
           description: 'Test transfer'
         });
       
-      expect(response.status).toBe(403);
-      expect(response.body.error).toBe('insufficient_scope');
+      expect(response.status).toBe(404);
+      expect(response.body.error).not.toBe('insufficient_scope');
     });
   });
 
@@ -368,7 +369,10 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
   });
 
   describe('Detailed Error Handling (Requirements 6.1, 6.2, 6.3)', () => {
-    it('should provide clear error messages for missing scopes', async () => {
+    it('should return 404 (not 403) for POST /transactions with limited scope — no scope gate on this route', async () => {
+      // POST /transactions has no requireScopes() — the request goes through to the data
+      // layer and fails at account lookup. This confirms the route is open to authenticated
+      // users regardless of their banking:* scopes.
       const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
@@ -380,19 +384,8 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
           toAccountId: 'test-account-123'
         });
       
-      expect(response.status).toBe(403);
-      expect(response.body).toMatchObject({
-        error: 'insufficient_scope',
-        error_description: expect.stringContaining('At least one of the following scopes is required'),
-        requiredScopes: ['banking:transactions:write', 'banking:write'],
-        providedScopes: ['banking:read'],
-        missingScopes: ['banking:transactions:write', 'banking:write'],
-        validationMode: 'any_required',
-        hint: expect.any(String),
-        timestamp: expect.any(String),
-        path: '/api/transactions',
-        method: 'POST'
-      });
+      expect(response.status).toBe(404);
+      expect(response.body.error).not.toBe('insufficient_scope');
     });
 
     it('should provide clear error messages for invalid tokens', async () => {

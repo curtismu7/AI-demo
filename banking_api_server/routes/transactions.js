@@ -4,7 +4,7 @@ const dataStore = require('../data/store');
 const { authenticateToken, requireScopes } = require('../middleware/auth');
 const { blockInDemoMode } = require('../middleware/demoMode');
 const runtimeSettings = require('../config/runtimeSettings');
-const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
+const transactionAuthorizationService = require('../services/transactionAuthorizationService');
 const configStore = require('../services/configStore');
 const { sendTransactionConfirmation } = require('../services/emailService');
 const txConsent = require('../services/transactionConsentChallenge');
@@ -325,69 +325,55 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     // ── End step-up gate ──────────────────────────────────────────────────────
 
-    // ── PingOne Authorize gate ────────────────────────────────────────────────
-    // Controlled by feature flags:
-    //   authorize_enabled      — master switch (FF page + Config page)
-    //   ff_authorize_fail_open — fail open (warn+allow) vs fail closed (deny) on errors
-    //   ff_authorize_deposits  — extend Authorize evaluation to deposit transactions
-    const AUTHORIZE_ENABLED =
-      (configStore.get('authorize_enabled') === 'true' || configStore.get('authorize_enabled') === true) ||
-      runtimeSettings.get('authorizeEnabled');
+    // ── Transaction authorization (PingOne Authorize or simulated) ──────────
+    // Unified in transactionAuthorizationService — see docs/PINGONE_AUTHORIZE_PLAN.md
     const AUTHORIZE_FAIL_OPEN = configStore.get('ff_authorize_fail_open') !== 'false'; // default true
-    const AUTHORIZE_DEPOSITS  = configStore.get('ff_authorize_deposits') === 'true';
-    const AUTHORIZE_DECISION_ENDPOINT_ID = configStore.get('authorize_decision_endpoint_id');
-    const AUTHORIZE_POLICY_ID =
-      configStore.get('authorize_policy_id') ||
-      runtimeSettings.get('authorizePolicyId');
-    const AUTHORIZE_TYPES = AUTHORIZE_DEPOSITS
-      ? ['transfer', 'withdrawal', 'deposit']
-      : ['transfer', 'withdrawal'];
+    /** @type {object|null} */
+    let authorizeEvaluation = null;
 
-    if (AUTHORIZE_ENABLED && (AUTHORIZE_DECISION_ENDPOINT_ID || AUTHORIZE_POLICY_ID) && req.user.role !== 'admin' && AUTHORIZE_TYPES.includes(type)) {
-      try {
-        const { decision, stepUpRequired, path: authorizePath, decisionId } = await pingOneAuthorizeService.evaluateTransaction({
-          decisionEndpointId: AUTHORIZE_DECISION_ENDPOINT_ID,
-          policyId: AUTHORIZE_POLICY_ID,
-          userId: req.user.id,
-          amount: parseFloat(amount),
-          type,
-          acr: req.user.acr,
+    const authz = await transactionAuthorizationService.evaluateTransactionPolicy({
+      runtimeSettings,
+      userRole: req.user.role,
+      userId: req.user.id,
+      amount: parseFloat(amount),
+      type,
+      acr: req.user.acr,
+    });
+
+    if (authz.ran) {
+      if (authz.block) {
+        return res.status(authz.block.status).json(authz.block.body);
+      }
+      if (authz.simulatedError) {
+        console.error(`[Authorize][Simulated] unexpected error: ${authz.simulatedError.message}`);
+        return res.status(500).json({
+          error: 'simulated_authorize_error',
+          error_description: 'Simulated policy evaluation failed unexpectedly.',
         });
-        const authorizeRef = AUTHORIZE_DECISION_ENDPOINT_ID || AUTHORIZE_POLICY_ID;
-        console.log(`[Authorize] ${authorizePath} ${authorizeRef} — user ${req.user.id} — type ${type} — decision: ${decision} — stepUpRequired: ${stepUpRequired}${decisionId ? ` — decisionId: ${decisionId}` : ''}`);
-
-        // Policy signalled that a step-up is required (obligation/advice)
-        if (stepUpRequired) {
-          const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue');
-          const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
-          return res.status(428).json({
-            error: 'step_up_required',
-            error_description: 'This transaction requires additional authentication (MFA) as required by the authorization policy.',
-            step_up_acr: STEP_UP_ACR,
-            step_up_method: stepUpMethod,
-            step_up_url: '/api/auth/oauth/user/stepup',
-            authorize_policy_id: AUTHORIZE_POLICY_ID,
-          });
-        }
-
-        if (decision === 'DENY') {
-          return res.status(403).json({
-            error: 'transaction_denied',
-            error_description: 'This transaction was denied by the authorization policy.',
-            authorize_policy_id: AUTHORIZE_POLICY_ID,
-          });
-        }
-      } catch (err) {
+      }
+      if (authz.pingoneError) {
         if (AUTHORIZE_FAIL_OPEN) {
-          // ff_authorize_fail_open = true (default): warn + allow — safe during testing.
-          console.warn(`[Authorize] Policy evaluation error — failing open (ff_authorize_fail_open=true): ${err.message}`);
+          console.warn(`[Authorize] Policy evaluation error — failing open (ff_authorize_fail_open=true): ${authz.pingoneError.message}`);
         } else {
-          // ff_authorize_fail_open = false: fail closed — deny on any Authorize error.
-          console.error(`[Authorize] Policy evaluation error — failing closed (ff_authorize_fail_open=false): ${err.message}`);
+          console.error(`[Authorize] Policy evaluation error — failing closed (ff_authorize_fail_open=false): ${authz.pingoneError.message}`);
           return res.status(503).json({
             error: 'authorize_unavailable',
             error_description: 'Transaction policy evaluation failed and fail-open is disabled. Try again or contact an administrator.',
           });
+        }
+      }
+      if (authz.permit && authz.evaluation) {
+        authorizeEvaluation = authz.evaluation;
+        const ev = authz.evaluation;
+        if (ev.engine === 'simulated') {
+          console.log(
+            `[Authorize][Simulated] ${ev.path} — user ${req.user.id} — type ${type} — decision: ${ev.decision}${ev.decisionId ? ` — decisionId: ${ev.decisionId}` : ''}`
+          );
+        } else {
+          const ref = ev.authorizeRef || '';
+          console.log(
+            `[Authorize] ${ev.path} ${ref} — user ${req.user.id} — type ${type} — decision: ${ev.decision}${ev.decisionId ? ` — decisionId: ${ev.decisionId}` : ''}`
+          );
         }
       }
     }
@@ -453,7 +439,8 @@ router.post('/', authenticateToken, async (req, res) => {
       res.status(201).json({
         message: 'Transfer completed successfully',
         withdrawalTransaction,
-        depositTransaction
+        depositTransaction,
+        ...(authorizeEvaluation && { authorizeEvaluation }),
       });
     } else {
       // For non-transfer transactions, create single transaction
@@ -498,7 +485,8 @@ router.post('/', authenticateToken, async (req, res) => {
 
       res.status(201).json({
         message: 'Transaction created successfully',
-        transaction
+        transaction,
+        ...(authorizeEvaluation && { authorizeEvaluation }),
       });
     }
   } catch (error) {

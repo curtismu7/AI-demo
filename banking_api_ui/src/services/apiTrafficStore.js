@@ -1,4 +1,5 @@
 // banking_api_ui/src/services/apiTrafficStore.js
+import { spinner } from './spinnerService';
 /**
  * In-memory ring buffer for API request/response traffic.
  * Subscribed by ApiTrafficPanel; populated by axios interceptors + fetch wrapper.
@@ -155,7 +156,8 @@ export function appendTokenEvents(toolName, tokenEvents = []) {
 let fetchPatched = false;
 
 /**
- * Patch window.fetch once to capture /api/* calls into the traffic store.
+ * Patch window.fetch once to capture /api/* calls into the traffic store
+ * and show the global spinner for same-origin API requests.
  * Call from index.js before React renders.
  */
 export function patchFetch() {
@@ -192,10 +194,15 @@ export function patchFetch() {
     }
     if (reqBody && typeof reqBody === 'object') reqBody = redactBody(reqBody);
 
+    // Show global spinner for API fetch calls
+    try { spinner.increment(method, url); } catch (_) {}
+
     try {
       const response = await origFetch(input, init);
       const duration = Date.now() - start;
       const resHeaders = Object.fromEntries(response.headers.entries());
+
+      try { spinner.decrement(false); } catch (_) {}
 
       // Clone so the original body is still readable by the caller
       response.clone().text().then(text => {
@@ -219,6 +226,7 @@ export function patchFetch() {
 
       return response;
     } catch (err) {
+      try { spinner.decrement(true); } catch (_) {}
       appendTrafficEntry({
         method, url, status: 0, duration: Date.now() - start,
         requestHeaders: reqHeaders, requestBody: reqBody,

@@ -87,6 +87,8 @@ const FIELD_DEFS = {
   // Each maps to a runtime behaviour controlled via /api/admin/feature-flags.
   ff_authorize_fail_open:  { public: true, default: 'true'  }, // fail open (allow) on Authorize errors
   ff_authorize_deposits:   { public: true, default: 'false' }, // apply Authorize to deposits too
+  // When true with authorize_enabled: run in-process simulated Authorize (education); no PingOne call
+  ff_authorize_simulated:  { public: true, default: 'false' },
   ff_hitl_enabled:         { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
 
   // RFC 8693 Token Exchange — MCP server resource URI

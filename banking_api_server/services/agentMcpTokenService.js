@@ -3,6 +3,11 @@
  * Resolves the access token sent to banking_mcp_server: either legacy (user-only exchange)
  * or on-behalf-of (subject = user, actor = agent OAuth client) when USE_AGENT_ACTOR_FOR_MCP=true.
  *
+ * **Token names** (used in tokenEvents labels and documentation):
+ * - **User access token** — PingOne OAuth access token for the end user; held in the BFF session; RFC 8693 `subject_token`.
+ * - **Agent access token** — Client-credentials token for `AGENT_OAUTH_CLIENT_ID`; optional RFC 8693 `actor_token`.
+ * - **MCP access token** — Delegated access token PingOne issues for the MCP audience (`mcp_resource_uri`); Bearer to MCP.
+ *
  * Also returns tokenEvents — decoded token metadata for the UI Token Chain panel.
  * No raw tokens are included. Each event may include jwtFullDecode: { header, claims }
  * (full JWT payload JSON for dumps) alongside a smaller sanitized `claims` field for tables.
@@ -178,35 +183,35 @@ function describeMayAct(claims, bffClientId) {
 }
 
 /**
- * Append the User Token row to tokenEvents (same shape as MCP tool-call flow).
- * @returns {{ userSub: string|null, t1Claims: object|undefined, t1Decoded: object|null }}
+ * Append the user access token row to tokenEvents (same shape as MCP tool-call flow).
+ * @returns {{ userSub: string|null, userAccessTokenClaims: object|undefined, userAccessTokenDecoded: object|null }}
  */
 function appendUserTokenEvent(tokenEvents, userToken, req = null) {
-  const t1Decoded = decodeJwtClaims(userToken);
-  const t1Claims = t1Decoded?.claims;
-  const userSub = t1Claims?.sub != null ? String(t1Claims.sub) : null;
+  const userAccessTokenDecoded = decodeJwtClaims(userToken);
+  const userAccessTokenClaims = userAccessTokenDecoded?.claims;
+  const userSub = userAccessTokenClaims?.sub != null ? String(userAccessTokenClaims.sub) : null;
   const bffClientId = oauthService.config?.clientId || process.env.PINGONE_CLIENT_ID || null;
-  const mayActInfo = describeMayAct(t1Claims, bffClientId);
+  const mayActInfo = describeMayAct(userAccessTokenClaims, bffClientId);
 
   tokenEvents.push(buildTokenEvent(
     'user-token',
-    'User Token',
+    'User access token',
     'active',
-    t1Decoded,
+    userAccessTokenDecoded,
     'Issued by PingOne after Authorization Code + PKCE login. ' +
     'Stored in the Backend-for-Frontend (BFF) session (server-side httpOnly cookie — never sent to the browser). ' +
-    (t1Claims?.may_act
-      ? `Contains may_act: ${JSON.stringify(t1Claims.may_act)} — this prospectively authorises the Backend-for-Frontend (BFF) to exchange this token. ${mayActInfo.reason}`
+    (userAccessTokenClaims?.may_act
+      ? `Contains may_act: ${JSON.stringify(userAccessTokenClaims.may_act)} — this prospectively authorises the Backend-for-Frontend (BFF) to exchange this token. ${mayActInfo.reason}`
       : 'No may_act claim — PingOne must be configured to add may_act for token exchange to succeed.'),
     {
       rfc: 'RFC 7519 (JWT) · RFC 9068 (OAuth2 JWT AT)',
-      mayActPresent: !!t1Claims?.may_act,
+      mayActPresent: !!userAccessTokenClaims?.may_act,
       mayActValid: mayActInfo.valid,
       mayActDetails: mayActInfo.reason,
     }
   ));
 
-  return { userSub, t1Claims, t1Decoded };
+  return { userSub, userAccessTokenClaims, userAccessTokenDecoded };
 }
 
 /**
@@ -231,22 +236,22 @@ function buildSessionPreviewTokenEvents(req) {
       'skipped',
       null,
       'mcp_resource_uri is not set — RFC 8693 token exchange is not active. ' +
-        'Banking tools run via local fallback; the User Token is never forwarded to MCP. ' +
+        'Banking tools run via local fallback; the user access token is never forwarded to MCP. ' +
         'Token exchange (and human-in-the-loop consent) only applies to deposit, withdrawal, and transfer transactions over $500.',
       { rfc: 'RFC 8693 · RFC 8707' }
     ));
     return { tokenEvents };
   }
 
-  const t1Decoded = decodeJwtClaims(userToken);
-  const t1Claims = t1Decoded?.claims;
-  const scopeCount = countJwtScopes(t1Claims);
+  const userAccessTokenDecoded = decodeJwtClaims(userToken);
+  const userAccessTokenClaims = userAccessTokenDecoded?.claims;
+  const scopeCount = countJwtScopes(userAccessTokenClaims);
   if (scopeCount < MIN_USER_SCOPES_FOR_MCP) {
     tokenEvents.push(buildTokenEvent(
       'user-scopes-insufficient',
-      'User Token — insufficient scopes for MCP exchange',
+      'User access token — insufficient scopes for MCP exchange',
       'failed',
-      t1Decoded,
+      userAccessTokenDecoded,
       `User access token has ${scopeCount} scope(s); at least ${MIN_USER_SCOPES_FOR_MCP} distinct scopes are required ` +
         'so PingOne can issue a delegated MCP token with a narrower audience and reduced scopes. ' +
         'Request additional scopes at login (PingOne app) and sign in again.',
@@ -257,20 +262,20 @@ function buildSessionPreviewTokenEvents(req) {
 
   tokenEvents.push(buildTokenEvent(
     'exchange',
-    'Token Exchange (RFC 8693): User Token → MCP Token',
+    'Token exchange (RFC 8693): user access token → MCP access token',
     'waiting',
     null,
-    'Your session has a User Token (above). The exchange runs when the AI Agent invokes a banking tool. ' +
+    'Your session has a user access token (above). The exchange runs when the AI Agent invokes a banking tool. ' +
       'For deposit, withdrawal, and transfer over $500 the exchange is paired with human-in-the-loop consent (OTP).',
     { rfc: 'RFC 8693 · RFC 8707' }
   ));
 
   tokenEvents.push(buildTokenEvent(
     'exchanged-token',
-    'MCP Token (Delegated) → MCP Server',
+    'MCP access token (delegated) → MCP server',
     'waiting',
     null,
-    'After a successful exchange on an MCP tool call, decoded MCP token claims (including act, audience, and scope) appear here.',
+    'After a successful exchange on an MCP tool call, decoded MCP access token claims (including act, audience, and scope) appear here.',
     { rfc: 'RFC 8693' }
   ));
 
@@ -298,7 +303,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     return { token: null, tokenEvents, userSub: null };
   }
 
-  const { userSub, t1Claims } = appendUserTokenEvent(tokenEvents, userToken, req);
+  const { userSub, userAccessTokenClaims } = appendUserTokenEvent(tokenEvents, userToken, req);
 
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
@@ -341,9 +346,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // Example: tool needs ['banking:accounts:read','banking:read']; user has 'banking:read'
   //          → toolScopes = ['banking:read']  (exchanges successfully for the broad scope)
   const userTokenScopes = new Set(
-    (typeof t1Claims?.scope === 'string'
-      ? t1Claims.scope.split(' ')
-      : (t1Claims?.scope || [])
+    (typeof userAccessTokenClaims?.scope === 'string'
+      ? userAccessTokenClaims.scope.split(' ')
+      : (userAccessTokenClaims?.scope || [])
     ).filter(Boolean)
   );
   const toolScopes = toolCandidateScopes.filter((s) => userTokenScopes.has(s));
@@ -368,7 +373,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       null,
       'RFC 8693 token exchange is not configured. Set mcp_resource_uri in the Admin → Config UI ' +
         '(or MCP_RESOURCE_URI env) to the MCP resource audience URI. ' +
-        'Banking tools are running via local fallback — the User Token is not forwarded to MCP.',
+        'Banking tools are running via local fallback — the user access token is not forwarded to MCP.',
       { rfc: 'RFC 8693 · RFC 8707', trigger: toolTrigger }
     ));
     // Return null token — server.js will route to the local tool handler.
@@ -376,11 +381,11 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     return { token: null, tokenEvents, userSub };
   }
 
-  const scopeCount = countJwtScopes(t1Claims);
+  const scopeCount = countJwtScopes(userAccessTokenClaims);
   if (scopeCount < MIN_USER_SCOPES_FOR_MCP) {
     tokenEvents.push(buildTokenEvent(
       'user-scopes-insufficient',
-      'User Token — insufficient scopes for MCP exchange',
+      'User access token — insufficient scopes for MCP exchange',
       'failed',
       decodeJwtClaims(userToken),
       `User access token has ${scopeCount} scope(s); at least ${MIN_USER_SCOPES_FOR_MCP} are required. ` +
@@ -407,7 +412,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       'skipped',
       null,
       'AGENT_OAUTH_CLIENT_ID is not set. The token exchange will proceed subject-only (RFC 8693 still enforced — ' +
-        'the User Token is never forwarded to MCP). However, the resulting MCP Token will have no act claim, ' +
+        'the user access token is never forwarded to MCP). However, the resulting MCP access token will have no act claim, ' +
         'so audit logs and the MCP server cannot distinguish the AI Agent from the user. ' +
         'Set AGENT_OAUTH_CLIENT_ID + AGENT_OAUTH_CLIENT_SECRET to enable full on-behalf-of delegation.',
       { rfc: 'RFC 8693 §2.1 (actor_token)' }
@@ -421,18 +426,18 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       const a0Decoded = decodeJwtClaims(actorToken);
       tokenEvents.push(buildTokenEvent(
         'agent-actor-token',
-        'Agent Token (Client Credentials)',
+        'Agent access token (client credentials)',
         'active',
         a0Decoded,
         `Client-credentials token for the dedicated Agent OAuth client (${process.env.AGENT_OAUTH_CLIENT_ID}). ` +
-        'Used as actor_token in the RFC 8693 exchange — the resulting MCP Token will carry ' +
+        'Used as actor_token in the RFC 8693 exchange — the resulting MCP access token will carry ' +
         'act: { client_id: agent-client } identifying the Agent as the current actor.',
         { rfc: 'RFC 8693 §2.1 (actor_token)' }
       ));
     } catch (err) {
       tokenEvents.push(buildTokenEvent(
         'agent-actor-token',
-        'Agent Token',
+        'Agent access token',
         'failed',
         null,
         `Agent client-credentials token failed: ${err.message}. Falling back to subject-only exchange.`,
@@ -445,14 +450,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ── Event 2b: Token exchange attempt ────────────────────────────────────────
   tokenEvents.push(buildTokenEvent(
     'exchange-in-progress',
-    'Token Exchange (RFC 8693): User Token → MCP Token',
+    'Token exchange (RFC 8693): user access token → MCP access token',
     'acquiring',
     null,
-    `Backend-for-Frontend (BFF) is exchanging the User Token for a delegated MCP Token scoped to audience=${mcpResourceUri}, ` +
+    `Backend-for-Frontend (BFF) is exchanging the user access token for a delegated MCP access token scoped to audience=${mcpResourceUri}, ` +
     `scope="${effectiveToolScopes.join(' ')}". ` +
-    (t1Claims?.may_act
-      ? `PingOne will validate may_act.client_id="${t1Claims.may_act.client_id}" against the authenticated Backend-for-Frontend (BFF) client.`
-      : 'PingOne will check exchange policy (may_act not present on User token — exchange may be rejected).'),
+    (userAccessTokenClaims?.may_act
+      ? `PingOne will validate may_act.client_id="${userAccessTokenClaims.may_act.client_id}" against the authenticated Backend-for-Frontend (BFF) client.`
+      : 'PingOne will check exchange policy (may_act not present on user access token — exchange may be rejected).'),
     {
       rfc: 'RFC 8693 · RFC 8707 (resource indicator)',
       trigger: toolTrigger,
@@ -482,41 +487,41 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       );
     }
 
-    // Decode MCP token to show act claim in the UI
-    const t2Decoded = decodeJwtClaims(exchangedToken);
-    const t2Claims = t2Decoded?.claims;
+    // Decode MCP access token to show act claim in the UI
+    const mcpAccessTokenDecoded = decodeJwtClaims(exchangedToken);
+    const mcpAccessTokenClaims = mcpAccessTokenDecoded?.claims;
 
     // Replace the in-progress event with the completed result
     const inProgressIdx = tokenEvents.findIndex(e => e.id === 'exchange-in-progress');
     if (inProgressIdx !== -1) tokenEvents.splice(inProgressIdx, 1);
 
-    // Validate that the issued MCP token's aud actually matches what was requested.
-    const t2Aud = t2Claims?.aud;
-    const audMatches = t2Aud === mcpResourceUri ||
-      (Array.isArray(t2Aud) && t2Aud.includes(mcpResourceUri));
+    // Validate that the issued MCP access token's aud actually matches what was requested.
+    const mcpTokenAud = mcpAccessTokenClaims?.aud;
+    const audMatches = mcpTokenAud === mcpResourceUri ||
+      (Array.isArray(mcpTokenAud) && mcpTokenAud.includes(mcpResourceUri));
 
     tokenEvents.push(buildTokenEvent(
       'exchanged-token',
-      'MCP Token (Delegated) → MCP Server',
+      'MCP access token (delegated) → MCP server',
       'exchanged',
-      t2Decoded,
-      'PingOne issued the MCP Token after validating may_act. ' +
-      (t2Claims?.act
-        ? `act: ${JSON.stringify(t2Claims.act)} — this is the current fact: the Backend-for-Frontend (BFF) is acting on behalf of the user. ` +
+      mcpAccessTokenDecoded,
+      'PingOne issued the MCP access token after validating may_act. ' +
+      (mcpAccessTokenClaims?.act
+        ? `act: ${JSON.stringify(mcpAccessTokenClaims.act)} — this is the current fact: the Backend-for-Frontend (BFF) is acting on behalf of the user. ` +
           'Resource servers use act (not may_act) to identify the current actor for audit and policy decisions.'
         : 'act claim not present — PingOne may not have applied delegation policy. ') +
-      `Audience narrowed to ${mcpResourceUri} (aud=${JSON.stringify(t2Aud)}${audMatches ? ' ✅' : ' ❌ mismatch'}), scope narrowed to "${effectiveToolScopes.join(' ')}". ` +
-      'The User Token (your original login token) NEVER leaves the Backend-for-Frontend (BFF) — only the MCP Token reaches the MCP Server.',
+      `Audience narrowed to ${mcpResourceUri} (aud=${JSON.stringify(mcpTokenAud)}${audMatches ? ' ✅' : ' ❌ mismatch'}), scope narrowed to "${effectiveToolScopes.join(' ')}". ` +
+      'The user access token (your original login token) NEVER leaves the Backend-for-Frontend (BFF) — only the MCP access token reaches the MCP server.',
       {
         rfc: 'RFC 8693 · RFC 8707',
         trigger: toolTrigger,
         exchangeMethod,
-        actPresent: !!t2Claims?.act,
-        actDetails: t2Claims?.act ? JSON.stringify(t2Claims.act) : null,
+        actPresent: !!mcpAccessTokenClaims?.act,
+        actDetails: mcpAccessTokenClaims?.act ? JSON.stringify(mcpAccessTokenClaims.act) : null,
         audienceNarrowed: mcpResourceUri,
         audMatches,
         audExpected: mcpResourceUri,
-        audActual: t2Aud,
+        audActual: mcpTokenAud,
         scopeNarrowed: effectiveToolScopes.join(' '),
       }
     ));
@@ -525,11 +530,11 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     void writeExchangeEvent({
       type: 'exchange-success',
       level: 'info',
-      message: `[TokenExchange] Issued MCP token — audience=${mcpResourceUri} method=${exchangeMethod} act=${!!t2Claims?.act}`,
+      message: `[TokenExchange] Issued MCP access token — audience=${mcpResourceUri} method=${exchangeMethod} act=${!!mcpAccessTokenClaims?.act}`,
       exchangeMethod,
       mcpResourceUri,
       scopeNarrowed: effectiveToolScopes.join(' '),
-      actPresent: !!t2Claims?.act,
+      actPresent: !!mcpAccessTokenClaims?.act,
       audMatches,
     });
 
@@ -550,9 +555,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       err.pingoneErrorDetail      ? `detail: ${JSON.stringify(err.pingoneErrorDetail)}` : null,
     ].filter(Boolean).join(' — ');
 
-    const guidanceMsg = t1Claims?.may_act
+    const guidanceMsg = userAccessTokenClaims?.may_act
       ? `may_act was present — check that PingOne has the token-exchange grant enabled on this client and the audience policy allows ${mcpResourceUri}.`
-      : 'may_act was absent — add the may_act claim to the user token via PingOne token policy, then retry.';
+      : 'may_act was absent — add the may_act claim to the user access token via PingOne token policy, then retry.';
 
     tokenEvents.push(buildTokenEvent(
       'exchange-failed',
@@ -569,7 +574,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         requestContext: err.requestContext,
         rfc: 'RFC 8693',
         trigger: toolTrigger,
-        mayActPresent: !!t1Claims?.may_act,
+        mayActPresent: !!userAccessTokenClaims?.may_act,
       }
     ));
 
@@ -584,7 +589,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       pingoneErrorDetail: err.pingoneErrorDetail,
       requestContext: err.requestContext,
       mcpResourceUri,
-      mayActPresent: !!t1Claims?.may_act,
+      mayActPresent: !!userAccessTokenClaims?.may_act,
       rfc: 'RFC 8693',
     });
 
@@ -592,14 +597,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     if (actorToken) {
       try {
         exchangedToken = await oauthService.performTokenExchange(userToken, mcpResourceUri, effectiveToolScopes);
-        const t2Decoded = decodeJwtClaims(exchangedToken);
+        const mcpAccessTokenDecodedFallback = decodeJwtClaims(exchangedToken);
         tokenEvents.push(buildTokenEvent(
           'exchanged-token',
-          'MCP Token (Subject-only Fallback)',
+          'MCP access token (subject-only fallback)',
           'exchanged',
-          t2Decoded,
-          'Agent Token exchange failed; fell back to subject-only RFC 8693 exchange (no act claim). ' +
-          'The MCP Token is still scoped to the MCP audience — the User Token never leaves the Backend-for-Frontend (BFF).',
+          mcpAccessTokenDecodedFallback,
+          'Agent access token exchange failed; fell back to subject-only RFC 8693 exchange (no act claim). ' +
+          'The MCP access token is still scoped to the MCP audience — the user access token never leaves the Backend-for-Frontend (BFF).',
           { rfc: 'RFC 8693', exchangeMethod: 'fallback-subject-only' }
         ));
         return { token: exchangedToken, tokenEvents, userSub };

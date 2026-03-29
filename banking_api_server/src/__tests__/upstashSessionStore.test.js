@@ -129,13 +129,16 @@ describe('UpstashSessionStore', () => {
       });
     });
 
-    it('calls cb(null) and does NOT propagate error — regression: prevents ?error=session_error', (done) => {
-      // Regression: before the fault-tolerant store, a Redis write error here caused
-      // session.save(cb) to call cb(err), which the login route treated as fatal,
-      // redirecting to ?error=session_error before the user reached PingOne.
+    it('propagates write error to caller so session.save() can redirect to error page', (done) => {
+      // set() intentionally propagates Upstash errors via cb(err) so that explicit
+      // req.session.save() callers (e.g. the OAuth login route) can detect a failed
+      // write and redirect to an error page instead of silently continuing with a
+      // session that will be invisible on the next serverless Lambda instance.
+      // The in-memory cache is always updated first, so warm Lambda instances still work.
       mockKv.set.mockRejectedValue(new Error('Upstash write timeout'));
       store.set('sid3', sessionData, (err) => {
-        expect(err).toBeNull(); // error swallowed — session.save() succeeds silently
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toBe('Upstash write timeout');
         done();
       });
     });

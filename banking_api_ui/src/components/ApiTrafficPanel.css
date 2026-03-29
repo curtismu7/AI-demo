@@ -250,12 +250,13 @@
 .api-method-badge--DELETE { background: #7f1d1d; color: #fca5a5; }
 /* MCP calls */
 .api-method-badge--MCP    { background: #0c4a6e; color: #7dd3fc; letter-spacing: 0.06em; }
-/* Token event badges */
-.api-method-badge--TOKEN-T1   { background: #064e3b; color: #6ee7b7; min-width: 28px; }
-.api-method-badge--TOKEN-XCHG { background: #3b0764; color: #d8b4fe; min-width: 36px; }
+/* Token event badges — labels: user access token, agent access token, MCP access token */
+.api-method-badge--TOKEN-USER { background: #064e3b; color: #6ee7b7; min-width: 72px; font-size: 11px; }
+.api-method-badge--TOKEN-AGENT { background: #7c2d12; color: #fed7aa; min-width: 76px; font-size: 11px; }
+.api-method-badge--TOKEN-XCHG { background: #3b0764; color: #d8b4fe; min-width: 56px; font-size: 11px; }
 .api-method-badge--TOKEN-SKIP { background: #451a03; color: #fde68a; min-width: 32px; }
 .api-method-badge--TOKEN-FAIL { background: #450a0a; color: #fca5a5; min-width: 32px; }
-.api-method-badge--TOKEN-T2   { background: #0c4a6e; color: #93c5fd; min-width: 28px; }
+.api-method-badge--TOKEN-MCP   { background: #0c4a6e; color: #93c5fd; min-width: 68px; font-size: 11px; }
 
 .api-status-badge {
   font-size: 13px;

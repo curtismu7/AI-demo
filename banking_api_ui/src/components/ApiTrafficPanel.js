@@ -87,15 +87,24 @@ function StatusBadge({ entry }) {
 function MethodBadge({ entry }) {
   if (entry.kind === 'token-event') {
     const icons = {
-      'user-token':               { label: 'T1', cls: 'TOKEN-T1' },
-      'exchanged-token':          { label: 'XCHG', cls: 'TOKEN-XCHG' },
-      'exchange-required':        { label: '8693', cls: 'TOKEN-FAIL' },
-      'user-scopes-insufficient': { label: 'SCP', cls: 'TOKEN-FAIL' },
-      'exchange-failed':          { label: 'FAIL', cls: 'TOKEN-FAIL' },
-      'mcp-token-reused':         { label: 'T2↩', cls: 'TOKEN-T2' },
+      'user-token':               { label: 'User token', cls: 'TOKEN-USER' },
+      'agent-actor-token':        { label: 'Agent token', cls: 'TOKEN-AGENT' },
+      'exchange-in-progress':     { label: 'Exchange', cls: 'TOKEN-XCHG' },
+      'on-behalf-of-warning':     { label: 'Agent?', cls: 'TOKEN-SKIP' },
+      'exchanged-token':          { label: 'MCP token', cls: 'TOKEN-MCP' },
+      'exchange':                 { label: 'Pending', cls: 'TOKEN-XCHG' },
+      'exchange-required':        { label: 'RFC 8693', cls: 'TOKEN-FAIL' },
+      'user-scopes-insufficient': { label: 'Scopes', cls: 'TOKEN-FAIL' },
+      'exchange-failed':          { label: 'Exchange', cls: 'TOKEN-FAIL' },
+      'agent-scope-denied':       { label: 'Policy', cls: 'TOKEN-FAIL' },
+      'mcp-token-reused':         { label: 'MCP token', cls: 'TOKEN-MCP' },
     };
-    const { label, cls } = icons[entry.eventId] || { label: 'TOK', cls: 'TOKEN-T1' };
-    return <span className={`api-method-badge api-method-badge--${cls}`}>{label}</span>;
+    const { label, cls, title } = icons[entry.eventId] || { label: 'Token', cls: 'TOKEN-USER', title: '' };
+    return (
+      <span className={`api-method-badge api-method-badge--${cls}`} title={title || label}>
+        {label}
+      </span>
+    );
   }
   if (entry.url === '/api/mcp/tool' || entry.source === 'mcp') {
     return <span className="api-method-badge api-method-badge--MCP">MCP</span>;

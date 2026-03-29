@@ -3,7 +3,7 @@
  *
  * Tests for resolveMcpAccessTokenWithEvents — verifying that:
  * 1. Agent client_credentials (actor token) are always used when AGENT_OAUTH_CLIENT_ID is set.
- * 2. Without MCP_RESOURCE_URI, resolution throws (no User token passthrough to MCP).
+ * 2. Without MCP_RESOURCE_URI, resolution returns null token (user access token not forwarded to MCP).
  * 3. User token must have ≥ MIN_USER_SCOPES_FOR_MCP distinct scopes before exchange.
  * 4. RFC 8693 exchange path works when MCP_RESOURCE_URI is set and scopes are sufficient.
  * 5. Subject-only fallback emits an on-behalf-of-warning event when no agent client is configured.
@@ -21,7 +21,7 @@ function makeJwt(claims) {
 
 const USER_SUB = 'user-sub-abc123';
 /** ≥5 distinct scopes — required before RFC 8693 to MCP */
-const MOCK_USER_TOKEN = makeJwt({
+const mockUserAccessToken = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
   scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
@@ -30,7 +30,7 @@ const MOCK_USER_TOKEN = makeJwt({
   iat: Math.floor(Date.now() / 1000),
 });
 
-const MOCK_USER_TOKEN_NARROW = makeJwt({
+const mockUserAccessTokenNarrowScopes = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
   scope: 'openid profile banking:accounts:read',
@@ -39,7 +39,7 @@ const MOCK_USER_TOKEN_NARROW = makeJwt({
   iat: Math.floor(Date.now() / 1000),
 });
 
-const M2M_TOKEN = makeJwt({
+const mockAgentAccessToken = makeJwt({
   sub: 'agent-client-id',
   aud: 'banking_mcp_server',
   scope: 'openid',
@@ -49,7 +49,7 @@ const M2M_TOKEN = makeJwt({
   client_id: 'agent-client-id',
 });
 
-const EXCHANGED_TOKEN = makeJwt({
+const mockMcpAccessToken = makeJwt({
   sub: USER_SUB,
   aud: 'mcp-resource-uri',
   scope: 'banking:accounts:read',
@@ -122,7 +122,7 @@ describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
       if (key === 'mcp_resource_uri') return '';
       return null;
     });
-    mockGetAgentClientCredentialsToken.mockResolvedValue(M2M_TOKEN);
+    mockGetAgentClientCredentialsToken.mockResolvedValue(mockAgentAccessToken);
   });
 
   afterEach(() => {
@@ -133,24 +133,25 @@ describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
   });
 
   it('returns null token (not throw) when MCP_RESOURCE_URI is unset — local fallback path', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     expect(token).toBeNull();
   });
 
-  it('includes exchange-required token event when URI is unset', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+  it('includes exchange-required token event when URI is unset (status skipped — not a failure)', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     const ev = tokenEvents.find((x) => x.id === 'exchange-required');
     expect(ev).toBeDefined();
-    expect(ev.status).toBe('failed');
+    // 'skipped' — token exchange is not configured, not an error; local fallback is used instead
+    expect(ev.status).toBe('skipped');
   });
 
   it('does not call performTokenExchange when MCP_RESOURCE_URI is unset', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
   it('does not call getAgentClientCredentialsToken when MCP_RESOURCE_URI is unset (returns before actor step)', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     // mcp_resource_uri check returns early before the actor token step
     expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
   });
@@ -170,7 +171,7 @@ describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
 
   it('throws agent_mcp_scope_denied when transfer scope is disabled in config', async () => {
     await expect(
-      resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'create_transfer')
+      resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'create_transfer')
     ).rejects.toMatchObject({
       code: 'agent_mcp_scope_denied',
       httpStatus: 403,
@@ -179,7 +180,7 @@ describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
 
   it('does not call performTokenExchange when policy blocks the tool', async () => {
     try {
-      await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'create_transfer');
+      await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'create_transfer');
     } catch {
       /* expected */
     }
@@ -197,7 +198,7 @@ describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (MCP_RESO
 
   it('throws user_token_insufficient_scopes when JWT has fewer than 5 scopes', async () => {
     await expect(
-      resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_NARROW), 'get_my_accounts')
+      resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessTokenNarrowScopes), 'get_my_accounts')
     ).rejects.toMatchObject({
       code: 'user_token_insufficient_scopes',
       httpStatus: 403,
@@ -206,7 +207,7 @@ describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (MCP_RESO
 
   it('does not call performTokenExchange when scopes insufficient', async () => {
     try {
-      await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_NARROW), 'get_my_accounts');
+      await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessTokenNarrowScopes), 'get_my_accounts');
     } catch {
       /* expected */
     }
@@ -225,7 +226,7 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (A
       if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
-    mockPerformTokenExchange.mockResolvedValue(EXCHANGED_TOKEN);
+    mockPerformTokenExchange.mockResolvedValue(mockMcpAccessToken);
   });
 
   afterEach(() => {
@@ -236,33 +237,33 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (A
   });
 
   it('returns the exchanged MCP token, not the User token', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
-    expect(token).toBe(EXCHANGED_TOKEN);
-    expect(token).not.toBe(MOCK_USER_TOKEN);
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
+    expect(token).toBe(mockMcpAccessToken);
+    expect(token).not.toBe(mockUserAccessToken);
   });
 
   it('calls performTokenExchange with User token and the resource URI', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     expect(mockPerformTokenExchange).toHaveBeenCalledWith(
-      MOCK_USER_TOKEN,
+      mockUserAccessToken,
       'https://mcp.example.com/api',
       expect.arrayContaining(['banking:accounts:read'])
     );
   });
 
-  it('returns userSub from User token', async () => {
-    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+  it('returns userSub from user access token', async () => {
+    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     expect(userSub).toBe(USER_SUB);
   });
 
   it('emits a user-token event and an exchanged-token event', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     expect(tokenEvents.find(e => e.id === 'user-token')).toBeDefined();
     expect(tokenEvents.find(e => e.id === 'exchanged-token')).toBeDefined();
   });
 
   it('includes jwtFullDecode (header + full claims) on user-token and exchanged-token', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     const userEv = tokenEvents.find(e => e.id === 'user-token');
     const mcpTokEv = tokenEvents.find(e => e.id === 'exchanged-token');
     expect(userEv.jwtFullDecode.header.alg).toBe('RS256');
@@ -285,8 +286,8 @@ describe('resolveMcpAccessTokenWithEvents — on_behalf_of (AGENT_OAUTH_CLIENT_I
       if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
-    mockGetAgentClientCredentialsToken.mockResolvedValue(M2M_TOKEN);
-    mockPerformTokenExchangeWithActor.mockResolvedValue(EXCHANGED_TOKEN);
+    mockGetAgentClientCredentialsToken.mockResolvedValue(mockAgentAccessToken);
+    mockPerformTokenExchangeWithActor.mockResolvedValue(mockMcpAccessToken);
   });
 
   afterEach(() => {
@@ -297,15 +298,15 @@ describe('resolveMcpAccessTokenWithEvents — on_behalf_of (AGENT_OAUTH_CLIENT_I
   });
 
   it('always calls getAgentClientCredentialsToken when AGENT_OAUTH_CLIENT_ID is set', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     expect(mockGetAgentClientCredentialsToken).toHaveBeenCalledTimes(1);
   });
 
   it('calls performTokenExchangeWithActor (not subject-only) when agent client is configured', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     expect(mockPerformTokenExchangeWithActor).toHaveBeenCalledWith(
-      MOCK_USER_TOKEN,
-      M2M_TOKEN,
+      mockUserAccessToken,
+      mockAgentAccessToken,
       'https://mcp.example.com/api',
       expect.arrayContaining(['banking:accounts:read'])
     );
@@ -313,21 +314,21 @@ describe('resolveMcpAccessTokenWithEvents — on_behalf_of (AGENT_OAUTH_CLIENT_I
   });
 
   it('returns exchanged token, not user token', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
-    expect(token).toBe(EXCHANGED_TOKEN);
-    expect(token).not.toBe(MOCK_USER_TOKEN);
-    expect(token).not.toBe(M2M_TOKEN);
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
+    expect(token).toBe(mockMcpAccessToken);
+    expect(token).not.toBe(mockUserAccessToken);
+    expect(token).not.toBe(mockAgentAccessToken);
   });
 
   it('emits agent-actor-token event in the token chain', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     const actorEv = tokenEvents.find(e => e.id === 'agent-actor-token');
     expect(actorEv).toBeDefined();
     expect(actorEv.status).toBe('active');
   });
 
   it('does not emit on-behalf-of-warning when agent client is configured', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     expect(tokenEvents.find(e => e.id === 'on-behalf-of-warning')).toBeUndefined();
   });
 });
@@ -342,7 +343,7 @@ describe('resolveMcpAccessTokenWithEvents — subject-only warning when no agent
       if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
-    mockPerformTokenExchange.mockResolvedValue(EXCHANGED_TOKEN);
+    mockPerformTokenExchange.mockResolvedValue(mockMcpAccessToken);
   });
 
   afterEach(() => {
@@ -351,16 +352,16 @@ describe('resolveMcpAccessTokenWithEvents — subject-only warning when no agent
   });
 
   it('emits on-behalf-of-warning event when AGENT_OAUTH_CLIENT_ID is not set', async () => {
-    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
     const warn = tokenEvents.find(e => e.id === 'on-behalf-of-warning');
     expect(warn).toBeDefined();
     expect(warn.status).toBe('skipped');
   });
 
   it('still completes RFC 8693 subject-only exchange (user token never forwarded)', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN), 'get_my_accounts');
-    expect(token).toBe(EXCHANGED_TOKEN);
-    expect(token).not.toBe(MOCK_USER_TOKEN);
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessToken), 'get_my_accounts');
+    expect(token).toBe(mockMcpAccessToken);
+    expect(token).not.toBe(mockUserAccessToken);
     expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
     expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
   });
@@ -381,12 +382,13 @@ describe('buildSessionPreviewTokenEvents', () => {
       if (key === 'mcp_resource_uri') return '';
       return null;
     });
-    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(MOCK_USER_TOKEN));
+    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(mockUserAccessToken));
     expect(tokenEvents).toHaveLength(2);
     expect(tokenEvents[0].id).toBe('user-token');
     expect(tokenEvents[0].status).toBe('active');
     expect(tokenEvents[1].id).toBe('exchange-required');
-    expect(tokenEvents[1].status).toBe('failed');
+    // 'skipped' — exchange not configured is not a failure, local fallback is used
+    expect(tokenEvents[1].status).toBe('skipped');
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
@@ -395,7 +397,7 @@ describe('buildSessionPreviewTokenEvents', () => {
       if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
-    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(MOCK_USER_TOKEN_NARROW));
+    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(mockUserAccessTokenNarrowScopes));
     expect(tokenEvents.some(e => e.id === 'user-scopes-insufficient')).toBe(true);
   });
 
@@ -404,7 +406,7 @@ describe('buildSessionPreviewTokenEvents', () => {
       if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
-    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(MOCK_USER_TOKEN));
+    const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(mockUserAccessToken));
     expect(tokenEvents).toHaveLength(3);
     expect(tokenEvents[0].id).toBe('user-token');
     expect(tokenEvents[1].id).toBe('exchange');
@@ -418,7 +420,7 @@ describe('buildSessionPreviewTokenEvents', () => {
 // ── Broad scope (banking:read / banking:write) support ───────────────────────
 
 /** User token that has banking:read but NOT banking:accounts:read */
-const MOCK_USER_TOKEN_BROAD_READ = makeJwt({
+const mockUserAccessTokenBroadRead = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
   scope: 'openid profile email offline_access banking:read banking:write',
@@ -440,7 +442,7 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
         return 'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write ai_agent';
       return null;
     });
-    mockPerformTokenExchange.mockResolvedValue(EXCHANGED_TOKEN);
+    mockPerformTokenExchange.mockResolvedValue(mockMcpAccessToken);
   });
 
   afterEach(() => {
@@ -449,9 +451,9 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
   });
 
   it('calls performTokenExchange with banking:read when user token has broad scope', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'get_my_accounts');
+    await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessTokenBroadRead), 'get_my_accounts');
     expect(mockPerformTokenExchange).toHaveBeenCalledWith(
-      MOCK_USER_TOKEN_BROAD_READ,
+      mockUserAccessTokenBroadRead,
       'https://mcp.example.com/api',
       expect.arrayContaining(['banking:read'])
     );
@@ -461,9 +463,9 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
   });
 
   it('calls performTokenExchange with banking:write for write tool when user has broad scope', async () => {
-    await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'create_transfer');
+    await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessTokenBroadRead), 'create_transfer');
     expect(mockPerformTokenExchange).toHaveBeenCalledWith(
-      MOCK_USER_TOKEN_BROAD_READ,
+      mockUserAccessTokenBroadRead,
       'https://mcp.example.com/api',
       expect.arrayContaining(['banking:write'])
     );
@@ -472,9 +474,9 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
   });
 
   it('returns the exchanged token (not user token) for broad-scope token', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'get_my_accounts');
-    expect(token).toBe(EXCHANGED_TOKEN);
-    expect(token).not.toBe(MOCK_USER_TOKEN_BROAD_READ);
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessTokenBroadRead), 'get_my_accounts');
+    expect(token).toBe(mockMcpAccessToken);
+    expect(token).not.toBe(mockUserAccessTokenBroadRead);
   });
 });
 
@@ -488,12 +490,12 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
       if (key === 'agent_mcp_allowed_scopes') return 'banking:read banking:write ai_agent';
       return null;
     });
-    mockPerformTokenExchange.mockResolvedValue(EXCHANGED_TOKEN);
+    mockPerformTokenExchange.mockResolvedValue(mockMcpAccessToken);
   });
 
   it('does NOT deny get_my_accounts when banking:read is in allowed set (OR policy)', async () => {
-    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'get_my_accounts');
-    expect(token).toBe(EXCHANGED_TOKEN);
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessTokenBroadRead), 'get_my_accounts');
+    expect(token).toBe(mockMcpAccessToken);
     expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
   });
 
@@ -504,7 +506,7 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
       return null;
     });
     await expect(
-      resolveMcpAccessTokenWithEvents(makeReq(MOCK_USER_TOKEN_BROAD_READ), 'create_transfer')
+      resolveMcpAccessTokenWithEvents(makeReq(mockUserAccessTokenBroadRead), 'create_transfer')
     ).rejects.toMatchObject({ code: 'agent_mcp_scope_denied' });
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });

@@ -704,7 +704,7 @@ function HistoryEntry({ entry, index, onInspect }) {
 const PLACEHOLDER_EVENTS = [
   {
     id: 'user-token',
-    label: 'User Token',
+    label: 'User access token',
     status: 'waiting',
     claims: null,
     explanation: 'Issued by PingOne after Authorization Code + PKCE login. Stored securely in the Backend-for-Frontend (BFF) session (server-side, httpOnly cookie — never exposed to the browser). Contains may_act authorising the Backend-for-Frontend (BFF) to exchange it on the user\'s behalf.',
@@ -712,18 +712,18 @@ const PLACEHOLDER_EVENTS = [
   },
   {
     id: 'exchange',
-    label: 'Token Exchange (RFC 8693): User Token → MCP Token',
+    label: 'Token exchange (RFC 8693): user access token → MCP access token',
     status: 'waiting',
     claims: null,
-    explanation: 'Backend-for-Frontend (BFF) presents the User Token to PingOne as subject_token. PingOne validates may_act, narrows the scope to the tool\'s required scopes, and issues the MCP Token with an act claim identifying the Backend-for-Frontend (BFF) as the actor. The User Token NEVER leaves the Backend-for-Frontend (BFF).',
+    explanation: 'Backend-for-Frontend (BFF) presents the user access token to PingOne as subject_token. PingOne validates may_act, narrows the scope to the tool\'s required scopes, and issues the MCP access token with an act claim identifying the Backend-for-Frontend (BFF) as the actor. The user access token NEVER leaves the Backend-for-Frontend (BFF).',
     rfc: 'RFC 8693 · RFC 8707',
   },
   {
     id: 'exchanged-token',
-    label: 'MCP Token (Delegated) → MCP Server',
+    label: 'MCP access token (delegated) → MCP server',
     status: 'waiting',
     claims: null,
-    explanation: 'The MCP Token is scoped to the MCP server audience with narrowed scopes. Contains act: { client_id: bff } — proves delegation chain. The User Token stays in the Backend-for-Frontend (BFF); only the MCP Token reaches the MCP Server and Banking API.',
+    explanation: 'The MCP access token is scoped to the MCP server audience with narrowed scopes. Contains act: { client_id: bff } — proves delegation chain. The user access token stays in the Backend-for-Frontend (BFF); only the MCP access token reaches the MCP server and Banking API.',
     rfc: 'RFC 8693',
   },
 ];
@@ -858,7 +858,7 @@ const TokenChainDisplay = () => {
               {isSessionPreview && (
                 <span
                   className="tcd-session-dot"
-                  title="User token loaded from your Backend-for-Frontend (BFF) session. Use the AI Agent to run RFC 8693 exchange and see MCP token claims."
+                  title="User access token loaded from your Backend-for-Frontend (BFF) session. Use the AI Agent to run RFC 8693 exchange and see MCP access token claims."
                 />
               )}
             </div>
@@ -873,7 +873,7 @@ const TokenChainDisplay = () => {
             </button>
           </div>
           <p className="tcd-header-sub">
-            User Token stays in Backend-for-Frontend (BFF) → RFC 8693 Exchange → MCP Token → MCP Server → Banking API
+            User access token stays in Backend-for-Frontend (BFF) → RFC 8693 exchange → MCP access token → MCP server → Banking API
           </p>
         </div>
 
@@ -891,8 +891,8 @@ const TokenChainDisplay = () => {
             {!isLive && (
               <div className="tcd-placeholder-note">
                 {isSessionPreview
-                  ? 'You are signed in — the User Token row is decoded from your Backend-for-Frontend (BFF) session (no raw JWT in the browser). Use the AI Agent (e.g. list accounts) to run the flow and see RFC 8693 exchange + MCP token rows update live.'
-                  : 'Sign in and load the dashboard to see your User Token, or make a banking / AI Agent request to see the full chain after exchange.'}
+                  ? 'You are signed in — the user access token row is decoded from your Backend-for-Frontend (BFF) session (no raw JWT in the browser). Use the AI Agent (e.g. list accounts) to run the flow and see RFC 8693 exchange + MCP access token rows update live.'
+                  : 'Sign in and load the dashboard to see your user access token, or make a banking / AI Agent request to see the full chain after exchange.'}
               </div>
             )}
             {currentEvents.map((ev, i) => (

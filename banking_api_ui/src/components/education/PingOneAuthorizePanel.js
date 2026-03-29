@@ -37,19 +37,55 @@ function DecisionBadge({ decision }) {
   );
 }
 
-/** Live recent decisions panel — fetches from /api/authorize/recent-decisions. */
+/** Normalizes PingOne vs simulated decision rows for list display. */
+function decisionRowMeta(d) {
+  const params = d.request?.parameters || d.parameters || {};
+  const type = params.TransactionType || d.type || 'evaluation';
+  const amount = params.Amount;
+  const time = d.createdAt || d.timestamp || d.recordedAt;
+  return { type, amount, time, decision: d.decision || d.status };
+}
+
+/** Live recent decisions — user picks PingOne vs simulated via select; plus engine status. */
 function RecentDecisionsViewer() {
-  const [decisions, setDecisions]   = useState(null);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState(null);
-  const [expanded, setExpanded]     = useState(null);
+  const [decisions, setDecisions] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [expanded, setExpanded] = useState(null);
+  const [source, setSource] = useState('pingone');
+  const [evalStatus, setEvalStatus] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState(null);
+
+  const handleFetchStatus = useCallback(async () => {
+    setStatusLoading(true);
+    setStatusError(null);
+    try {
+      const res = await fetch('/api/authorize/evaluation-status', { credentials: 'include' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `HTTP ${res.status}`);
+      }
+      setEvalStatus(await res.json());
+    } catch (err) {
+      setStatusError(err.message);
+      setEvalStatus(null);
+    } finally {
+      setStatusLoading(false);
+    }
+  }, []);
 
   const handleFetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     setDecisions(null);
+    setExpanded(null);
+    const url =
+      source === 'simulated'
+        ? '/api/authorize/simulated-recent-decisions?limit=10'
+        : '/api/authorize/recent-decisions?limit=10';
     try {
-      const res = await fetch('/api/authorize/recent-decisions?limit=10', { credentials: 'include' });
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || `HTTP ${res.status}`);
@@ -61,14 +97,95 @@ function RecentDecisionsViewer() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [source]);
 
   return (
     <div>
-      <p>
-        Requires <code>recordRecentRequests: true</code> on the decision endpoint in PingOne
-        Authorize and admin sign-in. Shows the last 10 decisions (24-hour window).
+      <div
+        style={{
+          marginBottom: 14,
+          padding: '10px 14px',
+          background: '#f8fafc',
+          borderRadius: 8,
+          border: '1px solid #e2e8f0',
+          fontSize: '0.82rem',
+        }}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <strong>Authorization engine</strong>
+          <button
+            type="button"
+            onClick={handleFetchStatus}
+            disabled={statusLoading}
+            style={{
+              background: '#475569',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '6px 12px',
+              fontWeight: 600,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              opacity: statusLoading ? 0.65 : 1,
+            }}
+          >
+            {statusLoading ? 'Loading…' : 'Refresh status'}
+          </button>
+        </div>
+        {statusError && (
+          <div style={{ color: '#b91c1c', marginBottom: 6 }}>{statusError}</div>
+        )}
+        {evalStatus && (
+          <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}>
+            <dt style={{ color: '#64748b' }}>activeEngine</dt>
+            <dd style={{ margin: 0, fontFamily: 'monospace' }}>{evalStatus.activeEngine}</dd>
+            <dt style={{ color: '#64748b' }}>authorize enabled</dt>
+            <dd style={{ margin: 0 }}>{String(evalStatus.authorizeEnabledConfig)}</dd>
+            <dt style={{ color: '#64748b' }}>simulated mode</dt>
+            <dd style={{ margin: 0 }}>{String(evalStatus.simulatedMode)}</dd>
+            <dt style={{ color: '#64748b' }}>PingOne configured</dt>
+            <dd style={{ margin: 0 }}>{String(evalStatus.pingoneConfigured)}</dd>
+          </dl>
+        )}
+      </div>
+
+      <p style={{ fontSize: '0.85rem', lineHeight: 1.55 }}>
+        Choose which decision history to load. <strong>PingOne</strong> needs{' '}
+        <code>recordRecentRequests: true</code> on the endpoint (last 10, 24h window).{' '}
+        <strong>Simulated</strong> reads the in-memory ring buffer on the BFF (no PingOne call).
       </p>
+      <div style={{ marginTop: 12, marginBottom: 12 }}>
+        <label
+          htmlFor="pingone-authorize-recent-source"
+          style={{ display: 'block', fontWeight: 700, fontSize: '0.82rem', color: '#334155', marginBottom: 6 }}
+        >
+          Recent decisions source
+        </label>
+        <select
+          id="pingone-authorize-recent-source"
+          value={source}
+          onChange={(e) => {
+            const v = e.target.value === 'simulated' ? 'simulated' : 'pingone';
+            setSource(v);
+            setDecisions(null);
+            setError(null);
+            setExpanded(null);
+          }}
+          style={{
+            maxWidth: '100%',
+            width: 'min(100%, 22rem)',
+            padding: '8px 10px',
+            borderRadius: 8,
+            border: '1px solid #cbd5e1',
+            fontSize: '0.88rem',
+            background: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          <option value="pingone">PingOne Authorize (live API)</option>
+          <option value="simulated">Simulated Authorize (education / in-memory)</option>
+        </select>
+      </div>
       <button
         type="button"
         onClick={handleFetch}
@@ -79,7 +196,7 @@ function RecentDecisionsViewer() {
           opacity: loading ? 0.65 : 1,
         }}
       >
-        {loading ? 'Loading…' : '↻ Fetch Recent Decisions'}
+        {loading ? 'Loading…' : '↻ Fetch recent decisions'}
       </button>
 
       {error && (
@@ -97,9 +214,11 @@ function RecentDecisionsViewer() {
 
       {decisions && decisions.length > 0 && (
         <div style={{ marginTop: 14 }}>
-          {decisions.map((d, i) => (
+          {decisions.map((d, i) => {
+            const row = decisionRowMeta(d);
+            return (
             <div
-              key={d.id || i}
+              key={d.id || d.decisionId || i}
               style={{
                 border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 8,
                 overflow: 'hidden',
@@ -115,12 +234,12 @@ function RecentDecisionsViewer() {
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && setExpanded(expanded === i ? null : i)}
               >
-                <DecisionBadge decision={d.decision || d.status} />
+                <DecisionBadge decision={row.decision} />
                 <span style={{ fontSize: '0.8rem', color: '#374151', flex: 1 }}>
-                  {d.request?.parameters?.TransactionType || d.type || 'evaluation'}
-                  {d.request?.parameters?.Amount != null && ` — $${d.request.parameters.Amount}`}
+                  {row.type}
+                  {row.amount != null && ` — $${row.amount}`}
                 </span>
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{fmtTime(d.createdAt || d.timestamp)}</span>
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{fmtTime(row.time)}</span>
                 <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>{expanded === i ? '▲' : '▼'}</span>
               </div>
               {expanded === i && (
@@ -133,7 +252,8 @@ function RecentDecisionsViewer() {
                 </pre>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -166,6 +286,12 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
             <li><strong>INDETERMINATE</strong> — policy could not decide (treated as deny)</li>
             <li><strong>Step-up obligation</strong> — policy permits but requires MFA first (428 + CIBA flow)</li>
           </ul>
+          <p style={{ background: '#eff6ff', padding: '10px 14px', borderRadius: 8, fontSize: '0.88rem', border: '1px solid #bfdbfe' }}>
+            <strong>Education mode:</strong> Admin → <strong>Feature Flags</strong> → enable <strong>Transaction authorization</strong> and{' '}
+            <strong>Simulated Authorize (education)</strong>. The BFF runs a small in-process policy (no PingOne API) that returns the same
+            status codes and fields as live Authorize, including <code>authorize_engine: &quot;simulated&quot;</code> on 403/428. Turn simulation{' '}
+            <strong>off</strong> and configure a decision endpoint (or policy ID) + worker app to use real PingOne Authorize.
+          </p>
           <p>
             Official docs:{' '}
             <a href="https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html" target="_blank" rel="noopener noreferrer">
@@ -190,11 +316,12 @@ export default function PingOneAuthorizePanel({ isOpen, onClose, initialTabId })
    POST /api/transactions  { type: "transfer", amount: 500 }
 
 2. BFF checks configStore: authorize_enabled = "true"
-   Selects API path:
+   If ff_authorize_simulated = "true" → in-process simulatedAuthorizeService (no PingOne call)
+   Else selects API path:
      • authorize_decision_endpoint_id set → Decision Endpoints API (Phase 2)
      • authorize_policy_id set            → Legacy PDP API (Phase 1 fallback)
 
-3. BFF obtains worker token (client_credentials)
+3. BFF obtains worker token (client_credentials)   [skipped when simulated]
    POST {issuer}/as/token
      client_id=<worker_app>  client_secret=<secret>
 

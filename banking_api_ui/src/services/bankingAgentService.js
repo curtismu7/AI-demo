@@ -6,9 +6,9 @@
  *
  * Returns { result, tokenEvents } so callers can push events to TokenChainContext.
  * tokenEvents is an array of token lifecycle objects from the Backend-for-Frontend (BFF):
- *   - User Token decoded claims + may_act status (+ jwtFullDecode JSON)
+ *   - User access token decoded claims + may_act status (+ jwtFullDecode JSON)
  *   - Token Exchange (RFC 8693) request + result
- *   - MCP Token (delegated) decoded claims + act status (+ jwtFullDecode JSON)
+ *   - MCP access token (delegated) decoded claims + act status (+ jwtFullDecode JSON)
  */
 import { appendTokenEvents } from './apiTrafficStore';
 import { appendMcpCall } from './mcpCallStore';

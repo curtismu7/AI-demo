@@ -30,6 +30,8 @@ import DelegatedAccessPage from './components/DelegatedAccessPage';
 import FeatureFlagsPage from './components/FeatureFlagsPage';
 
 import { savePublicConfig } from './services/configService';
+import { SpinnerProvider } from './context/SpinnerContext';
+import SpinnerHost from './components/shared/SpinnerHost';
 import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
 import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
@@ -61,6 +63,7 @@ function AppWithAuth() {
   const demoMode = useDemoMode();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   /** On-page session prompt (replaces toast-only for “log in again” flows). */
@@ -263,14 +266,6 @@ function AppWithAuth() {
     window.location.href = '/api/auth/logout';
   };
 
-  if (loading) {
-    return (
-      <div className="loading">
-        <div>Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <EducationUIProvider>
       <TokenChainProvider>
@@ -354,6 +349,7 @@ function AppWithAuth() {
             </button>
           )}
           {!isApiTrafficOnlyPage && <Footer user={user} />}
+          <SpinnerHost />
         </div>
       </TokenChainProvider>
     </EducationUIProvider>
@@ -362,12 +358,14 @@ function AppWithAuth() {
 
 export default function App() {
   return (
-    <AgentUiModeProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <IndustryBrandingProvider>
-          <AppWithAuth />
-        </IndustryBrandingProvider>
-      </Router>
-    </AgentUiModeProvider>
+    <SpinnerProvider>
+      <AgentUiModeProvider>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <IndustryBrandingProvider>
+            <AppWithAuth />
+          </IndustryBrandingProvider>
+        </Router>
+      </AgentUiModeProvider>
+    </SpinnerProvider>
   );
 }

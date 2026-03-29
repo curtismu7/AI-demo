@@ -12,6 +12,8 @@ const {
   getDecisionEndpoints,
   isConfigured,
 } = require('../services/pingOneAuthorizeService');
+const { getSimulatedRecentDecisions } = require('../services/simulatedAuthorizeService');
+const { getAuthorizationStatusSummary } = require('../services/transactionAuthorizationService');
 
 const router = express.Router();
 
@@ -68,6 +70,41 @@ router.get('/recent-decisions', authenticateToken, requireScopes(['openid']), as
   } catch (err) {
     console.error('[authorize/recent-decisions] Error:', err.message);
     return res.status(502).json({ error: 'upstream_error', message: err.message });
+  }
+});
+
+/**
+ * GET /api/authorize/simulated-recent-decisions?limit=
+ * In-memory decisions from Simulated Authorize (education). Parity with PingOne recent decisions UI.
+ */
+router.get('/simulated-recent-decisions', authenticateToken, requireScopes(['openid']), async (req, res) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
+  }
+
+  const parsedLimit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+  try {
+    const decisions = getSimulatedRecentDecisions(parsedLimit);
+    return res.json({ decisions, source: 'simulated', limit: parsedLimit });
+  } catch (err) {
+    console.error('[authorize/simulated-recent-decisions] Error:', err.message);
+    return res.status(500).json({ error: 'internal_error', message: err.message });
+  }
+});
+
+/**
+ * GET /api/authorize/evaluation-status
+ * Which engine would run for transaction auth (no secrets).
+ */
+router.get('/evaluation-status', authenticateToken, requireScopes(['openid']), async (req, res) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'admin_only', message: 'This endpoint requires admin role.' });
+  }
+  try {
+    return res.json(getAuthorizationStatusSummary());
+  } catch (err) {
+    console.error('[authorize/evaluation-status] Error:', err.message);
+    return res.status(500).json({ error: 'internal_error', message: err.message });
   }
 });
 
