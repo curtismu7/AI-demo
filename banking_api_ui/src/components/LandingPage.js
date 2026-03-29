@@ -27,7 +27,7 @@ const LandingPage = () => {
     }
   }, [location.state]);
 
-  /** Customer stays on marketing UI after OAuth; header CTAs omit return_to → /dashboard. */
+  /** When the agent nudges sign-in, scroll here for context (stay-on-page is agent-only, not these buttons). */
   React.useEffect(() => {
     const onScrollLogin = () => {
       const el = document.getElementById('marketing-login');
@@ -37,18 +37,15 @@ const LandingPage = () => {
     return () => window.removeEventListener('marketing-scroll-login', onScrollLogin);
   }, []);
 
-  const handleOAuthLogin = (userType = 'user', opts = {}) => {
-    const { returnToMarketing = false } = opts;
+  /** Customer → PingOne without return_to (dashboard after callback). Admin → admin OAuth. */
+  const handleOAuthLogin = (userType = 'user') => {
     const label = userType === 'admin' ? 'Admin' : 'Customer';
     spinner.show(`Signing in as ${label}…`, 'Redirecting to PingOne');
     const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-    let url =
+    const url =
       userType === 'admin'
         ? `${apiUrl}/api/auth/oauth/login`
         : `${apiUrl}/api/auth/oauth/user/login`;
-    if (userType === 'user' && returnToMarketing) {
-      url += `?return_to=${encodeURIComponent('/marketing')}`;
-    }
     setTimeout(() => {
       window.location.href = url;
     }, 150);
@@ -247,22 +244,21 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Inline sign-in for agent-driven banking on this page (OAuth return_to /marketing) */}
+      {/* Explains PingOne for all paths; return_to=/marketing only when sign-in starts from BankingAgent */}
       <section id="marketing-login" className="marketing-login" aria-labelledby="marketing-login-heading">
         <div className="container">
           <div className="marketing-login-card">
-            <h2 id="marketing-login-heading">Sign in on this page</h2>
+            <h2 id="marketing-login-heading">Sign in with PingOne</h2>
             <p>
-              Use the AI assistant below or in the corner for balances and transfers. Customer sign-in here returns you to
-              this marketing view after PingOne. Prefer the full app? Use <strong>Customer sign in</strong> in the header
-              to open your dashboard.
+              Balances and transfers use the <strong>banking assistant</strong> (floating button or dock below). Both the
+              assistant and the buttons here send you through <strong>PingOne</strong>. If you start sign-in{' '}
+              <strong>from the assistant</strong>, you come back to this marketing page to keep chatting. If you use{' '}
+              <strong>Customer sign in</strong> here or in the header, you land on the <strong>customer dashboard</strong>{' '}
+              after PingOne.
             </p>
             <div className="marketing-login-actions">
-              <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user', { returnToMarketing: true })}>
-                Customer — stay on this page
-              </button>
-              <button type="button" className="cta-secondary" onClick={() => handleOAuthLogin('user')}>
-                Customer — full dashboard
+              <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user')}>
+                Customer sign in
               </button>
               <button type="button" className="nav-cta nav-cta--ghost" onClick={() => handleOAuthLogin('admin')}>
                 Admin sign in
@@ -369,30 +365,18 @@ const LandingPage = () => {
                   )}
                 </div>
                 <div className="auth-notice auth-notice--showcase">
-                  <p>🔐 Sign in required to access AI banking features</p>
+                  <p>
+                    🔐 PingOne sign-in: use the <strong>live assistant</strong> (corner or dock) to stay on this page
+                    after login; <strong>Customer sign in</strong> below opens the dashboard.
+                  </p>
                   <div className="auth-buttons auth-buttons--showcase-pair">
-                    <button
-                      type="button"
-                      className="auth-btn primary"
-                      onClick={() => handleOAuthLogin('user', { returnToMarketing: true })}
-                    >
+                    <button type="button" className="auth-btn primary" onClick={() => handleOAuthLogin('user')}>
                       Customer Sign In
                     </button>
-                    <button
-                      type="button"
-                      className="auth-btn secondary"
-                      onClick={() => handleOAuthLogin('admin')}
-                    >
+                    <button type="button" className="auth-btn secondary" onClick={() => handleOAuthLogin('admin')}>
                       Admin Sign In
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    className="auth-showcase-dashboard-link"
-                    onClick={() => handleOAuthLogin('user')}
-                  >
-                    Prefer the full app? Sign in for dashboard →
-                  </button>
                 </div>
               </div>
               
@@ -410,7 +394,8 @@ const LandingPage = () => {
                       What&apos;s my account balance?
                     </div>
                     <div className="landing-demo-chat-sim__bubble landing-demo-chat-sim__bubble--bot">
-                      I&apos;ll need to verify your identity first. Click <strong>Customer Sign In</strong> →
+                      I&apos;ll need to verify your identity. Use <strong>Sign in</strong> inside the real assistant to
+                      return here — or <strong>Customer Sign In</strong> on the left for the full dashboard.
                     </div>
                   </div>
                   <div className="landing-demo-chat-sim__footer">

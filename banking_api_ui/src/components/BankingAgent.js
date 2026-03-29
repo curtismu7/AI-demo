@@ -1620,7 +1620,7 @@ export default function BankingAgent({
         if (!isLoggedIn) {
           addMessage(
             'assistant',
-            '**Sign in on this page** (Customer — stay on this page) to use banking here after PingOne. For the full dashboard, use **Customer sign in** in the header.',
+            'Use **Customer** in this assistant’s sign-in flow — PingOne will return you here so you can keep using banking on this page. **Customer sign in** in the header or the sign-in section opens the full dashboard after PingOne.',
             actionId,
           );
         }

@@ -66,6 +66,15 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — Marketing sign-in: `return_to=/marketing` only from BankingAgent, not LandingPage buttons (commit `TBD`)
+
+- **Symptom:** Inline marketing card offered “Customer — stay on this page” with `return_to=/marketing`, blurring the rule that staying on marketing is for agent-driven banking only.
+- **Root cause:** `LandingPage.handleOAuthLogin` accepted `returnToMarketing`; showcase and `#marketing-login` used it for buttons.
+- **Fix:** All `LandingPage` customer buttons use `/api/auth/oauth/user/login` with **no** `return_to` (dashboard after callback). Copy explains: assistant sign-in → PingOne → back to marketing; page/header buttons → dashboard. `BankingAgent.handleLoginAction` unchanged (`return_to` when `isPublicMarketingAgentPath`). Auth nudge bubble text updated. `docs/Marketing_Login_Agent_vs_Button.drawio` aligned.
+- **Files:** `banking_api_ui/src/components/LandingPage.js`, `BankingAgent.js`, `docs/Marketing_Login_Agent_vs_Button.drawio`, `REGRESSION_PLAN.md`
+- **Regression check:** `npm run build` in `banking_api_ui/` exits 0. Agent customer login on `/` or `/marketing` still appends `?return_to=/marketing`. Header / hero / `#marketing-login` / showcase customer sign-in omit `return_to`.
+- **Do not break:** `oauthUser.js` `sanitizePostLoginReturnPath` / callback redirect; `handleLoginAction` for admin vs customer.
+
 ### 2026-03-29 — docs: marketing login draw.io (agent-first vs button-first); fix `DemoDataPage` Jest axios mock for `apiClient` (commit `535c276`)
 
 - **Symptom:** `CI=true npm run test:unit` failed — `DemoDataPage.test.js` did not load: `TypeError: _axios.default.create is not a function` because `apiClient` constructs `axios.create()` at module load while the test mock only stubbed `get` / `post` / `patch`.
