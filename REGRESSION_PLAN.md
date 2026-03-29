@@ -65,7 +65,18 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-03-29 — feat: `/setup` page, PingOne bootstrap plan API + CLI, token inspector sizing (commit `5d7384b`)
+### 2026-03-29 — feat(token-exchange): ff_inject_audience + may_act session seed + 29 new tests (commit `3fc11c4`)
+
+- **may_act status seeded from session on mount:** `DemoDataPage` now calls `GET /api/auth/session` on mount and seeds `mayActEnabled` from the token's `may_act` claim. Status pill always visible: **Checking…** → **✅ may_act present in token** / **❌ may_act absent from token**. Previously `null` until the user clicked a button, making the current state ambiguous.
+- **`ff_inject_audience` feature:** Parallel to `ff_inject_may_act`. When enabled and the user access token's `aud` claim does not include `mcp_resource_uri`, the BFF adds it to the local claim snapshot in memory before RFC 8693 exchange (for Token Chain display). JWT is unchanged — PingOne still validates the real token. Useful when PingOne isn't yet configured with RFC 8707 resource indicators.
+- **Toggle location:** `DemoDataPage` → Token Exchange section → **🔧 Enable injection** / **❌ Disable injection** (admin only); also Feature Flags → Token Exchange category.
+- **Tests (29 new):** `agentMcpTokenService.test.js` — 9 tests for `ff_inject_may_act` (injection ON/already-present/OFF) and 5 for `ff_inject_audience` (injection ON/already-present/OFF/still-exchanges). `DemoDataPage.test.js` — 7 tests: Checking…, ✅, ❌, non-ok fetch, audience banner renders/not for non-admin/PATCH.
+- **Files:** `banking_api_server/services/configStore.js`, `banking_api_server/routes/featureFlags.js`, `banking_api_server/services/agentMcpTokenService.js`, `banking_api_ui/src/components/DemoDataPage.js`, `banking_api_server/src/__tests__/agentMcpTokenService.test.js`, `banking_api_ui/src/components/__tests__/DemoDataPage.test.js`
+- **Regression check:** `cd banking_api_server && npm test` → **827 passing, 0 failing**; `cd banking_api_ui && npm test && npm run build` → **263 passing, 0 failing**, build exits **0**. Flag OFF (default) — Token Chain shows may_act/aud as-is, no injections. Flag ON + claim absent — Token Chain shows injected badge. Flag ON + claim present — no injection.
+
+---
+
+### 2026-03-29 — feat: `/setup` page, PingOne bootstrap plan API + CLI, token inspector sizing (commit `3fc11c4`)
 
 - **Setup:** Public **`/setup`** (Vercel command copy buttons, **`GET /api/setup/plan`** checklist from `config/pingone-bootstrap.manifest.example.json`, copy targets for **`npm run pingone:bootstrap`** / **`pingone:bootstrap:probe`**, admin-only **`GET /api/admin/setup/management-probe`** — read-only PingOne Management API **`listApplications`** when `pingone_client_*` / CIMD worker creds exist). **`/onboarding`** is registered at the app root so signed-out users see the checklist; signed-in **customers** are redirected to **`/`**.
 - **Backend:** `banking_api_server/routes/setup.js` (mounted at **`/api/setup`**, rate-limited), `services/pingoneBootstrapService.js`, `routes/admin.js` probe route; `server.js` wires setup router. **Root:** `scripts/pingone-bootstrap.js`, `package.json` scripts **`pingone:bootstrap`** / **`pingone:bootstrap:probe`** (loads dotenv from **`banking_api_server/node_modules/dotenv`**).
