@@ -36,6 +36,7 @@ const ADMIN_NAV = [
     group: 'System',
     items: [
       { to: '/onboarding',   label: 'Setup Guide',     icon: '🚀' },
+      { to: '/setup/pingone', label: 'PingOne ref.',   icon: '📘' },
       { to: '/config',       label: 'Config',          icon: '⚙️' },
       { to: '/settings',     label: 'Security',        icon: '🔐' },
     ],

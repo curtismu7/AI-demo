@@ -9,7 +9,23 @@ const {
   resolvePingOneUserForLookup,
   phoneLast4Matches,
 } = require('../services/pingOneUserLookupService');
-const { probeManagementApiAccess } = require('../services/pingoneBootstrapService');
+const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
+const {
+  probeManagementApiAccess,
+  getManagementWorkerConfigStatus,
+  runPingOneBootstrap,
+} = require('../services/pingoneBootstrapService');
+
+/** When SETUP_MASTER_KEY is set, POST /setup/pingone-bootstrap-run must send matching X-Setup-Master-Key. */
+function requireSetupMasterKeyIfConfigured(req, res, next) {
+  const key = process.env.SETUP_MASTER_KEY;
+  if (!key || !String(key).trim()) return next();
+  if (req.headers['x-setup-master-key'] === String(key).trim()) return next();
+  return res.status(403).json({
+    error: 'setup_master_key_required',
+    message: 'Set header X-Setup-Master-Key to match the SETUP_MASTER_KEY environment variable.',
+  });
+}
 
 // Get system statistics
 router.get('/stats', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
@@ -635,5 +651,39 @@ router.get('/setup/management-probe', requireAdmin, async (_req, res) => {
     res.status(500).json({ ok: false, error: error.message || 'probe_failed' });
   }
 });
+
+/**
+ * GET /api/admin/setup/worker-credentials — which server-side workers are configured (no secrets).
+ */
+router.get('/setup/worker-credentials', requireAdmin, (_req, res) => {
+  res.status(200).json({
+    management: getManagementWorkerConfigStatus(),
+    authorizeWorkerReady: pingOneAuthorizeService.isWorkerCredentialReady(),
+  });
+});
+
+/**
+ * POST /api/admin/setup/pingone-bootstrap-run
+ * Body: { publicBaseUrl: string, dryRun?: boolean, includeUsers?: boolean }
+ */
+router.post(
+  '/setup/pingone-bootstrap-run',
+  requireAdmin,
+  requireSetupMasterKeyIfConfigured,
+  async (req, res) => {
+    try {
+      const { publicBaseUrl, dryRun, includeUsers } = req.body || {};
+      const result = await runPingOneBootstrap({
+        publicBaseUrl,
+        dryRun: !!dryRun,
+        includeUsers: includeUsers !== false,
+      });
+      res.status(result.ok ? 200 : 422).json(result);
+    } catch (error) {
+      console.error('pingone-bootstrap-run error:', error);
+      res.status(500).json({ ok: false, error: error.message || 'bootstrap_failed' });
+    }
+  }
+);
 
 module.exports = router;

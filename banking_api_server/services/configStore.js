@@ -33,7 +33,13 @@ const USE_KV   = !!(KV_URL && KV_TOKEN);
 const KV_HASH_KEY = 'banking:config';
 
 // Fields that must be encrypted at rest
-const SECRET_KEYS = new Set(['admin_client_secret', 'user_client_secret', 'session_secret', 'authorize_worker_client_secret']);
+const SECRET_KEYS = new Set([
+  'admin_client_secret',
+  'user_client_secret',
+  'session_secret',
+  'authorize_worker_client_secret',
+  'pingone_client_secret',
+]);
 
 // All known config keys with their defaults and whether they are public
 const FIELD_DEFS = {
@@ -52,6 +58,11 @@ const FIELD_DEFS = {
   user_client_id:         { public: true,  default: '' },
   user_client_secret:     { public: false, default: '' },
   user_redirect_uri:      { public: true,  default: '' },
+
+  // Management API worker (client_credentials) — CIMD registration, email, bootstrap run.
+  // Not the admin sign-in app. Env: PINGONE_MANAGEMENT_CLIENT_ID / PINGONE_MANAGEMENT_CLIENT_SECRET.
+  pingone_client_id:     { public: true,  default: '' },
+  pingone_client_secret: { public: false, default: '' },
 
   // PingOne authorize: pi.flow + response_mode=pi.flow for apps that support it (e.g. DaVinci flow policies).
   // See https://developer.pingidentity.com/pingone-api/auth/auth-config-options/browserless-authentication-flow-options.html
@@ -374,6 +385,8 @@ class ConfigStore {
         'PINGONE_CORE_USER_REDIRECT_URI',
         'PINGONE_USER_REDIRECT_URI',
       ],
+      pingone_client_id:     ['PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_CIMD_CLIENT_ID'],
+      pingone_client_secret: ['PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_CIMD_CLIENT_SECRET'],
       admin_pingone_authorize_pi_flow: ['PINGONE_ADMIN_AUTHORIZE_PI_FLOW'],
       user_pingone_authorize_pi_flow:  ['PINGONE_USER_AUTHORIZE_PI_FLOW'],
       admin_role:             ['ADMIN_ROLE'],

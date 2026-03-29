@@ -7,7 +7,7 @@ import apiClient from '../services/apiClient';
 const REPO_ROOT_CMD = 'cd path/to/Banking   # repository root (parent of banking_api_ui/)';
 
 /**
- * Public deployment setup: Vercel CLI copy targets, PingOne bootstrap plan from BFF, optional admin probe.
+ * Public deployment setup: Vercel CLI copy targets, PingOne bootstrap plan from BFF, optional admin probe + run.
  */
 export default function SetupPage() {
   const [planSteps, setPlanSteps] = useState([]);
@@ -15,6 +15,15 @@ export default function SetupPage() {
   const [planError, setPlanError] = useState(null);
   const [probeResult, setProbeResult] = useState(null);
   const [probeLoading, setProbeLoading] = useState(false);
+  const [workerCred, setWorkerCred] = useState(null);
+  const [publicBaseUrl, setPublicBaseUrl] = useState(
+    () => (typeof window !== 'undefined' ? window.location.origin : '')
+  );
+  const [bootstrapDryRun, setBootstrapDryRun] = useState(true);
+  const [bootstrapIncludeUsers, setBootstrapIncludeUsers] = useState(true);
+  const [setupMasterKey, setSetupMasterKey] = useState('');
+  const [bootstrapLoading, setBootstrapLoading] = useState(false);
+  const [bootstrapResult, setBootstrapResult] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +41,19 @@ export default function SetupPage() {
         }
       } finally {
         if (!cancelled) setPlanLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await apiClient.get('/api/admin/setup/worker-credentials', { _silent: true });
+        if (!cancelled) setWorkerCred(data);
+      } catch {
+        if (!cancelled) setWorkerCred(null);
       }
     })();
     return () => { cancelled = true; };
@@ -61,6 +83,46 @@ export default function SetupPage() {
       setProbeLoading(false);
     }
   }, []);
+
+  const handlePingOneBootstrapRun = useCallback(async () => {
+    setBootstrapLoading(true);
+    setBootstrapResult(null);
+    try {
+      const headers = {};
+      if (setupMasterKey.trim()) {
+        headers['X-Setup-Master-Key'] = setupMasterKey.trim();
+      }
+      const { data } = await apiClient.post(
+        '/api/admin/setup/pingone-bootstrap-run',
+        {
+          publicBaseUrl: publicBaseUrl.trim(),
+          dryRun: bootstrapDryRun,
+          includeUsers: bootstrapIncludeUsers,
+        },
+        { _silent: true, headers }
+      );
+      setBootstrapResult(data);
+      if (data?.ok) {
+        toast.success(bootstrapDryRun ? 'Dry run complete — see steps below.' : 'PingOne bootstrap finished.');
+      } else {
+        toast.warning(data?.errors?.[0]?.message || 'Bootstrap completed with errors — see JSON below.');
+      }
+    } catch (e) {
+      const status = e.response?.status;
+      const body = e.response?.data;
+      setBootstrapResult(body || { ok: false, error: e.message });
+      if (status === 401) {
+        toast.info('Sign in as an admin to run bootstrap.');
+      } else if (status === 403) {
+        toast.error(body?.message || 'Forbidden — set X-Setup-Master-Key if your server requires SETUP_MASTER_KEY.');
+      } else {
+        toast.error(body?.message || e.message || 'Bootstrap request failed');
+      }
+    } finally {
+      setBootstrapLoading(false);
+    }
+  }, [publicBaseUrl, bootstrapDryRun, bootstrapIncludeUsers, setupMasterKey]);
+
   const headerStyle = {
     background: 'linear-gradient(to bottom, #1e40af 0%, #1e3a8a 100%)',
     color: 'white',
@@ -117,6 +179,12 @@ export default function SetupPage() {
               style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}
             >
               Setup checklist
+            </Link>
+            <Link
+              to="/setup/pingone"
+              style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}
+            >
+              PingOne reference
             </Link>
             <Link
               to="/config"
@@ -250,6 +318,110 @@ export default function SetupPage() {
               }}
             >
               {JSON.stringify(probeResult, null, 2)}
+            </pre>
+          )}
+        </div>
+
+        <div style={{ ...cardStyle, borderColor: '#fde68a', background: '#fffbeb' }}>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#92400e' }}>
+            PingOne bootstrap run (admin) — apps + demo users
+          </h2>
+          <p style={{ margin: '0 0 0.75rem 0', color: '#78350f', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+            <strong>Worker token:</strong> the server uses a <strong>Management API</strong> app with{' '}
+            <strong>client_credentials</strong> — <code>pingone_client_id</code> / <code>pingone_client_secret</code>{' '}
+            (saved after CIMD registration or in Config) or env <code>PINGONE_MANAGEMENT_CLIENT_ID</code> /{' '}
+            <code>PINGONE_MANAGEMENT_CLIENT_SECRET</code>. That is separate from{' '}
+            <code>PINGONE_AUTHORIZE_WORKER_*</code> (PingOne Authorize only) unless you grant the same app Management roles in PingOne.
+          </p>
+          {workerCred && (
+            <ul style={{ margin: '0 0 0.75rem 0', paddingLeft: '1.25rem', color: '#78350f', fontSize: '0.875rem' }}>
+              <li>
+                Management worker (bootstrap):{' '}
+                <strong>{workerCred.management?.managementWorkerReady ? 'configured' : 'not configured'}</strong>
+                {workerCred.management?.environmentIdSet === false && ' — set PINGONE_ENVIRONMENT_ID'}
+              </li>
+              <li>
+                Authorize worker:{' '}
+                <strong>{workerCred.authorizeWorkerReady ? 'configured' : 'not configured'}</strong>
+                {' '}(for decision endpoints / Authorize, not this bootstrap)
+              </li>
+            </ul>
+          )}
+          <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
+            Public base URL (HTTPS, no trailing slash)
+          </label>
+          <input
+            type="url"
+            value={publicBaseUrl}
+            onChange={(e) => setPublicBaseUrl(e.target.value)}
+            placeholder="https://your-app.vercel.app"
+            style={{
+              width: '100%',
+              maxWidth: '28rem',
+              padding: '0.5rem 0.65rem',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              marginBottom: '0.75rem',
+              fontSize: '0.875rem',
+            }}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+            <input
+              type="checkbox"
+              checked={bootstrapDryRun}
+              onChange={(e) => setBootstrapDryRun(e.target.checked)}
+            />
+            Dry run only (no creates)
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+            <input
+              type="checkbox"
+              checked={bootstrapIncludeUsers}
+              onChange={(e) => setBootstrapIncludeUsers(e.target.checked)}
+            />
+            Include demo directory users (bankadmin / bankuser)
+          </label>
+          <p style={{ margin: '0 0 0.35rem 0', fontSize: '0.8125rem', color: '#64748b' }}>
+            If the server has <code>SETUP_MASTER_KEY</code>, paste it here (sent as <code>X-Setup-Master-Key</code> only for this request; not stored).
+          </p>
+          <input
+            type="password"
+            autoComplete="off"
+            value={setupMasterKey}
+            onChange={(e) => setSetupMasterKey(e.target.value)}
+            placeholder="Optional setup master key"
+            style={{
+              width: '100%',
+              maxWidth: '28rem',
+              padding: '0.5rem 0.65rem',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              marginBottom: '0.75rem',
+              fontSize: '0.875rem',
+            }}
+          />
+          <button
+            type="button"
+            style={{ ...btnStyle, background: '#b45309', color: '#fff', borderColor: '#b45309' }}
+            onClick={handlePingOneBootstrapRun}
+            disabled={bootstrapLoading || !publicBaseUrl.trim()}
+          >
+            {bootstrapLoading ? 'Running…' : 'Run PingOne bootstrap'}
+          </button>
+          {bootstrapResult && (
+            <pre
+              style={{
+                marginTop: '1rem',
+                padding: '0.75rem',
+                background: '#f1f5f9',
+                borderRadius: '6px',
+                fontSize: '0.72rem',
+                overflow: 'auto',
+                maxHeight: '320px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              {JSON.stringify(bootstrapResult, null, 2)}
             </pre>
           )}
         </div>

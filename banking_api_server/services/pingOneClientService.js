@@ -118,10 +118,10 @@ async function createApplication(metadata) {
 }
 
 /**
- * List all OIDC applications in the PingOne environment.
- * Returns a summarised array (id, name, type, enabled, createdAt).
+ * Raw OIDC application objects from PingOne (for bootstrap idempotency / matching by name).
+ * @returns {Promise<object[]>}
  */
-async function listApplications() {
+async function listOidcApplicationsRaw() {
   const envId  = configStore.getEffective('pingone_environment_id');
   const region = configStore.getEffective('pingone_region') || 'com';
   const token  = await getManagementToken();
@@ -129,9 +129,18 @@ async function listApplications() {
   const url = `https://api.pingone.${region}/v1/environments/${envId}/applications?filter=protocol%20eq%20%22OPENID_CONNECT%22`;
   const response = await axios.get(url, {
     headers: { Authorization: `Bearer ${token}` },
+    timeout: 20000,
   });
 
-  const items = response.data?._embedded?.applications || [];
+  return response.data?._embedded?.applications || [];
+}
+
+/**
+ * List all OIDC applications in the PingOne environment.
+ * Returns a summarised array (id, name, type, enabled, createdAt).
+ */
+async function listApplications() {
+  const items = await listOidcApplicationsRaw();
   return items.map(a => ({
     id:        a.id,
     name:      a.name,
@@ -142,4 +151,4 @@ async function listApplications() {
   }));
 }
 
-module.exports = { createApplication, listApplications, getManagementToken };
+module.exports = { createApplication, listApplications, listOidcApplicationsRaw, getManagementToken };

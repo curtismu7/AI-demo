@@ -34,6 +34,9 @@ export default function Onboarding() {
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <Link to="/" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}>← Sign in</Link>
+            <Link to="/setup/pingone" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}>
+              PingOne reference
+            </Link>
             <Link
               to="/config"
               style={{

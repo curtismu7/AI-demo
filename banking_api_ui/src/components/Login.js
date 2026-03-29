@@ -158,6 +158,8 @@ const Login = () => {
               {' · '}
               <Link to="/setup">Vercel setup</Link>
               {' · '}
+              <Link to="/setup/pingone">PingOne reference</Link>
+              {' · '}
               <span>Admin vs customer: use the Learn bar after sign-in, or the CIBA guide (floating).</span>
             </span>
           </div>

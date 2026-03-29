@@ -2,13 +2,18 @@
 'use strict';
 
 /**
- * PingOne tenant bootstrap helpers (planning + optional Management API probe).
- * Full create flows (apps, users, resource servers) are phased; this module
- * exposes step descriptions and a safe list-applications probe when credentials exist.
+ * PingOne tenant bootstrap: plan text, Management API probe, and optional run
+ * (create OIDC apps + directory users from example manifest).
+ *
+ * Worker token: uses pingOneClientService.getManagementToken() → pingone_client_id/secret
+ * (Config, CIMD, or PINGONE_MANAGEMENT_CLIENT_* env). Not the Authorize worker
+ * (PINGONE_AUTHORIZE_WORKER_*) unless you deliberately use the same PingOne app.
  */
 
 const fs = require('fs').promises;
 const path = require('path');
+const axios = require('axios');
+const configStore = require('./configStore');
 const pingOneClientService = require('./pingOneClientService');
 
 /**
@@ -103,9 +108,306 @@ async function probeManagementApiAccess() {
   }
 }
 
+/**
+ * Whether Management API client_credentials can be obtained (no network call).
+ * @returns {{ managementWorkerReady: boolean, environmentIdSet: boolean, hint: string }}
+ */
+function getManagementWorkerConfigStatus() {
+  const envId = String(configStore.getEffective('pingone_environment_id') || '').trim();
+  const cid = String(configStore.getEffective('pingone_client_id') || '').trim();
+  const csec = String(configStore.getEffective('pingone_client_secret') || '').trim();
+  const ready = !!(envId && cid && csec);
+  return {
+    managementWorkerReady: ready,
+    environmentIdSet: !!envId,
+    hint:
+      'Bootstrap run uses a PingOne app with the **client_credentials** grant and **Management API** roles ' +
+      '(Applications, Users, etc.). Set **pingone_client_id** + **pingone_client_secret** in Application Configuration ' +
+      '(after CIMD register) or **PINGONE_MANAGEMENT_CLIENT_ID** + **PINGONE_MANAGEMENT_CLIENT_SECRET** in env. ' +
+      '**PINGONE_AUTHORIZE_WORKER_*** is only for PingOne Authorize APIs unless that same app is granted Management permissions.',
+  };
+}
+
+/**
+ * First population in the environment (for demo user placement).
+ * @param {string} token
+ * @param {string} apiRoot https://api.pingone.{region}/v1/environments/{envId}
+ */
+async function fetchFirstPopulationId(token, apiRoot) {
+  const url = `${apiRoot}/populations`;
+  const { data } = await axios.get(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    timeout: 20000,
+  });
+  const pops = data?._embedded?.populations || [];
+  if (!pops.length) {
+    throw new Error('No populations returned from PingOne');
+  }
+  const preferred =
+    pops.find((p) => /default/i.test(String(p.name || ''))) ||
+    pops.find((p) => p.default === true) ||
+    pops[0];
+  return preferred.id;
+}
+
+/**
+ * Create manifest applications + optional demo users (idempotent by application name / user conflicts).
+ *
+ * @param {object} options
+ * @param {string} options.publicBaseUrl  e.g. https://banking-demo-puce.vercel.app
+ * @param {boolean} [options.dryRun]
+ * @param {boolean} [options.includeUsers=true]
+ * @param {object} [options.manifest]
+ * @returns {Promise<object>}
+ */
+async function runPingOneBootstrap(options = {}) {
+  const publicBaseUrl = String(options.publicBaseUrl || '').trim().replace(/\/$/, '');
+  const dryRun = !!options.dryRun;
+  const includeUsers = options.includeUsers !== false;
+
+  const result = {
+    ok: true,
+    dryRun,
+    publicBaseUrl,
+    steps: [],
+    manualSteps: [],
+    errors: [],
+    worker: getManagementWorkerConfigStatus(),
+  };
+
+  if (!publicBaseUrl || !/^https:\/\//i.test(publicBaseUrl)) {
+    result.ok = false;
+    result.errors.push({
+      phase: 'validate',
+      message: 'publicBaseUrl must be an https URL (trailing slash optional).',
+    });
+    return result;
+  }
+
+  let manifest;
+  try {
+    manifest =
+      options.manifest && typeof options.manifest === 'object'
+        ? options.manifest
+        : await loadManifestFromPath(getExampleManifestPath());
+  } catch (e) {
+    result.ok = false;
+    result.errors.push({ phase: 'manifest', message: e.message || String(e) });
+    return result;
+  }
+
+  result.manualSteps.push({
+    title: 'Resource server + banking:* scopes',
+    detail:
+      'Not created by this API. Add a custom resource and scopes in PingOne if you need RFC 8707 / token-exchange demos.',
+  });
+
+  let token;
+  try {
+    token = await pingOneClientService.getManagementToken();
+  } catch (e) {
+    result.ok = false;
+    result.errors.push({
+      phase: 'management_token',
+      message: e.message || String(e),
+      hint: result.worker.hint,
+    });
+    return result;
+  }
+
+  const envId = configStore.getEffective('pingone_environment_id');
+  const region = configStore.getEffective('pingone_region') || 'com';
+  const apiRoot = `https://api.pingone.${region}/v1/environments/${envId}`;
+
+  let existingApps = [];
+  try {
+    existingApps = await pingOneClientService.listOidcApplicationsRaw();
+  } catch (e) {
+    result.ok = false;
+    result.errors.push({ phase: 'list_applications', message: e.message || String(e) });
+    return result;
+  }
+
+  const appsManifest = manifest.applications && typeof manifest.applications === 'object' ? manifest.applications : {};
+  const order = ['admin_oidc', 'user_oidc', 'authorize_worker'];
+
+  for (const key of order) {
+    const spec = appsManifest[key];
+    if (!spec || typeof spec !== 'object' || !spec.name) continue;
+
+    const found = existingApps.find((a) => (a.name || '').trim() === String(spec.name).trim());
+    if (found) {
+      result.steps.push({
+        key,
+        action: 'skipped',
+        name: spec.name,
+        pingoneApplicationId: found.id,
+      });
+      continue;
+    }
+
+    if (dryRun) {
+      result.steps.push({ key, action: 'would_create', name: spec.name });
+      continue;
+    }
+
+    try {
+      /** @type {object} */
+      let metadata;
+      if (key === 'admin_oidc') {
+        metadata = {
+          client_name: spec.name,
+          application_type: 'web',
+          grant_types: ['authorization_code'],
+          response_types: ['code'],
+          redirect_uris: [`${publicBaseUrl}/api/auth/oauth/callback`],
+          token_endpoint_auth_method: 'client_secret_basic',
+        };
+      } else if (key === 'user_oidc') {
+        metadata = {
+          client_name: spec.name,
+          application_type: 'web',
+          grant_types: ['authorization_code'],
+          response_types: ['code'],
+          redirect_uris: [`${publicBaseUrl}/api/auth/oauth/user/callback`],
+          token_endpoint_auth_method: 'client_secret_basic',
+        };
+      } else if (key === 'authorize_worker') {
+        metadata = {
+          client_name: spec.name,
+          application_type: 'service',
+          grant_types: ['client_credentials'],
+          response_types: [],
+          redirect_uris: [],
+          token_endpoint_auth_method: 'client_secret_basic',
+        };
+      } else {
+        continue;
+      }
+
+      const app = await pingOneClientService.createApplication(metadata);
+      result.steps.push({
+        key,
+        action: 'created',
+        name: spec.name,
+        pingoneApplicationId: app.id,
+        clientSecretReturned: !!app.clientSecret,
+      });
+      existingApps.push(app);
+    } catch (e) {
+      const msg =
+        e.response?.data?.message ||
+        e.response?.data?.error ||
+        e.message ||
+        String(e);
+      result.ok = false;
+      result.steps.push({ key, action: 'failed', name: spec.name, error: msg });
+    }
+  }
+
+  if (includeUsers && Array.isArray(manifest.demoUsers) && manifest.demoUsers.length > 0) {
+    let populationId = null;
+    if (!dryRun) {
+      try {
+        populationId = await fetchFirstPopulationId(token, apiRoot);
+      } catch (e) {
+        result.manualSteps.push({
+          title: 'Demo users',
+          detail: `Could not list populations: ${e.message}. Create users manually in PingOne.`,
+        });
+      }
+    }
+
+    for (const u of manifest.demoUsers) {
+      const username = typeof u.username === 'string' ? u.username.trim() : '';
+      const email = typeof u.email === 'string' ? u.email.trim() : '';
+      if (!username) continue;
+
+      if (dryRun) {
+        result.steps.push({
+          key: `user:${username}`,
+          action: 'would_create_user',
+          username,
+          email: email || null,
+        });
+        continue;
+      }
+
+      if (!populationId) {
+        result.steps.push({
+          key: `user:${username}`,
+          action: 'skipped_user',
+          username,
+          note: 'no population id',
+        });
+        continue;
+      }
+
+      try {
+        const resp = await axios.post(
+          `${apiRoot}/users`,
+          {
+            username,
+            email: email || `${username}@example.invalid`,
+            population: { id: populationId },
+            name: { given: username, family: 'Demo' },
+          },
+          {
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            timeout: 20000,
+            validateStatus: () => true,
+          }
+        );
+        if (resp.status === 201) {
+          result.steps.push({ key: `user:${username}`, action: 'created_user', username });
+        } else {
+          const body = resp.data;
+          const txt = JSON.stringify(body || {}).toLowerCase();
+          const conflict =
+            resp.status === 409 ||
+            (resp.status === 400 &&
+              (txt.includes('unique') ||
+                txt.includes('already') ||
+                txt.includes('exist') ||
+                txt.includes('duplicate')));
+          if (conflict) {
+            result.steps.push({ key: `user:${username}`, action: 'skipped_user', username });
+          } else {
+            result.ok = false;
+            result.steps.push({
+              key: `user:${username}`,
+              action: 'failed_user',
+              username,
+              error: body?.message || body?.error || `HTTP ${resp.status}`,
+            });
+          }
+        }
+      } catch (e) {
+        result.ok = false;
+        result.steps.push({
+          key: `user:${username}`,
+          action: 'failed_user',
+          username,
+          error: e.message || String(e),
+        });
+      }
+    }
+
+    result.manualSteps.push({
+      title: 'Initial passwords for demo users',
+      detail:
+        'PingOne create-user does not set passwords. Use Admin Console (Set password), recovery, or the import-user API.',
+    });
+  }
+
+  return result;
+}
+
 module.exports = {
   planStepsFromManifest,
   loadManifestFromPath,
   getExampleManifestPath,
   probeManagementApiAccess,
+  getManagementWorkerConfigStatus,
+  runPingOneBootstrap,
 };
