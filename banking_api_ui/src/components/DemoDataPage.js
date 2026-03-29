@@ -163,7 +163,9 @@ export default function DemoDataPage({ user, onLogout }) {
     setP1azFlagsError(null);
     try {
       const { data } = await axios.get('/api/admin/feature-flags');
-      const list = (data.flags || []).filter((f) => f.category === 'PingOne Authorize');
+      const list = (data.flags || []).filter(
+        (f) => f.category === 'PingOne Authorize' || f.category === 'Token Exchange'
+      );
       setP1azFlags(list);
     } catch (err) {
       setP1azFlagsError(err?.response?.data?.error || err.message || 'Failed to load feature flags');
@@ -818,6 +820,49 @@ export default function DemoDataPage({ user, onLogout }) {
             {/* ── may_act demo toggle ─────────────────────────────────────── */}
             <section className="section demo-data-section" aria-labelledby="demo-mayact-heading">
               <h2 className="demo-data-section__heading" id="demo-mayact-heading">Token Exchange — may_act demo</h2>
+
+              {/* Auto-inject toggle (admin only, sourced from feature-flag ff_inject_may_act) */}
+              {user?.role === 'admin' && (() => {
+                const injectFlag = p1azFlags.find((f) => f.id === 'ff_inject_may_act');
+                if (!injectFlag) return null;
+                const isOn = injectFlag.currentValue === true;
+                return (
+                  <div className="demo-data-static-notice" style={{ marginBottom: '1rem', borderColor: isOn ? '#f59e0b' : undefined, background: isOn ? '#fffbeb' : undefined }}>
+                    <span className="demo-data-static-notice__icon">{isOn ? '🔧' : '💡'}</span>
+                    <div style={{ flex: 1 }}>
+                      <strong>Auto-inject may_act (BFF synthetic)</strong>
+                      {' — '}
+                      {isOn
+                        ? <span style={{ color: '#b45309' }}>ON — BFF is adding a synthetic <code>may_act</code> claim before token exchange. Token Chain shows an injected badge.</span>
+                        : <span style={{ color: '#6b7280' }}>OFF — if PingOne doesn&apos;t include <code>may_act</code>, exchange may fail.</span>}
+                      <br />
+                      <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+                        When <strong>ON</strong>, the BFF synthesises <code>{`{ client_id: "<bff-client-id>" }`}</code> in memory
+                        before RFC&nbsp;8693 exchange — no PingOne token policy change required.
+                        Educational/demo only; disable once PingOne is configured natively.
+                      </span>
+                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className={`demo-data-btn${isOn ? ' ghost' : ' primary'}`}
+                          disabled={p1azFlagSaving === 'ff_inject_may_act' || !isOn && !injectFlag}
+                          onClick={() => handleP1azFlagToggle('ff_inject_may_act', false)}
+                        >
+                          {p1azFlagSaving === 'ff_inject_may_act' && !isOn ? 'Saving…' : '❌ Disable injection'}
+                        </button>
+                        <button
+                          type="button"
+                          className={`demo-data-btn${isOn ? ' primary' : ' ghost'}`}
+                          disabled={p1azFlagSaving === 'ff_inject_may_act' || isOn}
+                          onClick={() => handleP1azFlagToggle('ff_inject_may_act', true)}
+                        >
+                          {p1azFlagSaving === 'ff_inject_may_act' && isOn ? 'Saving…' : '🔧 Enable injection'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Static-mode notice */}
               <div className="demo-data-static-notice">

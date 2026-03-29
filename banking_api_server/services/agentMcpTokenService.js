@@ -303,7 +303,53 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     return { token: null, tokenEvents, userSub: null };
   }
 
-  const { userSub, userAccessTokenClaims } = appendUserTokenEvent(tokenEvents, userToken, req);
+  const { userSub, userAccessTokenClaims: _rawUserClaims } = appendUserTokenEvent(tokenEvents, userToken, req);
+
+  // ── Optional BFF synthetic may_act injection ──────────────────────────────
+  // When ff_inject_may_act is true and the user token has no may_act claim, the
+  // BFF synthesises { client_id: <bff-client-id> } so token exchange can proceed
+  // without any PingOne token-policy change.  Educational/demo only.
+  const ffInjectMayAct =
+    configStore.getEffective('ff_inject_may_act') === true ||
+    configStore.getEffective('ff_inject_may_act') === 'true';
+
+  let userAccessTokenClaims = _rawUserClaims;
+  if (ffInjectMayAct && userAccessTokenClaims && !userAccessTokenClaims.may_act) {
+    const bffClientId =
+      oauthService.config?.clientId ||
+      configStore.getEffective('user_client_id') ||
+      process.env.PINGONE_CLIENT_ID ||
+      null;
+    if (bffClientId) {
+      // Patch claims in memory only — the JWT itself is unchanged.
+      userAccessTokenClaims = { ...userAccessTokenClaims, may_act: { client_id: bffClientId } };
+      // Update the user-token event that was just pushed to reflect the injection.
+      const utEvent = tokenEvents.find(e => e.id === 'user-token');
+      if (utEvent) {
+        utEvent.mayActPresent = true;
+        utEvent.mayActValid   = true;
+        utEvent.mayActInjected = true;
+        utEvent.mayActDetails =
+          `may_act synthesised by BFF (ff_inject_may_act = true): { client_id: "${bffClientId}" }. ` +
+          'This is a demo/dev shortcut — enable may_act in your PingOne token policy to remove this.';
+        utEvent.explanation =
+          (utEvent.explanation || '') +
+          ` [BFF-INJECTED may_act: { client_id: "${bffClientId}" } — enable ff_inject_may_act is ON]`;
+      }
+      tokenEvents.push(buildTokenEvent(
+        'may-act-injected',
+        'may_act — BFF synthetic injection',
+        'active',
+        null,
+        `ff_inject_may_act is ON. The user access token had no may_act claim so the BFF has ` +
+          `synthesised { client_id: "${bffClientId}" } in memory before attempting RFC 8693 token exchange. ` +
+          'The JWT itself is unchanged. To remove this shortcut, configure PingOne to add may_act natively ' +
+          'via an attribute mapping expression, then disable this flag.',
+        { rfc: 'RFC 8693 §4.1', synthetic: true, injectedValue: { client_id: bffClientId } }
+      ));
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
