@@ -66,7 +66,7 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-03-29 — docs: marketing login draw.io (agent-first vs button-first); fix `DemoDataPage` Jest axios mock for `apiClient` (commit `TBD`)
+### 2026-03-29 — docs: marketing login draw.io (agent-first vs button-first); fix `DemoDataPage` Jest axios mock for `apiClient` (commit `535c276`)
 
 - **Symptom:** `CI=true npm run test:unit` failed — `DemoDataPage.test.js` did not load: `TypeError: _axios.default.create is not a function` because `apiClient` constructs `axios.create()` at module load while the test mock only stubbed `get` / `post` / `patch`.
 - **Root cause:** Incomplete `axios` Jest mock after `DemoDataPage` began importing `apiClient` (singleton uses `axios.create` + interceptors).
