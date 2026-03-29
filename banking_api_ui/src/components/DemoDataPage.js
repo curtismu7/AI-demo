@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
 import axios from 'axios';
+import apiClient from '../services/apiClient';
 import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioService';
 import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../config/agentMcpScopes';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
@@ -151,7 +152,7 @@ export default function DemoDataPage({ user, onLogout }) {
   const handleSetMayAct = async (enable) => {
     setMayActSaving(true);
     try {
-      const { data } = await axios.patch('/api/demo/may-act', { enabled: enable });
+      const { data } = await apiClient.patch('/api/demo/may-act', { enabled: enable });
       setMayActEnabled(enable);
       notifySuccess(data.message || (enable ? 'may_act enabled' : 'may_act cleared'));
     } catch (err) {
@@ -217,7 +218,7 @@ export default function DemoDataPage({ user, onLogout }) {
   const handleP1azAuthorizeBootstrap = async () => {
     setP1azBootstrapBusy(true);
     try {
-      const { data } = await axios.post('/api/authorize/bootstrap-demo-endpoints', {
+      const { data } = await apiClient.post('/api/authorize/bootstrap-demo-endpoints', {
         policyId: p1azBootstrapPolicyId.trim() || undefined,
         authorizationVersionId: p1azBootstrapAuthVer.trim() || undefined,
         enableLiveAuthorize: p1azBootstrapEnableLive,

@@ -29,7 +29,7 @@ export default function SetupPage() {
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await apiClient.get('/api/setup/plan', { _silent: true });
+        const { data } = await apiClient.get('/api/setup/plan');
         if (!cancelled && data?.ok && Array.isArray(data.steps)) {
           setPlanSteps(data.steps);
         } else if (!cancelled) {
@@ -50,7 +50,7 @@ export default function SetupPage() {
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await apiClient.get('/api/admin/setup/worker-credentials', { _silent: true });
+        const { data } = await apiClient.get('/api/admin/setup/worker-credentials');
         if (!cancelled) setWorkerCred(data);
       } catch {
         if (!cancelled) setWorkerCred(null);
@@ -63,7 +63,7 @@ export default function SetupPage() {
     setProbeLoading(true);
     setProbeResult(null);
     try {
-      const { data } = await apiClient.get('/api/admin/setup/management-probe', { _silent: true });
+      const { data } = await apiClient.get('/api/admin/setup/management-probe');
       setProbeResult(data);
       if (data?.ok) {
         toast.success(`PingOne Management API OK — ${data.applicationCount ?? 0} OIDC app(s).`);
@@ -99,7 +99,7 @@ export default function SetupPage() {
           dryRun: bootstrapDryRun,
           includeUsers: bootstrapIncludeUsers,
         },
-        { _silent: true, headers }
+        { headers }
       );
       setBootstrapResult(data);
       if (data?.ok) {

@@ -4,6 +4,12 @@
  * Calls the PingOne Management API to create / list OAuth applications.
  * Uses a client_credentials grant with the admin (worker) client so that
  * Management-API tokens are obtained server-side and never exposed to the UI.
+ *
+ * Trust boundary (PingOne egress):
+ * - Browser → this BFF only (/api/* with session or Bearer). The SPA does not call api.pingone or auth.pingone.
+ * - Human OAuth (authorize, token, JWKS) runs in routes/oauth*.js and config/oauth*.js — must stay on the BFF.
+ * - banking_mcp_server calls PingOne for token introspection / CIBA for MCP tools, then calls this API for data.
+ *   Banking tools are not intended to re-implement full Management API; keep worker credentials on the BFF.
  */
 const axios = require('axios');
 const configStore = require('./configStore');

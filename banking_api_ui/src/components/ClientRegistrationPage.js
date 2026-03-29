@@ -6,7 +6,7 @@
  * the resulting PingOne credentials plus the hosted CIMD document URL.
  */
 import React, { useState, useCallback } from 'react';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
 import { notifySuccess, notifyError } from '../utils/appToast';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
@@ -231,7 +231,7 @@ export default function ClientRegistrationPage({ user, onLogout }) {
         ...(logoUri.trim()   && { logo_uri:   logoUri.trim() }),
         ...(clientUri.trim() && { client_uri: clientUri.trim() }),
       };
-      const resp = await axios.post('/api/clients/register', payload, { withCredentials: true });
+      const resp = await apiClient.post('/api/clients/register', payload);
       setResult(resp.data);
       notifySuccess('Client registered successfully in PingOne!');
     } catch (err) {

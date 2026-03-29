@@ -65,6 +65,16 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-29 — PingOne UX: global wait overlay + config test gate + setup reference
+
+- **Symptom:** Calls that ultimately hit PingOne (Management API, discovery test, Authorize bootstrap, CIMD register) did not show the same global spinner as other `apiClient` traffic; `/setup` flows used `_silent: true`. `POST /api/admin/config/test` was callable without the same gate as other config writes once the app was configured.
+- **Root cause:** Raw `axios` bypasses `apiClient` interceptors; `_silent` disabled the spinner; `/test` lacked `requireAdminOrUnconfigured`.
+- **Fix:** Route PingOne-adjacent UI calls through `apiClient` where applicable; remove `_silent` from SetupPage setup/bootstrap requests; add spinner `API_MESSAGES` for those paths; document BFF vs MCP PingOne egress in `pingOneClientService.js`; add security card on PingOne setup reference page; gate `POST /api/admin/config/test` with `requireAdminOrUnconfigured`.
+- **Files:** `banking_api_ui/src/services/spinnerService.js`, `SetupPage.js`, `Config.js`, `DemoDataPage.js`, `ClientRegistrationPage.js`, `PingOneSetupGuidePage.js`, `banking_api_server/routes/adminConfig.js`, `banking_api_server/services/pingOneClientService.js`
+- **Regression check:** `cd banking_api_ui && npm run build` exits 0. First-run Config still loads; after configure, Config test requires admin session or `X-Config-Password` on hosted stacks. `/setup` shows spinner while plan/worker/probe/bootstrap requests run. Vercel: `vercel --prod` from repo root after push.
+
+---
+
 ### 2026-03-29 — feat(token-exchange): ff_inject_audience + may_act session seed + 29 new tests (commit `3fc11c4`)
 
 - **may_act status seeded from session on mount:** `DemoDataPage` now calls `GET /api/auth/session` on mount and seeds `mayActEnabled` from the token's `may_act` claim. Status pill always visible: **Checking…** → **✅ may_act present in token** / **❌ may_act absent from token**. Previously `null` until the user clicked a button, making the current state ambiguous.

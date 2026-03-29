@@ -5,8 +5,8 @@
  *
  * GET  /api/admin/config       → masked config (secrets replaced with ••••••••)
  * POST /api/admin/config       → save one or more config keys
- * POST /api/admin/config/test  → validate PingOne credentials by calling the
- *                                discovery / token endpoint
+ * POST /api/admin/config/test  → validate PingOne reachability via OIDC discovery
+ *                                (same gate as POST — not a public PingOne proxy)
  * POST /api/admin/config/reset → wipe stored config (requires admin session)
  *
  * Security model:
@@ -156,7 +156,7 @@ router.post('/', requireAdminOrUnconfigured, async (req, res) => {
 // POST /api/admin/config/test  — test PingOne connection
 // ---------------------------------------------------------------------------
 
-router.post('/test', async (req, res) => {
+router.post('/test', requireAdminOrUnconfigured, async (req, res) => {
   try {
     await configStore.ensureInitialized();
 

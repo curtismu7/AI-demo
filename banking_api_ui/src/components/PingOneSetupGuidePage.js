@@ -107,6 +107,16 @@ export default function PingOneSetupGuidePage() {
           </ul>
         </div>
 
+        <div style={{ ...cardStyle, borderColor: '#c7d2fe', background: '#eef2ff' }}>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: '#3730a3' }}>Where PingOne is called from (security)</h2>
+          <p style={{ margin: 0, color: '#4338ca', fontSize: '0.9375rem', lineHeight: 1.65 }}>
+            The browser talks only to this app&apos;s <strong>BFF</strong> (<code>/api/…</code>) with cookies or Bearer tokens — not to <code>api.pingone</code> or <code>auth.pingone</code> directly.
+            OAuth login still <strong>redirects</strong> the user through PingOne&apos;s hosted pages; that cannot be routed through the MCP server.
+            The <strong>MCP server</strong> uses PingOne for token introspection (and optional CIBA) before MCP tools call the Banking API.
+            Management API and Authorize worker calls run on the BFF and are gated like other protected routes (admin session, scopes, or first-run config rules).
+          </p>
+        </div>
+
         <div style={cardStyle}>
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0' }}>PingOne directory: what to create</h2>
           <p style={{ margin: '0 0 0.75rem 0', color: '#4b5563', fontSize: '0.9375rem', lineHeight: 1.6 }}>

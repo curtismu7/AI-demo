@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import apiClient from '../services/apiClient';
 import { notifySuccess, notifyError } from '../utils/appToast';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
@@ -411,7 +412,7 @@ export default function Config() {
     setTestResult(null);
     try {
       // Send the current form values so the test works before saving
-      const { data } = await axios.post('/api/admin/config/test', {
+      const { data } = await apiClient.post('/api/admin/config/test', {
         pingone_environment_id: form.pingone_environment_id,
         pingone_region:         form.pingone_region,
         admin_client_id:        form.admin_client_id,
@@ -455,6 +456,7 @@ export default function Config() {
               <span className="config-page__badge config-page__badge--warn">⚠ Not configured</span>
             )}
             <Link to="/onboarding" className="app-page-shell__btn app-page-shell__btn--solid">Setup guide</Link>
+            <Link to="/setup/pingone" className="app-page-shell__btn">PingOne reference</Link>
             <Link to="/" className="app-page-shell__btn">← Back to app</Link>
           </div>
         </div>
