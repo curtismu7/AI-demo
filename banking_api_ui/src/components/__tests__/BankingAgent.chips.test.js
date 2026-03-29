@@ -492,3 +492,111 @@ describe('Chips when not logged in', () => {
     expect(() => renderAgent({ user: null, mode: 'inline', embeddedDockBottom: true })).not.toThrow();
   });
 });
+
+// ─── My Dashboard button placement ───────────────────────────────────────────
+// Regression: dashboard button was in left-col (nav column); moved below prompt
+// in right-col so it's visible even when consent is blocked.
+
+describe('My Dashboard button placement', () => {
+  it('renders My Dashboard button when logged in (inline mode)', () => {
+    renderAgent({ user: customerUser, mode: 'inline' });
+    expect(screen.getByText('📊 My Dashboard')).toBeInTheDocument();
+  });
+
+  it('renders Admin Dashboard button for admin user', () => {
+    renderAgent({ user: adminUser, mode: 'inline' });
+    expect(screen.getByText('👑 Admin Dashboard')).toBeInTheDocument();
+  });
+
+  it('My Dashboard button is a button element', () => {
+    renderAgent({ user: customerUser, mode: 'inline' });
+    const btn = screen.getByText('📊 My Dashboard').closest('button');
+    expect(btn).toBeInTheDocument();
+  });
+
+  it('My Dashboard button is NOT inside ba-left-col (must be below prompt)', () => {
+    const { container } = renderAgent({ user: customerUser, mode: 'inline' });
+    const leftCol = container.querySelector('.ba-left-col');
+    const btn = screen.getByText('📊 My Dashboard');
+    // The button must not be a descendant of the left column
+    expect(leftCol).not.toContainElement(btn);
+  });
+
+  it('My Dashboard button is inside ba-right-col (chat column)', () => {
+    const { container } = renderAgent({ user: customerUser, mode: 'inline' });
+    const rightCol = container.querySelector('.ba-right-col');
+    const btn = screen.getByText('📊 My Dashboard');
+    expect(rightCol).toContainElement(btn);
+  });
+
+  it('My Dashboard button not rendered when user is null', () => {
+    renderAgent({ user: null, mode: 'inline' });
+    expect(screen.queryByText('📊 My Dashboard')).not.toBeInTheDocument();
+  });
+
+  it('renders My Dashboard in bottom-dock mode', () => {
+    renderAgent({ user: customerUser, mode: 'inline', embeddedDockBottom: true });
+    expect(screen.getByText('📊 My Dashboard')).toBeInTheDocument();
+  });
+});
+
+// ─── Consent-denied banner ────────────────────────────────────────────────────
+// Regression: banner rendered as 3rd flex column in inline/row-reverse mode,
+// squeezing the chat column and hiding the prompt. Banner must always be full-width.
+
+describe('Consent-denied banner visibility', () => {
+  beforeEach(() => {
+    const agentConsent = require('../../services/agentAccessConsent');
+    agentConsent.isAgentBlockedByConsentDecline.mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    const agentConsent = require('../../services/agentAccessConsent');
+    agentConsent.isAgentBlockedByConsentDecline.mockReturnValue(false);
+  });
+
+  it('renders the consent-denied banner when consent is blocked', () => {
+    renderAgent({ user: customerUser, mode: 'inline' });
+    act(() => { window.dispatchEvent(new Event('bankingAgentConsentBlockChanged')); });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText(/Access denied/)).toBeInTheDocument();
+  });
+
+  it('banner is inside ba-body (not outside panel)', () => {
+    const { container } = renderAgent({ user: customerUser, mode: 'inline' });
+    act(() => { window.dispatchEvent(new Event('bankingAgentConsentBlockChanged')); });
+    const body = container.querySelector('.ba-body');
+    const alert = screen.getByRole('alert');
+    expect(body).toContainElement(alert);
+  });
+
+  it('banner is NOT inside ba-left-col or ba-right-col (must be a direct ba-body child)', () => {
+    const { container } = renderAgent({ user: customerUser, mode: 'inline' });
+    act(() => { window.dispatchEvent(new Event('bankingAgentConsentBlockChanged')); });
+    const leftCol  = container.querySelector('.ba-left-col');
+    const rightCol = container.querySelector('.ba-right-col');
+    const alert = screen.getByRole('alert');
+    expect(leftCol).not.toContainElement(alert);
+    expect(rightCol).not.toContainElement(alert);
+  });
+
+  it('shows Sign out and Learn: Human-in-the-loop buttons in banner', () => {
+    renderAgent({ user: customerUser, mode: 'inline' });
+    act(() => { window.dispatchEvent(new Event('bankingAgentConsentBlockChanged')); });
+    expect(screen.getByRole('button', { name: /Sign out/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Learn.*Human.in.the.loop/i })).toBeInTheDocument();
+  });
+
+  it('renders banner in bottom-dock mode', () => {
+    renderAgent({ user: customerUser, mode: 'inline', embeddedDockBottom: true });
+    act(() => { window.dispatchEvent(new Event('bankingAgentConsentBlockChanged')); });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('does not render banner when consent is not blocked', () => {
+    renderAgent({ user: customerUser, mode: 'inline' });
+    // isAgentBlockedByConsentDecline returns false by default in afterEach reset;
+    // before dispatching event, component state stays false
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
