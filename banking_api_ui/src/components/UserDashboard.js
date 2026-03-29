@@ -24,8 +24,8 @@ import './UserDashboard.css';
 const DEBT_TYPES = new Set(['car_loan', 'mortgage', 'credit']);
 
 const DEMO_ACCOUNTS = [
-  { id: 'demo-chk', name: 'Checking Account', accountType: 'checking', accountNumber: 'CHK-DEMO-0001', balance: 4821.50, _demo: true },
-  { id: 'demo-sav', name: 'Savings Account',  accountType: 'savings',  accountNumber: 'SAV-DEMO-0001', balance: 12340.00, _demo: true },
+  { id: 'demo-chk', name: 'Checking Account', accountType: 'checking', accountNumber: 'CHK-DEMO-0001', balance: 3000.00, _demo: true },
+  { id: 'demo-sav', name: 'Savings Account',  accountType: 'savings',  accountNumber: 'SAV-DEMO-0001', balance: 2000.00, _demo: true },
 ];
 const DEMO_TRANSACTIONS = [
   { id: 'd1', type: 'deposit',    amount: 2500.00, description: 'Payroll deposit',         accountInfo: 'Checking - CHK-DEMO-0001', createdAt: new Date(Date.now() - 86400000*1).toISOString(), clientType: 'enduser',  performedBy: 'Demo User', _demo: true },
@@ -462,14 +462,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   const totalBalance = useMemo(
     () => accounts
-      .filter(a => !DEBT_TYPES.has(a.type))
+      // Real API accounts use accountType; demo snapshots use type — check both.
+      .filter(a => !DEBT_TYPES.has(a.accountType || a.type))
       .reduce((sum, a) => sum + (Number(a.balance) || 0), 0),
     [accounts]
   );
 
   const totalDebt = useMemo(
     () => accounts
-      .filter(a => DEBT_TYPES.has(a.type))
+      .filter(a => DEBT_TYPES.has(a.accountType || a.type))
       .reduce((sum, a) => sum + Math.abs(Number(a.balance) || 0), 0),
     [accounts]
   );
@@ -839,7 +840,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <h2>Your Accounts</h2>
           {isDemoMode && (
             <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-              Demo mode — sign in to use your real accounts
+              Demo mode —{' '}
+              <button type="button" onClick={navigateToCustomerOAuthLogin} style={{ background: 'none', border: 'none', color: '#1e40af', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
+                sign in
+              </button>{' '}
+              to use your real accounts
             </p>
           )}
           <div className="accounts-grid">
@@ -1039,7 +1044,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <h2>Recent Transactions</h2>
           {isDemoMode && (
             <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-              Demo mode — sign in to see your real transactions
+              Demo mode —{' '}
+              <button type="button" onClick={navigateToCustomerOAuthLogin} style={{ background: 'none', border: 'none', color: '#1e40af', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
+                sign in
+              </button>{' '}
+              to see your real transactions
             </p>
           )}
           <div className="transactions-table">

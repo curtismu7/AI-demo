@@ -18,13 +18,15 @@ const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.en
  */
 async function createSampleDataForCustomer(userId, firstName, lastName) {
   try {
-    // Create sample accounts
+    // Create sample accounts with deterministic starting balances.
+    // Random values were used previously but produced confusing totals;
+    // fixed balances keep the demo consistent and predictable.
     const checkingAccount = await dataStore.createAccount({
       id: uuidv4(),
       userId: userId,
       accountNumber: `100${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`,
       accountType: 'checking',
-      balance: Math.floor(Math.random() * 5000) + 1000, // Random balance between 1000-6000
+      balance: 3000.00,
       currency: 'USD',
       createdAt: new Date(),
       isActive: true
@@ -35,7 +37,7 @@ async function createSampleDataForCustomer(userId, firstName, lastName) {
       userId: userId,
       accountNumber: `100${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`,
       accountType: 'savings',
-      balance: Math.floor(Math.random() * 15000) + 5000, // Random balance between 5000-20000
+      balance: 2000.00,
       currency: 'USD',
       createdAt: new Date(),
       isActive: true
