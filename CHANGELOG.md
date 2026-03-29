@@ -17,6 +17,10 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- MCP first-tool PingOne Authorize gate: `ff_authorize_mcp_first_tool` flag, `mcpToolAuthorizationService.js`, `authorize_mcp_decision_endpoint_id` config key; `POST /api/mcp/tool` evaluates once per session before the WebSocket call
+- `GET /api/authorize/evaluation-status` includes `mcpFirstTool*` fields; PingOneAuthorizePanel shows MCP gate status
+- AGENTS.md and CLAUDE.md agent instruction files; architecture PNGs
+- REGRESSION_PLAN: Section 1 critical area for MCP gate, Section 6 new env vars, Section 7 smoke-test step
 - Feature Flags system: `GET/PATCH /api/admin/feature-flags`, FLAG_REGISTRY with 5 flags
 - `FeatureFlagsPage` admin UI (`/feature-flags`) — toggle switches per flag, grouped by category, live save, warning badges for security-sensitive flags
 - "Feature Flags" accent button in admin Dashboard toolbar
