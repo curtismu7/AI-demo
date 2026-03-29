@@ -73,7 +73,7 @@
 
 ### 2026-03-29 — CI: 16 stale tests updated to match current API server behavior (commits `da05a1f`, `bf93d05`)
 
-- **What changed:** GitHub Actions `Tests/API Server` was failing on 7 test suites. All failures were tests that had been written for behaviors that were since intentionally changed. Each test was updated to reflect current production code — no production code was reverted. API server now has **818 passing tests**; UI has **249 passing tests**.
+- **What changed:** GitHub Actions `Tests/API Server` was failing on 7 test suites. All failures were tests that had been written for behaviors that were since intentionally changed. Each test was updated to reflect current production code — no production code was reverted. API server now has **818 passing tests**; UI has **251 passing tests**.
 
 - **`upstashSessionStore.set()` — errors propagate (not swallowed):** `set()` calls `cb(err)` on Redis failure so that explicit `req.session.save(cb)` callers (e.g. OAuth login) can detect a failed write and redirect to an error page. Test previously expected `err` to be `null`; updated to `expect(err).toBeInstanceOf(Error)`. See **Critical Do-Not-Break Areas** row.
   - *Files:* `banking_api_server/src/__tests__/upstashSessionStore.test.js`
@@ -90,7 +90,7 @@
 - **Scope tests — `GET /transactions/my` and `POST /transactions` have no `requireScopes()`:** Standard PingOne tokens without a custom resource server only carry `openid/profile/email`, not `banking:*` scopes. 10 assertions across 3 test files were expecting 403 scope errors; updated to expect data-layer responses (200 or 404). See **Critical Do-Not-Break Areas** row.
   - *Files:* `banking_api_server/src/__tests__/scope-integration.test.js`, `banking_api_server/src/__tests__/oauth-scope-integration.test.js`, `banking_api_server/src/__tests__/oauth-e2e-integration.test.js`
 
-- **Regression check:** `cd banking_api_server && npm test -- --watchAll=false --forceExit` → 818 passing, 5 skipped, 0 failing. `cd banking_api_ui && npm test -- --watchAll=false --forceExit` → 249 passing, 21 skipped, 0 failing.
+- **Regression check:** `cd banking_api_server && npm test -- --watchAll=false --forceExit` → 818 passing, 5 skipped, 0 failing. `cd banking_api_ui && npm test -- --watchAll=false --forceExit` → 230 passing, 21 skipped, 0 failing.
 
 ---
 
@@ -743,7 +743,7 @@ cd /Users/cmuir/P1Import-apps/Banking
 cd banking_api_ui && CI=true npm run build
 cd ..
 
-# Step 2 — Unit tests (all 249 UI + 818 API server tests must pass, 0 failures)
+# Step 2 — Unit tests (all 251 UI + 818 API server tests must pass, 0 failures)
 cd banking_api_ui && npm test -- --watchAll=false --forceExit --passWithNoTests
 cd ..
 cd banking_api_server && npm test -- --watchAll=false --forceExit
@@ -775,7 +775,7 @@ cd ..
 
 **Expected pass criteria:**
 - Build: exit 0, no compile errors
-- UI unit tests: 0 failures (249 tests: 228 pass, 21 skipped)
+- UI unit tests: 0 failures (251 tests: 230 pass, 21 skipped)
 - API server unit tests: 0 failures (818 tests: 813 pass, 5 skipped)
 - All E2E specs: 0 failures
 - Manual smoke: all 7 steps pass
