@@ -277,6 +277,15 @@ function detectConflicts(vars) {
     warnings.push('MCP_SERVER_URL not set. The Banking Agent panel will show "connecting…" forever.\n     Deploy banking_mcp_server to Railway/Render/Fly and set this.');
   }
 
+  // 7. MCP_SERVER_URL set but MCP_RESOURCE_URI missing — token exchange audience will be empty
+  if (vars.MCP_SERVER_URL && !(vars.MCP_RESOURCE_URI || vars.MCP_SERVER_RESOURCE_URI)) {
+    warnings.push(
+      'MCP_SERVER_URL is set but MCP_RESOURCE_URI is not.\n' +
+      '     The BFF will skip RFC 8693 token exchange audience — the MCP server cannot validate tokens.\n' +
+      '     Set MCP_RESOURCE_URI to the HTTPS URL of your MCP server (same value as MCP_SERVER_RESOURCE_URI in banking_mcp_server/.env).'
+    );
+  }
+
   // 7. Redirect URIs still have placeholder
   for (const k of ['PINGONE_AI_CORE_REDIRECT_URI', 'PINGONE_AI_CORE_USER_REDIRECT_URI', 'REACT_APP_CLIENT_URL']) {
     if ((vars[k] || '').includes('<your-vercel-url>')) {
@@ -462,25 +471,61 @@ async function main() {
   // ── Step 5: MCP Server ────────────────────────────────────────────────────
   console.log(hdr('MCP Server'));
   console.log(info('Deploy banking_mcp_server to Railway/Render/Fly — Vercel does not support WebSocket.'));
-  const mcpUrl = vars.MCP_SERVER_URL || get('MCP_SERVER_URL') || '';
+  let mcpUrl = vars.MCP_SERVER_URL || get('MCP_SERVER_URL') || '';
   if (mcpUrl) {
     console.log(ok(`MCP_SERVER_URL = ${mcpUrl}`));
   } else {
     const mcp = await ask('MCP_SERVER_URL  (wss://… — skip if not deployed yet)', '');
-    if (mcp) vars.MCP_SERVER_URL = mcp;
+    if (mcp) { vars.MCP_SERVER_URL = mcp; mcpUrl = mcp; }
     else console.log(warn('  MCP_SERVER_URL not set — banking agent will show "connecting…"'));
   }
 
-  const doTok = await askYN('Add RFC 8693 / MCP token exchange (Agent client + MCP resource URI)?', false);
-  if (doTok) {
-    vars.AGENT_OAUTH_CLIENT_ID = await ask('AGENT_OAUTH_CLIENT_ID', vars.AGENT_OAUTH_CLIENT_ID || '');
-    vars.AGENT_OAUTH_CLIENT_SECRET = await ask('AGENT_OAUTH_CLIENT_SECRET', vars.AGENT_OAUTH_CLIENT_SECRET || '', true);
-    vars.MCP_SERVER_RESOURCE_URI = await ask('MCP_SERVER_RESOURCE_URI (MCP token audience)', vars.MCP_SERVER_RESOURCE_URI || '');
-    const mcpAud = vars.MCP_SERVER_RESOURCE_URI.trim();
-    if (mcpAud) vars.MCP_RESOURCE_URI = mcpAud;
-    vars.BFF_CLIENT_ID = await ask('BFF_CLIENT_ID (often same as admin OAuth client id)', vars.BFF_CLIENT_ID || vars.PINGONE_AI_CORE_CLIENT_ID || '');
-    vars.USE_AGENT_ACTOR_FOR_MCP = (await ask('USE_AGENT_ACTOR_FOR_MCP', vars.USE_AGENT_ACTOR_FOR_MCP || 'true')) || 'true';
-    vars.REQUIRE_MAY_ACT = (await ask('REQUIRE_MAY_ACT', vars.REQUIRE_MAY_ACT || 'false')) || 'false';
+  // MCP_RESOURCE_URI — RFC 8707 Resource Indicator sent as the token exchange `audience`.
+  // REQUIRED when MCP_SERVER_URL is set. Value = public HTTPS URL of the MCP server.
+  //   • BFF reads:        MCP_RESOURCE_URI  (or MCP_SERVER_RESOURCE_URI — both map to same key)
+  //   • MCP server reads: MCP_SERVER_RESOURCE_URI  (validates inbound token aud claim)
+  // Both sides MUST be set to the same HTTPS URL.
+  if (mcpUrl) {
+    // Derive a sensible HTTPS default from the wss:// URL
+    const mcpHttpsDefault = (vars.MCP_RESOURCE_URI || vars.MCP_SERVER_RESOURCE_URI || '')
+      || mcpUrl.replace(/^wss?:\/\//, 'https://').replace(/\/.*$/, '');
+
+    console.log('');
+    console.log(info(`RFC 8707 Resource Indicator — sent as "audience" in token exchange and validated`));
+    console.log(info(`by the MCP server on every inbound token.`));
+    console.log(info(`Value must be the public HTTPS URL of your MCP server (same on both sides).\n`));
+
+    const mcpAud = await ask(
+      'MCP_RESOURCE_URI / MCP_SERVER_RESOURCE_URI  (HTTPS URL of MCP server)',
+      mcpHttpsDefault,
+    );
+    if (mcpAud.trim()) {
+      vars.MCP_RESOURCE_URI         = mcpAud.trim();
+      vars.MCP_SERVER_RESOURCE_URI  = mcpAud.trim();
+      console.log(ok(`MCP_RESOURCE_URI + MCP_SERVER_RESOURCE_URI → ${mcpAud.trim()}`));
+      console.log(warn(`Also set MCP_SERVER_RESOURCE_URI=${mcpAud.trim()} in banking_mcp_server/.env`));
+    } else {
+      console.log(warn('  MCP_RESOURCE_URI not set — token audience validation will be skipped'));
+    }
+
+    const doTok = await askYN('Configure RFC 8693 token exchange (agent OAuth client + actor claims)?', !!(vars.AGENT_OAUTH_CLIENT_ID));
+    if (doTok) {
+      vars.AGENT_OAUTH_CLIENT_ID     = await ask('AGENT_OAUTH_CLIENT_ID', vars.AGENT_OAUTH_CLIENT_ID || '');
+      vars.AGENT_OAUTH_CLIENT_SECRET = await ask('AGENT_OAUTH_CLIENT_SECRET', vars.AGENT_OAUTH_CLIENT_SECRET || '', true);
+      vars.BFF_CLIENT_ID             = await ask('BFF_CLIENT_ID (often same as admin OAuth client id)', vars.BFF_CLIENT_ID || vars.PINGONE_AI_CORE_CLIENT_ID || '');
+      vars.USE_AGENT_ACTOR_FOR_MCP   = (await ask('USE_AGENT_ACTOR_FOR_MCP', vars.USE_AGENT_ACTOR_FOR_MCP || 'true')) || 'true';
+      vars.REQUIRE_MAY_ACT           = (await ask('REQUIRE_MAY_ACT', vars.REQUIRE_MAY_ACT || 'false')) || 'false';
+    }
+  } else {
+    // MCP server not configured yet — still allow manual token exchange config
+    const doTok = await askYN('Add RFC 8693 / MCP token exchange vars (requires MCP server later)?', false);
+    if (doTok) {
+      vars.MCP_RESOURCE_URI          = await ask('MCP_RESOURCE_URI (HTTPS URL of MCP server)', vars.MCP_RESOURCE_URI || '');
+      if (vars.MCP_RESOURCE_URI) vars.MCP_SERVER_RESOURCE_URI = vars.MCP_RESOURCE_URI;
+      vars.AGENT_OAUTH_CLIENT_ID     = await ask('AGENT_OAUTH_CLIENT_ID', vars.AGENT_OAUTH_CLIENT_ID || '');
+      vars.AGENT_OAUTH_CLIENT_SECRET = await ask('AGENT_OAUTH_CLIENT_SECRET', vars.AGENT_OAUTH_CLIENT_SECRET || '', true);
+      vars.BFF_CLIENT_ID             = await ask('BFF_CLIENT_ID', vars.BFF_CLIENT_ID || vars.PINGONE_AI_CORE_CLIENT_ID || '');
+    }
   }
 
   const doPaz = await askYN('Add PingOne Authorize (worker + decision endpoints)?', false);
@@ -543,7 +588,21 @@ async function main() {
   console.log(`  ${c.bold}4.${c.reset} Verify: GET ${c.cyan}/api/auth/debug${c.reset}`);
   console.log(`       Expect: ${c.green}sessionStoreType: "upstash-rest"${c.reset}`);
   console.log(`               ${c.green}sessionStoreHealthy: true${c.reset}`);
-  console.log(`               ${c.green}sessionRestored: false${c.reset} (after fresh login)\n`);
+  console.log(`               ${c.green}sessionRestored: false${c.reset} (after fresh login)`);
+
+  const mcpResourceUri = vars.MCP_RESOURCE_URI || vars.MCP_SERVER_RESOURCE_URI || '';
+  if (vars.MCP_SERVER_URL || mcpResourceUri) {
+    console.log('');
+    console.log(`  ${c.bold}5.${c.reset} MCP server — set matching env var in ${c.bold}banking_mcp_server/.env${c.reset}:`);
+    const uriLine = mcpResourceUri || 'https://your-mcp-server.example.com';
+    console.log(`       ${c.cyan}MCP_SERVER_RESOURCE_URI=${uriLine}${c.reset}`);
+    console.log(`       (Must match ${c.bold}MCP_RESOURCE_URI${c.reset} set here — both sides use it as the RFC 8707 token audience.)`);
+    console.log('');
+    console.log(`       ${c.dim}Quick CLI if you need to set MCP_RESOURCE_URI on Vercel manually:${c.reset}`);
+    console.log(`       ${c.cyan}echo ${shellSingleQuote(uriLine)} | vercel env add MCP_RESOURCE_URI production --yes --force${c.reset}`);
+    console.log(`       ${c.cyan}echo ${shellSingleQuote(uriLine)} | vercel env add MCP_SERVER_RESOURCE_URI production --yes --force${c.reset}`);
+  }
+  console.log('');
 
   rl.close();
 }
