@@ -32,6 +32,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `transactions.js`: `ff_authorize_fail_open` controls fail-open vs fail-closed behaviour; `ff_authorize_deposits` adds deposits to the Authorize evaluation scope
 
 ### Fixed
+- **docs/BX-Finance-MayAct-Chain.postman_collection.json** — new Postman collection for the full 3-token chain: Step 1 Subject Token (ROPC), Step 2 Token Exchange #1 (MCP Token), Step 3 Client Credentials (PingOne API Token), Step 4 user lookup; test scripts auto-save tokens and user_sub, validate aud/act/may_act claims at each step; utility requests for introspection and setting mayAct via PATCH
 - **PINGONE_MAY_ACT_SETUP.md** — restored 3-token chain: Token 3 is PingOne API Token via Client Credentials (not Worker role-based); renamed app to `BX Finance MCP Service`; app type is non-Worker (Native/Web App) to allow resource scope assignment; restored `PINGONE_API_AUDIENCE` env var; updated flow diagram, Part 5, Part 6, troubleshooting table throughout
 - **PINGONE_MAY_ACT_SETUP.md** — corrected Worker app (Step 2c): Token Exchange grant cannot be enabled on Worker apps; access is role-based (Identity Data Read Only + Identity Data Provisioner); removed Token Exchange #2 from flow diagram, Part 5, Part 6, and troubleshooting; updated title from "3-Leg" to "2-Leg" (1 exchange, not 2); removed PINGONE_API_AUDIENCE env var note
 - **PINGONE_MAY_ACT_SETUP.md** — fixed Step 2b Resources tab: removed incorrect BX Finance Agent Gateway requirement (Banking App authenticates via client_id/secret, no audience token needed); added explanatory note
