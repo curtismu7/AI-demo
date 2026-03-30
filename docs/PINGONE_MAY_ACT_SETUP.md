@@ -137,7 +137,7 @@ Click **Add Resource** and fill in exactly:
 | **Audience** | `https://ai-agent.pingdemo.com` |
 | **Description** | `Audience resource server for the BX Finance AI Agent The Subject Token issued at user login is scoped to this resource and carries the may act claim that authorizes token exchange` |
 | **Access token time to live (seconds)** | `3600` |
-| **Token Introspection Endpoint Authentication Method** | `Client Secret Post` |
+| **Token Introspection Endpoint Authentication Method** | `Client Secret Basic` |
 
 Click **Save**.
 
@@ -168,7 +168,7 @@ Click **Add Resource** and fill in exactly:
 | **Audience** | `https://mcp-server.pingdemo.com` |
 | **Description** | `Audience resource server for the BX Finance MCP Model Context Protocol server MCP Tokens scoped to this resource are used for delegated banking tool calls` |
 | **Access token time to live (seconds)** | `3600` |
-| **Token Introspection Endpoint Authentication Method** | `Client Secret Post` |
+| **Token Introspection Endpoint Authentication Method** | `Client Secret Basic` |
 
 Click **Save**.
 
@@ -227,7 +227,7 @@ Click **Add Resource** and fill in exactly:
 | **Audience** | `https://agent-gateway.pingdemo.com` |
 | **Description** | `Audience resource server for the BX Finance banking app server The banking app obtains a token scoped to this audience to use as its actor token during RFC 8693 token exchange The may act sub on user profiles must match this audience URI` |
 | **Access token time to live (seconds)** | `3600` |
-| **Token Introspection Endpoint Authentication Method** | `Client Secret Post` |
+| **Token Introspection Endpoint Authentication Method** | `Client Secret Basic` |
 
 Click **Save**.
 
