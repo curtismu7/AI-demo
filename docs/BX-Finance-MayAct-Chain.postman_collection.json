@@ -42,6 +42,7 @@
             { "key": "scope", "value": "openid profile email banking:agent:invoke", "type": "string" },
             { "key": "redirect_uri", "value": "https://oauth.pstmn.io/v1/callback", "type": "string" },
             { "key": "state", "value": "postman-test", "type": "string" },
+            { "key": "client_authentication", "value": "body", "type": "string" },
             { "key": "addTokenTo", "value": "header", "type": "string" },
             { "key": "tokenName", "value": "Subject Token", "type": "string" }
           ]
@@ -131,6 +132,7 @@
       "name": "Step 2 — MCP Token (RFC 8693 Token Exchange #1)",
       "request": {
         "method": "POST",
+        "auth": { "type": "noauth" },
         "header": [
           { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
         ],
@@ -217,6 +219,7 @@
       "name": "Step 3 — PingOne API Token (Client Credentials)",
       "request": {
         "method": "POST",
+        "auth": { "type": "noauth" },
         "header": [
           { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
         ],
@@ -287,6 +290,7 @@
       "name": "Step 4 — User Lookup (PingOne Management API)",
       "request": {
         "method": "GET",
+        "auth": { "type": "noauth" },
         "header": [
           { "key": "Authorization", "value": "Bearer {{pingone_api_token}}" }
         ],
@@ -333,6 +337,7 @@
       "name": "Utility — Decode Token (paste any JWT)",
       "request": {
         "method": "POST",
+        "auth": { "type": "noauth" },
         "header": [
           { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
         ],
@@ -371,6 +376,7 @@
       "name": "Utility — Set mayAct on User (PATCH)",
       "request": {
         "method": "PATCH",
+        "auth": { "type": "noauth" },
         "header": [
           { "key": "Authorization", "value": "Bearer {{pingone_api_token}}" },
           { "key": "Content-Type", "value": "application/json" }
