@@ -624,7 +624,69 @@ client_id=MCP_CLIENT_ID
 
 ---
 
-## Part 6 — Verification
+## Part 6 — Postman Testing
+
+A ready-to-import Postman collection and environment file are included in this repo. They cover the full 3-token chain with automatic token capture, claim validation at every step, and utility requests for user lookup and `mayAct` patching.
+
+| File | Purpose |
+|------|---------|
+| [BX-Finance-MayAct-Chain.postman_collection.json](BX-Finance-MayAct-Chain.postman_collection.json) | 4 step requests + 2 utility requests |
+| [BX-Finance-MayAct-Chain.postman_environment.json](BX-Finance-MayAct-Chain.postman_environment.json) | All variables with descriptions |
+
+### Import
+
+1. In Postman: **Import** → select both `.json` files.
+2. Select **BX Finance — MayAct Chain** from the environment dropdown (top-right corner).
+
+### Fill in 7 variables
+
+Open the environment (eye icon → Edit) and fill in:
+
+| Variable | Where to find it |
+|---|---|
+| `PINGONE_ENVIRONMENT_ID` | PingOne Console → Environment → Settings |
+| `PINGONE_REGION` | `com` (US) \| `eu` \| `ca` \| `ap` |
+| `PINGONE_CORE_USER_CLIENT_ID` | Client ID of **BX Finance User** app |
+| `PINGONE_CORE_CLIENT_ID` | Client ID of **BX Finance Banking App** |
+| `PINGONE_CORE_CLIENT_SECRET` | Client Secret of **BX Finance Banking App** |
+| `MCP_CLIENT_ID` | Client ID of **BX Finance MCP Service** app |
+| `MCP_CLIENT_SECRET` | Client Secret of **BX Finance MCP Service** app |
+
+The three audience URLs (`ENDUSER_AUDIENCE`, `MCP_RESOURCE_URI`, `PINGONE_API_AUDIENCE`) are pre-filled. The four `AUTO` variables (`subject_token`, `mcp_token`, `pingone_api_token`, `user_sub`) are written by the test scripts — leave them blank.
+
+### One-time PingOne setup
+
+Add `https://oauth.pstmn.io/v1/callback` as a **Redirect URI** on the **BX Finance User** app (Configuration tab). This allows Postman's OAuth2 helper to complete the PKCE flow. Remove it after testing if desired.
+
+### Run in order
+
+**Step 1 — Subject Token (Authorization Code + PKCE)**
+1. Open Step 1 → **Authorization** tab → scroll to bottom → **Get New Access Token**.
+2. A browser opens — log in as the test user.
+3. Postman captures the callback → click **Use Token**.
+4. Send the request. The test script decodes the access token, saves `subject_token` and `user_sub`, and validates `aud` and `may_act.sub`.
+
+> If the `may_act` test fails: the user's `mayAct` attribute is not set. Run **Utility — Set mayAct** first (requires Steps 1–3 to have been run at least once to obtain Token 3), then re-run Step 1 to get a fresh Subject Token.
+
+**Step 2 — MCP Token (Token Exchange #1)**
+Send without any changes. The Banking App (`PINGONE_CORE_CLIENT_ID`) exchanges the Subject Token for an MCP-scoped token. The test script saves `mcp_token` and validates `aud`, `act.sub === PINGONE_CORE_CLIENT_ID`, and that `sub` is preserved.
+
+**Step 3 — PingOne API Token (Client Credentials)**
+Send without any changes. The MCP Service obtains a scoped token for the PingOne Management API. The test script saves `pingone_api_token` and validates `aud` and `scope`.
+
+**Step 4 — User Lookup (PingOne Management API)**
+Send without any changes. Calls `GET /v1/environments/{envId}/users/{user_sub}` using Token 3. Validates the response is 200 and checks that `mayAct.sub` on the user record matches `PINGONE_CORE_CLIENT_ID`.
+
+### Utility requests
+
+| Request | When to use |
+|---|---|
+| **Utility — Decode Token** | Introspects any saved token against PingOne's introspection endpoint. Change the `token` body value to `subject_token`, `mcp_token`, or `pingone_api_token`. |
+| **Utility — Set mayAct on User** | PATCHes `mayAct = { "sub": "{{PINGONE_CORE_CLIENT_ID}}" }` onto the test user. Run if Step 1 warns that `may_act` is missing. Requires Token 3 — run Steps 1–3 first. |
+
+---
+
+## Part 7 — Verification
 
 Decode any token at [PingIdentity JWT Decoder](https://developer.pingidentity.com/en/tools/jwt-decoder.html) or in terminal:
 ```bash
