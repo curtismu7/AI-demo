@@ -356,7 +356,9 @@ Open the existing application. Verify or update:
 - ✅ `banking:accounts:read` from **BX Finance MCP Server**
 - ✅ `banking:transactions:read` from **BX Finance MCP Server**
 - ✅ `banking:transactions:write` from **BX Finance MCP Server**
-- ✅ **BX Finance Agent Gateway** *(audience resource — no scopes needed; enables `aud: ["https://agent-gateway.pingdemo.com"]` on the actor token used during exchange)*
+- ✅ **BX Finance Agent Gateway** — tick the resource row itself (no individual scope to select). This allows the Banking App to request a token with `aud: ["https://agent-gateway.pingdemo.com"]`, which it presents as the *actor token* during Token Exchange #1 so PingOne can verify the exchanger's identity.
+
+> **Why this matters:** Without this, the Banking App cannot obtain an actor token for Token Exchange #1 and the exchange will fail with `unauthorized_client`.
 
 **Attribute Mappings tab → Add Attribute:**
 
