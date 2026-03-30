@@ -1,115 +1,198 @@
 {
   "info": {
-    "name": "BX Finance — 3-Token Delegated Chain (may_act / RFC 8693)",
-    "description": "Tests the full 3-token delegation chain:\n\n1. **Subject Token** — obtained via Authorization Code + PKCE using Postman's built-in OAuth2 helper. Carries `may_act.sub = PINGONE_CORE_CLIENT_ID`.\n2. **MCP Token** — RFC 8693 Token Exchange #1. Banking App exchanges the Subject Token for an MCP-scoped token.\n3. **PingOne API Token** — Client Credentials from BX Finance MCP Service. Used to call the PingOne Management API.\n4. **User Lookup** — GET /users/{sub} using Token 3, proving the full chain works end-to-end.\n\n## Setup\nImport this collection, then set the following **Collection Variables** (gear icon → Edit → Variables):\n\n| Variable | Where to find it |\n|---|---|\n| `PINGONE_ENVIRONMENT_ID` | PingOne Console → Environment → Settings |\n| `PINGONE_REGION` | `com` (US) or `eu` / `ca` / `ap` |\n| `PINGONE_CORE_USER_CLIENT_ID` | Client ID of **BX Finance User** app |\n| `PINGONE_CORE_CLIENT_ID` | Client ID of **BX Finance Banking App** |\n| `PINGONE_CORE_CLIENT_SECRET` | Client Secret of **BX Finance Banking App** |\n| `MCP_CLIENT_ID` | Client ID of **BX Finance MCP Service** |\n| `MCP_CLIENT_SECRET` | Client Secret of **BX Finance MCP Service** |\n\n## Step 1 note\nPingOne does not support ROPC. Step 1 uses Postman's built-in **Authorization Code + PKCE** OAuth2 helper. You must add `https://oauth.pstmn.io/v1/callback` as a Redirect URI on the BX Finance User app before clicking Get New Access Token.\n\nAll token variables (`subject_token`, `mcp_token`, `pingone_api_token`, `user_sub`) are **auto-populated** by the test scripts as you run each request in order.",
+    "name": "BX Finance \u2014 3-Token Delegated Chain (may_act / RFC 8693)",
+    "description": "Tests the full 3-token delegation chain:\n\n1. **Subject Token** \u2014 obtained via Authorization Code + PKCE using Postman's built-in OAuth2 helper. Carries `may_act.sub = PINGONE_CORE_CLIENT_ID`.\n2. **MCP Token** \u2014 RFC 8693 Token Exchange #1. Banking App exchanges the Subject Token for an MCP-scoped token.\n3. **PingOne API Token** \u2014 Client Credentials from BX Finance MCP Service. Used to call the PingOne Management API.\n4. **User Lookup** \u2014 GET /users/{sub} using Token 3, proving the full chain works end-to-end.\n\n## Setup\nImport this collection, then set the following **Collection Variables** (gear icon \u2192 Edit \u2192 Variables):\n\n| Variable | Where to find it |\n|---|---|\n| `PINGONE_ENVIRONMENT_ID` | PingOne Console \u2192 Environment \u2192 Settings |\n| `PINGONE_REGION` | `com` (US) or `eu` / `ca` / `ap` |\n| `PINGONE_CORE_USER_CLIENT_ID` | Client ID of **BX Finance User** app |\n| `PINGONE_CORE_CLIENT_ID` | Client ID of **BX Finance Banking App** |\n| `PINGONE_CORE_CLIENT_SECRET` | Client Secret of **BX Finance Banking App** |\n| `MCP_CLIENT_ID` | Client ID of **BX Finance MCP Service** |\n| `MCP_CLIENT_SECRET` | Client Secret of **BX Finance MCP Service** |\n\n## Step 1 note\nPingOne does not support ROPC. Step 1 uses Postman's built-in **Authorization Code + PKCE** OAuth2 helper. You must add `https://oauth.pstmn.io/v1/callback` as a Redirect URI on the BX Finance User app before clicking Get New Access Token.\n\nAll token variables (`subject_token`, `mcp_token`, `pingone_api_token`, `user_sub`) are **auto-populated** by the test scripts as you run each request in order.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "PINGONE_ENVIRONMENT_ID", "value": "", "description": "Your PingOne environment UUID" },
-    { "key": "PINGONE_REGION", "value": "com", "description": "com | eu | ca | ap" },
-    { "key": "PINGONE_CORE_USER_CLIENT_ID", "value": "", "description": "Client ID — BX Finance User app" },
-    { "key": "PINGONE_CORE_CLIENT_ID", "value": "", "description": "Client ID — BX Finance Banking App" },
-    { "key": "PINGONE_CORE_CLIENT_SECRET", "value": "", "description": "Client Secret — BX Finance Banking App" },
-    { "key": "MCP_CLIENT_ID", "value": "", "description": "Client ID — BX Finance MCP Service" },
-    { "key": "MCP_CLIENT_SECRET", "value": "", "description": "Client Secret — BX Finance MCP Service" },
-    { "key": "ENDUSER_AUDIENCE", "value": "https://ai-agent.pingdemo.com", "description": "Subject Token audience" },
-    { "key": "MCP_RESOURCE_URI", "value": "https://mcp-server.pingdemo.com", "description": "MCP Token audience" },
-    { "key": "PINGONE_API_AUDIENCE", "value": "https://api.pingone.com", "description": "PingOne API Token audience" },
-    { "key": "subject_token", "value": "", "description": "AUTO — set by Step 1 test script after PKCE login" },
-    { "key": "mcp_token", "value": "", "description": "AUTO — set by Step 2" },
-    { "key": "pingone_api_token", "value": "", "description": "AUTO — set by Step 3" },
-    { "key": "user_sub", "value": "", "description": "AUTO — set by Step 1 (user PingOne UUID from sub claim)" }
+    {
+      "key": "PINGONE_ENVIRONMENT_ID",
+      "value": "",
+      "description": "Your PingOne environment UUID"
+    },
+    {
+      "key": "PINGONE_REGION",
+      "value": "com",
+      "description": "com | eu | ca | ap"
+    },
+    {
+      "key": "PINGONE_CORE_USER_CLIENT_ID",
+      "value": "",
+      "description": "Client ID \u2014 BX Finance User app"
+    },
+    {
+      "key": "PINGONE_CORE_CLIENT_ID",
+      "value": "",
+      "description": "Client ID \u2014 BX Finance Banking App"
+    },
+    {
+      "key": "PINGONE_CORE_CLIENT_SECRET",
+      "value": "",
+      "description": "Client Secret \u2014 BX Finance Banking App"
+    },
+    {
+      "key": "MCP_CLIENT_ID",
+      "value": "",
+      "description": "Client ID \u2014 BX Finance MCP Service"
+    },
+    {
+      "key": "MCP_CLIENT_SECRET",
+      "value": "",
+      "description": "Client Secret \u2014 BX Finance MCP Service"
+    },
+    {
+      "key": "ENDUSER_AUDIENCE",
+      "value": "https://ai-agent.pingdemo.com",
+      "description": "Subject Token audience"
+    },
+    {
+      "key": "MCP_RESOURCE_URI",
+      "value": "https://mcp-server.pingdemo.com",
+      "description": "MCP Token audience"
+    },
+    {
+      "key": "PINGONE_API_AUDIENCE",
+      "value": "https://api.pingone.com",
+      "description": "PingOne API Token audience"
+    },
+    {
+      "key": "subject_token",
+      "value": "",
+      "description": "AUTO \u2014 set by Step 1 test script after PKCE login"
+    },
+    {
+      "key": "mcp_token",
+      "value": "",
+      "description": "AUTO \u2014 set by Step 2"
+    },
+    {
+      "key": "pingone_api_token",
+      "value": "",
+      "description": "AUTO \u2014 set by Step 3"
+    },
+    {
+      "key": "user_sub",
+      "value": "",
+      "description": "AUTO \u2014 set by Step 1 (user PingOne UUID from sub claim)"
+    }
   ],
   "item": [
     {
-      "name": "Step 1 — Subject Token (Authorization Code + PKCE)",
+      "name": "Step 1 \u2014 Subject Token (Authorization Code + PKCE)",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
           "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/userinfo",
           "protocol": "https",
-          "host": ["auth", "pingone", "{{PINGONE_REGION}}"],
-          "path": ["{{PINGONE_ENVIRONMENT_ID}}", "as", "userinfo"]
+          "host": [
+            "auth",
+            "pingone",
+            "{{PINGONE_REGION}}"
+          ],
+          "path": [
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "as",
+            "userinfo"
+          ]
         },
         "auth": {
           "type": "oauth2",
           "oauth2": [
-            { "key": "grant_type", "value": "authorization_code_with_pkce", "type": "string" },
-            { "key": "authUrl", "value": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/authorize", "type": "string" },
-            { "key": "accessTokenUrl", "value": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/token", "type": "string" },
-            { "key": "clientId", "value": "{{PINGONE_CORE_USER_CLIENT_ID}}", "type": "string" },
-            { "key": "scope", "value": "openid profile email banking:agent:invoke", "type": "string" },
-            { "key": "redirect_uri", "value": "https://oauth.pstmn.io/v1/callback", "type": "string" },
-            { "key": "state", "value": "postman-test", "type": "string" },
-            { "key": "client_authentication", "value": "body", "type": "string" },
-            { "key": "addTokenTo", "value": "header", "type": "string" },
-            { "key": "tokenName", "value": "Subject Token", "type": "string" }
+            {
+              "key": "grant_type",
+              "value": "authorization_code_with_pkce",
+              "type": "string"
+            },
+            {
+              "key": "authUrl",
+              "value": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/authorize",
+              "type": "string"
+            },
+            {
+              "key": "accessTokenUrl",
+              "value": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
+              "type": "string"
+            },
+            {
+              "key": "clientId",
+              "value": "{{PINGONE_CORE_USER_CLIENT_ID}}",
+              "type": "string"
+            },
+            {
+              "key": "scope",
+              "value": "openid profile email banking:agent:invoke",
+              "type": "string"
+            },
+            {
+              "key": "redirect_uri",
+              "value": "https://oauth.pstmn.io/v1/callback",
+              "type": "string"
+            },
+            {
+              "key": "state",
+              "value": "postman-test",
+              "type": "string"
+            },
+            {
+              "key": "client_authentication",
+              "value": "body",
+              "type": "string"
+            },
+            {
+              "key": "addTokenTo",
+              "value": "header",
+              "type": "string"
+            },
+            {
+              "key": "tokenName",
+              "value": "Subject Token",
+              "type": "string"
+            }
           ]
         },
-        "description": "Obtains the Subject Token (Token 1) via **Authorization Code + PKCE**.\n\n## How to get the token\n\n1. Click the **Authorization** tab on this request.\n2. Scroll to the bottom and click **Get New Access Token**.\n3. A browser window opens — log in as your test user.\n4. Postman receives the callback and shows the token. Click **Use Token**.\n5. Run the request — the test script decodes the access token, saves it to `subject_token`, and validates `may_act`.\n\n## Required setup in PingOne\nAdd `https://oauth.pstmn.io/v1/callback` as a **Redirect URI** on the **BX Finance User** app (Configuration tab) so PingOne accepts the Postman callback. Remove it after testing if desired.\n\n## The `resource` parameter and `aud`\nPostman's OAuth2 helper does not expose a `resource` parameter field. To get `aud = https://ai-agent.pingdemo.com` on the access token you have two options:\n\n**Option A (recommended):** After clicking **Get New Access Token**, Postman will show the raw token. Copy the `access_token` value, paste it into Collection Variables as `subject_token`, then run just the test script by sending this request with that token in the Authorization header.\n\n**Option B:** Manually build the authorize URL with `&resource=https://ai-agent.pingdemo.com` appended, complete the flow in a browser, exchange the code yourself using the token request below, and paste the resulting `access_token` into `subject_token`.\n\nThe `may_act` claim will appear only if:\n- The user has `mayAct = { \"sub\": \"<PINGONE_CORE_CLIENT_ID>\" }` set (run **Utility — Set mayAct** first)\n- The `BX Finance User` app has the `may_act` Attribute Mapping (Step 2a of setup guide)\n- `banking:agent:invoke` scope is on the app's Resources tab"
+        "description": "Obtains the Subject Token (Token 1) via **Authorization Code + PKCE**.\n\n## How to get the token\n\n1. Click the **Authorization** tab on this request.\n2. Scroll to the bottom and click **Get New Access Token**.\n3. A browser window opens \u2014 log in as your test user.\n4. Postman receives the callback and shows the token. Click **Use Token**.\n5. Run the request \u2014 the test script decodes the access token, saves it to `subject_token`, and validates `may_act`.\n\n## Required setup in PingOne\nAdd `https://oauth.pstmn.io/v1/callback` as a **Redirect URI** on the **BX Finance User** app (Configuration tab) so PingOne accepts the Postman callback. Remove it after testing if desired.\n\n## The `resource` parameter and `aud`\nPostman's OAuth2 helper does not expose a `resource` parameter field. To get `aud = https://ai-agent.pingdemo.com` on the access token you have two options:\n\n**Option A (recommended):** After clicking **Get New Access Token**, Postman will show the raw token. Copy the `access_token` value, paste it into Collection Variables as `subject_token`, then run just the test script by sending this request with that token in the Authorization header.\n\n**Option B:** Manually build the authorize URL with `&resource=https://ai-agent.pingdemo.com` appended, complete the flow in a browser, exchange the code yourself using the token request below, and paste the resulting `access_token` into `subject_token`.\n\nThe `may_act` claim will appear only if:\n- The user has `mayAct = { \"sub\": \"<PINGONE_CORE_CLIENT_ID>\" }` set (run **Utility \u2014 Set mayAct** first)\n- The `BX Finance User` app has the `may_act` Attribute Mapping (Step 2a of setup guide)\n- `banking:agent:invoke` scope is on the app's Resources tab"
       },
       "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "// After completing the PKCE flow via Get New Access Token,",
-              "// Postman sets the token on the request Authorization header.",
-              "// Extract it here and save to the collection variable.",
-              "const authHeader = pm.request.headers.get('Authorization');",
-              "if (authHeader && authHeader.startsWith('Bearer ')) {",
-              "    const token = authHeader.replace('Bearer ', '').trim();",
-              "    if (token) {",
-              "        pm.collectionVariables.set('subject_token', token);",
-              "        console.log('[Step 1 pre-request] subject_token captured from Authorization header');",
-              "    }",
-              "} else {",
-              "    console.warn('[Step 1] No Bearer token on request — did you click Get New Access Token and Use Token?');",
-              "}"
-            ]
-          }
-        },
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "// The userinfo endpoint returns the user profile — 200 confirms the token is valid.",
-              "pm.test('Step 1: userinfo 200 — Subject Token valid', () => pm.response.to.have.status(200));",
-              "",
-              "const subjectToken = pm.collectionVariables.get('subject_token');",
-              "if (!subjectToken) {",
-              "    console.error('[Step 1] subject_token not set. Complete the PKCE flow: Authorization tab → Get New Access Token → Use Token, then re-send.');",
-              "    return;",
+              "// Must run in TEST script, not pre-request.",
+              "// Postman resolves OAuth2 auth before sending but auth-injected",
+              "// headers are null in pre-request scripts.",
+              "const authHeader = pm.request.headers.get('Authorization');",
+              "if (authHeader && authHeader.startsWith('Bearer ')) {",
+              "    const token = authHeader.replace('Bearer ', '').trim();",
+              "    pm.collectionVariables.set('subject_token', token);",
+              "    console.log('[Step 1] subject_token saved');",
+              "} else {",
+              "    console.error('[Step 1] No Bearer token. Authorization tab -> Get New Access Token -> PKCE login -> Use Token -> re-send.');",
               "}",
               "",
-              "// Decode the access token payload",
+              "pm.test('Step 1: userinfo 200 - Subject Token valid', () => pm.response.to.have.status(200));",
+              "",
+              "const subjectToken = pm.collectionVariables.get('subject_token');",
+              "if (!subjectToken) { return; }",
+              "",
               "const parts = subjectToken.split('.');",
               "if (parts.length === 3) {",
               "    try {",
               "        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));",
               "        console.log('[Step 1] Subject Token claims:', JSON.stringify(payload, null, 2));",
-              "",
-              "        // Save user sub for Step 4",
               "        if (payload.sub) {",
               "            pm.collectionVariables.set('user_sub', payload.sub);",
               "            console.log('[Step 1] user_sub saved:', payload.sub);",
               "        }",
-              "",
-              "        // Verify audience",
               "        const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];",
-              "        pm.test('Step 1: aud = https://ai-agent.pingdemo.com', () => {",
+              "        pm.test('Step 1: aud = ai-agent.pingdemo.com', () => {",
               "            pm.expect(aud).to.include(pm.collectionVariables.get('ENDUSER_AUDIENCE'));",
               "        });",
-              "",
-              "        // Verify may_act",
               "        pm.test('Step 1: may_act claim present', () => {",
               "            pm.expect(payload).to.have.property('may_act');",
               "            pm.expect(payload.may_act).to.have.property('sub');",
               "        });",
-              "",
               "        if (payload.may_act) {",
               "            const expectedActorId = pm.collectionVariables.get('PINGONE_CORE_CLIENT_ID');",
               "            console.log('[Step 1] may_act.sub =', payload.may_act.sub, '| expected:', expectedActorId);",
@@ -117,10 +200,10 @@
               "                pm.expect(payload.may_act.sub).to.equal(expectedActorId);",
               "            });",
               "        } else {",
-              "            console.warn('[Step 1] WARNING: may_act missing. Check user mayAct attribute and BX Finance User app Attribute Mapping.');",
+              "            console.warn('[Step 1] WARNING: may_act missing. Check user mayAct attribute and BX Finance User Attribute Mapping.');",
               "        }",
               "    } catch (e) {",
-              "        console.error('[Step 1] Could not decode JWT payload:', e.message);",
+              "        console.error('[Step 1] Could not decode JWT:', e.message);",
               "    }",
               "}"
             ]
@@ -129,33 +212,72 @@
       ]
     },
     {
-      "name": "Step 2 — MCP Token (RFC 8693 Token Exchange #1)",
+      "name": "Step 2 \u2014 MCP Token (RFC 8693 Token Exchange #1)",
       "request": {
         "method": "POST",
-        "auth": { "type": "noauth" },
+        "auth": {
+          "type": "noauth"
+        },
         "header": [
-          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
         ],
         "body": {
           "mode": "urlencoded",
           "urlencoded": [
-            { "key": "grant_type", "value": "urn:ietf:params:oauth:grant-type:token-exchange" },
-            { "key": "client_id", "value": "{{PINGONE_CORE_CLIENT_ID}}" },
-            { "key": "client_secret", "value": "{{PINGONE_CORE_CLIENT_SECRET}}" },
-            { "key": "subject_token", "value": "{{subject_token}}", "description": "Subject Token from Step 1" },
-            { "key": "subject_token_type", "value": "urn:ietf:params:oauth:token-type:access_token" },
-            { "key": "requested_token_type", "value": "urn:ietf:params:oauth:token-type:access_token" },
-            { "key": "audience", "value": "{{MCP_RESOURCE_URI}}", "description": "https://mcp-server.pingdemo.com" },
-            { "key": "scope", "value": "banking:accounts:read banking:transactions:read banking:transactions:write" }
+            {
+              "key": "grant_type",
+              "value": "urn:ietf:params:oauth:grant-type:token-exchange"
+            },
+            {
+              "key": "client_id",
+              "value": "{{PINGONE_CORE_CLIENT_ID}}"
+            },
+            {
+              "key": "client_secret",
+              "value": "{{PINGONE_CORE_CLIENT_SECRET}}"
+            },
+            {
+              "key": "subject_token",
+              "value": "{{subject_token}}",
+              "description": "Subject Token from Step 1"
+            },
+            {
+              "key": "subject_token_type",
+              "value": "urn:ietf:params:oauth:token-type:access_token"
+            },
+            {
+              "key": "requested_token_type",
+              "value": "urn:ietf:params:oauth:token-type:access_token"
+            },
+            {
+              "key": "audience",
+              "value": "{{MCP_RESOURCE_URI}}",
+              "description": "https://mcp-server.pingdemo.com"
+            },
+            {
+              "key": "scope",
+              "value": "banking:accounts:read banking:transactions:read banking:transactions:write"
+            }
           ]
         },
         "url": {
           "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
           "protocol": "https",
-          "host": ["auth", "pingone", "{{PINGONE_REGION}}"],
-          "path": ["{{PINGONE_ENVIRONMENT_ID}}", "as", "token"]
+          "host": [
+            "auth",
+            "pingone",
+            "{{PINGONE_REGION}}"
+          ],
+          "path": [
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "as",
+            "token"
+          ]
         },
-        "description": "RFC 8693 Token Exchange #1.\n\nThe **BX Finance Banking App** (`PINGONE_CORE_CLIENT_ID`) exchanges the Subject Token for a narrower MCP-scoped token.\n\nPingOne validates:\n- `subject_token.may_act.sub` === `PINGONE_CORE_CLIENT_ID` (the Banking App's own client ID)\n\nOn success the returned MCP Token will have:\n- `aud = https://mcp-server.pingdemo.com`\n- `act.sub = PINGONE_CORE_CLIENT_ID`\n- `scope = banking:accounts:read banking:transactions:read banking:transactions:write`\n\nIf you get `invalid_grant`: the `may_act.sub` on the user's Subject Token doesn't match `PINGONE_CORE_CLIENT_ID`. Fix by setting `mayAct = { \"sub\": \"<PINGONE_CORE_CLIENT_ID>\" }` on the user record (demo app → /demo-data → Enable may_act)."
+        "description": "RFC 8693 Token Exchange #1.\n\nThe **BX Finance Banking App** (`PINGONE_CORE_CLIENT_ID`) exchanges the Subject Token for a narrower MCP-scoped token.\n\nPingOne validates:\n- `subject_token.may_act.sub` === `PINGONE_CORE_CLIENT_ID` (the Banking App's own client ID)\n\nOn success the returned MCP Token will have:\n- `aud = https://mcp-server.pingdemo.com`\n- `act.sub = PINGONE_CORE_CLIENT_ID`\n- `scope = banking:accounts:read banking:transactions:read banking:transactions:write`\n\nIf you get `invalid_grant`: the `may_act.sub` on the user's Subject Token doesn't match `PINGONE_CORE_CLIENT_ID`. Fix by setting `mayAct = { \"sub\": \"<PINGONE_CORE_CLIENT_ID>\" }` on the user record (demo app \u2192 /demo-data \u2192 Enable may_act)."
       },
       "event": [
         {
@@ -216,27 +338,52 @@
       ]
     },
     {
-      "name": "Step 3 — PingOne API Token (Client Credentials)",
+      "name": "Step 3 \u2014 PingOne API Token (Client Credentials)",
       "request": {
         "method": "POST",
-        "auth": { "type": "noauth" },
+        "auth": {
+          "type": "noauth"
+        },
         "header": [
-          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
         ],
         "body": {
           "mode": "urlencoded",
           "urlencoded": [
-            { "key": "grant_type", "value": "client_credentials" },
-            { "key": "client_id", "value": "{{MCP_CLIENT_ID}}" },
-            { "key": "client_secret", "value": "{{MCP_CLIENT_SECRET}}" },
-            { "key": "scope", "value": "p1:read:user p1:update:user" }
+            {
+              "key": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "key": "client_id",
+              "value": "{{MCP_CLIENT_ID}}"
+            },
+            {
+              "key": "client_secret",
+              "value": "{{MCP_CLIENT_SECRET}}"
+            },
+            {
+              "key": "scope",
+              "value": "p1:read:user p1:update:user"
+            }
           ]
         },
         "url": {
           "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
           "protocol": "https",
-          "host": ["auth", "pingone", "{{PINGONE_REGION}}"],
-          "path": ["{{PINGONE_ENVIRONMENT_ID}}", "as", "token"]
+          "host": [
+            "auth",
+            "pingone",
+            "{{PINGONE_REGION}}"
+          ],
+          "path": [
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "as",
+            "token"
+          ]
         },
         "description": "Client Credentials grant for **BX Finance MCP Service**.\n\nThis is NOT a token exchange. The MCP Service authenticates with its own credentials and requests a scoped token for the PingOne Management API.\n\nThe returned token will have:\n- `aud = https://api.pingone.com`\n- `scope = p1:read:user p1:update:user`\n- No `sub` (it represents the service, not a user)\n\nIf `invalid_scope`: enable `p1:read:user` and `p1:update:user` on the BX Finance MCP Service app Resources tab (Step 2c of setup guide)."
       },
@@ -287,20 +434,35 @@
       ]
     },
     {
-      "name": "Step 4 — User Lookup (PingOne Management API)",
+      "name": "Step 4 \u2014 User Lookup (PingOne Management API)",
       "request": {
         "method": "GET",
-        "auth": { "type": "noauth" },
+        "auth": {
+          "type": "noauth"
+        },
         "header": [
-          { "key": "Authorization", "value": "Bearer {{pingone_api_token}}" }
+          {
+            "key": "Authorization",
+            "value": "Bearer {{pingone_api_token}}"
+          }
         ],
         "url": {
           "raw": "https://api.pingone.{{PINGONE_REGION}}/v1/environments/{{PINGONE_ENVIRONMENT_ID}}/users/{{user_sub}}",
           "protocol": "https",
-          "host": ["api", "pingone", "{{PINGONE_REGION}}"],
-          "path": ["v1", "environments", "{{PINGONE_ENVIRONMENT_ID}}", "users", "{{user_sub}}"]
+          "host": [
+            "api",
+            "pingone",
+            "{{PINGONE_REGION}}"
+          ],
+          "path": [
+            "v1",
+            "environments",
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "users",
+            "{{user_sub}}"
+          ]
         },
-        "description": "Calls the PingOne Management API using Token 3 (PingOne API Token).\n\n`user_sub` was captured automatically in Step 1 from the Subject Token's `sub` claim.\n\nA 200 response with the user object confirms the full chain works end-to-end:\n1. User logged in → Subject Token with `may_act`\n2. Banking App exchanged → MCP Token with `act`\n3. MCP Service obtained → PingOne API Token with `p1:read:user`\n4. Management API authorized the call\n\nAlso verifies that the `mayAct` custom attribute is present on the user record."
+        "description": "Calls the PingOne Management API using Token 3 (PingOne API Token).\n\n`user_sub` was captured automatically in Step 1 from the Subject Token's `sub` claim.\n\nA 200 response with the user object confirms the full chain works end-to-end:\n1. User logged in \u2192 Subject Token with `may_act`\n2. Banking App exchanged \u2192 MCP Token with `act`\n3. MCP Service obtained \u2192 PingOne API Token with `p1:read:user`\n4. Management API authorized the call\n\nAlso verifies that the `mayAct` custom attribute is present on the user record."
       },
       "event": [
         {
@@ -310,7 +472,7 @@
             "exec": [
               "const json = pm.response.json();",
               "",
-              "pm.test('Step 4: Status 200 — user lookup succeeded', () => pm.response.to.have.status(200));",
+              "pm.test('Step 4: Status 200 \u2014 user lookup succeeded', () => pm.response.to.have.status(200));",
               "pm.test('Step 4: id matches user_sub', () => {",
               "    pm.expect(json.id).to.equal(pm.collectionVariables.get('user_sub'));",
               "});",
@@ -325,7 +487,7 @@
               "            pm.expect(json.mayAct.sub).to.equal(pm.collectionVariables.get('PINGONE_CORE_CLIENT_ID'));",
               "        });",
               "    } else {",
-              "        console.warn('[Step 4] WARNING: mayAct attribute missing from user record. Token Exchange will fail at runtime. Set it via /demo-data → Enable may_act or via PATCH /users/{id}.');",
+              "        console.warn('[Step 4] WARNING: mayAct attribute missing from user record. Token Exchange will fail at runtime. Set it via /demo-data \u2192 Enable may_act or via PATCH /users/{id}.');",
               "    }",
               "}"
             ]
@@ -334,26 +496,43 @@
       ]
     },
     {
-      "name": "Utility — Decode Token (paste any JWT)",
+      "name": "Utility \u2014 Decode Token (paste any JWT)",
       "request": {
         "method": "POST",
-        "auth": { "type": "noauth" },
+        "auth": {
+          "type": "noauth"
+        },
         "header": [
-          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
         ],
         "body": {
           "mode": "urlencoded",
           "urlencoded": [
-            { "key": "token", "value": "{{subject_token}}", "description": "Replace with any of: subject_token, mcp_token, pingone_api_token" }
+            {
+              "key": "token",
+              "value": "{{subject_token}}",
+              "description": "Replace with any of: subject_token, mcp_token, pingone_api_token"
+            }
           ]
         },
         "url": {
           "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/introspect",
           "protocol": "https",
-          "host": ["auth", "pingone", "{{PINGONE_REGION}}"],
-          "path": ["{{PINGONE_ENVIRONMENT_ID}}", "as", "introspect"]
+          "host": [
+            "auth",
+            "pingone",
+            "{{PINGONE_REGION}}"
+          ],
+          "path": [
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "as",
+            "introspect"
+          ]
         },
-        "description": "Introspects any saved token against PingOne's introspection endpoint.\n\nChange the `token` body value to one of:\n- `{{subject_token}}` — Token 1\n- `{{mcp_token}}` — Token 2\n- `{{pingone_api_token}}` — Token 3\n\nOr use the [PingIdentity JWT Decoder](https://developer.pingidentity.com/en/tools/jwt-decoder.html) to decode offline."
+        "description": "Introspects any saved token against PingOne's introspection endpoint.\n\nChange the `token` body value to one of:\n- `{{subject_token}}` \u2014 Token 1\n- `{{mcp_token}}` \u2014 Token 2\n- `{{pingone_api_token}}` \u2014 Token 3\n\nOr use the [PingIdentity JWT Decoder](https://developer.pingidentity.com/en/tools/jwt-decoder.html) to decode offline."
       },
       "event": [
         {
@@ -373,13 +552,21 @@
       ]
     },
     {
-      "name": "Utility — Set mayAct on User (PATCH)",
+      "name": "Utility \u2014 Set mayAct on User (PATCH)",
       "request": {
         "method": "PATCH",
-        "auth": { "type": "noauth" },
+        "auth": {
+          "type": "noauth"
+        },
         "header": [
-          { "key": "Authorization", "value": "Bearer {{pingone_api_token}}" },
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Authorization",
+            "value": "Bearer {{pingone_api_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
@@ -388,10 +575,20 @@
         "url": {
           "raw": "https://api.pingone.{{PINGONE_REGION}}/v1/environments/{{PINGONE_ENVIRONMENT_ID}}/users/{{user_sub}}",
           "protocol": "https",
-          "host": ["api", "pingone", "{{PINGONE_REGION}}"],
-          "path": ["v1", "environments", "{{PINGONE_ENVIRONMENT_ID}}", "users", "{{user_sub}}"]
+          "host": [
+            "api",
+            "pingone",
+            "{{PINGONE_REGION}}"
+          ],
+          "path": [
+            "v1",
+            "environments",
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "users",
+            "{{user_sub}}"
+          ]
         },
-        "description": "Sets the `mayAct` custom attribute on the test user.\n\n**Run this if Step 1 returns a Subject Token without a `may_act` claim** (the test script will warn you).\n\nRequires Token 3 (`pingone_api_token`) in the Authorization header — run Steps 1–3 first.\n\n`PINGONE_CORE_CLIENT_ID` is the client ID UUID of **BX Finance Banking App** — the app that is authorized to exchange this user's token."
+        "description": "Sets the `mayAct` custom attribute on the test user.\n\n**Run this if Step 1 returns a Subject Token without a `may_act` claim** (the test script will warn you).\n\nRequires Token 3 (`pingone_api_token`) in the Authorization header \u2014 run Steps 1\u20133 first.\n\n`PINGONE_CORE_CLIENT_ID` is the client ID UUID of **BX Finance Banking App** \u2014 the app that is authorized to exchange this user's token."
       },
       "event": [
         {
