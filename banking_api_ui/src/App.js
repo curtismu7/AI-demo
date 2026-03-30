@@ -313,6 +313,13 @@ function AppWithAuth() {
           <Routes>
             <Route path="/setup/pingone" element={<PingOneSetupGuidePage />} />
             <Route path="/setup" element={<SetupPage />} />
+            {/* Demo config accessible without login — needed to configure flags before PingOne is set up */}
+            <Route path="/demo-data" element={
+              <main className="main-content">
+                <EducationBar />
+                <DemoDataPage user={user} onLogout={logout} />
+              </main>
+            } />
             <Route
               path="/onboarding"
               element={
@@ -346,7 +353,6 @@ function AppWithAuth() {
                     <Route path="/config"      element={user?.role === 'admin' ? <Config /> : <Navigate to="/" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
-                    <Route path="/demo-data"   element={<DemoDataPage user={user} onLogout={logout} />} />
                     <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />
                     <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
