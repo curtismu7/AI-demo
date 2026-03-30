@@ -67,14 +67,19 @@ The MCP server cannot run on Vercel (requires persistent WebSocket). Deploy `ban
 
 **This is the most commonly missed configuration step.**
 
-When the BFF performs an RFC 8693 token exchange to obtain a token for the MCP server, it sends the `audience` parameter. The MCP server validates that incoming tokens carry that audience in their `aud` claim. Both sides must agree on the same value.
+When the BFF performs an RFC 8693 token exchange to obtain a token for the MCP server, it sends a `resource` / `audience` parameter. The MCP server validates that incoming tokens carry that value in their `aud` claim. Both sides must use the **same value**, which must also be **registered in PingOne** as the Resource URI of your MCP resource application.
 
 | Variable | Where it lives | Purpose |
 |---|---|---|
-| `MCP_RESOURCE_URI` | `banking_api_server` (Vercel) | Sent as `audience` in RFC 8693 token exchange |
+| `MCP_RESOURCE_URI` | `banking_api_server` (Vercel) | Sent as `resource`/`audience` in RFC 8693 token exchange |
 | `MCP_SERVER_RESOURCE_URI` | `banking_mcp_server/.env` | Validates `aud` claim on inbound tokens |
 
-Both must be set to the **same HTTPS URL** — the public URL of your MCP server.
+Both must be set to the **same value** — the Resource URI configured in **PingOne → Resources → [MCP resource]**.
+
+| Environment | Value |
+|---|---|
+| Vercel | `https://your-app.vercel.app` (your Vercel deployment base URL) |
+| localhost | `http://localhost:3001` (API server base URL) |
 
 ### Setting MCP_RESOURCE_URI on Vercel
 
@@ -82,14 +87,16 @@ Both must be set to the **same HTTPS URL** — the public URL of your MCP server
 ```bash
 node scripts/setup-vercel-env.js
 # Step 5 will prompt for the value and push both vars
+# Default suggestion comes from your REACT_APP_CLIENT_URL (Vercel base URL)
 ```
 
 **Via Vercel CLI directly:**
 ```bash
-MCP_URI="https://your-mcp-server.example.com"
+# Replace with the Resource URI registered in PingOne for your MCP resource
+MCP_URI="https://your-app.vercel.app"
 
-echo "$MCP_URI" | vercel env add MCP_RESOURCE_URI production --yes --force
-echo "$MCP_URI" | vercel env add MCP_SERVER_RESOURCE_URI production --yes --force
+echo "$MCP_URI" | vercel env add MCP_RESOURCE_URI production --yes
+echo "$MCP_URI" | vercel env add MCP_SERVER_RESOURCE_URI production --yes
 ```
 
 **Via Vercel Dashboard:**
@@ -102,7 +109,10 @@ echo "$MCP_URI" | vercel env add MCP_SERVER_RESOURCE_URI production --yes --forc
 
 In `banking_mcp_server/.env`:
 ```
-MCP_SERVER_RESOURCE_URI=https://your-mcp-server.example.com
+# Must match MCP_RESOURCE_URI on the BFF side
+# Vercel:    MCP_SERVER_RESOURCE_URI=https://your-app.vercel.app
+# localhost: MCP_SERVER_RESOURCE_URI=http://localhost:3001
+MCP_SERVER_RESOURCE_URI=https://your-app.vercel.app
 ```
 
 On Railway/Render/Fly: add it as an environment variable in their dashboard. Same value as above.

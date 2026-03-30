@@ -36,6 +36,8 @@ const err   = (s) => `${c.red}✗${c.reset}  ${s}`;
 const info  = (s) => `${c.cyan}ℹ${c.reset}  ${s}`;
 const hdr   = (s) => `\n${c.bold}${c.blue}── ${s} ${'─'.repeat(Math.max(0, 60 - s.length))}${c.reset}`;
 const label = (s) => `${c.bold}${s}${c.reset}`;
+/** Grayed example/hint line — shown before a prompt to explain expected value. */
+const tip   = (s) => `  ${c.dim}${s}${c.reset}`;
 
 // ── Paths ────────────────────────────────────────────────────────────────────
 const ROOT          = path.resolve(__dirname, '..');
@@ -289,8 +291,10 @@ function detectConflicts(vars) {
   if (vars.MCP_SERVER_URL && !(vars.MCP_RESOURCE_URI || vars.MCP_SERVER_RESOURCE_URI)) {
     warnings.push(
       'MCP_SERVER_URL is set but MCP_RESOURCE_URI is not.\n' +
-      '     The BFF will skip RFC 8693 token exchange audience — the MCP server cannot validate tokens.\n' +
-      '     Set MCP_RESOURCE_URI to the HTTPS URL of your MCP server (same value as MCP_SERVER_RESOURCE_URI in banking_mcp_server/.env).'
+      '     The BFF will send no audience in RFC 8693 token exchange — the MCP server cannot validate tokens.\n' +
+      '     Set MCP_RESOURCE_URI to the base URL registered in PingOne as the MCP resource URI.\n' +
+      '     Vercel: https://your-app.vercel.app  |  localhost: http://localhost:3001\n' +
+      '     Same value must be in MCP_SERVER_RESOURCE_URI inside banking_mcp_server/.env'
     );
   }
 
@@ -437,23 +441,59 @@ async function main() {
 
   // ── Step 4: PingOne OAuth ─────────────────────────────────────────────────
   console.log(hdr('PingOne OAuth'));
+  console.log(info('Where to find these values:'));
+  console.log(tip('  PingOne Admin Console → Environments → [your env]'));
+  console.log(tip('    Environment ID:   Overview page (UUID at top)'));
+  console.log(tip('    Client ID/Secret: Applications → [your app] → Configuration tab'));
+  console.log(tip('    Region code:      com (North America)  eu (Europe)  ca (Canada)  asia (APAC)'));
+  console.log('');
+
+  // Fifth element (optional) is a hint printed before the prompt when the var needs to be entered.
   const pingVars = [
-    ['PINGONE_ENVIRONMENT_ID',          'PingOne Environment ID',           false],
-    ['PINGONE_REGION',                  'PingOne region (com/eu/ca/asia)',   false, 'com'],
-    ['PINGONE_AI_CORE_CLIENT_ID',       'Admin OAuth client ID',             false],
-    ['PINGONE_AI_CORE_CLIENT_SECRET',   'Admin OAuth client secret',         true],
-    ['PINGONE_AI_CORE_REDIRECT_URI',    'Admin redirect URI (https://…/api/auth/oauth/callback)', false],
-    ['PINGONE_AI_CORE_USER_CLIENT_ID',  'User OAuth client ID',              false],
-    ['PINGONE_AI_CORE_USER_CLIENT_SECRET', 'User OAuth client secret',       true],
-    ['PINGONE_AI_CORE_USER_REDIRECT_URI', 'User redirect URI (https://…/api/auth/oauth/user/callback)', false],
-    ['REACT_APP_CLIENT_URL',            'Frontend URL (https://…vercel.app)', false],
+    ['PINGONE_ENVIRONMENT_ID',
+      'PingOne Environment ID',
+      false, '',
+      'Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  (Overview tab in PingOne admin)'],
+    ['PINGONE_REGION',
+      'PingOne region  (com / eu / ca / asia)',
+      false, 'com',
+      'com = US/global · eu = Europe · ca = Canada · asia = APAC'],
+    ['PINGONE_AI_CORE_CLIENT_ID',
+      'Admin OAuth client ID',
+      false, '',
+      'Applications → [Admin app] → Client ID  (same value for Vercel and localhost)'],
+    ['PINGONE_AI_CORE_CLIENT_SECRET',
+      'Admin OAuth client secret',
+      true, '',
+      'Applications → [Admin app] → Client Secret'],
+    ['PINGONE_AI_CORE_REDIRECT_URI',
+      'Admin redirect URI',
+      false, '',
+      'Vercel:    https://your-app.vercel.app/api/auth/oauth/callback\n  localhost: http://localhost:3001/api/auth/oauth/callback  (must match PingOne app config)'],
+    ['PINGONE_AI_CORE_USER_CLIENT_ID',
+      'User OAuth client ID',
+      false, '',
+      'Applications → [User/Customer app] → Client ID'],
+    ['PINGONE_AI_CORE_USER_CLIENT_SECRET',
+      'User OAuth client secret',
+      true, '',
+      'Applications → [User/Customer app] → Client Secret'],
+    ['PINGONE_AI_CORE_USER_REDIRECT_URI',
+      'User redirect URI',
+      false, '',
+      'Vercel:    https://your-app.vercel.app/api/auth/oauth/user/callback\n  localhost: http://localhost:3001/api/auth/oauth/user/callback  (must match PingOne app config)'],
+    ['REACT_APP_CLIENT_URL',
+      'Frontend base URL  (drives all auto-derived URLs)',
+      false, '',
+      'Vercel:    https://your-app.vercel.app\n  localhost: http://localhost:3000\n  Used for: PUBLIC_APP_URL, FRONTEND_ADMIN_URL, FRONTEND_DASHBOARD_URL, CORS_ORIGIN'],
   ];
 
-  for (const [key, label_, secret, defaultVal = ''] of pingVars) {
+  for (const [key, label_, secret, defaultVal = '', hint_ = ''] of pingVars) {
     const existing = vars[key] || get(key) || defaultVal;
     if (existing && !existing.includes('<your-vercel-url>') && !existing.includes('<')) {
       console.log(ok(`${key} is set`));
     } else {
+      if (hint_) console.log(tip(hint_));
       const val = await ask(label_, existing.includes('<') ? '' : existing, secret);
       if (val) vars[key] = val;
       else console.log(warn(`  Skipped ${key} — fill in later`));
@@ -478,33 +518,46 @@ async function main() {
 
   // ── Step 5: MCP Server ────────────────────────────────────────────────────
   console.log(hdr('MCP Server'));
-  console.log(info('Deploy banking_mcp_server to Railway/Render/Fly — Vercel does not support WebSocket.'));
+  console.log(info('banking_mcp_server requires a persistent WebSocket — it cannot run on Vercel.'));
+  console.log(info('Deploy it to Railway, Render, or Fly.io, then paste the URL below.'));
+  console.log(tip('  Vercel:    MCP_SERVER_URL = wss://your-mcp.railway.app'));
+  console.log(tip('  localhost: MCP_SERVER_URL = ws://localhost:8080\n'));
   let mcpUrl = vars.MCP_SERVER_URL || get('MCP_SERVER_URL') || '';
   if (mcpUrl) {
     console.log(ok(`MCP_SERVER_URL = ${mcpUrl}`));
   } else {
-    const mcp = await ask('MCP_SERVER_URL  (wss://… — skip if not deployed yet)', '');
+    const mcp = await ask('MCP_SERVER_URL  (wss:// or ws:// — skip if not deployed yet)', '');
     if (mcp) { vars.MCP_SERVER_URL = mcp; mcpUrl = mcp; }
     else console.log(warn('  MCP_SERVER_URL not set — banking agent will show "connecting…"'));
   }
 
-  // MCP_RESOURCE_URI — RFC 8707 Resource Indicator sent as the token exchange `audience`.
-  // REQUIRED when MCP_SERVER_URL is set. Value = public HTTPS URL of the MCP server.
-  //   • BFF reads:        MCP_RESOURCE_URI  (or MCP_SERVER_RESOURCE_URI — both map to same key)
-  //   • MCP server reads: MCP_SERVER_RESOURCE_URI  (validates inbound token aud claim)
-  // Both sides MUST be set to the same HTTPS URL.
+  // MCP_RESOURCE_URI — RFC 8707 Resource Indicator used as the `resource` / `audience` parameter
+  // in the RFC 8693 token exchange.  This value must be registered in PingOne as the Resource URI
+  // of the MCP resource application.  Both the BFF (Vercel) and the MCP server must agree on it.
+  //
+  //   • BFF (banking_api_server):   MCP_RESOURCE_URI  (or MCP_SERVER_RESOURCE_URI — both work)
+  //   • MCP server:                 MCP_SERVER_RESOURCE_URI  (validates inbound token `aud` claim)
+  //
+  // What value to use:
+  //   Vercel:    base URL of your Vercel deployment, e.g. https://your-app.vercel.app
+  //   localhost: base URL of the API server,         e.g. http://localhost:3001
+  //   (Must exactly match the Resource URI configured in PingOne → Resources → [MCP resource])
   if (mcpUrl) {
-    // Derive a sensible HTTPS default from the wss:// URL
+    // Suggest the app base URL (REACT_APP_CLIENT_URL without trailing slash) as default,
+    // falling back to stripping the path from the wss:// URL.
+    const appBase = (vars.REACT_APP_CLIENT_URL || '').replace(/\/$/, '');
     const mcpHttpsDefault = (vars.MCP_RESOURCE_URI || vars.MCP_SERVER_RESOURCE_URI || '')
+      || appBase
       || mcpUrl.replace(/^wss?:\/\//, 'https://').replace(/\/.*$/, '');
 
     console.log('');
-    console.log(info(`RFC 8707 Resource Indicator — sent as "audience" in token exchange and validated`));
-    console.log(info(`by the MCP server on every inbound token.`));
-    console.log(info(`Value must be the public HTTPS URL of your MCP server (same on both sides).\n`));
+    console.log(info('MCP_RESOURCE_URI — RFC 8707 resource indicator (registered in PingOne as the MCP resource URI)'));
+    console.log(tip('  Vercel:    https://your-app.vercel.app           (your Vercel deployment base URL)'));
+    console.log(tip('  localhost: http://localhost:3001                  (API server base URL)'));
+    console.log(tip('  Must match: PingOne → Resources → [MCP resource] → Resource URI\n'));
 
     const mcpAud = await ask(
-      'MCP_RESOURCE_URI / MCP_SERVER_RESOURCE_URI  (HTTPS URL of MCP server)',
+      'MCP_RESOURCE_URI  (base URL registered in PingOne as MCP resource)',
       mcpHttpsDefault,
     );
     if (mcpAud.trim()) {
@@ -518,17 +571,21 @@ async function main() {
 
     const doTok = await askYN('Configure RFC 8693 token exchange (agent OAuth client + actor claims)?', !!(vars.AGENT_OAUTH_CLIENT_ID));
     if (doTok) {
+      console.log(tip('  AGENT_OAUTH_CLIENT_ID:  PingOne app configured for token exchange (grant: Token Exchange)'));
+      console.log(tip('  BFF_CLIENT_ID:          usually the same as PINGONE_AI_CORE_CLIENT_ID (admin app)\n'));
       vars.AGENT_OAUTH_CLIENT_ID     = await ask('AGENT_OAUTH_CLIENT_ID', vars.AGENT_OAUTH_CLIENT_ID || '');
       vars.AGENT_OAUTH_CLIENT_SECRET = await ask('AGENT_OAUTH_CLIENT_SECRET', vars.AGENT_OAUTH_CLIENT_SECRET || '', true);
-      vars.BFF_CLIENT_ID             = await ask('BFF_CLIENT_ID (often same as admin OAuth client id)', vars.BFF_CLIENT_ID || vars.PINGONE_AI_CORE_CLIENT_ID || '');
-      vars.USE_AGENT_ACTOR_FOR_MCP   = (await ask('USE_AGENT_ACTOR_FOR_MCP', vars.USE_AGENT_ACTOR_FOR_MCP || 'true')) || 'true';
-      vars.REQUIRE_MAY_ACT           = (await ask('REQUIRE_MAY_ACT', vars.REQUIRE_MAY_ACT || 'false')) || 'false';
+      vars.BFF_CLIENT_ID             = await ask('BFF_CLIENT_ID', vars.BFF_CLIENT_ID || vars.PINGONE_AI_CORE_CLIENT_ID || '');
+      vars.USE_AGENT_ACTOR_FOR_MCP   = (await ask('USE_AGENT_ACTOR_FOR_MCP  (add act claim to MCP token?)', vars.USE_AGENT_ACTOR_FOR_MCP || 'true')) || 'true';
+      vars.REQUIRE_MAY_ACT           = (await ask('REQUIRE_MAY_ACT  (reject if may_act missing?)', vars.REQUIRE_MAY_ACT || 'false')) || 'false';
     }
   } else {
     // MCP server not configured yet — still allow manual token exchange config
     const doTok = await askYN('Add RFC 8693 / MCP token exchange vars (requires MCP server later)?', false);
     if (doTok) {
-      vars.MCP_RESOURCE_URI          = await ask('MCP_RESOURCE_URI (HTTPS URL of MCP server)', vars.MCP_RESOURCE_URI || '');
+      console.log(tip('  MCP_RESOURCE_URI: base URL registered in PingOne as the MCP resource'));
+      console.log(tip('    Vercel: https://your-app.vercel.app  |  localhost: http://localhost:3001\n'));
+      vars.MCP_RESOURCE_URI          = await ask('MCP_RESOURCE_URI', vars.MCP_RESOURCE_URI || '');
       if (vars.MCP_RESOURCE_URI) vars.MCP_SERVER_RESOURCE_URI = vars.MCP_RESOURCE_URI;
       vars.AGENT_OAUTH_CLIENT_ID     = await ask('AGENT_OAUTH_CLIENT_ID', vars.AGENT_OAUTH_CLIENT_ID || '');
       vars.AGENT_OAUTH_CLIENT_SECRET = await ask('AGENT_OAUTH_CLIENT_SECRET', vars.AGENT_OAUTH_CLIENT_SECRET || '', true);
