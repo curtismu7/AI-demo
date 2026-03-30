@@ -246,7 +246,7 @@ Click **Add Resource** and fill in exactly:
 |-------|---------|
 | **Resource name** | `BX Finance Agent Gateway` |
 | **Audience** | `https://agent-gateway.pingdemo.com` |
-| **Description** | `Audience resource server for the BX Finance banking app server The banking app obtains a token scoped to this audience to use as its actor token during RFC 8693 token exchange The may act sub on user profiles must match this audience URI` |
+| **Description** | `Audience resource server for the BX Finance banking app server The banking app obtains a token scoped to this audience to use as its actor token during RFC 8693 token exchange PingOne reads the actor tokens client_id UUID and compares it to may_act sub on the users Subject Token` |
 | **Access token time to live (seconds)** | `3600` |
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Basic` |
 
@@ -279,7 +279,7 @@ Open the existing end-user OIDC application. Verify or update:
 | Field | Type in |
 |-------|---------|
 | **Application name** | `BX Finance User` |
-| **Description** | `End user web application for BX Finance banking customers Issues Subject Tokens via Authorization Code and PKCE The Subject Token carries may act authorizing the BFF Admin to perform token exchange` |
+| **Description** | `End user web application for BX Finance banking customers Issues Subject Tokens via Authorization Code and PKCE The Subject Token carries may_act authorizing the Banking App to perform token exchange` |
 | **Icon** | *(optional — leave blank or upload a logo)* |
 | **Home Page URL** | `https://banking-demo-puce.vercel.app` |
 | **Signon URL** | `https://banking-demo-puce.vercel.app` |
@@ -315,11 +315,11 @@ Open the existing end-user OIDC application. Verify or update:
 > **How to test in PingOne:**
 > 1. Click the pencil icon next to the `may_act` mapping → **Build and Test Expression** opens.
 > 2. The expression field should contain: `(#root.user.mayAct != null ? #root.user.mayAct : null)`
-> 3. In the **Test Data** field, paste:
+> 3. In the **Test Data** field, paste (replace `<PINGONE_CORE_CLIENT_ID>` with the actual Banking App client ID UUID):
 > ```json
 > {
 >   "user": {
->     "mayAct": { "sub": "https://agent-gateway.pingdemo.com" }
+>     "mayAct": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
 >   }
 > }
 > ```
@@ -329,7 +329,7 @@ Open the existing end-user OIDC application. Verify or update:
 > {
 >   "user": {
 >     "mayAct": {
->       "sub": "https://agent-gateway.pingdemo.com"
+>       "sub": "<PINGONE_CORE_CLIENT_ID>"
 >     }
 >   }
 > }
@@ -564,7 +564,7 @@ client_id=PINGONE_CORE_CLIENT_ID
 &scope=banking:accounts:read banking:transactions:read banking:transactions:write
 ```
 
-PingOne validates: `subject_token.may_act.sub` === `actor_token.aud[0]` (`https://agent-gateway.pingdemo.com`) — if they match, issues MCP Token with `act.sub = https://agent-gateway.pingdemo.com`.
+PingOne validates: `subject_token.may_act.sub` === `actor_token.client_id` — both must equal the Banking App's client ID UUID (`PINGONE_CORE_CLIENT_ID`). If they match, PingOne issues the MCP Token with `act.sub = <PINGONE_CORE_CLIENT_ID>`.
 
 ### MCP Token → Resource Token  (Token Exchange #2)
 
