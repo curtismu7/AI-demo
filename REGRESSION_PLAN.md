@@ -23,6 +23,7 @@
 | **Bottom dock on dashboard routes** | **Bottom dock not showing — floating FAB shown instead** | `App.js` — skip App-level `<EmbeddedAgentDock>` on `onUserDashboardRoute` (UserDashboard mounts it internally). `EmbeddedAgentDock.js` — must NOT have `isBankingAgentDashboardRoute` guard (that returns null before the component can render). |
 | **Admin role detection** | **Admin users downgraded to customer on login** | `routes/oauthUser.js` 4-signal check: username allowlist → population ID → custom claim → existing record. Config fields: `admin_username`, `admin_population_id`, `admin_role_claim` in `configStore.js` + `Config.js`. |
 | Config UI / configStore | All PingOne settings lost | `services/configStore.js`, `routes/adminConfig.js` |
+| **Demo Data — agent + sign-in lessons** | **Presenter lesson radios / Bearer probe regress; App tests break if `useSearchParams` mock dropped** | `DemoDataPage.js`, `DemoDataPage.css`, `App.session.test.js` (must mock `useSearchParams` when `App.js` uses it), `bankingAgentNl.test.js` (`parseNaturalLanguage.mockReset` per test) |
 | BankingAgent FAB | Agent disappears | `components/BankingAgent.js`, `App.js` |
 | Float panel resize | Panel capped at 560×720, won't grow larger | `BankingAgent.css` (`max-width`/`max-height` removed), `BankingAgent.js` (`handleResize` caps) |
 | Dashboard 401 / session banner | "Session expired" on valid PingOne session (cold-start `_cookie_session` stub) | `UserDashboard.js` (`fetchUserData` 401 handler → auto re-auth redirect) |
@@ -65,6 +66,15 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-30 — Demo config: agent + sign-in lessons, test hardening, docs
+
+- **Feature / education:** **`/demo-data`** adds **Learn: how can an AI reach your bank data?** — three **lesson focus** options (OAuth + PKCE, marketing **`pi.flow`**, Bearer token lab with **`GET /api/accounts`** probe). Copy targets **non-expert** audiences; choice persisted in **`localStorage`** (`bx-agent-auth-demo-mode`) and **`bx-agent-auth-demo-mode`** window event. Marketing sign-in hint explains **pi.flow** vs unsafe password-in-chat habits.
+- **Docs / API comments:** **`educationContent.js`** OAuth cheatsheet — bootstrap line no longer highlights ROPC. **`docs/PINGONE_AUTHORIZE_PLAN.md`** — table row for **`DemoDataPage`** educational agent paths. **`routes/agentIdentity.js`** — comments: main demos use OAuth / pi.flow; optional password grant is lab-gated.
+- **Tests / CI:** **`App.session.test.js`** mocks **`useSearchParams`** for **`App.js`**. **`bankingAgentNl.test.js`** — **`parseNaturalLanguage.mockReset()`** in **`beforeEach`** to avoid mock leakage. **`banking_api_server/jest.config.js`** — **`maxWorkers: 2`** when **`CI=true`** to reduce flaky parallel supertest runs.
+- **Files:** `banking_api_ui/src/components/DemoDataPage.js`, `DemoDataPage.css`, `__tests__/DemoDataPage.test.js`, `__tests__/App.session.test.js`, `educationContent.js`, `banking_api_server/routes/agentIdentity.js`, `src/__tests__/bankingAgentNl.test.js`, `jest.config.js`, `docs/PINGONE_AUTHORIZE_PLAN.md`, `REGRESSION_PLAN.md`
+- **Regression check:** **`CI=true npm test`** at repo root; **`cd banking_api_ui && npm run build`** exits **0**.
+- **Do not break:** **`routes/oauthUser.js` / `oauth.js`**, **BankingAgent** FAB/session, **`agentIdentity`** bootstrap runtime behavior (comments only on server route).
 
 ### 2026-03-29 — End-user OAuth errors: redirect to marketing + toast (not `/login`) (commit `3a762ae`)
 

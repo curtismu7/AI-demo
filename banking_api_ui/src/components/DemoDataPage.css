@@ -547,3 +547,112 @@
   background: #fee2e2;
   color: #991b1b;
 }
+
+/* Agent authentication demo story (OAuth vs pi.flow marketing vs Bearer) */
+.demo-data-agent-auth-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.demo-data-agent-auth-legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.demo-data-agent-auth-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.demo-data-agent-auth-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--dash-border, rgba(15, 23, 42, 0.16));
+  border-radius: 10px;
+  background: var(--dash-surface, #fff);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.demo-data-agent-auth-card:hover {
+  border-color: var(--dash-muted, #94a3b8);
+}
+
+.demo-data-agent-auth-card--active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+.demo-data-agent-auth-card input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.demo-data-agent-auth-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.demo-data-agent-auth-card__title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--dash-text, #111827);
+}
+
+.demo-data-agent-auth-card__desc {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--dash-muted, #64748b);
+}
+
+.demo-data-agent-auth-detail {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: var(--dash-surface-2, #f8fafc);
+  border: 1px solid var(--dash-border, rgba(15, 23, 42, 0.1));
+}
+
+.demo-data-agent-auth-steps {
+  margin: 0 0 0.75rem;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--dash-muted, #475569);
+}
+
+.demo-data-agent-auth-steps li {
+  margin-bottom: 0.5rem;
+}
+
+.demo-data-actions--wrap {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.demo-data-agent-auth-probe {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #e2e8f0;
+  border: none;
+  max-height: 14rem;
+}

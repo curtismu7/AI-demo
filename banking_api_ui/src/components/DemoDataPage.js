@@ -15,6 +15,27 @@ import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import './UserDashboard.css';
 import './DemoDataPage.css';
 
+/** Persisted choice for which agent/auth story the presenter is demonstrating (demo-data UI only). */
+const AGENT_AUTH_DEMO_STORAGE_KEY = 'bx-agent-auth-demo-mode';
+const AGENT_AUTH_DEMO = {
+  OAUTH_PKCE: 'oauth_pkce',
+  /** PingOne pi.flow from the /marketing slide panel (hosted login UI), not a password grant. */
+  PI_FLOW_MARKETING: 'pi_flow_marketing',
+  BEARER_PASTE: 'bearer_paste',
+};
+
+/** @returns {string} one of AGENT_AUTH_DEMO */
+function readStoredAgentAuthDemoMode() {
+  try {
+    const v = localStorage.getItem(AGENT_AUTH_DEMO_STORAGE_KEY);
+    if (v === AGENT_AUTH_DEMO.BEARER_PASTE || v === AGENT_AUTH_DEMO.PI_FLOW_MARKETING) return v;
+    if (v === 'credential_story') return AGENT_AUTH_DEMO.PI_FLOW_MARKETING;
+  } catch (_) {
+    /* ignore */
+  }
+  return AGENT_AUTH_DEMO.OAUTH_PKCE;
+}
+
 /** Account types — each type gets exactly one slot; accountType is the stable key. */
 const ACCOUNT_TYPE_SLOTS = [
   { type: 'checking',     label: 'Checking',            icon: '🏦', defaultName: 'Checking Account' },
@@ -201,6 +222,54 @@ export default function DemoDataPage({ user, onLogout }) {
   const [p1azBootstrapEnableLive, setP1azBootstrapEnableLive] = useState(true);
   const [p1azBootstrapEnableMcp, setP1azBootstrapEnableMcp] = useState(false);
   const [p1azBootstrapBusy, setP1azBootstrapBusy] = useState(false);
+
+  /** Which agent authentication story is highlighted for demos (saved in localStorage). */
+  const [agentAuthDemoMode, setAgentAuthDemoMode] = useState(readStoredAgentAuthDemoMode);
+  const [bearerPasteToken, setBearerPasteToken] = useState('');
+  const [bearerProbe, setBearerProbe] = useState(null);
+  const [bearerBusy, setBearerBusy] = useState(false);
+
+  const handleAgentAuthDemoModeChange = useCallback((mode) => {
+    setAgentAuthDemoMode(mode);
+    try {
+      localStorage.setItem(AGENT_AUTH_DEMO_STORAGE_KEY, mode);
+      window.dispatchEvent(new CustomEvent('bx-agent-auth-demo-mode', { detail: { mode } }));
+    } catch (_) {
+      /* ignore */
+    }
+  }, []);
+
+  const handleBearerProbeAccounts = useCallback(async () => {
+    const t = bearerPasteToken.trim();
+    if (!t) {
+      notifyWarning('Paste an access token first.');
+      return;
+    }
+    setBearerBusy(true);
+    setBearerProbe(null);
+    try {
+      const r = await fetch('/api/accounts', {
+        method: 'GET',
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${t}`, Accept: 'application/json' },
+      });
+      const text = await r.text();
+      let body;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = text.length > 400 ? `${text.slice(0, 400)}…` : text;
+      }
+      setBearerProbe({ ok: r.ok, status: r.status, body });
+      if (r.ok) notifySuccess('Bearer token accepted by the API');
+      else notifyError(`Accounts request returned HTTP ${r.status}`);
+    } catch (e) {
+      setBearerProbe({ ok: false, status: 0, body: e.message || 'Request failed' });
+      notifyError(e.message || 'Probe failed');
+    } finally {
+      setBearerBusy(false);
+    }
+  }, [bearerPasteToken]);
 
   const loadP1azFlags = useCallback(async () => {
     if (user?.role !== 'admin') return;
@@ -556,8 +625,9 @@ export default function DemoDataPage({ user, onLogout }) {
             <div className="ud-hero__top">
               <p className="ud-hero__eyebrow">{format(new Date(), 'EEEE, MMM d')}</p>
               <p className="ud-hero__insight" role="status">
-                Adjust sandbox account names, balances, your profile, and the MFA step-up threshold for transfers and
-                withdrawals. Changes apply to your signed-in user only.
+                This whole app is a <strong>teaching sandbox</strong>: safe fake banking data plus lessons on sign-in,
+                tokens, and how AI assistants should (and should not) use them. Here you can rename accounts, tweak balances,
+                update your profile, and set when extra verification is required — only for your signed-in demo user.
               </p>
             </div>
           </div>
@@ -569,11 +639,12 @@ export default function DemoDataPage({ user, onLogout }) {
           )}
 
           <section className="section demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
-            <h2 id="demo-data-agent-layout-heading">AI banking assistant</h2>
+            <h2 id="demo-data-agent-layout-heading">AI banking assistant (layout)</h2>
             <p className="demo-data-hint">
-              <strong>Middle</strong> — split dashboard (token | assistant | banking). <strong>Bottom</strong> — full-width
-              dock on home and config. <strong>Float</strong> — corner FAB only. Check <strong>+ FAB</strong> with Middle or
-              Bottom to show the floating panel as well (you cannot combine Middle and Bottom).
+              Choose how the assistant appears while you learn. <strong>Middle</strong> splits the screen so you can see
+              tokens, chat, and banking side by side. <strong>Bottom</strong> pins a wide bar on home and settings.
+              <strong> Float</strong> is just the corner button. You can add <strong>+ FAB</strong> with Middle or Bottom for
+              a movable panel too (Middle and Bottom cannot be on at the same time).
             </p>
             <AgentUiModeToggle variant="config" />
             {agentPlacement === 'bottom' && (
@@ -581,6 +652,189 @@ export default function DemoDataPage({ user, onLogout }) {
                 Bottom dock appears on your home dashboard routes and Application Configuration. Open Home from the nav to
                 see it.
               </p>
+            )}
+          </section>
+
+          <section
+            className="section demo-data-section demo-data-agent-auth-demo"
+            aria-labelledby="demo-agent-auth-demo-heading"
+          >
+            <h2 id="demo-agent-auth-demo-heading">Learn: how can an AI reach your bank data?</h2>
+            <p className="demo-data-hint">
+              In the real world, <strong>OAuth</strong> is how apps prove “this person agreed” without sharing their
+              password with every product. AI agents add a twist: sometimes people talk about “the agent logging in” in
+              different ways. Pick a story below to see which path this demo highlights — we only save your choice in{' '}
+              <em>this browser</em> so presenters can switch lessons; nothing here changes your PingOne tenant by itself.
+            </p>
+            <fieldset className="demo-data-agent-auth-fieldset">
+              <legend className="demo-data-agent-auth-legend">Lesson focus</legend>
+              <div className="demo-data-agent-auth-options">
+                <label
+                  className={`demo-data-agent-auth-card${
+                    agentAuthDemoMode === AGENT_AUTH_DEMO.OAUTH_PKCE ? ' demo-data-agent-auth-card--active' : ''
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="bx-agent-auth-demo"
+                    checked={agentAuthDemoMode === AGENT_AUTH_DEMO.OAUTH_PKCE}
+                    onChange={() => handleAgentAuthDemoModeChange(AGENT_AUTH_DEMO.OAUTH_PKCE)}
+                  />
+                  <span className="demo-data-agent-auth-card__body">
+                    <span className="demo-data-agent-auth-card__title">1 · Recommended — real sign-in at PingOne</span>
+                    <span className="demo-data-agent-auth-card__desc">
+                      The user is sent to PingOne’s login (authorization code + PKCE). The app’s backend keeps the access
+                      token in a session — the browser never needs to hold a long-lived secret. This is the pattern to teach
+                      first.
+                    </span>
+                  </span>
+                </label>
+                <label
+                  className={`demo-data-agent-auth-card${
+                    agentAuthDemoMode === AGENT_AUTH_DEMO.PI_FLOW_MARKETING ? ' demo-data-agent-auth-card--active' : ''
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="bx-agent-auth-demo"
+                    checked={agentAuthDemoMode === AGENT_AUTH_DEMO.PI_FLOW_MARKETING}
+                    onChange={() => handleAgentAuthDemoModeChange(AGENT_AUTH_DEMO.PI_FLOW_MARKETING)}
+                  />
+                  <span className="demo-data-agent-auth-card__body">
+                    <span className="demo-data-agent-auth-card__title">2 · Sign-in from the marketing page (pi.flow)</span>
+                    <span className="demo-data-agent-auth-card__desc">
+                      Looks like a form on your site, but PingOne still runs the actual login and security screens (a Ping
+                      flow: <code>response_type=pi.flow</code>). Good for teaching “embedded” experiences without teaching
+                      apps to collect passwords and send them to a password-grant endpoint.
+                    </span>
+                  </span>
+                </label>
+                <label
+                  className={`demo-data-agent-auth-card${
+                    agentAuthDemoMode === AGENT_AUTH_DEMO.BEARER_PASTE ? ' demo-data-agent-auth-card--active' : ''
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="bx-agent-auth-demo"
+                    checked={agentAuthDemoMode === AGENT_AUTH_DEMO.BEARER_PASTE}
+                    onChange={() => handleAgentAuthDemoModeChange(AGENT_AUTH_DEMO.BEARER_PASTE)}
+                  />
+                  <span className="demo-data-agent-auth-card__body">
+                    <span className="demo-data-agent-auth-card__title">3 · The AI already has an access token</span>
+                    <span className="demo-data-agent-auth-card__desc">
+                      Some demos assume the user copied a token (like a temporary key) into a script or tool. The API
+                      accepts <code>Authorization: Bearer …</code>. Teach that this is powerful, easy to leak, and not the
+                      same as teaching end users to paste secrets into chatbots.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            {agentAuthDemoMode === AGENT_AUTH_DEMO.OAUTH_PKCE && (
+              <div className="demo-data-agent-auth-detail">
+                <p className="demo-data-hint">
+                  <strong>What you are teaching:</strong> the customer leaves this app briefly, signs in where PingOne
+                  says it is safe, and returns with a short-lived “yes” the backend can use. After login, you can open the
+                  slide lesson on <strong>token exchange</strong> to show how a narrower token can be minted for tools
+                  like MCP.
+                </p>
+                <div className="demo-data-actions demo-data-actions--wrap">
+                  <a className="demo-data-btn primary" href="/api/auth/oauth/user/login">
+                    Go to PingOne customer sign-in
+                  </a>
+                  <button
+                    type="button"
+                    className="demo-data-btn ghost"
+                    onClick={() => open(EDU.TOKEN_EXCHANGE, 'what')}
+                  >
+                    Open lesson: token exchange
+                  </button>
+                  <button
+                    type="button"
+                    className="demo-data-btn ghost"
+                    onClick={() => open(EDU.BEST_PRACTICES, 'what')}
+                  >
+                    Open lesson: AI + OAuth basics
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {agentAuthDemoMode === AGENT_AUTH_DEMO.PI_FLOW_MARKETING && (
+              <div className="demo-data-agent-auth-detail">
+                <p className="demo-data-hint">
+                  <strong>What you are teaching:</strong> the customer still authenticates with PingOne (MFA, policies,
+                  branding), but the flow can feel like part of your marketing site. That is different from “type your
+                  password into ChatGPT,” which you should discourage.
+                </p>
+                <ol className="demo-data-agent-auth-steps">
+                  <li>
+                    Scroll to <strong>Marketing page customer sign-in</strong> below, choose{' '}
+                    <strong>Slide panel — hints + pi.flow</strong>, and click <strong>Save marketing sign-in</strong> (same
+                    idea lives under Application setup if you prefer).
+                  </li>
+                  <li>
+                    Visit <Link to="/marketing">/marketing</Link>, open the sign-in slide, and continue. Behind the scenes
+                    the app asks PingOne for a <code>pi.flow</code> response so the real login UI is still PingOne’s — not a
+                    legacy “password grant” to the token endpoint.
+                  </li>
+                </ol>
+                <div className="demo-data-actions demo-data-actions--wrap">
+                  <Link className="demo-data-btn primary" to="/marketing">
+                    Open marketing page (try sign-in)
+                  </Link>
+                  <button
+                    type="button"
+                    className="demo-data-btn ghost"
+                    onClick={() =>
+                      document.getElementById('demo-marketing-login-heading')?.scrollIntoView({ behavior: 'smooth' })
+                    }
+                  >
+                    Scroll to marketing sign-in settings
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {agentAuthDemoMode === AGENT_AUTH_DEMO.BEARER_PASTE && (
+              <div className="demo-data-agent-auth-detail">
+                <p className="demo-data-hint">
+                  <strong>What you are teaching:</strong> whoever holds a valid access token can call the API like the user
+                  until it expires. In class, use this to show why tokens must be short-lived, scoped, and never pasted into
+                  untrusted chat. The button below sends <em>only</em> the Bearer header (no session cookie) so you can
+                  prove the rule. Use fake/lab tokens only.
+                </p>
+                <label className="demo-data-field">
+                  <span>Paste an access token (lab only)</span>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={bearerPasteToken}
+                    onChange={(e) => setBearerPasteToken(e.target.value)}
+                    placeholder="eyJ…"
+                  />
+                </label>
+                <div className="demo-data-actions demo-data-actions--wrap">
+                  <button
+                    type="button"
+                    className="demo-data-btn primary"
+                    disabled={bearerBusy}
+                    onClick={handleBearerProbeAccounts}
+                  >
+                    {bearerBusy ? 'Trying…' : 'Try “list accounts” with this token'}
+                  </button>
+                  <a className="demo-data-btn ghost" href="/api/auth/oauth/user/token-claims" target="_blank" rel="noreferrer">
+                    See your current session token (JSON lesson)
+                  </a>
+                </div>
+                {bearerProbe && (
+                  <pre className="demo-data-agent-auth-probe" role="status">
+                    {JSON.stringify(bearerProbe, null, 2)}
+                  </pre>
+                )}
+              </div>
             )}
           </section>
 
@@ -824,11 +1078,13 @@ export default function DemoDataPage({ user, onLogout }) {
                 Marketing page customer sign-in
               </h2>
               <p className="demo-data-hint">
-                Controls how <strong>Customer sign in</strong> behaves on the home / marketing page (dropdown, not a
-                separate checkbox). <strong>Redirect</strong> uses standard authorization code + PKCE.{' '}
-                <strong>Slide panel + pi.flow</strong> opens hints then calls PingOne with <code>use_pi_flow=1</code> —{' '}
-                requires a PingOne app that supports pi.flow; if sign-in fails, switch back to <strong>Redirect</strong>.
-                Also under <Link to="/config">Application setup</Link>.
+                <strong>Teaching note:</strong> this controls what learners see when they click customer sign-in on the
+                home / marketing page. <strong>Redirect</strong> is the simplest story — full browser hop to PingOne with
+                standard OAuth (code + PKCE). <strong>Slide panel + pi.flow</strong> adds demo hints and uses Ping’s flow
+                mode (<code>use_pi_flow=1</code>, <code>response_type=pi.flow</code>) so the real login still lives at
+                PingOne — useful when you want to contrast “embedded” sign-in with unsafe “paste your password into an AI”
+                habits. Needs a PingOne app that supports pi.flow; otherwise switch back to <strong>Redirect</strong>. Same
+                options exist under <Link to="/config">Application setup</Link>.
               </p>
               <label className="demo-data-field">
                 <span>Customer login mode</span>

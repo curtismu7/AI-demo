@@ -168,7 +168,7 @@ MCP / agent:
   POST /api/mcp/inspector/invoke          Backend-for-Frontend (BFF) MCP inspector: tools/call
 Agent identity (optional "on behalf of"):
   GET  /api/agent/identity/status         Actor bootstrap / mapping status
-  POST /api/agent/identity/bootstrap      Optional ROPC + PingOne user for agent client
+  POST /api/agent/identity/bootstrap      Optional extra checks + PingOne directory mapping (lab; not pi.flow)
 CIBA (when enabled):
   GET  /api/auth/ciba/status              CIBA enabled flag + delivery mode
   POST /api/auth/ciba/initiate            Start backchannel auth

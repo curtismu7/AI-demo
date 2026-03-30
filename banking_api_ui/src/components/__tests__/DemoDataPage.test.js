@@ -416,3 +416,80 @@ describe('DemoDataPage — ff_inject_audience toggle (admin)', () => {
     );
   });
 });
+
+describe('DemoDataPage — agent authentication demo story', () => {
+  /** Default fetch for session effect; Bearer test replaces via mockImplementation. */
+  let fetchMock;
+
+  beforeEach(() => {
+    fetchDemoScenario.mockResolvedValue(defaultScenarioPayload);
+    saveDemoScenario.mockResolvedValue({ ok: true, accounts: [], settings: {}, userData: {} });
+    axiosMock.get.mockResolvedValue({
+      data: { agent_mcp_allowed_scopes: 'banking:read banking:write ai_agent' },
+    });
+    try {
+      localStorage.clear();
+    } catch (_) {
+      /* ignore */
+    }
+    fetchMock = jest.fn((url) => {
+      if (String(url).includes('/api/auth/session')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ mayAct: null }) });
+      }
+      return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('') });
+    });
+    global.fetch = fetchMock;
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders agent authentication demo heading and three story radios', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: /learn: how can an ai reach your bank data/i });
+    expect(screen.getByRole('radio', { name: /1 · recommended — real sign-in at pingone/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /2 · sign-in from the marketing page \(pi\.flow\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /3 · the ai already has an access token/i })).toBeInTheDocument();
+  });
+
+  it('persists pi.flow marketing story to localStorage', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: /learn: how can an ai reach your bank data/i });
+    fireEvent.click(screen.getByRole('radio', { name: /2 · sign-in from the marketing page \(pi\.flow\)/i }));
+    expect(localStorage.getItem('bx-agent-auth-demo-mode')).toBe('pi_flow_marketing');
+  });
+
+  it('Bearer story probes /api/accounts with Authorization header and credentials omit', async () => {
+    fetchMock.mockImplementation((url, opts) => {
+      if (String(url).includes('/api/accounts')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve('[]'),
+        });
+      }
+      if (String(url).includes('/api/auth/session')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ mayAct: null }) });
+      }
+      return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('') });
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: /learn: how can an ai reach your bank data/i });
+    fireEvent.click(screen.getByRole('radio', { name: /3 · the ai already has an access token/i }));
+    fireEvent.change(screen.getByPlaceholderText(/eyJ/i), { target: { value: 'fake.jwt.token' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /list accounts.*with this token/i }));
+    });
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/accounts',
+        expect.objectContaining({
+          method: 'GET',
+          credentials: 'omit',
+          headers: expect.objectContaining({ Authorization: 'Bearer fake.jwt.token' }),
+        })
+      )
+    );
+  });
+});

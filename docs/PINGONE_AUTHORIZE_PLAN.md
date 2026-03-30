@@ -94,6 +94,7 @@ Per [Decision Endpoints](https://developer.pingidentity.com/pingone-api/authoriz
 | Transaction response | `banking_api_server/routes/transactions.js` | On **201** success, JSON may include **`authorizeEvaluation`** when the gate ran (audit / demos). |
 | Config | `configStore` / env | Worker + `authorize_decision_endpoint_id` / `authorize_policy_id`. Feature flags: **`ff_authorize_simulated`**, **`ff_authorize_fail_open`**, etc. |
 | UI / education | `banking_api_ui/src/components/education/PingOneAuthorizePanel.js` | Recent Decisions tab: **Refresh status** (evaluation summary), **PingOne recent** vs **Simulated recent** fetchers. |
+| **Educational agent + sign-in** | `banking_api_ui/src/components/DemoDataPage.js` (`/demo-data`) | Lesson-style choices for presenters: **OAuth + PKCE**, **marketing page + `pi.flow`** (hosted Ping login, not password-grant demos), **Bearer token** lab. Complements Authorize/MCP teaching; does not replace PingOne Authorize decision APIs. |
 
 ---
 

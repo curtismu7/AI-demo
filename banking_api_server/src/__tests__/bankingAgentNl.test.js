@@ -27,6 +27,11 @@ jest.mock('../../services/geminiNlIntent', () => ({
 const { parseNaturalLanguage } = require('../../services/geminiNlIntent');
 const nlRouter = require('../../routes/bankingAgentNl');
 
+// Prevent mock implementation from one describe block affecting another (Jest parallel / order).
+beforeEach(() => {
+  parseNaturalLanguage.mockReset();
+});
+
 // ── App factory ───────────────────────────────────────────────────────────────
 
 function buildApp(sessionUser = null) {

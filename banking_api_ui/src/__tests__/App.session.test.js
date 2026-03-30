@@ -46,6 +46,8 @@ jest.mock('react-router-dom', () => ({
   Link:          ({ children, to, ...rest }) => <a href={typeof to === 'string' ? to : ''} {...rest}>{children}</a>,
   useNavigate:   () => jest.fn(),
   useLocation:   () => ({ pathname: '/', search: '' }),
+  /** AppWithAuth reads query params for OAuth error toasts — must be iterable [params, setParams]. */
+  useSearchParams: () => [new URLSearchParams(''), jest.fn()],
 }));
 
 // Minimal stubs for heavy child components that can't render in jsdom
