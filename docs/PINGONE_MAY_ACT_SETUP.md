@@ -493,7 +493,7 @@ Click **Save**.
 
 ### 3b. Verify `may_act` in a Subject Token
 
-After completing Steps 1–3a, log in as the test user from a browser and inspect the Subject Token. Decode it at [jwt.io](https://jwt.io) and confirm the payload contains:
+After completing Steps 1–3a, log in as the test user from a browser and inspect the Subject Token. Decode it at [PingIdentity JWT Decoder](https://developer.pingidentity.com/en/tools/jwt-decoder.html) and confirm the payload contains:
 
 ```json
 {
@@ -626,7 +626,7 @@ client_id=MCP_CLIENT_ID
 
 ## Part 6 — Verification
 
-Decode any token at [jwt.io](https://jwt.io) or in terminal:
+Decode any token at [PingIdentity JWT Decoder](https://developer.pingidentity.com/en/tools/jwt-decoder.html) or in terminal:
 ```bash
 echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m json.tool
 ```
