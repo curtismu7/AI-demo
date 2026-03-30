@@ -111,6 +111,7 @@ const FIELD_DEFS = {
   ff_hitl_enabled:         { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
   ff_inject_may_act:       { public: true, default: 'false' }, // BFF-synthesise may_act when absent from user token (demo/dev — no PingOne change needed)
   ff_inject_audience:      { public: true, default: 'false' }, // BFF-add mcp_resource_uri to aud claim snapshot when absent (demo/dev — no PingOne change needed)
+  ff_skip_token_exchange:  { public: true, default: 'false' }, // Skip RFC 8693 — pass user access token directly to MCP (demo mode; token exchange not required)
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
 
   // RFC 8693 Token Exchange — MCP server resource URI

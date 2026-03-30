@@ -685,3 +685,92 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_audience', () => {
     expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─── ff_skip_token_exchange — direct user token bypass ────────────────────────
+
+describe('resolveMcpAccessTokenWithEvents — ff_skip_token_exchange', () => {
+  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+  const origSecret   = process.env.AGENT_OAUTH_CLIENT_SECRET;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.AGENT_OAUTH_CLIENT_ID     = 'agent-client-id';
+    process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
+    mockGetAgentClientCredentialsToken.mockResolvedValue(sampleJwtAgentAccessToken);
+    mockPerformTokenExchangeWithActor.mockResolvedValue(sampleJwtMcpAccessToken);
+  });
+
+  afterEach(() => {
+    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
+    else delete process.env.AGENT_OAUTH_CLIENT_ID;
+    if (origSecret !== undefined) process.env.AGENT_OAUTH_CLIENT_SECRET = origSecret;
+    else delete process.env.AGENT_OAUTH_CLIENT_SECRET;
+  });
+
+  it('returns user token directly when flag ON (no exchange)', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'ff_skip_token_exchange')   return 'true';
+      return null;
+    });
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    expect(token).toBe(sampleJwtUserAccessToken);
+  });
+
+  it('does NOT call performTokenExchange or getAgentClientCredentialsToken when flag ON', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'ff_skip_token_exchange')   return 'true';
+      return null;
+    });
+    await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
+    expect(mockPerformTokenExchangeWithActor).not.toHaveBeenCalled();
+    expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
+  });
+
+  it('emits exchange-skipped event with status skipped when flag ON', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'ff_skip_token_exchange')   return 'true';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    const ev = tokenEvents.find(e => e.id === 'exchange-skipped');
+    expect(ev).toBeDefined();
+    expect(ev.status).toBe('skipped');
+    expect(ev.bypass).toBe(true);
+  });
+
+  it('still returns user-token event in chain when flag ON', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'ff_skip_token_exchange')   return 'true';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    expect(tokenEvents.find(e => e.id === 'user-token')).toBeDefined();
+  });
+
+  it('performs full RFC 8693 exchange when flag OFF (default)', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'ff_skip_token_exchange')   return 'false';
+      return null;
+    });
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    expect(token).toBe(sampleJwtMcpAccessToken);
+    expect(token).not.toBe(sampleJwtUserAccessToken);
+    expect(mockPerformTokenExchangeWithActor).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns userSub even when exchange is skipped', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'ff_skip_token_exchange')   return 'true';
+      return null;
+    });
+    const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    expect(userSub).toBe(USER_SUB);
+  });
+});

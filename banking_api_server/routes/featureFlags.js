@@ -164,6 +164,22 @@ const FLAG_REGISTRY = [
     defaultValue: false,
     warnIfEnabled: true,
   },
+  {
+    id:           'ff_skip_token_exchange',
+    name:         'Token Exchange — Skip RFC 8693 (direct user token)',
+    category:     'Token Exchange',
+    description:
+      'When ON, the BFF **skips RFC 8693 token exchange** and passes the user\'s access token directly to the MCP server. ' +
+      'The alternative (**OFF**, default) is full on-behalf-of exchange: the BFF mints a dedicated agent client-credentials ' +
+      'token and performs RFC 8693 to produce a narrower, audience-scoped token with an `act` claim identifying the agent. ' +
+      'Enable this flag when PingOne is not yet configured for token exchange — it lets you verify the rest of the MCP flow without needing a token exchange policy.',
+    impact:
+      'OFF (default) = RFC 8693 exchange — MCP server receives a scoped delegated token with act claim. ' +
+      'ON = user\'s raw access token forwarded to MCP — no exchange, no act claim, potentially wider audience.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------

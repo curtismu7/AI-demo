@@ -351,6 +351,31 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── ff_skip_token_exchange — direct user token path (no RFC 8693) ────────
+  // When ON the user access token is forwarded to MCP unchanged. No actor token
+  // is acquired and no exchange is performed. Useful when PingOne is not yet
+  // configured for token exchange. The alternative (OFF) is the full on-behalf-of
+  // exchange: agent client-credentials token + RFC 8693 → scoped MCP token + act claim.
+  const ffSkipExchange =
+    configStore.getEffective('ff_skip_token_exchange') === true ||
+    configStore.getEffective('ff_skip_token_exchange') === 'true';
+  if (ffSkipExchange) {
+    tokenEvents.push(buildTokenEvent(
+      'exchange-skipped',
+      'Token Exchange (RFC 8693) — Bypassed',
+      'skipped',
+      null,
+      'ff_skip_token_exchange is ON. The user access token is passed directly to the MCP server without RFC 8693 exchange. ' +
+        'The MCP server receives the user\'s original token (no act claim, no audience narrowing). ' +
+        'Alternative — turn this flag OFF: the BFF performs a full RFC 8693 on-behalf-of exchange, ' +
+        'minting a scoped MCP token with act: { client_id: <agent> } for audit provenance. ' +
+        'In production always use token exchange.',
+      { rfc: 'RFC 8693', bypass: true }
+    ));
+    return { token: userToken, tokenEvents, userSub };
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
   const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
   const agentAllowedRaw = configStore.getEffective('agent_mcp_allowed_scopes');
