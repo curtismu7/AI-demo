@@ -67,6 +67,15 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
+### 2026-03-30 — PingOne Authorize education (diagram, MCP checklist) + MCP_EXPECTED_ACT_CLIENT_ID
+
+- **Education (UI):** **`PingOneAuthorizePanel`** — inline **SVG policy diagram** and **Why & security (AI/MCP)** tab; **Configure MCP (PingOne & env)** tab documents Trust Framework parameters (`UserId`, `TokenAudience`, `McpResourceUri`, `ActClientId`, `NestedActClientId`, `DecisionContext`, …), BFF flags (`ff_authorize_mcp_first_tool`, `authorize_mcp_decision_endpoint_id`), and MCP host env vars. **`educationCommands.js`** — shortcuts to policy/security and MCP config tabs.
+- **MCP hardening:** **`MCP_EXPECTED_ACT_CLIENT_ID`** — optional introspection check: **`act.client_id`** must match when set (PingOne often omits **`act.sub`**). Implemented in **`banking_mcp_server/src/auth/TokenIntrospector.ts`** with tests in **`TokenIntrospector.test.ts`** (client_id-only token, mismatch, combined SUB+CLIENT_ID).
+- **Docs:** **`docs/PINGONE_AUTHORIZE_PLAN.md`** — checklist / phase 4d / operational summary updated for **`MCP_EXPECTED_ACT_CLIENT_ID`** and education cross-references.
+- **Files:** `banking_api_ui/src/components/education/PingOneAuthorizePanel.js`, `educationCommands.js`, `banking_mcp_server/src/auth/TokenIntrospector.ts`, `banking_mcp_server/src/interfaces/auth.ts`, `banking_mcp_server/tests/auth/TokenIntrospector.test.ts`, `docs/PINGONE_AUTHORIZE_PLAN.md`, `REGRESSION_PLAN.md`
+- **Regression check:** `cd banking_api_ui && npm run build` → **0**; `cd banking_mcp_server && npm test -- --testPathPattern=TokenIntrospector` → **pass**. BankingAgent / Authorize flows unchanged except new education strings.
+- **Do not break:** **`middleware/auth.js`** audience rules, **`mcpToolAuthorizationService`** gate session key, **`BankingAgent`** education host.
+
 ### 2026-03-30 — Demo config: agent + sign-in lessons, test hardening, docs
 
 - **Feature / education:** **`/demo-data`** adds **Learn: how can an AI reach your bank data?** — three **lesson focus** options (OAuth + PKCE, marketing **`pi.flow`**, Bearer token lab with **`GET /api/accounts`** probe). Copy targets **non-expert** audiences; choice persisted in **`localStorage`** (`bx-agent-auth-demo-mode`) and **`bx-agent-auth-demo-mode`** window event. Marketing sign-in hint explains **pi.flow** vs unsafe password-in-chat habits.

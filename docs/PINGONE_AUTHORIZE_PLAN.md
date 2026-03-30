@@ -98,6 +98,25 @@ Per [Decision Endpoints](https://developer.pingidentity.com/pingone-api/authoriz
 
 ---
 
+## Reference diagram — policy checklist (SUB, AUD, `act`, nested `act`)
+
+Architecture diagrams often bracket a **Policy** block with four checks. Below is how this repo maps each item to **PingOne Authorize**, the **BFF**, and the **MCP server** so you can configure **PingOne** and env vars consistently.
+
+| Diagram check | Typical PingOne Authorize policy idea | **PingOne Authorize in this demo** | **BFF (`banking_api_server`)** | **MCP (`banking_mcp_server`)** |
+|---------------|----------------------------------------|-------------------------------------|----------------------------------|--------------------------------|
+| **SUB — user in IdP directory** | Subject exists / is eligible (directory, attributes, risk). | **Transactions:** `UserId` in Trust Framework parameters. **MCP first tool** (optional): `UserId` from session / token `sub` in `evaluateMcpToolDelegation`. Policy can add directory-backed rules in PingOne. | **JWKS** validation proves the access token was issued by PingOne; `sub` is the end-user id. No separate “user exists” Management API call on every request. | **RFC 7662 introspection** returns `active` + `sub`; inactive tokens rejected. |
+| **AUD — audience is resource URL** | `aud` equals the protected resource (e.g. resource server or MCP resource URI). | **MCP first tool** (optional): pass **`TokenAudience`** and **`McpResourceUri`** into the MCP decision endpoint so **policy** can compare audience to the expected resource URI. **Transactions** path does not duplicate MCP `aud` checks. | `middleware/auth.js`: when **`ENDUSER_AUDIENCE`** / **`AI_AGENT_AUDIENCE`** are set, JWT `aud` must match those **or** PingOne default `https://api.pingone.com`. Banking API audience is **not** the same as MCP audience — configure per deployment. | **`MCP_SERVER_RESOURCE_URI`**: introspection result **`aud`** must include that URI when the env var is set. Optional **`may_act`** vs **`BFF_CLIENT_ID`** when **`REQUIRE_MAY_ACT=true`**. |
+| **`act` — MCP layer (`act.sub` / `act.client_id`)** | Delegation shows the expected MCP (or exchange) actor. | **MCP first tool:** Trust Framework **`ActClientId`** is derived from **`act.client_id`** on the MCP JWT; policy can allow-list actors. Diagrams that use **`act.sub`** as a URI should align PingOne token policy + Trust Framework attribute mapping with what you send. | **`actClaimValidator.js`** validates shape of `act` / `may_act` for audit; does not block requests. Token exchange / **`agentMcpTokenService`** builds MCP-bound tokens. | **`act.client_id`** logged. Optional **`MCP_EXPECTED_ACT_SUB`** and/or **`MCP_EXPECTED_ACT_CLIENT_ID`** when set (defense in depth with PAZ). |
+| **Nested `act` — upstream agent (`act.act.sub`)** | Second hop (e.g. agent) matches allow-list. | **MCP first tool:** **`NestedActClientId`** from nested `act.act` (see `mcpToolAuthorizationService.nestedActIdFromClaim`). PingOne policy can enforce allow-lists. | Same as above — audit-oriented middleware. | Optional **`MCP_EXPECTED_ACT_ACT_SUB`**: when set, **`act.act.sub`** must match. **Off by default** until PingOne issues nested `act` in your environment. |
+
+**Operational summary**
+
+1. **PingOne Authorize** does **not** receive the raw Bearer token in our integration; it receives **Trust Framework parameters** (`UserId`, `TokenAudience`, `ActClientId`, `NestedActClientId`, `McpResourceUri`, …). Your **policy** in PingOne should express the same intent as the diagram (compare those attributes to allowed values / directory).
+2. **Cryptographic and OAuth correctness** for MCP tokens remains **`introspection` + `aud` + scopes** on the MCP server; Authorize adds **central policy** when **`ff_authorize_mcp_first_tool`** and **`authorize_mcp_decision_endpoint_id`** are configured.
+3. **Stricter MCP** without changing PingOne policies: set **`MCP_SERVER_RESOURCE_URI`**, optionally **`MCP_EXPECTED_ACT_SUB`**, **`MCP_EXPECTED_ACT_CLIENT_ID`** (when PingOne only emits **`act.client_id`**), **`MCP_EXPECTED_ACT_ACT_SUB`**, and **`REQUIRE_MAY_ACT`** + **`BFF_CLIENT_ID`** as appropriate.
+
+---
+
 ## Architecture-diagram PAZ vs this demo
 
 Some architecture diagrams show a **PAZ** (policy authorization) step that explicitly chains checks such as:
@@ -108,11 +127,11 @@ Some architecture diagrams show a **PAZ** (policy authorization) step that expli
 - Assert **`act.sub`** matches the MCP server identity.
 - Assert **`act.act.sub`** matches the primary / upstream agent identity (nested delegation).
 
-**What we implement today:** **PingOne Authorize** is wired as **transaction policy** in `routes/transactions.js` (evaluate permit / deny / step-up hints via `pingOneAuthorizeService.js`). Feature flags (`authorize_enabled`, `ff_authorize_fail_open`, `ff_authorize_deposits`, etc.) control when evaluation runs and how errors behave.
+**What we implement today:** **PingOne Authorize** is wired as **transaction policy** in `routes/transactions.js` (evaluate permit / deny / step-up hints via `pingOneAuthorizeService.js`). **Optionally**, **MCP first-tool** evaluation (`evaluateMcpToolDelegation`) sends delegation- and audience-related parameters to a **dedicated MCP decision endpoint** — see the table above. Feature flags (`authorize_enabled`, `ff_authorize_fail_open`, `ff_authorize_deposits`, `ff_authorize_mcp_first_tool`, etc.) control when evaluation runs and how errors behave.
 
-**What we do *not* mirror line-for-line:** that diagram’s full matrix of **token introspection + nested `act` / `act.act` assertions** inside the Authorize call. Token shape and delegation (`may_act` / `act`, RFC 8693 exchange for MCP) are handled in the **Backend-for-Frontend (BFF) + MCP** path; Authorize in this repo focuses on **business transaction context** (amount, type, user, ACR), not re-implementing every checklist item from a generic IAM architecture diagram.
+**What still differs from a generic “all checks inside one Authorize diamond” diagram:** token **signature** and **introspection** run on the **MCP** (and JWKS on the **BFF** for browser API calls). **PingOne Authorize** receives **derived parameters**, not a copy of the introspection response. To mirror the diagram **fully**, configure **PingOne policies** to use **`TokenAudience`**, **`McpResourceUri`**, **`ActClientId`**, and **`NestedActClientId`**, and optionally enable **`MCP_EXPECTED_ACT_SUB`**, **`MCP_EXPECTED_ACT_CLIENT_ID`**, and/or **`MCP_EXPECTED_ACT_ACT_SUB`** on MCP for defense in depth.
 
-If product or field teams require **Authorize policies** that consume introspection results or nested actor claims, that is an **additional policy design + Trust Framework** task on top of the current transaction evaluation, not a change implied by the existing integration alone.
+If product or field teams require **Authorize policies** that consume additional introspection fields, that is an **additional policy design + Trust Framework** task on top of the parameter set we send today.
 
 ---
 
@@ -140,7 +159,7 @@ From the reference model, **PAZ** should effectively enforce:
 | Introspection | Before / as input to PAZ | **`banking_mcp_server`** `TokenIntrospector` calls PingOne **`/as/introspect`**; validates **`active`**, **`aud`** vs `MCP_SERVER_RESOURCE_URI`, optional **`may_act`** vs `BFF_CLIENT_ID` | Strong for **MCP**; **not** wired through **Authorize**. |
 | SUB / user | PAZ + directory | Introspection returns **`sub`**; MCP uses it in session; **transaction** Authorize passes **`UserId`** | **MCP path** does not call **Authorize** to assert “user allowed for this tool/resource”. |
 | AUD | PAZ policy | Enforced in **MCP** introspection path | Not duplicated in **Authorize** for MCP. |
-| `act` / nested `act` | Explicit policy steps | **`act.client_id`** logged; **`may_act`** optional; **no** enforcement of **nested `act`** chain like `act.act.sub` in reference | **Policy + code** gap vs multi-hop diagram. |
+| `act` / nested `act` | Explicit policy steps | **`act.client_id`** logged; **`may_act`** optional; BFF sends **`NestedActClientId`** to PAZ when nested `act` exists | **MCP:** optional **`MCP_EXPECTED_ACT_SUB`**, **`MCP_EXPECTED_ACT_CLIENT_ID`**, **`MCP_EXPECTED_ACT_ACT_SUB`** enforce `act.sub`, `act.client_id`, and nested `act.act.sub` when set. |
 | PAZ diamond | Single policy point for resource access | **PAZ** used only for **`routes/transactions.js`** (**Amount**, **TransactionType**, **UserId**, **Acr**, …) | **Second decision path** needed for “**MCP / tool / delegation**” if we want diagram-level PAZ. |
 
 ### 3. Design choices (pick one primary pattern)
@@ -161,7 +180,7 @@ From the reference model, **PAZ** should effectively enforce:
 | **4a — PingOne policy & Trust Framework** | No app code yet | New **decision endpoint** (or policy branch) in PingOne Authorize with attributes matching §3. Document attribute names **identical** to what the BFF will send. Optionally model **directory / user-exists** and **actor allow-lists** in policy (PingOne UI / Trust Framework docs). |
 | **4b — BFF service API** | `banking_api_server` | ✅ **`pingOneAuthorizeService.evaluateMcpToolDelegation`** posts **`DecisionContext: McpFirstTool`** plus **`UserId`**, **`ToolName`**, **`TokenAudience`**, **`ActClientId`**, **`NestedActClientId`**, **`McpResourceUri`**, optional **`Acr`**. Config: **`authorize_mcp_decision_endpoint_id`** / **`PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID`**. **`simulatedAuthorizeService.evaluateMcpFirstTool`** for education; optional **`SIMULATED_MCP_DENY_TOOLS`** (comma-separated tool names) for forced DENY. |
 | **4c — Call site** | Wire the gate | ✅ **`POST /api/mcp/tool`** (BankingAgent → BFF): after MCP access token resolution, **`mcpToolAuthorizationService.evaluateMcpFirstToolGate`** runs once per session (**`req.session.mcpFirstToolAuthorizeDone`**). Feature flag **`ff_authorize_mcp_first_tool`**; reuses **`ff_authorize_fail_open`** for live PingOne errors. Skips admins and paths without a bearer MCP token (local fallback). Success JSON may include **`mcpAuthorizeEvaluation`** when the gate ran this request. **`GET /api/authorize/evaluation-status`** merges **`getMcpFirstToolGateStatus()`**. |
-| **4d — MCP hardening (parallel)** | `banking_mcp_server` | If PingOne can issue **nested `act`**, extend **`TokenIntrospector`** (and tests) to **enforce** `act` / nested actor IDs against env allow-lists — **defense in depth** even when PAZ also evaluates. |
+| **4d — MCP hardening (parallel)** | `banking_mcp_server` | Optional env **`MCP_EXPECTED_ACT_SUB`**, **`MCP_EXPECTED_ACT_CLIENT_ID`**, **`MCP_EXPECTED_ACT_ACT_SUB`** enforce **`act.sub`**, **`act.client_id`**, and **`act.act.sub`** when set (tests in **`TokenIntrospector.test.ts`**). |
 | **4e — Observability & education** | Admin + docs | ✅ **`mcpAuthorizeEvaluation`** on first gated **`POST /api/mcp/tool`**; **PingOneAuthorizePanel** + **`GET /api/authorize/evaluation-status`** include **`mcpFirstTool*`**; **`BX_Finance_AI_Agent_Tokens.drawio`** shows **BFF → Authorize** for optional first MCP tool vs **transactions** path and **MCP → Banking API** indirect Authorize on writes. |
 
 ### 5. Out of scope / explicit non-goals (unless product asks)
