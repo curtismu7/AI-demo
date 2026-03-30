@@ -303,8 +303,18 @@ Open the existing end-user OIDC application. Verify or update:
 > }
 > ```
 > 4. Click **Test Expression**.
-> 5. The **Result** panel will echo the full test data object back — this is normal. What matters is the green **Verification Successful** message in the top-right of the dialog. That confirms the expression is valid and will correctly extract `mayAct` from the user profile and include it as the `may_act` claim on the Subject Token.
-> 6. Click **Save**.
+> 5. The **Result** panel will show the full test data object echoed back — this is normal PingOne behaviour:
+> ```json
+> {
+>   "user": {
+>     "mayAct": {
+>       "sub": "https://agent-gateway.pingdemo.com"
+>     }
+>   }
+> }
+> ```
+> 6. Confirm **Verification Successful** appears in green in the top-right corner of the dialog. That's your confirmation the expression is valid and PingOne will add `may_act` to the Subject Token at login.
+> 7. Click **Save**.
 
 Click **Save**.
 
