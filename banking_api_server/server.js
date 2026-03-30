@@ -837,7 +837,7 @@ app.use('/api/transactions', authenticateToken, transactionRoutes);
 // still hit authenticateToken via the router below.
 app.get('/api/demo-scenario', (req, res, next) => {
   if (req.session?.user) return next();
-  return res.json({ accounts: [], settings: {}, defaults: {}, userData: {}, persistenceNote: null });
+  return res.json({ accounts: [], settings: {}, defaults: null, userData: {}, persistenceNote: null });
 });
 app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);

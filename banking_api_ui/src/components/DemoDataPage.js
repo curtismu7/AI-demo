@@ -503,18 +503,26 @@ export default function DemoDataPage({ user, onLogout }) {
     }
     setTypeSlots((prev) => {
       const next = { ...prev };
+      // Reset every slot: only checking and savings are on by default.
+      for (const s of ACCOUNT_TYPE_SLOTS) {
+        const t = s.type;
+        if (!next[t]) continue;
+        next[t] = { ...next[t], enabled: false, name: s.defaultName, balance: '0' };
+      }
       if (next.checking) {
         next.checking = {
           ...next.checking,
-          name: defaults.checkingName ?? next.checking.name,
-          balance: String(defaults.checkingBalance ?? next.checking.balance),
+          enabled: true,
+          name: defaults.checkingName ?? 'Checking Account',
+          balance: String(defaults.checkingBalance ?? 3000),
         };
       }
       if (next.savings) {
         next.savings = {
           ...next.savings,
-          name: defaults.savingsName ?? next.savings.name,
-          balance: String(defaults.savingsBalance ?? next.savings.balance),
+          enabled: true,
+          name: defaults.savingsName ?? 'Savings Account',
+          balance: String(defaults.savingsBalance ?? 2000),
         };
       }
       return next;
