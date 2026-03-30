@@ -1,4 +1,4 @@
-# PingOne: 2-Leg Delegated Token Chain — Setup Guide
+# PingOne: 3-Token Delegated Chain — Setup Guide
 
 Step-by-step setup for a **human → agent → MCP → PingOne API** delegated token chain.
 
@@ -11,7 +11,7 @@ This is NOT PingOne Advanced Identity Cloud (ForgeRock AM) — those are separat
 
 > **What is Token Exchange (RFC 8693)?** An app POSTs an existing access token to PingOne's token endpoint with `grant_type=token-exchange`. PingOne validates the token, checks delegation permissions, and issues a *new* token scoped to a different audience. The original token is not modified — a fresh, narrower token is returned. Each exchange is a server-to-server call; the user is never redirected.
 
-> **Design rule:** Keep chains to **3 exchanges or fewer**. Each exchange is a synchronous round-trip to PingOne. This chain uses **1**.
+> **Design rule:** Keep chains to **3 exchanges or fewer**. Each exchange is a synchronous round-trip to PingOne. This chain uses **1 exchange + 1 Client Credentials call**.
 
 ```
 Human User (Banking App Login)
@@ -37,22 +37,26 @@ MCP Token  [TOKEN 2 — delegated tool-call token]
     act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }
           ↑ the client ID UUID of the Banking App — verifiable delegation audit trail
   │
-  │  MCP server calls PingOne Management API directly
-  │  using its own Worker Client Credentials token (role-based, not token exchange).
-  │  The MCP Token carries the delegation context — no further exchange needed.
-  │  Worker: BX Finance MCP Worker (MCP_CLIENT_ID)
+  │  Client Credentials grant (NOT a token exchange)
+  │  MCP server POSTs its own client_id + client_secret to PingOne.
+  │  PingOne issues a scoped PingOne API token (p1:read:user, p1:update:user).
+  │  Caller: BX Finance MCP Service (MCP_CLIENT_ID)
+  ▼
+PingOne API Token  [TOKEN 3 — scoped PingOne Management API token]
+  { aud: ["https://api.pingone.com"],
+    scope: "p1:read:user p1:update:user" }
+  │
   ▼
 PingOne Management API  (/v1/environments/{envId}/users/{userId})
-  Worker app roles (Identity Data Read Only / Identity Data Provisioner) grant access.
 ```
 
 > **Every `aud` is different** — each token is scoped to exactly one service. That service's resource server validates the token; all others reject it. This is the core of RFC 8693 audience restriction.
 
-| Token | Audience URL | Who validates it | Exchanger |
-|-------|-------------|------------------|-----------|
-| **Subject Token** | `https://ai-agent.pingdemo.com` | BX Finance AI Agent service | — (issued at user login) |
-| **MCP Token** | `https://mcp-server.pingdemo.com` | BX Finance MCP Server | BX Finance Banking App |
-| **Resource Token** | `https://api.pingone.com` | PingOne Management API | BX Finance MCP Worker |
+| Token | Audience URL | How issued | Issuer |
+|-------|-------------|------------|--------|
+| **Subject Token** | `https://ai-agent.pingdemo.com` | PKCE login | PingOne (user auth) |
+| **MCP Token** | `https://mcp-server.pingdemo.com` | RFC 8693 Token Exchange #1 | BX Finance Banking App |
+| **PingOne API Token** | `https://api.pingone.com` | Client Credentials | BX Finance MCP Service |
 | *(actor token)* | `https://agent-gateway.pingdemo.com` | *(internal — proves banking app identity for Exchange #1)* | — |
 
 > **`may_act` → `act` transition:** `may_act` in the Subject Token declares who is *allowed* to exchange it. After exchange, that identity becomes the `act` claim. Each subsequent exchange nests a new `act` layer, forming a full delegation chain.
@@ -95,7 +99,7 @@ Use this table as your single source of truth when filling in PingOne forms and 
 | Agent Gateway Resource Server | Audience | `https://agent-gateway.pingdemo.com` |
 | User OIDC App | Name | `BX Finance User` |
 | Banking App (exchanger app) | Name | `BX Finance Banking App` |
-| MCP Worker App | Name | `BX Finance MCP Worker` |
+| MCP Service App | Name | `BX Finance MCP Service` |
 | `mayAct.sub` value on user records | equals | `PINGONE_CORE_CLIENT_ID` — the client ID UUID of BX Finance Banking App |
 | User Schema Attribute | Attribute name | `mayAct` |
 | User Schema Attribute | Type | `JSON` |
@@ -103,8 +107,8 @@ Use this table as your single source of truth when filling in PingOne forms and 
 | Token Claim — `act` expression | Expression | `(#root.context.requestData.subjectToken.may_act.sub == #root.context.requestData.actorToken.client_id)?#root.context.requestData.subjectToken.may_act:null` |
 | Env var — Subject Token audience | `ENDUSER_AUDIENCE` | `https://ai-agent.pingdemo.com` |
 | Env var — MCP Token audience | `MCP_RESOURCE_URI` | `https://mcp-server.pingdemo.com` |
+| Env var — PingOne API Token audience | `PINGONE_API_AUDIENCE` | `https://api.pingone.com` |
 | Env var — Agent Gateway audience | `BFF_RESOURCE_URI` | `https://agent-gateway.pingdemo.com` |
-| MCP Worker access | Method | Role-based Client Credentials (not token exchange) — assign `Identity Data Read Only` + `Identity Data Provisioner` roles |
 
 ---
 
@@ -433,18 +437,16 @@ Click **Add Application**:
 
 | Field | Type in |
 |-------|---------|
-| **Application name** | `BX Finance MCP Worker` |
-| **Description** | `Machine to machine worker application for the BX Finance MCP server Exchanges MCP Tokens for Resource Tokens to call the PingOne Management API on behalf of authenticated users The delegation chain is preserved in the nested act claim on the Resource Token` |
+| **Application name** | `BX Finance MCP Service` |
+| **Description** | `Machine to machine application for the BX Finance MCP server Uses Client Credentials to obtain a scoped PingOne API token for user lookup The MCP Token carrying the delegation context is validated separately` |
 | **Icon** | *(optional — leave blank)* |
-| **Home Page URL** | *(leave blank — worker app has no UI)* |
-| **Signon URL** | *(leave blank — worker app has no UI)* |
-| **Application type** | `Worker` |
+| **Home Page URL** | *(leave blank — no UI)* |
+| **Signon URL** | *(leave blank — no UI)* |
+| **Application type** | `Native` or `Web App` — **do NOT select Worker** (Worker apps are role-based and cannot have PingOne API resource scopes assigned) |
 
 **Configuration tab → Grant Types:**
 
 - ✅ `Client Credentials`
-
-> **Token Exchange is not available on Worker apps.** Worker apps in PingOne are role-based, not scope-based. When the MCP server authenticates using Client Credentials, PingOne issues a token that inherits the roles assigned to the Worker app — the exchange is implicit. You do not need (and cannot enable) the Token Exchange grant type here.
 
 **Configuration tab:**
 
@@ -452,18 +454,12 @@ Click **Add Application**:
 |-------|-------|
 | **Token endpoint auth method** | `CLIENT_SECRET_POST` |
 
-**Roles tab — assign the necessary roles:**
+**Resources tab → Allowed scopes — enable:**
 
-Worker apps access PingOne resources via roles, not OAuth scopes. Assign:
+- ✅ `p1:read:user` from **PingOne API**
+- ✅ `p1:update:user` from **PingOne API**
 
-- ✅ **Identity Data Read Only** — allows the MCP server to read user attributes (replaces `p1:read:user`)
-- ✅ **Identity Data Provisioner** — allows the MCP server to update user attributes (replaces `p1:update:user`)
-
-> Assign roles at the **Environment** scope, not the organization scope, to limit access to your specific environment.
-
-**Resources tab:**
-
-No scopes needed. Worker apps call the PingOne Management API using their role permissions, not OAuth resource scopes. Leave this tab at its defaults.
+> These scopes are available on non-Worker apps because you confirmed PingOne API exposes them as OAuth resource scopes. The MCP server requests these scopes in its Client Credentials call to obtain Token 3.
 
 **Attribute Mappings tab:**
 
@@ -570,16 +566,17 @@ MCP_RESOURCE_URI=https://mcp-server.pingdemo.com
 ### `banking_mcp_server/.env`  (on the MCP server)
 
 ```env
-# ── BX Finance MCP Worker app (Client Credentials — role-based, not token exchange) ──────────
-MCP_CLIENT_ID=<Client ID of "BX Finance MCP Worker">
-MCP_CLIENT_SECRET=<Client Secret of "BX Finance MCP Worker">
+# ── BX Finance MCP Service app (Client Credentials → PingOne API Token) ───────
+MCP_CLIENT_ID=<Client ID of "BX Finance MCP Service">
+MCP_CLIENT_SECRET=<Client Secret of "BX Finance MCP Service">
+
+# ── PingOne API Token audience ─────────────────────────────────────────────────
+PINGONE_API_AUDIENCE=https://api.pingone.com
 
 # ── PingOne token endpoint ────────────────────────────────────────────────────
 PINGONE_ENVIRONMENT_ID=<your-pingone-environment-id>
 PINGONE_REGION=com
 ```
-
-> `PINGONE_API_AUDIENCE` is not needed — the Worker app authenticates via Client Credentials and its assigned roles grant access to the Management API. No audience parameter is required.
 
 ---
 
@@ -607,11 +604,11 @@ client_id=PINGONE_CORE_CLIENT_ID
 
 PingOne validates: `subject_token.may_act.sub` === `actor_token.client_id` — both must equal the Banking App's client ID UUID (`PINGONE_CORE_CLIENT_ID`). If they match, PingOne issues the MCP Token with `act.sub = <PINGONE_CORE_CLIENT_ID>`.
 
-### MCP Server → PingOne Management API  (Worker Client Credentials — not a Token Exchange)
+### MCP Service → PingOne API Token  (Client Credentials — Token 3)
 
-Performed by: **BX Finance MCP Worker** using `MCP_CLIENT_ID` / `MCP_CLIENT_SECRET`
+Performed by: **BX Finance MCP Service** using `MCP_CLIENT_ID` / `MCP_CLIENT_SECRET`
 
-The MCP server authenticates directly to PingOne using Client Credentials. This is **not** a token exchange — the Worker app's assigned roles (`Identity Data Read Only`, `Identity Data Provisioner`) grant it access to the PingOne Management API. No `subject_token` or `scope` parameter is needed.
+The MCP server requests a scoped PingOne API token using Client Credentials. This is **not** a token exchange — it is a separate, independent credential grant that gives the MCP server permission to call the PingOne Management API.
 
 ```
 POST https://auth.pingone.com/{PINGONE_ENVIRONMENT_ID}/as/token
@@ -620,9 +617,10 @@ Content-Type: application/x-www-form-urlencoded
 client_id=MCP_CLIENT_ID
 &client_secret=MCP_CLIENT_SECRET
 &grant_type=client_credentials
+&scope=p1:read:user p1:update:user
 ```
 
-> The delegation context from Token Exchange #1 (who the original user was, which Banking App acted on their behalf) is carried by the MCP Token that the MCP server received — not by the Worker's own credential token.
+> The MCP server uses the **MCP Token** (Token 2) to verify who the user is and what they authorized, and the **PingOne API Token** (Token 3) to actually call the Management API. These are two separate tokens used together — the delegation proof and the access credential.
 
 ---
 
@@ -645,7 +643,7 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
 ```
 `may_act.sub` = the **client ID UUID** of BX Finance Banking App. PingOne compares this to the actor token’s `client_id` during Exchange #1.
 
-**MCP Token** — after Token Exchange #1 (Token 2 of 2):
+**MCP Token** — after Token Exchange #1 (Token 2):
 ```json
 {
   "aud": ["https://mcp-server.pingdemo.com"],
@@ -656,7 +654,14 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
 ```
 `act.sub` = **client ID UUID** of BX Finance Banking App — verifiable proof it performed Exchange #1.
 
-> The MCP server itself authenticates to the PingOne Management API using its own Worker Client Credentials token (not a token exchange). The delegation context is carried by the MCP Token it received.
+**PingOne API Token** — from Client Credentials (Token 3):
+```json
+{
+  "aud": ["https://api.pingone.com"],
+  "scope": "p1:read:user p1:update:user"
+}
+```
+The MCP server holds both Token 2 (proves who the user is + delegation) and Token 3 (proves it has permission to call the Management API). Token 3 has no `sub` — it represents the service, not the user.
 
 ---
 
@@ -670,7 +675,8 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
 | `may_act` is a plain string, not an object | `mayAct` schema attribute type is `STRING` | Delete and re-create as type `JSON`; re-set the value on the user |
 | Subject Token → MCP Token: `invalid_grant` | `may_act.sub` doesn’t match the Banking App’s client ID | Set `mayAct` = `{ "sub": "<PINGONE_CORE_CLIENT_ID-UUID>" }` on the user — use Option C (demo app) to set it automatically |
 | Subject Token → MCP Token: `unauthorized_client` | `BX Finance Banking App` missing Token Exchange grant type | Part 2b — enable Token Exchange grant |
-| MCP Worker client credentials failing | Worker app missing required roles | Part 2c — assign `Identity Data Read Only` and `Identity Data Provisioner` roles at Environment scope |
+| MCP Service client credentials failing (`invalid_scope: p1:read:user`) | `p1:read:user` not enabled on app Resources tab | Part 2c — enable `p1:read:user` and `p1:update:user` on the MCP Service app Resources tab |
+| MCP Service client credentials failing (`unauthorized_client`) | App type is Worker (role-based, can't use resource scopes) | Part 2c — create as Native or Web App type, not Worker |
 | `May not request scopes for multiple resources` on login | `banking:agent:invoke` and `banking:*` scopes mixed in the same `/authorize` | Keep only `banking:agent:invoke` as a non-OIDC scope on the user app; `banking:*` scopes come via exchange, not direct login |
 
 ---
