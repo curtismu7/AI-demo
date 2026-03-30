@@ -32,6 +32,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `transactions.js`: `ff_authorize_fail_open` controls fail-open vs fail-closed behaviour; `ff_authorize_deposits` adds deposits to the Authorize evaluation scope
 
 ### Fixed
+- **PINGONE_MAY_ACT_SETUP.md** — added Build and Test Expression instructions with example JSON for both Step 1b attributes (`sub` and `act`); `act` test includes mismatch guard verification step
 - **PINGONE_MAY_ACT_SETUP.md** — corrected stale `https://agent-gateway.pingdemo.com` URLs in 2a test data to `<PINGONE_CORE_CLIENT_ID>` UUID placeholders; fixed Part 5 API reference to compare `actor_token.client_id` (not `aud[0]`); fixed `act.sub` value in MCP Token example; corrected Step 1d description (may_act.sub must match client ID UUID, not audience URI); fixed 2a app description "BFF Admin" → "Banking App"
 - **End-user OAuth failures no longer send users to `/login`** — PingOne callback errors (`oauth_provider`), invalid state, missing code, nonce mismatch, session persist/regenerate failures, and token `callback_failed` now redirect to `session.postLoginReturnToPath` or **`/marketing`** so **`/` / `/marketing` still mount BankingAgent FAB + dock**; **`App.js`** + **`endUserOAuthErrorToast.js`** show a toast (pi.flow troubleshooting hint when relevant) and strip error query params (commits `3a762ae`, `b166f47`)
 - Pre-existing `no-unused-vars` lint errors in `DemoDataPage.js` and `UserDashboard.js` (suppressed with eslint-disable-next-line)

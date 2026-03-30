@@ -184,7 +184,22 @@ This is where PingOne gets the `sub` and `act` claims for the MCP Token during T
 | **Expression** | `#root.context.requestData.subjectToken.sub` |
 
 This copies the user’s `sub` from the incoming Subject Token into the new MCP Token so the user identity is preserved.
-
+> **How to test in PingOne:**
+> 1. Click the pencil icon next to the `sub` mapping → **Build and Test Expression** opens.
+> 2. Click **Edit JSON** in the Test Data panel and paste:
+> ```json
+> {
+>   "context": {
+>     "requestData": {
+>       "subjectToken": {
+>         "sub": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+>       }
+>     }
+>   }
+> }
+> ```
+> 3. Click **Test Expression** — the Result panel should show `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"` and **Verification Successful** in green.
+> 4. Click **Save**.
 **Attribute 2 — record the delegation (act claim):**
 
 | Field | Type in |
@@ -194,7 +209,35 @@ This copies the user’s `sub` from the incoming Subject Token into the new MCP 
 | **Required** | ✅ Yes |
 
 This compares `may_act.sub` in the Subject Token (the permitted actor’s UUID) against `client_id` of the actor token the Banking App presents. If they match, `may_act` is promoted to `act` in the new MCP Token. If they don’t match — meaning the wrong app is trying to exchange the token — `act` is `null` and the exchange fails because the attribute is required.
-
+> **How to test in PingOne:**
+> 1. Click the pencil icon next to the `act` mapping → **Build and Test Expression** opens.
+> 2. Click **Edit JSON** in the Test Data panel and paste (replace `<PINGONE_CORE_CLIENT_ID>` with the actual Banking App client ID UUID in both places — they must match for the result to be non-null):
+> ```json
+> {
+>   "context": {
+>     "requestData": {
+>       "subjectToken": {
+>         "sub": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+>         "may_act": {
+>           "sub": "<PINGONE_CORE_CLIENT_ID>"
+>         }
+>       },
+>       "actorToken": {
+>         "client_id": "<PINGONE_CORE_CLIENT_ID>"
+>       }
+>     }
+>   }
+> }
+> ```
+> 3. Click **Test Expression** — the Result panel should show:
+> ```json
+> {
+>   "sub": "<PINGONE_CORE_CLIENT_ID>"
+> }
+> ```
+> and **Verification Successful** in green.
+> 4. To confirm the guard works, change one UUID so they **don't** match — Result should show `null`.
+> 5. Click **Save**.
 > These variables (`#root.context.requestData.subjectToken`, `actorToken`) are only available in **resource server attribute expressions** during token exchange. They do **not** work in application attribute mappings.
 
 **Scopes tab → Add three scopes:**
