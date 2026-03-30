@@ -1806,7 +1806,8 @@ body > .banking-agent-float-root .banking-agent-panel {
   padding: 6px 12px;
   overflow-x: auto;
   overflow-y: hidden;
-  border-top: 1px solid var(--ba-border);
+  background: #2a2e35;
+  border-top: 1px solid rgba(255,255,255,0.08);
   border-right: none;
   border-left: none;
   -webkit-overflow-scrolling: touch;
