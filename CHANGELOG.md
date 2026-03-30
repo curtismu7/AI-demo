@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **MCP Compliance Diagram split into 5 tabs** — `docs/MCP_COMPLIANCE_DIAGRAM.drawio`: single unreadable 2400×1800 page replaced by Architecture Overview, BFF Compliance Detail, MCP Server Compliance Detail, and Compliance Summary tabs (Compliance Map unchanged)
 - **Marketing customer sign-in (demo/config)** — `configStore` keys `marketing_customer_login_mode` (`redirect` | `slide_pi_flow`), `marketing_demo_username_hint`, `marketing_demo_password_hint` (public; empty allowed to clear); editable in **Demo config** and **Application setup**; `LandingPage` slide-over panel with hints + **Continue to PingOne** using `use_pi_flow=1`; `BankingAgent` customer login on marketing paths appends `use_pi_flow=1` when mode is slide; `GET /api/auth/oauth/user/login?use_pi_flow=1` forces pi.flow via `oauthUserService.generateAuthorizationUrl` `forcePiFlow`; `s:oauthUserService.test.js`
 - **Compact marketing landing page** — reduced hero min-height / section padding / typography so the home page scrolls less (`LandingPage.css`, `LandingPage.js`)
 - MCP first-tool PingOne Authorize gate: `ff_authorize_mcp_first_tool` flag, `mcpToolAuthorizationService.js`, `authorize_mcp_decision_endpoint_id` config key; `POST /api/mcp/tool` evaluates once per session before the WebSocket call
