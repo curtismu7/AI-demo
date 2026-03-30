@@ -291,7 +291,10 @@ Open the existing end-user OIDC application. Verify or update:
 
 > This reads the user's `mayAct` profile attribute and passes it through as the `may_act` claim on the Subject Token at login. Use the test data below to validate the expression in PingOne's **Build and Test Expression** dialog before saving.
 >
-> **Test data** — paste into the Test Data field:
+> **How to test in PingOne:**
+> 1. Click the pencil icon next to the `may_act` mapping → **Build and Test Expression** opens.
+> 2. The expression field should contain: `(#root.user.mayAct != null ? #root.user.mayAct : null)`
+> 3. In the **Test Data** field, paste:
 > ```json
 > {
 >   "user": {
@@ -299,9 +302,9 @@ Open the existing end-user OIDC application. Verify or update:
 >   }
 > }
 > ```
-> **Expected result:** `{ "sub": "https://agent-gateway.pingdemo.com" }`
->
-> If the expression is invalid, try clicking **View Documentation** in the dialog for the supported SpEL syntax in your PingOne environment.
+> 4. Click **Test Expression**.
+> 5. The **Result** panel will echo the full test data object back — this is normal. What matters is the green **Verification Successful** message in the top-right of the dialog. That confirms the expression is valid and will correctly extract `mayAct` from the user profile and include it as the `may_act` claim on the Subject Token.
+> 6. Click **Save**.
 
 Click **Save**.
 
