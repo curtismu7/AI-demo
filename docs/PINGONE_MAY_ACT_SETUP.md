@@ -129,6 +129,8 @@ This resource server gives the Subject Token a meaningful audience URL. The AI A
 
 Click **Add Resource** and fill in exactly:
 
+**Overview tab:**
+
 | Field | Type in |
 |-------|---------|
 | **Resource name** | `BX Finance AI Agent` |
@@ -137,22 +139,28 @@ Click **Add Resource** and fill in exactly:
 | **Access token time to live (seconds)** | `3600` |
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Post` |
 
-Click **Save**, then open the resource and go to **Scopes → Add Scope**:
+Click **Save**.
+
+**Scopes tab → Add Scope:**
 
 | Field | Type in |
 |-------|---------|
 | **Scope name** | `banking:agent:invoke` |
-| **Description** | `Grants the bearer permission to invoke the BX Finance AI Agent on behalf of the authenticated user Present on the Subject Token validated by the BFF before token exchange` |
+| **Description** | `Grants the bearer permission to invoke the BX Finance AI Agent on behalf of the authenticated user Present on the Subject Token validated by the banking app before token exchange` |
 
 Click **Save**.
 
-> Attribute mapping for `may_act` is configured on the **BX Finance User** application in Step 2a, not on the resource server.
+**Attribute Mappings tab:**
+
+No mappings needed here. The `may_act` claim is configured on the **BX Finance User** application (Step 2a), not on the resource server. Leave this tab unchanged.
 
 ---
 
 ### 1b. Create: BX Finance MCP Server  *(MCP Token audience)*
 
 Click **Add Resource** and fill in exactly:
+
+**Overview tab:**
 
 | Field | Type in |
 |-------|---------|
@@ -162,7 +170,9 @@ Click **Add Resource** and fill in exactly:
 | **Access token time to live (seconds)** | `3600` |
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Post` |
 
-Click **Save**, then add three scopes:
+Click **Save**.
+
+**Scopes tab → Add three scopes:**
 
 **Scope 1:**
 
@@ -187,7 +197,9 @@ Click **Save**, then add three scopes:
 
 Click **Save** after each scope.
 
-> No attribute mappings are needed on this resource server. The MCP Token claims (`sub`, `act`, scopes) are produced by the token exchange flow, not by resource-server attribute definitions.
+**Attribute Mappings tab:**
+
+No mappings needed here. The MCP Token claims (`sub`, `act`, scopes) are produced entirely by the token exchange flow. Leave this tab unchanged.
 
 ---
 
@@ -197,6 +209,7 @@ In **Applications → Resources** locate the built-in resource named **"PingOne 
 
 - **Audience**: `https://api.pingone.com` *(set by PingOne — do not modify)*
 - Scopes `p1:read:user` and `p1:update:user` already exist — you will enable them on the MCP Worker app in Step 2c.
+- **Attribute Mappings tab:** Leave unchanged. PingOne manages claims on this built-in resource.
 
 ---
 
@@ -206,6 +219,8 @@ This resource server exists solely to give the banking app server an audience UR
 
 Click **Add Resource** and fill in exactly:
 
+**Overview tab:**
+
 | Field | Type in |
 |-------|---------|
 | **Resource name** | `BX Finance Agent Gateway` |
@@ -214,7 +229,15 @@ Click **Add Resource** and fill in exactly:
 | **Access token time to live (seconds)** | `3600` |
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Post` |
 
-Click **Save**. No scopes needed on this resource server.
+Click **Save**.
+
+**Scopes tab:**
+
+No scopes needed. This resource server is used purely for audience identity, not for granting capabilities.
+
+**Attribute Mappings tab:**
+
+No mappings needed. Leave this tab unchanged.
 
 > The Banking App application must be allowed to request tokens scoped to this audience. Enable **BX Finance Agent Gateway** on the Banking App's Resources tab in Step 2b.
 
@@ -365,6 +388,10 @@ Click **Add Application**:
 
 - ✅ `p1:read:user` from **PingOne API**
 - ✅ `p1:update:user` from **PingOne API**
+
+**Attribute Mappings tab:**
+
+No mappings needed. The Resource Token's `act` chain is produced by the token exchange flow, not by application attribute definitions. Leave this tab unchanged.
 
 Click **Save**, then copy the **Client ID** and **Client Secret** — these become `MCP_CLIENT_ID` and `MCP_CLIENT_SECRET` on the MCP server.
 
