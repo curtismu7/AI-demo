@@ -68,7 +68,7 @@
 
 ## 3. Bug Fix Log (reverse-chronological)
 
-### 2026-03-30 — Deploy bundle: marketing showcase removed, rail FABs, guest toasts, scope matrix doc
+### 2026-03-30 — Deploy bundle: marketing showcase removed, rail FABs, guest toasts, scope matrix doc (commit `2d2d8a4`)
 
 - **Landing (`/`):** Removed the full **“Try Our AI Banking Assistant”** section (tabs, try-asking, chat mock). **`scrollToAgent`** and footer **Banking assistant** link target **`#marketing-embedded-dock-slot`**. Dropped related **`LandingPage.css`** / **`globalTheme.css`** rules.
 - **Education rail:** Removed upper-left **CIBA** / **CIMD Simulator** FAB buttons (**`CIBAPanel.js`**, **`CimdSimPanel.js`**); drawers still open from Learn / events. **`App.css`** left-rail stack offsets adjusted.
