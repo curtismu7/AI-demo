@@ -155,6 +155,17 @@
 - **Regression check:** `cd banking_mcp_server && CI=true npm test -- --testPathPattern="MCPMessageHandler|mcp-protocol.integration" --forceExit` → pass; `cd banking_api_server && CI=true npx jest src/__tests__/mcp-inspector.test.js --forceExit` → pass; `cd banking_api_ui && npm run build` → **0**.
 - **Do not break:** **`POST /api/mcp/tool`** and MCP Inspector tool paths; **token exchange** / **`MCP_TOOL_SCOPES`**; **multi-instance SSE** (unchanged).
 
+### 2026-03-30 — Vercel MCP setup: script, docs, hints, rm-before-add (commits `4fec8c3`, `b8210c0`, `3fdc211`)
+
+- **Feature / ops:** Three improvements to `scripts/setup-vercel-env.js` and new `docs/VERCEL_SETUP.md`.
+- **`setup-vercel-env.js` — MCP_RESOURCE_URI promoted:** When `MCP_SERVER_URL` is set, the wizard now always prompts for `MCP_RESOURCE_URI` (previously hidden behind an optional Y/N gate). Auto-derives HTTPS default from `REACT_APP_CLIENT_URL`; sets both `MCP_RESOURCE_URI` (BFF) and `MCP_SERVER_RESOURCE_URI` (written to env file) to the same value. Post-setup checklist now prints the CLI commands to set the var on Vercel manually.
+- **`setup-vercel-env.js` — rm-before-add:** `vercelEnvAdd()` now runs `vercel env rm KEY env --yes` before each `env add`, clearing any stale value from a prior failed run. `--force` flag removed from `env add` (no longer needed).
+- **`setup-vercel-env.js` — contextual hints:** Added `tip()` helper (grayed example lines). PingOne section shows where to find each value in admin console and Vercel-vs-localhost examples for redirect URIs and `REACT_APP_CLIENT_URL`. MCP section shows `wss://` vs `ws://` examples; corrected `MCP_RESOURCE_URI` description — it is the resource URI registered in **PingOne → Resources → [MCP resource]** (Vercel: app base URL, localhost: API server base URL). New conflict check warns when `MCP_SERVER_URL` is set but `MCP_RESOURCE_URI` is missing.
+- **`docs/VERCEL_SETUP.md` (new):** Full deployment guide — session store, PingOne OAuth, MCP_RESOURCE_URI duality table, RFC 8693 token exchange vars, post-deploy checklist, troubleshooting table.
+- **`docs/BX_Finance_Agent_Flow.drawio` (new):** Draw.io diagram mapping the Ping Identity "Digital Assistants" reference architecture to the BX Finance app (users → trust boundary → LangChain agent/BFF → PingOne AS + Authorize → MCP server → 4 banking tools).
+- **Files changed:** `scripts/setup-vercel-env.js`, `docs/VERCEL_SETUP.md` (new), `docs/BX_Finance_Agent_Flow.drawio` (new), `docs/MCP_COMPLIANCE_DIAGRAM.drawio` (draw.io re-save).
+- **Do not break:** `vercelEnvAdd` error handling — rm failure is intentionally silent; `env add` still hard-fails on bad values. `MCP_RESOURCE_URI` conflict check is warning-only (not a blocking conflict). `setup-vercel-env.js` prompt defaults come from `.env.vercel.local` if it exists.
+
 ### 2026-03-30 — Deploy bundle: marketing showcase removed, rail FABs, guest toasts, scope matrix doc (commit `2d2d8a4`)
 
 - **Landing (`/`):** Removed the full **“Try Our AI Banking Assistant”** section (tabs, try-asking, chat mock). **`scrollToAgent`** and footer **Banking assistant** link target **`#marketing-embedded-dock-slot`**. Dropped related **`LandingPage.css`** / **`globalTheme.css`** rules.
