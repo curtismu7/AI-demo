@@ -159,16 +159,24 @@ function shellSingleQuote(s) {
 }
 
 /**
- * Push one variable to Vercel (--yes --force overwrite; --sensitive for tokens).
- * Uses a temp file + bash stdin redirect so values are not mangled by the shell.
+ * Push one variable to Vercel.
+ * Removes the variable first (suppressing errors if it didn't exist) so that
+ * a stale value from a previous failed run can never persist.  Then adds the
+ * new value.  Uses a temp file + bash stdin redirect so values are not mangled
+ * by the shell.  --sensitive is set for secret keys.
  */
 function vercelEnvAdd(cmdPrefix, key, value, envTarget) {
   const isSecret = SECRET_ENV_KEYS.has(key);
   const tmpFile = path.join(ROOT, `.vercel-env-tmp-${Date.now()}-${key.replace(/[^a-z0-9_-]/gi, '_')}.txt`);
   try {
+    // Remove first — clears any wrong value from a prior run; ignore if not found
+    try {
+      execSync(`${cmdPrefix} env rm ${shellSingleQuote(key)} ${shellSingleQuote(envTarget)} --yes`, { cwd: ROOT, shell: '/bin/bash', stdio: 'pipe' });
+    } catch { /* not present — expected on first run */ }
+
     fs.writeFileSync(tmpFile, String(value), 'utf8');
     const sens = isSecret ? ' --sensitive' : '';
-    const line = `${cmdPrefix} env add ${shellSingleQuote(key)} ${shellSingleQuote(envTarget)} --yes --force${sens} < ${shellSingleQuote(tmpFile)}`;
+    const line = `${cmdPrefix} env add ${shellSingleQuote(key)} ${shellSingleQuote(envTarget)} --yes${sens} < ${shellSingleQuote(tmpFile)}`;
     execSync(line, { cwd: ROOT, shell: '/bin/bash', stdio: 'pipe' });
     return true;
   } catch {
