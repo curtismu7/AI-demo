@@ -11,7 +11,7 @@ This document compares this repository’s MCP implementation (primarily `bankin
 
 Normative language in the specification follows [BCP 14](https://datatracker.ietf.org/doc/html/bcp14) ([RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119), [RFC 8174](https://datatracker.ietf.org/doc/html/rfc8174)): **MUST** / **REQUIRED**, **MUST NOT**, **SHOULD** / **RECOMMENDED**, **SHOULD NOT**, **MAY** / **OPTIONAL**.
 
-**Implementation status:** Phases A, B, C, D, and E (ping) from the remediation plan below are **implemented** in-repo (2026-03-30). Phase D (HTTP OAuth / RFC 9728) is now implemented as an additive HTTP Streamable transport running alongside WebSocket.
+**Implementation status:** All phases A, B, C, D, E, and F are **fully implemented** in-repo (2026-03-30). Tests cover all implemented behaviours. A user-facing Feature Flag ("MCP — Use 2024-11-05 Protocol") lets admins choose the handshake protocol version at runtime.
 
 ---
 
@@ -140,22 +140,39 @@ This is **not** the **HTTP MCP authorization profile**. Interoperability with a 
 - WebSocket transport is completely unchanged.
 - Opt-out: `HTTP_MCP_TRANSPORT_ENABLED=false`.
 
-### Phase E — Utilities — **partially done**
+### Phase E — Utilities — **fully done**
 
 - **`ping`** implemented.
 - **`logging/setLevel`** implemented (2026-03-30): `MCPMessageHandler` handles the request, validates RFC 5424 level, stores it as `clientLogLevel`, returns `{}`. `notifications/message` emission from server is optional and not currently used.
+- **Tests**: `MCPMessageHandler.test.ts` — `describe('logging/setLevel')` covers all 8 RFC 5424 levels (parameterised), invalid level (-32602), absent level (-32602).
 - **`MCP_SERVER_RESOURCE_URI`** documented (2026-03-30): added to `.env.example` and `EnvironmentVariables` interface. Audience validation in `TokenIntrospector` is now opt-in-but-documented; set this to `MCP_RESOURCE_URL` value in production to enable zero-trust aud checks.
 - **Cancellation / progress** not implemented (optional).
 - **Tasks** not implemented (optional / experimental).
 
-### Phase F — SHOULD requirements — **implemented** (2026-03-30)
+### Phase F — SHOULD requirements — **fully implemented + tested** (2026-03-30)
 
 - **Input validation → `isError: true`**: `MCPMessageHandler.handleToolCall` now returns an `isError: true` tool result (not a protocol error) for unknown tool names. The content item includes `{ type, text, success: false, error }` fields for LLM self-correction. Auth failure (no token/session) still returns JSON-RPC −32001 (early gate added before tool lookup so the error type matches the cause).
 - **`scope=` in `WWW-Authenticate` 401**: `HttpMCPTransport.sendUnauthorized` accepts `requiredScopes?` and appends `scope="…"` to the header.
 - **403 on insufficient scope**: `HttpMCPTransport.sendInsufficientScope` emits HTTP 403 with `error="insufficient_scope"` in `WWW-Authenticate`; `handlePost` promotes an `authChallenge`-carrying tool result to 403.
 - **Disconnect on version mismatch**: `mcpWebSocketClient.js` checks `msg.result.protocolVersion` against `SUPPORTED_PROTOCOL_VERSIONS` after `initialize` response; closes and rejects on mismatch.
-- **Server lifecycle gate**: `BankingMCPServer.routeMessage` intercepts `notifications/initialized` (sets `connection.initialized = true`) and rejects any non-init, non-ping request received before that flag is set (−32600).
-- **Request timeouts**: `MCPMessageHandler.handleToolCall` wraps `executeTool` in `Promise.race` with `TOOL_CALL_TIMEOUT_MS` (default 30 s, configurable via env). On timeout, returns `isError: true` with a descriptive message. CIBA waits are not affected.
+- **Server lifecycle gate**: `BankingMCPServer.routeMessage` intercepts `notifications/initialized` (sets `connection.initialized = true`) and rejects any non-init, non-ping request received before that flag is set (−32600). **Tests**: `BankingMCPServer.test.ts` — `describe('Lifecycle gate')` covers pre-init rejection (-32600), post-init allowed, ping always permitted.
+- **Request timeouts**: `MCPMessageHandler.handleToolCall` wraps `executeTool` in `Promise.race` with `TOOL_CALL_TIMEOUT_MS` (default 30 s, configurable via env). On timeout, returns `isError: true` with a descriptive message. CIBA waits are not affected. **Tests**: `MCPMessageHandler.test.ts` — `describe('Tool call timeout')` verifies `isError: true` with timeout message.
+
+### Phase D — HTTP authorization profile — **fully implemented + tested** (2026-03-30)
+
+- New `HttpMCPTransport.ts` adds `POST /mcp` (Streamable HTTP) and `GET /.well-known/oauth-protected-resource` (RFC 9728) on the same port as the WebSocket server.
+- Bearer token from `Authorization` header validated via existing `BankingAuthenticationManager.validateAgentToken()` (PingOne introspection).
+- Returns `401 WWW-Authenticate: Bearer realm=..., resource_metadata=<RFC 9728 URL>` on missing/invalid token.
+- `MCP-Session-Id` header issued on `initialize`; required on subsequent requests. Unknown session → 404.
+- `MCP-Protocol-Version` header required on non-initialize requests. Missing → 400.
+- `Origin` header validated (rejects with HTTP 403 if present but not in `MCP_ALLOWED_ORIGINS`).
+- `GET /mcp` returns 405 (SSE streaming not yet supported).
+- `DELETE /mcp` terminates session (200); unknown session → 404.
+- Auth-challenge tool results promoted to HTTP 403 + `insufficient_scope` in `WWW-Authenticate`.
+- Notifications (no `id`) return 202 with no body.
+- WebSocket transport is completely unchanged.
+- Opt-out: `HTTP_MCP_TRANSPORT_ENABLED=false`.
+- **Tests**: `tests/server/HttpMCPTransport.test.ts` — 15 tests covering all above behaviours.
 
 ---
 
@@ -175,6 +192,19 @@ The following fields were added to tool definitions and results in the 2025-11-2
 | `resource_link` content | Tool call result `content[]` | `{ type: "resource_link", uri, name, description, mimeType }` — links to server resources without embedding them. |
 
 **Current interfaces to update when implementing any of the above:** `ToolDefinition` and `ToolResult` in `banking_mcp_server/src/interfaces/mcp.ts`.
+
+---
+
+## User-facing options (demo / admin)
+
+| Option | Where | How | Notes |
+|--------|-------|-----|-------|
+| **MCP Protocol Version** | Admin → Feature Flags → "MCP Server" category | Toggle **"MCP — Use 2024-11-05 Protocol (legacy)"** ON/OFF | OFF (default) = `2025-11-25`. ON = `2024-11-05`. Checked at call time in `mcpWebSocketClient.js`; takes effect on the next agent tool call. |
+| **HTTP MCP Transport** | `banking_mcp_server/.env` | `HTTP_MCP_TRANSPORT_ENABLED=true/false` | MCP server env var; cannot be toggled at runtime from the BFF. Default: enabled. |
+| **Tool call timeout** | `banking_mcp_server/.env` | `TOOL_CALL_TIMEOUT_MS=<ms>` | MCP server env var. Default: 30 000 ms. |
+| **RFC 8707 audience validation** | `banking_mcp_server/.env` | `MCP_SERVER_RESOURCE_URI=<value>` | When set, `TokenIntrospector` rejects tokens whose `aud` claim does not include this value. Recommended: set to `MCP_RESOURCE_URL` in production. |
+| **Auto-inject `may_act`** | Admin → Feature Flags → "Token Exchange" | Toggle **"Token Exchange — Auto-inject may_act"** | Demo-only. See Token Exchange section. |
+| **Auto-inject audience** | Admin → Feature Flags → "Token Exchange" | Toggle **"Token Exchange — Auto-inject audience"** | Demo-only. See Token Exchange section. |
 
 ---
 

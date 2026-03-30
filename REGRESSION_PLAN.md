@@ -78,6 +78,21 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-03-30 — MCP spec 2025-11-25 gap analysis completion: tests + user options
+
+- **Feature / tooling:** Closes all test gaps and adds a user-facing option for MCP protocol version selection.
+- **Tests added:**
+  - `MCPMessageHandler.test.ts` — `describe('logging/setLevel')`: 10 tests covering all 8 RFC 5424 levels (parameterised), invalid level (-32602), absent level (-32602). `describe('Tool call timeout')`: 1 test verifying `isError: true` with timeout message when `TOOL_CALL_TIMEOUT_MS` is very short.
+  - `BankingMCPServer.test.ts` — `describe('Lifecycle gate')`: 3 tests — pre-init tools/list rejected (-32600), post-init allowed (reaches handler), ping always permitted.
+  - `tests/server/HttpMCPTransport.test.ts` (new, 15 tests): RFC 9728 metadata, 401 on missing bearer, 401 on invalid token, 200 + `MCP-Session-Id` on initialize, 404 on unknown session, 400 on missing `MCP-Protocol-Version`, DELETE 200/404, GET 405, origin rejection, no-Origin allowed, 403 + `insufficient_scope` WWW-Authenticate, 202 for notifications, 404 for unknown paths.
+- **Timeout bug fix** (`MCPMessageHandler.ts`): The `Promise.race` timeout rejection was caught by the generic catch block and returned as `-32603` protocol error. Fixed to detect timeout errors (message contains 'timed out after') and return `isError: true` tool result — compliant with spec §lifecycle/timeouts SHOULD.
+- **Feature Flag — MCP Protocol Version** (`featureFlags.js`, `configStore.js`): New flag "MCP — Use 2024-11-05 Protocol (legacy)" under "MCP Server" category. When ON, BFF uses `2024-11-05` in `initialize`; default OFF = `2025-11-25`.
+- **`mcpWebSocketClient.js`**: Added `getMcpProtocolVersion()` helper that reads `mcp_use_legacy_protocol` from configStore at call time. Exported and used in inspector route.
+- **`docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`**: Phase D, E, F all marked fully implemented + tested; new "User-facing options" table; overall status updated.
+- **Files changed:** `banking_mcp_server/src/server/MCPMessageHandler.ts`, `tests/server/MCPMessageHandler.test.ts`, `tests/server/BankingMCPServer.test.ts`, `tests/server/HttpMCPTransport.test.ts` (new), `banking_api_server/routes/featureFlags.js`, `banking_api_server/services/configStore.js`, `banking_api_server/services/mcpWebSocketClient.js`, `banking_api_server/routes/mcpInspector.js`, `docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`.
+- **Regression check:** `cd banking_mcp_server && CI=true npm test --forceExit` → **726 passed, 0 failed**; `npx tsc --noEmit` → **0 errors**; `cd banking_api_ui && npm run build` → **0**.
+- **Do not break:** Existing WebSocket lifecycle; `getMcpProtocolVersion()` falls back to `MCP_CLIENT_PROTOCOL_VERSION` env var (default `2025-11-25`) when flag is OFF; timeout fix only affects the 'timed out after' error path.
+
 ### 2026-03-30 — Regression infrastructure: snapshot tests (Layer 1) + pre-commit hook (Layer 4) + compliance diagram
 
 - **Feature / tooling:** Closes two `NOT YET IMPLEMENTED` items from the regression-guard layers.

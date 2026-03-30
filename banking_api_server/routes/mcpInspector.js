@@ -10,6 +10,7 @@ const { resolveMcpAccessTokenWithEvents } = require('../services/agentMcpTokenSe
 const {
   MCP_TOOL_SCOPES,
   MCP_CLIENT_PROTOCOL_VERSION,
+  getMcpProtocolVersion,
   getMcpServerUrl,
   getSessionBearerForMcp,
   mcpListTools,
@@ -61,7 +62,7 @@ router.get('/context', async (req, res) => {
       description:
         'Banking Backend-for-Frontend (BFF) acts as MCP Host for the browser: session cookie auth, optional RFC 8693 token exchange, then WebSocket JSON-RPC to the MCP server.',
       transport: { clientToBff: 'HTTPS + session cookie', bffToMcp: 'WebSocket JSON-RPC 2.0' },
-      mcpProtocolVersion: MCP_CLIENT_PROTOCOL_VERSION,
+      mcpProtocolVersion: getMcpProtocolVersion(),
       mcpServerConfigured: !!getMcpServerUrl(),
       tokenExchangeEnabled: !!mcpResourceUri,
       bankingAgentInspectorUrl: langchainInspectorUrl,

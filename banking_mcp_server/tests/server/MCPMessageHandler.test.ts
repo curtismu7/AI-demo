@@ -617,4 +617,98 @@ describe('MCPMessageHandler', () => {
       expect(response.result?.protocolVersion).toBe('2025-11-25');
     });
   });
+
+  describe('logging/setLevel', () => {
+    it('should accept a valid RFC 5424 level and return empty result', async () => {
+      const response = await handler.handleMessage(
+        { id: 'log-1', method: 'logging/setLevel', params: { level: 'warning' } } as MCPMessage,
+        mockContext
+      );
+      expect(response).not.toBeNull();
+      expect(response!.id).toBe('log-1');
+      expect(response!.result).toEqual({});
+      expect(response!.error).toBeUndefined();
+    });
+
+    it.each(['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'])(
+      'should accept RFC 5424 level "%s"',
+      async (level) => {
+        const response = await handler.handleMessage(
+          { id: `log-${level}`, method: 'logging/setLevel', params: { level } } as MCPMessage,
+          mockContext
+        );
+        expect(response!.result).toEqual({});
+        expect(response!.error).toBeUndefined();
+      }
+    );
+
+    it('should return -32602 for an invalid log level', async () => {
+      const response = await handler.handleMessage(
+        { id: 'log-bad', method: 'logging/setLevel', params: { level: 'verbose' } } as MCPMessage,
+        mockContext
+      );
+      expect(response).not.toBeNull();
+      expect(response!.error).toBeDefined();
+      expect(response!.error!.code).toBe(-32602);
+      expect(response!.error!.message).toMatch(/level must be one of/i);
+    });
+
+    it('should return -32602 when level param is absent', async () => {
+      const response = await handler.handleMessage(
+        { id: 'log-empty', method: 'logging/setLevel', params: {} } as MCPMessage,
+        mockContext
+      );
+      expect(response!.error!.code).toBe(-32602);
+    });
+  });
+
+  describe('Tool call timeout', () => {
+    it('should return isError: true when tool execution exceeds TOOL_CALL_TIMEOUT_MS', async () => {
+      process.env.TOOL_CALL_TIMEOUT_MS = '20';
+      const timeoutHandler = new MCPMessageHandler(mockAuthManager, mockSessionManager, mockToolProvider);
+
+      const mockSession: BankingSession = {
+        sessionId: 'timeout-session',
+        agentTokenHash: 'hash',
+        createdAt: new Date(),
+        lastActivity: new Date(),
+        expiresAt: new Date(Date.now() + 3_600_000)
+      };
+
+      mockToolProvider.getAvailableTools.mockReturnValue([{
+        name: 'slow_tool',
+        description: 'Always slow',
+        inputSchema: { type: 'object', properties: {}, required: [] },
+        requiresUserAuth: false,
+        requiredScopes: [],
+        handler: 'executeSlowTool'
+      }]);
+
+      mockSessionManager.validateSession.mockResolvedValue({
+        isValid: true,
+        requiresUserAuth: false,
+        session: mockSession
+      });
+      mockSessionManager.updateSessionActivity.mockResolvedValue();
+
+      // Tool never resolves — will hit the timeout
+      mockToolProvider.executeTool.mockReturnValue(new Promise(() => {}));
+
+      const toolCallMessage: ToolCallMessage = {
+        id: 'timeout-call',
+        method: 'tools/call',
+        params: { name: 'slow_tool', arguments: {} }
+      };
+
+      const response = await timeoutHandler.handleToolCall(
+        toolCallMessage,
+        { connectionId: 'to-1', session: mockSession, agentToken: 'tok' }
+      );
+
+      expect(response.result?.isError).toBe(true);
+      expect(response.result?.content[0].text).toMatch(/timed out/i);
+
+      delete process.env.TOOL_CALL_TIMEOUT_MS;
+    });
+  });
 });

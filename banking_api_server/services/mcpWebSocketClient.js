@@ -8,8 +8,17 @@
 const WebSocket = require('ws');
 const configStore = require('./configStore');
 
-/** Protocol version sent on initialize (server negotiates; must support 2025-11-25 or 2024-11-05). */
+/** Protocol version sent on initialize — runtime-configurable via Feature Flag 'mcp_use_legacy_protocol'.
+ *  OFF (default) = 2025-11-25 (current spec).  ON = 2024-11-05 (previous spec).
+ *  Falls back to MCP_CLIENT_PROTOCOL_VERSION env var, then 2025-11-25. */
 const MCP_CLIENT_PROTOCOL_VERSION = process.env.MCP_CLIENT_PROTOCOL_VERSION || '2025-11-25';
+
+/** Returns the protocol version to use for the current connection (checked at call time). */
+function getMcpProtocolVersion() {
+  const legacyFlag = configStore.getEffective('mcp_use_legacy_protocol');
+  if (legacyFlag === true || legacyFlag === 'true') return '2024-11-05';
+  return MCP_CLIENT_PROTOCOL_VERSION;
+}
 
 /** Versions this client can interoperate with — disconnect on mismatch (spec SHOULD). */
 const SUPPORTED_PROTOCOL_VERSIONS = new Set(['2025-11-25', '2024-11-05']);
@@ -134,7 +143,7 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
 
         ws.on('open', () => {
           const initParams = {
-            protocolVersion: MCP_CLIENT_PROTOCOL_VERSION,
+            protocolVersion: getMcpProtocolVersion(),
             capabilities: {},
             clientInfo: { name: 'banking-api-server', version: '1.0.0', description: 'BX Finance Banking BFF — MCP WebSocket client' },
           };
@@ -243,6 +252,7 @@ function mcpCallTool(toolName, toolParams, agentToken, userSub, correlationId) {
 module.exports = {
   MCP_TOOL_SCOPES,
   MCP_CLIENT_PROTOCOL_VERSION,
+  getMcpProtocolVersion,
   getMcpServerUrl,
   getSessionAccessToken,
   getSessionBearerForMcp,

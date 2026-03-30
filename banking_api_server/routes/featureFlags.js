@@ -112,6 +112,23 @@ const FLAG_REGISTRY = [
     warnIfDisabled: true,
   },
 
+  // ── MCP Server ─────────────────────────────────────────────────────────────
+  {
+    id:           'mcp_use_legacy_protocol',
+    name:         'MCP — Use 2024-11-05 Protocol (legacy)',
+    category:     'MCP Server',
+    description:
+      'When **ON**, the BFF announces `protocolVersion: 2024-11-05` in the MCP `initialize` handshake. ' +
+      'Default (**OFF**) uses `2025-11-25` (current spec, recommended). ' +
+      'This is useful when connecting to an older MCP server that only supports the previous protocol version. ' +
+      'Change takes effect on the **next** agent MCP tool call (each call opens a fresh WebSocket).',
+    impact:
+      'OFF (default) = 2025-11-25 handshake (full spec compliance). ' +
+      'ON = 2024-11-05 handshake — only enable if your MCP server rejects 2025-11-25.',
+    type:         'boolean',
+    defaultValue: false,
+  },
+
   // ── Token Exchange ──────────────────────────────────────────────────────────
   {
     id:           'ff_inject_may_act',

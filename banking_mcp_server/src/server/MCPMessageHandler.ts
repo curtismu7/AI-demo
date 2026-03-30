@@ -432,6 +432,19 @@ export class MCPMessageHandler {
       }
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      // Timeout is a tool execution error (isError: true), not a protocol error.
+      // Returning isError: true lets the LLM self-correct and retry. (MCP spec §lifecycle/timeouts SHOULD)
+      if (errorMessage.includes('timed out after')) {
+        return {
+          id: message.id ?? 'unknown',
+          result: {
+            content: [{ type: 'text', text: errorMessage, success: false, error: errorMessage }],
+            isError: true,
+          }
+        } as ToolCallResponse;
+      }
+
       return this.createErrorResponse(message.id, -32603, `Tool execution failed: ${errorMessage}`) as ToolCallResponse;
     }
   }

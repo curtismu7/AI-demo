@@ -418,4 +418,92 @@ describe('BankingMCPServer', () => {
       expect(errorEvent).toHaveProperty('error', 'Test server error');
     });
   });
+
+  describe('Lifecycle gate (spec SHOULD — pre-init rejection)', () => {
+    let serverPort: number;
+    let ws: WebSocket;
+
+    beforeEach(async () => {
+      await server.startServer();
+      serverPort = server.getActualPort() || 8080;
+      ws = new WebSocket(`ws://localhost:${serverPort}`);
+      await new Promise<void>((resolve) => { ws.once('open', () => resolve()); });
+    });
+
+    afterEach(() => {
+      if (ws.readyState === WebSocket.OPEN) ws.close();
+    });
+
+    it('should reject tools/list with -32600 if sent before notifications/initialized', async () => {
+      // Complete initialize (required first step) but do NOT send notifications/initialized
+      await new Promise<void>((resolve) => {
+        ws.once('message', () => resolve());
+        ws.send(JSON.stringify({
+          jsonrpc: '2.0', id: 'init-1',
+          method: 'initialize',
+          params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'test', version: '1.0.0' } }
+        }));
+      });
+
+      // Send tools/list WITHOUT notifications/initialized
+      const responsePromise = new Promise<any>((resolve) => {
+        ws.once('message', (data) => resolve(JSON.parse(data.toString())));
+      });
+      ws.send(JSON.stringify({ jsonrpc: '2.0', id: 'premature-list', method: 'tools/list', params: {} }));
+
+      const response = await responsePromise;
+      expect(response.error).toBeDefined();
+      expect(response.error.code).toBe(-32600);
+      expect(response.error.message).toMatch(/not initialized/i);
+    });
+
+    it('should allow tools/list after notifications/initialized is sent', async () => {
+      // Full lifecycle: initialize → notifications/initialized → tools/list
+      await new Promise<void>((resolve) => {
+        ws.once('message', () => resolve());
+        ws.send(JSON.stringify({
+          jsonrpc: '2.0', id: 'init-2',
+          method: 'initialize',
+          params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'test', version: '1.0.0' } }
+        }));
+      });
+
+      ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
+      // Small delay for notification to be processed
+      await new Promise<void>((resolve) => setTimeout(resolve, 20));
+
+      const responsePromise = new Promise<any>((resolve) => {
+        ws.once('message', (data) => resolve(JSON.parse(data.toString())));
+      });
+      ws.send(JSON.stringify({ jsonrpc: '2.0', id: 'list-after-init', method: 'tools/list', params: {} }));
+
+      const response = await responsePromise;
+      // Response should NOT be a lifecycle gate error (-32600).
+      // (tools/list may return an error from the unmocked tool provider — that is fine;
+      //  the gate must have been passed for it to reach the handler at all.)
+      expect(response.error?.code).not.toBe(-32600);
+      expect(response.id).toBe('list-after-init');
+    });
+
+    it('should allow ping before notifications/initialized', async () => {
+      // ping is always permitted (even before lifecycle completes)
+      await new Promise<void>((resolve) => {
+        ws.once('message', () => resolve());
+        ws.send(JSON.stringify({
+          jsonrpc: '2.0', id: 'init-ping',
+          method: 'initialize',
+          params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'test', version: '1.0.0' } }
+        }));
+      });
+
+      const pingPromise = new Promise<any>((resolve) => {
+        ws.once('message', (data) => resolve(JSON.parse(data.toString())));
+      });
+      ws.send(JSON.stringify({ jsonrpc: '2.0', id: 'ping-early', method: 'ping', params: {} }));
+
+      const response = await pingPromise;
+      expect(response.error).toBeUndefined();
+      expect(response.result).toEqual({});
+    });
+  });
 });
