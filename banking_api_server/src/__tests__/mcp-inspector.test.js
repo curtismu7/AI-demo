@@ -107,7 +107,7 @@ describe('MCP Inspector routes', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.role).toBe('mcp_host_proxy');
-    expect(res.body.mcpProtocolVersion).toBe('2024-11-05');
+    expect(res.body.mcpProtocolVersion).toBe('2025-11-25');
     expect(res.body.mcpHosts).toMatchObject({
       bff: expect.objectContaining({ id: 'bff' }),
       langchain: expect.objectContaining({ id: 'langchain' }),

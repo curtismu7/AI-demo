@@ -241,7 +241,6 @@ const LandingPage = () => {
             </button>
             <div className="hero-note">
               <p className="hero-note__powered">Powered by PingOne AI IAM Core</p>
-              <p className="hero-note__tag">No passwords required</p>
               {marketingCfg.mode === 'slide_pi_flow' && (
                 <p className="hero-note__tag" style={{ marginTop: '0.5rem' }}>
                   <strong>Demo:</strong> customer sign-in can open a panel with username/password hints, then{' '}

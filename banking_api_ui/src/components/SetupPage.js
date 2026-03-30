@@ -173,7 +173,7 @@ export default function SetupPage() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Link to="/" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}>← Sign in</Link>
+            <Link to="/marketing" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}>← Home</Link>
             <Link
               to="/onboarding"
               style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}

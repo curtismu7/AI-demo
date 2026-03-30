@@ -10,6 +10,7 @@ import { BankingToolProvider } from '../../src/tools/BankingToolProvider';
 import {
   HandshakeMessage,
   ListToolsMessage,
+  MCPMessage,
   ToolCallMessage,
 } from '../../src/interfaces/mcp';
 import { PingOneConfig, AgentTokenInfo } from '../../src/interfaces/auth';
@@ -246,6 +247,15 @@ describe('MCPMessageHandler', () => {
       mockContext.session = mockSession;
       mockContext.agentToken = 'test-agent-token';
 
+      mockToolProvider.getAvailableTools.mockReturnValue([{
+        name: 'get_account_balance',
+        description: 'Get account balance',
+        inputSchema: { type: 'object', properties: { account_id: { type: 'string' } }, required: ['account_id'] },
+        requiresUserAuth: true,
+        requiredScopes: [],
+        handler: 'executeGetAccountBalance'
+      }]);
+
       // Mock successful authentication validation
       mockSessionManager.validateSession.mockResolvedValue({
         isValid: true,
@@ -309,6 +319,15 @@ describe('MCPMessageHandler', () => {
         success: true
       };
 
+      mockToolProvider.getAvailableTools.mockReturnValue([{
+        name: 'get_my_accounts',
+        description: 'Get user accounts',
+        inputSchema: { type: 'object', properties: {}, required: [] },
+        requiresUserAuth: true,
+        requiredScopes: [],
+        handler: 'executeGetMyAccounts'
+      }]);
+
       // Mock agent authentication
       mockAuthManager.validateAgentToken.mockResolvedValue(mockAgentTokenInfo);
       mockSessionManager.getSessionByAgentToken.mockResolvedValue(null);
@@ -360,6 +379,15 @@ describe('MCPMessageHandler', () => {
 
     it('should handle tool execution error', async () => {
       mockContext.session = mockSession;
+
+      mockToolProvider.getAvailableTools.mockReturnValue([{
+        name: 'get_account_balance',
+        description: 'Get account balance',
+        inputSchema: { type: 'object', properties: { account_id: { type: 'string' } }, required: ['account_id'] },
+        requiresUserAuth: true,
+        requiredScopes: [],
+        handler: 'executeGetAccountBalance'
+      }]);
 
       // Mock successful authentication validation
       mockSessionManager.validateSession.mockResolvedValue({
@@ -499,8 +527,9 @@ describe('MCPMessageHandler', () => {
 
       const response = await handler.handleMessage(message, mockContext);
 
-      expect(response.id).toBe('msg-1');
-      expect(response.result).toBeDefined();
+      expect(response).not.toBeNull();
+      expect(response!.id).toBe('msg-1');
+      expect(response!.result).toBeDefined();
     });
 
     it('should route tools/list message to list tools handler', async () => {
@@ -514,9 +543,10 @@ describe('MCPMessageHandler', () => {
 
       const response = await handler.handleMessage(message, mockContext);
 
-      expect(response.id).toBe('msg-2');
-      expect(response.result).toBeDefined();
-      expect(response.result!.tools).toBeDefined();
+      expect(response).not.toBeNull();
+      expect(response!.id).toBe('msg-2');
+      expect(response!.result).toBeDefined();
+      expect(response!.result!.tools).toBeDefined();
     });
 
     it('should return method not found for unknown methods', async () => {
@@ -528,10 +558,11 @@ describe('MCPMessageHandler', () => {
 
       const response = await handler.handleMessage(message, mockContext);
 
-      expect(response.id).toBe('msg-3');
-      expect(response.error).toBeDefined();
-      expect(response.error!.code).toBe(-32601);
-      expect(response.error!.message).toBe('Method not found');
+      expect(response).not.toBeNull();
+      expect(response!.id).toBe('msg-3');
+      expect(response!.error).toBeDefined();
+      expect(response!.error!.code).toBe(-32601);
+      expect(response!.error!.message).toBe('Method not found');
     });
   });
 
@@ -544,13 +575,46 @@ describe('MCPMessageHandler', () => {
       expect(serverInfo.description).toContain('banking operations');
     });
 
-    it('should return server capabilities', () => {
+    it('should return server capabilities (tools + logging only; no prompts/resources until implemented)', () => {
       const capabilities = handler.getServerCapabilities();
 
       expect(capabilities.tools).toBeDefined();
       expect(capabilities.logging).toBeDefined();
-      expect(capabilities.prompts).toBeDefined();
-      expect(capabilities.resources).toBeDefined();
+      expect(capabilities.prompts).toBeUndefined();
+      expect(capabilities.resources).toBeUndefined();
+    });
+  });
+
+  describe('Lifecycle and ping', () => {
+    it('should return null for notifications/initialized (no JSON-RPC response)', async () => {
+      const response = await handler.handleMessage(
+        { method: 'notifications/initialized' } as MCPMessage,
+        mockContext
+      );
+      expect(response).toBeNull();
+    });
+
+    it('should respond to ping with empty result', async () => {
+      const response = await handler.handleMessage(
+        { id: 'p1', method: 'ping', params: {} } as MCPMessage,
+        mockContext
+      );
+      expect(response).not.toBeNull();
+      expect(response!.result).toEqual({});
+    });
+
+    it('should negotiate 2025-11-25 when client requests it', async () => {
+      const handshakeMessage: HandshakeMessage = {
+        id: 'h2025',
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-11-25',
+          capabilities: {},
+          clientInfo: { name: 'test', version: '1.0.0' }
+        }
+      };
+      const response = await handler.handleHandshake(handshakeMessage, mockContext);
+      expect(response.result?.protocolVersion).toBe('2025-11-25');
     });
   });
 });

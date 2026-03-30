@@ -47,7 +47,17 @@
 
 ---
 
-## 2. Port Layout (Local Dev)
+## 2. Protocol alignment (MCP 2025-11-25) — documentation note
+
+**Gap analysis doc** (not a substitute for automated regression tests). **Remediation** (lifecycle, version negotiation, capability honesty, `ping`) is **implemented** — see §4 log entry **2026-03-30 — MCP spec 2025-11-25 remediation** and update [`docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`](docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md) when changing protocol behavior.
+
+- **Doc:** [`docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`](docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md) — MCP [2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25) normative summary, compliance table, remediation status (HTTP OAuth / Phase D still N/A for WebSocket-only).
+- **When to read:** Before changing `banking_mcp_server/`, `banking_api_server/services/mcpWebSocketClient.js`, or BFF MCP routes.
+- **Do not treat as §1 critical** unless a row is promoted to the Critical table after a shipped change.
+
+---
+
+## 3. Port Layout (Local Dev)
 
 | Service | Port | Start command |
 |---|---|---|
@@ -66,7 +76,69 @@
 
 ---
 
-## 3. Bug Fix Log (reverse-chronological)
+## 4. Bug Fix Log (reverse-chronological)
+
+### 2026-03-30 — Regression infrastructure: snapshot tests (Layer 1) + pre-commit hook (Layer 4) + compliance diagram
+
+- **Feature / tooling:** Closes two `NOT YET IMPLEMENTED` items from the regression-guard layers.
+- **Layer 1 snapshot tests** (`banking_api_ui/src/components/__tests__/`): Added `Header.snapshot.test.js`, `Footer.snapshot.test.js`, `SideNav.snapshot.test.js`. Each file renders the component's primary states (user nav, admin nav, light theme) and asserts `toMatchSnapshot()`. Baseline snapshots stored in `__snapshots__/`. Header null-user test case removed (component crashes on `user.firstName` without a user object — by design). **6 snapshots created, all passing.**
+- **Layer 4 pre-commit hook** (`.git/hooks/pre-commit`): Installed per spec in REGRESSION_PLAN §4 Layer 4. Hook checks `git diff --cached` for `banking_api_ui/src` changes; if present, runs `npm run test:unit -- --watchAll=false --passWithNoTests --forceExit` and blocks the commit on failure.
+- **Compliance diagram** (`docs/MCP_COMPLIANCE_DIAGRAM.drawio`): Two-tab draw.io file. Tab 1 — "Compliance Map": requirement-by-requirement table (8 sections, RFC column, code enforcer column, status badge, deficiency notes). Tab 2 — "Architecture & Compliance Mapping": full system architecture (4-layer diagram — External Clients, BFF, MCP Server, PingOne/Data) with colour-coded compliance annotations (green=MUST, blue=SHOULD, orange=opt-in, grey=N/A), deficiency callout, RFC reference panel, compliance score summary.
+- **Gap analysis doc** (`docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`): New file — normative MCP 2025-11-25 summary, compliance table (Phases A–F+E), remediation status.
+- **Files changed:** `banking_api_ui/src/components/__tests__/Header.snapshot.test.js` (new), `Footer.snapshot.test.js` (new), `SideNav.snapshot.test.js` (new), `banking_api_ui/src/components/__tests__/__snapshots__/` (new baselines), `.git/hooks/pre-commit` (new), `docs/MCP_COMPLIANCE_DIAGRAM.drawio` (new), `docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md` (new), `REGRESSION_PLAN.md` Layer 1 + Layer 4 status updated.
+- **Regression check:** `cd banking_api_ui && npm run test:unit -- --testPathPattern=snapshot --passWithNoTests` → **6 passed, 0 failed**. `cd banking_api_ui && npm run build` → **0**.
+- **Do not break:** Existing Jest test suites; Header/Footer/SideNav component DOM structure (update snapshot intentionally with `--updateSnapshot` when changing these components).
+
+### 2026-03-30 — MCP spec 2025-11-25 Phase E: logging/setLevel + MCP_SERVER_RESOURCE_URI
+
+- **Feature / protocol:** Phase E utilities — closes two remaining compliance gaps identified post-Phase F.
+- **`logging/setLevel` handler** (`MCPMessageHandler.ts`): Added `case 'logging/setLevel'` to `handleMessage` switch + private `handleSetLogLevel()` method. Validates RFC 5424 level name (`debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`), stores as `clientLogLevel` field, returns `{}`. Previously fell through to `−32601 Method not found` despite `logging: {}` being advertised in `serverCapabilities` — a capability honesty violation.
+- **`MCP_SERVER_RESOURCE_URI` env var documented** (`.env.example` + `src/interfaces/config.ts`): Audience validation code in `TokenIntrospector.ts` lines 89–104 already existed but the env var was undiscoverable. Now documented with recommended value = `MCP_RESOURCE_URL`. Setting it activates zero-trust RFC 8707 `aud` claim validation on every inbound agent token; leaving blank skips validation (acceptable for demo environments, not production).
+- **Files changed:** `banking_mcp_server/src/server/MCPMessageHandler.ts`, `banking_mcp_server/.env.example`, `banking_mcp_server/src/interfaces/config.ts`, `docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md` (Phase E status updated), `docs/MCP_COMPLIANCE_DIAGRAM.drawio` (new compliance map).
+- **Regression check:** `cd banking_mcp_server && npm test` → **695 passed, 5 skipped, 0 failed**; `npx tsc --noEmit` → **0 errors**.
+- **Do not break:** Existing WebSocket token validation (unset `MCP_SERVER_RESOURCE_URI` keeps the same never-validate behaviour as before); `handleMessage` switch ordering unchanged; all 695 passing tests.
+
+### 2026-03-30 — MCP spec 2025-11-25 Phase F: SHOULD requirements implemented
+
+- **Feature / protocol:** Implements Phase F from [`docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`](docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md) — all normative **SHOULD** requirements now in code.
+- **Input validation → `isError: true`** (`MCPMessageHandler.ts`): Unknown tool name returns `isError: true` tool result (not JSON-RPC protocol error) so LLMs can self-correct. An early auth gate (`!agentToken && !session`) still returns −32001 protocol error before the tool lookup, preserving correct error types.
+- **`scope=` in `WWW-Authenticate` 401 + 403 insufficient scope** (`HttpMCPTransport.ts`): `sendUnauthorized` now appends `scope="…"` when `requiredScopes` are known; new `sendInsufficientScope` returns HTTP 403 with `error="insufficient_scope"` in `WWW-Authenticate`; `handlePost` promotes auth-challenge tool results to 403.
+- **Disconnect on protocol version mismatch** (`mcpWebSocketClient.js`): After `initialize` response, checks `msg.result.protocolVersion` against `SUPPORTED_PROTOCOL_VERSIONS = {'2025-11-25', '2024-11-05'}`; closes WebSocket and rejects on unknown version.
+- **Server lifecycle gate** (`BankingMCPServer.ts`): `routeMessage` intercepts `notifications/initialized` (sets `connection.initialized = true` on `ConnectionInfo`) and rejects (−32600) any non-`initialize`, non-`ping` request received before that flag is set. Integration and unit tests updated to complete the full lifecycle before making requests.
+- **Request timeouts** (`MCPMessageHandler.ts`): `handleToolCall` wraps `executeTool` in `Promise.race` with a configurable `TOOL_CALL_TIMEOUT_MS` timeout (default 30 s). Returns `isError: true` on timeout so the LLM can retry. CIBA waits are not included. `TOOL_CALL_TIMEOUT_MS` documented in `config.ts` + `.env.example`.
+- **TypeScript interfaces** (`mcp.ts`): `ToolDefinition` gains `title?`, `outputSchema?`, `icons?`, `annotations?`, `execution?`; `ToolResult` gains `audio`/`resource_link` type variants plus `uri?`, `structuredContent?`, `annotations?`; `HandshakeMessage.clientInfo` gains `description?`.
+- **`clientInfo.description`** (`mcpWebSocketClient.js`): Added human-readable `description` field per spec recommendation.
+- **Files changed:** `banking_mcp_server/src/server/MCPMessageHandler.ts`, `BankingMCPServer.ts`, `HttpMCPTransport.ts`, `src/interfaces/mcp.ts`, `src/interfaces/config.ts`, `.env.example`; `banking_api_server/services/mcpWebSocketClient.js`; tests: `MCPMessageHandler.test.ts`, `BankingMCPServer.test.ts`, `mcp-protocol.integration.test.ts`.
+- **Regression check:** `cd banking_mcp_server && CI=true npm test --forceExit` → **695 passed, 5 skipped, 0 failed**; `npx tsc --noEmit` → **0 errors**.
+- **Do not break:** WebSocket `initialize→notifications/initialized→tools/call` flow; all existing auth challenge / CIBA paths; `HttpMCPTransport` WebSocket transport stays unchanged; no change to `banking_api_ui`.
+
+### 2026-03-30 — MCP spec 2025-11-25 Phase D: HTTP Streamable transport + RFC 9728
+
+- **Feature / protocol:** Implements **Phase D** from [`docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`](docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md) — HTTP Streamable MCP transport running **alongside** the existing WebSocket transport on the same port. WebSocket path is completely unchanged.
+- **New endpoints on `banking_mcp_server`:**
+  - `GET /.well-known/oauth-protected-resource` — RFC 9728 Protected Resource Metadata (always available)
+  - `POST /mcp` — Streamable HTTP MCP endpoint; requires `Authorization: Bearer <token>` (PingOne introspection); issues `MCP-Session-Id` header on initialize
+  - `DELETE /mcp` — client-initiated session termination
+- **Auth on HTTP transport:** Bearer validated on every request via existing `BankingAuthenticationManager.validateAgentToken()`. Returns `401 WWW-Authenticate: Bearer realm=..., resource_metadata=<RFC 9728 URL>` on missing/invalid token.
+- **Session management:** `MCP-Session-Id` (UUID) maps to existing `BankingSession` in `BankingSessionManager`; both transports share the same session store.
+- **Opt-out:** `HTTP_MCP_TRANSPORT_ENABLED=false` disables `/mcp` endpoint while keeping `/.well-known/oauth-protected-resource` active.
+- **New files:** `banking_mcp_server/src/server/HttpMCPTransport.ts`
+- **Modified files:** `banking_mcp_server/src/server/BankingMCPServer.ts` (import + field + `handleHttpRequest` routing only); `banking_mcp_server/src/interfaces/config.ts` (3 new optional env vars); `banking_mcp_server/.env.example`.
+- **Regression check:** `cd banking_mcp_server && CI=true npm test -- --testPathPattern="MCPMessageHandler|mcp-protocol.integration" --forceExit` → **39 passed, 0 failed**; `npx tsc --noEmit` → **0 errors**.
+- **Do not break:** WebSocket `initialize→notifications/initialized→tools/call` flow; all existing routing in `BankingMCPServer.ts`; `mcpWebSocketClient.js` BFF bridge.
+
+### 2026-03-30 — MCP spec 2025-11-25 remediation (lifecycle, version, capabilities, ping)
+
+- **Feature / protocol:** Aligns with [`docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`](docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md) — **Phase A–C + E** (not HTTP OAuth / Phase D).
+- **BFF (`mcpWebSocketClient.js`):** `initialize` (id 1) → on success **`notifications/initialized`** → **`tools/list` / `tools/call`** (id 2); **`MCP_CLIENT_PROTOCOL_VERSION`** (env, default **`2025-11-25`**); **`capabilities: {}`** + **`clientInfo`**; initialize errors do not send follow-ups.
+- **MCP server (`MCPMessageHandler.ts`):** Negotiate **`2025-11-25`** or **`2024-11-05`**; **`notifications/initialized`** (no response); **`ping`**; **`serverCapabilities`** only **tools** + **logging** (prompts/resources removed); default missing **`capabilities`** to `{}`.
+- **`BankingMCPServer.ts`:** `isValidMCPMessage` — reject **`id === null`**; allow **`notifications/*`** only without `id`.
+- **Inspector:** `GET /api/mcp/inspector/context` **`mcpProtocolVersion`** from **`MCP_CLIENT_PROTOCOL_VERSION`**; transport copy mentions **`notifications/initialized`**.
+- **UI:** **`BankingAgent.js`** MCP cheat string — handshake mentions **`notifications/initialized`**.
+- **Tests:** `mcp-protocol.integration.test.ts` (lifecycle sequence); `MCPMessageHandler.test.ts`; `mcp-inspector.test.js` expectation **2025-11-25**.
+- **Files:** `banking_api_server/services/mcpWebSocketClient.js`, `routes/mcpInspector.js`, `src/__tests__/mcp-inspector.test.js`; `banking_mcp_server/src/server/MCPMessageHandler.ts`, `BankingMCPServer.ts`, `tests/server/MCPMessageHandler.test.ts`, `tests/integration/mcp-protocol.integration.test.ts`; `banking_api_ui/src/components/BankingAgent.js`; `docs/MCP_SPEC_2025_11_25_GAP_ANALYSIS.md`, `REGRESSION_PLAN.md` §2.
+- **Regression check:** `cd banking_mcp_server && CI=true npm test -- --testPathPattern="MCPMessageHandler|mcp-protocol.integration" --forceExit` → pass; `cd banking_api_server && CI=true npx jest src/__tests__/mcp-inspector.test.js --forceExit` → pass; `cd banking_api_ui && npm run build` → **0**.
+- **Do not break:** **`POST /api/mcp/tool`** and MCP Inspector tool paths; **token exchange** / **`MCP_TOOL_SCOPES`**; **multi-instance SSE** (unchanged).
 
 ### 2026-03-30 — Deploy bundle: marketing showcase removed, rail FABs, guest toasts, scope matrix doc (commit `2d2d8a4`)
 
@@ -659,7 +731,7 @@
 
 ---
 
-## 4. Pre-Deploy Checklist
+## 5. Pre-Deploy Checklist
 
 Before every `vercel --prod`:
 
@@ -706,7 +778,7 @@ Before every `vercel --prod`:
 
 ---
 
-## 5. Known Limitations (not bugs)
+## 6. Known Limitations (not bugs)
 
 | Limitation | Reason | Workaround |
 |---|---|---|
@@ -717,7 +789,7 @@ Before every `vercel --prod`:
 
 ---
 
-## 6. Environment Variable Reference
+## 7. Environment Variable Reference
 
 ### `banking_api_server/.env` (local / not in git)
 | Variable | Purpose |
@@ -752,7 +824,7 @@ Before every `vercel --prod`:
 
 ---
 
-## 7. Quick Smoke Test (10 min)
+## 8. Quick Smoke Test (10 min)
 
 Run after any change before committing:
 
@@ -802,7 +874,7 @@ tail -20 /tmp/bank-ui.log           # no "Could not proxy" lines
 
 ---
 
-## 8. UI Regression Prevention — 4 Layers of Protection
+## 9. UI Regression Prevention — 4 Layers of Protection
 
 > **Goal:** No unintended UI changes land unless explicitly requested.
 
@@ -810,7 +882,7 @@ tail -20 /tmp/bank-ui.log           # no "Could not proxy" lines
 
 ### Layer 1 — Component Snapshot Tests
 
-> ⚠️ **NOT YET IMPLEMENTED** — none of the snapshot tests below exist yet. Add them in priority order.
+> ✅ **PARTIALLY IMPLEMENTED** (2026-03-30) — `Header`, `Footer`, and `SideNav` snapshots added (highest-risk layout components). Remaining components below are still pending.
 
 Add `toMatchSnapshot()` to every significant component. The first run creates the baseline; future runs fail if the rendered structure drifts.
 
@@ -886,7 +958,7 @@ Before making any UI change:
 
 ### Layer 4 — Pre-commit Smoke Hook
 
-> ⚠️ **NOT YET IMPLEMENTED** — `.git/hooks/pre-commit` does not exist. Create it to activate this layer.
+> ✅ **INSTALLED** (2026-03-30) — `.git/hooks/pre-commit` created and executable.
 
 Run UI unit tests automatically whenever a UI file is staged. Catches regressions before they enter git history.
 
@@ -934,7 +1006,7 @@ commit, push to git and vercel, update regression docs
 
 ---
 
-## 9. Full Regression Pass
+## 10. Full Regression Pass
 
 Run this ordered sequence to verify everything before a major release or after a large refactor. Each command maps to a layer of the test pyramid.
 

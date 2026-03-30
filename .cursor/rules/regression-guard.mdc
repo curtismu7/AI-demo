@@ -63,7 +63,7 @@ Agent workflow and repo conventions: `/Users/cmuir/P1Import-apps/Banking/CLAUDE.
 
 ## After Fixing a Bug
 
-Add an entry to **Section 3 — Bug Fix Log** in `REGRESSION_PLAN.md`:
+Add an entry to **Section 4 — Bug Fix Log** in `REGRESSION_PLAN.md`:
 
 ```markdown
 ### YYYY-MM-DD — Short description (commit `abc1234`)

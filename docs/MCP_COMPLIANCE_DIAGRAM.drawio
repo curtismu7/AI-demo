@@ -1,0 +1,862 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" version="21.0.0">
+<diagram id="compliance-map" name="Compliance Map">
+<mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1320" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- TITLE -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="title" value="BX Finance — MCP Spec 2025-11-25 Compliance Map" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+      <mxGeometry x="280" y="20" width="1340" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="subtitle" value="Green = Implemented ✔   |   Orange = Opt-in / Partial ⚠   |   Red = Not Implemented ✗   |   Grey = Out of Scope / N/A" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontColor=#444444;" vertex="1" parent="1">
+      <mxGeometry x="280" y="60" width="1340" height="25" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- COLUMN HEADERS -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="hdr1" value="MCP Spec Requirement" style="text;html=1;strokeColor=#666666;fillColor=#1a1a2e;align=center;verticalAlign=middle;fontColor=#ffffff;fontSize=12;fontStyle=1;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="100" width="240" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="hdr2" value="RFC / Standard" style="text;html=1;strokeColor=#666666;fillColor=#1a1a2e;align=center;verticalAlign=middle;fontColor=#ffffff;fontSize=12;fontStyle=1;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="270" y="100" width="200" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="hdr3" value="Enforced By (Code)" style="text;html=1;strokeColor=#666666;fillColor=#1a1a2e;align=center;verticalAlign=middle;fontColor=#ffffff;fontSize=12;fontStyle=1;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="480" y="100" width="340" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="hdr4" value="Status" style="text;html=1;strokeColor=#666666;fillColor=#1a1a2e;align=center;verticalAlign=middle;fontColor=#ffffff;fontSize=12;fontStyle=1;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="100" width="120" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="hdr5" value="Notes / Deficiency" style="text;html=1;strokeColor=#666666;fillColor=#1a1a2e;align=center;verticalAlign=middle;fontColor=#ffffff;fontSize=12;fontStyle=1;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="960" y="100" width="620" height="36" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION A: LIFECYCLE (MUST) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="secA_hdr" value="LIFECYCLE (MUST)" style="text;html=1;strokeColor=#0d6b3e;fillColor=#0d6b3e;align=left;verticalAlign=middle;fontColor=#ffffff;fontSize=11;fontStyle=1;spacingLeft=8;rounded=0;" vertex="1" parent="1">
+      <mxGeometry x="20" y="150" width="1560" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- initialize MUST be first -->
+    <mxCell id="r1a" value="initialize MUST be first interaction" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="174" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r1b" value="MCP Lifecycle §initialize" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="174" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r1c" value="mcpWebSocketClient.js — sends initialize(id=1) before any tool call" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="174" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r1d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="174" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r1e" value="Phase A complete. Integration test: initialize → notifications/initialized → tools/list." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="174" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- notifications/initialized MUST be sent -->
+    <mxCell id="r2a" value="notifications/initialized MUST be sent after initialize" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="212" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r2b" value="MCP Lifecycle §notifications/initialized" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="212" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r2c" value="mcpWebSocketClient.js + MCPMessageHandler.handleMessage case 'notifications/initialized'" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="212" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r2d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="212" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r2e" value="Server returns null (no response). Client sends before any tools/call." style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="212" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- Server lifecycle gate SHOULD -->
+    <mxCell id="r3a" value="Server SHOULD NOT process requests before notifications/initialized" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="250" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r3b" value="MCP Lifecycle §ordering (SHOULD)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="250" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r3c" value="BankingMCPServer.routeMessage — connection.initialized flag; rejects −32600 before flag set" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="250" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r3d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="250" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r3e" value="Phase F. Exceptions: initialize and ping allowed pre-initialized." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="250" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION B: PROTOCOL VERSION (MUST) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="secB_hdr" value="PROTOCOL VERSION NEGOTIATION (MUST + SHOULD)" style="text;html=1;strokeColor=#0d6b3e;fillColor=#0d6b3e;align=left;verticalAlign=middle;fontColor=#ffffff;fontSize=11;fontStyle=1;spacingLeft=8;rounded=0;" vertex="1" parent="1">
+      <mxGeometry x="20" y="300" width="1560" height="24" as="geometry" />
+    </mxCell>
+
+    <mxCell id="r4a" value="Server MUST echo same version if supported; else respond with own version" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="324" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r4b" value="MCP Lifecycle §version negotiation" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="324" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r4c" value="MCPMessageHandler.negotiateProtocolVersion() — supports 2025-11-25 and 2024-11-05" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="324" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r4d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="324" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r4e" value="Phase B. Any 2024-* client version maps to 2024-11-05." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="324" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <mxCell id="r5a" value="Client SHOULD disconnect on version mismatch" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="362" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r5b" value="MCP Lifecycle §disconnect on mismatch (SHOULD)" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="362" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r5c" value="mcpWebSocketClient.js — checks protocolVersion against SUPPORTED_PROTOCOL_VERSIONS; closes + rejects on mismatch" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="362" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r5d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="362" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r5e" value="Phase F. BFF (client role) disconnects; MCP server does not need to." style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="362" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION C: JSON-RPC STRICTNESS (MUST) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="secC_hdr" value="JSON-RPC PROTOCOL STRICTNESS (MUST)" style="text;html=1;strokeColor=#0d6b3e;fillColor=#0d6b3e;align=left;verticalAlign=middle;fontColor=#ffffff;fontSize=11;fontStyle=1;spacingLeft=8;rounded=0;" vertex="1" parent="1">
+      <mxGeometry x="20" y="412" width="1560" height="24" as="geometry" />
+    </mxCell>
+
+    <mxCell id="r6a" value="Request ids MUST NOT be null; MUST NOT be reused" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="436" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r6b" value="JSON-RPC 2.0 / MCP Basic §messages" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="436" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r6c" value="BankingMCPServer.isValidMCPMessage() — rejects id===null; notifications must use notifications/* without id" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="436" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r6d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="436" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r6e" value="Phase C. Id uniqueness within session enforced by sequential id counter in BFF client." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="436" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <mxCell id="r7a" value="Input validation failures → isError:true (not protocol errors)" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="474" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r7b" value="MCP Tools §error handling (MUST)" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="474" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r7c" value="MCPMessageHandler.handleToolCall() — unknown tool returns isError:true content block; auth failure returns −32001" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="474" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r7d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="474" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r7e" value="Phase F. LLM can self-correct on tool errors; auth gate returns protocol error correctly." style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="474" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- Capability honesty -->
+    <mxCell id="r8a" value="Servers MUST only advertise capabilities they implement" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="512" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r8b" value="MCP Architecture §capabilities (MUST)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="512" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r8c" value="MCPMessageHandler.serverCapabilities — tools:{} + logging:{} only; prompts/resources omitted" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="512" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r8d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="512" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r8e" value="Phase C. logging/setLevel now handled (2026-03-30); notifications/message from server is not emitted (optional)." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="512" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION D: HTTP TRANSPORT + RFC 9728 -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="secD_hdr" value="HTTP TRANSPORT + AUTHORIZATION (RFC 9728, RFC 8707, RFC 6750, OAuth 2.1)" style="text;html=1;strokeColor=#0d6b3e;fillColor=#0d6b3e;align=left;verticalAlign=middle;fontColor=#ffffff;fontSize=11;fontStyle=1;spacingLeft=8;rounded=0;" vertex="1" parent="1">
+      <mxGeometry x="20" y="562" width="1560" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- RFC 9728 -->
+    <mxCell id="r9a" value="MCP servers using HTTP MUST expose /.well-known/oauth-protected-resource" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="586" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r9b" value="RFC 9728 — OAuth Protected Resource Metadata" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="586" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r9c" value="HttpMCPTransport.ts — GET /.well-known/oauth-protected-resource  returns resource, authorization_servers, bearer_methods_supported, scopes_supported" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="586" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r9d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="586" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r9e" value="Phase D (2026-03-30). HTTP Streamable transport on same port as WebSocket." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="586" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- 401 + WWW-Authenticate + scope -->
+    <mxCell id="r10a" value="MUST return 401 WWW-Authenticate on missing/invalid token; SHOULD include scope=" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="624" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r10b" value="RFC 6750 §3 Bearer Token — WWW-Authenticate; MCP Auth §401 scope (SHOULD)" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="624" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r10c" value="HttpMCPTransport.sendUnauthorized(requiredScopes?) — emits 401 with WWW-Authenticate: Bearer realm=..., resource_metadata=..., scope=&quot;...&quot;" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="624" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r10d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="624" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r10e" value="Phase D + F. scope= appended when requiredScopes known." style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="624" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- 403 insufficient_scope -->
+    <mxCell id="r11a" value="SHOULD return 403 insufficient_scope WWW-Authenticate on scope mismatch" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="662" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r11b" value="RFC 6750 + MCP Auth §403 insufficient_scope (SHOULD)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="662" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r11c" value="HttpMCPTransport.sendInsufficientScope() — HTTP 403, WWW-Authenticate: Bearer error=&quot;insufficient_scope&quot;" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="662" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r11d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="662" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r11e" value="Phase F. authChallenge-carrying tool result promoted to HTTP 403 by handlePost." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="662" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- RFC 8707 resource parameter -->
+    <mxCell id="r12a" value="MUST implement RFC 8707 resource parameter in OAuth authorize requests" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="700" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r12b" value="RFC 8707 — Resource Indicators for OAuth 2.0" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="700" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r12c" value="oauthAuthorizeResource.js — buildPingOneAuthorizeResourceQueryParam() appends &amp;resource=... to authorize URL for both OAuth flows" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="700" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r12d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="700" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r12e" value="Omitted when OIDC + custom API scopes are mixed (PingOne limitation; documented in file header)." style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="700" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- MCP-Session-Id + MCP-Protocol-Version headers -->
+    <mxCell id="r13a" value="HTTP: MCP-Session-Id issued on initialize; MCP-Protocol-Version required on subsequent requests" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="738" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r13b" value="MCP Transports §Streamable HTTP headers (MUST)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="738" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r13c" value="HttpMCPTransport.ts — issues MCP-Session-Id UUID on initialize POST; validates header on subsequent POSTs" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="738" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r13d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="738" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r13e" value="Phase D." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="738" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- Origin validation -->
+    <mxCell id="r14a" value="HTTP: Origin header validation (CSRF protection for browser clients)" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="776" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r14b" value="MCP Auth §security / OWASP CSRF; MCP Transports §origin" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="776" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r14c" value="HttpMCPTransport.ts — validates Origin against MCP_ALLOWED_ORIGINS; returns 403 if present but not in allowlist" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="776" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r14d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="776" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r14e" value="Phase D. MCP_ALLOWED_ORIGINS env var; blank = allow all (demo/server-to-server mode)." style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="776" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION E: OAUTH 2.1 / PKCE / OIDC (BFF) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="secE_hdr" value="OAUTH 2.1 / PKCE / OIDC — BFF (banking_api_server)" style="text;html=1;strokeColor=#0d6b3e;fillColor=#0d6b3e;align=left;verticalAlign=middle;fontColor=#ffffff;fontSize=11;fontStyle=1;spacingLeft=8;rounded=0;" vertex="1" parent="1">
+      <mxGeometry x="20" y="826" width="1560" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- PKCE -->
+    <mxCell id="r15a" value="OAuth 2.1 requires PKCE (S256) for auth code flows" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="850" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r15b" value="OAuth 2.1 §PKCE; RFC 7636" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="850" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r15c" value="routes/oauth.js + routes/oauthUser.js — setPkceCookie/readPkceCookie, code_verifier + code_challenge (S256)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="850" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r15d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="850" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r15e" value="Both admin (agent) and end-user OAuth flows." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="850" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- State + Nonce -->
+    <mxCell id="r16a" value="State (CSRF) + Nonce (replay) MUST be generated and verified" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="888" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r16b" value="OAuth 2.1 §state; OIDC Core §nonce" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="888" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r16c" value="routes/oauth.js + oauthUser.js — state generated, stored in cookie, verified on callback; nonce generated, verified in ID token" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="888" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r16d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="888" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r16e" value="Fully compliant." style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="888" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- Confidential client -->
+    <mxCell id="r17a" value="Token endpoint: confidential client (client_secret); no implicit/password grant" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="926" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r17b" value="OAuth 2.1 §2.1 confidential client; §deprecated grants" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="926" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r17c" value="oauthService.js — client_secret_post; grant_type=authorization_code / token exchange / client_credentials / refresh_token only" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="926" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r17d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="926" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r17e" value="No implicit or password grant used." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="926" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- Token audience validation — PARTIAL -->
+    <mxCell id="r18a" value="Token aud claim SHOULD be validated against server resource URI (zero-trust)" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="964" width="240" height="46" as="geometry" />
+    </mxCell>
+    <mxCell id="r18b" value="RFC 8707 §audience; OAuth 2.0 Token Validation best practice" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="964" width="200" height="46" as="geometry" />
+    </mxCell>
+    <mxCell id="r18c" value="TokenIntrospector.ts lines 89-104 — validates aud if MCP_SERVER_RESOURCE_URI env var is set" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="964" width="340" height="46" as="geometry" />
+    </mxCell>
+    <mxCell id="r18d" value="⚠ OPT-IN" style="text;html=1;strokeColor=#b8860b;fillColor=#fff3cd;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#856404;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="964" width="120" height="46" as="geometry" />
+    </mxCell>
+    <mxCell id="r18e" value="⚠ MCP_SERVER_RESOURCE_URI is documented in .env.example (2026-03-30) but must be explicitly set in production. If unset, aud is not validated — tokens for other services could be accepted." style="text;html=1;strokeColor=#b8860b;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;fontStyle=1;fontColor=#856404;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="964" width="620" height="46" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION F: UTILITIES (SHOULD/MAY) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="secF_hdr" value="UTILITIES — ping, logging, timeouts, cancellation, tasks (MAY / SHOULD)" style="text;html=1;strokeColor=#0d6b3e;fillColor=#0d6b3e;align=left;verticalAlign=middle;fontColor=#ffffff;fontSize=11;fontStyle=1;spacingLeft=8;rounded=0;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1022" width="1560" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- ping -->
+    <mxCell id="r19a" value="ping utility (optional round-trip health check)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1046" width="240" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r19b" value="MCP Utilities §ping (MAY)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1046" width="200" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r19c" value="MCPMessageHandler.handlePing() — returns {result:{}}" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1046" width="340" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r19d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1046" width="120" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r19e" value="Phase E." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1046" width="620" height="34" as="geometry" />
+    </mxCell>
+
+    <!-- logging/setLevel -->
+    <mxCell id="r20a" value="logging/setLevel — client sets minimum log level; server SHOULD send notifications/message" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1080" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r20b" value="MCP Utilities §logging; RFC 5424 log levels (MAY/SHOULD)" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1080" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r20c" value="MCPMessageHandler.handleSetLogLevel() — validates RFC 5424 level, stores clientLogLevel, returns {}. notifications/message not emitted (optional)" style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1080" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r20d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1080" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r20e" value="Phase E (2026-03-30). Server→client log emission is optional and not currently used." style="text;html=1;strokeColor=#cccccc;fillColor=#ffffff;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1080" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- Request timeouts -->
+    <mxCell id="r21a" value="SHOULD establish timeouts for sent requests; cancel on timeout" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1118" width="240" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r21b" value="MCP Lifecycle §timeouts (SHOULD)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1118" width="200" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r21c" value="MCPMessageHandler.handleToolCall() — Promise.race([executeTool, TOOL_CALL_TIMEOUT_MS]); returns isError:true on timeout" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1118" width="340" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r21d" value="✔ DONE" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1118" width="120" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r21e" value="Phase F. TOOL_CALL_TIMEOUT_MS env (default 30 s). CIBA waits excluded." style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1118" width="620" height="34" as="geometry" />
+    </mxCell>
+
+    <!-- Cancellation / Progress -->
+    <mxCell id="r22a" value="Cancellation (notifications/cancelled) + Progress (notifications/progress) utilities" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1152" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r22b" value="MCP Utilities §cancellation + §progress (MAY)" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1152" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r22c" value="Not implemented" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1152" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r22d" value="✗ NOT IMPL" style="text;html=1;strokeColor=#856404;fillColor=#fff3cd;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#856404;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1152" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r22e" value="Optional (MAY). No LLM clients currently rely on these. Future work." style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1152" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- Tasks -->
+    <mxCell id="r23a" value="Tasks: tasks/get, tasks/result, tasks/list, tasks/cancel (experimental 2025-11-25)" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1190" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r23b" value="MCP Utilities §tasks (MAY / experimental)" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1190" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r23c" value="Not implemented. All tools use execution.taskSupport: 'forbidden' (default)" style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1190" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r23d" value="✗ NOT IMPL" style="text;html=1;strokeColor=#856404;fillColor=#fff3cd;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#856404;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1190" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r23e" value="Optional / experimental. No client declares tasks capability currently." style="text;html=1;strokeColor=#cccccc;fillColor=#fff3cd;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1190" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION G: TOOL SCHEMA 2025-11-25 FIELDS -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="secG_hdr" value="TOOL SCHEMA 2025-11-25 OPTIONAL FIELDS (MAY)" style="text;html=1;strokeColor=#0d6b3e;fillColor=#0d6b3e;align=left;verticalAlign=middle;fontColor=#ffffff;fontSize=11;fontStyle=1;spacingLeft=8;rounded=0;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1240" width="1560" height="24" as="geometry" />
+    </mxCell>
+
+    <!-- title / icons / annotations typed -->
+    <mxCell id="r24a" value="ToolDefinition: title, icons, annotations, execution.taskSupport fields" style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1264" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r24b" value="MCP 2025-11-25 §tool definitions (MAY)" style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1264" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r24c" value="interfaces/mcp.ts ToolDefinition — title?, icons?, annotations?, execution.taskSupport? typed. Not populated by tools yet." style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1264" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r24d" value="✔ TYPED" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1264" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r24e" value="TypeScript interfaces ready; tool implementations do not emit these fields yet (optional)." style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1264" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- outputSchema + structuredContent -->
+    <mxCell id="r25a" value="ToolDefinition: outputSchema (JSON Schema 2020-12). ToolResult: structuredContent" style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1302" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r25b" value="MCP 2025-11-25 §outputSchema (MAY — MUST populate structuredContent if declared)" style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1302" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r25c" value="interfaces/mcp.ts — outputSchema?: JSONSchema in ToolDefinition; structuredContent?: Record in ToolResult. Not used by any tool yet." style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1302" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r25d" value="✔ TYPED" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1302" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r25e" value="No tool currently declares outputSchema; structuredContent will only be required once a tool does." style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1302" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- audio + resource_link -->
+    <mxCell id="r26a" value="ToolResult: audio content type {type:&quot;audio&quot;, data, mimeType} and resource_link type" style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1340" width="240" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r26b" value="MCP 2025-11-25 §tool result content types (MAY)" style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1340" width="200" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r26c" value="interfaces/mcp.ts ToolResult.type union includes 'audio' | 'resource_link'. uri/name/data/mimeType fields present." style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1340" width="340" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r26d" value="✔ TYPED" style="text;html=1;strokeColor=#0d6b3e;fillColor=#d4edda;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#0d6b3e;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1340" width="120" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="r26e" value="No tool currently returns audio or resource_link content; types ready for use." style="text;html=1;strokeColor=#cccccc;fillColor=#d4edda;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1340" width="620" height="38" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION H: N/A / OUT OF SCOPE -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="secH_hdr" value="OUT OF SCOPE / N/A FOR THIS IMPLEMENTATION" style="text;html=1;strokeColor=#666666;fillColor=#6c757d;align=left;verticalAlign=middle;fontColor=#ffffff;fontSize=11;fontStyle=1;spacingLeft=8;rounded=0;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1390" width="1560" height="24" as="geometry" />
+    </mxCell>
+
+    <mxCell id="r27a" value="Elicitation URL mode (elicitation/create mode:&quot;url&quot;)" style="text;html=1;strokeColor=#cccccc;fillColor=#f2f2f2;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1414" width="240" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r27b" value="MCP 2025-11-25 §elicitation (MAY)" style="text;html=1;strokeColor=#cccccc;fillColor=#f2f2f2;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1414" width="200" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r27c" value="N/A — HITL/consent uses custom auth-challenge mechanism" style="text;html=1;strokeColor=#cccccc;fillColor=#f2f2f2;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1414" width="340" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r27d" value="— N/A —" style="text;html=1;strokeColor=#aaaaaa;fillColor=#f2f2f2;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#666666;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1414" width="120" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r27e" value="Spec allows custom consent mechanisms outside standard elicitation." style="text;html=1;strokeColor=#cccccc;fillColor=#f2f2f2;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1414" width="620" height="34" as="geometry" />
+    </mxCell>
+
+    <mxCell id="r28a" value="Sampling: tools + toolChoice in sampling/createMessage" style="text;html=1;strokeColor=#cccccc;fillColor=#f2f2f2;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1448" width="240" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r28b" value="MCP 2025-11-25 §sampling (MAY)" style="text;html=1;strokeColor=#cccccc;fillColor=#f2f2f2;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="270" y="1448" width="200" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r28c" value="N/A — no sampling client surface in this implementation" style="text;html=1;strokeColor=#cccccc;fillColor=#f2f2f2;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="1448" width="340" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r28d" value="— N/A —" style="text;html=1;strokeColor=#aaaaaa;fillColor=#f2f2f2;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;fontColor=#666666;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1448" width="120" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="r28e" value="No LLM sampling loop in this BFF architecture." style="text;html=1;strokeColor=#cccccc;fillColor=#f2f2f2;align=left;verticalAlign=middle;fontSize=10;spacingLeft=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="960" y="1448" width="620" height="34" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SUMMARY SCORE BOX -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="scoreBox" value="&lt;b&gt;Compliance Summary (MCP Spec 2025-11-25)&lt;/b&gt;&lt;br/&gt;&#xa;✔ Fully Implemented: Lifecycle, Protocol Versioning, JSON-RPC Strictness, RFC 9728 (.well-known), RFC 6750 (401/403 WWW-Authenticate), RFC 8707 (resource param), PKCE/State/Nonce (OAuth 2.1), Origin Validation, ping, logging/setLevel, Request Timeouts, Capability Honesty&lt;br/&gt;&#xa;⚠ Opt-in / Partial: Token Audience Validation (MCP_SERVER_RESOURCE_URI must be explicitly set in production)&lt;br/&gt;&#xa;✗ Optional Not Implemented: Cancellation, Progress, Tasks (experimental) — all MAY, no client depends on them&lt;br/&gt;&#xa;— N/A: Elicitation URL mode, Sampling tools/toolChoice (not part of this architecture)" style="text;html=1;strokeColor=#1a1a2e;fillColor=#eaf4fb;align=left;verticalAlign=top;fontSize=11;spacingLeft=10;spacingTop=8;spacingBottom=8;whiteSpace=wrap;rounded=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1500" width="1560" height="90" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
+</diagram>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 2 — ARCHITECTURE: HOW EACH MCP REQUIREMENT IS MET BY OUR DEMO                        -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════════════════ -->
+<diagram id="architecture" name="Architecture &amp; Compliance Mapping">
+<mxGraphModel dx="1800" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1800" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ═══════════ PAGE TITLE ═══════════ -->
+    <mxCell id="a_title" value="BX Finance Banking Demo — Architecture &amp; MCP Compliance Mapping" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+      <mxGeometry x="200" y="10" width="2000" height="38" as="geometry" />
+    </mxCell>
+    <mxCell id="a_sub" value="Each component box shows the MCP / RFC requirement it satisfies.  Green border = MUST  |  Blue border = SHOULD  |  Orange border = Opt-in/Partial  |  Grey = Optional MAY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#444444;" vertex="1" parent="1">
+      <mxGeometry x="200" y="50" width="2000" height="22" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- LEGEND -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <mxCell id="leg_bg" value="" style="rounded=1;fillColor=#f8f8f8;strokeColor=#cccccc;" vertex="1" parent="1">
+      <mxGeometry x="1820" y="80" width="560" height="150" as="geometry" />
+    </mxCell>
+    <mxCell id="leg_title" value="Legend" style="text;html=1;fontStyle=1;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="1830" y="88" width="100" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="leg1" value="MUST (hard requirement)" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1830" y="112" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg2" value="SHOULD (recommended)" style="rounded=1;fillColor=#d1ecf1;strokeColor=#0c5460;strokeWidth=3;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1830" y="148" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg3" value="Opt-in / Partial ⚠" style="rounded=1;fillColor=#fff3cd;strokeColor=#b8860b;strokeWidth=3;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1830" y="184" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg4" value="MAY / Optional (not implemented)" style="rounded=1;fillColor=#f2f2f2;strokeColor=#999999;strokeWidth=2;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="112" width="240" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg5" value="PingOne / External" style="rounded=1;fillColor=#e8d5f5;strokeColor=#7B1FA2;strokeWidth=2;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="148" width="240" height="28" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ROW 0: External clients / LLM                                         -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="ext_label" value="EXTERNAL CLIENTS" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;fontColor=#666666;align=left;" vertex="1" parent="1">
+      <mxGeometry x="20" y="82" width="200" height="22" as="geometry" />
+    </mxCell>
+
+    <!-- Browser / React SPA -->
+    <mxCell id="ui_box" value="&lt;b&gt;React SPA&lt;/b&gt; (banking_api_ui)&lt;br/&gt;BankingAgent.js · Header.js · UserDashboard.js&lt;br/&gt;AgentConsentModal.js · CIBAPanel.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;SHOULD: User consent UI for HITL tool calls&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;SHOULD: Displays auth challenge for &gt;$500 transfers&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#444&quot;&gt;MAY: AgentFlowDiagramPanel (MCP flow viz)&lt;/font&gt;" style="rounded=1;fillColor=#d1ecf1;strokeColor=#0c5460;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="108" width="380" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- LLM / AI agent (external) -->
+    <mxCell id="llm_box" value="&lt;b&gt;LLM / AI Agent&lt;/b&gt; (external or Claude)&lt;br/&gt;Issues MCP tool calls via BFF&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Each request requires valid agent token&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Uses initialize → tools/call lifecycle&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="420" y="108" width="320" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- MCP Inspector (dev tool) -->
+    <mxCell id="inspector_box" value="&lt;b&gt;MCP Inspector&lt;/b&gt; (dev tool)&lt;br/&gt;routes/mcpInspector.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: Exposes live MCP session view&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#444&quot;&gt;Dev-only; shows negotiate protocol version&lt;/font&gt;" style="rounded=1;fillColor=#d1ecf1;strokeColor=#0c5460;strokeWidth=2;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="760" y="108" width="280" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- HTTP MCP client (third-party) -->
+    <mxCell id="http_client_box" value="&lt;b&gt;HTTP MCP Client&lt;/b&gt; (third-party)&lt;br/&gt;e.g. Claude.ai, Cursor, custom agent&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: POST /mcp with MCP-Protocol-Version header&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Discover AS via RFC 9728 .well-known&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Bearer token in Authorization header&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="108" width="360" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ARROWS: clients → BFF / MCP server                                    -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="arr_ui_bff" value="HTTPS session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;exitX=0.5;exitY=1;entryX=0.15;entryY=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="ui_box" target="bff_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_llm_bff" value="POST /api/mcp/tool" style="edgeStyle=orthogonalEdgeStyle;rounded=0;exitX=0.5;exitY=1;entryX=0.3;entryY=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="llm_box" target="bff_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_insp_bff" value="WS / HTTP" style="edgeStyle=orthogonalEdgeStyle;rounded=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="inspector_box" target="bff_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_httpclient_mcp" value="POST /mcp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;exitX=0.5;exitY=1;entryX=0.75;entryY=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="http_client_box" target="mcp_transport_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ROW 1: BFF (banking_api_server) — left column                        -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="bff_label" value="BFF — banking_api_server (Express, Node.js, port 3001)" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;fontColor=#1a1a2e;align=left;" vertex="1" parent="1">
+      <mxGeometry x="20" y="290" width="700" height="22" as="geometry" />
+    </mxCell>
+    <mxCell id="bff_bg" value="" style="rounded=1;fillColor=#f0f4ff;strokeColor=#3c5a99;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="312" width="1010" height="500" as="geometry" />
+    </mxCell>
+
+    <!-- BFF main box -->
+    <mxCell id="bff_box" value="&lt;b&gt;BFF Core&lt;/b&gt; (server.js)&lt;br/&gt;Express session (Upstash Redis)&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Tokens stay server-side (BFF pattern)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Cookie-based session (HttpOnly, Secure)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: upstashSessionStore.js — cross-instance session&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="30" y="330" width="310" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- OAuth agent flow -->
+    <mxCell id="oauth_agent_box" value="&lt;b&gt;Agent OAuth Flow&lt;/b&gt;&lt;br/&gt;routes/oauth.js · services/oauthService.js&lt;br/&gt;services/pkceStateCookie.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Authorization Code + PKCE (S256) — RFC 7636&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: state (CSRF) generated + verified on callback&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: nonce generated + verified in ID token&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: RFC 8707 resource param (oauthAuthorizeResource.js)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: confidential client (client_secret_post)&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="350" y="330" width="360" height="160" as="geometry" />
+    </mxCell>
+
+    <!-- OAuth user flow -->
+    <mxCell id="oauth_user_box" value="&lt;b&gt;End-User OAuth Flow&lt;/b&gt;&lt;br/&gt;routes/oauthUser.js · services/oauthUserService.js&lt;br/&gt;services/pkceStateCookie.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Authorization Code + PKCE (S256) — RFC 7636&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: state + nonce — OAuth 2.1 / OIDC Core&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: RFC 8707 resource param (no mixed scopes)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: offline_access → refresh tokens&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="720" y="330" width="300" height="160" as="geometry" />
+    </mxCell>
+
+    <!-- Middleware stack -->
+    <mxCell id="middleware_box" value="&lt;b&gt;Middleware Chain&lt;/b&gt;&lt;br/&gt;middleware/auth.js — session-backed auth gate&lt;br/&gt;middleware/scopeEnforcement.js — scope-to-route map&lt;br/&gt;middleware/tokenIntrospection.js — PingOne introspect&lt;br/&gt;middleware/actClaimValidator.js — RFC 8693 act claim&lt;br/&gt;middleware/tokenRefresh.js — refresh on 401&lt;br/&gt;middleware/delegationAuditLogger.js — audit trail&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Every API call gated; token never in browser&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: Act claim verified on token-exchange tokens&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="30" y="480" width="360" height="190" as="geometry" />
+    </mxCell>
+
+    <!-- Token Exchange / MCP Agent token service -->
+    <mxCell id="tokenex_box" value="&lt;b&gt;Token Exchange + Agent Token&lt;/b&gt;&lt;br/&gt;services/agentMcpTokenService.js&lt;br/&gt;services/agentMcpScopePolicy.js&lt;br/&gt;utils/oauthAuthorizeResource.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: RFC 8693 Token Exchange — on_behalf user sub&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: MCP_TOOL_SCOPES scope-to-tool policy enforced&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Scoped agent token never stored in browser&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: may_act claim enforcement (configurable)&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="400" y="510" width="350" height="160" as="geometry" />
+    </mxCell>
+
+    <!-- CIBA -->
+    <mxCell id="ciba_box" value="&lt;b&gt;CIBA — Backchannel Auth&lt;/b&gt;&lt;br/&gt;routes/ciba.js · services/cibaService.js&lt;br/&gt;services/cibaEnhanced.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: User consent for high-value tool calls&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: Push notification approval (CIBA poll)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#444&quot;&gt;MAY: OTP email verify for offline consent&lt;/font&gt;" style="rounded=1;fillColor=#d1ecf1;strokeColor=#0c5460;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="760" y="510" width="260" height="160" as="geometry" />
+    </mxCell>
+
+    <!-- MCP WebSocket Client (BFF side) -->
+    <mxCell id="wsclient_box" value="&lt;b&gt;MCP WebSocket Client&lt;/b&gt; (BFF side)&lt;br/&gt;services/mcpWebSocketClient.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: initialize (id=1) → notifications/initialized&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: protocolVersion 2025-11-25 in clientInfo&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: Disconnect on version mismatch&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: clientInfo.description present&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Agent token passed in initialize params&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="30" y="690" width="360" height="110" as="geometry" />
+    </mxCell>
+
+    <!-- Consent challenge service -->
+    <mxCell id="consent_box" value="&lt;b&gt;Consent Challenge Service&lt;/b&gt;&lt;br/&gt;services/transactionConsentChallenge.js&lt;br/&gt;services/transactionAuthorizationService.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Write tool calls (&gt;$500) require user confirm&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: HMAC-SHA256 OTP, timing-safe compare&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: State machine: pending→otp_pending→confirmed&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="400" y="690" width="360" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ARROWS: BFF internals                                                  -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="arr_bff_oauth" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="bff_box" target="oauth_agent_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_bff_mid" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="bff_box" target="middleware_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_tokenex_wsclient" value="agent token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="tokenex_box" target="wsclient_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_wsclient_mcp" value="WS JSON-RPC" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="wsclient_box" target="mcp_server_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_consent_ciba" value="push notify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="consent_box" target="ciba_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ROW 2: MCP SERVER (banking_mcp_server) — right column                 -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="mcp_label" value="MCP SERVER — banking_mcp_server (TypeScript, port 8080)" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;fontColor=#1a1a2e;align=left;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="290" width="700" height="22" as="geometry" />
+    </mxCell>
+    <mxCell id="mcp_bg" value="" style="rounded=1;fillColor=#f4f0ff;strokeColor=#512DA8;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="312" width="1320" height="500" as="geometry" />
+    </mxCell>
+
+    <!-- HTTP MCP Transport box -->
+    <mxCell id="mcp_transport_box" value="&lt;b&gt;HttpMCPTransport.ts&lt;/b&gt;&lt;br/&gt;POST /mcp (Streamable HTTP)&lt;br/&gt;GET /.well-known/oauth-protected-resource&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: RFC 9728 — .well-known returns resource, AS, scopes&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: 401 WWW-Authenticate + scope= (RFC 6750)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: 403 insufficient_scope (RFC 6750)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: MCP-Session-Id issued on initialize&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: MCP-Protocol-Version header validated&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Origin header validated vs MCP_ALLOWED_ORIGINS&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1070" y="330" width="380" height="210" as="geometry" />
+    </mxCell>
+
+    <!-- BankingMCPServer.ts -->
+    <mxCell id="mcp_server_box" value="&lt;b&gt;BankingMCPServer.ts&lt;/b&gt;&lt;br/&gt;WebSocket JSON-RPC server&lt;br/&gt;routeMessage() · isValidMCPMessage()&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: JSON-RPC id MUST NOT be null (rejects)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: Lifecycle gate — rejects pre-initialized requests (−32600)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: notifications/* must have no id field&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: connection.initialized flag gating&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1460" y="330" width="380" height="170" as="geometry" />
+    </mxCell>
+
+    <!-- MCPMessageHandler.ts -->
+    <mxCell id="msg_handler_box" value="&lt;b&gt;MCPMessageHandler.ts&lt;/b&gt;&lt;br/&gt;handleMessage() dispatch switch&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: initialize — version negotiation (2025-11-25, 2024-11-05)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: notifications/initialized — null response (no id)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: ping → {} result&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: logging/setLevel — RFC 5424 validation, clientLogLevel stored&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: tools/list · tools/call&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: isError:true for input validation errors&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: TOOL_CALL_TIMEOUT_MS (30s, Promise.race)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: capabilities advertised = capabilities implemented&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1070" y="560" width="430" height="230" as="geometry" />
+    </mxCell>
+
+    <!-- TokenIntrospector.ts -->
+    <mxCell id="introspect_box" value="&lt;b&gt;TokenIntrospector.ts&lt;/b&gt;&lt;br/&gt;BankingAuthenticationManager.ts&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: PingOne token introspection on every call&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: active=false → AuthenticationError −32001&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#b8860b&quot;&gt;⚠ OPT-IN: RFC 8707 aud validation — requires MCP_SERVER_RESOURCE_URI set&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: may_act enforcement (REQUIRE_MAY_ACT=true)&lt;/font&gt;" style="rounded=1;fillColor=#fff3cd;strokeColor=#b8860b;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1510" y="520" width="360" height="160" as="geometry" />
+    </mxCell>
+
+    <!-- BankingToolProvider / Registry -->
+    <mxCell id="tools_box" value="&lt;b&gt;BankingToolProvider.ts · BankingToolRegistry.ts&lt;/b&gt;&lt;br/&gt;BankingToolValidator.ts · AuthorizationChallengeHandler.ts&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: tools/list returns inputSchema (JSON Schema 2020-12)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: tools/call validates args → isError:true on bad input&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Per-tool requiredScopes checked before execution&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Write tools (&gt;$500) → authChallenge → CIBA/OTP&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#444&quot;&gt;MAY: ToolDefinition carries title, annotations, execution.taskSupport&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1070" y="800" width="460" height="170" as="geometry" />
+    </mxCell>
+
+    <!-- Storage layer (MCP) -->
+    <mxCell id="mcp_storage_box" value="&lt;b&gt;Storage / Session&lt;/b&gt;&lt;br/&gt;BankingSessionManager.ts&lt;br/&gt;EncryptedTokenStorage.ts · TokenCache.ts&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Agent token stored encrypted (ENCRYPTION_KEY)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: Session TTL, cleanup interval background task&lt;/font&gt;" style="rounded=1;fillColor=#d1ecf1;strokeColor=#0c5460;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1550" y="700" width="320" height="160" as="geometry" />
+    </mxCell>
+
+    <!-- BankingMCPServer → MCPMessageHandler -->
+    <mxCell id="arr_srv_handler" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="mcp_server_box" target="msg_handler_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_handler_tools" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="msg_handler_box" target="tools_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_handler_introspect" value="validate token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="msg_handler_box" target="introspect_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_transport_handler" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="mcp_transport_box" target="msg_handler_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_handler_storage" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;" edge="1" parent="1" source="msg_handler_box" target="mcp_storage_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ROW 3: PingOne (external IdP)                                          -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="pingone_label" value="PINGONE (External Identity Provider)" style="text;html=1;fontStyle=1;fontSize=11;fillColor=none;strokeColor=none;fontColor=#7B1FA2;align=left;" vertex="1" parent="1">
+      <mxGeometry x="20" y="860" width="400" height="22" as="geometry" />
+    </mxCell>
+
+    <!-- PingOne AS -->
+    <mxCell id="p1_as" value="&lt;b&gt;PingOne Authorization Server&lt;/b&gt;&lt;br/&gt;/as/authorize · /as/token · /as/revoke&lt;br/&gt;/as/introspect · /.well-known/openid-configuration&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#7B1FA2&quot;&gt;Issues: access tokens, ID tokens, refresh tokens&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: Provides OIDC Discovery (OpenID Connect 1.0 + RFC 9728)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: RFC 8693 Token Exchange endpoint (/as/token)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: CIBA backchannel auth (/as/bc-authorize)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: OAuth 2.1 — emits may_act, act claims&lt;/font&gt;" style="rounded=1;fillColor=#e8d5f5;strokeColor=#7B1FA2;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="885" width="440" height="200" as="geometry" />
+    </mxCell>
+
+    <!-- PingOne Management API -->
+    <mxCell id="p1_mgmt" value="&lt;b&gt;PingOne Management API&lt;/b&gt;&lt;br/&gt;/v1/environments/{id}/users&lt;br/&gt;/v1/environments/{id}/mfaDevices&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#7B1FA2&quot;&gt;User profile reads + MFA enrollment&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: Scoped worker app credentials (p1:read:user)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#7B1FA2&quot;&gt;pingOneUserLookupService.js · pingOneAgentUserService.js&lt;/font&gt;" style="rounded=1;fillColor=#e8d5f5;strokeColor=#7B1FA2;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="480" y="885" width="340" height="160" as="geometry" />
+    </mxCell>
+
+    <!-- Upstash Redis -->
+    <mxCell id="upstash_box" value="&lt;b&gt;Upstash Redis&lt;/b&gt;&lt;br/&gt;services/upstashSessionStore.js&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: Cross-instance session (Vercel serverless)&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0c5460&quot;&gt;SHOULD: PKCE state + nonce survive instance restarts&lt;/font&gt;" style="rounded=1;fillColor=#d1ecf1;strokeColor=#0c5460;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="840" y="885" width="300" height="130" as="geometry" />
+    </mxCell>
+
+    <!-- Banking Data (in-memory) -->
+    <mxCell id="data_box" value="&lt;b&gt;Banking Data Store&lt;/b&gt;&lt;br/&gt;data/store.js (in-memory / JSON)&lt;br/&gt;&lt;br/&gt;&lt;font color=&quot;#444&quot;&gt;Accounts, transactions, balances for demo&lt;/font&gt;&lt;br/&gt;&lt;font color=&quot;#0d6b3e&quot;&gt;MUST: All mutations gated by scope + consent checks&lt;/font&gt;" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=2;fontSize=10;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1160" y="885" width="300" height="120" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ARROWS: BFF ↔ PingOne / external                                       -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="arr_oauth_p1" value="authorize / token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#7B1FA2;" edge="1" parent="1" source="oauth_agent_box" target="p1_as">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_user_p1" value="authorize / token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#7B1FA2;" edge="1" parent="1" source="oauth_user_box" target="p1_as">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_tokenex_p1" value="token exchange RFC 8693" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#7B1FA2;" edge="1" parent="1" source="tokenex_box" target="p1_as">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_introspect_p1" value="introspect" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#7B1FA2;" edge="1" parent="1" source="introspect_box" target="p1_as">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_ciba_p1" value="bc-authorize" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#7B1FA2;" edge="1" parent="1" source="ciba_box" target="p1_as">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_bff_upstash" value="session R/W" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#0c5460;" edge="1" parent="1" source="bff_box" target="upstash_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="arr_tools_data" value="CRUD" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=9;fontColor=#555555;" edge="1" parent="1" source="tools_box" target="data_box">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- DEFICIENCY CALLOUT BOX                                                  -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="deficiency_box" value="&lt;b&gt;⚠ Known Deficiency / Opt-in Items&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;&lt;b&gt;1. Token Audience Validation (MCP_SERVER_RESOURCE_URI)&lt;/b&gt;&lt;br/&gt;Code: TokenIntrospector.ts lines 89-104&lt;br/&gt;Gap: env var not set by default — aud claim NOT validated unless MCP_SERVER_RESOURCE_URI is configured&lt;br/&gt;Risk: Tokens issued for other services could be accepted in dev/demo deployments&lt;br/&gt;&lt;br/&gt;&lt;b&gt;2. Cancellation / Progress Utilities&lt;/b&gt;&lt;br/&gt;notifications/cancelled + notifications/progress not implemented&lt;br/&gt;Impact: Optional (MAY) — no client currently depends on them&lt;br/&gt;&lt;br/&gt;&lt;b&gt;3. Tasks (experimental spec feature)&lt;/b&gt;&lt;br/&gt;tasks/get, tasks/result, tasks/list, tasks/cancel not implemented&lt;br/&gt;All tools use execution.taskSupport: &apos;forbidden&apos; (default)&lt;br/&gt;&lt;br/&gt;&lt;b&gt;4. notifications/message emission&lt;/b&gt;&lt;br/&gt;logging/setLevel accepted but server never emits notifications/message (optional)" style="rounded=1;fillColor=#fff3cd;strokeColor=#b8860b;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="1480" y="860" width="900" height="290" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- RFC REFERENCE PANEL                                                     -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="rfc_panel" value="&lt;b&gt;RFC / Standard Reference&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;RFC 6749 — OAuth 2.0 (base)&lt;br/&gt;RFC 7636 — PKCE (code_challenge S256)&lt;br/&gt;RFC 8693 — Token Exchange (on_behalf / may_act / act)&lt;br/&gt;RFC 8707 — Resource Indicators (resource= param, aud validation)&lt;br/&gt;RFC 9728 — OAuth Protected Resource Metadata (.well-known)&lt;br/&gt;RFC 6750 — Bearer Token (WWW-Authenticate, 401/403)&lt;br/&gt;OpenID Connect Core — nonce, id_token, OIDC Discovery&lt;br/&gt;OAuth 2.1 draft — no implicit, no password grant, PKCE mandatory&lt;br/&gt;RFC 5424 — Syslog (logging/setLevel level names)&lt;br/&gt;MCP Spec 2025-11-25 — lifecycle, capabilities, JSON-RPC, tools&lt;br/&gt;JSON-RPC 2.0 — id rules, error codes, notifications" style="rounded=1;fillColor=#eaf4fb;strokeColor=#1a1a2e;strokeWidth=2;fontSize=10;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1100" width="480" height="240" as="geometry" />
+    </mxCell>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- COMPLIANCE SCORE PANEL                                                  -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <mxCell id="score_panel" value="&lt;b&gt;Compliance Score Summary&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;✅ MUST (hard requirements): &lt;b&gt;ALL met&lt;/b&gt;&lt;br/&gt;  • Lifecycle: initialize, notifications/initialized, version negotiation&lt;br/&gt;  • JSON-RPC: id != null, isError:true for tool errors&lt;br/&gt;  • HTTP transport: RFC 9728, RFC 6750, MCP headers, Origin&lt;br/&gt;  • OAuth: PKCE, state, nonce, confidential client, RFC 8707 resource&lt;br/&gt;  • Capability honesty: only tools+logging advertised&lt;br/&gt;&lt;br/&gt;✅ SHOULD (recommended): &lt;b&gt;ALL met&lt;/b&gt;&lt;br/&gt;  • Disconnect on version mismatch, lifecycle gate, request timeouts&lt;br/&gt;  • 401 scope=, 403 insufficient_scope, logging/setLevel&lt;br/&gt;&lt;br/&gt;⚠️ OPT-IN: Token aud validation (MCP_SERVER_RESOURCE_URI must be set in prod)&lt;br/&gt;&lt;br/&gt;✗ NOT DONE (MAY / optional): cancellation, progress, tasks — no client needs them" style="rounded=1;fillColor=#d4edda;strokeColor=#0d6b3e;strokeWidth=3;fontSize=10;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;whiteSpace=wrap;" vertex="1" parent="1">
+      <mxGeometry x="520" y="1100" width="560" height="280" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
+</diagram>
+</mxfile>

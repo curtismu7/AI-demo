@@ -9,6 +9,7 @@ const configStore = require('../services/configStore');
 const { resolveMcpAccessTokenWithEvents } = require('../services/agentMcpTokenService');
 const {
   MCP_TOOL_SCOPES,
+  MCP_CLIENT_PROTOCOL_VERSION,
   getMcpServerUrl,
   getSessionBearerForMcp,
   mcpListTools,
@@ -60,7 +61,7 @@ router.get('/context', async (req, res) => {
       description:
         'Banking Backend-for-Frontend (BFF) acts as MCP Host for the browser: session cookie auth, optional RFC 8693 token exchange, then WebSocket JSON-RPC to the MCP server.',
       transport: { clientToBff: 'HTTPS + session cookie', bffToMcp: 'WebSocket JSON-RPC 2.0' },
-      mcpProtocolVersion: '2024-11-05',
+      mcpProtocolVersion: MCP_CLIENT_PROTOCOL_VERSION,
       mcpServerConfigured: !!getMcpServerUrl(),
       tokenExchangeEnabled: !!mcpResourceUri,
       bankingAgentInspectorUrl: langchainInspectorUrl,
@@ -77,7 +78,8 @@ router.get('/context', async (req, res) => {
             mcpResourceUri
               ? 'RFC 8693 token exchange before MCP: narrow scopes + MCP audience + act/delegation (configured).'
               : 'Token exchange not configured (MCP_SERVER_RESOURCE_URI empty) — demo may pass session token to MCP as today.',
-          mcpClientTransport: 'Backend-for-Frontend (BFF) opens WebSocket JSON-RPC (initialize → tools/list / tools/call).',
+          mcpClientTransport:
+            'Backend-for-Frontend (BFF) opens WebSocket JSON-RPC (initialize → notifications/initialized → tools/list / tools/call).',
           bestForShowing:
             'PingOne + OAuth for humans, session-bound tokens, and why exchange + least privilege protect backends from the browser.',
         },

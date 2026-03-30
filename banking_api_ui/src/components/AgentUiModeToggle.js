@@ -76,25 +76,36 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
         ? 'Agent UI'
         : 'Choose layout';
 
+  const isLandingNav = variant === 'landing';
+  const showFabCheckbox =
+    isLandingNav ? placement === 'bottom' : placement === 'middle' || placement === 'bottom';
+
   return (
     <div
       className={`agent-ui-mode-toggle agent-ui-mode-toggle--${variant} ${className}`.trim()}
       role="group"
-      aria-label={ariaLabel || 'AI banking agent: middle column, bottom dock, or float; optional FAB'}
+      aria-label={
+        ariaLabel ||
+        (isLandingNav
+          ? 'AI banking agent: bottom dock or float'
+          : 'AI banking agent: middle column, bottom dock, or float; optional FAB')
+      }
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
         {label}
       </span>
       <div className="agent-ui-mode-toggle__segmented" role="toolbar" aria-labelledby={`${idPrefix}-legend`}>
-        <button
-          type="button"
-          className={`agent-ui-mode-toggle__btn${placement === 'middle' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
-          onClick={() => void handlePlacement('middle')}
-          aria-pressed={placement === 'middle'}
-          title="Assistant in the middle column (Split dashboard: token | agent | banking)"
-        >
-          Middle
-        </button>
+        {!isLandingNav && (
+          <button
+            type="button"
+            className={`agent-ui-mode-toggle__btn${placement === 'middle' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
+            onClick={() => void handlePlacement('middle')}
+            aria-pressed={placement === 'middle'}
+            title="Assistant in the middle column (Split dashboard: token | agent | banking)"
+          >
+            Middle
+          </button>
+        )}
         <button
           type="button"
           className={`agent-ui-mode-toggle__btn${placement === 'bottom' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
@@ -114,7 +125,7 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
           Float
         </button>
       </div>
-      {(placement === 'middle' || placement === 'bottom') && (
+      {showFabCheckbox && (
         <label className="agent-ui-mode-toggle__fab">
           <input
             type="checkbox"

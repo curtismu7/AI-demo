@@ -53,6 +53,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* Space before Features / nav links (toggle was flush against the next cluster) */
+  margin-right: 1.5rem;
 }
 
 @media (max-width: 480px) {

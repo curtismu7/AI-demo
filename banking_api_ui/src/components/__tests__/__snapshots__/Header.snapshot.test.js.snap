@@ -1,0 +1,149 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Header snapshot renders admin nav without change 1`] = `
+<div>
+  <header
+    class="header app-top-header"
+  >
+    <div
+      class="container"
+    >
+      <div
+        class="app-top-header__brand"
+      >
+        <svg
+          data-testid="brand-logo"
+        />
+        <h1
+          class="app-top-header__title"
+        >
+          Accounts API Admin Dashboard
+        </h1>
+      </div>
+      <nav
+        class="nav"
+      >
+        <a
+          class="nav-link "
+          href="/admin"
+        >
+          Admin Dashboard
+        </a>
+        <a
+          class="nav-link "
+          href="/activity"
+        >
+          Activity Logs
+        </a>
+        <a
+          class="nav-link "
+          href="/users"
+        >
+          Users
+        </a>
+        <a
+          class="nav-link "
+          href="/accounts"
+        >
+          Accounts
+        </a>
+        <a
+          class="nav-link "
+          href="/transactions"
+        >
+          Transactions
+        </a>
+        <a
+          class="nav-link "
+          href="/onboarding"
+        >
+          Setup guide
+        </a>
+        <a
+          class="nav-link "
+          href="/config"
+        >
+          ⚙️ Config
+        </a>
+        <div
+          class="app-top-header__user"
+        >
+          <span>
+            Welcome, 
+             
+          </span>
+          <button
+            class="btn btn-secondary header-switch-role-btn"
+            title="Switch to Customer view"
+            type="button"
+          >
+            ⇄ Customer view
+          </button>
+          <button
+            class="btn btn-secondary"
+            type="button"
+          >
+            Logout
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+</div>
+`;
+
+exports[`Header snapshot renders user nav without change 1`] = `
+<div>
+  <header
+    class="header app-top-header"
+  >
+    <div
+      class="container"
+    >
+      <div
+        class="app-top-header__brand"
+      >
+        <svg
+          data-testid="brand-logo"
+        />
+        <h1
+          class="app-top-header__title"
+        >
+          Personal Account Dashboard
+        </h1>
+      </div>
+      <nav
+        class="nav"
+      >
+        <a
+          class="nav-link "
+          href="/dashboard"
+        >
+          My Dashboard
+        </a>
+        <div
+          class="app-top-header__user"
+        >
+          <span>
+            Welcome, 
+             
+          </span>
+          <button
+            class="btn btn-secondary header-switch-role-btn"
+            title="Switch to Admin view"
+            type="button"
+          >
+            ⇄ Admin view
+          </button>
+          <button
+            class="btn btn-secondary"
+            type="button"
+          >
+            Logout
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+</div>
+`;

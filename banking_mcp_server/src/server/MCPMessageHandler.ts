@@ -40,19 +40,18 @@ export class MCPMessageHandler {
     description: 'Secure banking operations MCP server with PingOne authentication'
   };
 
+  /** SHOULD (spec §lifecycle): default timeout for tool execution calls in ms. */
+  private readonly toolCallTimeoutMs: number;
+  /** Advertise only features we implement (tools + logging). Prompts/resources omitted per MCP spec honesty. */
   private readonly serverCapabilities: ServerCapabilities = {
     tools: {
       listChanged: false
     },
-    logging: {},
-    prompts: {
-      listChanged: false
-    },
-    resources: {
-      subscribe: false,
-      listChanged: false
-    }
+    logging: {}
   };
+
+  /** Current minimum log level requested by the client via logging/setLevel (RFC 5424 names). */
+  private clientLogLevel: string = 'info';
 
   private authIntegration: AuthenticationIntegration;
 
@@ -62,32 +61,84 @@ export class MCPMessageHandler {
     private toolProvider: BankingToolProvider
   ) {
     this.authIntegration = new AuthenticationIntegration(authManager, sessionManager);
+    const raw = process.env.TOOL_CALL_TIMEOUT_MS;
+    this.toolCallTimeoutMs = raw && Number.isFinite(+raw) && +raw > 0 ? +raw : 30_000;
   }
 
   /**
-   * Route MCP message to appropriate handler
+   * Route MCP message to appropriate handler. Returns null for notifications (no JSON-RPC response body).
    */
-  async handleMessage(message: MCPMessage, context: MessageHandlerContext): Promise<MCPResponse> {
+  async handleMessage(message: MCPMessage, context: MessageHandlerContext): Promise<MCPResponse | null> {
     try {
       switch (message.method) {
         case 'initialize':
           return await this.handleHandshake(message as HandshakeMessage, context);
-        
+
+        case 'notifications/initialized':
+          console.log('[MCPMessageHandler] Client sent notifications/initialized');
+          return null;
+
+        case 'ping':
+          return this.handlePing(message);
+
         case 'tools/list':
           return await this.handleListTools(message as ListToolsMessage, context);
-        
+
         case 'tools/call':
           return await this.handleToolCall(message as ToolCallMessage, context);
-        
+
+        case 'logging/setLevel':
+          return this.handleSetLogLevel(message);
+
         default:
+          if (message.id === undefined || message.id === null) {
+            console.warn(`[MCPMessageHandler] Ignoring notification or invalid message without id: ${message.method}`);
+            return null;
+          }
           return this.createErrorResponse(message.id, -32601, 'Method not found', { method: message.method });
       }
     } catch (error) {
       console.error(`[MCPMessageHandler] Error handling message ${message.method}:`, error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (message.id === undefined || message.id === null) {
+        return null;
+      }
       return this.createErrorResponse(message.id, -32603, `Internal error: ${errorMessage}`);
     }
+  }
+
+  /**
+   * JSON-RPC ping request — empty result per MCP utilities.
+   */
+  private handlePing(message: MCPMessage): MCPResponse {
+    return {
+      id: message.id ?? 'unknown',
+      result: {}
+    };
+  }
+
+  /**
+   * logging/setLevel request — client requests a minimum log level for server→client
+   * notifications/message events. Stores the level and acknowledges with {}.
+   * Valid levels (RFC 5424): debug, info, notice, warning, error, critical, alert, emergency.
+   */
+  private handleSetLogLevel(message: MCPMessage): MCPResponse {
+    const VALID_LEVELS = new Set(['debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency']);
+    const level = (message as any).params?.level;
+    if (!level || !VALID_LEVELS.has(level)) {
+      return this.createErrorResponse(
+        message.id,
+        -32602,
+        `Invalid params: level must be one of ${[...VALID_LEVELS].join(', ')}`
+      );
+    }
+    this.clientLogLevel = level;
+    console.log(`[MCPMessageHandler] Client requested log level: ${level}`);
+    return {
+      id: message.id ?? 'unknown',
+      result: {}
+    };
   }
 
   /**
@@ -95,16 +146,19 @@ export class MCPMessageHandler {
    */
   async handleHandshake(message: HandshakeMessage, context: MessageHandlerContext): Promise<HandshakeResponse> {
     try {
-      // Validate protocol version
       const clientVersion = message.params?.protocolVersion;
       if (!clientVersion) {
         return this.createErrorResponse(message.id, -32602, 'Invalid params: missing protocolVersion') as HandshakeResponse;
       }
 
-      // For now, accept any version that starts with "2024-"
-      if (!clientVersion.startsWith('2024-')) {
-        return this.createErrorResponse(message.id, -32602, 'Unsupported protocol version', { 
-          supportedVersions: ['2024-11-05'] 
+      if (!message.params.capabilities || typeof message.params.capabilities !== 'object') {
+        (message.params as Record<string, unknown>).capabilities = {};
+      }
+
+      const negotiatedVersion = this.negotiateProtocolVersion(clientVersion);
+      if (!negotiatedVersion) {
+        return this.createErrorResponse(message.id, -32602, 'Unsupported protocol version', {
+          supportedVersions: ['2025-11-25', '2024-11-05']
         }) as HandshakeResponse;
       }
 
@@ -136,7 +190,7 @@ export class MCPMessageHandler {
       return {
         id: message.id ?? 'unknown',
         result: {
-          protocolVersion: '2024-11-05',
+          protocolVersion: negotiatedVersion,
           capabilities: this.serverCapabilities,
           serverInfo: this.serverInfo
         }
@@ -220,10 +274,36 @@ export class MCPMessageHandler {
         return await this.handleAuthorizationCode(message, context);
       }
 
-      // Get tool definition to check required scopes
+      // Auth failure is a protocol error (-32001), not a tool execution error — reject before
+      // checking tool validity so the client can obtain a token then retry.
+      if (!context.agentToken && !context.session) {
+        return this.authIntegration.createAuthenticationErrorResponse(
+          String(message.id ?? 'unknown'),
+          'Authentication required'
+        ) as ToolCallResponse;
+      }
+
+      // Get tool definition to check required scopes.
+      // Unknown tool name is a tool execution error (isError: true), not a protocol error,
+      // so the LLM can self-correct and retry with a valid name. (MCP spec input validation MUST)
       const availableTools = this.toolProvider.getAvailableTools() || [];
       const tool = availableTools.find(t => t.name === toolName);
-      const requiredScopes = tool?.requiredScopes || [];
+      if (!tool) {
+        console.warn(`[MCPMessageHandler] Unknown tool requested: "${toolName}"`);
+        return {
+          id: message.id ?? 'unknown',
+          result: {
+            content: [{
+              type: 'text',
+              text: `Unknown tool: "${toolName}". Available tools: ${availableTools.map(t => t.name).join(', ')}`,
+              success: false,
+              error: `Unknown tool: "${toolName}"`
+            }],
+            isError: true
+          }
+        };
+      }
+      const requiredScopes = tool.requiredScopes;
 
       // Validate authentication using integration service
       console.log(`[MCPMessageHandler] Validating authentication for scopes:`, requiredScopes);
@@ -318,8 +398,14 @@ export class MCPMessageHandler {
         await this.sessionManager.updateSessionActivity(context.session.sessionId, 'tool_call');
       }
 
-      // Execute the tool
-      const toolResult = await this.toolProvider.executeTool(toolName, toolArguments, context.session!, context.agentToken);
+      // Execute the tool with a per-request timeout (SHOULD per MCP spec §lifecycle/timeouts)
+      const timeoutMs = this.toolCallTimeoutMs;
+      const toolResult = await Promise.race([
+        this.toolProvider.executeTool(toolName, toolArguments, context.session!, context.agentToken),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Tool "${toolName}" timed out after ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
 
       // Convert tool result to MCP format
       const mcpContent: ToolResult[] = [{
@@ -568,5 +654,19 @@ export class MCPMessageHandler {
    */
   getServerCapabilities(): ServerCapabilities {
     return { ...this.serverCapabilities };
+  }
+
+  /**
+   * Pick negotiated MCP protocol version (same as client when supported, else downgrade to 2024-11-05).
+   */
+  private negotiateProtocolVersion(clientVersion: string): string | null {
+    const v = clientVersion.trim();
+    if (v === '2025-11-25' || v.startsWith('2025-11-25')) {
+      return '2025-11-25';
+    }
+    if (v.startsWith('2024-')) {
+      return '2024-11-05';
+    }
+    return null;
   }
 }

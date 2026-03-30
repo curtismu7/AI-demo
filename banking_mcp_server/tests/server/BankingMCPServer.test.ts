@@ -240,8 +240,25 @@ describe('BankingMCPServer', () => {
     });
 
     it('should handle valid MCP messages', async () => {
+      // Complete MCP lifecycle before testing method routing (spec SHOULD: init before requests)
+      await new Promise<void>((resolve) => {
+        ws.once('message', () => resolve());
+        ws.send(JSON.stringify({
+          jsonrpc: '2.0', id: 'setup-init',
+          method: 'initialize',
+          params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'test', version: '1.0.0' } }
+        }));
+      });
+      ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
+
       const messagePromise = new Promise((resolve) => {
-        server.once('messageProcessed', resolve);
+        const handler = (event: any) => {
+          if (event.method === 'test_method') {
+            server.off('messageProcessed', handler);
+            resolve(event);
+          }
+        };
+        server.on('messageProcessed', handler);
       });
 
       const responsePromise = new Promise((resolve) => {

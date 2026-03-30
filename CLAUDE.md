@@ -18,7 +18,7 @@ Instructions for Claude Code, Cursor agents, and other AI assistants working in 
 | `.cursor/rules/regression-guard.mdc` | Cursor rule mirroring regression checks |
 | `.claude/skills/` | Domain skills (OAuth, MCP, Vercel, PingOne API, TypeScript) |
 
-**Ports:** See `REGRESSION_PLAN.md` §2. Default UI/API: 3000/3001; `run-bank.sh` uses 4000/3002 — keep `banking_api_ui/.env` (`REACT_APP_API_PORT`) in sync.
+**Ports:** See `REGRESSION_PLAN.md` §3. Default UI/API: 3000/3001; `run-bank.sh` uses 4000/3002 — keep `banking_api_ui/.env` (`REACT_APP_API_PORT`) in sync.
 
 ---
 
@@ -27,7 +27,7 @@ Instructions for Claude Code, Cursor agents, and other AI assistants working in 
 1. **Read** [REGRESSION_PLAN.md](REGRESSION_PLAN.md) §1 before editing listed files. State what you will **not** break.
 2. **Minimal diff** — name the component/element; do not refactor unrelated code.
 3. **After any `banking_api_ui` UI edit:** run `npm run build` in `banking_api_ui/`; exit code must be **0**.
-4. **Bug fixes:** add an entry to `REGRESSION_PLAN.md` §3 (Bug Fix Log) per the template in the regression-guard rule.
+4. **Bug fixes:** add an entry to `REGRESSION_PLAN.md` §4 (Bug Fix Log) per the template in the regression-guard rule.
 5. **Do not** edit marketing-only pages unless the task explicitly says so (user preference: `/marketing` stability).
 
 ---
@@ -48,7 +48,7 @@ Instructions for Claude Code, Cursor agents, and other AI assistants working in 
 ### 3. Learning from corrections
 
 - After a **user correction** or a **production/regression** miss: capture the pattern so it does not repeat.
-- **Primary (this repo):** extend `REGRESSION_PLAN.md` §3 and, if needed, a short note in §1 table.
+- **Primary (this repo):** extend `REGRESSION_PLAN.md` §4 and, if needed, a short note in §1 table.
 - **Optional:** if the team adds `tasks/lessons.md`, log recurring “don’t do X” patterns there; otherwise the bug log is the source of truth.
 
 ### 4. Verification before “done”
@@ -73,10 +73,10 @@ Instructions for Claude Code, Cursor agents, and other AI assistants working in 
 ## Task management
 
 1. **Plan first** — For large features, a short checklist in chat or a branch doc is fine; optional `tasks/todo.md` if the team adopts it.
-2. **Align with regression workflow** — Shipping-affecting fixes belong in `REGRESSION_PLAN.md` §3.
+2. **Align with regression workflow** — Shipping-affecting fixes belong in `REGRESSION_PLAN.md` §4.
 3. **Track progress** — Update todos/checklists as you complete steps.
 4. **Summarize** — End with what changed, files touched, and how to verify.
-5. **Document results** — Bug fixes → §3 entry; new critical areas → §1 table update when appropriate.
+5. **Document results** — Bug fixes → §4 entry; new critical areas → §1 table update when appropriate.
 
 ---
 
