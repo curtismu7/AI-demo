@@ -372,14 +372,19 @@ Open the existing application. Verify or update:
 | **Token endpoint auth method** | `CLIENT_SECRET_POST` |
 | **Redirect URIs** | `https://banking-demo-puce.vercel.app/api/auth/oauth/callback` |
 
-**Resources tab → Allowed scopes — enable:**
+**Resources tab:**
 
-- ✅ `banking:accounts:read` from **BX Finance MCP Server**
-- ✅ `banking:transactions:read` from **BX Finance MCP Server**
-- ✅ `banking:transactions:write` from **BX Finance MCP Server**
-- ✅ **BX Finance Agent Gateway** — tick the resource row itself (no individual scope to select). This allows the Banking App to request a token with `aud: ["https://agent-gateway.pingdemo.com"]`, which it presents as the *actor token* during Token Exchange #1 so PingOne can verify the exchanger's identity.
+1. Click the **+** (Add) icon.
+2. A list of resources appears. Find each of the following and check the box next to its name:
 
-> **Why this matters:** Without this, the Banking App cannot obtain an actor token for Token Exchange #1 and the exchange will fail with `unauthorized_client`.
+   - ✅ `banking:accounts:read` — expand **BX Finance MCP Server** and check this scope
+   - ✅ `banking:transactions:read` — check this scope under **BX Finance MCP Server**
+   - ✅ `banking:transactions:write` — check this scope under **BX Finance MCP Server**
+   - ✅ **BX Finance Agent Gateway** — check the **resource row itself**. There are no individual scopes under it, so just checking the resource name is all that is needed.
+
+3. Click **Save**.
+
+> **Why check BX Finance Agent Gateway with no scope?** Adding a resource (even without scopes) allows the app to request a token whose `aud` is set to that resource's audience URL (`https://agent-gateway.pingdemo.com`). During Token Exchange #1, the Banking App obtains one of these audience-restricted tokens and sends it as the `actor_token`. PingOne reads `actor_token.client_id` and compares it to `may_act.sub` on the user's Subject Token to verify the right app is doing the exchange. Without this assignment, PingOne will reject the actor token with `unauthorized_client`.
 
 **Attribute Mappings tab:**
 
