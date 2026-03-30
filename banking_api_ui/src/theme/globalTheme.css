@@ -519,30 +519,6 @@ html[data-theme='dark'] .landing-page.landing-page--light .how-it-works {
   background: #ffffff !important;
 }
 
-html[data-theme='dark'] .landing-page.landing-page--light .agent-section:not(.agent-section--showcase) {
-  background: linear-gradient(to bottom, #f8fafc, #ffffff) !important;
-}
-
-html[data-theme='dark'] .landing-page.landing-page--light .agent-section--showcase {
-  background: #000000 !important;
-}
-
-html[data-theme='dark'] .landing-page.landing-page--light .agent-demo--showcase {
-  background: #0a0a0a !important;
-  border-color: #374151 !important;
-}
-
-html[data-theme='dark'] .landing-page.landing-page--light .agent-section--showcase .section-header--showcase h2 {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-  background: none !important;
-  background-clip: border-box !important;
-}
-
-html[data-theme='dark'] .landing-page.landing-page--light .agent-section--showcase .section-header--showcase p {
-  color: #9ca3af !important;
-}
-
 html[data-theme='dark'] .landing-page.landing-page--light .feature-card {
   background: #ffffff !important;
   border-color: #e5e7eb !important;

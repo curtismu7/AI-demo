@@ -11,7 +11,6 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState('personal');
   const [scrollY, setScrollY] = React.useState(0);
   const [marketingCfg, setMarketingCfg] = React.useState({
     mode: 'redirect',
@@ -48,7 +47,7 @@ const LandingPage = () => {
 
   React.useEffect(() => {
     if (location.state?.scrollToAgent) {
-      const el = document.getElementById('agent-section');
+      const el = document.getElementById('marketing-embedded-dock-slot');
       if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   }, [location.state]);
@@ -60,7 +59,7 @@ const LandingPage = () => {
         setLoginPanelOpen(true);
         return;
       }
-      const el = document.getElementById('marketing-login');
+      const el = document.getElementById('marketing-hero-signin');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     window.addEventListener('marketing-scroll-login', onScrollLogin);
@@ -216,7 +215,7 @@ const LandingPage = () => {
               Experience the future of financial services. Our AI-powered agents understand your needs, 
               automate complex tasks, and provide personalized insights—all through natural conversation.
             </p>
-            <div className="hero-actions">
+            <div id="marketing-hero-signin" className="hero-actions">
               <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user')}>
                 Customer sign in
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" title="Arrow icon">
@@ -227,100 +226,28 @@ const LandingPage = () => {
                 Admin sign in
               </button>
             </div>
+            <p className="hero-signin-hint">
+              The <strong>banking assistant</strong> (dock below) can start PingOne and return you here. Use the buttons above
+              or the header when you want the full customer or admin dashboard after sign-in.
+            </p>
 
             <div className="hero-quick-links">
-              <button type="button" className="hql-btn hql-btn--red" onClick={() => { window.dispatchEvent(new CustomEvent('education-open-ciba', { detail: { tab: 'what' } })); }}>
-                📱 CIBA guide
-              </button>
-              <button type="button" className="hql-btn hql-btn--dark" onClick={() => { window.dispatchEvent(new CustomEvent('education-open-cimd', { detail: { tab: 'what' } })); }}>
-                📄 CIMD Simulator
-              </button>
-              <button type="button" className="hql-btn hql-btn--red" onClick={() => navigate('/')}>
-                Home
-              </button>
-              <button type="button" className="hql-btn hql-btn--blue" onClick={() => handleOAuthLogin('user')}>
-                Dashboard
-              </button>
-              <button type="button" className="hql-btn hql-btn--red" onClick={() => window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')}>
-                API
-              </button>
-              <button type="button" className="hql-btn hql-btn--blue" onClick={() => window.open('/logs', '_blank')}>
-                Logs
-              </button>
               <button type="button" className="hql-btn hql-btn--blue" onClick={() => navigate('/demo-data')}>
                 Demo config
               </button>
             </div>
-            <button type="button" className="hero-setup-link" onClick={() => navigate('/config')}>
+            <button type="button" className="hero-setup-btn" onClick={() => navigate('/config')}>
               Application setup (PingOne, redirects, local dev) — optional
             </button>
             <div className="hero-note">
               <p className="hero-note__powered">Powered by PingOne AI IAM Core</p>
               <p className="hero-note__tag">No passwords required</p>
-            </div>
-          </div>
-          
-          <div className="hero-visual">
-            <div className="floating-card">
-              <div className="card-header">
-                <div className="card-dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-                <span className="card-title">AI Banking Assistant</span>
-              </div>
-              <div className="card-content">
-                <div className="chat-message">
-                  <span className="message-avatar">🤖</span>
-                  <div className="message-bubble">
-                    How can I help you manage your finances today?
-                  </div>
-                </div>
-                <div className="chat-message user">
-                  <div className="message-bubble">
-                    Transfer $500 to savings
-                  </div>
-                  <span className="message-avatar">👤</span>
-                </div>
-                <div className="chat-message">
-                  <span className="message-avatar">🤖</span>
-                  <div className="message-bubble">
-                    ✅ Transfer completed! $500 moved to your high-yield savings account.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Explains PingOne for all paths; return_to=/marketing only when sign-in starts from BankingAgent */}
-      <section id="marketing-login" className="marketing-login" aria-labelledby="marketing-login-heading">
-        <div className="container">
-          <div className="marketing-login-card">
-            <h2 id="marketing-login-heading">Sign in with PingOne</h2>
-            <p>
-              Balances and transfers use the <strong>banking assistant</strong> (floating button or dock below). Both the
-              assistant and the buttons here send you through <strong>PingOne</strong>. If you start sign-in{' '}
-              <strong>from the assistant</strong>, you come back to this marketing page to keep chatting. If you use{' '}
-              <strong>Customer sign in</strong> here or in the header, you land on the <strong>customer dashboard</strong>{' '}
-              after PingOne.
               {marketingCfg.mode === 'slide_pi_flow' && (
-                <>
-                  {' '}
-                  <strong>Demo mode:</strong> customer sign-in opens a panel on the right with demo username/password hints,
-                  then continues with <code>response_type=pi.flow</code> at PingOne.
-                </>
+                <p className="hero-note__tag" style={{ marginTop: '0.5rem' }}>
+                  <strong>Demo:</strong> customer sign-in can open a panel with username/password hints, then{' '}
+                  <code>pi.flow</code> at PingOne.
+                </p>
               )}
-            </p>
-            <div className="marketing-login-actions">
-              <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user')}>
-                Customer sign in
-              </button>
-              <button type="button" className="nav-cta nav-cta--ghost" onClick={() => handleOAuthLogin('admin')}>
-                Admin sign in
-              </button>
             </div>
           </div>
         </div>
@@ -438,113 +365,20 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* AI Agent Section — dark showcase card on light marketing page (matches product mock) */}
-      <section id="agent-section" className="agent-section agent-section--showcase">
-        <div className="container">
-          <div className="section-header section-header--showcase">
-            <h2>Try Our AI Banking Assistant</h2>
-            <p>Experience the future of banking—no forms, no menus, just conversation</p>
-          </div>
-          
-          <div className="agent-demo agent-demo--showcase">
-            <div className="demo-tabs demo-tabs--pill">
-              <button 
-                type="button"
-                className={`tab ${activeTab === 'personal' ? 'active' : ''}`}
-                onClick={() => setActiveTab('personal')}
-              >
-                Personal Banking
-              </button>
-              <button 
-                type="button"
-                className={`tab ${activeTab === 'business' ? 'active' : ''}`}
-                onClick={() => setActiveTab('business')}
-              >
-                Business Banking
-              </button>
-            </div>
-            
-            <div className="demo-content">
-              <div className="demo-prompts">
-                <h4>Try asking:</h4>
-                <div className="prompt-suggestions">
-                  {activeTab === 'personal' ? (
-                    <>
-                      <div className="prompt">"Check my account balance"</div>
-                      <div className="prompt">"Transfer $100 to savings"</div>
-                      <div className="prompt">"What are my recent transactions?"</div>
-                      <div className="prompt">"Pay my electricity bill"</div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="prompt">"Create a new business account"</div>
-                      <div className="prompt">"Process payroll for 5 employees"</div>
-                      <div className="prompt">"Generate quarterly reports"</div>
-                      <div className="prompt">"Apply for business credit line"</div>
-                    </>
-                  )}
-                </div>
-                <div className="auth-notice auth-notice--showcase">
-                  <p>
-                    🔐 PingOne sign-in: use the <strong>live assistant</strong> (corner or dock) to stay on this page
-                    after login; <strong>Customer sign in</strong> below opens the dashboard.
-                  </p>
-                  <div className="auth-buttons auth-buttons--showcase-pair">
-                    <button type="button" className="auth-btn primary" onClick={() => handleOAuthLogin('user')}>
-                      Customer Sign In
-                    </button>
-                    <button type="button" className="auth-btn secondary" onClick={() => handleOAuthLogin('admin')}>
-                      Admin Sign In
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="demo-chat demo-chat--showcase">
-                <div className="landing-demo-chat-sim landing-demo-chat-sim--showcase">
-                  <div className="landing-demo-chat-sim__header">
-                    <div className="landing-demo-chat-sim__dot" />
-                    <span className="landing-demo-chat-sim__title">{preset.shortName} AI Agent</span>
-                  </div>
-                  <div className="landing-demo-chat-sim__body">
-                    <div className="landing-demo-chat-sim__bubble landing-demo-chat-sim__bubble--bot">
-                      Hi! I can check balances, move money, and explain how OAuth works. Sign in to get started.
-                    </div>
-                    <div className="landing-demo-chat-sim__bubble landing-demo-chat-sim__bubble--user">
-                      What&apos;s my account balance?
-                    </div>
-                    <div className="landing-demo-chat-sim__bubble landing-demo-chat-sim__bubble--bot">
-                      I&apos;ll need to verify your identity. Use <strong>Sign in</strong> inside the real assistant to
-                      return here — or <strong>Customer Sign In</strong> on the left for the full dashboard.
-                    </div>
-                  </div>
-                  <div className="landing-demo-chat-sim__footer">
-                    <span>💬</span>
-                    <span>Chat opens in the bottom-right corner after sign in</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* App-level EmbeddedAgentDock portals here so the live assistant scrolls above the closing CTA */}
+      <div id="marketing-embedded-dock-slot" className="marketing-embedded-dock-slot" />
 
       {/* CTA Section */}
       <section className="cta">
         <div className="container">
           <div className="cta-content">
             <h2>Ready to Experience the Future?</h2>
-            <p>Choose customer or admin — you&apos;ll land on the right dashboard after PingOne sign-in.</p>
-            <div className="hero-actions" style={{ justifyContent: 'center', marginTop: '1rem' }}>
-              <button type="button" className="cta-primary" onClick={() => handleOAuthLogin('user')}>
-                Customer sign in
-              </button>
-              <button type="button" className="cta-secondary" onClick={() => handleOAuthLogin('admin')}>
-                Admin sign in
-              </button>
-            </div>
-            <button type="button" className="hero-setup-link" style={{ display: 'block', margin: '1.25rem auto 0' }} onClick={() => navigate('/config')}>
-              Open application setup instead
+            <p>
+              Sign in from the <strong>header</strong> or <strong>hero</strong> above — you&apos;ll land on the right dashboard
+              after PingOne.
+            </p>
+            <button type="button" className="hero-setup-btn hero-setup-btn--cta" onClick={() => navigate('/config')}>
+              Application setup (PingOne, redirects, local dev)
             </button>
           </div>
         </div>
@@ -565,7 +399,7 @@ const LandingPage = () => {
                 <h4>Product</h4>
                 <a href="#features">Features</a>
                 <a href="#how-it-works">How It Works</a>
-                <a href="#agent-section">AI Assistant</a>
+                <a href="#marketing-embedded-dock-slot">Banking assistant</a>
               </div>
               <div className="link-group">
                 <h4>Company</h4>

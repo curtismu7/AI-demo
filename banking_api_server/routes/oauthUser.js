@@ -10,6 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getFrontendOrigin, getUserRedirectUri, validateRedirectUriOrigin, getExpectedFrontendOrigin } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
+const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -200,9 +201,10 @@ router.get('/login', (req, res) => {
       return res.status(400).json({ error: 'invalid_redirect_uri', message: uriCheck.reason });
     }
 
-    const resourceParam = process.env.ENDUSER_AUDIENCE
-      ? `&resource=${encodeURIComponent(process.env.ENDUSER_AUDIENCE)}`
-      : '';
+    const resourceParam = buildPingOneAuthorizeResourceQueryParam(
+      process.env.ENDUSER_AUDIENCE,
+      oauthUserConfig.scopes,
+    );
 
     // Generate a nonce for OIDC replay protection (RFC 6749 / OIDC Core §3.1.2.1)
     const nonce = crypto.randomBytes(16).toString('hex');

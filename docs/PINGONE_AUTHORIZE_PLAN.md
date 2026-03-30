@@ -2,6 +2,8 @@
 
 This document aligns the BX Finance banking demo with **PingOne Authorize** as documented by Ping Identity. It supersedes ad-hoc notes and should be updated when we change integration points.
 
+**Related (OAuth apps, client IDs, scopes, PingOne console steps):** [`PINGONE_APP_SCOPE_MATRIX.md`](./PINGONE_APP_SCOPE_MATRIX.md).
+
 ---
 
 ## Backend-for-Frontend (BFF)
@@ -15,7 +17,7 @@ In BX Finance, the BFF is the **Node/Express application** in **`banking_api_ser
 - When **transaction authorization** is enabled, calls **PingOne Authorize** from the server (using the **worker** client and decision endpoint / PDP configuration) inside **`routes/transactions.js`** — the SPA does not call Authorize directly.
 - Exposes **`/api/*`** routes consumed by **`banking_api_ui`**.
 
-Elsewhere in this repo, **“the BFF”** means **`banking_api_server`**, not the MCP server (`banking_mcp_server`) and not the static React bundle alone. Deeper token and standards detail: **`ARCHITECTURE.md`**.
+Elsewhere in this repo, **“the BFF”** means **`banking_api_server`**, not the MCP server (`banking_mcp_server`) and not the static React bundle alone. Deeper token and standards detail: **`ARCHITECTURE.md`**. **PingOne OIDC applications** (`admin_client_id`, `user_client_id`), exact **scope** strings, token exchange app, and console checklist: **[`PINGONE_APP_SCOPE_MATRIX.md`](./PINGONE_APP_SCOPE_MATRIX.md)**.
 
 ---
 
@@ -114,6 +116,8 @@ Architecture diagrams often bracket a **Policy** block with four checks. Below i
 1. **PingOne Authorize** does **not** receive the raw Bearer token in our integration; it receives **Trust Framework parameters** (`UserId`, `TokenAudience`, `ActClientId`, `NestedActClientId`, `McpResourceUri`, …). Your **policy** in PingOne should express the same intent as the diagram (compare those attributes to allowed values / directory).
 2. **Cryptographic and OAuth correctness** for MCP tokens remains **`introspection` + `aud` + scopes** on the MCP server; Authorize adds **central policy** when **`ff_authorize_mcp_first_tool`** and **`authorize_mcp_decision_endpoint_id`** are configured.
 3. **Stricter MCP** without changing PingOne policies: set **`MCP_SERVER_RESOURCE_URI`**, optionally **`MCP_EXPECTED_ACT_SUB`**, **`MCP_EXPECTED_ACT_CLIENT_ID`** (when PingOne only emits **`act.client_id`**), **`MCP_EXPECTED_ACT_ACT_SUB`**, and **`REQUIRE_MAY_ACT`** + **`BFF_CLIENT_ID`** as appropriate.
+
+For **`ENDUSER_AUDIENCE`** / **`AI_AGENT_AUDIENCE`** and how they relate to **PingOne app configuration** and **`aud`**, see **[`PINGONE_APP_SCOPE_MATRIX.md`](./PINGONE_APP_SCOPE_MATRIX.md)** §3–5.
 
 ---
 
@@ -283,5 +287,6 @@ It is **not** strictly “worse” or “better” in isolation — it is **diff
 
 - [Authorization using PingOne Authorize — overview](https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html)
 - [PingOne Platform APIs — Decision Endpoints](https://developer.pingidentity.com/pingone-api/authorize/authorization-decisions/decision-endpoints.html)
+- Internal: **`docs/PINGONE_APP_SCOPE_MATRIX.md`** — PingOne OAuth applications, `admin_client_id` / `user_client_id`, scope lists, console checklist
 - Internal: `banking_api_server/services/pingOneAuthorizeService.js`, `docs/MCP_GATEWAY_PLAN.md` (§ fine-grained controls)
 - Internal: **`ARCHITECTURE.md`** — full **RFC** list, BFF pattern, and implementation status table

@@ -229,18 +229,14 @@ describe('LandingPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/config');
   });
 
-  it('API quick-link opens /api-traffic in a popout window', () => {
+  it('hero Application setup button navigates to /config', () => {
     renderAt(LandingPage, '/');
-    const apiBtn = screen.getAllByRole('button').find(b => b.textContent.trim() === 'API');
-    fireEvent.click(apiBtn);
-    expect(windowOpenSpy).toHaveBeenCalledWith('/api-traffic', 'ApiTraffic', expect.any(String));
-  });
-
-  it('Logs quick-link opens /logs in a new tab (not admin OAuth)', () => {
-    renderAt(LandingPage, '/');
-    const logsBtn = screen.getAllByRole('button').find(b => b.textContent.trim() === 'Logs');
-    fireEvent.click(logsBtn);
-    expect(windowOpenSpy).toHaveBeenCalledWith('/logs', '_blank');
+    const heroSetup = screen.getAllByRole('button').find(
+      (b) => /application setup/i.test(b.textContent) && /optional/i.test(b.textContent),
+    );
+    expect(heroSetup).toBeTruthy();
+    fireEvent.click(heroSetup);
+    expect(mockNavigate).toHaveBeenCalledWith('/config');
   });
 
   it('Demo config quick-link navigates to /demo-data', () => {
@@ -250,15 +246,6 @@ describe('LandingPage', () => {
     );
     fireEvent.click(demoBtn);
     expect(mockNavigate).toHaveBeenCalledWith('/demo-data');
-  });
-
-  it('Home quick-link navigates to /', () => {
-    renderAt(LandingPage, '/marketing');
-    const homeBtn = screen.getAllByRole('button').find(
-      b => b.textContent.trim() === 'Home',
-    );
-    fireEvent.click(homeBtn);
-    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 });
 

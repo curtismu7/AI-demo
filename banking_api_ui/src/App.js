@@ -275,6 +275,10 @@ function AppWithAuth() {
     isMarketingEmbeddedDockSurface(pathname, user) ||
     (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute);
 
+  /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
+  const toastContainerAutoCloseMs =
+    !user && isPublicMarketingAgentPath(pathname) ? 12000 : 4000;
+
   const logout = () => {
     console.log('🚪 Starting logout — navigating to /api/auth/logout');
 
@@ -297,7 +301,7 @@ function AppWithAuth() {
         <div
           className={`App end-user-nano${showQuickNav ? ' App--has-quick-nav' : ''}${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}${isMarketingEmbeddedDockSurface(pathname, user) ? ' App--marketing-page' : ''}`}
         >
-          <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
+          <ToastContainer position="top-right" autoClose={toastContainerAutoCloseMs} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {sessionReauth && (
             <SessionReauthBanner
               message={sessionReauth.message}

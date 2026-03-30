@@ -1157,16 +1157,7 @@ export default function CimdSimPanel() {
 
   return (
     <>
-      {/* ── Floating action button ──────────────────────────────────────────── */}
-      <button
-        className={`cimd-fab${open ? ' cimd-fab--open' : ''}`}
-        onClick={() => setOpen(o => !o)}
-        title="CIMD Simulator — Client ID Metadata Document interactive guide"
-        aria-label="Open CIMD guide and simulator"
-      >
-        <span className="cimd-fab-icon">📄</span>
-        <span className="cimd-fab-label">CIMD Simulator</span>
-      </button>
+      {/* CIMD Simulator FAB removed — open via Learn menu, Banking Agent, or window event `education-open-cimd`. */}
 
       {/* ── Backdrop overlay ────────────────────────────────────────────────── */}
       {open && (

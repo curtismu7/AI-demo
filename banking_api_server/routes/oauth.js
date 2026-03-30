@@ -13,6 +13,8 @@ const {
 } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
+const oauthConfig = require('../config/oauth');
+const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -75,9 +77,10 @@ router.get('/login', (req, res) => {
     req.session.oauthNonce = nonce;
 
     // Generate authorization URL (includes code_challenge derived from verifier)
-    const resourceParam = process.env.ENDUSER_AUDIENCE
-      ? `&resource=${encodeURIComponent(process.env.ENDUSER_AUDIENCE)}`
-      : '';
+    const resourceParam = buildPingOneAuthorizeResourceQueryParam(
+      process.env.ENDUSER_AUDIENCE,
+      oauthConfig.scopes,
+    );
     const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce) + resourceParam;
 
     const cfg = oauthService.config || {};

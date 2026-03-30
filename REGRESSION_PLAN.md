@@ -11,6 +11,7 @@
 |---|---|---|
 | OAuth admin login | Admin can't log in | `routes/oauth.js`, `config/oauth.js`, `banking_api_server/.env` |
 | OAuth user login | Customers can't log in | `routes/oauthUser.js`, `config/oauthUser.js` |
+| **PingOne authorize `resource` + mixed scopes** | **`invalid_scope` — multiple resources** when `ENDUSER_AUDIENCE` caused `&resource=` on `/authorize` alongside OIDC + `banking:*` scopes | `banking_api_server/utils/oauthAuthorizeResource.js`, `routes/oauthUser.js`, `routes/oauth.js` — do not revert to always appending `&resource=` for that scope shape |
 | CRA proxy setup | `/api/*` calls go to wrong port → 500 | `banking_api_ui/src/setupProxy.js`, `banking_api_ui/.env` |
 | Session persistence | User logged out on every refresh | `server.js` (session middleware), `routes/oauth.js` `req.session.save()` |
 | **Upstash session store** | **Every Vercel Lambda gets empty in-memory session → 401 on all API calls** | `services/upstashSessionStore.js` — must call `cb(err)` on failure; `KV_REST_API_URL` + `KV_REST_API_TOKEN` set in Vercel env. Use `update-upstash.sh` to rotate. |
@@ -66,6 +67,24 @@
 ---
 
 ## 3. Bug Fix Log (reverse-chronological)
+
+### 2026-03-30 — Deploy bundle: marketing showcase removed, rail FABs, guest toasts, scope matrix doc
+
+- **Landing (`/`):** Removed the full **“Try Our AI Banking Assistant”** section (tabs, try-asking, chat mock). **`scrollToAgent`** and footer **Banking assistant** link target **`#marketing-embedded-dock-slot`**. Dropped related **`LandingPage.css`** / **`globalTheme.css`** rules.
+- **Education rail:** Removed upper-left **CIBA** / **CIMD Simulator** FAB buttons (**`CIBAPanel.js`**, **`CimdSimPanel.js`**); drawers still open from Learn / events. **`App.css`** left-rail stack offsets adjusted.
+- **Toasts (guest marketing):** **`ToastContainer`** default **12s** for unsigned users on **`/`** and **`/marketing`**; **`BankingAgent`** uses longer **`agentToastMs`** on those paths for success/error/info tool toasts.
+- **OAuth:** **`buildPingOneAuthorizeResourceQueryParam`** — see dedicated log entry below (`invalid_scope` fix); tests **`oauthAuthorizeResource.test.js`**.
+- **Docs:** New **`docs/PINGONE_APP_SCOPE_MATRIX.md`** (apps, client IDs, scope lists, PingOne checklist); links from **`docs/PINGONE_AUTHORIZE_PLAN.md`** (intro, BFF closing §, AUD summary, References).
+- **Files:** `banking_api_ui` — `LandingPage.js`, `LandingPage.css`, `App.js`, `App.css`, `BankingAgent.js`, `EmbeddedAgentDock.js`, `globalTheme.css`, `CIBAPanel.js`, `CimdSimPanel.js`, `CimdSimPanel.css`, `buttonRouting.test.js`; `banking_api_server` — `utils/oauthAuthorizeResource.js`, `routes/oauth.js`, `routes/oauthUser.js`, `src/__tests__/oauthAuthorizeResource.test.js`; `docs/PINGONE_APP_SCOPE_MATRIX.md`, `docs/PINGONE_AUTHORIZE_PLAN.md`
+- **Regression check:** `cd banking_api_ui && npm run build` → **0**; `cd banking_api_server && CI=true npx jest src/__tests__/oauthAuthorizeResource.test.js oauth-login-resilience.test.js --forceExit` → pass; Customer + Admin sign-in without `invalid_scope` (with `ENDUSER_AUDIENCE` set).
+- **Do not break:** OAuth callbacks, **`req.session.save()`** before redirect, **BankingAgent** FAB/dock visibility, **`middleware/auth.js`** `aud` rules.
+
+### 2026-03-30 — Marketing landing: simplify hero, remove duplicate sign-in strip
+
+- **Change:** **`LandingPage`** hero no longer shows CIBA / CIMD / Home / Dashboard / API / Logs quick links — only **Demo config** remains. **Application setup** uses a visible **`hero-setup-btn`** (not an underlined text link). Right-hand hero **chat mockup** removed; **single-column** hero. **Sign in with PingOne** middle section (duplicate Customer/Admin) removed; **`marketing-scroll-login`** scrolls to **`#marketing-hero-signin`**. **AI Assistant** showcase and bottom **CTA** no longer repeat sign-in buttons (copy points to header/hero/assistant). **`slide_pi_flow`** note kept on hero and drawer.
+- **Files:** `banking_api_ui/src/components/LandingPage.js`, `LandingPage.css`, `components/__tests__/buttonRouting.test.js`
+- **Regression check:** `cd banking_api_ui && npm run build` exits **0**; `npm test -- --testPathPattern=buttonRouting` passes.
+- **Do not break:** Nav **Application setup** / **Vercel setup**; **BankingAgent** `marketing-scroll-login` event; **pi.flow** drawer.
 
 ### 2026-03-30 — PingOne Authorize education (diagram, MCP checklist) + MCP_EXPECTED_ACT_CLIENT_ID
 
@@ -398,6 +417,13 @@
   - **JWT client auth (RFC 7523)** — private_key_jwt: What is it · JWT assertion structure · vs client_secret · In token exchange · PingOne setup
 - **Files:** `educationIds.js` (3 new IDs), `PARPanel.js`, `RARPanel.js`, `JwtClientAuthPanel.js` (new), `EducationPanelsHost.js`, `educationCommands.js`, `EducationBar.js`, `RFCIndexPanel.js`
 - **Regression check:** Open hamburger → OAuth flows section shows PAR, RAR, JWT client auth buttons; each opens its drawer. Shortcuts section shows short-name buttons. RFC Index rows for RFC 7523, RFC 9126, RFC 9396 link to the correct panels.
+
+### 2026-03-30 — PingOne customer/admin sign-in: invalid_scope “multiple resources” when ENDUSER_AUDIENCE set
+- **Symptom:** Toast / IdP error: `invalid_scope` — *May not request scopes for multiple resources* (long message + correlation id) on authorize.
+- **Root cause:** `/api/auth/oauth/user/login` and `/api/auth/oauth/login` appended `&resource=<ENDUSER_AUDIENCE>` to PingOne `/authorize` while also requesting standard OIDC scopes (`openid`, `profile`, `email`, `offline_access`) plus custom API scopes (`banking:*`). RFC 8707 `resource` binds one resource; mixed scope sets span more than one PingOne resource → rejection.
+- **Fix:** New helper `buildPingOneAuthorizeResourceQueryParam` omits `resource` on authorize when both OIDC and custom API scopes are present. `ENDUSER_AUDIENCE` remains for post-issuance JWT audience checks (`middleware/auth.js`). OIDC-only or API-only scope lists still append `resource` when the env var is set.
+- **Files:** `banking_api_server/utils/oauthAuthorizeResource.js`, `routes/oauthUser.js`, `routes/oauth.js`, `src/__tests__/oauthAuthorizeResource.test.js`
+- **Regression check:** With `ENDUSER_AUDIENCE` set in Vercel, Customer and Admin sign-in complete authorize without `invalid_scope`; token `aud` validation unchanged for configured audience + `https://api.pingone.com`.
 
 ### 2026-03-28 — CIBA education buttons did nothing: stale mutual-exclusion effect + z-index gap (commit `dcc906d`)
 - **Symptom:** All three CIBA buttons in the hamburger "Learn & agent" panel ("CIBA (OOB) — short (drawer)", "CIBA — full guide (floating)", "CIBA" shortcut) appeared to do nothing when clicked.

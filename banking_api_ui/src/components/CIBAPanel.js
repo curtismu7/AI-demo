@@ -441,17 +441,7 @@ export default function CIBAPanel() {
 
   return (
     <>
-      {/* Floating trigger button */}
-      <button
-        className={`ciba-fab${open ? ' ciba-fab--open' : ''}`}
-        onClick={() => setOpen((o) => !o)}
-        title="Learn CIBA — backchannel authentication & app flows"
-        aria-label="Open CIBA guide and try backchannel authentication"
-      >
-        <span className="ciba-fab-icon">📲</span>
-        <span className="ciba-fab-label">CIBA guide</span>
-        {cibaStatus?.enabled && <span className="ciba-fab-dot" title="CIBA enabled" />}
-      </button>
+      {/* CIBA guide FAB removed — open via Learn menu, Banking Agent, or window event `education-open-ciba`. */}
 
       {/* Drawer overlay */}
       {open && (

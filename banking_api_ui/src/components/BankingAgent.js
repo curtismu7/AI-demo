@@ -686,6 +686,16 @@ export default function BankingAgent({
   const [searchParams] = useSearchParams();
   // On the /agent route the inline/full-page instance is shown — hide duplicate float
   const isAgentPage = location.pathname === '/agent';
+  /** Landing `/` + `/marketing`: agent success/info/error toasts use longer autoClose (readable for guests). */
+  const agentToastMs = useMemo(() => {
+    const slow = isPublicMarketingAgentPath(location.pathname);
+    return {
+      successAction: slow ? 7500 : 2500,
+      toolsLoaded: slow ? 7000 : 2000,
+      errShort: slow ? 10000 : 5000,
+      infoToken: slow ? 8500 : 4500,
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     const sync = () => setConsentBlocked(isAgentBlockedByConsentDecline());
@@ -1355,7 +1365,7 @@ export default function BankingAgent({
               ).join('\n\n');
           addMessage('assistant', `🔧 MCP Banking Tools (${tools.length} available):\n\n${toolText}`, 'tools/list');
           setIsExpanded(true);
-          toast.update(toastId, { render: `✅ ${tools.length} tools loaded`, type: 'success', isLoading: false, autoClose: 2000 });
+          toast.update(toastId, { render: `✅ ${tools.length} tools loaded`, type: 'success', isLoading: false, autoClose: agentToastMs.toolsLoaded });
           setLoading(false);
           toolProgressIdRef.current = null;
           return;
@@ -1391,7 +1401,7 @@ export default function BankingAgent({
         } else {
           addMessage('assistant', formatResult(response.result), actionId);
           toast.dismiss(toastId);
-          notifyError(`❌ ${normalized.message || normalized.error || 'Request failed'}`, { autoClose: 5000 });
+          notifyError(`❌ ${normalized.message || normalized.error || 'Request failed'}`, { autoClose: agentToastMs.errShort });
         }
         setLoading(false);
         return;
@@ -1443,7 +1453,7 @@ export default function BankingAgent({
             'aud (audience): which resource server accepts the token — narrowed on exchange.',
             'may_act (user token) = prospective permission · act (MCP token) = current delegation fact.',
           ].join('\n');
-          notifyInfo(`🔐 Token Exchange complete — MCP token issued (aud: ${exchanged.audienceNarrowed || 'set'}, scope: ${exchanged.scopeNarrowed || 'narrowed'})`, { autoClose: 4500 });
+          notifyInfo(`🔐 Token Exchange complete — MCP token issued (aud: ${exchanged.audienceNarrowed || 'set'}, scope: ${exchanged.scopeNarrowed || 'narrowed'})`, { autoClose: agentToastMs.infoToken });
         } else if (required) {
           tokenMsg = [
             '🔐 Token Exchange (RFC 8693): not configured',
@@ -1538,7 +1548,7 @@ export default function BankingAgent({
         render: `✅ ${label} complete`,
         type: 'success',
         isLoading: false,
-        autoClose: 2500,
+        autoClose: agentToastMs.successAction,
       });
     } catch (err) {
       markToolProgressOutcome(false);
@@ -1821,7 +1831,7 @@ export default function BankingAgent({
       }
       notifyError(
         'Sign in required — the server has no session for this request. Refresh the page and sign in again.',
-        { autoClose: 5000 },
+        { autoClose: agentToastMs.errShort },
       );
       addMessage(
         'assistant',
@@ -1833,7 +1843,7 @@ export default function BankingAgent({
       }
       return;
     }
-    notifyError(`❌ Could not parse request: ${err.message}`, { autoClose: 5000 });
+    notifyError(`❌ Could not parse request: ${err.message}`, { autoClose: agentToastMs.errShort });
     addMessage('assistant', `Could not parse: ${err.message}`);
   }
 

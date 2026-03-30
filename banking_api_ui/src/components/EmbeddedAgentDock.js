@@ -1,5 +1,6 @@
 // banking_api_ui/src/components/EmbeddedAgentDock.js
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import BankingAgent from './BankingAgent';
 import { isEmbeddedAgentDockRoute, isMarketingEmbeddedDockSurface } from '../utils/embeddedAgentFabVisibility';
@@ -97,13 +98,24 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
   const authenticatedStandardDock =
     Boolean(user) && agentPlacement === 'bottom' && isEmbeddedAgentDockRoute(pathname);
 
+  const [marketingPortalEl, setMarketingPortalEl] = useState(null);
+
+  useLayoutEffect(() => {
+    if (!marketingDockSurface) {
+      setMarketingPortalEl(null);
+      return;
+    }
+    const el = document.getElementById('marketing-embedded-dock-slot');
+    setMarketingPortalEl(el || null);
+  }, [marketingDockSurface, pathname, user]);
+
   if (!marketingDockSurface && !authenticatedStandardDock) {
     return null;
   }
 
   const isConfigPage = pathname.replace(/\/$/, '') === '/config';
 
-  return (
+  const dockNode = (
     <div
       className={`global-embedded-agent-dock-wrap${collapsed ? ' global-embedded-agent-dock-wrap--collapsed' : ''}`}
       role="region"
@@ -158,4 +170,10 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
       )}
     </div>
   );
+
+  if (marketingDockSurface && marketingPortalEl) {
+    return createPortal(dockNode, marketingPortalEl);
+  }
+
+  return dockNode;
 }
