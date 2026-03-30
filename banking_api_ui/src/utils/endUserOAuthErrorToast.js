@@ -28,6 +28,12 @@ export function showEndUserOAuthErrorToast(searchParams) {
           + 'or enable pi.flow on the PingOne OIDC application.';
       } else if (idpError === 'access_denied' || /access_denied/i.test(desc)) {
         errorMessage = 'Sign-in was cancelled or denied at PingOne.';
+      } else if (idpError === 'invalid_scope' && /may not request scopes for multiple resource/i.test(desc)) {
+        errorMessage =
+          'PingOne rejected the login: banking scopes are on a separate **Resource Server**, so mixing them with ' +
+          'OIDC scopes in one request is blocked. Fix: in **Demo config**, enable ' +
+          '**"Login — OIDC-only authorize"** (`ff_oidc_only_authorize`). ' +
+          'Pair with **"Skip Token Exchange"** if token exchange is also not configured.';
       } else if (idpError) {
         errorMessage = `PingOne returned: ${idpError}. ${desc ? String(desc).slice(0, 220) : 'Try again or use standard redirect sign-in (Demo config → Customer login mode).'}`.trim();
       } else {

@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const oauthConfig = require('../config/oauth');
+const configStore = require('../services/configStore');
 const { validateToken: validatePingOneToken } = require('../services/tokenValidationService');
 const { 
   BANKING_SCOPES, 
@@ -297,6 +298,21 @@ const requireScopes = (requiredScopes, requireAll = false) => {
       // custom banking:* scopes to be provisioned in PingOne.
       if (req.user.role === 'admin') {
         logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — user has admin role', {
+          ...requestContext,
+          required_scopes: scopesToCheck
+        });
+        return next();
+      }
+
+      // Simplified-auth bypass: when ff_oidc_only_authorize is ON, the user token only carries
+      // OIDC scopes (no banking:*) because the authorize request was stripped down to avoid
+      // PingOne's "May not request scopes for multiple resources" error. Scope gates on banking
+      // routes relax to session-authenticated identity (same approach as admin role bypass).
+      const oidcOnlyMode =
+        configStore.getEffective('ff_oidc_only_authorize') === true ||
+        configStore.getEffective('ff_oidc_only_authorize') === 'true';
+      if (oidcOnlyMode) {
+        logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — ff_oidc_only_authorize ON', {
           ...requestContext,
           required_scopes: scopesToCheck
         });

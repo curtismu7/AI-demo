@@ -28,11 +28,18 @@ const config = {
   /**
    * OIDC + banking API scopes for authorize. Must yield ≥5 distinct scopes on the access token
    * so RFC 8693 MCP exchange can narrow audience and scopes (see MIN_USER_SCOPES_FOR_MCP_EXCHANGE).
+   *
+   * When ff_oidc_only_authorize is ON, only OIDC scopes are requested to avoid PingOne
+   * "May not request scopes for multiple resources" when banking:* lives on a Resource Server.
    */
   get scopes() {
+    const oidcOnly =
+      configStore.getEffective('ff_oidc_only_authorize') === true ||
+      configStore.getEffective('ff_oidc_only_authorize') === 'true';
+    const base = ['openid', 'profile', 'email', 'offline_access'];
+    if (oidcOnly) return base;
     const role = configStore.getEffective('user_role') || 'customer';
     const banking = getScopesForUserType(role);
-    const base = ['openid', 'profile', 'email', 'offline_access'];
     return [...new Set([...base, ...banking])];
   },
 

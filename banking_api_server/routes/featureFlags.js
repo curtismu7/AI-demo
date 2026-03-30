@@ -180,6 +180,23 @@ const FLAG_REGISTRY = [
     defaultValue: false,
     warnIfEnabled: true,
   },
+  {
+    id:           'ff_oidc_only_authorize',
+    name:         'Login — OIDC-only authorize (no banking scopes)',
+    category:     'Token Exchange',
+    description:
+      'When ON, the user login authorize request sends **only** `openid profile email offline_access` scopes. ' +
+      'This fixes the PingOne **"May not request scopes for multiple resources"** error that occurs when ' +
+      '`banking:*` scopes are registered on a separate PingOne API Resource Server. ' +
+      'Banking routes relax to session-based authorization (identity gates only). ' +
+      'Best used together with **ff_skip_token_exchange** ON so the agent forwards the OIDC token directly to MCP.',
+    impact:
+      'OFF (default) = full scope list (OIDC + banking:*) in authorize — works when banking scopes are plain app custom scopes. ' +
+      'ON = OIDC-only authorize → no "multiple resources" error; banking scope gates on API routes relax to authenticated-session.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: false,
+  },
 ];
 
 // ---------------------------------------------------------------------------
