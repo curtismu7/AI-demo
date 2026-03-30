@@ -20,7 +20,7 @@ Human User (Banking App Login)
   ▼
 Subject Token  [TOKEN 1 — user's session token]
   { sub: "<user-id>",
-    aud: ["https://subject.pingdemo.com"],
+    aud: ["https://ai-agent.pingdemo.com"],      ← AI Agent service validates this token
     scope: "openid profile email banking:agent:invoke",
     may_act: { "sub": "https://agent-gateway.pingdemo.com" } }
               ↑ tells PingOne: the banking app server is PERMITTED to exchange this token
@@ -32,7 +32,7 @@ Subject Token  [TOKEN 1 — user's session token]
   ▼
 MCP Token  [TOKEN 2 — delegated tool-call token]
   { sub: "<user-id>",
-    aud: ["https://mcp-server.pingdemo.com"],
+    aud: ["https://mcp-server.pingdemo.com"],   ← MCP Server validates this token
     scope: "banking:accounts:read banking:transactions:read banking:transactions:write",
     act: { "sub": "https://agent-gateway.pingdemo.com" } }
           ↑ records WHO performed Exchange #1 — verifiable delegation audit trail
@@ -45,7 +45,7 @@ MCP Token  [TOKEN 2 — delegated tool-call token]
   ▼
 Resource Token  [TOKEN 3 — narrowest-scope PingOne API token]
   { sub: "<user-id>",
-    aud: ["https://api.pingone.com"],
+    aud: ["https://api.pingone.com"],             ← PingOne Management API validates this token
     scope: "p1:read:user p1:update:user",
     act: { "sub": "https://mcp-server.pingdemo.com",
            act: { "sub": "https://agent-gateway.pingdemo.com" } } }
@@ -55,11 +55,14 @@ Resource Token  [TOKEN 3 — narrowest-scope PingOne API token]
 PingOne Management API  (/v1/environments/{envId}/users/{userId})
 ```
 
-| Token | Issued by | Exchanger | Audience URI |
-|-------|-----------|-----------|-------------|
-| **Subject Token** | PingOne AS (PKCE login) | — | `https://subject.pingdemo.com` |
-| **MCP Token** | PingOne AS (Token Exchange #1) | BX Finance Banking App | `https://mcp-server.pingdemo.com` |
-| **Resource Token** | PingOne AS (Token Exchange #2) | BX Finance MCP Worker | `https://api.pingone.com` |
+> **Every `aud` is different** — each token is scoped to exactly one service. That service's resource server validates the token; all others reject it. This is the core of RFC 8693 audience restriction.
+
+| Token | Audience URL | Who validates it | Exchanger |
+|-------|-------------|------------------|-----------|
+| **Subject Token** | `https://ai-agent.pingdemo.com` | BX Finance AI Agent service | — (issued at user login) |
+| **MCP Token** | `https://mcp-server.pingdemo.com` | BX Finance MCP Server | BX Finance Banking App |
+| **Resource Token** | `https://api.pingone.com` | PingOne Management API | BX Finance MCP Worker |
+| *(actor token)* | `https://agent-gateway.pingdemo.com` | *(internal — proves banking app identity for Exchange #1)* | — |
 
 > **`may_act` → `act` transition:** `may_act` in the Subject Token declares who is *allowed* to exchange it. After exchange, that identity becomes the `act` claim. Each subsequent exchange nests a new `act` layer, forming a full delegation chain.
 
@@ -90,7 +93,7 @@ Use this table as your single source of truth when filling in PingOne forms and 
 | Item | Field | Exact value |
 |------|-------|-------------|
 | Agent Resource Server | Name | `BX Finance AI Agent` |
-| Agent Resource Server | Audience | `https://subject.pingdemo.com` |
+| Agent Resource Server | Audience | `https://ai-agent.pingdemo.com` |
 | Agent Resource Server | Scope | `banking:agent:invoke` |
 | MCP Resource Server | Name | `BX Finance MCP Server` |
 | MCP Resource Server | Audience | `https://mcp-server.pingdemo.com` |
@@ -107,7 +110,7 @@ Use this table as your single source of truth when filling in PingOne forms and 
 | User Schema Attribute | Type | `JSON` |
 | Token Claim | Name | `may_act` |
 | Token Claim | Value expression | `((#root.context.requestData.subjectToken.may_act.sub == #root.context.requestData.actorToken.aud[0])?#root.context.requestData.subjectToken.may_act:null)` |
-| Env var — Subject Token audience | `ENDUSER_AUDIENCE` | `https://subject.pingdemo.com` |
+| Env var — Subject Token audience | `ENDUSER_AUDIENCE` | `https://ai-agent.pingdemo.com` |
 | Env var — MCP Token audience | `MCP_RESOURCE_URI` | `https://mcp-server.pingdemo.com` |
 | Env var — Resource Token audience | `PINGONE_API_AUDIENCE` | `https://api.pingone.com` |
 | Env var — Agent Gateway audience | `BFF_RESOURCE_URI` | `https://agent-gateway.pingdemo.com` |
@@ -122,12 +125,14 @@ Use this table as your single source of truth when filling in PingOne forms and 
 
 ### 1a. Create: BX Finance AI Agent  *(Subject Token audience)*
 
+This resource server gives the Subject Token a meaningful audience URL. The AI Agent service checks that incoming tokens have `aud = https://ai-agent.pingdemo.com` before allowing tool invocations.
+
 Click **Add Resource** and fill in exactly:
 
 | Field | Type in |
 |-------|---------|
 | **Resource name** | `BX Finance AI Agent` |
-| **Audience** | `https://subject.pingdemo.com` |
+| **Audience** | `https://ai-agent.pingdemo.com` |
 | **Description** | `Audience resource server for the BX Finance AI Agent The Subject Token issued at user login is scoped to this resource and carries the may act claim that authorizes token exchange` |
 | **Access token time to live (seconds)** | `3600` |
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Post` |
@@ -449,7 +454,7 @@ PINGONE_CORE_CLIENT_ID=<Client ID of "BX Finance Banking App">
 PINGONE_CORE_CLIENT_SECRET=<Client Secret of "BX Finance Banking App">
 
 # ── Subject Token audience  (must exactly match "BX Finance AI Agent" Audience)
-ENDUSER_AUDIENCE=https://subject.pingdemo.com
+ENDUSER_AUDIENCE=https://ai-agent.pingdemo.com
 
 # ── MCP Token audience  (must exactly match "BX Finance MCP Server" Audience) ─
 MCP_RESOURCE_URI=https://mcp-server.pingdemo.com
@@ -532,7 +537,7 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
 ```json
 {
   "iss": "https://auth.pingone.com/{envId}/as",
-  "aud": ["https://subject.pingdemo.com"],
+  "aud": ["https://ai-agent.pingdemo.com"],
   "sub": "<user-pingone-id>",
   "scope": "openid profile email banking:agent:invoke",
   "may_act": { "sub": "https://agent-gateway.pingdemo.com" }
@@ -571,7 +576,7 @@ Nested `act` = full delegation chain. Outermost `act.sub` = MCP server (Exchange
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Subject Token `aud` is the app client ID, not `https://subject.pingdemo.com` | `ENDUSER_AUDIENCE` not set, or `resource=` missing from `/authorize` | Set `ENDUSER_AUDIENCE=https://subject.pingdemo.com`; ensure `ff_oidc_only_authorize=false` |
+| Subject Token `aud` is the app client ID, not `https://ai-agent.pingdemo.com` | `ENDUSER_AUDIENCE` not set, or `resource=` missing from `/authorize` | Set `ENDUSER_AUDIENCE=https://ai-agent.pingdemo.com`; ensure `ff_oidc_only_authorize=false` |
 | `invalid_scope: banking:agent:invoke` on login | Scope not allowed on `BX Finance User` app | Part 2a — enable `banking:agent:invoke` scope on the Resources tab |
 | `may_act` missing from Subject Token | Token claim mapping missing, or user's `mayAct` attribute is null | Part 3b (add claim map) and Part 3c (set attribute on user) |
 | `may_act` is a plain string, not an object | `mayAct` schema attribute type is `STRING` | Delete and re-create as type `JSON`; re-set the value on the user |
