@@ -832,6 +832,13 @@ app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/transactions', authenticateToken, transactionRoutes);
+// GET /api/demo-scenario — return empty defaults when unauthenticated so the public
+// /demo-data page never triggers a 401 console error.  All mutating methods (PUT, PATCH)
+// still hit authenticateToken via the router below.
+app.get('/api/demo-scenario', (req, res, next) => {
+  if (req.session?.user) return next();
+  return res.json({ accounts: [], settings: {}, defaults: {}, userData: {}, persistenceNote: null });
+});
 app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
