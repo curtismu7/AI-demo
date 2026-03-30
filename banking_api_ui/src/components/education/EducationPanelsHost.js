@@ -17,6 +17,7 @@ import BestPracticesPanel from './BestPracticesPanel';
 import PARPanel from './PARPanel';
 import RARPanel from './RARPanel';
 import JwtClientAuthPanel from './JwtClientAuthPanel';
+import AgenticMaturityPanel from './AgenticMaturityPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -41,6 +42,7 @@ export default function EducationPanelsHost() {
       <PARPanel isOpen={panel === EDU.PAR} onClose={close} initialTabId={tab} />
       <RARPanel isOpen={panel === EDU.RAR} onClose={close} initialTabId={tab} />
       <JwtClientAuthPanel isOpen={panel === EDU.JWT_CLIENT_AUTH} onClose={close} initialTabId={tab} />
+      <AgenticMaturityPanel isOpen={panel === EDU.AGENTIC_MATURITY} onClose={close} initialTabId={tab} />
     </>
   );
 }

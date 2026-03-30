@@ -25,4 +25,5 @@ export const EDUCATION_COMMANDS = [
   { id: 'par', label: 'PAR (RFC 9126)', panel: EDU.PAR, tab: 'what' },
   { id: 'rar', label: 'RAR (RFC 9396)', panel: EDU.RAR, tab: 'what' },
   { id: 'jwt-client-auth', label: 'JWT client auth (RFC 7523)', panel: EDU.JWT_CLIENT_AUTH, tab: 'what' },
+  { id: 'agentic-maturity', label: '⭐ Agentic Maturity Model', panel: EDU.AGENTIC_MATURITY, tab: 'overview' },
 ];

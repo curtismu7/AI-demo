@@ -20,4 +20,6 @@ export const EDU = {
   RAR: 'rar',
   /** JWT-based client authentication — RFC 7523 / private_key_jwt */
   JWT_CLIENT_AUTH: 'jwt-client-auth',
+  /** Ping Identity Agentic Maturity Model — 3 levels of agent identity controls */
+  AGENTIC_MATURITY: 'agentic-maturity',
 };
