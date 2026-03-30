@@ -418,16 +418,15 @@ Open the existing application. Verify or update:
 **Resources tab:**
 
 1. Click the **+** (Add) icon.
-2. A list of resources appears. Find each of the following and check the box next to its name:
+2. A list of resources appears. Expand **BX Finance MCP Server** and enable:
 
-   - ✅ `banking:accounts:read` — expand **BX Finance MCP Server** and check this scope
-   - ✅ `banking:transactions:read` — check this scope under **BX Finance MCP Server**
-   - ✅ `banking:transactions:write` — check this scope under **BX Finance MCP Server**
-   - ✅ **BX Finance Agent Gateway** — check the **resource row itself**. There are no individual scopes under it, so just checking the resource name is all that is needed.
+   - ✅ `banking:accounts:read`
+   - ✅ `banking:transactions:read`
+   - ✅ `banking:transactions:write`
 
 3. Click **Save**.
 
-> **Why check BX Finance Agent Gateway with no scope?** Adding a resource (even without scopes) allows the app to request a token whose `aud` is set to that resource's audience URL (`https://agent-gateway.pingdemo.com`). During Token Exchange #1, the Banking App obtains one of these audience-restricted tokens and sends it as the `actor_token`. PingOne reads `actor_token.client_id` and compares it to `may_act.sub` on the user's Subject Token to verify the right app is doing the exchange. Without this assignment, PingOne will reject the actor token with `unauthorized_client`.
+> **BX Finance Agent Gateway is not needed here.** The Banking App authenticates the token exchange with its own `client_id` and `client_secret` (standard client authentication). PingOne identifies it as the actor via that `client_id` — no special audience-scoped token is needed. Adding BX Finance Agent Gateway to this app's Resources would only be required if the Banking App were separately acquiring a token scoped to `https://agent-gateway.pingdemo.com` to forward as an explicit `actor_token` parameter — which is not the default flow.
 
 **Attribute Mappings tab:**
 
