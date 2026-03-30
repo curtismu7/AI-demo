@@ -17,6 +17,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **Marketing customer sign-in (demo/config)** — `configStore` keys `marketing_customer_login_mode` (`redirect` | `slide_pi_flow`), `marketing_demo_username_hint`, `marketing_demo_password_hint` (public; empty allowed to clear); editable in **Demo config** and **Application setup**; `LandingPage` slide-over panel with hints + **Continue to PingOne** using `use_pi_flow=1`; `BankingAgent` customer login on marketing paths appends `use_pi_flow=1` when mode is slide; `GET /api/auth/oauth/user/login?use_pi_flow=1` forces pi.flow via `oauthUserService.generateAuthorizationUrl` `forcePiFlow`; `s:oauthUserService.test.js`
+- **Compact marketing landing page** — reduced hero min-height / section padding / typography so the home page scrolls less (`LandingPage.css`, `LandingPage.js`)
 - MCP first-tool PingOne Authorize gate: `ff_authorize_mcp_first_tool` flag, `mcpToolAuthorizationService.js`, `authorize_mcp_decision_endpoint_id` config key; `POST /api/mcp/tool` evaluates once per session before the WebSocket call
 - `GET /api/authorize/evaluation-status` includes `mcpFirstTool*` fields; PingOneAuthorizePanel shows MCP gate status
 - AGENTS.md and CLAUDE.md agent instruction files; architecture PNGs
@@ -28,6 +30,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `transactions.js`: `ff_authorize_fail_open` controls fail-open vs fail-closed behaviour; `ff_authorize_deposits` adds deposits to the Authorize evaluation scope
 
 ### Fixed
+- **End-user OAuth failures no longer send users to `/login`** — PingOne callback errors (`oauth_provider`), invalid state, missing code, nonce mismatch, session persist/regenerate failures, and token `callback_failed` now redirect to `session.postLoginReturnToPath` or **`/marketing`** so **`/` / `/marketing` still mount BankingAgent FAB + dock**; **`App.js`** + **`endUserOAuthErrorToast.js`** show a toast (pi.flow troubleshooting hint when relevant) and strip error query params (commits `3a762ae`, `b166f47`)
 - Pre-existing `no-unused-vars` lint errors in `DemoDataPage.js` and `UserDashboard.js` (suppressed with eslint-disable-next-line)
 - **OTP email verification for high-value transactions** — after the user checks the consent checkbox and clicks "Agree & send code", a 6-digit OTP is generated (HMAC-SHA256/per-challenge salt, timing-safe compare) and sent via PingOne email; the transaction only executes once the correct code is verified; challenge state machine: `pending → otp_pending → confirmed → consumed`; max 3 attempts, 5-minute TTL; new route `POST /consent-challenge/:id/verify-otp`; dev fallback when email unconfigured; 7 unit tests added
 - **Exchange Audit Log** (`services/exchangeAuditStore.js`) — Redis-backed (Upstash KV) audit log for RFC 8693 token-exchange events; `writeExchangeEvent()` LPUSH+LTRIM to `banking:exchange-audit` (max 200 entries), `readExchangeEvents()` LRANGE; graceful no-op when KV env vars are absent

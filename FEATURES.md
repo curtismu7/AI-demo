@@ -43,6 +43,18 @@ git checkout <last-version-tag> -- <key-file>
 | Login — `error=session_persist_failed` when OAuth callback cannot persist session | active | `banking_api_ui/src/components/Login.js`, `banking_api_server/routes/oauthUser.js`, `banking_api_server/routes/oauth.js` | — |
 | Session reliability P0–P3 — retry delays, Upstash re-fetch, reconnecting banner, role-switch endpoint, fatal session.regenerate | active | `banking_api_server/server.js`, `banking_api_server/routes/oauth.js`, `banking_api_server/routes/oauthUser.js`, `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/App.js` | — |
 | `POST /api/auth/switch` — role-switch endpoint clears session + redirects to correct login URL | active | `banking_api_server/server.js` | — |
+| Customer authorize — optional **`use_pi_flow=1`** on `GET /api/auth/oauth/user/login` forces **`response_type=pi.flow`** (`oauthUserService` `forcePiFlow`) for supported PingOne apps | active | `banking_api_server/services/oauthUserService.js`, `banking_api_server/routes/oauthUser.js` | `s:oauthUserService.test.js` |
+| End-user OAuth callback **errors** redirect to **`postLoginReturnToPath` or `/marketing`** (not `/login`); **`App.js`** toasts via **`endUserOAuthErrorToast.js`** | active | `banking_api_server/routes/oauthUser.js`, `banking_api_ui/src/App.js`, `banking_api_ui/src/utils/endUserOAuthErrorToast.js` | — |
+
+---
+
+## Marketing & public landing
+
+| Feature | Status | Key files | Test file |
+|---|---|---|---|
+| Customer sign-in mode — **Redirect** (code + PKCE) vs **slide panel + pi.flow** (`marketing_customer_login_mode`); demo username/password hints | active | `banking_api_server/services/configStore.js`, `banking_api_ui/src/components/LandingPage.js`, `LandingPage.css`, `Config.js`, `DemoDataPage.js`, `banking_api_ui/src/services/configService.js` | `u:components/__tests__/DemoDataPage.test.js` (config load/save surface) |
+| BankingAgent on marketing — customer login respects marketing mode (`use_pi_flow` when slide) + `return_to=/marketing` for agent-driven OAuth | active | `banking_api_ui/src/components/BankingAgent.js` | `s:bankingAgentNl.test.js`, `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
+| Landing page — condensed hero and section spacing | active | `banking_api_ui/src/components/LandingPage.css`, `LandingPage.js` | — |
 
 ---
 
