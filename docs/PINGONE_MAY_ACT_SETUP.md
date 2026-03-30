@@ -141,6 +141,10 @@ Click **Add Resource** and fill in exactly:
 
 Click **Save**.
 
+**Attribute Mappings tab:**
+
+No mappings needed here. The `may_act` claim is configured on the **BX Finance User** application (Step 2a), not on the resource server. Leave this tab unchanged.
+
 **Scopes tab → Add Scope:**
 
 | Field | Type in |
@@ -149,10 +153,6 @@ Click **Save**.
 | **Description** | `Grants the bearer permission to invoke the BX Finance AI Agent on behalf of the authenticated user Present on the Subject Token validated by the banking app before token exchange` |
 
 Click **Save**.
-
-**Attribute Mappings tab:**
-
-No mappings needed here. The `may_act` claim is configured on the **BX Finance User** application (Step 2a), not on the resource server. Leave this tab unchanged.
 
 ---
 
@@ -171,6 +171,10 @@ Click **Add Resource** and fill in exactly:
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Post` |
 
 Click **Save**.
+
+**Attribute Mappings tab:**
+
+No mappings needed here. The MCP Token claims (`sub`, `act`, scopes) are produced entirely by the token exchange flow. Leave this tab unchanged.
 
 **Scopes tab → Add three scopes:**
 
@@ -196,10 +200,6 @@ Click **Save**.
 | **Description** | `Write access to initiate transactions on behalf of the authenticated user Requires step up MFA for amounts above the configured threshold` |
 
 Click **Save** after each scope.
-
-**Attribute Mappings tab:**
-
-No mappings needed here. The MCP Token claims (`sub`, `act`, scopes) are produced entirely by the token exchange flow. Leave this tab unchanged.
 
 ---
 
@@ -231,13 +231,13 @@ Click **Add Resource** and fill in exactly:
 
 Click **Save**.
 
-**Scopes tab:**
-
-No scopes needed. This resource server is used purely for audience identity, not for granting capabilities.
-
 **Attribute Mappings tab:**
 
 No mappings needed. Leave this tab unchanged.
+
+**Scopes tab:**
+
+No scopes needed. This resource server is used purely for audience identity, not for granting capabilities.
 
 > The Banking App application must be allowed to request tokens scoped to this audience. Enable **BX Finance Agent Gateway** on the Banking App's Resources tab in Step 2b.
 
