@@ -1768,6 +1768,22 @@ body > .banking-agent-float-root .banking-agent-panel {
   overflow-y: auto;
 }
 
+/* Prompt input: light grey so it's visible against the dark marketing page background */
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-input {
+  --ba-input-bg: #e8ecf0;
+  --ba-input-bd: #b0bac6;
+  background: var(--ba-input-bg);
+  border-color: var(--ba-input-bd);
+  color: #0f172a;
+}
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-input::placeholder {
+  color: #64748b;
+}
+.banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-input:focus {
+  border-color: #4169e1;
+  background: #f1f4f8;
+}
+
 .banking-agent-panel.ba-mode-inline.ba-embedded-bottom-dock .ba-header .ba-server-chips {
   overflow-x: auto;
   flex-wrap: nowrap;
