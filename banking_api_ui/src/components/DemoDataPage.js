@@ -197,12 +197,20 @@ export default function DemoDataPage({ user, onLogout }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSetMayAct = async (enable) => {
+    if (!user) {
+      notifyWarning('Sign in as admin first to update the may_act attribute in PingOne.');
+      return;
+    }
     setMayActSaving(true);
     try {
       const { data } = await apiClient.patch('/api/demo/may-act', { enabled: enable });
       setMayActEnabled(enable);
       notifySuccess(data.message || (enable ? 'may_act enabled' : 'may_act cleared'));
     } catch (err) {
+      if (err?.response?.status === 401) {
+        notifyWarning('Sign in as admin first to update the may_act attribute in PingOne.');
+        return;
+      }
       const msg = err?.response?.data?.message || err.message || 'Failed to update may_act';
       notifyError(msg);
     } finally {
@@ -349,6 +357,7 @@ export default function DemoDataPage({ user, onLogout }) {
     setLoading(true);
     try {
       const data = await fetchDemoScenario();
+      if (data === null) { setLoading(false); return; } // unauthenticated — skip silently
       // Map server accounts into type slots (first account per type wins).
       const fresh = defaultTypeSlots();
       for (const a of (data.accounts || [])) {
@@ -381,6 +390,11 @@ export default function DemoDataPage({ user, onLogout }) {
       setDefaults(data.defaults || null);
       setPersistenceNote(data.persistenceNote || null);
     } catch (e) {
+      if (e.status === 401) {
+        // Not logged in — demo config flags still work, account section needs a session
+        setLoading(false);
+        return;
+      }
       notifyError(e.message || 'Failed to load demo data');
     } finally {
       setLoading(false);

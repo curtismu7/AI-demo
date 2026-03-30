@@ -18,6 +18,7 @@ export async function fetchDemoScenario() {
     try {
       const res = await fetch('/api/demo-scenario', { credentials: 'include' });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) return null; // not logged in — caller handles gracefully
       if (!res.ok) throw apiError(res, data);
       return data;
     } finally {
