@@ -78,6 +78,17 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-03-31 — DemoDataPage: toast message quality + route guards for /config and /feature-flags
+
+- **Feature / fix:** Three UX improvements in one push:
+  1. **Toast message quality (`DemoDataPage.js`, `demoScenario.js`):** `handleSetMayAct` now shows specific, friendly messages with a sign-out reminder instead of passing through the raw server message (which contained raw JSON like `"may_act set to {"client_id":"..."}`). `handleP1azFlagToggle` now shows `"<Flag Label>: ON/OFF"` instead of the generic `"Feature flag saved"`.
+  2. **Server attribute key fix (`demoScenario.js`):** `patchMayAct` now writes `{ sub: bffClientId }` to PingOne instead of `{ client_id: bffClientId }`, aligning the stored value with the SpEL expression `.may_act.sub` used during token exchange. Also removed the technical message string from the response body — client now owns all user-facing copy.
+  3. **Route guard fix (`App.js`):** `/config` and `/feature-flags` were guarded to `user?.role === 'admin'`; non-admin users who clicked the links from `/demo-data` were silently redirected to `/marketing`. Changed both guards to `user` (any logged-in user).
+- **Files changed:** `banking_api_ui/src/components/DemoDataPage.js`, `banking_api_server/routes/demoScenario.js`, `banking_api_ui/src/App.js`
+- **Commits:** `1ff364e` (toast + server key fix), `230b63d` (route guards)
+- **Regression check:** `cd banking_api_ui && npm run build` → **Compiled successfully** on both commits.
+- **Do not break:** Admin-only routes (`/activity`, `/users`, `/accounts`, `/transactions`, `/admin/banking`, `/settings`, `/oauth-debug-logs`, `/client-registration`) remain gated to `role === 'admin'`. Only `/config` and `/feature-flags` were opened to all logged-in users.
+
 ### 2026-03-31 — DemoDataPage: remove all role gates; BFF injection toggles visible to all users
 
 - **Feature / fix:** All admin/login guards removed from `/demo-data` page so that BFF injection toggles and the `may_act` section are visible to every logged-in user. Previously only `role === 'admin'` users saw the Auto-inject may_act and Auto-inject audience toggles.
