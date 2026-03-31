@@ -90,11 +90,16 @@
                   "    if (submitUrl) {",
                   "        pm.collectionVariables.set('flow_submit_url', submitUrl);",
                   "        pm.environment.set('flow_submit_url', submitUrl);",
+                  "        pm.collectionVariables.set('flow_links_json', JSON.stringify(links));",
+                  "        pm.environment.set('flow_links_json', JSON.stringify(links));",
                   "        console.log('[Step 1a] flow_submit_url saved:', submitUrl);",
                   "    } else {",
                   "        pm.collectionVariables.unset('flow_submit_url');",
                   "        pm.environment.unset('flow_submit_url');",
-                  "        console.warn('[Step 1a] No /flows/ submit URL found in _links; Step 1b will fall back to constructed URL.');",
+                  "        pm.collectionVariables.set('flow_links_json', JSON.stringify(links));",
+                  "        pm.environment.set('flow_links_json', JSON.stringify(links));",
+                  "        console.warn('[Step 1a] No /flows/ submit URL found in _links; Step 1b will fail fast and print flow_links_json for diagnosis.');",
+                  "        console.warn('[Step 1a] _links rel keys:', Object.keys(links));",
                   "    }",
                   "    console.log('[Step 1a] flow_id saved:', json.id);",
                   "    console.log('[Step 1a] flow_id_issued_at:', now);",
@@ -212,12 +217,14 @@
                   "  throw new Error('[Step 1b] PINGONE_ENVIRONMENT_ID is empty. Set it in your active environment or collection variables.');",
                   "}",
                   "",
-                  "// Use PingOne-provided submit URL if Step 1a exposed one",
+                  "// Require PingOne-provided submit URL from Step 1a to avoid endpoint-shape guessing",
                   "const flowSubmitUrl = getVar('flow_submit_url');",
-                  "if (flowSubmitUrl && String(flowSubmitUrl).trim() !== '') {",
-                  "  pm.request.url = String(flowSubmitUrl);",
-                  "  __logger.log('[Step 1b] Using flow_submit_url from Step 1a:', flowSubmitUrl);",
+                  "if (!flowSubmitUrl || String(flowSubmitUrl).trim() === '') {",
+                  "  const linksJson = getVar('flow_links_json') || '{}';",
+                  "  throw new Error('[Step 1b] Missing flow_submit_url from Step 1a _links. This means Step 1a did not expose a credential-submit endpoint for this flow. Re-run Step 1a and inspect flow_links_json variable. _links=' + linksJson);",
                   "}",
+                  "pm.request.url = String(flowSubmitUrl);",
+                  "__logger.log('[Step 1b] Using flow_submit_url from Step 1a:', flowSubmitUrl);",
                   "",
                   "// Log the *resolved* URL (based on the request URL template)",
                   "const resolvedUrl = pm.variables.replaceIn(pm.request.url.toString());",
@@ -233,7 +240,7 @@
                   "",
                   "// Helpful hints for common 404 causes",
                   "__logger.log('[Step 1b] Using PINGONE_REGION=', region, '| PINGONE_ENVIRONMENT_ID=', envId, '| flow_id=', flowId);",
-                  "__logger.log('[Step 1b] If you still get 404 NOT_FOUND: verify the /as/ path is present, region is correct (com/eu/ca/asia), and Step 1a & 1b are hitting the same env/region.');",
+                  "__logger.log('[Step 1b] If you still get 404 NOT_FOUND on flow_submit_url, the flow instance itself is missing/expired server-side. Re-run Step 1a then Step 1b immediately.');",
                   ""
                 ],
                 "type": "text/javascript",
@@ -1082,6 +1089,11 @@
       "key": "flow_submit_url",
       "value": "",
       "description": "AUTO — credential-submit endpoint from Step 1a _links; Step 1b uses this when available"
+    },
+    {
+      "key": "flow_links_json",
+      "value": "",
+      "description": "AUTO — raw Step 1a _links object for diagnostics"
     }
   ]
 }
