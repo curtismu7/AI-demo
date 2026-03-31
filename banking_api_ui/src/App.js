@@ -350,7 +350,7 @@ function AppWithAuth() {
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
-                    <Route path="/config"      element={user?.role === 'admin' ? <Config /> : <Navigate to="/" replace />} />
+                    <Route path="/config"      element={user ? <Config /> : <Navigate to="/" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
                     <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />
@@ -365,7 +365,7 @@ function AppWithAuth() {
                     <Route path="/transaction-consent" element={<TransactionConsentPage user={user} />} />
                     <Route path="/delegated-access" element={<DelegatedAccessPage user={user} onLogout={logout} />} />
                     <Route path="/feature-flags"
-                      element={user?.role === 'admin' ? <FeatureFlagsPage /> : <Navigate to="/" replace />}
+                      element={user ? <FeatureFlagsPage /> : <Navigate to="/" replace />}
                     />
                     <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
