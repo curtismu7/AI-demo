@@ -33,7 +33,7 @@ Subject Token  [TOKEN 1 — user's session token]
   │
   │  Token Exchange #1 (RFC 8693)
   │  Banking app server POSTs the Subject Token to PingOne's /token endpoint.
-  │  PingOne checks: may_act.sub == actorToken.client_id? → issues MCP Token.
+  │  PingOne checks: may_act.sub == actorToken.aud[0]? → issues MCP Token.
   │  Exchanger: BX Finance Banking App (PINGONE_CORE_CLIENT_ID)
   ▼
 MCP Token  [TOKEN 2 — delegated tool-call token]
@@ -178,7 +178,7 @@ Use this table as your single source of truth when filling in PingOne forms and 
 | User Schema Attribute | Attribute name | `mayAct` |
 | User Schema Attribute | Type | `JSON` |
 | Token Claim — `act` on MCP Token | Where configured | **BX Finance MCP Server resource Attributes tab** (Step 1b) — NOT the application |
-| Token Claim — `act` expression | Expression | `(#root.context.requestData.subjectToken.may_act.sub == #root.context.requestData.actorToken.client_id)?#root.context.requestData.subjectToken.may_act:null` |
+| Token Claim — `act` expression | Expression | `(#root.context.requestData.subjectToken?.may_act?.sub != null && #root.context.requestData.subjectToken?.may_act?.sub == #root.context.requestData.actorToken?.aud?.get(0))?#root.context.requestData.subjectToken?.may_act:null` |
 | Env var — Subject Token audience | `ENDUSER_AUDIENCE` | `https://ai-agent.pingdemo.com` |
 | Env var — MCP Token audience | `MCP_RESOURCE_URI` | `https://mcp-server.pingdemo.com` |
 | Env var — PingOne API Token audience | `PINGONE_API_AUDIENCE` | `https://api.pingone.com` |
@@ -252,10 +252,31 @@ This is where PingOne gets the `act` claim for the MCP Token during Token Exchan
 | Field | Type in |
 |-------|---------|
 | **Attribute name** | `act` |
-| **Expression** | `(#root.context.requestData.subjectToken.may_act.sub == #root.context.requestData.actorToken.client_id)?#root.context.requestData.subjectToken.may_act:null` |
+| **Expression** | `(#root.context.requestData.subjectToken?.may_act?.sub != null && #root.context.requestData.subjectToken?.may_act?.sub == #root.context.requestData.actorToken?.aud?.get(0))?#root.context.requestData.subjectToken?.may_act:null` |
 | **Required** | ✅ Yes |
 
-This compares `may_act.sub` in the Subject Token (the permitted actor’s UUID) against `client_id` of the actor token the Banking App presents. If they match, `may_act` is promoted to `act` in the new MCP Token. If they don’t match — meaning the wrong app is trying to exchange the token — `act` is `null` and the exchange fails because the attribute is required.
+This compares `may_act.sub` in the Subject Token (the permitted actor's UUID) against `aud[0]` of the actor token the Banking App presents. If they match, `may_act` is promoted to `act` in the new MCP Token. If they don't match — meaning the wrong app is trying to exchange the token — `act` is `null` and the exchange fails because the attribute is required.
+
+> **Expression explained — null-safe SpEL:**
+> ```
+> (
+>   #root.context.requestData.subjectToken?.may_act?.sub != null
+>   && #root.context.requestData.subjectToken?.may_act?.sub
+>      == #root.context.requestData.actorToken?.aud?.get(0)
+> )
+>   ? #root.context.requestData.subjectToken?.may_act
+>   : null
+> ```
+> - `?.may_act?.sub` — safe navigation: returns `null` instead of throwing if `may_act` is absent from the Subject Token
+> - `?.aud?.get(0)` — safe navigation: returns `null` instead of throwing if the actor token has no `aud` array
+> - `!= null &&` — explicit guard: prevents `null == null` from evaluating to `true` when `may_act` is absent entirely
+> - If all checks pass and the UUIDs match: returns `may_act` (which becomes `act` in the MCP Token)
+>
+> A simpler non-null-safe version also works for the demo:
+> ```
+> (#root.context.requestData.subjectToken.may_act.sub == #root.context.requestData.actorToken.aud[0])?#root.context.requestData.subjectToken.may_act:null
+> ```
+> Use the null-safe version in production — it handles tokens that lack `may_act` without a runtime error.
 > **How to test in PingOne:**
 > 1. Click the pencil icon next to the `act` mapping → **Build and Test Expression** opens.
 > 2. Click **Edit JSON** in the Test Data panel and paste. The `subjectToken` value is the decoded payload of the actual Subject Token — paste the real claims. Replace `<PINGONE_CORE_CLIENT_ID>` with the Banking App client ID UUID in both places; they must match for the expression to return non-null.
@@ -274,19 +295,20 @@ This compares `may_act.sub` in the Subject Token (the permitted actor’s UUID) 
 >         }
 >       },
 >       "actorToken": {
->         "client_id": "<PINGONE_CORE_CLIENT_ID>"
+>         "aud": ["<PINGONE_CORE_CLIENT_ID>"]
 >       }
 >     }
 >   }
 > }
 > ```
+> `actorToken.aud[0]` is the value PingOne exposes for the actor in the SpEL context. It must equal `may_act.sub` — both are the Banking App client ID UUID (`PINGONE_CORE_CLIENT_ID`).
 > **What SpEL can and cannot read from `subjectToken`:**
 > - ✅ **Custom claims** (`may_act`, and any other non-standard claims) — fully accessible
 > - ❌ **Standard JWT claims** (`sub`, `iss`, `aud`, `exp`, `iat`) — NOT accessible via SpEL; the expression cannot read them and they return `null` if referenced. They are safe to include in test data for realism but the expression ignores them.
 >
 > So `#root.context.requestData.subjectToken.may_act.sub` works. `#root.context.requestData.subjectToken.sub` returns `null`.
 >
-> **`may_act.sub` must be the Banking App UUID, not a URL.** If your Subject Token has `may_act.sub` set to a URL (e.g. `https://agent1.example.com`) instead of the Banking App's client ID UUID, the comparison against `actorToken.client_id` will always fail and `act` will be `null`. Fix: set `mayAct = { "sub": "<UUID-of-BX-Finance-Banking-App>" }` on the user record (Part 3c).
+> **`may_act.sub` must be the Banking App UUID, not a URL.** If your Subject Token has `may_act.sub` set to a URL (e.g. `https://agent1.example.com`) instead of the Banking App's client ID UUID, the comparison against `actorToken.aud[0]` will always fail and `act` will be `null`. Fix: set `mayAct = { "sub": "<UUID-of-BX-Finance-Banking-App>" }` on the user record (Part 3c).
 >
 > 3. Click **Test Expression** — the Result panel should show:
 > ```json
@@ -574,7 +596,7 @@ If `may_act` is absent:
 
 ### 3c. Set `mayAct` on the User Record
 
-The value must be the **client ID UUID of BX Finance Banking App** (`PINGONE_CORE_CLIENT_ID`). This is what PingOne compares against the actor token’s `client_id` during Token Exchange #1.
+The value must be the **client ID UUID of BX Finance Banking App** (`PINGONE_CORE_CLIENT_ID`). This is what PingOne compares against `actorToken.aud[0]` during Token Exchange #1.
 
 **Option A — PingOne Admin Console:**
 1. **Directory → Users** → open the user
@@ -683,7 +705,7 @@ client_id=PINGONE_CORE_CLIENT_ID
 &scope=banking:accounts:read banking:transactions:read banking:transactions:write
 ```
 
-PingOne validates: `subject_token.may_act.sub` === `actor_token.client_id` — both must equal the Banking App's client ID UUID (`PINGONE_CORE_CLIENT_ID`). If they match, PingOne issues the MCP Token with `act.sub = <PINGONE_CORE_CLIENT_ID>`.
+PingOne validates: `subject_token.may_act.sub` === `actor_token.aud[0]` — both must equal the Banking App's client ID UUID (`PINGONE_CORE_CLIENT_ID`). If they match, PingOne issues the MCP Token with `act.sub = <PINGONE_CORE_CLIENT_ID>`.
 
 ### MCP Service → PingOne API Token  (Client Credentials — Token 3)
 
