@@ -1386,24 +1386,25 @@ export default function DemoDataPage({ user, onLogout }) {
               })()}
 
               {/* Static-mode notice */}
-              <div className="demo-data-static-notice">
-                <span className="demo-data-static-notice__icon">🔒</span>
+              <div className="demo-data-static-notice" style={{ borderColor: '#93c5fd', background: '#eff6ff', color: '#1e3a5f' }}>
+                <span className="demo-data-static-notice__icon">ℹ️</span>
                 <div>
                   <strong>Static mapping active</strong> — <code>may_act</code> is always present in your
                   token. The PingOne attribute mapping for the <em>bankingAdmin</em> app uses a hardcoded
                   expression, so <code>may_act</code> is injected regardless of the <code>mayAct</code>{' '}
-                  user attribute. The buttons below still write to your user record and are useful for
-                  exploring the concept, but they will not change what appears in your token.
+                  user attribute. The buttons below write to your PingOne user record for conceptual
+                  exploration, but will not change what appears in your token.
                 </div>
               </div>
 
-              <p className="demo-data-hint">
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
                 The <code>may_act</code> claim in a PingOne access token pre-authorises the BFF to exchange
                 that token on behalf of the user (RFC&nbsp;8693). Enable it to demo a <strong>successful</strong>{' '}
                 token exchange with full <code>act</code> claim provenance; disable it to demo the{' '}
                 <strong>failed / degraded</strong> path.
               </p>
 
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#6b7280', fontStyle: 'italic' }}>Conceptual only — writes to PingOne user attribute; does not affect your token while static mapping is active.</p>
               <div className="demo-data-mayact-row">
                 <button
                   type="button"
