@@ -13,9 +13,9 @@ This is NOT PingOne Advanced Identity Cloud (ForgeRock AM) — those are separat
 
 A draw.io diagram of the full 1-exchange token chain is included in this repo:
 
-| File | GitHub link |
-|------|-------------|
-| `docs/BX-Finance-1-Exchange-Delegated-Chain.drawio` | [View / Download](https://github.com/curtismu7/banking-demo/blob/fix%2Fdashboard-fab-positioning/docs/BX-Finance-1-Exchange-Delegated-Chain.drawio) |
+| File | Download link |
+|------|---------------|
+| `docs/BX-Finance-1-Exchange-Delegated-Chain.drawio` | [⬇ Download](https://raw.githubusercontent.com/curtismu7/banking-demo/fix/dashboard-fab-positioning/docs/BX-Finance-1-Exchange-Delegated-Chain.drawio) |
 
 ### How to open
 
