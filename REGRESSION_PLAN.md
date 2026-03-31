@@ -78,6 +78,24 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-03-31 — DemoDataPage: remove all role gates; BFF injection toggles visible to all users
+
+- **Feature / fix:** All admin/login guards removed from `/demo-data` page so that BFF injection toggles and the `may_act` section are visible to every logged-in user. Previously only `role === 'admin'` users saw the Auto-inject may_act and Auto-inject audience toggles.
+- **DemoDataPage.js changes:**
+  - `handleSetMayAct`: removed `if (!user)` bail guard and "Sign in as admin first" warning block
+  - `loadP1azFlags` useCallback: removed `user?.role` from dependency array
+  - `loadP1azFlags` useEffect: changed `if (user) loadP1azFlags()` to unconditional `loadP1azFlags()` on mount
+  - "PingOne Authorize — demo toggles" section: removed `{user?.role === 'admin' && (` render wrapper and its closing `)}` — section now always renders
+  - BFF injection IIFE: removed admin check; `injectFlag`/`audFlag` are now plain `p1azFlags.find(...)` for all users
+- **PINGONE_MAY_ACT_SETUP.md doc fixes (same commit):**
+  - Removed incorrect `sub` attribute mapping from Step 1b — `sub` is a standard JWT claim handled automatically by PingOne during token exchange; `#root.context.requestData.subjectToken.sub` returns `null` in the SpEL tester because standard claims are not exposed on the `subjectToken` context object. Only `act` needs a custom mapping.
+  - Updated SpEL test data for the `act` expression to use real decoded token payload format (with `client_id`, `iss`, `sub`, `aud`, `scope`, `may_act` fields matching an actual Subject Token)
+  - Added explicit note: SpEL can read **custom claims** (`may_act`) but NOT **standard JWT claims** (`sub`, `iss`, `aud`, `exp`, `iat`) from `subjectToken`
+  - Added warning: `may_act.sub` must be the Banking App **UUID**, not a URL — URL values always fail the `actorToken.client_id` comparison
+- **Files changed:** `banking_api_ui/src/components/DemoDataPage.js`, `docs/PINGONE_MAY_ACT_SETUP.md`
+- **Regression check:** `cd banking_api_ui && npm run build` → **Compiled successfully**.
+- **Do not break:** `ff_inject_may_act` flag still gates the actual BFF synthetic injection (`agentMcpTokenService.js`); removing the UI admin gate only affects display, never the server-side safety check. `loadP1azFlags` without a user guard is safe — the BFF `/api/feature-flags` endpoint requires a valid session and returns an empty array for unauthenticated callers.
+
 ### 2026-03-30 — MCP spec 2025-11-25 gap analysis completion: tests + user options
 
 - **Feature / tooling:** Closes all test gaps and adds a user-facing option for MCP protocol version selection.
