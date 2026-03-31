@@ -60,6 +60,11 @@ router.get('/', authenticateToken, requireScopes(['banking:transactions:read', '
 // ENDUSER_AUDIENCE is set, restore: requireScopes(['banking:transactions:read', 'banking:read'])
 router.get('/my', authenticateToken, async (req, res) => {
   try {
+    // Log RFC 8693 delegated access for audit/demo visibility
+    if (req.user.isDelegated) {
+      console.log(`[transactions] Delegated access — sub=${req.user.id} act.sub=${req.user.actor?.sub}`);
+    }
+
     // Add cache headers for frequent polling
     res.set({
       'Cache-Control': 'private, max-age=10', // Cache for 10 seconds

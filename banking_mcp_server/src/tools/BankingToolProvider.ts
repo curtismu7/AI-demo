@@ -201,11 +201,14 @@ export class BankingToolProvider {
     context: ToolExecutionContext,
     agentToken?: string
   ): Promise<BankingToolResult> {
-    // For tools that don't require user auth, use agent token if available
+    // Token selection: prefer the BFF-issued delegated token (RFC 8693 agentToken) when
+    // available — it carries the act claim proving the delegation chain and has the correct
+    // audience for the BFF's data APIs. Fall back to the raw session user token only when
+    // no delegated token was provided (e.g. ff_skip_token_exchange=true or direct MCP call).
     let token: string;
-    if (!tool.requiresUserAuth && agentToken) {
+    if (agentToken) {
       token = agentToken;
-      console.log(`[BankingToolProvider] Using agent token for ${tool.name}`);
+      console.log(`[BankingToolProvider] Using BFF-exchanged delegated token for ${tool.name}`);
     } else {
       const userToken = this.getUserTokenForScopes(context.session, tool.requiredScopes);
       if (!userToken) {
@@ -217,7 +220,7 @@ export class BankingToolProvider {
         );
       }
       token = userToken.accessToken;
-      console.log(`[BankingToolProvider] Using user token for ${tool.name}`);
+      console.log(`[BankingToolProvider] Using session user token for ${tool.name} (no delegated token)`);
     }
 
     switch (tool.handler) {

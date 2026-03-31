@@ -25,8 +25,10 @@ const DEBUG_SCOPES = process.env.DEBUG_SCOPES === 'true';
 // When not set, audience validation is skipped (tokens are still JWKS-verified).
 // Set ENDUSER_AUDIENCE and AI_AGENT_AUDIENCE in your deployment env to enforce
 // that tokens were issued for this specific resource server.
+// MCP_RESOURCE_URI is the audience for BFF-exchanged MCP delegated tokens (RFC 8693).
 const ENDUSER_AUDIENCE  = process.env.ENDUSER_AUDIENCE  || null;
 const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || null;
+const MCP_RESOURCE_URI  = process.env.MCP_RESOURCE_URI  || null;
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
 const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 
@@ -514,7 +516,7 @@ const validatePingOneCoreToken = async (token, requestContext = {}) => {
     // Tokens from PingOne without a custom resource server have aud='https://api.pingone.com'
     // which is always accepted as a valid PingOne-issued token.
     const PINGONE_DEFAULT_AUD = 'https://api.pingone.com';
-    const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE].filter(Boolean);
+    const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE, MCP_RESOURCE_URI].filter(Boolean);
     if (knownAudiences.length > 0 && payload.aud) {
       const tokenAuds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
       // Accept tokens issued for a configured custom resource server OR for the
@@ -638,7 +640,9 @@ const authenticateToken = async (req, res, next) => {
             userType: userType,
             tokenType: 'oauth',
             acr: decoded.acr || null,
-            scopes: scopes
+            scopes: scopes,
+            isDelegated: !!decoded.act,
+            actor: decoded.act || null
           };
           logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Session-based token authentication successful (BFF)', {
             ...requestContext,
@@ -739,7 +743,10 @@ const authenticateToken = async (req, res, next) => {
         userType: userType,
         tokenType: 'oauth',
         acr: decoded.acr || null,      // PingOne sets this when acr_values was requested
-        scopes: scopes // Add parsed scopes to user object
+        scopes: scopes,
+        // RFC 8693 delegation: enrich req.user when token carries an act claim
+        isDelegated: !!decoded.act,
+        actor: decoded.act || null     // { sub: <actor_client_id> } or { sub, act: { sub: ... } } for nested
       };
       
       return next();
