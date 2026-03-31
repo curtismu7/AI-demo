@@ -17,10 +17,13 @@ A draw.io diagram of the full 1-exchange token chain is included in this repo:
 |------|---------------|
 | `docs/BX-Finance-1-Exchange-Delegated-Chain.drawio` | [⬇ Download](https://raw.githubusercontent.com/curtismu7/banking-demo/fix/dashboard-fab-positioning/docs/BX-Finance-1-Exchange-Delegated-Chain.drawio) |
 
+> **To download:** Right-click the link above → **Save Link As** → save as `BX-Finance-1-Exchange-Delegated-Chain.drawio`.
+> (Clicking opens the raw XML in the browser — right-click is required to save the file.)
+
 ### How to open
 
 **Option A — draw.io (recommended):**
-1. Download the `.drawio` file from the link above.
+1. Save the `.drawio` file using right-click → Save Link As (see above).
 2. Go to [app.diagrams.net](https://app.diagrams.net) → **Open from → This device** → select the file.
    Or open it directly in VS Code with the [hediet.vscode-drawio](https://marketplace.visualstudio.com/items?itemName=hediet.vscode-drawio) extension.
 
@@ -733,6 +736,8 @@ A ready-to-import Postman collection is included in this repo. It covers the ful
 > **pi.flow** means the authorize request returns JSON instead of redirecting to a browser. Postman can complete the full PKCE flow headlessly in 4 steps, then exchange, then call the PingOne API — all without any browser interaction.
 
 ### Import
+
+> **To download the files:** Right-click each link above → **Save Link As** → keep the `.json` extension. (Clicking opens the raw JSON in the browser — right-click is required to save.)
 
 1. In Postman: **Import** → select the `.json` file.
 2. The collection uses **Collection Variables** — no separate environment file needed.
