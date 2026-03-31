@@ -8,7 +8,10 @@
  * on /authorize only when the scope list mixes OIDC and custom API scopes.
  */
 
-const OIDC_SCOPE_NAMES = new Set(['openid', 'profile', 'email', 'offline_access']);
+// Only `openid` triggers PingOne's "May not request scopes for multiple resources" error
+// when combined with a custom resource= audience. profile, email, and offline_access
+// do not constitute a separate resource server in PingOne's enforcement model.
+const OIDC_SCOPE_NAMES = new Set(['openid']);
 
 /**
  * @param {string|null|undefined} resourceAudience

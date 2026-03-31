@@ -210,9 +210,21 @@ Click **Add Resource** and fill in exactly:
 
 Click **Save**.
 
-**Attribute Mappings tab:**
+**Attribute Mappings tab → Add one attribute:**
 
-No mappings needed here. The `may_act` claim is configured on the **BX Finance User** application (Step 2a), not on the resource server. Leave this tab unchanged.
+This is where PingOne injects `may_act` into the **access token** when the Subject Token is issued to this resource server audience.
+
+> **Why here, not on the app?** OIDC application attribute mappings only deliver to UserInfo and ID Token. Access token claims for a specific audience must be defined on the **resource server** itself.
+
+| Field | Type in |
+|-------|--------|
+| **Attribute name** | `may_act` |
+| **Expression** | `user.mayAct` |
+| **Required** | ❌ No |
+
+> **Expression syntax:** Resource server attribute expressions use bare SpEL — no `${}` wrapper, no `#root.` prefix. `user.mayAct` reads the `mayAct` JSON attribute directly from the user profile. If the user's `mayAct` attribute is null, PingOne omits the claim from the token (because Required is off).
+
+Click **Save**.
 
 **Scopes tab → Add Scope:**
 
@@ -422,38 +434,13 @@ Open the existing end-user OIDC application. Verify or update:
 - ✅ `banking:agent:invoke` from **BX Finance AI Agent**
 - ✅ `openid`, `profile`, `email`, `offline_access` *(standard OIDC — already present)*
 
-**Attribute Mappings tab → Add Attribute:**
+**Attribute Mappings tab:**
 
-| Field | Type in |
-|-------|---------|
-| **PingOne attribute** | `may_act` |
-| **Application attribute** | `(#root.user.mayAct != null ? #root.user.mayAct : null)` |
+No custom mapping needed here for `may_act`. The `may_act` claim in the access token is produced by the expression configured on the **BX Finance AI Agent resource server** (Step 1a, Attribute Mappings tab).
 
-> This reads the user's `mayAct` profile attribute and passes it through as the `may_act` claim on the Subject Token at login. Use the test data below to validate the expression in PingOne's **Build and Test Expression** dialog before saving.
->
-> **How to test in PingOne:**
-> 1. Click the pencil icon next to the `may_act` mapping → **Build and Test Expression** opens.
-> 2. The expression field should contain: `(#root.user.mayAct != null ? #root.user.mayAct : null)`
-> 3. In the **Test Data** field, paste — replacing `<PINGONE_CORE_CLIENT_ID>` with the actual Banking App client ID UUID:
-> ```json
-> {
->   "user": {
->     "mayAct": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
->   }
-> }
-> ```
-> The `user` wrapper is PingOne's SpEL object model — `#root.user.mayAct` reads from it. This is **not** what the token looks like; it is just test input for the expression evaluator.
->
-> 4. Click **Test Expression**. The **Result** panel echoes back the test object — this is expected PingOne behaviour. Confirm **Verification Successful** appears in green.
-> 5. Click **Save**.
->
-> **What the claim looks like in the issued Subject Token** (the `user` wrapper is stripped):
-> ```json
-> {
->   "may_act": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
-> }
-> ```
-> `may_act.sub` is the client ID UUID of BX Finance Banking App. PingOne compares this to the actor's `client_id` during Token Exchange #1.
+> **Why not here?** Application OIDC attribute mappings only deliver claims to **UserInfo** and **ID Token** — they cannot inject claims into an access token. Access token claims must be defined on the resource server the token is scoped to (Step 1a).
+
+Leave this tab unchanged.
 
 Click **Save**.
 
@@ -700,6 +687,8 @@ client_id=PINGONE_CORE_CLIENT_ID
 &scope=banking:accounts:read banking:transactions:read banking:transactions:write
 ```
 
+> **Note:** Do not include `openid` in the subject token authorize request. The **BX Finance User** app has `Response Type: Code` only (no ID Token checked). Adding `openid` causes PingOne to reject the authorize request when `resource=` is also present, because `openid` triggers the OIDC contract which conflicts with a custom resource audience in the same request.
+
 PingOne validates: `subject_token.may_act.sub` === `actor_token.aud[0]` — both must equal the Banking App's client ID UUID (`PINGONE_CORE_CLIENT_ID`). If they match, PingOne issues the MCP Token with `act.sub = <PINGONE_CORE_CLIENT_ID>`.
 
 ### MCP Service → PingOne API Token  (Client Credentials — Token 3)
@@ -715,8 +704,10 @@ Content-Type: application/x-www-form-urlencoded
 client_id=MCP_CLIENT_ID
 &client_secret=MCP_CLIENT_SECRET
 &grant_type=client_credentials
-&scope=openid p1:read:user p1:update:user
+&scope=p1:read:user p1:update:user
 ```
+
+> **Note:** Do not include `openid` in client credentials scope for the MCP Service app. The app type is **Web App** (not Worker) and `openid` is not a valid scope for client credentials to the PingOne API resource — PingOne returns `invalid_scope` if it is present.
 
 > The MCP server uses the **MCP Token** (Token 2) to verify who the user is and what they authorized, and the **PingOne API Token** (Token 3) to actually call the Management API. These are two separate tokens used together — the delegation proof and the access credential.
 
@@ -724,33 +715,36 @@ client_id=MCP_CLIENT_ID
 
 ## Part 6 — Postman Testing
 
-A ready-to-import Postman collection and environment file are included in this repo. They cover the full 3-token chain with automatic token capture, claim validation at every step, and utility requests for user lookup and `mayAct` patching.
+A ready-to-import Postman collection is included in this repo. It covers the full 3-token chain using headless PKCE (pi.flow) — no browser required. Includes automatic token capture, claim validation at every step, and utility requests for `mayAct` patching and token introspection.
 
 | File | Purpose |
-|------|---------|
-| [BX-Finance-MayAct-Chain.postman_collection.json](BX-Finance-MayAct-Chain.postman_collection.json) | 4 step requests + 2 utility requests |
-| [BX-Finance-MayAct-Chain.postman_environment.json](BX-Finance-MayAct-Chain.postman_environment.json) | All variables with descriptions |
+|------|--------|
+| [PingOne Authorization Code — pi.flow.postman_collection.json](https://github.com/curtismu7/banking-demo/blob/main/docs/PingOne%20Authorization%20Code%20%E2%80%94%20pi.flow.postman_collection.json) | Steps 1–7 + Utility A (introspect) + Utility B (set mayAct) |
+
+> **pi.flow** means the authorize request returns JSON instead of redirecting to a browser. Postman can complete the full PKCE flow headlessly in 4 steps, then exchange, then call the PingOne API — all without any browser interaction.
 
 ### Import
 
-1. In Postman: **Import** → select both `.json` files.
-2. Select **BX Finance — MayAct Chain** from the environment dropdown (top-right corner).
+1. In Postman: **Import** → select the `.json` file.
+2. The collection uses **Collection Variables** — no separate environment file needed.
 
-### Fill in 7 variables
+### Fill in variables
 
-Open the environment (eye icon → Edit) and fill in:
+Open the collection → **Variables tab** and fill in:
 
 | Variable | Where to find it |
 |---|---|
-| `PINGONE_ENVIRONMENT_ID` | PingOne Console → Environment → Settings |
-| `PINGONE_REGION` | `com` (US) \| `eu` \| `ca` \| `ap` |
-| `PINGONE_CORE_USER_CLIENT_ID` | Client ID of **BX Finance User** app |
-| `PINGONE_CORE_CLIENT_ID` | Client ID of **BX Finance Banking App** |
-| `PINGONE_CORE_CLIENT_SECRET` | Client Secret of **BX Finance Banking App** |
-| `MCP_CLIENT_ID` | Client ID of **BX Finance MCP Service** app |
-| `MCP_CLIENT_SECRET` | Client Secret of **BX Finance MCP Service** app |
+| `env_id` | PingOne Console → Environment → Settings |
+| `client_id` | Client ID of **BX Finance User** app |
+| `client_secret` | Client Secret of **BX Finance User** app |
+| `banking_app_client_id` | Client ID of **BX Finance Banking App** |
+| `banking_app_client_secret` | Client Secret of **BX Finance Banking App** |
+| `mcp_client_id` | Client ID of **BX Finance MCP Service** app |
+| `mcp_client_secret` | Client Secret of **BX Finance MCP Service** app |
+| `username` | Test user login |
+| `password` | Test user password |
 
-The three audience URLs (`ENDUSER_AUDIENCE`, `MCP_RESOURCE_URI`, `PINGONE_API_AUDIENCE`) are pre-filled. The four `AUTO` variables (`subject_token`, `mcp_token`, `pingone_api_token`, `user_sub`) are written by the test scripts — leave them blank.
+Pre-filled: `base_url`, `resource` (`https://ai-agent.pingdemo.com`), `redirect_uri`, `scope` (`profile email banking:agent:invoke`). Token variables are written automatically by test scripts.
 
 ### One-time PingOne setup
 
@@ -797,7 +791,7 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
   "iss": "https://auth.pingone.com/{envId}/as",
   "aud": ["https://ai-agent.pingdemo.com"],
   "sub": "<user-pingone-id>",
-  "scope": "openid profile email banking:agent:invoke",
+  "scope": "profile email banking:agent:invoke",
   "may_act": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
 }
 ```
@@ -835,7 +829,7 @@ The MCP server holds both Token 2 (proves who the user is + delegation) and Toke
 | `may_act` is a plain string, not an object | `mayAct` schema attribute type is `STRING` | Delete and re-create as type `JSON`; re-set the value on the user |
 | Subject Token → MCP Token: `invalid_grant` | `may_act.sub` doesn’t match the Banking App’s client ID | Set `mayAct` = `{ "sub": "<PINGONE_CORE_CLIENT_ID-UUID>" }` on the user — use Option C (demo app) to set it automatically |
 | Subject Token → MCP Token: `unauthorized_client` | `BX Finance Banking App` missing Token Exchange grant type | Part 2b — enable Token Exchange grant |
-| MCP Service client credentials failing (`invalid_scope: p1:read:user`) | `p1:read:user` not enabled on app Resources tab, **or** `openid` missing from scope | PingOne requires `openid` in the scope on **every** token request, including `client_credentials`. Add `openid` to the scope param. Also verify `p1:read:user` and `p1:update:user` are enabled on the app's Resources tab (Part 2c) |
+| MCP Service client credentials failing (`invalid_scope: p1:read:user`) | `p1:read:user`/`p1:update:user` not enabled on app Resources tab | Enable both scopes on the **Resources tab** of **BX Finance MCP Service** (Part 2c). Do **not** add `openid` to the CC scope — it causes `invalid_scope` for Web App type client credentials |
 | MCP Service client credentials failing (`unauthorized_client`) | App type is Worker (role-based, can't use resource scopes) | Part 2c — create as Native or Web App type, not Worker |
 | `May not request scopes for multiple resources` on login | `banking:agent:invoke` and `banking:*` scopes mixed in the same `/authorize` | Keep only `banking:agent:invoke` as a non-OIDC scope on the user app; `banking:*` scopes come via exchange, not direct login |
 

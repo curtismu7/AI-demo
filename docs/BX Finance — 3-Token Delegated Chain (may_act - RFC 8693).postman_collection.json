@@ -96,7 +96,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/authorize?response_mode=pi.flow&response_type=code&client_id={{PINGONE_CORE_USER_CLIENT_ID}}&scope=openid profile email banking:agent:invoke&resource={{ENDUSER_AUDIENCE}}&code_challenge={{pkce_code_challenge}}&code_challenge_method=S256&acr_values={{PINGONE_ACR_VALUES}}",
+              "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/authorize?response_mode=pi.flow&response_type=code&client_id={{PINGONE_CORE_USER_CLIENT_ID}}&scope=profile email banking:agent:invoke&resource={{ENDUSER_AUDIENCE}}&code_challenge={{pkce_code_challenge}}&code_challenge_method=S256&acr_values={{PINGONE_ACR_VALUES}}",
               "protocol": "https",
               "host": [
                 "auth",
@@ -123,7 +123,7 @@
                 },
                 {
                   "key": "scope",
-                  "value": "openid profile email banking:agent:invoke"
+                  "value": "profile email banking:agent:invoke"
                 },
                 {
                   "key": "resource",
