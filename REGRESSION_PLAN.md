@@ -78,6 +78,23 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-03-31 — may_act/RFC 8693: scope fixes, 2-exchange docs, Postman collections
+
+- **Root cause discovered:** OIDC application **Attribute Mappings** only deliver claims to UserInfo + ID Token, **not** the access token. Access token custom claims (`may_act`, `act`) **must** be configured on the **Resource Server** (Connections → Resources → Attributes tab) in PingOne.
+- **Code fix — `oauthUser.js`:** When `ENDUSER_AUDIENCE` env var is set, `get scopes()` now returns `['profile', 'email', 'offline_access', 'banking:agent:invoke']` — omits `openid`, adds `banking:agent:invoke`. This allows `resource=https://ai-agent.pingdemo.com` to be sent on `/authorize` without triggering PingOne's "May not request scopes for multiple resources" `invalid_scope` rejection.
+- **Code fix — `oauthAuthorizeResource.js`:** `OIDC_SCOPE_NAMES` changed from `new Set(['openid', 'profile', 'email', 'offline_access'])` to `new Set(['openid'])`. Only `openid` should suppress the `resource=` parameter; `profile`/`email`/`offline_access` alone do not cause multi-resource rejection.
+- **PingOne config:** `may_act` attribute expression = bare `user.mayAct` (no `${}`), on **BX Finance AI Agent** resource server. `act` expression uses null-safe SpEL comparing `may_act.sub == actorToken.aud[0]` on **BX Finance MCP Server** resource server.
+- **Docs — renamed:** `docs/PINGONE_MAY_ACT_SETUP.md` → `docs/PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md`. Covers the 1-exchange demo pattern (Subject Token → MCP Token directly).
+- **Docs — new:** `docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md`. Covers the 2-exchange production pattern: Subject Token → AI Agent Exchange #1 → Agent Exchanged Token → MCP Exchange #2 → MCP Exchanged Token with nested `act.act.sub`. Includes 5 resource server definitions, both exchange API references, and PAZ enforcement notes.
+- **Postman — 1-exchange:** `docs/PingOne Authorization Code — pi.flow.postman_collection.json` added to repo (pi.flow headless PKCE, Steps 1–7, Utility A/B).
+- **Postman — 2-exchange (new):** `docs/PingOne 2-Exchange Delegated Chain — pi.flow.postman_collection.json`. Steps 1–4 (PKCE → Subject Token), 5a/5b (Exchange #1: AI Agent actor CC + exchange), 6a/6b (Exchange #2: MCP actor CC + exchange), 7 (PingOne API CC), 8 (User Lookup), Utility A (introspect, defaults to final token), Utility B (sets `mayAct.sub = ai_agent_client_id`).
+- **Postman environment (new):** `docs/BX Finance — 2-Exchange Delegated Chain.postman_environment.json`. Variables: `env_id`, `client_id/secret`, `ai_agent_client_id/secret`, `mcp_client_id/secret`.
+- **Key rule:** Never include `openid` in any scope in the may_act/RFC 8693 chain. `mayAct.sub` must be the AI Agent App UUID (not a URL). Resource server expression syntax: bare SpEL, no `${}`.
+- **Files changed:** `banking_api_server/config/oauthUser.js`, `banking_api_server/utils/oauthAuthorizeResource.js`, `docs/PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md` (renamed), `docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md` (new), `docs/PingOne Authorization Code — pi.flow.postman_collection.json` (new), `docs/PingOne 2-Exchange Delegated Chain — pi.flow.postman_collection.json` (new), `docs/BX Finance — 2-Exchange Delegated Chain.postman_environment.json` (new).
+- **Commits:** `9a47b74`, `a548726`, `d76ac93`, `3b3f415`, `941ddba`, `1e67e98`
+- **Regression check:** `cd banking_api_ui && npm run build` → **Compiled successfully**.
+- **Do not break:** `OIDC_SCOPE_NAMES` must still suppress `resource=` when caller requests `openid` alone. `oauthUser.js` scope change only activates when `ENDUSER_AUDIENCE` is set; standard deployments without that env var are unaffected.
+
 ### 2026-03-31 — AdminRoute: modal + toast for admin-only pages; no more silent /marketing redirect
 
 - **Feature / fix:** Non-admin logged-in users who navigate to an admin-only route (e.g. `/activity`, `/users`, `/accounts`, `/transactions`, `/admin/banking`, `/settings`, `/oauth-debug-logs`, `/client-registration`) now see a centred modal dialog — **"Admin access required"** — with an explanation and a **Go back** button, plus a warning toast. Previously they were silently redirected to `/marketing` with no feedback.
