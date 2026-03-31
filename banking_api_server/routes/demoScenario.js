@@ -552,7 +552,7 @@ async function patchMayAct(req, res) {
   // We use a PATCH with the top-level attribute name (no namespace needed for
   // attributes added via Schema → User Schema in the admin console).
   const patchBody = {
-    mayAct: enabled ? { client_id: bffClientId } : null,
+    mayAct: enabled ? { sub: bffClientId } : null,
   };
 
   try {
@@ -567,10 +567,7 @@ async function patchMayAct(req, res) {
     return res.json({
       ok: true,
       enabled,
-      mayAct: enabled ? { client_id: bffClientId } : null,
-      message: enabled
-        ? `may_act set to {"client_id":"${bffClientId}"}. Re-login to see the updated token.`
-        : 'may_act cleared. Re-login to see token without may_act.',
+      mayAct: enabled ? { sub: bffClientId } : null,
     });
   } catch (err) {
     const status = err.response?.status;

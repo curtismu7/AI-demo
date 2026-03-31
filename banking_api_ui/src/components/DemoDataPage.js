@@ -199,9 +199,13 @@ export default function DemoDataPage({ user, onLogout }) {
   const handleSetMayAct = async (enable) => {
     setMayActSaving(true);
     try {
-      const { data } = await apiClient.patch('/api/demo/may-act', { enabled: enable });
+      await apiClient.patch('/api/demo/may-act', { enabled: enable });
       setMayActEnabled(enable);
-      notifySuccess(data.message || (enable ? 'may_act enabled' : 'may_act cleared'));
+      notifySuccess(
+        enable
+          ? 'may_act written to your PingOne user record. Sign out and back in to see it in your token.'
+          : 'may_act cleared from your PingOne user record. Sign out and back in to confirm.'
+      );
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || 'Failed to update may_act';
       notifyError(msg);
@@ -293,13 +297,14 @@ export default function DemoDataPage({ user, onLogout }) {
 
   const handleP1azFlagToggle = async (flagId, nextBool) => {
     setP1azFlagSaving(flagId);
+    const flagLabel = p1azFlags.find((f) => f.id === flagId)?.label || flagId;
     try {
       const { data } = await axios.patch('/api/admin/feature-flags', {
         updates: { [flagId]: nextBool },
       });
       const updatedMap = new Map((data.flags || []).map((f) => [f.id, f]));
       setP1azFlags((prev) => prev.map((f) => (updatedMap.has(f.id) ? updatedMap.get(f.id) : f)));
-      notifySuccess('Feature flag saved');
+      notifySuccess(`${flagLabel}: ${nextBool ? 'ON' : 'OFF'}`);
     } catch (err) {
       notifyError(err?.response?.data?.error || err.message || 'Failed to save flag');
     } finally {
