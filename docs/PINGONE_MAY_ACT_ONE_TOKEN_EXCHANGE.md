@@ -9,6 +9,28 @@ This is NOT PingOne Advanced Identity Cloud (ForgeRock AM) — those are separat
 
 ---
 
+## Architecture Diagram
+
+A draw.io diagram of the full 1-exchange token chain is included in this repo:
+
+| File | GitHub link |
+|------|-------------|
+| `docs/BX-Finance-1-Exchange-Delegated-Chain.drawio` | [View / Download](https://github.com/curtismu7/banking-demo/blob/fix%2Fdashboard-fab-positioning/docs/BX-Finance-1-Exchange-Delegated-Chain.drawio) |
+
+### How to open
+
+**Option A — draw.io (recommended):**
+1. Download the `.drawio` file from the link above.
+2. Go to [app.diagrams.net](https://app.diagrams.net) → **Open from → This device** → select the file.
+   Or open it directly in VS Code with the [hediet.vscode-drawio](https://marketplace.visualstudio.com/items?itemName=hediet.vscode-drawio) extension.
+
+**Option B — Import into Lucidchart:**
+1. Open the file in draw.io first (Option A above) and re-save it — this normalises the XML.
+2. In Lucidchart: **New Document → Import → From File** → select the `.drawio` file.
+   Lucidchart accepts draw.io/XML format directly. If shapes are missing, use **Extras → Edit Diagram** in draw.io to export as `.xml` and import that instead.
+
+---
+
 ## ⚠️ Critical: Do NOT include `openid` in any scope for this chain
 
 Adding `openid` anywhere in this flow breaks things in two different ways depending on where it appears:
