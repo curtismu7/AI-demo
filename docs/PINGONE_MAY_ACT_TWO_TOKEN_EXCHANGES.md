@@ -689,7 +689,7 @@ Two ready-to-import files are included in this repo. They cover the full 5-call 
 
 | File | Purpose |
 |------|---------|
-| [PingOne 2-Exchange Delegated Chain — pi.flow.postman_collection.json](https://github.com/curtismu7/banking-demo/blob/main/docs/PingOne%202-Exchange%20Delegated%20Chain%20%E2%80%94%20pi.flow.postman_collection.json) | Steps 1–8 + Utility A (introspect) + Utility B (set mayAct — AI Agent Client ID) |
+| [BX Finance — 2-Exchange Delegated Chain — pi.flow.postman_collection.json](https://github.com/curtismu7/banking-demo/blob/main/docs/BX%20Finance%20%E2%80%94%202-Exchange%20Delegated%20Chain%20%E2%80%94%20pi.flow.postman_collection.json) | Steps 1–8 + Utility A (introspect) + Utility B (set mayAct — AI Agent Client ID) |
 | [BX Finance — 2-Exchange Delegated Chain.postman_environment.json](https://github.com/curtismu7/banking-demo/blob/main/docs/BX%20Finance%20%E2%80%94%202-Exchange%20Delegated%20Chain.postman_environment.json) | Environment file — fill in your credentials here |
 
 > **pi.flow** means the authorize request returns JSON instead of redirecting to a browser. Postman completes the full PKCE login headlessly in Steps 1–4, then runs both exchanges (Steps 5a/5b and 6a/6b), the PingOne API CC call (Step 7), and the final user lookup (Step 8) — all without any browser interaction.
