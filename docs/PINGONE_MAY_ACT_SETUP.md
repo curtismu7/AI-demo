@@ -7,6 +7,33 @@ This is NOT PingOne Advanced Identity Cloud (ForgeRock AM) — those are separat
 
 ---
 
+## ⚠️ Critical: Do NOT include `openid` in any scope for this chain
+
+Adding `openid` anywhere in this flow breaks things in two different ways depending on where it appears:
+
+| Request | If `openid` is included | What breaks |
+|---------|------------------------|-------------|
+| **Step 1 — `/authorize`** | PingOne returns `invalid_scope`: "May not request scopes for multiple resources" | The `resource=https://ai-agent.pingdemo.com` param is rejected because `openid` belongs to a different implicit resource server (the OIDC UserInfo endpoint) |
+| **Step 6 — MCP Service Client Credentials** | PingOne returns `invalid_scope` | Web App type apps cannot request `openid` via client credentials |
+
+**Correct scopes for every step:**
+
+| Postman Step | Scope param | How to set |
+|---|---|---|
+| **Step 1 — `/authorize`** | `profile email banking:agent:invoke` | Collection variable `scope` |
+| **Step 4 — token exchange for code** | *(same as Step 1 — uses `{{scope}}`)* | Collection variable `scope` |
+| **Step 5 — RFC 8693 token exchange** | `banking:accounts:read banking:transactions:read banking:transactions:write` | Hardcoded in Step 5 body |
+| **Step 6 — client credentials** | `p1:read:user p1:update:user` | Hardcoded in Step 6 body |
+
+**How to verify in Postman:**
+1. Click the collection name → **Variables tab**
+2. Find `scope` → current value must be `profile email banking:agent:invoke` (no `openid`)
+3. Open **Step 6** → **Body tab** → find the `scope` row → must be `p1:read:user p1:update:user` (no `openid`)
+
+> **Why no ID token?** The BX Finance User app has `Response Type: Code` only — **ID Token is unchecked** in PingOne OIDC Settings. `openid` is the scope that triggers ID token issuance. Since there is no ID token in this flow and the access token audience is a custom resource server, `openid` must be absent.
+
+---
+
 ## How It Works
 
 > **What is Token Exchange (RFC 8693)?** An app POSTs an existing access token to PingOne's token endpoint with `grant_type=token-exchange`. PingOne validates the token, checks delegation permissions, and issues a *new* token scoped to a different audience. The original token is not modified — a fresh, narrower token is returned. Each exchange is a server-to-server call; the user is never redirected.
@@ -27,7 +54,7 @@ Human User (Banking App Login)
 Subject Token  [TOKEN 1 — user's session token]
   { sub: "<user-id>",
     aud: ["https://ai-agent.pingdemo.com"],      ← AI Agent service validates this token
-    scope: "openid profile email banking:agent:invoke",
+    scope: "profile email banking:agent:invoke",
     may_act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }
               ↑ the client ID UUID of BX Finance Banking App — permits it to exchange this token
   │
@@ -296,7 +323,7 @@ This compares `may_act.sub` in the Subject Token (the permitted actor's UUID) ag
 >         "iss": "https://auth.pingone.com/<PINGONE_ENVIRONMENT_ID>/as",
 >         "sub": "425d38ac-adcc-463c-83cb-e9eb88179a79",
 >         "aud": ["https://ai-agent.pingdemo.com"],
->         "scope": "openid profile banking:agent:invoke",
+>         "scope": "profile email banking:agent:invoke",
 >         "may_act": {
 >           "sub": "<PINGONE_CORE_CLIENT_ID>"
 >         }
@@ -432,7 +459,8 @@ Open the existing end-user OIDC application. Verify or update:
 **Resources tab → Allowed scopes — enable:**
 
 - ✅ `banking:agent:invoke` from **BX Finance AI Agent**
-- ✅ `openid`, `profile`, `email`, `offline_access` *(standard OIDC — already present)*
+- ✅ `profile`, `email`, `offline_access` *(standard — already present)*
+- ❌ Do **NOT** enable or request `openid` — it causes PingOne to reject the authorize request when `resource=https://ai-agent.pingdemo.com` is present
 
 **Attribute Mappings tab:**
 
