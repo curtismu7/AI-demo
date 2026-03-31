@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "BX Finance \u2014 3-Token Delegated Chain (may_act / RFC 8693)",
-    "description": "Tests the full 3-token delegation chain:\n\n1. **Subject Token** \u2014 obtained via Authorization Code + PKCE using Postman's built-in OAuth2 helper. Carries `may_act.sub = PINGONE_CORE_CLIENT_ID`.\n2. **MCP Token** \u2014 RFC 8693 Token Exchange #1. Banking App exchanges the Subject Token for an MCP-scoped token.\n3. **PingOne API Token** \u2014 Client Credentials from BX Finance MCP Service. Used to call the PingOne Management API.\n4. **User Lookup** \u2014 GET /users/{sub} using Token 3, proving the full chain works end-to-end.\n\n## Setup\nImport this collection, then set the following **Collection Variables** (gear icon \u2192 Edit \u2192 Variables):\n\n| Variable | Where to find it |\n|---|---|\n| `PINGONE_ENVIRONMENT_ID` | PingOne Console \u2192 Environment \u2192 Settings |\n| `PINGONE_REGION` | `com` (US) or `eu` / `ca` / `ap` |\n| `PINGONE_CORE_USER_CLIENT_ID` | Client ID of **BX Finance User** app |\n| `PINGONE_CORE_CLIENT_ID` | Client ID of **BX Finance Banking App** |\n| `PINGONE_CORE_CLIENT_SECRET` | Client Secret of **BX Finance Banking App** |\n| `MCP_CLIENT_ID` | Client ID of **BX Finance MCP Service** |\n| `MCP_CLIENT_SECRET` | Client Secret of **BX Finance MCP Service** |\n\n## Step 1 note\nPingOne does not support ROPC. Step 1 uses Postman's built-in **Authorization Code + PKCE** OAuth2 helper. You must add `https://oauth.pstmn.io/v1/callback` as a Redirect URI on the BX Finance User app before clicking Get New Access Token.\n\nAll token variables (`subject_token`, `mcp_token`, `pingone_api_token`, `user_sub`) are **auto-populated** by the test scripts as you run each request in order.",
+    "name": "BX Finance — 3-Token Delegated Chain (may_act / RFC 8693)",
+    "description": "Tests the full 3-token delegation chain:\n\n1. **Subject Token** - Authorization Code + PKCE as real API calls:\n   - **Step 1a** GETs `/authorize` — pre-request generates PKCE params and logs the full authorization URL to the Postman console. Open that URL in your browser, log in, copy the `code=` value from the callback redirect, paste it into the `auth_code` collection variable.\n   - **Step 1b** POSTs to `/token` to exchange the code for the Subject Token. Carries `may_act.sub = PINGONE_CORE_CLIENT_ID`.\n2. **MCP Token** - RFC 8693 Token Exchange #1. Banking App exchanges the Subject Token for an MCP-scoped token.\n3. **PingOne API Token** - Client Credentials from BX Finance MCP Service. Used to call the PingOne Management API.\n4. **User Lookup** - GET /users/{sub} using Token 3, proving the full chain works end-to-end.\n\n## Setup\nImport this collection, then set these **Collection Variables** (gear icon -> Edit -> Variables):\n\n| Variable | Where to find it |\n|---|---|\n| `PINGONE_ENVIRONMENT_ID` | PingOne Console -> Environment -> Settings |\n| `PINGONE_REGION` | `com` (US) or `eu` / `ca` / `ap` |\n| `PINGONE_CORE_USER_CLIENT_ID` | Client ID of **BX Finance User** app |\n| `PINGONE_CORE_CLIENT_ID` | Client ID of **BX Finance Banking App** |\n| `PINGONE_CORE_CLIENT_SECRET` | Client Secret of **BX Finance Banking App** |\n| `MCP_CLIENT_ID` | Client ID of **BX Finance MCP Service** |\n| `MCP_CLIENT_SECRET` | Client Secret of **BX Finance MCP Service** |\n\n## Running the chain\nRun all steps in order: **1a -> 1b -> 2 -> 3 -> 4**.\nAll token variables (`subject_token`, `mcp_token`, `pingone_api_token`, `user_sub`) are auto-populated by the test scripts.\n\n**Redirect URI:** Add `https://oauth.pstmn.io/v1/callback` as a Redirect URI on the BX Finance User app before running Step 1a.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,27 +18,27 @@
     {
       "key": "PINGONE_CORE_USER_CLIENT_ID",
       "value": "",
-      "description": "Client ID \u2014 BX Finance User app"
+      "description": "Client ID — BX Finance User app"
     },
     {
       "key": "PINGONE_CORE_CLIENT_ID",
       "value": "",
-      "description": "Client ID \u2014 BX Finance Banking App"
+      "description": "Client ID — BX Finance Banking App"
     },
     {
       "key": "PINGONE_CORE_CLIENT_SECRET",
       "value": "",
-      "description": "Client Secret \u2014 BX Finance Banking App"
+      "description": "Client Secret — BX Finance Banking App"
     },
     {
       "key": "MCP_CLIENT_ID",
       "value": "",
-      "description": "Client ID \u2014 BX Finance MCP Service"
+      "description": "Client ID — BX Finance MCP Service"
     },
     {
       "key": "MCP_CLIENT_SECRET",
       "value": "",
-      "description": "Client Secret \u2014 BX Finance MCP Service"
+      "description": "Client Secret — BX Finance MCP Service"
     },
     {
       "key": "ENDUSER_AUDIENCE",
@@ -58,41 +58,55 @@
     {
       "key": "subject_token",
       "value": "",
-      "description": "AUTO \u2014 set by Step 1 test script after PKCE login"
+      "description": "AUTO — set by Step 1 test script after PKCE login"
     },
     {
       "key": "mcp_token",
       "value": "",
-      "description": "AUTO \u2014 set by Step 2"
+      "description": "AUTO — set by Step 2"
     },
     {
       "key": "pingone_api_token",
       "value": "",
-      "description": "AUTO \u2014 set by Step 3"
+      "description": "AUTO — set by Step 3"
     },
     {
       "key": "user_sub",
       "value": "",
-      "description": "AUTO \u2014 set by Step 1 (user PingOne UUID from sub claim)"
+      "description": "AUTO — set by Step 1 (user PingOne UUID from sub claim)"
+    },
+    {
+      "key": "auth_code",
+      "value": "",
+      "description": "Paste the code= value from the Step 1a browser redirect URL here before running Step 1b"
+    },
+    {
+      "key": "pkce_code_verifier",
+      "value": "",
+      "description": "AUTO - generated by Step 1a pre-request"
+    },
+    {
+      "key": "pkce_code_challenge",
+      "value": "",
+      "description": "AUTO - generated by Step 1a pre-request"
+    },
+    {
+      "key": "pkce_state",
+      "value": "",
+      "description": "AUTO - generated by Step 1a pre-request"
     }
   ],
   "item": [
     {
-      "name": "Step 1 \u2014 Validate Subject Token (paste token into env first)",
+      "name": "Step 1a - PKCE: Get Authorization Code (open URL in browser)",
       "request": {
         "method": "GET",
         "auth": {
           "type": "noauth"
         },
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{subject_token}}",
-            "description": "Paste the access_token from your PKCE login into the subject_token environment variable before sending"
-          }
-        ],
+        "header": [],
         "url": {
-          "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/userinfo",
+          "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/authorize?client_id={{PINGONE_CORE_USER_CLIENT_ID}}&response_type=code&scope=openid%20profile%20email%20banking%3Aagent%3Ainvoke&resource={{ENDUSER_AUDIENCE}}&redirect_uri=https%3A%2F%2Foauth.pstmn.io%2Fv1%2Fcallback&code_challenge={{pkce_code_challenge}}&code_challenge_method=S256&state={{pkce_state}}",
           "protocol": "https",
           "host": [
             "auth",
@@ -102,10 +116,44 @@
           "path": [
             "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
-            "userinfo"
+            "authorize"
+          ],
+          "query": [
+            {
+              "key": "client_id",
+              "value": "{{PINGONE_CORE_USER_CLIENT_ID}}"
+            },
+            {
+              "key": "response_type",
+              "value": "code"
+            },
+            {
+              "key": "scope",
+              "value": "openid profile email banking:agent:invoke"
+            },
+            {
+              "key": "resource",
+              "value": "{{ENDUSER_AUDIENCE}}"
+            },
+            {
+              "key": "redirect_uri",
+              "value": "https://oauth.pstmn.io/v1/callback"
+            },
+            {
+              "key": "code_challenge",
+              "value": "{{pkce_code_challenge}}"
+            },
+            {
+              "key": "code_challenge_method",
+              "value": "S256"
+            },
+            {
+              "key": "state",
+              "value": "{{pkce_state}}"
+            }
           ]
         },
-        "description": "Validates the Subject Token (Token 1) and extracts the user sub.\n\n## Before sending this request\n\nYou need a real access token from a PKCE login. PingOne does not support ROPC, so you must complete the browser flow once:\n\n### Option A \u2014 Use the Authorization tab (easiest)\n1. Click the **Authorization** tab on this request.\n2. Scroll down and click **Get New Access Token**.\n3. Log in as your test user in the browser.\n4. Postman shows the token \u2014 copy the `access_token` value.\n5. Paste it into the **`subject_token`** environment variable (eye icon \u2192 Edit).\n6. Click **Send** on this request.\n\n### Option B \u2014 Use the real banking app\n1. Log in at `https://banking-demo-puce.vercel.app`.\n2. Open browser DevTools \u2192 Application \u2192 Cookies or Network tab.\n3. Grab the access token from the session.\n4. Paste into the **`subject_token`** environment variable.\n5. Click **Send**.\n\n### Option C \u2014 Build the authorize URL manually\nOpen a browser and navigate to:\n```\nhttps://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/authorize\n  ?client_id={{PINGONE_CORE_USER_CLIENT_ID}}\n  &response_type=code\n  &scope=openid%20profile%20email%20banking%3Aagent%3Ainvoke\n  &resource=https%3A%2F%2Fai-agent.pingdemo.com\n  &redirect_uri=https%3A%2F%2Foauth.pstmn.io%2Fv1%2Fcallback\n  &code_challenge=<generated>\n  &code_challenge_method=S256\n```\nExchange the returned code at the token endpoint, copy the `access_token` into `subject_token`.\n\n## After sending\nThe test script decodes the token, saves `user_sub`, and validates `aud` and `may_act`."
+        "description": "**Step 1 of 2 for the Subject Token.** This request:\n1. Generates a fresh PKCE `code_verifier` + `code_challenge` in the pre-request script.\n2. Sends GET `/authorize` to PingOne (returns a 302 redirect to the login page).\n3. Logs the complete authorization URL to the **Postman console**.\n\n## After running\n1. Open **View -> Show Postman Console** and copy the URL printed after `STEP 1a`.\n2. Paste it into a browser tab and log in as your test user.\n3. After login, PingOne redirects to `https://oauth.pstmn.io/v1/callback?code=XXXX&state=...`.\n4. Copy the `code` value from that URL.\n5. Open Collection Variables (gear icon -> Edit -> Variables) and paste the code into `auth_code`.\n6. Run **Step 1b** immediately — authorization codes expire in ~60 seconds.\n\n**Prerequisite:** Add `https://oauth.pstmn.io/v1/callback` as a Redirect URI on the BX Finance User app in PingOne."
       },
       "event": [
         {
@@ -113,9 +161,133 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "const token = pm.environment.get('subject_token') || pm.collectionVariables.get('subject_token');",
-              "if (!token || token.trim() === '') {",
-              "    throw new Error('[Step 1] subject_token is empty. Paste your PKCE access_token into the subject_token environment variable before sending. See request description for how to get it.');",
+              "// Generate PKCE code_verifier (64-char URL-safe random string per RFC 7636)",
+              "const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';",
+              "let verifier = '';",
+              "for (let i = 0; i < 64; i++) {",
+              "    verifier += chars.charAt(Math.floor(Math.random() * chars.length));",
+              "}",
+              "pm.collectionVariables.set('pkce_code_verifier', verifier);",
+              "",
+              "// code_challenge = BASE64URL(SHA256(code_verifier))",
+              "const wordArray = CryptoJS.SHA256(verifier);",
+              "const b64       = CryptoJS.enc.Base64.stringify(wordArray);",
+              "const challenge = b64.replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=/g, '');",
+              "pm.collectionVariables.set('pkce_code_challenge', challenge);",
+              "",
+              "// Random state for CSRF protection",
+              "const state = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);",
+              "pm.collectionVariables.set('pkce_state', state);",
+              "",
+              "// Build and log the full authorization URL",
+              "const env    = pm.collectionVariables.get('PINGONE_ENVIRONMENT_ID');",
+              "const region = pm.collectionVariables.get('PINGONE_REGION') || 'com';",
+              "const cid    = pm.collectionVariables.get('PINGONE_CORE_USER_CLIENT_ID');",
+              "const aud    = pm.collectionVariables.get('ENDUSER_AUDIENCE');",
+              "",
+              "const authorizeUrl = `https://auth.pingone.${region}/${env}/as/authorize`",
+              "    + `?client_id=${cid}`",
+              "    + `&response_type=code`",
+              "    + `&scope=${encodeURIComponent('openid profile email banking:agent:invoke')}`",
+              "    + `&resource=${encodeURIComponent(aud)}`",
+              "    + `&redirect_uri=${encodeURIComponent('https://oauth.pstmn.io/v1/callback')}`",
+              "    + `&code_challenge=${encodeURIComponent(challenge)}`",
+              "    + `&code_challenge_method=S256`",
+              "    + `&state=${state}`;",
+              "",
+              "console.log('');",
+              "console.log('=== STEP 1a: Open this URL in your browser ===');",
+              "console.log('');",
+              "console.log(authorizeUrl);",
+              "console.log('');",
+              "console.log('>>> After login, copy code= from the redirect URL and paste into auth_code collection variable, then run Step 1b.');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// PingOne returns 302 -> login page. Check console for the URL to open in browser.",
+              "console.log('[Step 1a] PKCE params generated and saved.');",
+              "console.log('[Step 1a] code_verifier:', pm.collectionVariables.get('pkce_code_verifier'));",
+              "console.log('[Step 1a] code_challenge:', pm.collectionVariables.get('pkce_code_challenge'));",
+              "console.log('[Step 1a] Next: paste the auth code into auth_code variable, then run Step 1b.');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 1b - PKCE: Exchange Code for Subject Token (POST /token)",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "authorization_code"
+            },
+            {
+              "key": "client_id",
+              "value": "{{PINGONE_CORE_USER_CLIENT_ID}}"
+            },
+            {
+              "key": "code",
+              "value": "{{auth_code}}",
+              "description": "Paste the code from the Step 1a browser redirect into auth_code collection variable first"
+            },
+            {
+              "key": "code_verifier",
+              "value": "{{pkce_code_verifier}}",
+              "description": "AUTO - generated by Step 1a pre-request"
+            },
+            {
+              "key": "redirect_uri",
+              "value": "https://oauth.pstmn.io/v1/callback"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
+          "protocol": "https",
+          "host": [
+            "auth",
+            "pingone",
+            "{{PINGONE_REGION}}"
+          ],
+          "path": [
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "as",
+            "token"
+          ]
+        },
+        "description": "**Step 2 of 2 for the Subject Token.** Exchanges the PKCE authorization code for the Subject Token (Token 1).\n\n## Before sending\n1. Run **Step 1a** to generate the PKCE params and authorization URL.\n2. Open the URL from the Postman console in your browser and log in.\n3. Copy the `code=` value from the browser's redirect URL.\n4. Paste it into `auth_code` in Collection Variables.\n5. Send this request **immediately** (codes expire in ~60 seconds).\n\n## What PingOne validates\n- `code` matches the authorization code issued for this session.\n- `code_verifier` matches the `code_challenge` sent in Step 1a (PKCE proof).\n- `redirect_uri` matches the registered redirect URI.\n\n## On success, the Subject Token will have\n- `aud = https://ai-agent.pingdemo.com`\n- `may_act.sub = PINGONE_CORE_CLIENT_ID` (required for Step 2 Token Exchange)\n\nIf `invalid_grant`: the code expired or was already used. Rerun Step 1a.\nIf `may_act` is missing: run Utility - Set mayAct on User, then repeat Steps 1a + 1b to get a fresh token."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const code = pm.collectionVariables.get('auth_code');",
+              "if (!code || code.trim() === '') {",
+              "    throw new Error('[Step 1b] auth_code is empty. Run Step 1a, log in, copy the code= value from the redirect URL, and paste it into the auth_code collection variable.');",
+              "}",
+              "const verifier = pm.collectionVariables.get('pkce_code_verifier');",
+              "if (!verifier || verifier.trim() === '') {",
+              "    throw new Error('[Step 1b] pkce_code_verifier is empty. Run Step 1a first to generate the PKCE params.');",
               "}"
             ]
           }
@@ -125,47 +297,58 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('Step 1: userinfo 200 - Subject Token valid', () => pm.response.to.have.status(200));",
+              "pm.test('Step 1b: Status 200 - token endpoint success', () => pm.response.to.have.status(200));",
+              "",
+              "const json = pm.response.json();",
               "if (pm.response.code !== 200) {",
-              "    console.error('[Step 1] Got', pm.response.code, '- token may be expired or missing. Re-paste a fresh access_token into subject_token env var.');",
+              "    console.error('[Step 1b] Error:', JSON.stringify(json));",
+              "    if (json.error === 'invalid_grant') {",
+              "        console.error('[Step 1b] Auth code expired or already used. Rerun Step 1a and paste a fresh code into auth_code.');",
+              "    }",
               "    return;",
               "}",
               "",
-              "// Decode and validate the subject token",
-              "const token = pm.environment.get('subject_token') || pm.collectionVariables.get('subject_token');",
-              "const parts = token.split('.');",
-              "if (parts.length === 3) {",
-              "    try {",
-              "        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));",
-              "        console.log('[Step 1] Subject Token claims:', JSON.stringify(payload, null, 2));",
+              "pm.test('Step 1b: access_token present', () => pm.expect(json.access_token).to.be.a('string').and.not.empty);",
               "",
-              "        if (payload.sub) {",
-              "            pm.environment.set('user_sub', payload.sub);",
-              "            pm.collectionVariables.set('user_sub', payload.sub);",
-              "            console.log('[Step 1] user_sub saved:', payload.sub);",
-              "        }",
+              "if (json.access_token) {",
+              "    pm.collectionVariables.set('subject_token', json.access_token);",
+              "    pm.collectionVariables.set('auth_code', '');  // clear used code",
+              "    console.log('[Step 1b] subject_token saved. auth_code cleared.');",
               "",
-              "        const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];",
-              "        pm.test('Step 1: aud = ai-agent.pingdemo.com', () => {",
-              "            pm.expect(aud).to.include(pm.environment.get('ENDUSER_AUDIENCE') || pm.collectionVariables.get('ENDUSER_AUDIENCE'));",
-              "        });",
+              "    // Decode and validate JWT claims",
+              "    const parts = json.access_token.split('.');",
+              "    if (parts.length === 3) {",
+              "        try {",
+              "            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));",
+              "            console.log('[Step 1b] Subject Token claims:', JSON.stringify(payload, null, 2));",
               "",
-              "        pm.test('Step 1: may_act claim present', () => {",
-              "            pm.expect(payload).to.have.property('may_act');",
-              "            pm.expect(payload.may_act).to.have.property('sub');",
-              "        });",
+              "            if (payload.sub) {",
+              "                pm.collectionVariables.set('user_sub', payload.sub);",
+              "                console.log('[Step 1b] user_sub saved:', payload.sub);",
+              "            }",
               "",
-              "        if (payload.may_act) {",
-              "            const expectedActorId = pm.environment.get('PINGONE_CORE_CLIENT_ID') || pm.collectionVariables.get('PINGONE_CORE_CLIENT_ID');",
-              "            console.log('[Step 1] may_act.sub =', payload.may_act.sub, '| expected:', expectedActorId);",
-              "            pm.test('Step 1: may_act.sub === PINGONE_CORE_CLIENT_ID', () => {",
-              "                pm.expect(payload.may_act.sub).to.equal(expectedActorId);",
+              "            const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];",
+              "            pm.test('Step 1b: aud = ENDUSER_AUDIENCE (ai-agent.pingdemo.com)', () => {",
+              "                pm.expect(aud).to.include(pm.collectionVariables.get('ENDUSER_AUDIENCE'));",
               "            });",
-              "        } else {",
-              "            console.warn('[Step 1] WARNING: may_act missing. Run Utility - Set mayAct on User, then get a fresh access_token.');",
+              "",
+              "            pm.test('Step 1b: may_act claim present', () => {",
+              "                pm.expect(payload).to.have.property('may_act');",
+              "                pm.expect(payload.may_act).to.have.property('sub');",
+              "            });",
+              "",
+              "            if (payload.may_act) {",
+              "                const expectedActorId = pm.collectionVariables.get('PINGONE_CORE_CLIENT_ID');",
+              "                console.log('[Step 1b] may_act.sub =', payload.may_act.sub, '| expected:', expectedActorId);",
+              "                pm.test('Step 1b: may_act.sub === PINGONE_CORE_CLIENT_ID', () => {",
+              "                    pm.expect(payload.may_act.sub).to.equal(expectedActorId);",
+              "                });",
+              "            } else {",
+              "                console.warn('[Step 1b] WARNING: may_act missing. Run Utility - Set mayAct on User (needs pingone_api_token from Step 3), then repeat Steps 1a + 1b.');",
+              "            }",
+              "        } catch (e) {",
+              "            console.error('[Step 1b] Could not decode JWT:', e.message);",
               "        }",
-              "    } catch (e) {",
-              "        console.error('[Step 1] Could not decode JWT:', e.message);",
               "    }",
               "}"
             ]
@@ -174,7 +357,7 @@
       ]
     },
     {
-      "name": "Step 2 \u2014 MCP Token (RFC 8693 Token Exchange #1)",
+      "name": "Step 2 — MCP Token (RFC 8693 Token Exchange #1)",
       "request": {
         "method": "POST",
         "auth": {
@@ -239,7 +422,7 @@
             "token"
           ]
         },
-        "description": "RFC 8693 Token Exchange #1.\n\nThe **BX Finance Banking App** (`PINGONE_CORE_CLIENT_ID`) exchanges the Subject Token for a narrower MCP-scoped token.\n\nPingOne validates:\n- `subject_token.may_act.sub` === `PINGONE_CORE_CLIENT_ID` (the Banking App's own client ID)\n\nOn success the returned MCP Token will have:\n- `aud = https://mcp-server.pingdemo.com`\n- `act.sub = PINGONE_CORE_CLIENT_ID`\n- `scope = banking:accounts:read banking:transactions:read banking:transactions:write`\n\nIf you get `invalid_grant`: the `may_act.sub` on the user's Subject Token doesn't match `PINGONE_CORE_CLIENT_ID`. Fix by setting `mayAct = { \"sub\": \"<PINGONE_CORE_CLIENT_ID>\" }` on the user record (demo app \u2192 /demo-data \u2192 Enable may_act)."
+        "description": "RFC 8693 Token Exchange #1.\n\nThe **BX Finance Banking App** (`PINGONE_CORE_CLIENT_ID`) exchanges the Subject Token for a narrower MCP-scoped token.\n\nPingOne validates:\n- `subject_token.may_act.sub` === `PINGONE_CORE_CLIENT_ID` (the Banking App's own client ID)\n\nOn success the returned MCP Token will have:\n- `aud = https://mcp-server.pingdemo.com`\n- `act.sub = PINGONE_CORE_CLIENT_ID`\n- `scope = banking:accounts:read banking:transactions:read banking:transactions:write`\n\nIf you get `invalid_grant`: the `may_act.sub` on the user's Subject Token doesn't match `PINGONE_CORE_CLIENT_ID`. Fix by setting `mayAct = { \"sub\": \"<PINGONE_CORE_CLIENT_ID>\" }` on the user record (demo app → /demo-data → Enable may_act)."
       },
       "event": [
         {
@@ -300,7 +483,7 @@
       ]
     },
     {
-      "name": "Step 3 \u2014 PingOne API Token (Client Credentials)",
+      "name": "Step 3 — PingOne API Token (Client Credentials)",
       "request": {
         "method": "POST",
         "auth": {
@@ -396,7 +579,7 @@
       ]
     },
     {
-      "name": "Step 4 \u2014 User Lookup (PingOne Management API)",
+      "name": "Step 4 — User Lookup (PingOne Management API)",
       "request": {
         "method": "GET",
         "auth": {
@@ -424,7 +607,7 @@
             "{{user_sub}}"
           ]
         },
-        "description": "Calls the PingOne Management API using Token 3 (PingOne API Token).\n\n`user_sub` was captured automatically in Step 1 from the Subject Token's `sub` claim.\n\nA 200 response with the user object confirms the full chain works end-to-end:\n1. User logged in \u2192 Subject Token with `may_act`\n2. Banking App exchanged \u2192 MCP Token with `act`\n3. MCP Service obtained \u2192 PingOne API Token with `p1:read:user`\n4. Management API authorized the call\n\nAlso verifies that the `mayAct` custom attribute is present on the user record."
+        "description": "Calls the PingOne Management API using Token 3 (PingOne API Token).\n\n`user_sub` was captured automatically in Step 1 from the Subject Token's `sub` claim.\n\nA 200 response with the user object confirms the full chain works end-to-end:\n1. User logged in → Subject Token with `may_act`\n2. Banking App exchanged → MCP Token with `act`\n3. MCP Service obtained → PingOne API Token with `p1:read:user`\n4. Management API authorized the call\n\nAlso verifies that the `mayAct` custom attribute is present on the user record."
       },
       "event": [
         {
@@ -434,7 +617,7 @@
             "exec": [
               "const json = pm.response.json();",
               "",
-              "pm.test('Step 4: Status 200 \u2014 user lookup succeeded', () => pm.response.to.have.status(200));",
+              "pm.test('Step 4: Status 200 — user lookup succeeded', () => pm.response.to.have.status(200));",
               "pm.test('Step 4: id matches user_sub', () => {",
               "    pm.expect(json.id).to.equal(pm.collectionVariables.get('user_sub'));",
               "});",
@@ -449,7 +632,7 @@
               "            pm.expect(json.mayAct.sub).to.equal(pm.collectionVariables.get('PINGONE_CORE_CLIENT_ID'));",
               "        });",
               "    } else {",
-              "        console.warn('[Step 4] WARNING: mayAct attribute missing from user record. Token Exchange will fail at runtime. Set it via /demo-data \u2192 Enable may_act or via PATCH /users/{id}.');",
+              "        console.warn('[Step 4] WARNING: mayAct attribute missing from user record. Token Exchange will fail at runtime. Set it via /demo-data → Enable may_act or via PATCH /users/{id}.');",
               "    }",
               "}"
             ]
@@ -458,7 +641,7 @@
       ]
     },
     {
-      "name": "Utility \u2014 Decode Token (paste any JWT)",
+      "name": "Utility — Decode Token (paste any JWT)",
       "request": {
         "method": "POST",
         "auth": {
@@ -494,7 +677,7 @@
             "introspect"
           ]
         },
-        "description": "Introspects any saved token against PingOne's introspection endpoint.\n\nChange the `token` body value to one of:\n- `{{subject_token}}` \u2014 Token 1\n- `{{mcp_token}}` \u2014 Token 2\n- `{{pingone_api_token}}` \u2014 Token 3\n\nOr use the [PingIdentity JWT Decoder](https://developer.pingidentity.com/en/tools/jwt-decoder.html) to decode offline."
+        "description": "Introspects any saved token against PingOne's introspection endpoint.\n\nChange the `token` body value to one of:\n- `{{subject_token}}` — Token 1\n- `{{mcp_token}}` — Token 2\n- `{{pingone_api_token}}` — Token 3\n\nOr use the [PingIdentity JWT Decoder](https://developer.pingidentity.com/en/tools/jwt-decoder.html) to decode offline."
       },
       "event": [
         {
@@ -514,7 +697,7 @@
       ]
     },
     {
-      "name": "Utility \u2014 Set mayAct on User (PATCH)",
+      "name": "Utility — Set mayAct on User (PATCH)",
       "request": {
         "method": "PATCH",
         "auth": {
@@ -550,7 +733,7 @@
             "{{user_sub}}"
           ]
         },
-        "description": "Sets the `mayAct` custom attribute on the test user.\n\n**Run this if Step 1 returns a Subject Token without a `may_act` claim** (the test script will warn you).\n\nRequires Token 3 (`pingone_api_token`) in the Authorization header \u2014 run Steps 1\u20133 first.\n\n`PINGONE_CORE_CLIENT_ID` is the client ID UUID of **BX Finance Banking App** \u2014 the app that is authorized to exchange this user's token."
+        "description": "Sets the `mayAct` custom attribute on the test user.\n\n**Run this if Step 1 returns a Subject Token without a `may_act` claim** (the test script will warn you).\n\nRequires Token 3 (`pingone_api_token`) in the Authorization header — run Steps 1–3 first.\n\n`PINGONE_CORE_CLIENT_ID` is the client ID UUID of **BX Finance Banking App** — the app that is authorized to exchange this user's token."
       },
       "event": [
         {
@@ -566,103 +749,6 @@
               "        pm.expect(json.mayAct.sub).to.equal(pm.collectionVariables.get('PINGONE_CORE_CLIENT_ID'));",
               "    });",
               "    console.log('[Set mayAct] Now re-run Step 1 to get a fresh Subject Token with the may_act claim.');",
-              "}"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Utility \u2014 Get Subject Token via PKCE (Authorization tab helper)",
-      "request": {
-        "method": "GET",
-        "auth": {
-          "type": "oauth2",
-          "oauth2": [
-            {
-              "key": "grant_type",
-              "value": "authorization_code_with_pkce",
-              "type": "string"
-            },
-            {
-              "key": "authUrl",
-              "value": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/authorize",
-              "type": "string"
-            },
-            {
-              "key": "accessTokenUrl",
-              "value": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
-              "type": "string"
-            },
-            {
-              "key": "clientId",
-              "value": "{{PINGONE_CORE_USER_CLIENT_ID}}",
-              "type": "string"
-            },
-            {
-              "key": "scope",
-              "value": "openid profile email banking:agent:invoke",
-              "type": "string"
-            },
-            {
-              "key": "redirect_uri",
-              "value": "https://oauth.pstmn.io/v1/callback",
-              "type": "string"
-            },
-            {
-              "key": "client_authentication",
-              "value": "body",
-              "type": "string"
-            },
-            {
-              "key": "addTokenTo",
-              "value": "header",
-              "type": "string"
-            },
-            {
-              "key": "tokenName",
-              "value": "Subject Token",
-              "type": "string"
-            }
-          ]
-        },
-        "header": [],
-        "url": {
-          "raw": "https://auth.pingone.{{PINGONE_REGION}}/{{PINGONE_ENVIRONMENT_ID}}/as/userinfo",
-          "protocol": "https",
-          "host": [
-            "auth",
-            "pingone",
-            "{{PINGONE_REGION}}"
-          ],
-          "path": [
-            "{{PINGONE_ENVIRONMENT_ID}}",
-            "as",
-            "userinfo"
-          ]
-        },
-        "description": "Use this request ONLY to get a Subject Token via PKCE. Do not use it as part of the test chain.\n\n1. Click **Authorization** tab \u2192 **Get New Access Token**.\n2. Log in in the browser.\n3. Postman shows the token dialog \u2014 copy the `access_token` value.\n4. Paste it into the **`subject_token`** environment variable.\n5. Then run **Step 1** to validate it.\n\n**Note:** Add `https://oauth.pstmn.io/v1/callback` as a Redirect URI on the **BX Finance User** app in PingOne before using this."
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "// After completing PKCE above, copy the access_token from the token dialog",
-              "// and paste it into the subject_token environment variable.",
-              "// Then run Step 1 to validate the token.",
-              "if (pm.response.code === 200) {",
-              "    console.log('[PKCE Helper] userinfo succeeded \u2014 token is valid.');",
-              "    console.log('[PKCE Helper] Now copy the access_token from the Authorization tab token dialog');",
-              "    console.log('[PKCE Helper] and paste it into the subject_token environment variable.');",
-              "    const authHeader = pm.request.headers.get('Authorization');",
-              "    if (authHeader && authHeader.startsWith('Bearer ')) {",
-              "        const token = authHeader.replace('Bearer ', '').trim();",
-              "        pm.environment.set('subject_token', token);",
-              "        pm.collectionVariables.set('subject_token', token);",
-              "        console.log('[PKCE Helper] subject_token auto-saved to environment.');",
-              "    }",
               "}"
             ]
           }
