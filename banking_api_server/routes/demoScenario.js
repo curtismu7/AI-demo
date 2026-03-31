@@ -581,3 +581,130 @@ async function patchMayAct(req, res) {
 }
 
 module.exports.patchMayAct = patchMayAct;
+
+/**
+ * GET /api/demo/may-act/diagnose
+ *
+ * Checks two things that must both be true for `may_act` to appear in the Subject Token:
+ *   1. The signed-in user's `mayAct` custom attribute in PingOne.
+ *   2. The `BX Finance User` OIDC app's attribute mappings — does a `may_act` mapping exist?
+ *
+ * Returns a structured report so the demo page can show exactly what is missing.
+ */
+async function diagnoseMayAct(req, res) {
+  const pingOneUserId = req.user?.id;
+  if (!pingOneUserId) {
+    return res.status(401).json({ error: 'unauthenticated', message: 'No user session' });
+  }
+
+  const envId      = configStore.getEffective('pingone_environment_id');
+  const region     = configStore.getEffective('pingone_region') || 'com';
+  const bffClientId = configStore.getEffective('admin_client_id');
+  const userAppClientId = configStore.getEffective('pingone_core_user_client_id') ||
+                          configStore.getEffective('admin_client_id'); // fallback
+
+  if (!envId) {
+    return res.status(503).json({ error: 'not_configured', message: 'pingone_environment_id not set' });
+  }
+
+  let token;
+  try {
+    token = await getManagementToken();
+  } catch (err) {
+    return res.status(503).json({ error: 'management_token_failed', message: err.message });
+  }
+
+  const base = `https://api.pingone.${region}/v1/environments/${envId}`;
+  const report = {
+    userId: pingOneUserId,
+    bffClientId,
+    checks: {
+      userAttribute: { label: 'mayAct on user record', pass: false, value: null, detail: null },
+      appMapping:    { label: 'may_act mapping on BX Finance User app', pass: false, value: null, detail: null },
+    },
+    diagnosis: [],
+    nextStep: null,
+  };
+
+  // ── Check 1: user's mayAct attribute ────────────────────────────────────────
+  try {
+    const userRes = await axios.get(`${base}/users/${pingOneUserId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10000,
+    });
+    const mayAct = userRes.data?.mayAct ?? null;
+    report.checks.userAttribute.value = mayAct;
+    if (mayAct && mayAct.sub) {
+      report.checks.userAttribute.pass = true;
+      report.checks.userAttribute.detail = `mayAct.sub = "${mayAct.sub}"`;
+      if (mayAct.sub !== bffClientId) {
+        report.checks.userAttribute.pass = false;
+        report.checks.userAttribute.detail = `mayAct.sub "${mayAct.sub}" does NOT match BFF client ID "${bffClientId}"`;
+      }
+    } else {
+      report.checks.userAttribute.detail = 'mayAct attribute is null or missing on this user record';
+    }
+  } catch (err) {
+    report.checks.userAttribute.detail = `PingOne user GET failed: ${err.response?.status} — ${err.response?.data?.message || err.message}`;
+  }
+
+  // ── Check 2: BX Finance User app attribute mappings ─────────────────────────
+  // Find the app by client_id = userAppClientId, then check its attribute mappings
+  try {
+    // List OIDC apps, find the one matching userAppClientId
+    const appsRes = await axios.get(`${base}/applications?limit=100`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10000,
+    });
+    const apps = appsRes.data?._embedded?.applications || [];
+    const userApp = apps.find(a => a.protocol === 'OPENID_CONNECT' && a.oidcOptions?.clientId === userAppClientId);
+
+    if (!userApp) {
+      report.checks.appMapping.detail = `Could not find OIDC app with clientId "${userAppClientId}" — check PINGONE_CORE_USER_CLIENT_ID config`;
+    } else {
+      report.checks.appMapping.value = { appId: userApp.id, appName: userApp.name };
+      // Fetch attribute mappings for this app
+      const mappingsRes = await axios.get(`${base}/applications/${userApp.id}/attributes`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000,
+      });
+      const mappings = mappingsRes.data?._embedded?.attributes || [];
+      const mayActMapping = mappings.find(m => m.name === 'may_act');
+      if (mayActMapping) {
+        report.checks.appMapping.pass = true;
+        report.checks.appMapping.value = { appId: userApp.id, appName: userApp.name, mapping: mayActMapping };
+        report.checks.appMapping.detail = `Mapping found: expression = "${mayActMapping.value}"`;
+      } else {
+        report.checks.appMapping.detail = `No "may_act" attribute mapping on app "${userApp.name}" (id: ${userApp.id})`;
+      }
+    }
+  } catch (err) {
+    report.checks.appMapping.detail = `PingOne app/mappings GET failed: ${err.response?.status} — ${err.response?.data?.message || err.message}`;
+  }
+
+  // ── Build diagnosis ──────────────────────────────────────────────────────────
+  if (!report.checks.userAttribute.pass) {
+    report.diagnosis.push('❌ User attribute: mayAct is not set (or wrong value) on this user record.');
+  } else {
+    report.diagnosis.push('✅ User attribute: mayAct is set correctly on this user record.');
+  }
+  if (!report.checks.appMapping.pass) {
+    report.diagnosis.push('❌ App mapping: no may_act attribute mapping found on BX Finance User app.');
+  } else {
+    report.diagnosis.push('✅ App mapping: may_act attribute mapping exists on BX Finance User app.');
+  }
+
+  if (!report.checks.userAttribute.pass && !report.checks.appMapping.pass) {
+    report.nextStep = 'Fix both: (1) Click "Enable may_act" on /demo-data to set the user attribute. (2) Add the may_act mapping to the BX Finance User app in PingOne Console → Applications → BX Finance User → Attribute Mappings tab. Then re-login for a fresh token.';
+  } else if (!report.checks.userAttribute.pass) {
+    report.nextStep = 'Click "Enable may_act" on /demo-data (or use the Postman "Utility — Set mayAct" request). Then sign out and back in for a fresh token.';
+  } else if (!report.checks.appMapping.pass) {
+    report.nextStep = 'Add the may_act attribute mapping to the BX Finance User app in PingOne Console → Applications → BX Finance User → Attribute Mappings tab. Expression: (#root.user.mayAct != null ? #root.user.mayAct : null). Then re-login.';
+  } else {
+    report.nextStep = 'Both checks pass. Sign out and back in to get a fresh Subject Token — may_act should now appear.';
+  }
+
+  return res.json(report);
+}
+
+module.exports.diagnoseMayAct = diagnoseMayAct;

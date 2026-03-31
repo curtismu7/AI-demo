@@ -846,6 +846,8 @@ app.use('/api/logs', logsRoutes);
 
 // PATCH /api/demo/may-act — set/clear mayAct attribute on the signed-in PingOne user
 app.patch('/api/demo/may-act', express.json(), authenticateToken, demoScenarioRoutes.patchMayAct);
+// GET /api/demo/may-act/diagnose — check user attribute + app mapping config
+app.get('/api/demo/may-act/diagnose', authenticateToken, demoScenarioRoutes.diagnoseMayAct);
 
 // Public CIMD well-known endpoint — no authentication required.
 // Mounted after session/auth middleware but before static files.

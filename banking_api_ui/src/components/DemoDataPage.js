@@ -214,6 +214,23 @@ export default function DemoDataPage({ user, onLogout }) {
     }
   };
 
+  const [mayActDiagnosis, setMayActDiagnosis] = useState(null);
+  const [mayActDiagnosing, setMayActDiagnosing] = useState(false);
+
+  const handleDiagnoseMayAct = async () => {
+    setMayActDiagnosing(true);
+    setMayActDiagnosis(null);
+    try {
+      const { data } = await apiClient.get('/api/demo/may-act/diagnose');
+      setMayActDiagnosis(data);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Diagnose request failed';
+      notifyError(msg);
+    } finally {
+      setMayActDiagnosing(false);
+    }
+  };
+
   /** PingOne Authorize feature flags — same registry as /feature-flags; admin-only on this page. */
   const [p1azFlags, setP1azFlags] = useState([]);
   const [p1azFlagsLoading, setP1azFlagsLoading] = useState(false);
@@ -1389,6 +1406,15 @@ export default function DemoDataPage({ user, onLogout }) {
                 >
                   {mayActSaving && mayActEnabled !== false ? 'Saving…' : '❌ Clear may_act'}
                 </button>
+                <button
+                  type="button"
+                  className="demo-data-btn ghost"
+                  disabled={mayActDiagnosing}
+                  onClick={handleDiagnoseMayAct}
+                  title="Check your PingOne user attribute and app mapping configuration"
+                >
+                  {mayActDiagnosing ? 'Checking…' : '🔍 Diagnose'}
+                </button>
                 <span className={`demo-data-mayact-status${mayActEnabled === true ? ' demo-data-mayact-status--on' : mayActEnabled === false ? ' demo-data-mayact-status--off' : ''}`}>
                   {mayActEnabled === true
                     ? '✅ may_act present in token'
@@ -1397,6 +1423,25 @@ export default function DemoDataPage({ user, onLogout }) {
                       : 'Checking…'}
                 </span>
               </div>
+
+              {mayActDiagnosis && (
+                <div style={{ margin: '0.75rem 0', padding: '0.75rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#f9fafb', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>🔍 PingOne config diagnosis</div>
+                  {mayActDiagnosis.diagnosis?.map((line, i) => (
+                    <div key={i} style={{ marginBottom: '0.2rem' }}>{line}</div>
+                  ))}
+                  {mayActDiagnosis.nextStep && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: 4, color: '#1e3a5f' }}>
+                      <strong>Next step:</strong> {mayActDiagnosis.nextStep}
+                    </div>
+                  )}
+                  <details style={{ marginTop: '0.5rem' }}>
+                    <summary style={{ cursor: 'pointer', color: '#6b7280' }}>Raw check results</summary>
+                    <pre style={{ fontSize: '0.75rem', marginTop: '0.35rem', overflowX: 'auto' }}>{JSON.stringify(mayActDiagnosis.checks, null, 2)}</pre>
+                  </details>
+                  <button type="button" style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 0 }} onClick={() => setMayActDiagnosis(null)}>✕ dismiss</button>
+                </div>
+              )}
 
               {/* Dynamic mode explainer */}
               <details className="demo-data-dynamic-explainer">
