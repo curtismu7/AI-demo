@@ -1,5 +1,7 @@
 # Banking Demo — PingOne Edition
 
+> ⚠️ **Disclaimer:** This is an independent community demo project. It is **not** created, endorsed, or supported by Ping Identity or ForgeRock. Use at your own risk. No warranty is provided, express or implied.
+
 Standalone AI-powered banking demo using PingOne for authentication and **RFC 8693 Token Exchange** so the AI agent can securely access banking data on behalf of users.
 
 This is a **completely standalone** project — it can be handed to anyone and run independently.
