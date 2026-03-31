@@ -206,6 +206,8 @@ Use this table as your single source of truth when filling in PingOne forms and 
 | User Schema Attribute | Type | `JSON` |
 | Token Claim — `act` on MCP Token | Where configured | **BX Finance MCP Server resource Attributes tab** (Step 1b) — NOT the application |
 | Token Claim — `act` expression | Expression | `(#root.context.requestData.subjectToken?.may_act?.sub != null && #root.context.requestData.subjectToken?.may_act?.sub == #root.context.requestData.actorToken?.aud?.get(0))?#root.context.requestData.subjectToken?.may_act:null` |
+| Token Claim — `may_act` on Subject Token | Where configured | **BX Finance AI Agent resource Attributes tab** (Step 1a) — NOT the application |
+| Token Claim — `may_act` expression | Expression | `user.mayAct` |
 | Env var — Subject Token audience | `ENDUSER_AUDIENCE` | `https://ai-agent.pingdemo.com` |
 | Env var — MCP Token audience | `MCP_RESOURCE_URI` | `https://mcp-server.pingdemo.com` |
 | Env var — PingOne API Token audience | `PINGONE_API_AUDIENCE` | `https://api.pingone.com` |
@@ -250,6 +252,27 @@ This is where PingOne injects `may_act` into the **access token** when the Subje
 | **Required** | ❌ No |
 
 > **Expression syntax:** Resource server attribute expressions use bare SpEL — no `${}` wrapper, no `#root.` prefix. `user.mayAct` reads the `mayAct` JSON attribute directly from the user profile. If the user's `mayAct` attribute is null, PingOne omits the claim from the token (because Required is off).
+>
+> **How to test in PingOne:**
+> 1. Click the pencil icon next to the `may_act` row → **Build and Test Expression** opens.
+> 2. Expression field should contain exactly: `user.mayAct`
+> 3. Click **Edit JSON** in the Test Data panel and paste — replacing `<PINGONE_CORE_CLIENT_ID>` with the Banking App client ID UUID:
+> ```json
+> {
+>   "user": {
+>     "mayAct": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
+>   }
+> }
+> ```
+> 4. Click **Test Expression**. The Result panel should show:
+> ```json
+> { "sub": "<PINGONE_CORE_CLIENT_ID>" }
+> ```
+> **Verification Successful** in green.
+> 5. To confirm null-safety works: remove the `mayAct` key from the test data entirely, click **Test Expression** again — Result should show `null` (not an error). This proves PingOne omits the claim when the attribute is absent.
+> 6. Click **Save**.
+>
+> **Common mistake:** Using `${user.mayAct}` or `#root.user.mayAct` — both are invalid here and show "Expression is invalid". Use `user.mayAct` with no wrapper.
 
 Click **Save**.
 
