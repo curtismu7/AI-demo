@@ -1,6 +1,8 @@
-# PingOne: 3-Token Delegated Chain — Setup Guide
+# PingOne: 1-Exchange Delegated Chain — Setup Guide
 
-Step-by-step setup for a **human → agent → MCP → PingOne API** delegated token chain.
+Step-by-step setup for a **human → Banking App → MCP → PingOne API** delegated token chain using **one RFC 8693 token exchange**. This is the pattern implemented by the BX Finance demo.
+
+> **2-exchange pattern (AI Agent as named identity):** See [PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md](PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md) for the production pattern where the AI Agent performs its own exchange and appears as `act.act.sub` in the final token.
 
 **Product scope:** PingOne SaaS (`auth.pingone.com`).
 This is NOT PingOne Advanced Identity Cloud (ForgeRock AM) — those are separate products.
@@ -40,9 +42,7 @@ Adding `openid` anywhere in this flow breaks things in two different ways depend
 
 > **Design rule:** Keep chains to **3 exchanges or fewer**. Each exchange is a synchronous round-trip to PingOne.
 >
-> This document covers two patterns — choose the one that matches your architecture:
-> - **Demo (1 exchange):** Subject Token → MCP Token via one RFC 8693 exchange, then a separate Client Credentials call for the PingOne API token. Simpler to configure; ideal for learning the `may_act` → `act` delegation model. This is what the BX Finance demo implements.
-> - **Production (2 exchanges):** Subject Token → Agent Exchanged Token → MCP Exchanged Token via two chained RFC 8693 exchanges. Each hop adds a nested `act` layer, producing `act.act.sub` provenance. Required when the AI Agent itself must be an accountable identity in the delegation chain, and when PingOne Authorize (PAZ) must verify every hop as a policy attribute.
+> This document covers the **1-exchange (demo) pattern**. For the 2-exchange production pattern where the AI Agent is a named identity, see [PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md](PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md).
 
 ### Demo pattern (1 exchange)
 
@@ -96,83 +96,18 @@ PingOne Management API  (/v1/environments/{envId}/users/{userId})
 
 ---
 
-### Production pattern (2 exchanges)
-
-In this pattern every hop performs a full RFC 8693 exchange. Each exchanger first obtains its own Actor Token via Client Credentials, then presents it alongside the incoming token. The result is a deeply nested `act` claim. PingOne Authorize (PAZ) introspects the final token and enforces `act.sub` and `act.act.sub` as explicit policy attributes before permitting tool access.
-
-```
-Human User (Banking App Login)
-  │
-  │  PKCE Authorization Code login — user authenticates normally
-  ▼
-Subject Token  [TOKEN 1 — user's session token]
-  { sub: "<user-id>",
-    aud: ["https://ai-agent.example.com"],
-    may_act: { "sub": "<AI_AGENT_CLIENT_ID>" } }
-              ↑ permits the AI Agent to exchange this token
-  │
-  │  Token Exchange #1 (RFC 8693)
-  │  AI Agent gets its own Actor Token (Client Credentials, aud: agent-gateway).
-  │  Exchanges: subject_token=Subject Token + actor_token=Agent Actor Token
-  │  Exchanger: AI IAM Core Agent (AI_AGENT_CLIENT_ID)
-  ▼
-Agent Exchanged Token  [TOKEN 2 — agent-delegated token]
-  { sub: "<user-id>",
-    aud: ["https://mcp-server.example.com"],
-    act: { "sub": "<AI_AGENT_CLIENT_ID>" } }
-          ↑ records that the AI Agent performed Exchange #1
-  │
-  │  Token Exchange #2 (RFC 8693)
-  │  MCP Server gets its own Actor Token (Client Credentials, aud: mcp-gateway).
-  │  Exchanges: subject_token=Agent Exchanged Token + actor_token=MCP Actor Token
-  │  Exchanger: MCP App (MCP_CLIENT_ID)
-  ▼
-MCP Exchanged Token  [TOKEN 3 — fully delegated tool-call token]
-  { sub: "<user-id>",
-    aud: ["https://resource-server.example.com"],
-    act: {
-      "sub": "<MCP_CLIENT_ID>",         ← outer act: MCP App performed Exchange #2
-      "act": {
-        "sub": "<AI_AGENT_CLIENT_ID>"   ← inner act: AI Agent performed Exchange #1
-      }
-    }
-  }
-  │
-  │  PAZ (PingOne Authorize) introspects the MCP Exchanged Token:
-  │    ✓ sub is a known user in IDP data store (PingOne)
-  │    ✓ aud == resource server URL
-  │    ✓ act.sub == MCP server URL
-  │    ✓ act.act.sub == AI Agent URL
-  │  → DENY if any check fails
-  ▼
-PERMIT → Tools (Device AuthN, Lookup Profile) → PingOne Users API → Resource
-```
-
-| Token | Audience | How issued | Exchanger |
-|-------|----------|------------|-----------|
-| **Subject Token** | `https://ai-agent.example.com` | PKCE login | PingOne (user auth) |
-| **Agent Exchanged Token** | `https://mcp-server.example.com` | RFC 8693 Exchange #1 | AI IAM Core Agent |
-| **MCP Exchanged Token** | `https://resource-server.example.com` | RFC 8693 Exchange #2 | MCP App |
-
-> **Nested `act` chain:** Each exchange promotes the previous actor inward. `act.sub` = the most recent exchanger (MCP App); `act.act.sub` = the one before it (AI Agent). PAZ policy enforces each level to verify the full delegation path end-to-end.
-
----
-
 ## Token Exchange Architecture
 
 Three implementation options exist. **This demo implements Option 1.**
 
-### Option 1: Banking App Server — 1 exchange (demo)
+### Option 1: Banking App Server — 1 exchange (this document)
 The banking app's server-side component holds the `PINGONE_CORE_CLIENT_ID` secret and exchanges the Subject Token for the MCP Token in one step. The MCP service then independently calls PingOne with Client Credentials for a scoped PingOne API token.
 
 - **Pros:** Secrets never leave the server; tokens never touch the browser. Single exchange round-trip; minimal PingOne app configuration.
 - **Cons:** Requires a deployed server-side app. The AI Agent layer is not a named identity in the `act` chain.
 
 ### Option 2: Two-exchange chain — server-side (production)
-The AI Agent and MCP layers each perform their own RFC 8693 exchange. Each exchanger first obtains an Actor Token via Client Credentials, then presents it alongside the incoming subject token. The result is a deeply nested `act` claim tracing every delegation hop. PAZ introspects the final token and enforces `act.sub` and `act.act.sub` as policy attributes.
-
-- **Pros:** Full delegation provenance — `act.act.sub` identifies every exchanger. PAZ can enforce each actor URL as a named policy attribute. Suitable for regulated or audited environments.
-- **Cons:** Two synchronous exchange round-trips to PingOne per request. Requires two additional resource servers (one actor token audience per exchanger) and two apps each with `Token Exchange` grant enabled.
+See [PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md](PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md). The AI Agent and MCP layers each perform their own RFC 8693 exchange, producing a nested `act.act.sub` claim. PAZ enforces every actor as a named policy attribute.
 
 ### Option 3: Client-side / direct
 The browser (or agent) performs token exchange directly using a public client. Not used here.
@@ -910,4 +845,4 @@ The MCP server holds both Token 2 (proves who the user is + delegation) and Toke
 
 ---
 
-*See also: [ACT_CLAIM_VERIFICATION.md](ACT_CLAIM_VERIFICATION.md)*
+*See also: [PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md](PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md) — 2-exchange pattern with nested `act.act.sub`*
