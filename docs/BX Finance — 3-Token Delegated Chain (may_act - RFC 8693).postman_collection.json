@@ -961,21 +961,32 @@
     {
       "key": "flow_id",
       "value": "",
-      "description": "AUTO \u2014 saved by Step 1a from pi.flow response"
+      "description": "AUTO — saved by Step 1a from pi.flow response"
+    },
+    {
+      "key": "flow_submit_url",
+      "value": "",
+      "description": "AUTO — saved by Step 1a (self href from pi.flow _links); used by Step 1b"
+    },
+    {
+      "key": "flow_id_issued_at",
+      "value": "",
+      "description": "AUTO — epoch ms when flow_id was issued; used to detect expiry (flows expire after 15 min)"
     },
     {
       "key": "auth_code",
       "value": "",
-      "description": "AUTO \u2014 saved by Step 1c from resume response"
+      "description": "AUTO — saved by Step 1c from resume response; cleared after Step 1d token exchange"
     },
     {
-      "key": "flow_id_issued_at",
-      "value": ""
+      "key": "session_id",
+      "value": "",
+      "description": "AUTO — saved by Step 1b on flow completion (pi.flow session.id)"
     },
     {
       "key": "PINGONE_ACR_VALUES",
       "value": "Single_Factor",
-      "description": "Sign-on policy name with native PingOne LOGIN action (no custom loginPageUrl). Required for pi.flow headless credential submission. Check PingOne admin > Authentication > Policies for the correct name."
+      "description": "Sign-on policy name with native PingOne LOGIN action (no custom loginPageUrl). Required for pi.flow headless credential submission. Check PingOne admin console > Authentication > Policies for the exact name."
     }
   ]
 }
