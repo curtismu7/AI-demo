@@ -683,7 +683,96 @@ client_id=MCP_CLIENT_ID
 
 ---
 
-## Part 6 — Verification
+## Part 6 — Postman Testing
+
+Two ready-to-import files are included in this repo. They cover the full 5-call chain (Steps 1–8) using headless PKCE (pi.flow) — no browser required. Token variables are written automatically between steps; the final User Lookup runs against the live PingOne Management API.
+
+| File | Purpose |
+|------|---------|
+| [PingOne 2-Exchange Delegated Chain — pi.flow.postman_collection.json](https://github.com/curtismu7/banking-demo/blob/main/docs/PingOne%202-Exchange%20Delegated%20Chain%20%E2%80%94%20pi.flow.postman_collection.json) | Steps 1–8 + Utility A (introspect) + Utility B (set mayAct — AI Agent Client ID) |
+| [BX Finance — 2-Exchange Delegated Chain.postman_environment.json](https://github.com/curtismu7/banking-demo/blob/main/docs/BX%20Finance%20%E2%80%94%202-Exchange%20Delegated%20Chain.postman_environment.json) | Environment file — fill in your credentials here |
+
+> **pi.flow** means the authorize request returns JSON instead of redirecting to a browser. Postman completes the full PKCE login headlessly in Steps 1–4, then runs both exchanges (Steps 5a/5b and 6a/6b), the PingOne API CC call (Step 7), and the final user lookup (Step 8) — all without any browser interaction.
+
+### Import
+
+1. In Postman: **Import** → select **both** `.json` files.
+2. The collection uses the **environment file** for all credentials. Select `BX Finance — 2-Exchange Delegated Chain` as the active environment before running.
+
+### Fill in variables
+
+Open the **BX Finance — 2-Exchange Delegated Chain** environment → click the eye icon → **Edit** and fill in:
+
+| Variable | Where to find it |
+|---|---|
+| `env_id` | PingOne Console → Environment → Settings |
+| `client_id` | Client ID of **BX Finance User** app |
+| `client_secret` | Client Secret of **BX Finance User** app |
+| `ai_agent_client_id` | Client ID of **BX Finance AI Agent App** (Step 2b) — also `AI_AGENT_CLIENT_ID` env var |
+| `ai_agent_client_secret` | Client Secret of **BX Finance AI Agent App** |
+| `mcp_client_id` | Client ID of **BX Finance MCP Service** app — also `AGENT_OAUTH_CLIENT_ID` env var |
+| `mcp_client_secret` | Client Secret of **BX Finance MCP Service** app |
+| `username` | Test user login |
+| `password` | Test user password |
+
+Pre-filled: `base_url` (`https://auth.pingone.com`), `redirect_uri`. Token variables (`subject_token`, `agent_exchanged_token`, `mcp_exchanged_token`, `pingone_api_token`, `user_sub`) are written automatically by test scripts — do not set them manually.
+
+### One-time PingOne setup
+
+Add `https://oauth.pstmn.io/v1/callback` as a **Redirect URI** on the **BX Finance User** app (Configuration tab). This allows Postman's OAuth2 helper to complete the PKCE flow. Remove it after testing if desired.
+
+### ⚠️ Clear cookies before each full run
+
+PingOne stores a session cookie in Postman after a successful login. On the next run, Step 1 returns `status: COMPLETED` immediately (skipping the login form), and the auth code it returns may be stale — `may_act` can be missing, or `aud` can be wrong.
+
+**Always clear cookies before starting a fresh run:**
+
+1. In Postman, click the 🍪 **Cookies** button (top-right of the request pane, next to Send)
+2. Find `auth.pingone.com` → click the trash icon to delete all cookies for that domain
+3. Then start from Step 1
+
+| Symptom | Cause |
+|---------|-------|
+| Step 1 returns `status: COMPLETED` with no login prompt | Stale PingOne session cookie |
+| Step 4 test `may_act.sub present` **FAILS** | Token from cached session issued before `may_act` was configured |
+| Step 5b returns `invalid_grant` | Subject Token missing `may_act.sub = ai_agent_client_id` — set user's `mayAct` via Utility B, then re-run Steps 1–4 |
+| Step 6b returns `invalid_grant` | Agent Exchanged Token missing `act` claim — check `act` expression on BX Finance MCP Server resource server (Step 1c) |
+
+### Run in order
+
+**Steps 1–4 — Subject Token (Authorization Code + PKCE via pi.flow)**
+Run 1a → 1b → 1c → 1d in sequence. Step 1d exchanges the auth code for the Subject Token. The test script decodes it, saves `subject_token` and `user_sub`, and validates `aud = https://ai-agent.pingdemo.com` and `may_act.sub = ai_agent_client_id`.
+
+> If the `may_act` test fails: run **Utility B — Set mayAct** to write `{ "sub": "<AI_AGENT_CLIENT_ID>" }` onto the user record (requires `user_sub` from a prior run), then clear cookies and re-run Steps 1–4.
+
+**Step 5a — AI Agent Actor Token (Client Credentials)**
+The AI Agent App gets a CC token scoped to `https://agent-gateway.pingdemo.com`. Saved as `agent_actor_token`.
+
+**Step 5b — Exchange #1: Subject Token → Agent Exchanged Token**
+The AI Agent App exchanges `subject_token` + `agent_actor_token`. PingOne validates `may_act.sub == actorToken.aud[0]`. The test script saves `agent_exchanged_token` and validates `aud = https://mcp-server.pingdemo.com` and `act.sub = ai_agent_client_id`.
+
+**Step 6a — MCP Actor Token (Client Credentials)**
+The MCP Service gets a CC token scoped to `https://mcp-gateway.pingdemo.com`. Saved as `mcp_actor_token`.
+
+**Step 6b — Exchange #2: Agent Exchanged Token → MCP Exchanged Token**
+The MCP Service exchanges `agent_exchanged_token` + `mcp_actor_token`. The test script saves `mcp_exchanged_token` and validates `aud = https://resource-server.pingdemo.com` and `act.sub = ai_agent_client_id`.
+
+**Step 7 — PingOne API Token (Client Credentials)**
+The MCP Service obtains a scoped token for the PingOne Management API. Saved as `pingone_api_token`.
+
+**Step 8 — User Lookup (PingOne Management API)**
+Calls `GET /v1/environments/{envId}/users/{user_sub}` using `pingone_api_token`. Validates response is 200 and checks `mayAct.sub` on the user record.
+
+### Utility requests
+
+| Request | When to use |
+|---|---|
+| **Utility A — Introspect Token** | Introspects any saved token against PingOne's introspection endpoint. Change the `token` body value to `subject_token`, `agent_exchanged_token`, `mcp_exchanged_token`, or `pingone_api_token`. |
+| **Utility B — Set mayAct on User** | PATCHes `mayAct = { "sub": "{{ai_agent_client_id}}" }` onto the test user. Run if Step 4 warns that `may_act` is missing. Requires `user_sub` — run Steps 1–4 first to capture it. |
+
+---
+
+## Part 7 — Verification
 
 Decode any token at [PingIdentity JWT Decoder](https://developer.pingidentity.com/en/tools/jwt-decoder.html) or in terminal:
 ```bash
