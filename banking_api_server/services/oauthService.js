@@ -310,6 +310,94 @@ class OAuthService {
   }
 
   /**
+   * Generic Client Credentials token for any explicit clientId/clientSecret + audience.
+   * Used in the 2-exchange delegation chain where each exchanger has its own identity.
+   *
+   * @param {string} clientId
+   * @param {string} clientSecret
+   * @param {string} audience  Resource server audience URI (returned token will have aud=[audience])
+   */
+  async getClientCredentialsTokenAs(clientId, clientSecret, audience) {
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      client_secret: clientSecret,
+      audience,
+    });
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+      const at = response.data.access_token;
+      if (!at) throw new Error('Client credentials response missing access_token');
+      console.log(`[CC-As] Issued actor token for client=${clientId} audience=${audience}`);
+      return at;
+    } catch (error) {
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[CC-As] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Client credentials failed for ${clientId}: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, client_id: clientId };
+      throw richErr;
+    }
+  }
+
+  /**
+   * RFC 8693 Token Exchange performed by an explicit exchanger (clientId/clientSecret).
+   * Used in the 2-exchange chain where AI Agent and MCP Service have distinct credentials.
+   *
+   * @param {string}   subjectToken   - Incoming subject token
+   * @param {string}   actorToken     - Actor token (exchanger's CC token)
+   * @param {string}   clientId       - Exchanger's client ID
+   * @param {string}   clientSecret   - Exchanger's client secret
+   * @param {string}   audience       - Requested token audience
+   * @param {string[]} scopes         - Requested scopes
+   */
+  async performTokenExchangeAs(subjectToken, actorToken, clientId, clientSecret, audience, scopes) {
+    const scopeStr = Array.isArray(scopes) ? scopes.join(' ') : scopes;
+    const body = new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      subject_token: subjectToken,
+      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      actor_token: actorToken,
+      actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      audience,
+      scope: scopeStr,
+      client_id: clientId,
+      client_secret: clientSecret,
+    });
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+      const exchanged = response.data.access_token;
+      if (!exchanged) throw new Error('Token exchange response missing access_token');
+      console.log(`[Exchange-As] client=${clientId} audience=${audience} scope="${scopeStr}"`);
+      return exchanged;
+    } catch (error) {
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[Exchange-As] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Token exchange failed for ${clientId}: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, scope: scopeStr, client_id: clientId };
+      throw richErr;
+    }
+  }
+
+  /**
    * Get user information from PingOne Core
    */
   async getUserInfo(accessToken) {

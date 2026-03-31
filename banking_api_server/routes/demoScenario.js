@@ -521,19 +521,28 @@ module.exports = router;
  */
 async function patchMayAct(req, res) {
   const enabled = req.body?.enabled !== false; // default true
+  // mode: '1exchange' (default) — mayAct.sub = admin_client_id (Banking App / BFF)
+  //        '2exchange'           — mayAct.sub = AI_AGENT_CLIENT_ID (AI Agent App)
+  const mode = req.body?.mode === '2exchange' ? '2exchange' : '1exchange';
   const pingOneUserId = req.user?.id;
   if (!pingOneUserId) {
     return res.status(401).json({ error: 'unauthenticated', message: 'No user session' });
   }
 
-  const envId = configStore.getEffective('pingone_environment_id');
+  const envId  = configStore.getEffective('pingone_environment_id');
   const region = configStore.getEffective('pingone_region') || 'com';
-  const bffClientId = configStore.getEffective('admin_client_id');
+
+  // Choose which client ID becomes mayAct.sub based on delegation mode
+  const bffClientId = mode === '2exchange'
+    ? (configStore.getEffective('ai_agent_client_id') || process.env.AI_AGENT_CLIENT_ID || '')
+    : configStore.getEffective('admin_client_id');
 
   if (!envId || !bffClientId) {
+    const missing = !envId ? 'pingone_environment_id' :
+      (mode === '2exchange' ? 'AI_AGENT_CLIENT_ID (ai_agent_client_id)' : 'admin_client_id');
     return res.status(503).json({
       error: 'not_configured',
-      message: 'pingone_environment_id or admin_client_id not set — cannot update user attribute',
+      message: `${missing} not set — cannot update user attribute`,
     });
   }
 
@@ -563,10 +572,11 @@ async function patchMayAct(req, res) {
       },
       timeout: 12000,
     });
-    console.log(`[DemoMayAct] ${enabled ? 'Set' : 'Cleared'} mayAct for user ${pingOneUserId}`);
+    console.log(`[DemoMayAct] ${enabled ? 'Set' : 'Cleared'} mayAct for user ${pingOneUserId} mode=${mode}`);
     return res.json({
       ok: true,
       enabled,
+      mode,
       mayAct: enabled ? { sub: bffClientId } : null,
     });
   } catch (err) {

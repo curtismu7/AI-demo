@@ -184,6 +184,8 @@ export default function DemoDataPage({ user, onLogout }) {
   /** may_act demo toggle — set/clear the PingOne user mayAct attribute */
   const [mayActEnabled, setMayActEnabled] = useState(null); // null = unknown, true/false = known
   const [mayActSaving, setMayActSaving] = useState(false);
+  /** Delegation mode: '1exchange' = BFF/Banking App, '2exchange' = AI Agent App */
+  const [delegationMode, setDelegationMode] = useState('1exchange');
 
   // Seed the initial may_act status from the current session's token claims so the
   // status badge is populated on page load without the user having to click anything.
@@ -199,11 +201,12 @@ export default function DemoDataPage({ user, onLogout }) {
   const handleSetMayAct = async (enable) => {
     setMayActSaving(true);
     try {
-      await apiClient.patch('/api/demo/may-act', { enabled: enable });
+      await apiClient.patch('/api/demo/may-act', { enabled: enable, mode: delegationMode });
       setMayActEnabled(enable);
+      const modeLabel = delegationMode === '2exchange' ? '(AI Agent Client ID — 2-Exchange)' : '(Banking App Client ID — 1-Exchange)';
       notifySuccess(
         enable
-          ? 'may_act written to your PingOne user record. Sign out and back in to see it in your token.'
+          ? `may_act ${modeLabel} written to your PingOne user record. Sign out and back in to see it in your token.`
           : 'may_act cleared from your PingOne user record. Sign out and back in to confirm.'
       );
     } catch (err) {
@@ -1390,6 +1393,37 @@ export default function DemoDataPage({ user, onLogout }) {
 
               <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#6b7280', fontStyle: 'italic' }}>Conceptual only — writes to PingOne user attribute; does not affect your token while static mapping is active.</p>
               <div className="demo-data-mayact-row">
+                {/* Delegation mode selector */}
+                <div style={{ width: '100%', marginBottom: '0.6rem', padding: '0.6rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem', color: '#374151' }}>Delegation mode — which client ID becomes <code>mayAct.sub</code>:</div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', fontSize: '0.85rem', marginBottom: '0.3rem' }}>
+                    <input
+                      type="radio"
+                      name="delegationMode"
+                      value="1exchange"
+                      checked={delegationMode === '1exchange'}
+                      onChange={() => setDelegationMode('1exchange')}
+                    />
+                    <strong>1-Exchange</strong>
+                    <span style={{ color: '#6b7280' }}>— Banking App Client ID (exchange: user → MCP token)</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                    <input
+                      type="radio"
+                      name="delegationMode"
+                      value="2exchange"
+                      checked={delegationMode === '2exchange'}
+                      onChange={() => setDelegationMode('2exchange')}
+                    />
+                    <strong>2-Exchange</strong>
+                    <span style={{ color: '#6b7280' }}>— AI Agent Client ID (exchange #1: user → agent token, exchange #2: agent → MCP token with nested <code>act</code>)</span>
+                  </label>
+                  {delegationMode === '2exchange' && (
+                    <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.35rem 0.6rem' }}>
+                      ⚠️ Also enable the <strong>"2-Exchange Delegated Chain"</strong> feature flag and set <code>AI_AGENT_CLIENT_ID</code> + <code>AI_AGENT_CLIENT_SECRET</code> env vars.
+                    </div>
+                  )}
+                </div>
                 <button
                   type="button"
                   className={`demo-data-btn${mayActEnabled === true ? ' primary' : ' ghost'}`}

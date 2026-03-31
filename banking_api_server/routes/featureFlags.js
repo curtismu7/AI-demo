@@ -181,6 +181,27 @@ const FLAG_REGISTRY = [
     warnIfEnabled: true,
   },
   {
+    id:           'ff_two_exchange_delegation',
+    name:         'Token Exchange — 2-Exchange Delegated Chain (AI Agent + MCP)',
+    category:     'Token Exchange',
+    description:
+      'When ON, the BFF performs **two chained RFC 8693 exchanges** instead of one. ' +
+      'Exchange #1: Subject Token + AI Agent actor token → Agent Exchanged Token (act.sub = AI_AGENT_CLIENT_ID). ' +
+      'Exchange #2: Agent Exchanged Token + MCP actor token → Final Token with nested act claim ' +
+      '(act.sub = MCP_CLIENT_ID, act.act.sub = AI_AGENT_CLIENT_ID). ' +
+      'Requires: AI_AGENT_CLIENT_ID, AI_AGENT_CLIENT_SECRET, AGENT_GATEWAY_AUDIENCE, AI_AGENT_INTERMEDIATE_AUDIENCE, ' +
+      'MCP_GATEWAY_AUDIENCE env vars, and AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET for Exchange #2. ' +
+      'Also requires mayAct.sub on user records to be set to AI_AGENT_CLIENT_ID ' +
+      '(not the Banking App client ID used in the 1-exchange pattern).',
+    impact:
+      'OFF (default) = 1-exchange pattern: Subject Token → MCP Token (act.sub = BFF client). ' +
+      'ON = 2-exchange pattern: Subject Token → Agent Exchanged Token → Final Token (act.sub = MCP, act.act.sub = AI Agent). ' +
+      'PAZ can enforce both act.sub and act.act.sub as named policy attributes.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: false,
+  },
+  {
     id:           'ff_oidc_only_authorize',
     name:         'Login — OIDC-only authorize (no banking scopes)',
     category:     'Token Exchange',

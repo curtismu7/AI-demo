@@ -430,6 +430,19 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     ? toolScopes
     : toolCandidateScopes;
 
+  // ── 2-Exchange delegation path ──────────────────────────────────────────────────
+  // ff_two_exchange_delegation: Subject Token → (AI Agent) → Agent Exchanged Token → (MCP) → Final Token
+  // Produces nested act claim: act.sub=MCP_CLIENT_ID, act.act.sub=AI_AGENT_CLIENT_ID
+  const ffTwoExchange =
+    configStore.getEffective('ff_two_exchange_delegation') === true ||
+    configStore.getEffective('ff_two_exchange_delegation') === 'true';
+  if (ffTwoExchange) {
+    return await _performTwoExchangeDelegation(
+      tokenEvents, userToken, userAccessTokenClaims, effectiveToolScopes, userSub, toolTrigger, mcpResourceUri
+    );
+  }
+  // ────────────────────────────────────────────────────────────────────
+
   // Always use actor token when agent OAuth client is configured — ensures on_behalf_of semantics
   // (the exchanged MCP token carries act: { client_id: <agent> } proving which client is acting).
   // Without AGENT_OAUTH_CLIENT_ID the exchange runs subject-only (still RFC 8693; user token
@@ -725,6 +738,265 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       }
     }
     throw err;
+  }
+}
+
+// ─── 2-Exchange delegation helper ──────────────────────────────────────────────────
+
+/**
+ * Perform the 2-exchange delegated chain:
+ *   Step 1: AI Agent gets actor CC token (audience = AGENT_GATEWAY_AUDIENCE)
+ *   Step 2: Exchange #1 — Subject Token + Agent Actor Token → Agent Exchanged Token
+ *           exchanger = AI_AGENT_CLIENT_ID, audience = AI_AGENT_INTERMEDIATE_AUDIENCE
+ *   Step 3: MCP Service gets actor CC token (audience = MCP_GATEWAY_AUDIENCE)
+ *   Step 4: Exchange #2 — Agent Exchanged Token + MCP Actor Token → Final Token
+ *           exchanger = AGENT_OAUTH_CLIENT_ID, audience = mcpResourceUri
+ *   Result: Final Token has act.sub = MCP_CLIENT_ID, act.act.sub = AI_AGENT_CLIENT_ID
+ */
+async function _performTwoExchangeDelegation(
+  tokenEvents, userToken, userAccessTokenClaims, effectiveToolScopes, userSub, toolTrigger, mcpResourceUri
+) {
+  const aiAgentClientId     = configStore.getEffective('ai_agent_client_id') || process.env.AI_AGENT_CLIENT_ID || '';
+  const aiAgentClientSecret = process.env.AI_AGENT_CLIENT_SECRET || '';
+  const agentGatewayAud     = configStore.getEffective('agent_gateway_audience') || 'https://agent-gateway.pingdemo.com';
+  let   intermediateAud     = configStore.getEffective('ai_agent_intermediate_audience') || '';
+  if (!intermediateAud) intermediateAud = 'https://mcp-server.pingdemo.com';
+  const mcpGatewayAud       = configStore.getEffective('mcp_gateway_audience') || 'https://mcp-gateway.pingdemo.com';
+  const mcpExchangerClient  = process.env.AGENT_OAUTH_CLIENT_ID || '';
+  const mcpExchangerSecret  = process.env.AGENT_OAUTH_CLIENT_SECRET || '';
+
+  // Pre-flight check: all required credentials must be present
+  const missingVars = [];
+  if (!aiAgentClientId)     missingVars.push('AI_AGENT_CLIENT_ID (or ai_agent_client_id config)');
+  if (!aiAgentClientSecret) missingVars.push('AI_AGENT_CLIENT_SECRET');
+  if (!mcpExchangerClient)  missingVars.push('AGENT_OAUTH_CLIENT_ID');
+  if (!mcpExchangerSecret)  missingVars.push('AGENT_OAUTH_CLIENT_SECRET');
+  if (!mcpResourceUri)      missingVars.push('mcp_resource_uri (MCP_RESOURCE_URI)');
+
+  if (missingVars.length > 0) {
+    tokenEvents.push(buildTokenEvent(
+      'two-exchange-not-configured',
+      '2-Exchange Delegation — Not Configured',
+      'failed',
+      null,
+      `ff_two_exchange_delegation is ON but required credentials are missing: ${missingVars.join(', ')}. ` +
+        'Set these env vars and re-deploy. See docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md for setup guide.',
+      { missingVars, rfc: 'RFC 8693' }
+    ));
+    throwTokenResolutionError(
+      tokenEvents,
+      'two_exchange_not_configured',
+      `2-exchange delegation requires: ${missingVars.join(', ')}`,
+      503
+    );
+  }
+
+  // ─ Step 1: AI Agent Actor Token (Client Credentials) ───────────────────────────
+  tokenEvents.push(buildTokenEvent(
+    'two-ex-agent-actor-acquiring',
+    '2-Exchange #1 — AI Agent Actor Token (CC)',
+    'acquiring',
+    null,
+    `AI Agent App (${aiAgentClientId}) getting Client Credentials actor token. ` +
+      `Audience: ${agentGatewayAud} (BX Finance Agent Gateway).`,
+    { rfc: 'RFC 8693 §2.1 (actor_token)', exchangeStep: '1-actor' }
+  ));
+
+  let agentActorToken;
+  try {
+    agentActorToken = await oauthService.getClientCredentialsTokenAs(aiAgentClientId, aiAgentClientSecret, agentGatewayAud);
+    const agentActorDecoded = decodeJwtClaims(agentActorToken);
+    const actorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-agent-actor-acquiring');
+    if (actorIdx !== -1) tokenEvents.splice(actorIdx, 1);
+    tokenEvents.push(buildTokenEvent(
+      'two-ex-agent-actor',
+      '2-Exchange #1 — AI Agent Actor Token (CC) ✔️',
+      'active',
+      agentActorDecoded,
+      `AI Agent App (${aiAgentClientId}) obtained its Client Credentials actor token. ` +
+        `aud=${agentGatewayAud}. Used as actor_token in Exchange #1.`,
+      { rfc: 'RFC 8693 §2.1', exchangeStep: '1-actor' }
+    ));
+  } catch (err) {
+    const actorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-agent-actor-acquiring');
+    if (actorIdx !== -1) tokenEvents.splice(actorIdx, 1);
+    tokenEvents.push(buildTokenEvent(
+      'two-ex-agent-actor',
+      '2-Exchange #1 — AI Agent Actor Token ❌',
+      'failed',
+      null,
+      `AI Agent client credentials failed: ${err.message}. Check AI_AGENT_CLIENT_ID and AI_AGENT_CLIENT_SECRET.`,
+      { error: err.message, exchangeStep: '1-actor' }
+    ));
+    throwTokenResolutionError(tokenEvents, 'two_exchange_agent_actor_failed', err.message, err.httpStatus || 502);
+  }
+
+  // ─ Step 2: Exchange #1 — Subject Token + Agent Actor Token → Agent Exchanged Token ─────
+  tokenEvents.push(buildTokenEvent(
+    'two-ex-exchange1-in-progress',
+    '2-Exchange #1 — Subject Token → Agent Exchanged Token',
+    'acquiring',
+    null,
+    `Exchange #1 (RFC 8693): exchanger=${aiAgentClientId}, ` +
+      `subject=Subject Token (may_act.sub must equal actor_token.aud[0]=${aiAgentClientId}), ` +
+      `audience=${intermediateAud}, scope="${effectiveToolScopes.join(' ')}".`,
+    { rfc: 'RFC 8693', exchangeStep: '1-exchange',
+      exchangeRequest: { exchanger: aiAgentClientId, audience: intermediateAud, scope: effectiveToolScopes.join(' ') } }
+  ));
+
+  let agentExchangedToken;
+  try {
+    agentExchangedToken = await oauthService.performTokenExchangeAs(
+      userToken, agentActorToken, aiAgentClientId, aiAgentClientSecret, intermediateAud, effectiveToolScopes
+    );
+    const agentExchangedDecoded = decodeJwtClaims(agentExchangedToken);
+    const agentExchangedClaims = agentExchangedDecoded?.claims;
+    const ex1Idx = tokenEvents.findIndex(e => e.id === 'two-ex-exchange1-in-progress');
+    if (ex1Idx !== -1) tokenEvents.splice(ex1Idx, 1);
+    tokenEvents.push(buildTokenEvent(
+      'two-ex-exchange1',
+      '2-Exchange #1 — Agent Exchanged Token ✔️',
+      'exchanged',
+      agentExchangedDecoded,
+      `Exchange #1 succeeded. Agent Exchanged Token (Token 2): aud=${JSON.stringify(agentExchangedClaims?.aud)}, ` +
+        `act=${JSON.stringify(agentExchangedClaims?.act)}. ` +
+        'act.sub records that the AI Agent performed this exchange. Now performing Exchange #2.',
+      { rfc: 'RFC 8693', exchangeStep: '1-exchange',
+        actPresent: !!agentExchangedClaims?.act,
+        actDetails: agentExchangedClaims?.act ? JSON.stringify(agentExchangedClaims.act) : null }
+    ));
+  } catch (err) {
+    const ex1Idx = tokenEvents.findIndex(e => e.id === 'two-ex-exchange1-in-progress');
+    if (ex1Idx !== -1) tokenEvents.splice(ex1Idx, 1);
+    const guidanceMsg = userAccessTokenClaims?.may_act
+      ? `may_act.sub="${userAccessTokenClaims.may_act.sub}" must equal AI_AGENT_CLIENT_ID="${aiAgentClientId}".`
+      : 'may_act claim missing from Subject Token. Set mayAct.sub = AI_AGENT_CLIENT_ID on the user record (DemoData page → 2-Exchange mode), then sign out and back in.';
+    tokenEvents.push(buildTokenEvent(
+      'two-ex-exchange1',
+      '2-Exchange #1 — Subject Token exchange failed ❌',
+      'failed',
+      null,
+      `Exchange #1 failed: ${err.message}. ${guidanceMsg}`,
+      { error: err.message, httpStatus: err.httpStatus, pingoneError: err.pingoneError,
+        pingoneErrorDescription: err.pingoneErrorDescription, exchangeStep: '1-exchange' }
+    ));
+    void writeExchangeEvent({ type: 'exchange-failed', level: 'error',
+      message: `[2-Exchange#1] Failed — ${err.message}`, exchangeStep: '1', pingoneError: err.pingoneError });
+    throwTokenResolutionError(tokenEvents, 'two_exchange_step1_failed', err.message, err.httpStatus || 502);
+  }
+
+  // ─ Step 3: MCP Actor Token (Client Credentials) ──────────────────────────────
+  tokenEvents.push(buildTokenEvent(
+    'two-ex-mcp-actor-acquiring',
+    '2-Exchange #2 — MCP Actor Token (CC)',
+    'acquiring',
+    null,
+    `MCP Service App (${mcpExchangerClient}) getting Client Credentials actor token. ` +
+      `Audience: ${mcpGatewayAud} (BX Finance MCP Gateway).`,
+    { rfc: 'RFC 8693 §2.1 (actor_token)', exchangeStep: '2-actor' }
+  ));
+
+  let mcpActorToken;
+  try {
+    mcpActorToken = await oauthService.getClientCredentialsTokenAs(mcpExchangerClient, mcpExchangerSecret, mcpGatewayAud);
+    const mcpActorDecoded = decodeJwtClaims(mcpActorToken);
+    const mcpActorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-mcp-actor-acquiring');
+    if (mcpActorIdx !== -1) tokenEvents.splice(mcpActorIdx, 1);
+    tokenEvents.push(buildTokenEvent(
+      'two-ex-mcp-actor',
+      '2-Exchange #2 — MCP Actor Token (CC) ✔️',
+      'active',
+      mcpActorDecoded,
+      `MCP Service App (${mcpExchangerClient}) obtained its Client Credentials actor token. ` +
+        `aud=${mcpGatewayAud}. Used as actor_token in Exchange #2.`,
+      { rfc: 'RFC 8693 §2.1', exchangeStep: '2-actor' }
+    ));
+  } catch (err) {
+    const mcpActorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-mcp-actor-acquiring');
+    if (mcpActorIdx !== -1) tokenEvents.splice(mcpActorIdx, 1);
+    tokenEvents.push(buildTokenEvent(
+      'two-ex-mcp-actor',
+      '2-Exchange #2 — MCP Actor Token ❌',
+      'failed',
+      null,
+      `MCP Service client credentials failed: ${err.message}. Check AGENT_OAUTH_CLIENT_ID and AGENT_OAUTH_CLIENT_SECRET.`,
+      { error: err.message, exchangeStep: '2-actor' }
+    ));
+    throwTokenResolutionError(tokenEvents, 'two_exchange_mcp_actor_failed', err.message, err.httpStatus || 502);
+  }
+
+  // ─ Step 4: Exchange #2 — Agent Exchanged Token + MCP Actor Token → Final Token ────
+  tokenEvents.push(buildTokenEvent(
+    'two-ex-exchange2-in-progress',
+    '2-Exchange #2 — Agent Exchanged Token → Final MCP Token',
+    'acquiring',
+    null,
+    `Exchange #2 (RFC 8693): exchanger=${mcpExchangerClient}, ` +
+      `subject=Agent Exchanged Token (act.sub must equal actor_token.aud[0]=${mcpExchangerClient}), ` +
+      `audience=${mcpResourceUri}. Result will have act.sub=${mcpExchangerClient}, act.act.sub=${aiAgentClientId}.`,
+    { rfc: 'RFC 8693', exchangeStep: '2-exchange',
+      exchangeRequest: { exchanger: mcpExchangerClient, audience: mcpResourceUri, scope: effectiveToolScopes.join(' ') } }
+  ));
+
+  let finalToken;
+  try {
+    finalToken = await oauthService.performTokenExchangeAs(
+      agentExchangedToken, mcpActorToken, mcpExchangerClient, mcpExchangerSecret, mcpResourceUri, effectiveToolScopes
+    );
+    const finalDecoded = decodeJwtClaims(finalToken);
+    const finalClaims  = finalDecoded?.claims;
+    const ex2Idx = tokenEvents.findIndex(e => e.id === 'two-ex-exchange2-in-progress');
+    if (ex2Idx !== -1) tokenEvents.splice(ex2Idx, 1);
+    const mcpTokenAud = finalClaims?.aud;
+    const audMatches  = mcpTokenAud === mcpResourceUri || (Array.isArray(mcpTokenAud) && mcpTokenAud.includes(mcpResourceUri));
+    const nestedActOk = !!finalClaims?.act?.sub && !!finalClaims?.act?.act?.sub;
+    tokenEvents.push(buildTokenEvent(
+      'two-ex-final-token',
+      '2-Exchange: Final MCP Token (nested act chain) ✔️',
+      'exchanged',
+      finalDecoded,
+      'Both RFC 8693 exchanges succeeded. Final MCP Token (Token 3): ' +
+        `aud=${JSON.stringify(mcpTokenAud)}${audMatches ? ' ✅' : ' ❌ mismatch'}, ` +
+        `act.sub=${finalClaims?.act?.sub ?? '—'} (MCP Service), ` +
+        `act.act.sub=${finalClaims?.act?.act?.sub ?? '—'} (AI Agent). ` +
+        (nestedActOk
+          ? 'Full delegation chain verified. PAZ can enforce both act.sub and act.act.sub as named policy attributes.'
+          : 'WARNING: nested act chain incomplete — check act expression on BX Finance Resource Server (docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e).'),
+      { rfc: 'RFC 8693', exchangeStep: '2-exchange', exchangeMethod: '2-exchange',
+        actPresent: !!finalClaims?.act,
+        actDetails: finalClaims?.act ? JSON.stringify(finalClaims.act) : null,
+        nestedActPresent: nestedActOk,
+        audienceNarrowed: mcpResourceUri, audMatches,
+        audExpected: mcpResourceUri, audActual: mcpTokenAud,
+        scopeNarrowed: effectiveToolScopes.join(' ') }
+    ));
+
+    void writeExchangeEvent({
+      type: 'exchange-success', level: 'info',
+      message: `[2-Exchange] Final token issued — audience=${mcpResourceUri} act=${!!finalClaims?.act} nestedAct=${nestedActOk}`,
+      exchangeMethod: '2-exchange', mcpResourceUri,
+      actPresent: !!finalClaims?.act, nestedActPresent: nestedActOk, audMatches,
+    });
+
+    return { token: finalToken, tokenEvents, userSub };
+
+  } catch (err) {
+    const ex2Idx = tokenEvents.findIndex(e => e.id === 'two-ex-exchange2-in-progress');
+    if (ex2Idx !== -1) tokenEvents.splice(ex2Idx, 1);
+    tokenEvents.push(buildTokenEvent(
+      'two-ex-final-token',
+      '2-Exchange #2 — Final exchange failed ❌',
+      'failed',
+      null,
+      `Exchange #2 failed: ${err.message}. ` +
+        'Check that act.sub on the Agent Exchanged Token matches AGENT_OAUTH_CLIENT_ID ' +
+        'and that the act expression on BX Finance MCP Server resource server is correct.',
+      { error: err.message, httpStatus: err.httpStatus, pingoneError: err.pingoneError,
+        pingoneErrorDescription: err.pingoneErrorDescription, exchangeStep: '2-exchange' }
+    ));
+    void writeExchangeEvent({ type: 'exchange-failed', level: 'error',
+      message: `[2-Exchange#2] Failed — ${err.message}`, pingoneError: err.pingoneError });
+    throwTokenResolutionError(tokenEvents, 'two_exchange_step2_failed', err.message, err.httpStatus || 502);
   }
 }
 
