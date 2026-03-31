@@ -55,7 +55,58 @@ import SessionReauthBanner from './components/SessionReauthBanner';
 import AgentFlowDiagramPanel from './components/AgentFlowDiagramPanel';
 import { SESSION_REAUTH_EVENT } from './utils/authUi';
 import { showEndUserOAuthErrorToast, stripEndUserOAuthErrorParamsFromUrl } from './utils/endUserOAuthErrorToast';
+import { notifyWarning } from './utils/appToast';
 import './App.css';
+
+/**
+ * Renders children for admin users.
+ * For non-admin logged-in users: shows a modal explaining why + fires a toast, then
+ * renders a blank placeholder so the URL stays valid (no silent redirect to /marketing).
+ */
+function AdminRoute({ user, children }) {
+  const navigate = useNavigate();
+  const [dismissed, setDismissed] = useState(false);
+  const toastedRef = useRef(false);
+
+  const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    if (!isAdmin && !toastedRef.current) {
+      toastedRef.current = true;
+      notifyWarning('This page is restricted to admin users.');
+    }
+  }, [isAdmin]);
+
+  if (isAdmin) return children;
+
+  if (dismissed) {
+    navigate(-1);
+    return null;
+  }
+
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
+      <div className="modal-content" style={{ maxWidth: 420 }}>
+        <div className="modal-header">
+          <h2 id="admin-modal-title">Admin access required</h2>
+        </div>
+        <div className="modal-body">
+          <p style={{ margin: '0 0 1.25rem' }}>
+            This page is only available to users with the <strong>admin</strong> role.
+            Contact your administrator to have your account upgraded.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setDismissed(true)}
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Prevents re-auth after logout when effects re-run (matches f8393a7 session guard). */
 let _didLogOut = false;
@@ -348,32 +399,32 @@ function AppWithAuth() {
                   <EducationBar />
                   <Routes>
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
-                    <Route path="/admin" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                    <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/config"      element={user ? <Config /> : <Navigate to="/" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
                     <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />
-                    <Route path="/activity" element={user?.role === 'admin' ? <ActivityLogs user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
-                    <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                    <Route path="/activity" element={<AdminRoute user={user}><ActivityLogs user={user} onLogout={logout} /></AdminRoute>} />
+                    <Route path="/users" element={<AdminRoute user={user}><Users user={user} onLogout={logout} /></AdminRoute>} />
+                    <Route path="/accounts" element={<AdminRoute user={user}><Accounts user={user} onLogout={logout} /></AdminRoute>} />
+                    <Route path="/transactions" element={<AdminRoute user={user}><Transactions user={user} onLogout={logout} /></AdminRoute>} />
                     <Route
                       path="/admin/banking"
-                      element={user?.role === 'admin' ? <BankingAdminOps user={user} onLogout={logout} /> : <Navigate to="/" replace />}
+                      element={<AdminRoute user={user}><BankingAdminOps user={user} onLogout={logout} /></AdminRoute>}
                     />
                     <Route path="/transaction-consent" element={<TransactionConsentPage user={user} />} />
                     <Route path="/delegated-access" element={<DelegatedAccessPage user={user} onLogout={logout} />} />
                     <Route path="/feature-flags"
                       element={user ? <FeatureFlagsPage /> : <Navigate to="/" replace />}
                     />
-                    <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+                    <Route path="/settings" element={<AdminRoute user={user}><SecuritySettings user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/oauth-debug-logs"
-                      element={user?.role === 'admin' ? <OAuthDebugLogViewer /> : <Navigate to="/" replace />}
+                      element={<AdminRoute user={user}><OAuthDebugLogViewer /></AdminRoute>}
                     />
                     <Route path="/client-registration"
-                      element={user?.role === 'admin' ? <ClientRegistrationPage /> : <Navigate to="/" replace />}
+                      element={<AdminRoute user={user}><ClientRegistrationPage /></AdminRoute>}
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
