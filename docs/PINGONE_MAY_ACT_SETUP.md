@@ -801,6 +801,30 @@ Pre-filled: `base_url`, `resource` (`https://ai-agent.pingdemo.com`), `redirect_
 
 Add `https://oauth.pstmn.io/v1/callback` as a **Redirect URI** on the **BX Finance User** app (Configuration tab). This allows Postman's OAuth2 helper to complete the PKCE flow. Remove it after testing if desired.
 
+### ⚠️ Clear cookies before each full run
+
+PingOne stores a session cookie in Postman after a successful login. On the next run, Step 1 returns `status: COMPLETED` immediately (skipping the login form), and the auth code it returns may be **stale or scoped differently** than you expect — `may_act` can be missing, or `aud` can be wrong.
+
+**Always clear cookies before starting a fresh run:**
+
+1. In Postman, click the 🍪 **Cookies** button (top-right of the request pane, next to Send)
+2. Find `auth.pingone.com` → click the trash icon to delete all cookies for that domain
+3. Then start from Step 1
+
+**Errors you will see if you skip this:**
+
+| Symptom | Cause |
+|---------|-------|
+| Step 1 returns `status: COMPLETED` with no login prompt | Stale PingOne session cookie — Postman reuses the old session |
+| Step 4 test: `Subject Token aud is AI Agent` **FAILS** | Old session token has wrong `aud` (e.g. the app client ID instead of `https://ai-agent.pingdemo.com`) — issued before `resource=` was set correctly |
+| Step 4 test: `may_act.sub present` **FAILS** | Token from cached session was issued before `may_act` was configured on the resource server |
+| Step 5 returns `invalid_grant` | Subject Token expired or was issued without `may_act` — re-run Steps 1–4 with fresh cookies |
+| Step 1 console: `*** SKIP steps 2 and 3 — go straight to step 4 ***` | Normal when session is still valid — only safe to skip if you've already confirmed `may_act` is in the token from this session |
+
+> **Quick check:** After Step 4, open the Postman Console (`View → Show Postman Console`) and look for `[Step 4] may_act:`. If that line is missing, the token came from a cached session. Clear cookies and re-run from Step 1.
+
+---
+
 ### Run in order
 
 **Step 1 — Subject Token (Authorization Code + PKCE)**
