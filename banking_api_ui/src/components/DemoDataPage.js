@@ -197,20 +197,12 @@ export default function DemoDataPage({ user, onLogout }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSetMayAct = async (enable) => {
-    if (!user) {
-      notifyWarning('Sign in as admin first to update the may_act attribute in PingOne.');
-      return;
-    }
     setMayActSaving(true);
     try {
       const { data } = await apiClient.patch('/api/demo/may-act', { enabled: enable });
       setMayActEnabled(enable);
       notifySuccess(data.message || (enable ? 'may_act enabled' : 'may_act cleared'));
     } catch (err) {
-      if (err?.response?.status === 401) {
-        notifyWarning('Sign in as admin first to update the may_act attribute in PingOne.');
-        return;
-      }
       const msg = err?.response?.data?.message || err.message || 'Failed to update may_act';
       notifyError(msg);
     } finally {
@@ -280,7 +272,6 @@ export default function DemoDataPage({ user, onLogout }) {
   }, [bearerPasteToken]);
 
   const loadP1azFlags = useCallback(async () => {
-    if (user?.role !== 'admin') return;
     setP1azFlagsLoading(true);
     setP1azFlagsError(null);
     try {
@@ -294,13 +285,11 @@ export default function DemoDataPage({ user, onLogout }) {
     } finally {
       setP1azFlagsLoading(false);
     }
-  }, [user?.role]);
+  }, []);
 
   useEffect(() => {
-    if (user?.role === 'admin') {
-      loadP1azFlags();
-    }
-  }, [user?.role, loadP1azFlags]);
+    loadP1azFlags();
+  }, [loadP1azFlags]);
 
   const handleP1azFlagToggle = async (flagId, nextBool) => {
     setP1azFlagSaving(flagId);
@@ -1152,9 +1141,8 @@ export default function DemoDataPage({ user, onLogout }) {
               </div>
             </section>
 
-            {/* ── PingOne Authorize flags (admin — live vs simulated, MCP first tool, etc.) ── */}
-            {user?.role === 'admin' && (
-              <section className="section demo-data-section" aria-labelledby="demo-p1az-flags-heading">
+            {/* ── PingOne Authorize flags (all users — live vs simulated, MCP first tool, etc.) ── */}
+            <section className="section demo-data-section" aria-labelledby="demo-p1az-flags-heading">
                 <h2 className="demo-data-section__heading" id="demo-p1az-flags-heading">
                   PingOne Authorize — demo toggles
                 </h2>
@@ -1293,32 +1281,17 @@ export default function DemoDataPage({ user, onLogout }) {
                   <Link to="/config">PingOne / OAuth config</Link>
                 </p>
               </section>
-            )}
 
             {/* ── may_act demo toggle ─────────────────────────────────────── */}
             <section className="section demo-data-section" aria-labelledby="demo-mayact-heading">
               <h2 className="demo-data-section__heading" id="demo-mayact-heading">Token Exchange — may_act demo</h2>
 
-              {/* BFF injection flags — inline toggle for admins, info note for regular users */}
+              {/* BFF injection flags — visible to all logged-in users */}
               {(() => {
-                const injectFlag = user?.role === 'admin' ? p1azFlags.find((f) => f.id === 'ff_inject_may_act') : null;
-                const audFlag    = user?.role === 'admin' ? p1azFlags.find((f) => f.id === 'ff_inject_audience') : null;
+                const injectFlag = p1azFlags.find((f) => f.id === 'ff_inject_may_act');
+                const audFlag    = p1azFlags.find((f) => f.id === 'ff_inject_audience');
                 const injectOn   = injectFlag?.currentValue === true;
                 const audOn      = audFlag?.currentValue === true;
-
-                if (user?.role !== 'admin') {
-                  return (
-                    <div className="demo-data-static-notice" style={{ borderColor: '#c7d2fe', background: '#eef2ff', color: '#3730a3', marginBottom: '1rem' }}>
-                      <span className="demo-data-static-notice__icon">⚙️</span>
-                      <div>
-                        <strong>BFF synthetic injection</strong> — the <code>ff_inject_may_act</code> and{' '}
-                        <code>ff_inject_audience</code> flags let the BFF add missing claims in memory before
-                        RFC&nbsp;8693 exchange. These are admin-only toggles — ask an admin to enable them via{' '}
-                        <strong>Feature Flags → Token Exchange</strong> if needed.
-                      </div>
-                    </div>
-                  );
-                }
 
                 return (
                   <>
