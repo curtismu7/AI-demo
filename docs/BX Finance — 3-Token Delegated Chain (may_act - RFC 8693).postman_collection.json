@@ -222,7 +222,7 @@
               "path": [
                 "{{PINGONE_ENVIRONMENT_ID}}",
                 "flows",
-                "{{flow_id}}"w
+                "{{flow_id}}"
               ]
             },
             "description": "Submits the user's credentials to the active flow.\n\nThe special Content-Type `application/vnd.pingidentity.usernamePassword.check+json` tells PingOne this is a credential submission.\n\nSet `TEST_USERNAME` and `TEST_PASSWORD` in Collection Variables.\n\nOn success PingOne returns the updated flow object. The test script checks the status and warns if MFA is required."
