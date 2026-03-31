@@ -1299,89 +1299,78 @@ export default function DemoDataPage({ user, onLogout }) {
             <section className="section demo-data-section" aria-labelledby="demo-mayact-heading">
               <h2 className="demo-data-section__heading" id="demo-mayact-heading">Token Exchange — may_act demo</h2>
 
-              {/* Auto-inject toggle (admin only, sourced from feature-flag ff_inject_may_act) */}
-              {user?.role === 'admin' && (() => {
-                const injectFlag = p1azFlags.find((f) => f.id === 'ff_inject_may_act');
-                if (!injectFlag) return null;
-                const isOn = injectFlag.currentValue === true;
-                return (
-                  <div className="demo-data-static-notice" style={{ marginBottom: '1rem', borderColor: isOn ? '#f59e0b' : undefined, background: isOn ? '#fffbeb' : undefined }}>
-                    <span className="demo-data-static-notice__icon">{isOn ? '🔧' : '💡'}</span>
-                    <div style={{ flex: 1 }}>
-                      <strong>Auto-inject may_act (BFF synthetic)</strong>
-                      {' — '}
-                      {isOn
-                        ? <span style={{ color: '#b45309' }}>ON — BFF is adding a synthetic <code>may_act</code> claim before token exchange. Token Chain shows an injected badge.</span>
-                        : <span style={{ color: '#6b7280' }}>OFF — if PingOne doesn&apos;t include <code>may_act</code>, exchange may fail.</span>}
-                      <br />
-                      <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>
-                        When <strong>ON</strong>, the BFF synthesises <code>{`{ client_id: "<bff-client-id>" }`}</code> in memory
-                        before RFC&nbsp;8693 exchange — no PingOne token policy change required.
-                        Educational/demo only; disable once PingOne is configured natively.
-                      </span>
-                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          className={`demo-data-btn${isOn ? ' ghost' : ' primary'}`}
-                          disabled={p1azFlagSaving === 'ff_inject_may_act' || (!isOn && !injectFlag)}
-                          onClick={() => handleP1azFlagToggle('ff_inject_may_act', false)}
-                        >
-                          {p1azFlagSaving === 'ff_inject_may_act' && !isOn ? 'Saving…' : '❌ Disable injection'}
-                        </button>
-                        <button
-                          type="button"
-                          className={`demo-data-btn${isOn ? ' primary' : ' ghost'}`}
-                          disabled={p1azFlagSaving === 'ff_inject_may_act' || isOn}
-                          onClick={() => handleP1azFlagToggle('ff_inject_may_act', true)}
-                        >
-                          {p1azFlagSaving === 'ff_inject_may_act' && isOn ? 'Saving…' : '🔧 Enable injection'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* BFF injection flags — inline toggle for admins, info note for regular users */}
+              {(() => {
+                const injectFlag = user?.role === 'admin' ? p1azFlags.find((f) => f.id === 'ff_inject_may_act') : null;
+                const audFlag    = user?.role === 'admin' ? p1azFlags.find((f) => f.id === 'ff_inject_audience') : null;
+                const injectOn   = injectFlag?.currentValue === true;
+                const audOn      = audFlag?.currentValue === true;
 
-              {/* Auto-inject audience toggle (admin only, sourced from feature-flag ff_inject_audience) */}
-              {user?.role === 'admin' && (() => {
-                const audFlag = p1azFlags.find((f) => f.id === 'ff_inject_audience');
-                if (!audFlag) return null;
-                const isOn = audFlag.currentValue === true;
-                return (
-                  <div className="demo-data-static-notice" style={{ marginBottom: '1rem', borderColor: isOn ? '#f59e0b' : undefined, background: isOn ? '#fffbeb' : undefined }}>
-                    <span className="demo-data-static-notice__icon">{isOn ? '🔧' : '💡'}</span>
-                    <div style={{ flex: 1 }}>
-                      <strong>Auto-inject audience (BFF synthetic)</strong>
-                      {' — '}
-                      {isOn
-                        ? <span style={{ color: '#b45309' }}>ON — BFF is adding <code>mcp_resource_uri</code> to the <code>aud</code> claim snapshot before token exchange. Token Chain shows an injected badge.</span>
-                        : <span style={{ color: '#6b7280' }}>OFF — if PingOne doesn&apos;t include the resource URI in <code>aud</code>, exchange may fail validation.</span>}
-                      <br />
-                      <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>
-                        When <strong>ON</strong>, the BFF adds <code>mcp_resource_uri</code> to the token&apos;s <code>aud</code> snapshot in memory
-                        before RFC&nbsp;8693 exchange — useful when PingOne isn&apos;t yet configured with RFC&nbsp;8707 resource indicators.
-                        Educational/demo only; disable once PingOne issues tokens with the correct audience.
-                      </span>
-                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          className={`demo-data-btn${isOn ? ' ghost' : ' primary'}`}
-                          disabled={p1azFlagSaving === 'ff_inject_audience' || (!isOn && !audFlag)}
-                          onClick={() => handleP1azFlagToggle('ff_inject_audience', false)}
-                        >
-                          {p1azFlagSaving === 'ff_inject_audience' && !isOn ? 'Saving…' : '❌ Disable injection'}
-                        </button>
-                        <button
-                          type="button"
-                          className={`demo-data-btn${isOn ? ' primary' : ' ghost'}`}
-                          disabled={p1azFlagSaving === 'ff_inject_audience' || isOn}
-                          onClick={() => handleP1azFlagToggle('ff_inject_audience', true)}
-                        >
-                          {p1azFlagSaving === 'ff_inject_audience' && isOn ? 'Saving…' : '🔧 Enable injection'}
-                        </button>
+                if (user?.role !== 'admin') {
+                  return (
+                    <div className="demo-data-static-notice" style={{ borderColor: '#c7d2fe', background: '#eef2ff', color: '#3730a3', marginBottom: '1rem' }}>
+                      <span className="demo-data-static-notice__icon">⚙️</span>
+                      <div>
+                        <strong>BFF synthetic injection</strong> — the <code>ff_inject_may_act</code> and{' '}
+                        <code>ff_inject_audience</code> flags let the BFF add missing claims in memory before
+                        RFC&nbsp;8693 exchange. These are admin-only toggles — ask an admin to enable them via{' '}
+                        <strong>Feature Flags → Token Exchange</strong> if needed.
                       </div>
                     </div>
-                  </div>
+                  );
+                }
+
+                return (
+                  <>
+                    {/* ff_inject_may_act */}
+                    <div className="demo-data-static-notice" style={{ marginBottom: '0.75rem', borderColor: injectOn ? '#f59e0b' : '#c7d2fe', background: injectOn ? '#fffbeb' : '#eef2ff' }}>
+                      <span className="demo-data-static-notice__icon">{injectOn ? '🔧' : '💡'}</span>
+                      <div style={{ flex: 1 }}>
+                        <strong>Auto-inject may_act (BFF synthetic)</strong>
+                        {' — '}
+                        {injectOn
+                          ? <span style={{ color: '#b45309' }}>ON — BFF adds a synthetic <code>may_act</code> claim before exchange. Token Chain shows an injected badge.</span>
+                          : <span style={{ color: '#374151' }}>OFF — token exchange uses the real <code>may_act</code> from PingOne (or fails if absent).</span>}
+                        <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button type="button" className={`demo-data-btn${!injectOn ? ' primary' : ' ghost'}`}
+                            disabled={p1azFlagSaving === 'ff_inject_may_act' || !injectOn || !injectFlag}
+                            onClick={() => handleP1azFlagToggle('ff_inject_may_act', false)}>
+                            {p1azFlagSaving === 'ff_inject_may_act' && injectOn ? 'Saving…' : '❌ Disable'}
+                          </button>
+                          <button type="button" className={`demo-data-btn${injectOn ? ' primary' : ' ghost'}`}
+                            disabled={p1azFlagSaving === 'ff_inject_may_act' || injectOn || !injectFlag}
+                            onClick={() => handleP1azFlagToggle('ff_inject_may_act', true)}>
+                            {p1azFlagSaving === 'ff_inject_may_act' && !injectOn ? 'Saving…' : '🔧 Enable'}
+                          </button>
+                          {!injectFlag && <span style={{ fontSize: '0.78rem', color: '#9ca3af', alignSelf: 'center' }}>Flag not loaded — scroll up to reload Authorize flags</span>}
+                        </div>
+                      </div>
+                    </div>
+                    {/* ff_inject_audience */}
+                    <div className="demo-data-static-notice" style={{ marginBottom: '1rem', borderColor: audOn ? '#f59e0b' : '#c7d2fe', background: audOn ? '#fffbeb' : '#eef2ff' }}>
+                      <span className="demo-data-static-notice__icon">{audOn ? '🔧' : '💡'}</span>
+                      <div style={{ flex: 1 }}>
+                        <strong>Auto-inject audience (BFF synthetic)</strong>
+                        {' — '}
+                        {audOn
+                          ? <span style={{ color: '#b45309' }}>ON — BFF adds <code>mcp_resource_uri</code> to <code>aud</code> snapshot before exchange.</span>
+                          : <span style={{ color: '#374151' }}>OFF — token exchange uses the real <code>aud</code> from PingOne.</span>}
+                        <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button type="button" className={`demo-data-btn${!audOn ? ' primary' : ' ghost'}`}
+                            disabled={p1azFlagSaving === 'ff_inject_audience' || !audOn || !audFlag}
+                            onClick={() => handleP1azFlagToggle('ff_inject_audience', false)}>
+                            {p1azFlagSaving === 'ff_inject_audience' && audOn ? 'Saving…' : '❌ Disable'}
+                          </button>
+                          <button type="button" className={`demo-data-btn${audOn ? ' primary' : ' ghost'}`}
+                            disabled={p1azFlagSaving === 'ff_inject_audience' || audOn || !audFlag}
+                            onClick={() => handleP1azFlagToggle('ff_inject_audience', true)}>
+                            {p1azFlagSaving === 'ff_inject_audience' && !audOn ? 'Saving…' : '🔧 Enable'}
+                          </button>
+                          {!audFlag && <span style={{ fontSize: '0.78rem', color: '#9ca3af', alignSelf: 'center' }}>Flag not loaded — scroll up to reload Authorize flags</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 );
               })()}
 
