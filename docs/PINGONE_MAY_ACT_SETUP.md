@@ -272,11 +272,6 @@ This compares `may_act.sub` in the Subject Token (the permitted actor's UUID) ag
 > - `!= null &&` — explicit guard: prevents `null == null` from evaluating to `true` when `may_act` is absent entirely
 > - If all checks pass and the UUIDs match: returns `may_act` (which becomes `act` in the MCP Token)
 >
-> A simpler non-null-safe version also works for the demo:
-> ```
-> (#root.context.requestData.subjectToken.may_act.sub == #root.context.requestData.actorToken.aud[0])?#root.context.requestData.subjectToken.may_act:null
-> ```
-> Use the null-safe version in production — it handles tokens that lack `may_act` without a runtime error.
 > **How to test in PingOne:**
 > 1. Click the pencil icon next to the `act` mapping → **Build and Test Expression** opens.
 > 2. Click **Edit JSON** in the Test Data panel and paste. The `subjectToken` value is the decoded payload of the actual Subject Token — paste the real claims. Replace `<PINGONE_CORE_CLIENT_ID>` with the Banking App client ID UUID in both places; they must match for the expression to return non-null.
