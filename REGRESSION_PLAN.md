@@ -78,6 +78,16 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-03-31 — AdminRoute: modal + toast for admin-only pages; no more silent /marketing redirect
+
+- **Feature / fix:** Non-admin logged-in users who navigate to an admin-only route (e.g. `/activity`, `/users`, `/accounts`, `/transactions`, `/admin/banking`, `/settings`, `/oauth-debug-logs`, `/client-registration`) now see a centred modal dialog — **"Admin access required"** — with an explanation and a **Go back** button, plus a warning toast. Previously they were silently redirected to `/marketing` with no feedback.
+- **How it works:** New `AdminRoute` component (inline in `App.js`). If `user?.role === 'admin'` it renders children unchanged. Otherwise it fires `notifyWarning` once (guarded by `useRef`) and renders the modal using the existing `.modal-overlay` / `.modal-content` / `.modal-body` CSS classes. The **Go back** button calls `navigate(-1)`.
+- **Routes now wrapped in `AdminRoute`:** `/admin`, `/activity`, `/users`, `/accounts`, `/transactions`, `/admin/banking`, `/settings`, `/oauth-debug-logs`, `/client-registration`
+- **Files changed:** `banking_api_ui/src/App.js`
+- **Commit:** `78edda9`
+- **Regression check:** `cd banking_api_ui && npm run build` → **Compiled successfully**.
+- **Do not break:** Admin users see zero change — `AdminRoute` renders children directly. Non-admin users on public/open routes (dashboard, logs, api-traffic, config, feature-flags, mcp-inspector, etc.) are unaffected.
+
 ### 2026-03-31 — DemoDataPage: toast message quality + route guards for /config and /feature-flags
 
 - **Feature / fix:** Three UX improvements in one push:
