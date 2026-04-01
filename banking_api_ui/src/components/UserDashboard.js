@@ -10,6 +10,7 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import ExchangeModeToggle from './ExchangeModeToggle';
 import TransactionConsentModal from './TransactionConsentModal';
 import BankingAgent from './BankingAgent';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
@@ -1307,6 +1308,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
           <aside className="ud-token-rail" aria-label="Token chain">
             <div className="section ud-token-rail__inner">
+              <ExchangeModeToggle />
               <TokenChainDisplay />
             </div>
           </aside>
@@ -1334,7 +1336,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--design-3col">
             <aside className="ud-token-rail" aria-label="Token chain">
               <div className="section ud-token-rail__inner">
-                <TokenChainDisplay />
+                <ExchangeModeToggle />
+              <TokenChainDisplay />
               </div>
             </aside>
 

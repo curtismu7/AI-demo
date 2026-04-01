@@ -433,9 +433,13 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ── 2-Exchange delegation path ──────────────────────────────────────────────────
   // ff_two_exchange_delegation: Subject Token → (AI Agent) → Agent Exchanged Token → (MCP) → Final Token
   // Produces nested act claim: act.sub=MCP_CLIENT_ID, act.act.sub=AI_AGENT_CLIENT_ID
+  const sessionExchangeMode = req && req.session ? req.session.mcpExchangeMode : undefined;
   const ffTwoExchange =
-    configStore.getEffective('ff_two_exchange_delegation') === true ||
-    configStore.getEffective('ff_two_exchange_delegation') === 'true';
+    sessionExchangeMode === 'double' ||
+    (sessionExchangeMode == null && (
+      configStore.getEffective('ff_two_exchange_delegation') === true ||
+      configStore.getEffective('ff_two_exchange_delegation') === 'true'
+    ));
   if (ffTwoExchange) {
     return await _performTwoExchangeDelegation(
       tokenEvents, userToken, userAccessTokenClaims, effectiveToolScopes, userSub, toolTrigger, mcpResourceUri

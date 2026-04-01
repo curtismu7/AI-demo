@@ -966,6 +966,10 @@ const { callToolLocal } = require('./services/mcpLocalTools');
 const { introspectToken } = require('./middleware/tokenIntrospection');
 const mcpFlowSseHub = require('./services/mcpFlowSseHub');
 
+// Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
+const mcpExchangeMode = require('./routes/mcpExchangeMode');
+app.use('/api/mcp', mcpExchangeMode);
+
 // GET /api/mcp/tool/events?trace=<uuid> — Server-Sent Events for live MCP tool pipeline phases
 app.get('/api/mcp/tool/events', (req, res) => {
   mcpFlowSseHub.handleSseGet(req, res);

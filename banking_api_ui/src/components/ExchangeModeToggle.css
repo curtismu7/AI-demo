@@ -1,0 +1,62 @@
+/* banking_api_ui/src/components/ExchangeModeToggle.css */
+.emt-root {
+  background: var(--color-surface-raised, #1e293b);
+  border: 1px solid var(--color-border, #334155);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.emt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.emt-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted, #64748b);
+}
+.emt-rfc {
+  font-size: 0.68rem;
+  color: var(--color-text-muted, #64748b);
+  font-family: monospace;
+}
+.emt-pills {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.emt-pill {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border, #334155);
+  background: transparent;
+  color: var(--color-text-secondary, #94a3b8);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.emt-pill:hover:not(:disabled) {
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+.emt-pill--active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+.emt-pill--loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.emt-desc {
+  font-size: 0.73rem;
+  color: var(--color-text-muted, #64748b);
+  margin: 0;
+  font-family: monospace;
+}
