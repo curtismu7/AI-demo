@@ -179,6 +179,7 @@ const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
+const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetadata');
 const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
 
@@ -852,6 +853,10 @@ app.get('/api/demo/may-act/diagnose', authenticateToken, demoScenarioRoutes.diag
 // Public CIMD well-known endpoint — no authentication required.
 // Mounted after session/auth middleware but before static files.
 app.get('/.well-known/oauth-client/:clientId', wellKnownHandler);
+
+// RFC 9728 — Protected Resource Metadata (public, no authentication required)
+app.use('/.well-known/oauth-protected-resource', protectedResourceMetadataRoutes);
+app.use('/api/rfc9728', protectedResourceMetadataRoutes);
 
 // Import OAuth health check and monitoring
 const { checkOAuthProviderHealth } = require('./middleware/oauthErrorHandler');
