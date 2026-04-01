@@ -70,3 +70,4 @@ Plan: 2 of 2
 
 - Phase 7 added: RFC 9728 Protected Resource Metadata — education panel and demo integration
 - Phase 8 added: Banking transaction integrity — fix balance updates, validate all actions, and ensure enterprise-grade correctness
+- Phase 9 added: CIBA step-up authentication — implement OTP modal, wire backchannel auth for write actions, and validate enterprise-grade UX

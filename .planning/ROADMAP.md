@@ -175,6 +175,16 @@ Plans:
 Plans:
 - [x] TBD (run /gsd-plan-phase 8 to break down) (completed 2026-04-01)
 
+### Phase 9: CIBA step-up authentication — implement OTP modal, wire backchannel auth for write actions, and validate enterprise-grade UX
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 8
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 9 to break down)
+
 ---
 
 ## Dependency Order
