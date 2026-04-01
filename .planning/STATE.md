@@ -5,7 +5,7 @@ milestone_name: milestone
 status: executing
 last_updated: "2026-04-01T02:32:46.421Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 2
   total_plans: 7
   completed_plans: 5
@@ -58,3 +58,4 @@ Plan: 1 of 2
 - When merged to main: update raw doc links from `fix/dashboard-fab-positioning` → `main`
 - **[TODO → Phase 4]** UI consistency audit — enterprise-grade cross-SPA visual polish (04-04-PLAN.md)
 - **[TODO → Phase 4]** Marketing page agent dock UI match — dock styling should match /marketing page design language (04-04-PLAN.md)
+- **[Phase 6]** Fix RFC 8693 token exchange: PingOne returning "Unsupported authentication method" — investigate agentMcpTokenService.js client auth method

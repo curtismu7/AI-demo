@@ -15,8 +15,8 @@
 
 ### Token Exchange
 
-- [ ] **TOKEN-01**: 1-exchange vs 2-exchange live toggle — UI control to switch between paths in real time, showing token diff (act claim presence/absence)
-- [ ] **TOKEN-02**: Live token inspector panel — decoded JWT displayed during agent operations: sub, act, may_act, aud, scope, expiry — human-readable
+- [x] **TOKEN-01**: 1-exchange vs 2-exchange live toggle — UI control to switch between paths in real time, showing token diff (act claim presence/absence)
+- [x] **TOKEN-02**: Live token inspector panel — decoded JWT displayed during agent operations: sub, act, may_act, aud, scope, expiry — human-readable
 
 ### Stability
 
@@ -35,6 +35,11 @@
 
 - [ ] **DOC-01**: User-facing setup guide — end-to-end: PingOne app config → environment variables → `npm run` locally → verify each auth flow
 - [ ] **DOC-02**: Architecture walkthrough — annotated sequence diagrams (draw.io) for each auth flow; "what token is where at each step" narrative
+
+### Token Exchange Fix
+
+- [ ] **TOKEN-FIX-01**: The BFF `agentMcpTokenService.js` uses the correct PingOne client authentication method (client_secret_basic, client_secret_post, or private_key_jwt) configured in the exchange-client app so that the token exchange never returns "Unsupported authentication method"
+- [ ] **TOKEN-FIX-02**: Both the 1-exchange path (user token → MCP token) and 2-exchange path (user token + agent actor → MCP token with `act` claim) complete successfully end-to-end with agent tool calls reaching the banking API
 
 ---
 
@@ -65,3 +70,4 @@
 | STAB-01, STAB-02, STAB-03 | Phase 3 — Vercel Stability |
 | EDU-01, EDU-02, EDU-03, EDU-04 | Phase 4 — Educational Content |
 | DOC-01, DOC-02 | Phase 5 — User Documentation |
+| TOKEN-FIX-01, TOKEN-FIX-02 | Phase 6 — Token Exchange Fix |

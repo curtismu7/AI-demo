@@ -20,6 +20,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 3 | vercel-stability | Vercel bugs fixed; demo reliable in production | STAB-01, STAB-02, STAB-03 | 2 plans |
 | 4 | education-content | Educational panels complete for all key concepts | EDU-01, EDU-02, EDU-03, EDU-04 | 3 plans |
 | 5 | user-documentation | Setup guide and architecture docs for learners | DOC-01, DOC-02 | 2 plans |
+| 6 | token-exchange-fix | RFC 8693 token exchange works end-to-end for both exchange paths | TOKEN-FIX-01, TOKEN-FIX-02 | TBD |
 
 ---
 
@@ -120,9 +121,25 @@ Plans:
 
 ---
 
+### Phase 6: token-exchange-fix
+
+**Goal:** The RFC 8693 token exchange pipeline works reliably for both 1-exchange and 2-exchange paths: BFF authenticates to PingOne correctly, tokens are narrowed to the MCP audience, and the agent can run tool calls without "Unsupported authentication method" errors.
+
+**Requirements:** TOKEN-FIX-01, TOKEN-FIX-02
+
+**Plans:** TBD
+
+**Success criteria:**
+1. Agent tool calls complete without token exchange errors in both 1-exchange and 2-exchange modes
+2. The BFF token exchange request uses the authentication method configured in the PingOne app (client_secret_basic, client_secret_post, or private_key_jwt)
+3. The token inspector panel shows a valid decoded MCP token after each agent operation
+4. No "Unsupported authentication method" or "Request denied" errors appear in normal agent flows
+
+---
+
 ## Dependency Order
 
-Phase 1 (auth-flows) → Phase 2 (token-exchange) → Phase 3 (vercel-stability) → Phase 4 (education-content) → Phase 5 (user-documentation)
+Phase 1 (auth-flows) → Phase 2 (token-exchange) → Phase 3 (vercel-stability) → Phase 4 (education-content) → Phase 5 (user-documentation) → Phase 6 (token-exchange-fix)
 
 Phases 3, 4, and 5 can partially overlap after Phase 1 is complete:
 - Phase 3 is independent of Phase 2 (Vercel fixes don't depend on token UI)
