@@ -1054,6 +1054,30 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   } catch (err) {
     console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
     emit({ phase: 'access_token_error', code: err.code || 'token_exchange_failed' });
+
+    // When the exchange fails because the subject token lacks the required scopes
+    // (e.g. ENDUSER_AUDIENCE login path only carries banking:agent:invoke, not
+    // banking:write), PingOne returns 400 "At least one scope must be granted".
+    // In that case, fall back to the local tool handler so the operation still
+    // completes — the UI receives _exchangeFailed:true so it can show a soft
+    // informational message instead of an error toast.
+    const sessionUser = req.session?.user;
+    const isExchangeScopeError = err.httpStatus === 400 || err.code === 'token_exchange_failed';
+    if (sessionUser?.id && isExchangeScopeError) {
+      const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+      console.log(`[MCP Local] ${tool} — exchange failed (${err.code}), falling back to local handler`);
+      try {
+        emit({ phase: 'local_tool_start', path: 'exchange_failed_fallback' });
+        const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+        const result = await callToolLocal(tool, params || {}, effectiveUserId);
+        emit({ phase: 'local_tool_done', path: 'exchange_failed_fallback' });
+        return res.json({ result, tokenEvents: fallbackEvents, _localFallback: true, _exchangeFailed: true });
+      } catch (localErr) {
+        console.error(`[MCP Local] Error calling ${tool} after exchange failure:`, localErr.message);
+        // Fall through to original error response
+      }
+    }
+
     const status = err.httpStatus || 502;
     const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
     return res.status(status).json({

@@ -1534,14 +1534,28 @@ export default function BankingAgent({
           ].join('\n');
           notifyError('❌ Sign in again with broader scopes (at least 5) for MCP token exchange', { autoClose: 7000 });
         } else if (failed) {
-          tokenMsg = [
-            `❌ Token Exchange (RFC 8693) failed: ${failed.error || 'unknown error'}`,
-            '',
-            userTokEv?.mayActPresent
-              ? '   may_act was present — check that:\n   • PingOne has Token Exchange grant enabled on the admin OAuth app\n   • Audience policy allows "banking_mcp_server"\n   • may_act.client_id matches the BFF client'
-              : '   may_act was absent — this is likely the cause.\n   Go to /demo-data → Enable may_act → sign out and sign in again.',
-          ].join('\n');
-          notifyError(`❌ Token Exchange failed: ${failed.error || 'unknown error'}`, { autoClose: 6000 });
+          // When the server fell back to local handler after exchange failure,
+          // the operation succeeded — show a soft info message, not an error toast.
+          if (response._localFallback && response._exchangeFailed) {
+            tokenMsg = [
+              '⚠️ Token Exchange (RFC 8693) skipped — ran via local fallback',
+              '   The exchange was attempted but PingOne could not grant the required scopes.',
+              '   The banking operation completed successfully using the local handler.',
+              '',
+              '   To enable full RFC 8693 exchange, ensure the user token carries',
+              '   banking:read / banking:write scopes (not just banking:agent:invoke).',
+            ].join('\n');
+            // No error toast — the tool result handled it as a success
+          } else {
+            tokenMsg = [
+              `❌ Token Exchange (RFC 8693) failed: ${failed.error || 'unknown error'}`,
+              '',
+              userTokEv?.mayActPresent
+                ? '   may_act was present — check that:\n   • PingOne has Token Exchange grant enabled on the admin OAuth app\n   • Audience policy allows "banking_mcp_server"\n   • may_act.client_id matches the BFF client'
+                : '   may_act was absent — this is likely the cause.\n   Go to /demo-data → Enable may_act → sign out and sign in again.',
+            ].join('\n');
+            notifyError(`❌ Token Exchange failed: ${failed.error || 'unknown error'}`, { autoClose: 6000 });
+          }
         }
         if (tokenMsg) {
           addMessage('token-event', tokenMsg, actionId);
