@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-01T02:32:46.421Z"
+last_updated: "2026-04-01T11:45:15.090Z"
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 5
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 9
 ---
 
 # State — BX Finance AI Banking Demo
@@ -20,10 +20,10 @@ progress:
 
 ## Current Position
 
-Phase: 03 (vercel-stability) — EXECUTING
-Plan: 1 of 2
+Phase: 04 (education-content) — EXECUTING
+Plan: 1 of 4
 **Phase:** 3
-**Status:** Executing Phase 03
+**Status:** Executing Phase 04
 
 ---
 
@@ -60,3 +60,11 @@ Plan: 1 of 2
 - **[TODO → Phase 4]** Marketing page agent dock UI match — dock styling should match /marketing page design language (04-04-PLAN.md)
 - **[Phase 6]** Fix RFC 8693 token exchange: PingOne returning "Unsupported authentication method" — investigate agentMcpTokenService.js client auth method
 - **[TODO → /demo-data]** Token Endpoint Auth Method selector — per-client picker (BASIC/POST/client_secret_jwt/private_key_jwt) on DemoDataPage; JWT key gen for JWT methods; BFF `jwtAssertionService.js` + `applyTokenEndpointAuth` extension
+
+---
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 7 added: RFC 9728 Protected Resource Metadata — education panel and demo integration

@@ -154,6 +154,16 @@ Plans:
 3. The token inspector panel shows a valid decoded MCP token after each agent operation
 4. No "Unsupported authentication method" or "Request denied" errors appear in normal agent flows
 
+### Phase 7: RFC 9728 Protected Resource Metadata — education panel and demo integration
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 6
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 7 to break down)
+
 ---
 
 ## Dependency Order
