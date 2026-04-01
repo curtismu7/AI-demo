@@ -156,13 +156,14 @@ Plans:
 
 ### Phase 7: RFC 9728 Protected Resource Metadata — education panel and demo integration
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** BFF serves `/.well-known/oauth-protected-resource` (RFC 9728 standards-compliant endpoint); AgentGatewayPanel gains a `rfc9728` education tab with live demo fetching the endpoint.
+**Requirements**: RFC9728-01, RFC9728-02
 **Depends on:** Phase 6
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 7 to break down)
+- [ ] 07-01-PLAN.md — BFF `/.well-known/oauth-protected-resource` endpoint + `/api/rfc9728` proxy
+- [ ] 07-02-PLAN.md — `rfc9728` tab in AgentGatewayPanel with RFC9728Content and live metadata demo
 
 ---
 
