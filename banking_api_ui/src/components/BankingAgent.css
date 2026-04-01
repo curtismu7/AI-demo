@@ -2365,12 +2365,12 @@ body > .banking-agent-float-root .banking-agent-panel {
   padding: 0 12px;
   font-size: 12px;
   font-weight: 600;
-  background: #94a3b8;
+  background: var(--app-primary-blue-mid);
   color: #ffffff;
 }
 
 .banking-agent-panel.ba-mode-inline.ba-split-column .ba-send-btn:hover:not(:disabled) {
-  background: #64748b;
+  background: var(--app-primary-blue);
 }
 
 .banking-agent-panel.ba-mode-inline.ba-split-column .banking-agent-msg.assistant.typing .banking-agent-msg-bubble {

@@ -2374,13 +2374,13 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
 }
 
 .dashboard-toolbar-btn--theme {
-  background: linear-gradient(180deg, #475569 0%, #334155 100%);
-  border-color: #475569;
+  background: linear-gradient(180deg, var(--app-primary-blue-mid) 0%, var(--app-primary-blue) 100%);
+  border-color: var(--app-primary-blue-border);
 }
 
 .dashboard-toolbar-btn--theme:hover {
-  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
-  border-color: #334155;
+  background: linear-gradient(180deg, var(--app-primary-blue) 0%, var(--app-primary-blue-hover) 100%);
+  border-color: var(--app-primary-blue-hover);
 }
 
 .ud-center {
