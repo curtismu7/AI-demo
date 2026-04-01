@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import { useDemoTour } from '../context/DemoTourContext';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import { useDemoMode } from '../hooks/useDemoMode';
 import './EducationBar.css';
@@ -17,6 +18,7 @@ export default function EducationBar() {
   const menuRef = useRef(null);
 
   const close = () => setPanelOpen(false);
+  const tour = useDemoTour();
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -125,6 +127,19 @@ export default function EducationBar() {
 
           <div className="edu-bar-panel__section">
             <AgentUiModeToggle variant="eduBar" className="edu-bar-agent-toggle" />
+          </div>
+
+          <div className="edu-bar-panel__section">
+            <button
+              type="button"
+              className="edu-bar-panel__btn edu-bar-panel__btn--featured"
+              onClick={() => {
+                tour.start();
+                close();
+              }}
+            >
+              🗺 Guided Demo Tour (5 min)
+            </button>
           </div>
 
           <div className="edu-bar-panel__section">

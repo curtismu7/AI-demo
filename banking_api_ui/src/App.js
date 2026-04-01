@@ -39,6 +39,8 @@ import { TokenChainProvider } from './context/TokenChainContext';
 import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
 import { IndustryBrandingProvider } from './context/IndustryBrandingContext';
 import EducationBar from './components/EducationBar';
+import { DemoTourProvider } from './context/DemoTourContext';
+import DemoTourModal from './components/tour/DemoTourModal';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import DashboardQuickNav from './components/DashboardQuickNav';
@@ -347,6 +349,7 @@ function AppWithAuth() {
   };
 
   return (
+    <DemoTourProvider>
     <EducationUIProvider>
       <TokenChainProvider>
         <div
@@ -456,10 +459,12 @@ function AppWithAuth() {
             <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
           )}
           {!isApiTrafficOnlyPage && <Footer user={user} />}
+          {!isApiTrafficOnlyPage && <DemoTourModal />}
           <SpinnerHost />
         </div>
       </TokenChainProvider>
     </EducationUIProvider>
+    </DemoTourProvider>
   );
 }
 
