@@ -185,6 +185,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 9 to break down)
 
+### Phase 10: Enterprise-grade HITL — high-value transaction warnings, CIBA or OTP step-up based on configuration, and polished approval UX
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 9
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 10 to break down)
+
 ---
 
 ## Dependency Order
