@@ -230,6 +230,36 @@ const LandingPage = () => {
               The <strong>banking assistant</strong> (dock below) can start PingOne and return you here. Use the buttons above
               or the header when you want the full customer or admin dashboard after sign-in.
             </p>
+            {(marketingCfg.userHint || marketingCfg.passHint) && (
+              <div className="landing-demo-credentials">
+                <span className="landing-demo-cred-label">Demo credentials</span>
+                {marketingCfg.userHint && (
+                  <span className="landing-demo-cred-item">
+                    <span className="landing-demo-cred-key">User:</span> {marketingCfg.userHint}
+                  </span>
+                )}
+                {marketingCfg.passHint && (
+                  <span className="landing-demo-cred-item">
+                    <span className="landing-demo-cred-key">Pass:</span> {marketingCfg.passHint}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="landing-auth-flows-card">
+              <h3 className="landing-auth-flows-title">3 Auth Flows in this Demo</h3>
+              <ol className="landing-auth-flows-list">
+                <li><strong>Home Login</strong> — Authorization Code + PKCE (this page)</li>
+                <li><strong>CIBA</strong> — Backchannel push approval, no browser redirect</li>
+                <li><strong>Agent-triggered Login</strong> — Agent hits auth wall, user logs in, agent resumes</li>
+              </ol>
+              <button
+                type="button"
+                className="landing-auth-flows-link"
+                onClick={() => window.dispatchEvent(new CustomEvent('education-open', { detail: { panel: 'login-flow' } }))}
+              >
+                Open Education Panel →
+              </button>
+            </div>
 
             <div className="hero-quick-links">
               <button type="button" className="hql-btn hql-btn--blue" onClick={() => navigate('/demo-data')}>
