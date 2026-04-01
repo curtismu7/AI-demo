@@ -73,12 +73,16 @@ const sampleJwtMcpAccessToken = makeJwt({
 const mockGetAgentClientCredentialsToken = jest.fn();
 const mockPerformTokenExchange = jest.fn();
 const mockPerformTokenExchangeWithActor = jest.fn();
+const mockGetClientCredentialsTokenAs = jest.fn();
+const mockPerformTokenExchangeAs = jest.fn();
 
 jest.mock('../../services/oauthService', () => ({
   config: { clientId: 'bff-client-id' },
   getAgentClientCredentialsToken: (...args) => mockGetAgentClientCredentialsToken(...args),
   performTokenExchange: (...args) => mockPerformTokenExchange(...args),
   performTokenExchangeWithActor: (...args) => mockPerformTokenExchangeWithActor(...args),
+  getClientCredentialsTokenAs: (...args) => mockGetClientCredentialsTokenAs(...args),
+  performTokenExchangeAs: (...args) => mockPerformTokenExchangeAs(...args),
 }));
 
 jest.mock('../../services/mcpWebSocketClient', () => ({
@@ -772,5 +776,273 @@ describe('resolveMcpAccessTokenWithEvents — ff_skip_token_exchange', () => {
     });
     const { userSub } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
     expect(userSub).toBe(USER_SUB);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2-Exchange delegation JWT fixtures (unsigned — test-only)
+// ---------------------------------------------------------------------------
+const AI_AGENT_CLIENT = 'ai-agent-client-id';
+const MCP_EXCHANGER_CLIENT = 'mcp-exchanger-client-id';
+
+const agentActorJwt = makeJwt({
+  sub: AI_AGENT_CLIENT,
+  aud: ['https://agent-gateway.pingdemo.com'],
+  scope: 'openid',
+  client_id: AI_AGENT_CLIENT,
+  exp: Math.floor(Date.now() / 1000) + 3600,
+});
+
+const agentExchangedJwt = makeJwt({
+  sub: USER_SUB,
+  aud: 'https://mcp-server.pingdemo.com',
+  scope: 'banking:accounts:read',
+  act: { sub: AI_AGENT_CLIENT },
+  exp: Math.floor(Date.now() / 1000) + 3600,
+});
+
+const mcpActorJwt = makeJwt({
+  sub: MCP_EXCHANGER_CLIENT,
+  aud: ['https://mcp-gateway.pingdemo.com'],
+  scope: 'openid',
+  client_id: MCP_EXCHANGER_CLIENT,
+  exp: Math.floor(Date.now() / 1000) + 3600,
+});
+
+const TWO_EX_MCP_RESOURCE = 'https://mcp-server.pingdemo.com';
+
+const finalMcpJwt = makeJwt({
+  sub: USER_SUB,
+  aud: TWO_EX_MCP_RESOURCE,
+  scope: 'banking:accounts:read',
+  act: {
+    sub: MCP_EXCHANGER_CLIENT,
+    act: { sub: AI_AGENT_CLIENT },
+  },
+  exp: Math.floor(Date.now() / 1000) + 3600,
+});
+
+// ---------------------------------------------------------------------------
+// resolveMcpAccessTokenWithEvents — 2-exchange delegation
+// ---------------------------------------------------------------------------
+describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exchange_delegation)', () => {
+  // Cache env vars set in beforeEach so afterEach can restore exactly
+  let savedEnv = {};
+  const TWO_EX_VARS = [
+    'AI_AGENT_CLIENT_ID',
+    'AI_AGENT_CLIENT_SECRET',
+    'AGENT_OAUTH_CLIENT_ID',
+    'AGENT_OAUTH_CLIENT_SECRET',
+    'AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD',
+    'MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD',
+  ];
+
+  beforeEach(() => {
+    // Save and inject 2-exchange credentials
+    savedEnv = {};
+    for (const v of TWO_EX_VARS) savedEnv[v] = process.env[v];
+    process.env.AI_AGENT_CLIENT_ID     = AI_AGENT_CLIENT;
+    process.env.AI_AGENT_CLIENT_SECRET = 'ai-agent-secret';
+    process.env.AGENT_OAUTH_CLIENT_ID  = MCP_EXCHANGER_CLIENT;
+    process.env.AGENT_OAUTH_CLIENT_SECRET = 'mcp-exchanger-secret';
+    delete process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD;
+    delete process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD;
+
+    jest.clearAllMocks();
+
+    // Config: 2-exchange flag on, MCP URI set
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')            return TWO_EX_MCP_RESOURCE;
+      if (key === 'ff_two_exchange_delegation')   return 'true';
+      return null; // agent_gateway_audience / mcp_gateway_audience etc use defaults
+    });
+
+    // Mock successful 4-step chain by default
+    mockGetClientCredentialsTokenAs
+      .mockResolvedValueOnce(agentActorJwt)   // Step 1: AI Agent actor token
+      .mockResolvedValueOnce(mcpActorJwt);    // Step 3: MCP actor token
+    mockPerformTokenExchangeAs
+      .mockResolvedValueOnce(agentExchangedJwt) // Step 2: Exchange #1
+      .mockResolvedValueOnce(finalMcpJwt);      // Step 4: Exchange #2
+  });
+
+  afterEach(() => {
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  it('happy path: returns finalMcpJwt (not userToken or agentExchangedJwt)', async () => {
+    const { token } = await resolveMcpAccessTokenWithEvents(
+      makeReq(sampleJwtUserAccessToken), 'get_my_accounts'
+    );
+    expect(token).toBe(finalMcpJwt);
+    expect(token).not.toBe(sampleJwtUserAccessToken);
+    expect(token).not.toBe(agentExchangedJwt);
+  });
+
+  it('happy path: calls getClientCredentialsTokenAs twice and performTokenExchangeAs twice', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    expect(mockGetClientCredentialsTokenAs).toHaveBeenCalledTimes(2);
+    expect(mockPerformTokenExchangeAs).toHaveBeenCalledTimes(2);
+  });
+
+  it('happy path: tokenEvents include two-ex-agent-actor, two-ex-exchange1, two-ex-mcp-actor, two-ex-final-token', async () => {
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(
+      makeReq(sampleJwtUserAccessToken), 'get_my_accounts'
+    );
+    const ids = tokenEvents.map((e) => e.id);
+    expect(ids).toContain('two-ex-agent-actor');
+    expect(ids).toContain('two-ex-exchange1');
+    expect(ids).toContain('two-ex-mcp-actor');
+    expect(ids).toContain('two-ex-final-token');
+  });
+
+  it('preflight: missing AI_AGENT_CLIENT_ID → throws 503 with two-exchange-not-configured event', async () => {
+    delete process.env.AI_AGENT_CLIENT_ID;
+    // Also ensure configStore doesn't provide a fallback
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')           return TWO_EX_MCP_RESOURCE;
+      if (key === 'ff_two_exchange_delegation')  return 'true';
+      if (key === 'ai_agent_client_id')          return null;
+      return null;
+    });
+
+    let err;
+    try {
+      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    } catch (e) { err = e; }
+
+    expect(err).toBeDefined();
+    expect(err.httpStatus).toBe(503);
+    const notConfiguredEvent = (err.tokenEvents || []).find((e) => e.id === 'two-exchange-not-configured');
+    expect(notConfiguredEvent).toBeDefined();
+    expect(notConfiguredEvent.status).toBe('failed');
+  });
+
+  it('preflight: missing AGENT_OAUTH_CLIENT_SECRET → throws 503', async () => {
+    delete process.env.AGENT_OAUTH_CLIENT_SECRET;
+    let err;
+    try {
+      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    } catch (e) { err = e; }
+    expect(err?.httpStatus).toBe(503);
+  });
+
+  it('Exchange #1 failure → event two-ex-exchange1 with status failed', async () => {
+    const exchangeErr = Object.assign(new Error('may_act mismatch'), { httpStatus: 400, pingoneError: 'invalid_request' });
+    // Step 1 (CC actor) succeeds, Step 2 (exchange #1) fails
+    mockGetClientCredentialsTokenAs.mockReset();
+    mockPerformTokenExchangeAs.mockReset();
+    mockGetClientCredentialsTokenAs.mockResolvedValueOnce(agentActorJwt);
+    mockPerformTokenExchangeAs.mockRejectedValueOnce(exchangeErr);
+
+    let err;
+    try {
+      await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    } catch (e) { err = e; }
+
+    expect(err).toBeDefined();
+    const ex1Ev = (err.tokenEvents || []).find((e) => e.id === 'two-ex-exchange1');
+    expect(ex1Ev).toBeDefined();
+    expect(ex1Ev.status).toBe('failed');
+  });
+
+  it('session.mcpExchangeMode=double triggers 2-exchange even when ff_two_exchange_delegation=false', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')           return TWO_EX_MCP_RESOURCE;
+      if (key === 'ff_two_exchange_delegation')  return 'false'; // flag OFF
+      return null;
+    });
+    const req = makeReq(sampleJwtUserAccessToken);
+    req.session.mcpExchangeMode = 'double'; // session override forces 2-exchange
+    const { token } = await resolveMcpAccessTokenWithEvents(req, 'get_my_accounts');
+    expect(token).toBe(finalMcpJwt);
+    expect(mockPerformTokenExchangeAs).toHaveBeenCalledTimes(2);
+  });
+
+  it('session.mcpExchangeMode=single blocks 2-exchange even when ff_two_exchange_delegation=true', async () => {
+    // ff is true but session says single → 1-exchange path
+    const req = makeReq(sampleJwtUserAccessToken);
+    req.session.mcpExchangeMode = 'single';
+    // The 1-exchange path calls performTokenExchangeWithActor
+    mockPerformTokenExchangeWithActor.mockResolvedValue(sampleJwtMcpAccessToken);
+    mockGetAgentClientCredentialsToken.mockResolvedValue(sampleJwtAgentAccessToken);
+    process.env.AGENT_OAUTH_CLIENT_ID = 'agent-client-id';
+    process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
+
+    const { token } = await resolveMcpAccessTokenWithEvents(req, 'get_my_accounts');
+    // 2-exchange methods should not have been called
+    expect(mockPerformTokenExchangeAs).not.toHaveBeenCalled();
+    // 1-exchange (or subject-only) was taken
+    expect(token).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Security properties
+// ---------------------------------------------------------------------------
+describe('Security properties', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.AGENT_OAUTH_CLIENT_ID     = 'agent-client-id';
+    process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
+    mockGetAgentClientCredentialsToken.mockResolvedValue(sampleJwtAgentAccessToken);
+    mockPerformTokenExchangeWithActor.mockResolvedValue(sampleJwtMcpAccessToken);
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'mcp-resource-uri';
+      return null;
+    });
+  });
+
+  it('exchanged token is never the raw user access token when MCP_RESOURCE_URI is set', async () => {
+    // SECURITY: the user's original session token must never be forwarded to the MCP server.
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    expect(token).not.toBe(sampleJwtUserAccessToken);
+    expect(token).toBe(sampleJwtMcpAccessToken); // RFC 8693 result returned instead
+  });
+
+  it('exchanged-token event has audMatches=true when issued token aud matches mcp_resource_uri', async () => {
+    // sampleJwtMcpAccessToken has aud='mcp-resource-uri' — should match mcp_resource_uri='mcp-resource-uri'
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    const ev = tokenEvents.find((e) => e.id === 'exchanged-token');
+    expect(ev).toBeDefined();
+    expect(ev.audMatches).toBe(true);
+  });
+
+  it('exchanged-token event has audMatches=false when issued token aud differs from mcp_resource_uri', async () => {
+    // Override mcp_resource_uri to a different value — simulates mis-issued token
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://different-audience.example.com';
+      return null;
+    });
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    const ev = tokenEvents.find((e) => e.id === 'exchanged-token');
+    expect(ev).toBeDefined();
+    expect(ev.audMatches).toBe(false);
+  });
+
+  it('exchanged-token event has actPresent=true when act claim is in the issued token', async () => {
+    // sampleJwtMcpAccessToken has act: { client_id: 'bff-client-id' }
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    const ev = tokenEvents.find((e) => e.id === 'exchanged-token');
+    expect(ev).toBeDefined();
+    expect(ev.actPresent).toBe(true);
+  });
+
+  it('ff_skip_token_exchange=true returns user token directly — explicit security opt-out', async () => {
+    // SECURITY OPT-OUT: ff_skip_token_exchange bypasses RFC 8693.
+    // Only valid for dev/demo environments where PingOne token exchange is NOT configured.
+    // In production with a real MCP resource server, this flag MUST be false.
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri')       return 'mcp-resource-uri';
+      if (key === 'ff_skip_token_exchange') return 'true';
+      return null;
+    });
+    const { token } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
+    expect(token).toBe(sampleJwtUserAccessToken);
+    expect(mockPerformTokenExchangeWithActor).not.toHaveBeenCalled();
+    expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 });
