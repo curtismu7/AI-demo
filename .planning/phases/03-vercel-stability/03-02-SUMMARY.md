@@ -51,3 +51,13 @@ Tests:       893 passed, 7 skipped, 0 failed
 
 - **STAB-02:** ✅ GET /api/accounts/my restores accounts from KV snapshot on cold-start (5 tests confirming behavior)
 - **STAB-03:** ✅ Server exits 1 when `SKIP_TOKEN_SIGNATURE_VALIDATION=true` in production (2 tests)
+
+---
+
+## UI Review
+
+**N/A — backend/infra phase.**
+
+Phase 3 contains no React components, CSS, or user-facing UI changes. All work is backend-only (mcpFlowSseHub.js KV bridge, cold-start tests, production safety guard test). The 6-pillar visual audit (Copywriting, Visuals, Color, Typography, Spacing, Experience Design) does not apply.
+
+UI review will be run for Phase 4 (education-content) and Phase 5 (user-documentation) which contain React component work.
