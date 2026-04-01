@@ -672,6 +672,10 @@ export default function BankingAgent({
   const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
   /** Challenge ID issued after the user clicks Authorize in AgentConsentModal. */
   const [hitlChallengeId, setHitlChallengeId] = useState(null);
+  /** Pending action awaiting CIBA step-up approval (ref: read in event listener closure). */
+  const pendingStepUpActionRef = useRef(null);
+  /** Pending action awaiting auth-challenge login (ref: read in event listener closure). */
+  const pendingAuthChallengeActionRef = useRef(null);
 
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -1000,6 +1004,32 @@ export default function BankingAgent({
     window.addEventListener('userAuthenticated', onAuth);
     return () => window.removeEventListener('userAuthenticated', onAuth);
   }, [checkSelfAuth, user, isInline, embeddedFocus, brandShortName]);
+
+  // Auto-retry after CIBA step-up approval
+  useEffect(() => {
+    const onStepUpApproved = () => {
+      if (!pendingStepUpActionRef.current) return;
+      const { actionId, form } = pendingStepUpActionRef.current;
+      pendingStepUpActionRef.current = null;
+      addMessage('assistant', '✅ Authentication approved — retrying your request…', actionId);
+      runAction(actionId, form);
+    };
+    window.addEventListener('cibaStepUpApproved', onStepUpApproved);
+    return () => window.removeEventListener('cibaStepUpApproved', onStepUpApproved);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-retry after login (auth challenge path)
+  useEffect(() => {
+    const onAuthChallengeLogin = () => {
+      if (!pendingAuthChallengeActionRef.current) return;
+      const { actionId, form } = pendingAuthChallengeActionRef.current;
+      pendingAuthChallengeActionRef.current = null;
+      addMessage('assistant', '✅ Signed in — retrying your request…', actionId);
+      runAction(actionId, form);
+    };
+    window.addEventListener('userAuthenticated', onAuthChallengeLogin);
+    return () => window.removeEventListener('userAuthenticated', onAuthChallengeLogin);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-check when panel opens (catches sessions established after mount)
   useEffect(() => {
@@ -1398,6 +1428,31 @@ export default function BankingAgent({
           );
           toast.dismiss(toastId);
           setHitlPendingIntent({ actionId, form, intentPayload });
+        } else if (normalized.step_up_required === true || normalized.error === 'step_up_required') {
+          const stepUpMethod = normalized.step_up_method || 'ciba';
+          pendingStepUpActionRef.current = { actionId, form };
+          addMessage('assistant',
+            `🔐 **Additional verification required.**\n\nThis transaction requires step-up authentication (${stepUpMethod === 'ciba' ? 'CIBA push approval' : 'MFA redirect'}).\n\nA verification prompt has been sent to your device. Approve it and your transaction will resume automatically.`,
+            actionId
+          );
+          window.dispatchEvent(new CustomEvent('agentStepUpRequested', { detail: { step_up_method: stepUpMethod } }));
+          toast.dismiss(toastId);
+          setLoading(false);
+          return;
+        } else if (normalized.authChallenge && normalized.authChallenge.authorizationUrl) {
+          const loginUrl = (process.env.REACT_APP_API_URL || '') + '/api/auth/oauth/user/login';
+          pendingAuthChallengeActionRef.current = { actionId, form };
+          addMessage('assistant',
+            `🔑 **Login required.**\n\nThis operation requires you to be signed in. Click the button below — your request will resume automatically after you authenticate.`,
+            actionId
+          );
+          addMessage('assistant',
+            '<a href="' + loginUrl + '" style="display:inline-block;margin-top:8px;padding:8px 16px;background:#4f7df3;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Sign in →</a>',
+            actionId
+          );
+          toast.dismiss(toastId);
+          setLoading(false);
+          return;
         } else {
           addMessage('assistant', formatResult(response.result), actionId);
           toast.dismiss(toastId);

@@ -83,6 +83,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   // CIBA step-up state
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
+  const [agentTriggeredStepUp, setAgentTriggeredStepUp] = useState(false);
   const fetchingRef = React.useRef(false);
   /** Holds the agent HITL detail (actionId, form) while the consent modal is open so we can fire the confirmed event. */
   const agentHitlDetailRef = React.useRef(null);
@@ -383,6 +384,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           setStepUpRequired(false);
           await fetchUserData(true);
           notifySuccess('Identity verified — please retry your transaction.');
+          if (agentTriggeredStepUp) {
+            setAgentTriggeredStepUp(false);
+            window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
+          }
         } else if (data.status === 'failed' || data.status === 'expired' || data.status === 'error') {
           setCibaStatus('error');
           setCibaAuthReqId(null);
@@ -392,6 +397,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     }, 5000);
     return () => clearInterval(interval);
   }, [cibaAuthReqId, cibaStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Agent-triggered step-up: listen for agentStepUpRequested and activate CIBA flow
+  useEffect(() => {
+    const onAgentStepUp = (e) => {
+      const method = (e && e.detail && e.detail.step_up_method) || 'ciba';
+      setAgentTriggeredStepUp(true);
+      setStepUpRequired(true);
+      setStepUpMethod(method);
+    };
+    window.addEventListener('agentStepUpRequested', onAgentStepUp);
+    return () => window.removeEventListener('agentStepUpRequested', onAgentStepUp);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Step-up MFA (428): persistent warning toast with verify actions (replaces inline banner). */
   useEffect(() => {
