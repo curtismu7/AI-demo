@@ -19,7 +19,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 2 | token-exchange | 1-exchange vs 2-exchange live visual showcase | Complete    | 2026-04-01 |
 | 3 | vercel-stability | Vercel bugs fixed; demo reliable in production | STAB-01, STAB-02, STAB-03 | 2 plans |
 | 4 | education-content | Educational panels complete for all key concepts | EDU-01, EDU-02, EDU-03, EDU-04 | 3 plans |
-| 5 | user-documentation | Setup guide and architecture docs for learners | DOC-01, DOC-02 | 3 plans |
+| 5 | user-documentation | Setup guide and architecture docs for learners | Complete    | 2026-04-01 |
 | 6 | token-exchange-fix | RFC 8693 token exchange works end-to-end for both exchange paths | TOKEN-FIX-01, TOKEN-FIX-02 | 2 plans |
 
 ---
@@ -118,7 +118,7 @@ Plans:
 
 **Requirements:** DOC-01, DOC-02
 
-**Plans:** 3 plans
+**Plans:** 0/3 plans complete
 
 Plans:
 - [ ] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
