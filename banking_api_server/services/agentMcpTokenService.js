@@ -424,12 +424,21 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   );
   const toolScopes = toolCandidateScopes.filter((s) => userTokenScopes.has(s));
   // If none of the tool's required scopes are in the user token (e.g. user logged in with
-  // banking:agent:invoke only, but tool needs banking:read), fall back to any banking:*
-  // scope the user token DOES carry so PingOne has at least one scope to narrow.
-  // Avoids "At least one scope must be granted" when ENDUSER_AUDIENCE changes the login scopes.
+  // banking:agent:invoke only when ENDUSER_AUDIENCE is set), fall back to any banking:*
+  // scope the user token carries — but EXCLUDE pure delegation scopes
+  // (banking:agent:invoke, ai_agent) because they are not valid resource-access scopes on
+  // the MCP resource server. Using them as the exchange scope causes PingOne to return
+  // "At least one scope must be granted" since they are absent from the MCP resource's
+  // scope registry.  Instead, fall through to toolCandidateScopes so PingOne evaluates the
+  // exchange against the actual tool scopes it does know about (banking:write, etc.).
+  // PingOne's token exchange policy — configured on the MCP resource — decides whether to
+  // grant those scopes when the subject token carries the delegation scope (banking:agent:invoke).
+  const DELEGATION_ONLY_SCOPES = new Set(['banking:agent:invoke', 'ai_agent']);
   const fallbackScopes = toolScopes.length > 0
     ? null
-    : [...userTokenScopes].filter((s) => s.startsWith('banking:') || s === 'ai_agent');
+    : [...userTokenScopes].filter(
+        (s) => (s.startsWith('banking:') || s === 'ai_agent') && !DELEGATION_ONLY_SCOPES.has(s)
+      );
   const effectiveToolScopes = toolScopes.length > 0
     ? toolScopes
     : (fallbackScopes && fallbackScopes.length > 0 ? fallbackScopes : toolCandidateScopes);

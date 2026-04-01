@@ -526,6 +526,58 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
   });
 });
 
+// ─── ENDUSER_AUDIENCE delegation-scope-only token (banking:agent:invoke) ────
+// Regression: when ENDUSER_AUDIENCE restricts login to only banking:agent:invoke,
+// the fallback must NOT use banking:agent:invoke as the exchange scope (it lives
+// on the enduser resource, not the MCP resource).  The exchange should be attempted
+// with the tool's actual scopes so PingOne can evaluate its exchange policy.
+
+/** User token that carries ONLY the delegation scope (ENDUSER_AUDIENCE login path) */
+const sampleJwtAgentInvokeOnly = makeJwt({
+  sub: USER_SUB,
+  aud: 'banking_api_enduser',
+  scope: 'profile email offline_access banking:agent:invoke',
+  iss: 'https://auth.pingone.com/test-env/as',
+  exp: Math.floor(Date.now() / 1000) + 3600,
+  iat: Math.floor(Date.now() / 1000),
+});
+
+describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:agent:invoke only token', () => {
+  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    delete process.env.AGENT_OAUTH_CLIENT_ID;
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'agent_mcp_allowed_scopes')
+        return 'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke ai_agent';
+      return null;
+    });
+    mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
+  });
+
+  afterEach(() => {
+    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
+    else delete process.env.AGENT_OAUTH_CLIENT_ID;
+  });
+
+  it('uses tool candidate scopes (not banking:agent:invoke) for write tool exchange', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAgentInvokeOnly), 'create_transfer');
+    const callArgs = mockPerformTokenExchange.mock.calls[0][2];
+    // Must request actual MCP resource scopes, not the delegation scope
+    expect(callArgs).not.toContain('banking:agent:invoke');
+    expect(callArgs).toEqual(expect.arrayContaining(['banking:transactions:write', 'banking:write']));
+  });
+
+  it('uses tool candidate scopes (not banking:agent:invoke) for read tool exchange', async () => {
+    await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAgentInvokeOnly), 'get_my_accounts');
+    const callArgs = mockPerformTokenExchange.mock.calls[0][2];
+    expect(callArgs).not.toContain('banking:agent:invoke');
+    expect(callArgs).toEqual(expect.arrayContaining(['banking:accounts:read', 'banking:read']));
+  });
+});
+
 // ─── ff_inject_may_act injection tests ───────────────────────────────────────
 
 /** User token without a may_act claim */
