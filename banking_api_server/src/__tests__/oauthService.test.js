@@ -520,3 +520,169 @@ describe('createUserFromOAuth — email / name fallbacks', () => {
     expect(user.oauthId).toBe('pingone-uuid-123');
   });
 });
+
+// ---------------------------------------------------------------------------
+// token exchange — client authentication method
+// ---------------------------------------------------------------------------
+// Verifies that all 5 token-requesting methods honour the CLIENT_SECRET_BASIC /
+// CLIENT_SECRET_POST auth strategy via applyTokenEndpointAuth / applyAdminTokenEndpointClientAuth.
+// Auth method routing: admin client uses config.tokenEndpointAuthMethod; agent CC uses
+// AGENT_TOKEN_ENDPOINT_AUTH_METHOD; explicit-credential methods accept a method param.
+// ---------------------------------------------------------------------------
+describe('token exchange — client authentication method', () => {
+  const ACCESS_TOKEN_RESPONSE = { data: { access_token: 'tok.mock.jwt' } };
+
+  beforeEach(() => {
+    axios.post.mockResolvedValue(ACCESS_TOKEN_RESPONSE);
+  });
+  afterEach(() => {
+    axios.post.mockClear();
+  });
+
+  /** Extract body params and request headers from the first axios.post call */
+  function lastPostCall() {
+    const [, bodyStr, config] = axios.post.mock.calls[0];
+    return { params: new URLSearchParams(bodyStr), headers: config?.headers || {} };
+  }
+
+  // -----------------------------------------------------------------------
+  describe('performTokenExchange — admin client auth', () => {
+    it('basic: Authorization header sent, no client_secret in body', async () => {
+      const svc = makeService({ tokenEndpointAuthMethod: 'basic' });
+      await svc.performTokenExchange('user.token', 'https://mcp', ['banking:read']);
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBeNull();
+      expect(headers.Authorization).toMatch(/^Basic /);
+      restoreService();
+    });
+
+    it('post: client_secret in body, no Authorization header', async () => {
+      const svc = makeService({ tokenEndpointAuthMethod: 'post' });
+      await svc.performTokenExchange('user.token', 'https://mcp', ['banking:read']);
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBe('test-admin-client-secret');
+      expect(headers.Authorization).toBeUndefined();
+      restoreService();
+    });
+
+    it('grant_type is always in body regardless of auth method', async () => {
+      await svcSingleton.performTokenExchange('t', 'https://aud', ['s']);
+      const { params } = lastPostCall();
+      expect(params.get('grant_type')).toBe('urn:ietf:params:oauth:grant-type:token-exchange');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  describe('performTokenExchangeWithActor — admin client auth', () => {
+    it('basic: Authorization header sent, no client_secret in body', async () => {
+      const svc = makeService({ tokenEndpointAuthMethod: 'basic' });
+      await svc.performTokenExchangeWithActor('user.token', 'agent.token', 'https://mcp', ['banking:read']);
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBeNull();
+      expect(headers.Authorization).toMatch(/^Basic /);
+      restoreService();
+    });
+
+    it('post: client_secret in body, no Authorization header', async () => {
+      const svc = makeService({ tokenEndpointAuthMethod: 'post' });
+      await svc.performTokenExchangeWithActor('user.token', 'agent.token', 'https://mcp', ['banking:read']);
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBe('test-admin-client-secret');
+      expect(headers.Authorization).toBeUndefined();
+      restoreService();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  describe('getAgentClientCredentialsToken — AGENT_TOKEN_ENDPOINT_AUTH_METHOD', () => {
+    // Cache original env values to restore after each test
+    let origClientId, origClientSecret, origAuthMethod;
+
+    beforeEach(() => {
+      origClientId     = process.env.AGENT_OAUTH_CLIENT_ID;
+      origClientSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
+      origAuthMethod   = process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD;
+      process.env.AGENT_OAUTH_CLIENT_ID     = 'agent-client-id';
+      process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-client-secret';
+    });
+
+    afterEach(() => {
+      if (origClientId === undefined) delete process.env.AGENT_OAUTH_CLIENT_ID;
+      else process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
+      if (origClientSecret === undefined) delete process.env.AGENT_OAUTH_CLIENT_SECRET;
+      else process.env.AGENT_OAUTH_CLIENT_SECRET = origClientSecret;
+      if (origAuthMethod === undefined) delete process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD;
+      else process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD = origAuthMethod;
+    });
+
+    it('default (unset): Authorization header sent, no client_secret in body', async () => {
+      delete process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD;
+      await svcSingleton.getAgentClientCredentialsToken();
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBeNull();
+      expect(headers.Authorization).toMatch(/^Basic /);
+    });
+
+    it('AGENT_TOKEN_ENDPOINT_AUTH_METHOD=post: client_secret in body, no Authorization header', async () => {
+      process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD = 'post';
+      await svcSingleton.getAgentClientCredentialsToken();
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBe('agent-client-secret');
+      expect(headers.Authorization).toBeUndefined();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  describe('getClientCredentialsTokenAs — explicit method param', () => {
+    it('method=basic: Authorization header sent, no client_secret in body', async () => {
+      await svcSingleton.getClientCredentialsTokenAs('cc-client', 'cc-secret', 'https://aud', 'basic');
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBeNull();
+      expect(headers.Authorization).toMatch(/^Basic /);
+    });
+
+    it('method=post: client_secret in body, no Authorization header', async () => {
+      await svcSingleton.getClientCredentialsTokenAs('cc-client', 'cc-secret', 'https://aud', 'post');
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBe('cc-secret');
+      expect(headers.Authorization).toBeUndefined();
+    });
+
+    it('no method arg (default=basic): Authorization header sent', async () => {
+      await svcSingleton.getClientCredentialsTokenAs('cc-client', 'cc-secret', 'https://aud');
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBeNull();
+      expect(headers.Authorization).toMatch(/^Basic /);
+    });
+
+    it('grant_type=client_credentials is always in body', async () => {
+      await svcSingleton.getClientCredentialsTokenAs('cid', 'csec', 'https://aud', 'post');
+      const { params } = lastPostCall();
+      expect(params.get('grant_type')).toBe('client_credentials');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  describe('performTokenExchangeAs — explicit method param', () => {
+    it('method=basic: Authorization header sent, no client_secret in body', async () => {
+      await svcSingleton.performTokenExchangeAs('subj', 'actor', 'xch-client', 'xch-secret', 'https://aud', ['scope:x'], 'basic');
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBeNull();
+      expect(headers.Authorization).toMatch(/^Basic /);
+    });
+
+    it('method=post: client_secret in body, no Authorization header', async () => {
+      await svcSingleton.performTokenExchangeAs('subj', 'actor', 'xch-client', 'xch-secret', 'https://aud', ['scope:x'], 'post');
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBe('xch-secret');
+      expect(headers.Authorization).toBeUndefined();
+    });
+
+    it('no method arg (default=basic): Authorization header sent', async () => {
+      await svcSingleton.performTokenExchangeAs('subj', 'actor', 'xch-client', 'xch-secret', 'https://aud', ['scope:x']);
+      const { params, headers } = lastPostCall();
+      expect(params.get('client_secret')).toBeNull();
+      expect(headers.Authorization).toMatch(/^Basic /);
+    });
+  });
+});

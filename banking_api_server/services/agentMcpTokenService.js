@@ -768,6 +768,9 @@ async function _performTwoExchangeDelegation(
   const mcpGatewayAud       = configStore.getEffective('mcp_gateway_audience') || 'https://mcp-gateway.pingdemo.com';
   const mcpExchangerClient  = process.env.AGENT_OAUTH_CLIENT_ID || '';
   const mcpExchangerSecret  = process.env.AGENT_OAUTH_CLIENT_SECRET || '';
+  // Auth method env vars — default 'basic' (CLIENT_SECRET_BASIC) matching PingOne app config
+  const aiAgentAuthMethod      = (process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+  const mcpExchangerAuthMethod = (process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
 
   // Pre-flight check: all required credentials must be present
   const missingVars = [];
@@ -808,7 +811,7 @@ async function _performTwoExchangeDelegation(
 
   let agentActorToken;
   try {
-    agentActorToken = await oauthService.getClientCredentialsTokenAs(aiAgentClientId, aiAgentClientSecret, agentGatewayAud);
+    agentActorToken = await oauthService.getClientCredentialsTokenAs(aiAgentClientId, aiAgentClientSecret, agentGatewayAud, aiAgentAuthMethod);
     const agentActorDecoded = decodeJwtClaims(agentActorToken);
     const actorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-agent-actor-acquiring');
     if (actorIdx !== -1) tokenEvents.splice(actorIdx, 1);
@@ -851,7 +854,7 @@ async function _performTwoExchangeDelegation(
   let agentExchangedToken;
   try {
     agentExchangedToken = await oauthService.performTokenExchangeAs(
-      userToken, agentActorToken, aiAgentClientId, aiAgentClientSecret, intermediateAud, effectiveToolScopes
+      userToken, agentActorToken, aiAgentClientId, aiAgentClientSecret, intermediateAud, effectiveToolScopes, aiAgentAuthMethod
     );
     const agentExchangedDecoded = decodeJwtClaims(agentExchangedToken);
     const agentExchangedClaims = agentExchangedDecoded?.claims;
@@ -902,7 +905,7 @@ async function _performTwoExchangeDelegation(
 
   let mcpActorToken;
   try {
-    mcpActorToken = await oauthService.getClientCredentialsTokenAs(mcpExchangerClient, mcpExchangerSecret, mcpGatewayAud);
+    mcpActorToken = await oauthService.getClientCredentialsTokenAs(mcpExchangerClient, mcpExchangerSecret, mcpGatewayAud, mcpExchangerAuthMethod);
     const mcpActorDecoded = decodeJwtClaims(mcpActorToken);
     const mcpActorIdx = tokenEvents.findIndex(e => e.id === 'two-ex-mcp-actor-acquiring');
     if (mcpActorIdx !== -1) tokenEvents.splice(mcpActorIdx, 1);
@@ -945,7 +948,7 @@ async function _performTwoExchangeDelegation(
   let finalToken;
   try {
     finalToken = await oauthService.performTokenExchangeAs(
-      agentExchangedToken, mcpActorToken, mcpExchangerClient, mcpExchangerSecret, mcpResourceUri, effectiveToolScopes
+      agentExchangedToken, mcpActorToken, mcpExchangerClient, mcpExchangerSecret, mcpResourceUri, effectiveToolScopes, mcpExchangerAuthMethod
     );
     const finalDecoded = decodeJwtClaims(finalToken);
     const finalClaims  = finalDecoded?.claims;

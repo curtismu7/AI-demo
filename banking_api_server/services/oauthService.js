@@ -324,17 +324,16 @@ class OAuthService {
    * @param {string} clientSecret
    * @param {string} audience  Resource server audience URI (returned token will have aud=[audience])
    */
-  async getClientCredentialsTokenAs(clientId, clientSecret, audience) {
+  async getClientCredentialsTokenAs(clientId, clientSecret, audience, method = 'basic') {
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: clientId,
-      client_secret: clientSecret,
       audience,
     });
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
     try {
-      const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const at = response.data.access_token;
       if (!at) throw new Error('Client credentials response missing access_token');
       console.log(`[CC-As] Issued actor token for client=${clientId} audience=${audience}`);
@@ -366,7 +365,7 @@ class OAuthService {
    * @param {string}   audience       - Requested token audience
    * @param {string[]} scopes         - Requested scopes
    */
-  async performTokenExchangeAs(subjectToken, actorToken, clientId, clientSecret, audience, scopes) {
+  async performTokenExchangeAs(subjectToken, actorToken, clientId, clientSecret, audience, scopes, method = 'basic') {
     const scopeStr = Array.isArray(scopes) ? scopes.join(' ') : scopes;
     const body = new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
@@ -378,12 +377,11 @@ class OAuthService {
       audience,
       scope: scopeStr,
       client_id: clientId,
-      client_secret: clientSecret,
     });
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
     try {
-      const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const exchanged = response.data.access_token;
       if (!exchanged) throw new Error('Token exchange response missing access_token');
       console.log(`[Exchange-As] client=${clientId} audience=${audience} scope="${scopeStr}"`);
