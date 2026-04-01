@@ -982,11 +982,29 @@ app.get('/api/mcp/tool/events', (req, res) => {
 
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), async (req, res) => {
-  const { tool, params, flowTraceId: bodyFlowTrace } = req.body || {};
+  // Defensive re-parse: on Vercel serverless the global express.json() may not have
+  // buffered the body by the time this route handler runs (cold-start / middleware race).
+  // Re-applying express.json() inline (already declared above) handles the route-level
+  // parse, but if req.body is still empty we attempt a raw Buffer read as a last resort.
+  let parsedBody = req.body || {};
+  if (!parsedBody.tool && req.readable) {
+    try {
+      const rawChunks = [];
+      for await (const chunk of req) rawChunks.push(chunk);
+      if (rawChunks.length) {
+        parsedBody = JSON.parse(Buffer.concat(rawChunks).toString('utf8'));
+      }
+    } catch (_) { /* leave parsedBody as-is */ }
+  }
+  const { tool, params, flowTraceId: bodyFlowTrace } = parsedBody;
   const flowTraceId = typeof bodyFlowTrace === 'string' ? bodyFlowTrace.trim() : '';
 
   if (!tool || typeof tool !== 'string') {
-    return res.status(400).json({ error: 'tool name is required' });
+    const bodyKeys = Object.keys(parsedBody);
+    return res.status(400).json({
+      error: 'tool_name_required',
+      message: `tool name is required. Received body keys: [${bodyKeys.join(', ') || 'none'}]`,
+    });
   }
 
   if (flowTraceId) {
