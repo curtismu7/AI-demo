@@ -137,6 +137,21 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Refresh balances silently after any agent write action (deposit/withdraw/transfer). */
+  useEffect(() => {
+    const onAgentResult = (e) => {
+      const type = e?.detail?.type;
+      // 'confirm' covers deposit, withdraw, and transfer success responses.
+      // 'accounts' and 'transactions' are read-only — no balance change.
+      if (type === 'confirm') {
+        fetchUserData(true);
+      }
+    };
+    window.addEventListener('banking-agent-result', onAgentResult);
+    return () => window.removeEventListener('banking-agent-result', onAgentResult);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchUserData identity is stable; adding it would re-register on every render
+  }, []);
+
   /** Keep localStorage layout aligned with Agent UI (Middle → split, Bottom → classic). */
   useEffect(() => {
     if (agentPlacement === 'middle') {
