@@ -20,7 +20,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 3 | vercel-stability | Vercel bugs fixed; demo reliable in production | STAB-01, STAB-02, STAB-03 | 2 plans |
 | 4 | education-content | Educational panels complete for all key concepts | EDU-01, EDU-02, EDU-03, EDU-04 | 3 plans |
 | 5 | user-documentation | Setup guide and architecture docs for learners | DOC-01, DOC-02 | 2 plans |
-| 6 | token-exchange-fix | RFC 8693 token exchange works end-to-end for both exchange paths | TOKEN-FIX-01, TOKEN-FIX-02 | TBD |
+| 6 | token-exchange-fix | RFC 8693 token exchange works end-to-end for both exchange paths | TOKEN-FIX-01, TOKEN-FIX-02 | 2 plans |
 
 ---
 
@@ -127,7 +127,11 @@ Plans:
 
 **Requirements:** TOKEN-FIX-01, TOKEN-FIX-02
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Fix 2-exchange auth methods + auth-method unit tests (TOKEN-FIX-01)
+- [ ] 06-02-PLAN.md — 1-exchange + 2-exchange delegation tests + security properties (TOKEN-FIX-02)
 
 **Success criteria:**
 1. Agent tool calls complete without token exchange errors in both 1-exchange and 2-exchange modes
