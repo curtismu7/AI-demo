@@ -51,7 +51,11 @@ Plans:
 
 **Requirements:** TOKEN-01, TOKEN-02
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Exchange mode session toggle: BFF endpoint + ExchangeModeToggle UI (TOKEN-01)
+- [ ] 02-02-PLAN.md — TokenChainDisplay claims strip + exchange mode banner (TOKEN-02)
 
 **Success criteria:**
 1. A UI toggle switches between 1-exchange and 2-exchange mode and the next agent operation uses the selected path
