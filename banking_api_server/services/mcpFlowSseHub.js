@@ -24,6 +24,75 @@ const BUFFER_MAX = 24;
 const CLAIM_TTL_MS = 60_000;
 const TRACE_CLEANUP_MS = 120_000;
 
+// == Vercel KV cross-instance event bridge ==
+// publish() RPUSHes to KV list so SSE subscribers on other Lambda
+// instances receive events via polling. Uses @vercel/kv (HTTP REST).
+
+const KV_URL   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN  || process.env.UPSTASH_REDIS_REST_TOKEN;
+let _kvClientOverride = null;
+
+function _getKvClient() {
+  if (_kvClientOverride) return _kvClientOverride;
+  if (!KV_URL || !KV_TOKEN) return null;
+  try {
+    const { createClient } = require('@vercel/kv');
+    return createClient({ url: KV_URL, token: KV_TOKEN });
+  } catch (_) { return null; }
+}
+
+function _kvKey(traceId) {
+  return 'banking:sse:events:' + traceId;
+}
+
+async function kvPublish(traceId, payload) {
+  const kv = _getKvClient();
+  if (!kv) return;
+  try {
+    await kv.rpush(_kvKey(traceId), JSON.stringify(payload));
+    await kv.expire(_kvKey(traceId), 120);
+  } catch (e) {
+    console.warn('[mcpFlowSseHub] kv publish error:', e.message);
+  }
+}
+
+function startKvPoller(traceId, res) {
+  const kv = _getKvClient();
+  if (!kv) return;
+  if (!res._receivedTs) res._receivedTs = new Set();
+  let cursor = 0;
+  const poll = async () => {
+    try {
+      const raw = await kv.lrange(_kvKey(traceId), cursor, -1);
+      if (!Array.isArray(raw) || raw.length === 0) return;
+      cursor += raw.length;
+      for (const item of raw) {
+        let ev;
+        try { ev = typeof item === 'string' ? JSON.parse(item) : item; } catch (_) { continue; }
+        if (typeof ev.t === 'number' && res._receivedTs.has(ev.t)) continue;
+        try {
+          res.write('data: ' + JSON.stringify(ev) + '\n\n');
+          if (typeof ev.t === 'number') res._receivedTs.add(ev.t);
+        } catch (_) { return; }
+        if (ev.phase === 'stream_end') {
+          clearInterval(poller);
+          try { res.end(); } catch (_) {}
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[mcpFlowSseHub] kv poll error:', e.message);
+    }
+  };
+  const poller = setInterval(poll, 500);
+  res.on('close', () => clearInterval(poller));
+}
+
+function _testSetKvClient(client) {
+  _kvClientOverride = client;
+}
+
+
 /**
  * Record that this session claimed a trace id (first GET /events connection).
  * @param {string} traceId
@@ -85,6 +154,8 @@ function attachSubscriber(traceId, req, res) {
     for (const payload of buf) {
       try {
         res.write(`data: ${JSON.stringify(payload)}\n\n`);
+        if (!res._receivedTs) res._receivedTs = new Set();
+        if (typeof payload.t === 'number') res._receivedTs.add(payload.t);
       } catch (_) {}
     }
   }
@@ -126,13 +197,19 @@ function publish(traceId, payload) {
 
   const line = `data: ${JSON.stringify(full)}\n\n`;
   const set = traceSubscribers.get(traceId);
-  if (!set || set.size === 0) return;
-  for (const r of set) {
-    try {
-      r.write(line);
-    } catch (_) {
-      /* client gone */
+  if (set && set.size > 0) {
+    for (const r of set) {
+      try {
+        r.write(line);
+        if (!r._receivedTs) r._receivedTs = new Set();
+        r._receivedTs.add(full.t);
+      } catch (_) {
+        /* client gone */
+      }
     }
+  }
+  if (process.env.VERCEL || _kvClientOverride) {
+    kvPublish(traceId, full).catch(() => {});
   }
 }
 
@@ -153,6 +230,10 @@ function endTrace(traceId) {
       } catch (_) {}
     }
     traceSubscribers.delete(traceId);
+  }
+  if (process.env.VERCEL || _kvClientOverride) {
+    const _kv = _getKvClient();
+    if (_kv) _kv.expire(_kvKey(traceId), 30).catch(() => {});
   }
 }
 
@@ -198,6 +279,9 @@ function handleSseGet(req, res) {
     res.status(403).json({ error: 'sse_attach_failed' });
     return false;
   }
+  if (process.env.VERCEL || _kvClientOverride) {
+    startKvPoller(traceId, res);
+  }
   return true;
 }
 
@@ -209,4 +293,5 @@ module.exports = {
   publish,
   endTrace,
   handleSseGet,
+  _testSetKvClient,
 };
