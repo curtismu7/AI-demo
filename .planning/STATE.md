@@ -68,3 +68,4 @@ Plan: 1 of 2
 ### Roadmap Evolution
 
 - Phase 7 added: RFC 9728 Protected Resource Metadata — education panel and demo integration
+- Phase 8 added: Banking transaction integrity — fix balance updates, validate all actions, and ensure enterprise-grade correctness
