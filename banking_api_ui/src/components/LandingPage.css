@@ -1008,6 +1008,44 @@
   box-sizing: border-box;
 }
 
+/* ── Marketing surface: EmbeddedAgentDock variant ─────────────────────────── */
+/* Scoped to .App--marketing-page so dashboard dock is completely unaffected    */
+.App--marketing-page .global-embedded-agent-dock-wrap {
+  background: #ffffff;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.App--marketing-page .embedded-agent-dock__toolbar {
+  background: #1e293b;
+  border-radius: 0;
+  padding: 0.75rem 1rem;
+}
+
+.App--marketing-page .embedded-agent-dock__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.App--marketing-page .embedded-dock-collapse-btn {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.App--marketing-page .embedded-dock-collapse-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.App--marketing-page .embedded-agent-dock {
+  background: #ffffff;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #1e293b;
+}
+
 /* Sign-in strip (agent nudges scroll here) */
 .marketing-login {
   padding: 1.35rem 2rem;

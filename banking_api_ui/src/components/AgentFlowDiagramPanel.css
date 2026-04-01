@@ -48,7 +48,7 @@
 
 .afd-subtitle {
   display: block;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: #6366f1;
   font-weight: 600;
   text-transform: uppercase;
@@ -220,7 +220,7 @@
 .afd-badge {
   display: inline-block;
   margin-top: 0.35rem;
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -312,7 +312,7 @@
   gap: 0.1rem;
   padding: 0.35rem 0.45rem;
   margin-bottom: 0.25rem;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   line-height: 1.35;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid #e2e8f0;
@@ -325,7 +325,7 @@
 }
 
 .afd-sse-detail {
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   color: #64748b;
   word-break: break-word;
 }
