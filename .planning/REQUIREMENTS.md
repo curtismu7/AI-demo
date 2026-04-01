@@ -9,9 +9,9 @@
 
 ### Authentication Flows
 
-- [ ] **AUTH-01**: CIBA flow fully wired end-to-end in UI — initiate → poll → approval notification → agent unblocks with approved token
-- [ ] **AUTH-02**: Agent-triggered login HITL — agent encounters mid-flow auth challenge → user presented inline login → agent resumes automatically after approval
-- [ ] **AUTH-03**: Home page login entry point polished — clear role routing (admin vs customer), smooth first-time landing experience
+- [x] **AUTH-01**: CIBA flow fully wired end-to-end in UI — initiate → poll → approval notification → agent unblocks with approved token
+- [x] **AUTH-02**: Agent-triggered login HITL — agent encounters mid-flow auth challenge → user presented inline login → agent resumes automatically after approval
+- [x] **AUTH-03**: Home page login entry point polished — clear role routing (admin vs customer), smooth first-time landing experience
 
 ### Token Exchange
 

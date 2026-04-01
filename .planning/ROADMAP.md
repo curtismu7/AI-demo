@@ -15,7 +15,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 
 | # | Phase | Goal | Requirements | Plans |
 |---|-------|------|--------------|-------|
-| 1 | auth-flows | All 3 auth flows complete and demo-ready | AUTH-01, AUTH-02, AUTH-03 | 3 plans |
+| 1 | auth-flows | All 3 auth flows complete and demo-ready | Complete    | 2026-04-01 |
 | 2 | token-exchange | 1-exchange vs 2-exchange live visual showcase | TOKEN-01, TOKEN-02 | 2 plans |
 | 3 | vercel-stability | Vercel bugs fixed; demo reliable in production | STAB-01, STAB-02, STAB-03 | 2 plans |
 | 4 | education-content | Educational panels complete for all key concepts | EDU-01, EDU-02, EDU-03, EDU-04 | 3 plans |
@@ -31,7 +31,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 
 **Requirements:** AUTH-01, AUTH-02, AUTH-03
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — Landing page login polish (AUTH-03): credential hints + 3-flows intro card
