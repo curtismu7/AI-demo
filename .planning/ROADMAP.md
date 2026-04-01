@@ -72,6 +72,10 @@ Plans:
 
 **Plans:** 2 plans
 
+Plans:
+- [ ] 03-01-PLAN.md — SSE Redis-list event bridge for Vercel (STAB-01)
+- [ ] 03-02-PLAN.md — Cold-start restoration + production safety guard tests (STAB-02, STAB-03)
+
 **Success criteria:**
 1. Agent flow diagram panels show streamed milestones on Vercel (not blank)
 2. A user who logs in, adds a custom account, then hits a cold-start Lambda sees their custom account intact
