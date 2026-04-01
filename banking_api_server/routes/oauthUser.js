@@ -232,6 +232,7 @@ router.get('/login', (req, res) => {
     // Persist PKCE state before redirecting so the callback can validate.
     // Non-fatal: state/verifier are already in the signed PKCE cookie (setPkceCookie above),
     // so the callback can recover even when the Redis session write fails (Vercel cold start).
+    req.session.oauthLoginStartedAt = Date.now();
     req.session.save((err) => {
       if (err) {
         console.warn('[oauth/user] Session save failed before PingOne redirect (PKCE cookie is fallback):', err.message);
@@ -458,6 +459,13 @@ router.get('/callback', async (req, res) => {
     const stepUpReturnTo = req.session.stepUpReturnTo || null;
     const postLoginReturnToPath = sanitizePostLoginReturnPath(req.session.postLoginReturnToPath) || null;
 
+    // Detect silent SSO: if PingOne returned in < 2 s the user had an active session
+    // and was not prompted for credentials. Pass sso_silent=1 to the SPA so it can
+    // inform the user. Threshold is 2000 ms — normal credential entry takes 5–30 s.
+    const loginStartedAt = req.session.oauthLoginStartedAt || null;
+    const loginElapsedMs = loginStartedAt ? Date.now() - loginStartedAt : null;
+    const silentSso = loginElapsedMs !== null && loginElapsedMs < 2000;
+
     // Decode access token to extract consent ACR and may_act for session storage.
     // These are used by the consent gate in agentMcpTokenService and the agent UI.
     let accessTokenAcr = null;
@@ -533,12 +541,13 @@ router.get('/callback', async (req, res) => {
           return res.redirect(stepUpReturnTo);
         }
 
+        const ssoParam = silentSso ? '&sso_silent=1' : '';
         if (authedUser.role === 'admin') {
-          res.redirect(`${origin}/admin?oauth=success`);
+          res.redirect(`${origin}/admin?oauth=success${ssoParam}`);
         } else if (postLoginReturnToPath) {
-          res.redirect(`${origin}${postLoginReturnToPath}?oauth=success`);
+          res.redirect(`${origin}${postLoginReturnToPath}?oauth=success${ssoParam}`);
         } else {
-          res.redirect(`${origin}/dashboard?oauth=success`);
+          res.redirect(`${origin}/dashboard?oauth=success${ssoParam}`);
         }
       });
     });

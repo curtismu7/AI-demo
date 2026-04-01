@@ -57,7 +57,7 @@ import SessionReauthBanner from './components/SessionReauthBanner';
 import AgentFlowDiagramPanel from './components/AgentFlowDiagramPanel';
 import { SESSION_REAUTH_EVENT } from './utils/authUi';
 import { showEndUserOAuthErrorToast, stripEndUserOAuthErrorParamsFromUrl } from './utils/endUserOAuthErrorToast';
-import { notifyWarning } from './utils/appToast';
+import { notifyWarning, notifyInfo } from './utils/appToast';
 import './App.css';
 
 /**
@@ -294,6 +294,20 @@ function AppWithAuth() {
       stripEndUserOAuthErrorParamsFromUrl();
     }
   }, [searchParams]);
+
+  /** SSO silent sign-in: PingOne skipped the credential prompt (active session reuse). */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search || '');
+    if (params.get('sso_silent') !== '1') return;
+    // Remove the param from the URL without a page reload
+    params.delete('sso_silent');
+    const newSearch = params.toString();
+    const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '');
+    window.history.replaceState(null, '', newUrl);
+    notifyInfo('✅ Signed in automatically — you had an active PingOne session.', { autoClose: 6000 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on mount only
+  }, []);
 
   /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
   const showQuickNav = Boolean(user) && isDashboardQuickNavRoute(pathname, user);
