@@ -78,6 +78,26 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-01 — RFC 8693 token exchange: CLIENT_SECRET_BASIC auth method fix
+
+- **Root cause:** `performTokenExchange` and `performTokenExchangeWithActor` in `oauthService.js` hardcoded `client_secret_post` (put `client_id` + `client_secret` in the POST body). All PingOne apps in this project are configured for `CLIENT_SECRET_BASIC` (credentials in `Authorization: Basic` header). `exchangeCodeForToken` correctly called `applyAdminTokenEndpointClientAuth` which respects the config — the exchange methods did not, causing PingOne to return `Request denied: Unsupported authentication method` on every token exchange attempt.
+- **Also fixed:** `getAgentClientCredentialsToken` had the same pattern (client_secret in URLSearchParams); now uses `applyTokenEndpointAuth(clientId, clientSecret, agentAuthMethod, body, headers)` where `agentAuthMethod` = `AGENT_TOKEN_ENDPOINT_AUTH_METHOD` env var (default `basic`).
+- **Refactor introduced:** Generic `applyTokenEndpointAuth(clientId, clientSecret, method, body, headers)` helper; `applyAdminTokenEndpointClientAuth` now delegates to it. No behaviour change to existing `exchangeCodeForToken` / `refreshToken` callers.
+- **Files changed:** `banking_api_server/services/oauthService.js`
+- **Commit:** `92b3a1e` (fix applied) + `227cca0` (changelog)
+- **Tests:** 90 tests pass (`npx jest --testPathPattern="oauthService|agentMcpToken|tokenExchange"`)
+- **Do not break:** `admin_token_endpoint_auth_method` config key must still control `exchangeCodeForToken` and all exchange methods. If a PingOne app is reconfigured to `CLIENT_SECRET_POST`, set `admin_token_endpoint_auth_method=post` in the Admin config UI — no code change needed.
+
+### 2026-04-01 — STAB-01: KV cross-instance SSE bridge for Vercel agent flow diagram
+
+- **Root cause:** On Vercel, GET `/api/mcp/tool/events` (SSE subscriber) and POST `/api/mcp/tool` (event publisher) can land on different Lambda instances. The in-memory `Map` in `mcpFlowSseHub.js` is instance-local, so subscribers on a different instance received zero events and the agent flow diagram panel stayed blank.
+- **Fix:** Added async Upstash KV-backed event bridge to `mcpFlowSseHub.js`. `kvPublish()` does `RPUSH banking:sse:events:{traceId}` + `EXPIRE 120` via `@vercel/kv` (HTTP REST) whenever `publish()` is called. `startKvPoller()` polls the KV list every 500ms from `handleSseGet()`, deduplicating events by `ev.t` timestamp via `res._receivedTs` Set.
+- **KV env vars:** `KV_REST_API_URL` (or `UPSTASH_REDIS_REST_URL`) + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_TOKEN`). Gracefully no-ops locally when vars are absent.
+- **Files changed:** `banking_api_server/services/mcpFlowSseHub.js`, `banking_api_server/src/__tests__/mcpFlowSseHub.test.js` (new — 5 tests)
+- **Commit:** `2ef3d49`
+- **Tests:** 5/5 pass (`npx jest --testPathPattern=mcpFlowSseHub`)
+- **Do not break:** Same-Lambda delivery via in-memory subscribers is unchanged (non-KV path). When KV vars are absent (local dev), `_getKvClient()` returns null and all KV calls are no-ops. Existing `claimTrace`/`attachSubscriber`/`handleSseGet` API is unchanged.
+
 ### 2026-03-31 — ff_two_exchange_delegation: 2-hop RFC 8693 feature flag + complete 2-exchange docs
 
 - **Feature:** `ff_two_exchange_delegation` feature flag switches the entire BFF token exchange path between the 1-exchange demo pattern and a full 2-exchange delegated chain (AI Agent → MCP) at runtime. DemoDataPage gains a **Delegation Mode** radio button so operators can set `mayAct.sub` to the correct client ID for each mode without touching PingOne directly.

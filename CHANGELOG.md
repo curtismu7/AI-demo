@@ -31,6 +31,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - New configStore fields: `ff_authorize_fail_open` (fail-open on Authorize errors, default ON), `ff_authorize_deposits` (apply Authorize to deposits, default OFF), `ff_hitl_enabled` (HITL agent consent gate, default ON)
 - `transactions.js`: `ff_authorize_fail_open` controls fail-open vs fail-closed behaviour; `ff_authorize_deposits` adds deposits to the Authorize evaluation scope
 
+- **KV cross-instance SSE bridge** — `mcpFlowSseHub.js` now publishes each SSE event to an Upstash KV list (`banking:sse:events:{traceId}`) via `@vercel/kv` so agent flow diagram panels work on Vercel multi-instance deployments; `handleSseGet` starts a 500ms KV poller with `ev.t` dedup (STAB-01)
 - **Phase 6 roadmap: token-exchange-fix** — added Phase 6 plan to address RFC 8693 token exchange "Unsupported authentication method" error from PingOne; requirements TOKEN-FIX-01, TOKEN-FIX-02
 
 ### Fixed
