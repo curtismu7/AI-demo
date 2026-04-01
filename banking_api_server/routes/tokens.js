@@ -115,10 +115,27 @@ async function buildTokenChain(req) {
   try {
     const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
     if (mcpResourceUri && sessionToken) {
+      // Derive scopes from the user's actual token — PingOne can only narrow, not grant
+      // scopes not present in the subject token. Avoids "At least one scope must be granted"
+      // when ENDUSER_AUDIENCE is configured and the login only carries banking:agent:invoke.
+      const userPayload = (() => {
+        try {
+          const parts = sessionToken.split('.');
+          return parts.length === 3 ? JSON.parse(Buffer.from(parts[1], 'base64url').toString()) : {};
+        } catch (_) { return {}; }
+      })();
+      const userScopeStr = typeof userPayload.scope === 'string' ? userPayload.scope : '';
+      const bankingScopes = ['banking:read', 'banking:write', 'banking:accounts:read',
+        'banking:transactions:read', 'banking:transactions:write', 'banking:admin',
+        'banking:agent:invoke'];
+      const exchangeScopes = bankingScopes.filter((s) => userScopeStr.split(' ').includes(s));
+      // Fall back to banking:read if the user token carries none of the above
+      // (e.g. OIDC-only token) so there is always at least one scope to attempt.
+      const scopesForExchange = exchangeScopes.length > 0 ? exchangeScopes : ['banking:read'];
       const exchangedToken = await oauthService.performTokenExchange(
         sessionToken,
         mcpResourceUri,
-        ['banking:read', 'banking:write']
+        scopesForExchange
       );
       tokenChain['exchanged-token-mcp'] = {
         status: 'active',

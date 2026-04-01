@@ -423,12 +423,16 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     ).filter(Boolean)
   );
   const toolScopes = toolCandidateScopes.filter((s) => userTokenScopes.has(s));
-  // If none of the tool's scopes are present in the user token, fall back to any allowed
-  // scope in the user token so the exchange still has something to request.  PingOne will
-  // return only what is actually permitted — the missing tool scope will surface at the MCP layer.
+  // If none of the tool's required scopes are in the user token (e.g. user logged in with
+  // banking:agent:invoke only, but tool needs banking:read), fall back to any banking:*
+  // scope the user token DOES carry so PingOne has at least one scope to narrow.
+  // Avoids "At least one scope must be granted" when ENDUSER_AUDIENCE changes the login scopes.
+  const fallbackScopes = toolScopes.length > 0
+    ? null
+    : [...userTokenScopes].filter((s) => s.startsWith('banking:') || s === 'ai_agent');
   const effectiveToolScopes = toolScopes.length > 0
     ? toolScopes
-    : toolCandidateScopes;
+    : (fallbackScopes && fallbackScopes.length > 0 ? fallbackScopes : toolCandidateScopes);
 
   // ── 2-Exchange delegation path ──────────────────────────────────────────────────
   // ff_two_exchange_delegation: Subject Token → (AI Agent) → Agent Exchanged Token → (MCP) → Final Token
