@@ -19,7 +19,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 2 | token-exchange | 1-exchange vs 2-exchange live visual showcase | Complete    | 2026-04-01 |
 | 3 | vercel-stability | Vercel bugs fixed; demo reliable in production | STAB-01, STAB-02, STAB-03 | 2 plans |
 | 4 | education-content | Educational panels complete for all key concepts | EDU-01, EDU-02, EDU-03, EDU-04 | 3 plans |
-| 5 | user-documentation | Setup guide and architecture docs for learners | DOC-01, DOC-02 | 2 plans |
+| 5 | user-documentation | Setup guide and architecture docs for learners | DOC-01, DOC-02 | 3 plans |
 | 6 | token-exchange-fix | RFC 8693 token exchange works end-to-end for both exchange paths | TOKEN-FIX-01, TOKEN-FIX-02 | 2 plans |
 
 ---
@@ -71,7 +71,12 @@ Plans:
 
 **Requirements:** STAB-01, STAB-02, STAB-03
 
-**Plans:** 2 plans
+**Plans:** 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
+- [ ] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
+- [ ] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
 
 Plans:
 - [ ] 03-01-PLAN.md — SSE Redis-list event bridge for Vercel (STAB-01)
@@ -113,7 +118,12 @@ Plans:
 
 **Requirements:** DOC-01, DOC-02
 
-**Plans:** 2 plans
+**Plans:** 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
+- [ ] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
+- [ ] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
 
 **Success criteria:**
 1. Following the setup guide produces a working local demo with all 3 auth flows operational
@@ -127,7 +137,12 @@ Plans:
 
 **Requirements:** TOKEN-FIX-01, TOKEN-FIX-02
 
-**Plans:** 2 plans
+**Plans:** 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Setup guide (docs/SETUP.md + README pointer) (DOC-01)
+- [ ] 05-02-PLAN.md — Three draw.io sequence diagrams for 3 auth flows (DOC-02)
+- [ ] 05-03-PLAN.md — Architecture walkthrough (docs/ARCHITECTURE_WALKTHROUGH.md) (DOC-02)
 
 Plans:
 - [x] 06-01-PLAN.md — Fix 2-exchange auth methods + auth-method unit tests (TOKEN-FIX-01)
