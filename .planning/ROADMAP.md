@@ -75,7 +75,7 @@ Plans:
 
 Plans:
 - [ ] 03-01-PLAN.md — SSE Redis-list event bridge for Vercel (STAB-01)
-- [ ] 03-02-PLAN.md — Cold-start restoration + production safety guard tests (STAB-02, STAB-03)
+- [x] 03-02-PLAN.md — Cold-start restoration + production safety guard tests (STAB-02, STAB-03)
 
 **Success criteria:**
 1. Agent flow diagram panels show streamed milestones on Vercel (not blank)
