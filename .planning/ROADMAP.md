@@ -33,6 +33,11 @@ A developer or architect who runs through the live demo in 5 minutes understands
 
 **Plans:** 3 plans
 
+Plans:
+- [ ] 01-01-PLAN.md — Landing page login polish (AUTH-03): credential hints + 3-flows intro card
+- [ ] 01-02-PLAN.md — MCP step_up_required structured passthrough (AUTH-01 layer 1)
+- [ ] 01-03-PLAN.md — Agent step-up auto-retry + auth challenge inline login (AUTH-01 + AUTH-02)
+
 **Success criteria:**
 1. A user landing on the home page can log in as admin or customer with a single click and be routed to the correct dashboard
 2. An agent operation that requires CIBA sends a push notification, the UI polls and shows pending state, and the agent unblocks on approval
@@ -77,6 +82,11 @@ A developer or architect who runs through the live demo in 5 minutes understands
 **Requirements:** EDU-01, EDU-02, EDU-03, EDU-04
 
 **Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Landing page login polish (AUTH-03): credential hints + 3-flows intro card
+- [ ] 01-02-PLAN.md — MCP step_up_required structured passthrough (AUTH-01 layer 1)
+- [ ] 01-03-PLAN.md — Agent step-up auto-retry + auth challenge inline login (AUTH-01 + AUTH-02)
 
 **Success criteria:**
 1. The OIDC 2.1 panel exists, covers the key changes from OIDC Core, and links to the relevant spec section
