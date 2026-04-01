@@ -22,4 +22,6 @@ export const EDU = {
   JWT_CLIENT_AUTH: 'jwt-client-auth',
   /** Ping Identity Agentic Maturity Model — 3 levels of agent identity controls */
   AGENTIC_MATURITY: 'agentic-maturity',
+  /** OpenID Connect 2.1 — what changed from Core 1.0, why it matters for AI agents */
+  OIDC_21: 'oidc-21',
 };

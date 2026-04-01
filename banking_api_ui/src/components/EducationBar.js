@@ -205,6 +205,16 @@ export default function EducationBar() {
             >
               JWT client auth (RFC 7523)
             </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.OIDC_21, 'what');
+                close();
+              }}
+            >
+              OIDC 2.1 spec alignment
+            </button>
           </div>
 
           <div className="edu-bar-panel__section">

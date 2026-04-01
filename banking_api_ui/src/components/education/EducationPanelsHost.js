@@ -18,6 +18,7 @@ import PARPanel from './PARPanel';
 import RARPanel from './RARPanel';
 import JwtClientAuthPanel from './JwtClientAuthPanel';
 import AgenticMaturityPanel from './AgenticMaturityPanel';
+import Oidc21Panel from './Oidc21Panel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -43,6 +44,7 @@ export default function EducationPanelsHost() {
       <RARPanel isOpen={panel === EDU.RAR} onClose={close} initialTabId={tab} />
       <JwtClientAuthPanel isOpen={panel === EDU.JWT_CLIENT_AUTH} onClose={close} initialTabId={tab} />
       <AgenticMaturityPanel isOpen={panel === EDU.AGENTIC_MATURITY} onClose={close} initialTabId={tab} />
+      <Oidc21Panel isOpen={panel === EDU.OIDC_21} onClose={close} initialTabId={tab} />
     </>
   );
 }
