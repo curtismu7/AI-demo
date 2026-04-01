@@ -56,5 +56,5 @@ Plan: 1 of 2
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
 - Redeploy to Vercel (3 code commits since last deploy: 5aa8147, 09598d7, 59786c6)
 - When merged to main: update raw doc links from `fix/dashboard-fab-positioning` → `main`
-- **[TODO]** UI consistency audit — enterprise-grade cross-SPA visual polish (see .planning/todos/pending/ui-consistency-audit.md)
-- **[TODO]** Marketing page agent dock UI match — dock styling should match /marketing page design language (see .planning/todos/pending/marketing-agent-ui-match.md)
+- **[TODO → Phase 4]** UI consistency audit — enterprise-grade cross-SPA visual polish (04-04-PLAN.md)
+- **[TODO → Phase 4]** Marketing page agent dock UI match — dock styling should match /marketing page design language (04-04-PLAN.md)

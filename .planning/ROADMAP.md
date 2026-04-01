@@ -89,18 +89,20 @@ Plans:
 
 **Requirements:** EDU-01, EDU-02, EDU-03, EDU-04
 
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Landing page login polish (AUTH-03): credential hints + 3-flows intro card
-- [ ] 01-02-PLAN.md — MCP step_up_required structured passthrough (AUTH-01 layer 1)
-- [ ] 01-03-PLAN.md — Agent step-up auto-retry + auth challenge inline login (AUTH-01 + AUTH-02)
+- [ ] 04-01-PLAN.md — OIDC 2.1 education panel (EDU-01)
+- [ ] 04-02-PLAN.md — MCP spec 2025-11-25 panel (EDU-02)
+- [ ] 04-03-PLAN.md — RFC reference cards + guided tour (EDU-03, EDU-04)
+- [ ] 04-04-PLAN.md — UI consistency audit + marketing agent dock polish
 
 **Success criteria:**
 1. The OIDC 2.1 panel exists, covers the key changes from OIDC Core, and links to the relevant spec section
 2. The MCP spec panel walks through the tool-call lifecycle and auth challenge mechanism with code references to this repo
 3. RFC reference cards exist for 8693, 9396, 7519, 9700, and OIDC CIBA — each with a "see it here" link into the live demo
 4. The guided tour mode sequences all 3 auth flows with narration; a presenter can run it start to finish without switching away from the app
+5. All SPA pages pass a cross-cutting visual audit: consistent spacing, typography, color, and interaction states; no placeholder content or console errors; marketing agent dock matches /marketing page design language
 
 ---
 
