@@ -370,6 +370,24 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
+          ? (axiosData['step_up_method'] as string) : 'ciba';
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'step_up_required',
+              step_up_required: true,
+              step_up_method: stepUpMethod,
+              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
+              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
+            },
+            null,
+            2
+          )
+        );
+      }
       if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
         return this.createSuccessResult(
           JSON.stringify(
@@ -419,6 +437,24 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
+          ? (axiosData['step_up_method'] as string) : 'ciba';
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'step_up_required',
+              step_up_required: true,
+              step_up_method: stepUpMethod,
+              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
+              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
+            },
+            null,
+            2
+          )
+        );
+      }
       if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
         return this.createSuccessResult(
           JSON.stringify(
@@ -475,6 +511,24 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
+          ? (axiosData['step_up_method'] as string) : 'ciba';
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'step_up_required',
+              step_up_required: true,
+              step_up_method: stepUpMethod,
+              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
+              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
+            },
+            null,
+            2
+          )
+        );
+      }
       if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
         return this.createSuccessResult(
           JSON.stringify(
