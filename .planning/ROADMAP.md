@@ -205,6 +205,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 11 to break down)
 
+### Phase 12: UI button consistency audit — standardize color scheme red and blue with white text no grey no purple
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12 to break down)
+
 ---
 
 ## Dependency Order
