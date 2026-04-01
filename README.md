@@ -19,22 +19,11 @@ This is a **completely standalone** project — it can be handed to anyone and r
 
 ## Quick Start
 
-```bash
-# 1. Start the API server
-cd banking_api_server && npm install && npm run dev
-
-# 2. Start the React UI
-cd banking_api_ui && npm install && npm start
-
-# 3. Configure PingOne credentials at http://localhost:3000/config
-#    (no .env file needed — all config stored in SQLite via the UI)
-```
+See **[docs/SETUP.md](docs/SETUP.md)** for the complete setup guide — prerequisites, PingOne app configuration, environment variables, local run commands, and verification steps for all three auth flows.
 
 ## Configuration
 
-Visit **http://localhost:3000/config** to enter your PingOne credentials.
-Settings are stored encrypted in `banking_api_server/data/persistent/config.db` (SQLite locally)
-or Vercel KV in production — **no `.env` file required**.
+See **[docs/SETUP.md](docs/SETUP.md)** (§ 2 — PingOne Application Configuration and § 3 — Environment Variables) for the full configuration reference, including all required env vars and their PingOne source.
 
 ```
 
