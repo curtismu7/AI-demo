@@ -129,6 +129,16 @@
 - **Regression check:** `cd banking_api_ui && npm run build` → **Compiled successfully**.
 - **Do not break:** `OIDC_SCOPE_NAMES` must still suppress `resource=` when caller requests `openid` alone. `oauthUser.js` scope change only activates when `ENDUSER_AUDIENCE` is set; standard deployments without that env var are unaffected.
 
+### 2026-04-01 — Token exchange: delegation scope excluded from MCP fallback
+
+- **Bug:** When `ENDUSER_AUDIENCE` restricts login to only `banking:agent:invoke`, the RFC 8693 exchange scope fallback in `agentMcpTokenService.js` selected `banking:agent:invoke` as the exchange scope for the MCP resource. PingOne returned 400 `"Request failed: At least one scope must be granted"` because `banking:agent:invoke` is not registered as a valid scope on the MCP resource server — it lives on the enduser resource server only.
+- **Root cause:** `fallbackScopes` filter (`s.startsWith('banking:')`) included `banking:agent:invoke` without distinguishing it as a delegation-permission scope that only applies to the enduser audience.
+- **Fix:** Added `DELEGATION_ONLY_SCOPES = new Set(['banking:agent:invoke', 'ai_agent'])`. The fallback now excludes these from `fallbackScopes`. When no non-delegation `banking:` scopes remain, the code falls through to `toolCandidateScopes` (e.g. `['banking:transactions:write', 'banking:write']`) so PingOne evaluates its token exchange policy on the MCP resource correctly.
+- **Files changed:** `banking_api_server/services/agentMcpTokenService.js`, `banking_api_server/src/__tests__/agentMcpTokenService.test.js`
+- **Commit:** `b6b70d5`
+- **Regression check:** 60/60 unit tests pass. `cd banking_api_ui && npm run build` → **Compiled successfully**.
+- **Do not break:** When user token DOES carry `banking:write` etc. (standard non-ENDUSER_AUDIENCE login), `toolScopes` is non-empty and the fallback is never reached — no behavior change for those users.
+
 ### 2026-03-31 — AdminRoute: modal + toast for admin-only pages; no more silent /marketing redirect
 
 - **Feature / fix:** Non-admin logged-in users who navigate to an admin-only route (e.g. `/activity`, `/users`, `/accounts`, `/transactions`, `/admin/banking`, `/settings`, `/oauth-debug-logs`, `/client-registration`) now see a centred modal dialog — **"Admin access required"** — with an explanation and a **Go back** button, plus a warning toast. Previously they were silently redirected to `/marketing` with no feedback.
