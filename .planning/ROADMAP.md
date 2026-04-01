@@ -16,7 +16,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | # | Phase | Goal | Requirements | Plans |
 |---|-------|------|--------------|-------|
 | 1 | auth-flows | All 3 auth flows complete and demo-ready | Complete    | 2026-04-01 |
-| 2 | token-exchange | 1-exchange vs 2-exchange live visual showcase | TOKEN-01, TOKEN-02 | 2 plans |
+| 2 | token-exchange | 1-exchange vs 2-exchange live visual showcase | Complete    | 2026-04-01 |
 | 3 | vercel-stability | Vercel bugs fixed; demo reliable in production | STAB-01, STAB-02, STAB-03 | 2 plans |
 | 4 | education-content | Educational panels complete for all key concepts | EDU-01, EDU-02, EDU-03, EDU-04 | 3 plans |
 | 5 | user-documentation | Setup guide and architecture docs for learners | DOC-01, DOC-02 | 2 plans |
@@ -51,7 +51,7 @@ Plans:
 
 **Requirements:** TOKEN-01, TOKEN-02
 
-**Plans:** 2/2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 02-01-PLAN.md — Exchange mode session toggle: BFF endpoint + ExchangeModeToggle UI (TOKEN-01)
