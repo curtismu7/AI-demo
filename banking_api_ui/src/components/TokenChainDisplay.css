@@ -1063,3 +1063,52 @@
 .tci-body::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* -- Inline claims strip -------------------------------------------------- */
+.tcd-claims-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 6px;
+  padding: 5px 8px;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 5px;
+  border: 1px solid #1e293b;
+}
+.tcd-cs-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-family: monospace;
+}
+.tcd-cs-key { color: #64748b; font-weight: 600; }
+.tcd-cs-key::after { content: ':'; }
+.tcd-cs-val { color: #cbd5e1; word-break: break-all; }
+.tcd-cs-act  .tcd-cs-key { color: #2dd4bf; }
+.tcd-cs-act  .tcd-cs-val { color: #99f6e4; }
+.tcd-cs-may  .tcd-cs-key { color: #60a5fa; }
+.tcd-cs-may  .tcd-cs-val { color: #bfdbfe; }
+.tcd-cs-aud  .tcd-cs-key { color: #4ade80; }
+.tcd-cs-aud  .tcd-cs-val { color: #bbf7d0; }
+.tcd-cs-scope .tcd-cs-val { color: #a78bfa; }
+.tcd-cs-expired .tcd-cs-val { color: #f87171; }
+
+/* -- Exchange mode banner ------------------------------------------------- */
+.tcd-exc-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid transparent;
+}
+.tcd-exc-banner--teal  { background: rgba(20,184,166,.12); border-color: rgba(20,184,166,.3); }
+.tcd-exc-banner--blue  { background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.3); }
+.tcd-exc-banner--slate { background: rgba(100,116,139,.1); border-color: rgba(100,116,139,.25); }
+.tcd-exc-badge { font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+.tcd-exc-banner--teal  .tcd-exc-badge { color: #5eead4; }
+.tcd-exc-banner--blue  .tcd-exc-badge { color: #93c5fd; }
+.tcd-exc-banner--slate .tcd-exc-badge { color: #94a3b8; }
+.tcd-exc-desc { font-size: 0.69rem; color: #64748b; font-family: monospace; }

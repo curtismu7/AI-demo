@@ -602,6 +602,75 @@ const InspectIcon = () => (
 
 // ─── Single event row ─────────────────────────────────────────────────────────
 
+// ---------- Inline claims strip ------------------------------------------
+
+const CLAIMS_STRIP_IDS = new Set(['user-token', 'exchanged-token', 'agent-actor-token', 'exchanged-token-fallback']);
+
+function fmtSub(sub) {
+  if (!sub) return null;
+  const s = String(sub);
+  return s.length > 14 ? s.slice(0, 12) + '…' : s;
+}
+function fmtAud(aud) {
+  if (!aud) return null;
+  const flat = Array.isArray(aud) ? aud[aud.length - 1] : String(aud);
+  return flat.split('/').pop() || flat;
+}
+function fmtScope(scope) {
+  if (!scope) return null;
+  const s = String(scope);
+  return s.length > 60 ? s.slice(0, 58) + '…' : s;
+}
+function fmtExpiry(exp) {
+  if (!exp) return null;
+  const secsLeft = Math.round(exp - Date.now() / 1000);
+  if (secsLeft < 0) return 'expired ' + Math.abs(secsLeft) + 's ago';
+  if (secsLeft < 60) return secsLeft + 's';
+  if (secsLeft < 3600) return Math.round(secsLeft / 60) + 'm';
+  return Math.round(secsLeft / 3600) + 'h';
+}
+function fmtAct(act) {
+  if (!act) return null;
+  if (typeof act === 'object') {
+    if (act.client_id) return act.client_id;
+    if (act.sub) return 'sub:' + act.sub;
+    return JSON.stringify(act).slice(0, 40);
+  }
+  return String(act).slice(0, 40);
+}
+
+/** Compact inline strip showing key claims without opening the inspector. */
+function ClaimsStrip({ event }) {
+  if (!CLAIMS_STRIP_IDS.has(event.id)) return null;
+  const cl = event.claims;
+  if (!cl) return null;
+  const sub    = fmtSub(cl.sub);
+  const act    = fmtAct(cl.act);
+  const mayAct = cl.may_act && cl.may_act.client_id ? String(cl.may_act.client_id) : null;
+  const aud    = fmtAud(cl.aud);
+  const scope  = fmtScope(cl.scope);
+  const expiry = fmtExpiry(cl.exp);
+  const rows = [
+    sub    ? { key: 'sub',     val: sub,    cls: '' }             : null,
+    act    ? { key: 'act',     val: act,    cls: 'tcd-cs-act' }   : null,
+    mayAct ? { key: 'may_act', val: mayAct, cls: 'tcd-cs-may' }   : null,
+    aud    ? { key: 'aud',     val: aud,    cls: 'tcd-cs-aud' }   : null,
+    scope  ? { key: 'scope',   val: scope,  cls: 'tcd-cs-scope' } : null,
+    expiry ? { key: 'exp',     val: expiry, cls: expiry.includes('ago') ? 'tcd-cs-expired' : '' } : null,
+  ].filter(Boolean);
+  if (rows.length === 0) return null;
+  return (
+    <div className="tcd-claims-strip">
+      {rows.map(r => (
+        <span key={r.key} className={'tcd-cs-item' + (r.cls ? ' ' + r.cls : '')}>
+          <span className="tcd-cs-key">{r.key}</span>
+          <span className="tcd-cs-val">{r.val}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
 function EventRow({ event, isLast, onInspect }) {
   const inspectBtnRef = useRef(null);
@@ -672,6 +741,7 @@ function EventRow({ event, isLast, onInspect }) {
               {actHint    && <span className={`tcd-event-hint tcd-event-hint--${actHint.cls}`}>{actHint.text}</span>}
             </div>
           )}
+          <ClaimsStrip event={event} />
         </div>
       </div>
 
@@ -737,6 +807,28 @@ function calcInitialPos(triggerEl) {
     return { x, y };
   }
   return { x: Math.max(60, window.innerWidth - 900), y: 100 };
+}
+
+// ---------- Exchange mode banner -----------------------------------------
+
+const EXCHANGE_MODE_MAP = {
+  '2-exchange':   { label: '2-Exchange Delegation',    cls: 'tcd-exc-banner--teal',  desc: 'Nested act: subject → agent → MCP (RFC 8693)' },
+  'with-actor':   { label: '1-Exchange + actor token', cls: 'tcd-exc-banner--blue',  desc: 'act claim present — BFF delegated per RFC 8693' },
+  'subject-only': { label: '1-Exchange (no actor)',    cls: 'tcd-exc-banner--slate', desc: 'No act claim — subject-only RFC 8693' },
+};
+
+function ExchangeModeBanner({ events }) {
+  if (!events || events.length === 0) return null;
+  const ev = events.find(e => e.id === 'exchanged-token' && e.exchangeMethod);
+  if (!ev) return null;
+  const info = EXCHANGE_MODE_MAP[ev.exchangeMethod];
+  if (!info) return null;
+  return (
+    <div className={'tcd-exc-banner ' + info.cls}>
+      <span className="tcd-exc-badge">{info.label}</span>
+      <span className="tcd-exc-desc">{info.desc}</span>
+    </div>
+  );
 }
 
 const TokenChainDisplay = () => {
@@ -895,6 +987,7 @@ const TokenChainDisplay = () => {
                   : 'Sign in and load the dashboard to see your user access token, or make a banking / AI Agent request to see the full chain after exchange.'}
               </div>
             )}
+            {isLive && <ExchangeModeBanner events={currentEvents} />}
             {currentEvents.map((ev, i) => (
               <EventRow key={ev.id} event={ev} isLast={i === currentEvents.length - 1} onInspect={handleInspect} />
             ))}
