@@ -1234,3 +1234,82 @@ MCP spec reference:
     </>
   );
 }
+
+// ── RFC9728Content ─────────────────────────────────────────────────────────────
+export function RFC9728Content() {
+  const [metadata, setMetadata]     = React.useState(null);
+  const [fetchError, setFetchError] = React.useState(null);
+
+  React.useEffect(() => {
+    fetch('/api/rfc9728/metadata')
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+        return r.json();
+      })
+      .then(setMetadata)
+      .catch((e) => setFetchError(e.message));
+  }, []);
+
+  return (
+    <>
+      <h3>What is RFC 9728?</h3>
+      <p>
+        <strong>RFC 9728 — OAuth 2.0 Protected Resource Metadata</strong> (published April 2025,
+        IETF Standards Track) defines a discovery document that a resource server publishes at a
+        well-known URL so OAuth clients and authorization servers can find out:
+      </p>
+      <ul>
+        <li>Which <strong>authorization server(s)</strong> the RS accepts tokens from</li>
+        <li>Which <strong>scopes</strong> the RS is willing to disclose</li>
+        <li>Which <strong>bearer token methods</strong> the RS supports (header, body, query)</li>
+        <li>
+          Human-readable metadata such as <code>resource_name</code> and{' '}
+          <code>resource_documentation</code>
+        </li>
+      </ul>
+
+      <h3>Well-known URL</h3>
+      <pre className="edu-code">{`GET /.well-known/oauth-protected-resource HTTP/1.1\nHost: api.your-domain.com`}</pre>
+      <p>
+        The URL is deterministically derived from the resource identifier by inserting{' '}
+        <code>/.well-known/oauth-protected-resource</code> between the host and path. This makes
+        the endpoint discoverable without any out-of-band configuration.
+      </p>
+
+      <h3>Why it matters for AI agents and MCP</h3>
+      <p>
+        The MCP specification references RFC 9728 for resource server discovery. An AI agent or
+        MCP client that encounters a{' '}
+        <code>{'401 WWW-Authenticate: Bearer resource_metadata=\u2026'}</code>{' '}
+        response can fetch the metadata URL, discover which authorization server to use, and
+        bootstrap the OAuth flow without hard-coded configuration. This is critical for
+        agentic workflows where the agent may encounter resource servers it has never seen before.
+      </p>
+
+      <h3>Response shape (RFC 9728 §3.2)</h3>
+      <pre className="edu-code">{`{\n  "resource":                 REQUIRED  -- this RS's canonical URL\n  "authorization_servers":    OPTIONAL  -- [PingOne issuer URI, ...]\n  "scopes_supported":         RECOMMENDED -- ["banking:read", ...]\n  "bearer_methods_supported": OPTIONAL  -- ["header"]\n  "resource_name":            OPTIONAL  -- human-readable display name\n}`}</pre>
+
+      <h3>Security: resource identifier validation (RFC 9728 §3.3)</h3>
+      <p>
+        Clients MUST check that the <code>resource</code> value in the response exactly matches the
+        URL they queried. This prevents impersonation: an attacker cannot publish a fraudulent
+        metadata document for a legitimate RS, because the <code>resource</code> field would reveal
+        the mismatch.
+      </p>
+
+      <h3>Live metadata from this BFF</h3>
+      {metadata ? (
+        <>
+          <p>Fetched from <code>/api/rfc9728/metadata</code>:</p>
+          <pre className="edu-code">{JSON.stringify(metadata, null, 2)}</pre>
+        </>
+      ) : fetchError ? (
+        <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>
+          Could not load live metadata: {fetchError}. Is the BFF running?
+        </p>
+      ) : (
+        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading live metadata\u2026</p>
+      )}
+    </>
+  );
+}
