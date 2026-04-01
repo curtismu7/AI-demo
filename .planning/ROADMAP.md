@@ -93,10 +93,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — OIDC 2.1 education panel (EDU-01)
-- [ ] 04-02-PLAN.md — MCP spec 2025-11-25 panel (EDU-02)
-- [ ] 04-03-PLAN.md — RFC reference cards + guided tour (EDU-03, EDU-04)
-- [ ] 04-04-PLAN.md — UI consistency audit + marketing agent dock polish
+- [x] 04-01-PLAN.md — OIDC 2.1 education panel (EDU-01)
+- [x] 04-02-PLAN.md — MCP spec 2025-11-25 panel (EDU-02)
+- [x] 04-03-PLAN.md — RFC reference cards + guided tour (EDU-03, EDU-04)
+- [x] 04-04-PLAN.md — UI consistency audit + marketing agent dock polish
 
 **Success criteria:**
 1. The OIDC 2.1 panel exists, covers the key changes from OIDC Core, and links to the relevant spec section
