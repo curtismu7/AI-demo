@@ -207,13 +207,13 @@ Plans:
 
 ### Phase 12: UI button consistency audit — standardize color scheme red and blue with white text no grey no purple
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Establish a consistent two-color button system: red (danger/CTA) and blue (nav/secondary), both with white text. Add --app-primary-blue CSS variables and .btn-blue utility class. Convert all grey and orange interactive buttons to blue.
+**Requirements**: Button color consistency
 **Depends on:** Phase 11
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 12 to break down)
+- [ ] 12-01-PLAN.md — Button color system: add blue vars/class + convert all grey/orange buttons to blue
 
 ---
 
