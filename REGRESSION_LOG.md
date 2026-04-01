@@ -5,6 +5,19 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2025-06 — 2-exchange delegation: hardcoded client_secret_post caused auth failure (commit `3497664`)
+
+**Symptoms**: AI-Agent→MCP 2-exchange delegation path returned "Unsupported authentication method" from PingOne when using the `_performTwoExchangeDelegation` flow. Affected all 4 PingOne calls in that path (2× client_credentials, 2× token-exchange).
+
+**Root cause**: `getClientCredentialsTokenAs` and `performTokenExchangeAs` both included `client_secret: clientSecret` directly in the `URLSearchParams` body (CLIENT_SECRET_POST), but the PingOne apps (`BX Finance AI Agent Gateway` and `BX Finance MCP Service`) are configured for CLIENT_SECRET_BASIC (Authorization: Basic header). The 1-exchange path was fixed in an earlier commit (`92b3a1e`) via `applyTokenEndpointAuth`, but the 2-exchange-specific methods were overlooked.
+
+**Fix**: Both methods now call `applyTokenEndpointAuth(clientId, clientSecret, method, body, headers)` with an optional `method` parameter (default `'basic'`). `_performTwoExchangeDelegation` reads `AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD` and `MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD` (both default `'basic'`) and passes them to all 4 call sites.
+
+**Tests**: `oauthService.test.js` — 14 new tests added in `describe('token exchange — client authentication method', ...)` covering basic/post for all 5 BFF token methods. `CI=true npx jest --testPathPattern=oauthService` → 59 pass.
+
+---
+
+
 ## 2026-03-28 — DemoDataPage build error: handleResetDefaults called missing setAccounts (commit `0058450`)
 
 **Symptoms**: `CI=true npm run build` failed with `'setAccounts' is not defined` (eslint `no-undef`), blocking every Vercel deploy.
