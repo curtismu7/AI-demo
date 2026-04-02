@@ -78,6 +78,18 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-02 — NLU: credit card payment returns friendly message instead of account-not-found error
+
+- **Root cause:** User typed “pay my credit card from checking $250”; Groq LLM returned `{toId:"credit_card"}`. `sanitizeNlResult` had no account-type validation so the raw string passed through; `resolveAccountId("credit_card", accounts)` found no match; `create_transfer` threw "Destination account credit_card not found".
+- **Fix 1 (`nlIntentSanitize.js`):** Added `isValidRef()` for transfer/deposit/withdraw params. Accepts `checking`, `savings`, `chk`, `sav`, `chk-*`/`sav-*` prefix, UUID pattern. Rejects anything else with `{kind:'none', reason:'invalid_account_type_name'}` + user-friendly message.
+- **Fix 2 (`nlIntentSanitize.js`):** Expanded `VALID_EDU_PANELS` to include `langchain`, `par`, `rar`, `jwt-client-auth`, `agentic-maturity`, `oidc-21`, `best-practices` (Phase 23 side-bug — these were silently rejected).
+- **Fix 3 (`groqNlIntent.js`, `geminiNlIntent.js`):** Added system-prompt guidance so LLM routes credit-card/investment requests to `kind:none` before the sanitizer.
+- **Files changed:** `banking_api_server/services/nlIntentSanitize.js`, `banking_api_server/services/groqNlIntent.js`, `banking_api_server/services/geminiNlIntent.js`
+- **Commit:** `e300b60`
+- **Tests:** 5-case test — credit_card rejected, investment rejected, checking→savings pass, langchain panel accepted, empty toId pass.
+- **Do not break:** `isValidRef` treats null/empty as valid (empty toId OK); UUID-format IDs must still pass for real session-store account IDs.
+
+
 ### 2026-04-01 — RFC 8693 token exchange: CLIENT_SECRET_BASIC auth method fix
 
 - **Root cause:** `performTokenExchange` and `performTokenExchangeWithActor` in `oauthService.js` hardcoded `client_secret_post` (put `client_id` + `client_secret` in the POST body). All PingOne apps in this project are configured for `CLIENT_SECRET_BASIC` (credentials in `Authorization: Basic` header). `exchangeCodeForToken` correctly called `applyAdminTokenEndpointClientAuth` which respects the config — the exchange methods did not, causing PingOne to return `Request denied: Unsupported authentication method` on every token exchange attempt.
