@@ -147,6 +147,7 @@ router.post(
         challengeId: result.challengeId,
         otpSent: result.otpSent,
         otpExpiresAt: result.otpExpiresAt,
+        ...(result.otpCodeFallback ? { otpCodeFallback: result.otpCodeFallback } : {}),
       });
     });
   },

@@ -123,7 +123,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         const { data } = await apiClient.post('/api/transactions/consent-challenge', intentPayload);
         const cid = data?.challengeId;
         if (!cid) { notifyError('Could not start consent — no challenge id from server.'); return; }
-        setConsentChallengeId(cid);
+        setConsentChallengeId({ id: cid, snapshot: data.snapshot || null });
         setAgentHitlAutoConfirm(!!autoConfirm);
         // Store the original agent intent so we can pass it back on confirmation
         agentHitlDetailRef.current = e.detail;
@@ -539,7 +539,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         notifyError('Could not start consent — no challenge id from server.');
         return;
       }
-      setConsentChallengeId(cid);
+      setConsentChallengeId({ id: cid, snapshot: data.snapshot || null });
     } catch (e) {
       const msg =
         e.response?.data?.message || e.response?.data?.error || e.message || 'Could not start consent flow.';
@@ -605,7 +605,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
       notifySuccess('Transfer completed successfully!');
     } catch (error) {
-      console.error('Transfer error:', error);
       const d = error.response?.data;
       if (error.response?.status === 400 && d?.error === 'consent_challenge_required') {
         await openConsentFlowForPayload({
@@ -617,6 +616,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         });
         return;
       }
+      console.error('Transfer error:', error);
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');
@@ -662,7 +662,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
       notifySuccess('Deposit completed successfully!');
     } catch (error) {
-      console.error('Deposit error:', error);
       const d = error.response?.data;
       if (error.response?.status === 400 && d?.error === 'consent_challenge_required') {
         await openConsentFlowForPayload({
@@ -674,6 +673,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         });
         return;
       }
+      console.error('Deposit error:', error);
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');
@@ -721,7 +721,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
       notifySuccess('Withdrawal completed successfully!');
     } catch (error) {
-      console.error('Withdrawal error:', error);
       const d = error.response?.data;
       if (error.response?.status === 400 && d?.error === 'consent_challenge_required') {
         await openConsentFlowForPayload({
@@ -733,6 +732,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         });
         return;
       }
+      console.error('Withdrawal error:', error);
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');
@@ -1397,10 +1397,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </button>
       )}
 
-      {consentChallengeId && (
+      {consentChallengeId?.id && (
         <TransactionConsentModal
           open
-          challengeId={consentChallengeId}
+          challengeId={consentChallengeId.id}
+          preloadedSnapshot={consentChallengeId.snapshot}
           user={user}
           autoConfirm={agentHitlAutoConfirm}
           onClose={() => { setConsentChallengeId(null); setAgentHitlAutoConfirm(false); agentHitlDetailRef.current = null; }}
