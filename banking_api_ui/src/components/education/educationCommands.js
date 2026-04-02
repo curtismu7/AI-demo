@@ -29,4 +29,7 @@ export const EDUCATION_COMMANDS = [
   { id: 'langchain', label: '🔗 LangChain — LCEL + multi-provider', panel: EDU.LANGCHAIN, tab: 'overview' },
   { id: 'agent-builders', label: '🤖 Agent Builder Landscape', panel: EDU.AGENT_BUILDER_LANDSCAPE, tab: 'langchain' },
   { id: 'agent-builder-compare', label: '📊 Agent Builder Comparison', panel: EDU.AGENT_BUILDER_LANDSCAPE, tab: 'comparison' },
+  { id: 'llm-landscape', label: '🧠 LLM Landscape', panel: EDU.LLM_LANDSCAPE, tab: 'commercial' },
+  { id: 'how-llms-work', label: '⚙️ How LLMs Work', panel: EDU.LLM_LANDSCAPE, tab: 'howllmswork' },
+  { id: 'llm-compare', label: '📊 LLM Comparison', panel: EDU.LLM_LANDSCAPE, tab: 'comparison' },
 ];

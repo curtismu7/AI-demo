@@ -28,4 +28,6 @@ export const EDU = {
   LANGCHAIN: 'langchain',
   /** Agent builder landscape — LangChain, open-source frameworks, commercial platforms, and comparison */
   AGENT_BUILDER_LANDSCAPE: 'agent-builder-landscape',
+  /** LLM landscape — commercial and open-source models, capabilities overview, and comparison */
+  LLM_LANDSCAPE: 'llm-landscape',
 };
