@@ -36,6 +36,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - **Phase 6 roadmap: token-exchange-fix** — added Phase 6 plan to address RFC 8693 token exchange "Unsupported authentication method" error from PingOne; requirements TOKEN-FIX-01, TOKEN-FIX-02
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - - **2-exchange token auth method fix** — `getClientCredentialsTokenAs` and `performTokenExchangeAs` previously hardcoded `client_secret_post`, causing "Unsupported authentication method" on the AI-Agent→MCP 2-exchange delegation path; both methods now route through `applyTokenEndpointAuth` with `method='basic'` default matching PingOne app configuration; `_performTwoExchangeDelegation` reads `AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD` / `MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD` env vars and passes them to all 4 call sites; 14 new auth-method unit tests added covering all 5 BFF token methods
 - **RFC 8693 token exchange auth method** — `performTokenExchange` and `performTokenExchangeWithActor` now use `CLIENT_SECRET_BASIC` (Authorization header) matching the PingOne app configuration, fixing "Unsupported authentication method" error; `getAgentClientCredentialsToken` same fix via `AGENT_TOKEN_ENDPOINT_AUTH_METHOD` env (default `basic`)
 - **PINGONE_MAY_ACT_SETUP.md** — added Part 6 Postman Testing section: links to collection and environment files, import instructions, 7-variable setup table, one-time Redirect URI note, step-by-step run order, utility request guide; renumbered Verification as Part 7
@@ -53,6 +54,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `TOKEN_EXCHANGE` category added to `LOG_CATEGORIES` in `utils/logger.js`
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - **Agent consent gate UX** — clicking a tool chip or typing a query before accepting consent now opens `AgentConsentModal` with a friendly message instead of showing `❌ Agent consent required...` error in chat (commit `32e1667`)
 - **Token exchange: full PingOne error now visible** — `oauthService.performTokenExchange`, `performTokenExchangeWithActor`, and `getAgentClientCredentialsToken` now attach `httpStatus`, `pingoneError`, `pingoneErrorDescription`, `pingoneErrorDetail`, `requestContext` as named properties on the thrown Error; `console.error` logs the full structured object; exchange-failed tokenEvent description shows HTTP status + PingOne error code + detail (commit `b4272ee`)
 - **Log viewer empty after cross-Lambda exchange failure** — Vercel serverless: the Lambda that ran the exchange and the Lambda serving `GET /api/logs/console` are separate processes with isolated `recentLogs[]` memory; `GET /api/logs/console` is now async and merges Redis exchange audit events, deduplicating messages already present from the same Lambda (commit `b4272ee`)
@@ -64,6 +66,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `TokenExchangeSimulator` — now draggable and resizable (portal, starts viewport-filling, drag/resize freely)
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - **Investment (and extra) accounts lost on cold-start** — `dataStore` is in-memory only; `provisionDemoAccounts` deleted all accounts and re-created only checking+savings whenever the in-memory store was empty (every Vercel cold-start). Fix: `demoScenario PUT` now saves an `accountSnapshot` array to `demoScenarioStore` (Redis/KV) after every save; `GET /api/accounts/my` and `GET /api/demo-data` both try to restore from that snapshot before falling back to provisioning; `POST /accounts/reset-demo` updates the snapshot to the freshly provisioned 2-account state so future cold-starts restore the reset (commit `1a93c77`)
 - **Bottom dock + admin middle agent restored** — `EmbeddedAgentDock.js` had an `isBankingAgentDashboardRoute` guard that returned null for ALL dashboard routes, preventing both the App-level and UserDashboard-level dock renders; removed the guard; added `onUserDashboardRoute` in `App.js` to skip the App-level dock on `/dashboard`/`/` (UserDashboard handles those) and to scope middle-mode float suppression only to UserDashboard routes so the admin Dashboard.js still gets the float agent in middle mode (commit `db73404`)
 - **`DemoDataPage` build error** — `handleResetDefaults` called `setAccounts` (removed in type-slot refactor); replaced with `setTypeSlots` callback updating `checking`/`savings` slots from `defaults.checkingName/Balance` and `defaults.savingsName/Balance` — blocked every Vercel deploy (commit `0058450`)
@@ -76,6 +79,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - **3-column Split Dashboard layout** — Token Chain (slim `220px`) | AI Agent (`1fr`) | Customer Accounts (`1fr`); all three columns same height, same row; action/suggestion chips now render as horizontal pill strip below the chat prompt instead of side column; responsive collapse at ≤1024px
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 
 - **`/consent-url` missing PKCE** — `GET /api/auth/oauth/user/consent-url` was building the authorization URL manually, omitting `code_challenge` and `code_challenge_method`; PingOne would have rejected the token exchange at callback; now uses `oauthService.generateAuthorizationUrl()` (same builder as login) and adds `setPkceCookie` for Vercel cold-start recovery
 - **`/consent-url` missing redirect-URI validation** — added `validateRedirectUriOrigin` guard mirroring the login route
@@ -122,6 +126,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `banking_mcp_server/tests/helpers/integrationAxiosMock.ts` — shared axios mock for integration tests
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 
 - **Transactions admin page** / **OAuth debug log** / **BankingAdminOps**: removed invalid **`setError`** calls and **`toast.error`** without import; errors use **`notifyError`** / **`toastAdminSessionError`**
 - **McpInspector** / **EmbeddedAgentDock**: ESLint JSX spacing and **`no-useless-computed-key`** for CSS variables (CI **`CI=true` build**)
@@ -171,6 +176,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ### Added
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 
 ### Changed
 
@@ -186,6 +192,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - README.md Vercel Deployment section covering setup wizard, required vars, common issues, and post-deploy verification checklist
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - Session store switched from `@upstash/redis` to `@vercel/kv` (confirmed direct dep); resolves `sessionStoreHealthy: false` caused by version mismatch
 - `ping()` now returns `{ healthy, error }` — actual error message visible in `/api/auth/debug` as `sessionStoreError`
 - Pre-existing `useEffect` missing-dependency lint error in `UserDashboard.js` (blocked Vercel build)
@@ -202,6 +209,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ### Added
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 
 ### Changed
 
@@ -226,6 +234,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `scripts/release.js` — automates changelog versioning and git tagging on each deploy
 
 ### Fixed
+- **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - Redis cold-start 500 on `/api/accounts/my`: `RedisStore.get()` error now returns empty session (→ 401) instead of propagating as a 500. See `REGRESSION_LOG.md`.
 - `?error=session_error` redirect before PingOne login: `session.save()` failure is now a warning; redirect to PingOne proceeds. See `REGRESSION_LOG.md`.
 - Eager Redis connect race condition: `redisClient.connect()` now called at module load time so the TLS handshake overlaps with cold-start overhead. See `REGRESSION_LOG.md`.
