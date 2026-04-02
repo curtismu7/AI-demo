@@ -297,23 +297,24 @@ Plans:
 
 ### Phase 21: Customer diagrams — token exchange flow and token anatomy before/after exchange
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Two customer-facing draw.io diagrams documenting the RFC 8693 token exchange chain: a sequence/flow diagram showing delegation steps, and a token anatomy diagram showing JWT claims at each stage.
+**Requirements**: DIAG-01 (token exchange flow diagram), DIAG-02 (token anatomy diagram)
 **Depends on:** Phase 20
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 21 to break down)
+- [ ] 21-01-PLAN.md — Create BX-Finance-Token-Exchange-Customer.drawio + BX-Finance-Token-Anatomy.drawio
 
 ### Phase 22: Agent capability audit — enterprise-grade tools, full account data, Brave Search routing, Groq NLU, exhaustive chip coverage
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Close chip coverage gaps (add query_user_by_email and web_search chips), wire Brave Search as a BFF-side action with server-only API key handling, and verify all MCP tools return complete data.
+**Requirements**: AGENT-01 (chip coverage), AGENT-02 (full account data), AGENT-03 (Brave Search wire), AGENT-04 (NLU routing)
 **Depends on:** Phase 21
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 22 to break down)
+- [ ] 22-01-PLAN.md — Audit MCP tool chip coverage + add query_user chip + verify full account/transaction data
+- [ ] 22-02-PLAN.md — Wire Brave Search (braveSearchService + web_search intent + Groq NLU prompt)
 
 ### Phase 23: LangChain modernization — upgrade to 0.3.x LCEL, multi-provider model switching UI, user API key input, education page
 
@@ -357,23 +358,25 @@ Plans:
 
 ### Phase 27: PingOne Authorize PAZ setup — transaction limit policy, AUD validation, act chain introspection to match RFC 8693 token exchange implementation
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Fix RFC 8693 act.sub extraction in the MCP first-tool gate and extend the PAZ setup documentation with AUD validation, act chain policy design, and transaction limit examples.
+**Requirements**: PAZ-01 (act.sub code fix), PAZ-02 (AUD + act chain + transaction limit docs)
 **Depends on:** Phase 26
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 27 to break down)
+- [ ] 27-01-PLAN.md — Fix actClientId extraction (act.client_id || act.sub) + update JSDoc comments
+- [ ] 27-02-PLAN.md — Extend PINGONE_AUTHORIZE_PLAN.md with AUD validation, act.sub, and transaction limit sections
 
 ### Phase 28: Vercel config tab — read environment variables via Vercel API, display editable fields in UI, write non-secret vars back to Vercel, secrets entered by user and stored server-side only
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add a Vercel Env tab to the Config page that reads and writes env vars via Vercel Projects API (BFF-side only), shows secrets as masked indicators, and allows plain var editing inline.
+**Requirements**: VCFG-01 (BFF route), VCFG-02 (React component), VCFG-03 (Config.js tab wiring + build)
 **Depends on:** Phase 27
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 28 to break down)
+- [ ] 28-01-PLAN.md — BFF route /api/admin/vercel-config (GET list + PATCH update via Vercel Projects API)
+- [ ] 28-02-PLAN.md — VercelConfigTab.js component + Config.js tab bar wiring + npm run build verify
 
 ---
 
