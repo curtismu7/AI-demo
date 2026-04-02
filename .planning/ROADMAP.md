@@ -397,13 +397,15 @@ Plans:
 - [ ] 29-06-PLAN.md — Education panel SensitiveDataPanel (2 tabs) + agent chip + build verify
 ### Phase 30: agent layout modes - float, left-dock, right-dock, bottom-dock with resizable panels and responsive 3-column layout adjustment
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Extend AgentUiModeContext and toggle UI to support left-dock and right-dock placement modes with a width-resizable SideAgentDock component; update App.js to mount the side dock; fix the accounts regression when switching to middle layout.
+**Requirements**: LAYOUT-01, LAYOUT-02, LAYOUT-03, LAYOUT-04, LAYOUT-05, LAYOUT-06
 **Depends on:** Phase 29
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 30 to break down)
+- [ ] 30-01-PLAN.md — Extend AgentUiModeContext: add left-dock/right-dock placement types + unit tests
+- [ ] 30-02-PLAN.md — SideAgentDock component + CSS + App.js wiring
+- [ ] 30-03-PLAN.md — AgentUiModeToggle: Left/Right buttons + accounts regression fix (todo #11)
 
 ### Phase 31: floating draggable resizable windows - agent request flow, agent panel, API viewer, log viewer and all drawers use unified drag-resize system with consistent UX across all windows
 
