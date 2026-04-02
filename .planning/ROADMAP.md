@@ -318,13 +318,16 @@ Plans:
 
 ### Phase 23: LangChain modernization — upgrade to 0.3.x LCEL, multi-provider model switching UI, user API key input, education page
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Modernize langchain_agent/ to 0.3.x LCEL, add 5-provider LLM factory, BFF session-stored API keys, widget settings panel, Config page section, and LangChain education sidebar + /langchain deep-dive page.
+**Requirements**: LCH-01, LCH-02, LCH-03, LCH-04
 **Depends on:** Phase 22
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 23 to break down)
+- [ ] 23-01-PLAN.md — Python upgrade: requirements.txt + LangChainConfig extension + llm_factory.py + LCEL migration
+- [ ] 23-02-PLAN.md — BFF /api/langchain/config routes + Config page LangChain Agent section
+- [ ] 23-03-PLAN.md — Widget provider badge + settings panel (depends 23-01, 23-02)
+- [ ] 23-04-PLAN.md — Education: LangChainPanel + /langchain page + BankingAgent NLU wiring (depends 23-02)
 
 ### Phase 24: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 
