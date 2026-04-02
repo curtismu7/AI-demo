@@ -280,7 +280,7 @@ Plans:
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
 **Requirements**: TBD
 **Depends on:** Phase 18
-**Plans:** 1 plan
+**Plans:** 0/1 plans executed
 
 Plans:
 - [ ] 19-01-PLAN.md — Remove dead code + lesson accordion + fix dark mode
