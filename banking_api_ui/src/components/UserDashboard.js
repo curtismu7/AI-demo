@@ -588,6 +588,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
+    handleScrollToAssistant();
     try {
       await apiClient.post('/api/transactions', {
         fromAccountId: selectedAccount.id,
@@ -645,6 +646,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
+    handleScrollToAssistant();
     try {
       await apiClient.post('/api/transactions', {
         fromAccountId: null,
@@ -704,6 +706,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
+    handleScrollToAssistant();
     try {
       await apiClient.post('/api/transactions', {
         fromAccountId: withdrawAccount.id,
