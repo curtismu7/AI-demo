@@ -102,12 +102,12 @@
           }
         ],
         "url": {
-          "raw": "{{base_url}}/{{env_id}}/as/authorize?response_mode=pi.flow&response_type=code&client_id={{client_id}}&redirect_uri={{redirect_uri}}&scope={{scope}}&state={{state}}&code_challenge={{code_challenge}}&code_challenge_method=S256&resource={{resource}}",
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/authorize?response_mode=pi.flow&response_type=code&client_id={{PINGONE_CORE_USER_CLIENT_ID}}&redirect_uri={{PINGONE_CORE_USER_REDIRECT_URI}}&scope={{scope}}&state={{state}}&code_challenge={{code_challenge}}&code_challenge_method=S256&resource={{ENDUSER_AUDIENCE}}",
           "host": [
-            "{{base_url}}"
+            "{{PINGONE_BASE_URL}}"
           ],
           "path": [
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
             "authorize"
           ],
@@ -122,11 +122,11 @@
             },
             {
               "key": "client_id",
-              "value": "{{client_id}}"
+              "value": "{{PINGONE_CORE_USER_CLIENT_ID}}"
             },
             {
               "key": "redirect_uri",
-              "value": "{{redirect_uri}}"
+              "value": "{{PINGONE_CORE_USER_REDIRECT_URI}}"
             },
             {
               "key": "scope",
@@ -146,11 +146,11 @@
             },
             {
               "key": "resource",
-              "value": "{{resource}}"
+              "value": "{{ENDUSER_AUDIENCE}}"
             }
           ]
         },
-        "description": "Returns JSON flow instead of a browser redirect.\n\nscope must NOT include openid — it conflicts with resource= audience.\nresource={{resource}} = https://ai-agent.pingdemo.com ensures the Subject Token\ngets aud=[\"https://ai-agent.pingdemo.com\"] and may_act is present.\n\nExpected response:\n```json\n{\n  \"id\": \"<flow-id>\",\n  \"status\": \"USERNAME_PASSWORD_REQUIRED\",\n  \"_links\": {\n    \"usernamePassword.check\": { \"href\": \"https://auth.pingone.com/{envId}/flows/{flowId}\" }\n  }\n}\n```"
+        "description": "Returns JSON flow instead of a browser redirect.\n\nscope must NOT include openid — it conflicts with resource= audience.\nresource={{ENDUSER_AUDIENCE}} = https://ai-agent.pingdemo.com ensures the Subject Token\ngets aud=[\"https://ai-agent.pingdemo.com\"] and may_act is present.\n\nExpected response:\n```json\n{\n  \"id\": \"<flow-id>\",\n  \"status\": \"USERNAME_PASSWORD_REQUIRED\",\n  \"_links\": {\n    \"usernamePassword.check\": { \"href\": \"https://auth.pingone.com/{envId}/flows/{flowId}\" }\n  }\n}\n```"
       },
       "response": []
     },
@@ -222,7 +222,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+          "raw": "{\n  \"username\": \"{{TEST_USERNAME}}\",\n  \"password\": \"{{TEST_PASSWORD}}\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -418,15 +418,15 @@
             },
             {
               "key": "redirect_uri",
-              "value": "{{redirect_uri}}"
+              "value": "{{PINGONE_CORE_USER_REDIRECT_URI}}"
             },
             {
               "key": "client_id",
-              "value": "{{client_id}}"
+              "value": "{{PINGONE_CORE_USER_CLIENT_ID}}"
             },
             {
               "key": "client_secret",
-              "value": "{{client_secret}}"
+              "value": "{{PINGONE_CORE_USER_CLIENT_SECRET}}"
             },
             {
               "key": "code_verifier",
@@ -439,12 +439,12 @@
           ]
         },
         "url": {
-          "raw": "{{base_url}}/{{env_id}}/as/token",
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
           "host": [
-            "{{base_url}}"
+            "{{PINGONE_BASE_URL}}"
           ],
           "path": [
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
             "token"
           ]
@@ -530,12 +530,12 @@
             },
             {
               "key": "client_id",
-              "value": "{{ai_agent_client_id}}",
+              "value": "{{PINGONE_CORE_CLIENT_ID}}",
               "description": "BX Finance AI Agent App"
             },
             {
               "key": "client_secret",
-              "value": "{{ai_agent_client_secret}}"
+              "value": "{{PINGONE_CORE_CLIENT_SECRET}}"
             },
             {
               "key": "audience",
@@ -545,12 +545,12 @@
           ]
         },
         "url": {
-          "raw": "{{base_url}}/{{env_id}}/as/token",
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
           "host": [
-            "{{base_url}}"
+            "{{PINGONE_BASE_URL}}"
           ],
           "path": [
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
             "token"
           ]
@@ -686,22 +686,22 @@
             },
             {
               "key": "client_id",
-              "value": "{{ai_agent_client_id}}",
+              "value": "{{PINGONE_CORE_CLIENT_ID}}",
               "description": "BX Finance AI Agent App — exchanger"
             },
             {
               "key": "client_secret",
-              "value": "{{ai_agent_client_secret}}"
+              "value": "{{PINGONE_CORE_CLIENT_SECRET}}"
             }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/{{env_id}}/as/token",
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
           "host": [
-            "{{base_url}}"
+            "{{PINGONE_BASE_URL}}"
           ],
           "path": [
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
             "token"
           ]
@@ -790,12 +790,12 @@
             },
             {
               "key": "client_id",
-              "value": "{{mcp_client_id}}",
+              "value": "{{MCP_CLIENT_ID}}",
               "description": "BX Finance MCP Service"
             },
             {
               "key": "client_secret",
-              "value": "{{mcp_client_secret}}"
+              "value": "{{MCP_CLIENT_SECRET}}"
             },
             {
               "key": "audience",
@@ -805,12 +805,12 @@
           ]
         },
         "url": {
-          "raw": "{{base_url}}/{{env_id}}/as/token",
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
           "host": [
-            "{{base_url}}"
+            "{{PINGONE_BASE_URL}}"
           ],
           "path": [
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
             "token"
           ]
@@ -948,22 +948,22 @@
             },
             {
               "key": "client_id",
-              "value": "{{mcp_client_id}}",
+              "value": "{{MCP_CLIENT_ID}}",
               "description": "BX Finance MCP Service — exchanger"
             },
             {
               "key": "client_secret",
-              "value": "{{mcp_client_secret}}"
+              "value": "{{MCP_CLIENT_SECRET}}"
             }
           ]
         },
         "url": {
-          "raw": "{{base_url}}/{{env_id}}/as/token",
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
           "host": [
-            "{{base_url}}"
+            "{{PINGONE_BASE_URL}}"
           ],
           "path": [
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
             "token"
           ]
@@ -1048,12 +1048,12 @@
             },
             {
               "key": "client_id",
-              "value": "{{mcp_client_id}}",
+              "value": "{{MCP_CLIENT_ID}}",
               "description": "BX Finance MCP Service"
             },
             {
               "key": "client_secret",
-              "value": "{{mcp_client_secret}}"
+              "value": "{{MCP_CLIENT_SECRET}}"
             },
             {
               "key": "scope",
@@ -1062,12 +1062,12 @@
           ]
         },
         "url": {
-          "raw": "{{base_url}}/{{env_id}}/as/token",
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
           "host": [
-            "{{base_url}}"
+            "{{PINGONE_BASE_URL}}"
           ],
           "path": [
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
             "token"
           ]
@@ -1137,7 +1137,7 @@
           }
         ],
         "url": {
-          "raw": "https://api.pingone.com/v1/environments/{{env_id}}/users/{{user_sub}}",
+          "raw": "https://api.pingone.com/v1/environments/{{PINGONE_ENVIRONMENT_ID}}/users/{{user_sub}}",
           "protocol": "https",
           "host": [
             "api",
@@ -1147,7 +1147,7 @@
           "path": [
             "v1",
             "environments",
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "users",
             "{{user_sub}}"
           ]
@@ -1183,12 +1183,12 @@
           "basic": [
             {
               "key": "username",
-              "value": "{{mcp_client_id}}",
+              "value": "{{MCP_CLIENT_ID}}",
               "type": "string"
             },
             {
               "key": "password",
-              "value": "{{mcp_client_secret}}",
+              "value": "{{MCP_CLIENT_SECRET}}",
               "type": "string"
             }
           ]
@@ -1219,12 +1219,12 @@
           ]
         },
         "url": {
-          "raw": "{{base_url}}/{{env_id}}/as/introspect",
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/introspect",
           "host": [
-            "{{base_url}}"
+            "{{PINGONE_BASE_URL}}"
           ],
           "path": [
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "as",
             "introspect"
           ]
@@ -1294,7 +1294,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"mayAct\": { \"sub\": \"{{ai_agent_client_id}}\" }\n}",
+          "raw": "{\n  \"mayAct\": { \"sub\": \"{{PINGONE_CORE_CLIENT_ID}}\" }\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -1302,7 +1302,7 @@
           }
         },
         "url": {
-          "raw": "https://api.pingone.com/v1/environments/{{env_id}}/users/{{user_sub}}",
+          "raw": "https://api.pingone.com/v1/environments/{{PINGONE_ENVIRONMENT_ID}}/users/{{user_sub}}",
           "protocol": "https",
           "host": [
             "api",
@@ -1312,7 +1312,7 @@
           "path": [
             "v1",
             "environments",
-            "{{env_id}}",
+            "{{PINGONE_ENVIRONMENT_ID}}",
             "users",
             "{{user_sub}}"
           ]
@@ -1324,27 +1324,27 @@
   ],
   "variable": [
     {
-      "key": "base_url",
+      "key": "PINGONE_BASE_URL",
       "value": "https://auth.pingone.com",
       "description": "Change TLD for region: .ca .eu .com.au .sg .asia"
     },
     {
-      "key": "env_id",
+      "key": "PINGONE_ENVIRONMENT_ID",
       "value": "d02d2305-f445-406d-82ee-7cdbf6eeabfd",
       "description": "PingOne environment ID (GUID)"
     },
     {
-      "key": "client_id",
+      "key": "PINGONE_CORE_USER_CLIENT_ID",
       "value": "62d5fb56-5a0a-406e-9005-eec2fee23b8f",
       "description": "BX Finance User app — issues Subject Token via PKCE"
     },
     {
-      "key": "client_secret",
+      "key": "PINGONE_CORE_USER_CLIENT_SECRET",
       "value": "YOUR_CLIENT_SECRET",
       "description": "BX Finance User app client secret"
     },
     {
-      "key": "redirect_uri",
+      "key": "PINGONE_CORE_USER_REDIRECT_URI",
       "value": "https://banking-demo-puce.vercel.app/api/auth/oauthuser/callback",
       "description": "Must be registered on the PingOne application"
     },
@@ -1354,37 +1354,37 @@
       "description": "Space-separated scopes. Do NOT include openid — conflicts with resource= audience."
     },
     {
-      "key": "resource",
+      "key": "ENDUSER_AUDIENCE",
       "value": "https://ai-agent.pingdemo.com",
       "description": "Subject Token audience — BX Finance AI Agent resource server audience"
     },
     {
-      "key": "username",
+      "key": "TEST_USERNAME",
       "value": "bankuser",
       "description": "End-user username"
     },
     {
-      "key": "password",
+      "key": "TEST_PASSWORD",
       "value": "Tigers7&",
       "description": "End-user password"
     },
     {
-      "key": "ai_agent_client_id",
+      "key": "PINGONE_CORE_CLIENT_ID",
       "value": "YOUR_AI_AGENT_CLIENT_ID",
       "description": "Client ID of BX Finance AI Agent App (performs Exchange #1). Set as mayAct.sub on user records."
     },
     {
-      "key": "ai_agent_client_secret",
+      "key": "PINGONE_CORE_CLIENT_SECRET",
       "value": "YOUR_AI_AGENT_CLIENT_SECRET",
       "description": "Client Secret of BX Finance AI Agent App"
     },
     {
-      "key": "mcp_client_id",
+      "key": "MCP_CLIENT_ID",
       "value": "YOUR_MCP_CLIENT_ID",
       "description": "Client ID of BX Finance MCP Service (performs Exchange #2 + Client Credentials for PingOne API)"
     },
     {
-      "key": "mcp_client_secret",
+      "key": "MCP_CLIENT_SECRET",
       "value": "YOUR_MCP_CLIENT_SECRET",
       "description": "Client Secret of BX Finance MCP Service"
     },
@@ -1472,6 +1472,11 @@
       "key": "pingone_api_token",
       "value": "",
       "description": "PingOne Management API Token — set by step 7 (client credentials, independent of delegation chain)"
+    },
+    {
+      "key": "MCP_RESOURCE_URI",
+      "value": "",
+      "description": "MCP Server resource URI — used as resource= param in Exchange #2 (RFC 8693)"
     }
   ]
 }
