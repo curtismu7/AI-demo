@@ -78,6 +78,18 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-02 — HITL/agent: MCP param names + NL form field + CIBA session save
+
+- **Root cause A (`bankingAgentService.js`):** `createDeposit` and `createWithdrawal` sent `account_id` as the MCP tool param, but the MCP server schema requires `to_account_id` / `from_account_id` respectively. With a valid PingOne token (MCP server path), validation failed immediately. Local-fallback path worked because `mcpLocalTools.js` accepts `account_id || to_account_id`.
+- **Root cause B (`BankingAgent.js`):** `runAction` and `buildConsentIntent` used `form.accountId` for deposit/withdraw. Natural-language path maps MCP params via `normalizeBankingParams` into `form.toId` / `form.fromId` (not `form.accountId`), leaving it undefined. This caused "Missing required field: fromAccountId for withdrawal" toast (todos #2, #10).
+- **Root cause C (`routes/ciba.js`):** CIBA poll approval stored new tokens in `req.session.oauthTokens` but did NOT call `req.session.save()` before responding. On Vercel serverless the updated session (with elevated ACR) might not reach Redis before the next request, causing the step-up gate to still fire 428.
+- **Fix A:** `bankingAgentService.js` — changed `account_id: accountId` → `to_account_id: accountId` in `createDeposit`; `account_id: accountId` → `from_account_id: accountId` in `createWithdrawal`.
+- **Fix B:** `BankingAgent.js` — `buildConsentIntent` deposit uses `form.accountId || form.toId`; withdraw uses `form.accountId || form.fromId`. `runAction` deposit uses `form.accountId || form.toId`; withdraw uses `form.accountId || form.fromId`.
+- **Fix C:** `routes/ciba.js` — wrapped `res.json` in `req.session.save()` callback on CIBA approval (consistent with `/verify-otp`, `/confirm`, and consent-challenge routes).
+- **Files changed:** `banking_api_ui/src/services/bankingAgentService.js`, `banking_api_ui/src/components/BankingAgent.js`, `banking_api_server/routes/ciba.js`
+- **Todos resolved:** #2 (missing fromAccountId for withdrawal), #10 (deposit 400 after step-up)
+- **Do not break:** ActionForm path still provides `form.accountId` directly — `|| form.toId` fallback is a no-op for that path. `mcpLocalTools` local fallback continues to accept both `account_id` and `to_account_id`/`from_account_id` (no change). CIBA `session.save` callback pattern is consistent with all other consent/OTP routes.
+
 ### 2026-04-02 — NLU: credit card payment returns friendly message instead of account-not-found error
 
 - **Root cause:** User typed “pay my credit card from checking $250”; Groq LLM returned `{toId:"credit_card"}`. `sanitizeNlResult` had no account-type validation so the raw string passed through; `resolveAccountId("credit_card", accounts)` found no match; `create_transfer` threw "Destination account credit_card not found".

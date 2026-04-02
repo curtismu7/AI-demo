@@ -156,7 +156,7 @@ export function createTransfer(fromAccountId, toAccountId, amount, description) 
 
 export function createDeposit(accountId, amount, description) {
   return callMcpTool('create_deposit', {
-    account_id: accountId,
+    to_account_id: accountId,
     amount,
     description: description || 'Agent deposit',
   });
@@ -164,7 +164,7 @@ export function createDeposit(accountId, amount, description) {
 
 export function createWithdrawal(accountId, amount, description) {
   return callMcpTool('create_withdrawal', {
-    account_id: accountId,
+    from_account_id: accountId,
     amount,
     description: description || 'Agent withdrawal',
   });

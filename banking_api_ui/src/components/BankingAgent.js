@@ -10,7 +10,9 @@ import {
   createDeposit,
   createWithdrawal,
   refreshOAuthSession,
+  callMcpTool,
 } from '../services/bankingAgentService';
+import SensitiveConsentBanner from './SensitiveConsentBanner';
 import { loadPublicConfig } from '../services/configService';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { useTokenChainOptional } from '../context/TokenChainContext';
@@ -46,6 +48,7 @@ const ACTIONS = [
   { id: 'deposit',      label: '⬇ Deposit',             desc: 'Deposit into an account' },
   { id: 'withdraw',     label: '⬆ Withdraw',            desc: 'Withdraw from an account' },
   { id: 'transfer',     label: '↔ Transfer',            desc: 'Transfer between accounts' },
+  { id: 'sensitive-account-details', label: '👁 View Sensitive Account Details', desc: 'View full account number and routing number (requires consent)' },
   { id: 'mcp_tools',   label: '🔧 MCP Tools',           desc: 'List all available MCP banking tools' },
   { id: 'logout',       label: '🚪 Log Out',             desc: 'Sign out of your account' },
 ];
@@ -79,6 +82,7 @@ function generateFakeAccounts(_user) {
 
 const SUGGESTIONS_CUSTOMER = [
   'Show me my accounts',
+  'Show me my full account details',
   'Transfer $100 to savings',
   'Deposit $50 into checking',
 ];
@@ -232,10 +236,10 @@ function normalizeAgentToolResult(result) {
 function buildConsentIntent(actionId, form) {
   const amount = parseFloat(form.amount);
   if (actionId === 'deposit') {
-    return { type: 'deposit', toAccountId: form.accountId, fromAccountId: null, amount, description: form.note || 'Agent deposit' };
+    return { type: 'deposit', toAccountId: form.accountId || form.toId, fromAccountId: null, amount, description: form.note || 'Agent deposit' };
   }
   if (actionId === 'withdraw') {
-    return { type: 'withdrawal', fromAccountId: form.accountId, toAccountId: null, amount, description: form.note || 'Agent withdrawal' };
+    return { type: 'withdrawal', fromAccountId: form.accountId || form.fromId, toAccountId: null, amount, description: form.note || 'Agent withdrawal' };
   }
   if (actionId === 'transfer') {
     return { type: 'transfer', fromAccountId: form.fromId, toAccountId: form.toId, amount, description: form.note || 'Agent transfer' };
@@ -671,6 +675,10 @@ export default function BankingAgent({
   /** True when the user has accepted the in-app agent consent agreement. */
   /** Pending HITL intent — shows AgentConsentModal (transaction mode) before OTP. */
   const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
+  /** Pending sensitive data consent — shows SensitiveConsentBanner when agent calls get_sensitive_account_details. */
+  const [sensitiveConsentPending, setSensitiveConsentPending] = useState(null);
+  /** True while POST /api/accounts/sensitive-consent is in flight. */
+  const [sensitiveConsentLoading, setSensitiveConsentLoading] = useState(false);
   /** Challenge ID issued after the user clicks Authorize in AgentConsentModal. */
   const [hitlChallengeId, setHitlChallengeId] = useState(null);
   /** Pending action awaiting CIBA step-up approval (ref: read in event listener closure). */
@@ -1300,6 +1308,33 @@ export default function BankingAgent({
   /**
    * Runs a banking tool. When fromNl is true, skips the extra user bubble (NL already echoed the ask).
    */
+  // ─── Sensitive data consent handlers ────────────────────────────────────────
+  const handleSensitiveReveal = async () => {
+    if (!sensitiveConsentPending) return;
+    setSensitiveConsentLoading(true);
+    try {
+      const res = await fetch('/api/accounts/sensitive-consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('consent_failed');
+      toast.success('✓ Access granted (60s)', { autoClose: 2000 });
+      const { actionId: prevActionId, form: prevForm } = sensitiveConsentPending;
+      setSensitiveConsentPending(null);
+      setSensitiveConsentLoading(false);
+      runAction(prevActionId, prevForm, { skipUserLabel: true });
+    } catch {
+      setSensitiveConsentLoading(false);
+      toast.error('Failed to grant consent. Please try again.');
+    }
+  };
+
+  const handleSensitiveDeny = () => {
+    setSensitiveConsentPending(null);
+    addMessage('assistant', '🔒 Access denied — sensitive account details were not revealed.', null);
+  };
+
   async function runAction(actionId, form, opts = {}) {
     if (isAgentBlockedByConsentDecline()) {
       addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
@@ -1344,15 +1379,19 @@ export default function BankingAgent({
           break;
         case 'deposit':
           toast.update(toastId, { render: '⬇️ Calling create_deposit…' });
-          response = await createDeposit(form.accountId, parseFloat(form.amount), form.note);
+          response = await createDeposit(form.accountId || form.toId, parseFloat(form.amount), form.note);
           break;
         case 'withdraw':
           toast.update(toastId, { render: '⬆️ Calling create_withdrawal…' });
-          response = await createWithdrawal(form.accountId, parseFloat(form.amount), form.note);
+          response = await createWithdrawal(form.accountId || form.fromId, parseFloat(form.amount), form.note);
           break;
         case 'transfer':
           toast.update(toastId, { render: '↔️ Calling create_transfer…' });
           response = await createTransfer(form.fromId, form.toId, parseFloat(form.amount), form.note);
+          break;
+        case 'sensitive-account-details':
+          toast.update(toastId, { render: '🔒 Calling get_sensitive_account_details…' });
+          response = await callMcpTool('get_sensitive_account_details', {});
           break;
         case 'mcp_tools': {
           toast.update(toastId, { render: '🔧 Fetching MCP tool list…' });
@@ -1440,6 +1479,25 @@ export default function BankingAgent({
       }
 
       const normalized = normalizeAgentToolResult(response.result);
+
+      // Check for sensitive data consent required (distinct from HITL dollar-amount flow)
+      // Must be checked BEFORE isAgentToolErrorResult because ok:false,consent_required:true
+      // has no 'error' field and would pass through to the success handler undetected.
+      const isSensitiveConsentNeeded = normalized &&
+        typeof normalized === 'object' &&
+        normalized.consent_required === true &&
+        normalized.reason === 'sensitive_data_access';
+
+      if (isSensitiveConsentNeeded) {
+        markToolProgressOutcome(false);
+        setSensitiveConsentPending({ actionId, form });
+        addMessage('assistant', '🔒 Access approval needed to view sensitive account details.', actionId);
+        toast.dismiss(toastId);
+        setLoading(false);
+        toolProgressIdRef.current = null;
+        return;
+      }
+
       if (isAgentToolErrorResult(normalized)) {
         markToolProgressOutcome(false);
         const tokenEventsErr = response.tokenEvents || [];
@@ -2238,6 +2296,13 @@ export default function BankingAgent({
             )}
 
             {/* High-value transaction consent — shown before OTP (HITL) */}
+            {sensitiveConsentPending && (
+              <SensitiveConsentBanner
+                onReveal={handleSensitiveReveal}
+                onDeny={handleSensitiveDeny}
+                loading={sensitiveConsentLoading}
+              />
+            )}
             {hitlPendingIntent && (
               <AgentConsentModal
                 transaction={hitlPendingIntent.intentPayload}

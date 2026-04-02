@@ -189,9 +189,12 @@ router.get('/poll/:authReqId', authenticateToken, async (req, res) => {
 
     delete req.session.cibaRequests[authReqId];
 
-    res.json({
-      status: 'approved',
-      scope:  pending.scope,
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[CIBA] session save error on approval:', saveErr);
+      res.json({
+        status: 'approved',
+        scope:  pending.scope,
+      });
     });
   } catch (err) {
     const errorCode = err.response?.data?.error;
