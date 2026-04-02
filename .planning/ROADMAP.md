@@ -391,6 +391,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 29 to break down)
 
+### Phase 30: agent layout modes - float, left-dock, right-dock, bottom-dock with resizable panels and responsive 3-column layout adjustment
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 29
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 30 to break down)
+
 ---
 
 ## Dependency Order
