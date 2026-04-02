@@ -102,3 +102,4 @@ Plan: 2 of 2
 - Phase 37 added: Public-facing MCP server for external agents — read-only tool surface, scoped credentials, and access controls so external agents have limited safe access
 - Phase 38 added: Family delegation — delegate account access to other family members with scoped permissions (view accounts, balances, deposits, withdrawals, transfers), delegation history, email notification, PingOne user provisioning, and worker app config tab
 - Phase 39 added: Architecture diagram — create draw.io diagram of the full app architecture (UI, BFF, MCP server, LangChain agent, PingOne, PingGateway) showing component relationships, auth flows, and token paths
+- Phase 40 added: PingGateway MCP security — education panel (securing MCP with PingGateway) + feasibility analysis: build custom gateway vs install PingGateway

@@ -491,6 +491,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 39 to break down)
 
+### Phase 40: PingGateway MCP security: education panel on securing MCP with PingGateway plus feasibility analysis of building a custom gateway vs installing PingGateway
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 39
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 40 to break down)
+
 ---
 
 ## Dependency Order
