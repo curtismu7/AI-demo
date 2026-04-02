@@ -96,3 +96,4 @@ Plan: 0 of 0
 - Phase 31 added: Floating draggable resizable windows — agent request flow, agent panel, API viewer, log viewer, all drawers unified under a single drag-resize system
 - Phase 32 added: MCP server advanced capabilities — sequential thinking tool, async long-running tasks (SEP-1686), .well-known server discovery, audit trail observability, MCP registry integration
 - Phase 33 added: Token chain history persistence — record and restore token chain across page refreshes using sessionStorage or localStorage
+- Phase 34 added: Agent action logging — log what agent performed each action, which rights (scopes/permissions) were used, and record each step for observability and audit

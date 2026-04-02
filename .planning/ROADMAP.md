@@ -431,6 +431,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 33 to break down)
 
+### Phase 34: Agent action logging — log what agent, what action, rights used, and each step
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 33
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 34 to break down)
+
 ---
 
 ## Dependency Order
