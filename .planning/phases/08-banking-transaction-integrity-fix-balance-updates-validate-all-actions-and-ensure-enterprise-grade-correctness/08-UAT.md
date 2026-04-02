@@ -9,12 +9,12 @@ updated: 2026-04-02T00:00:00Z
 ## Current Test
 <!-- OVERWRITE each test - shows where we are -->
 
-number: 2
-name: Agent Withdraw → Balance Updates
+number: 3
+name: Agent Transfer → Balance Updates
 expected: |
-  Ask the agent to withdraw from an account — e.g. "Withdraw $50 from my checking".
-  Confirm the action. Within 1 second the account tile balance should decrease.
-  No page reload required.
+  Ask the agent to transfer between accounts — e.g. "Transfer $25 from checking to savings".
+  Confirm the action. Both account tiles (source and destination) should reflect the
+  new balances within 1 second, without a page reload.
 awaiting: user response
 
 ## Tests
@@ -32,7 +32,7 @@ expected: |
   Ask the agent to withdraw from an account — e.g. "Withdraw $50 from my checking".
   Confirm the action. Within 1 second the account tile balance should decrease.
   No page reload required.
-result: pending
+result: pass
 
 ### 3. Agent Transfer → Balance Updates
 expected: |
@@ -51,9 +51,9 @@ result: pending
 ## Summary
 
 total: 4
-passed: 1
+passed: 2
 issues: 0
-pending: 3
+pending: 2
 skipped: 0
 
 ## Gaps
