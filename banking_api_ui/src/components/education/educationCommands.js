@@ -32,4 +32,6 @@ export const EDUCATION_COMMANDS = [
   { id: 'llm-landscape', label: '🧠 LLM Landscape', panel: EDU.LLM_LANDSCAPE, tab: 'commercial' },
   { id: 'how-llms-work', label: '⚙️ How LLMs Work', panel: EDU.LLM_LANDSCAPE, tab: 'howllmswork' },
   { id: 'llm-compare', label: '📊 LLM Comparison', panel: EDU.LLM_LANDSCAPE, tab: 'comparison' },
+  { id: 'ai-platforms', label: '🌐 AI Platform Landscape', panel: EDU.AI_PLATFORM_LANDSCAPE, tab: 'aws' },
+  { id: 'ai-platform-compare', label: '📊 AI Platform Comparison', panel: EDU.AI_PLATFORM_LANDSCAPE, tab: 'comparison' },
 ];
