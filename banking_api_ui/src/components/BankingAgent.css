@@ -2380,45 +2380,45 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 /* ─── Marketing page: white site chrome → agents read as bold black/dark widgets ─ */
 .App--marketing-page .global-embedded-agent-dock-wrap {
-  background: #08142a !important;
-  border-top: 3px solid #000000 !important;
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+  background: #f1f5f9 !important;
+  border-top: 3px solid #cbd5e1 !important;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.07);
 }
 
 .App--marketing-page .global-embedded-agent-dock-wrap--collapsed {
-  background: #0d1f3a !important;
-  border-top-color: #000000 !important;
+  background: #e2e8f0 !important;
+  border-top-color: #cbd5e1 !important;
 }
 
 .App--marketing-page .embedded-agent-dock__toolbar {
-  background: #1f2937 !important;
-  border-bottom-color: #374151 !important;
+  background: #e8edf3 !important;
+  border-bottom-color: #cbd5e1 !important;
   border-left-color: #3b82f6 !important;
 }
 
 .App--marketing-page .embedded-agent-dock__title {
-  color: #f9fafb !important;
+  color: #1e293b !important;
   font-size: 0.8125rem !important;
   letter-spacing: 0.08em !important;
 }
 
 .App--marketing-page .embedded-dock-collapse-btn {
-  color: #e5e7eb !important;
-  border-color: #4b5563 !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
 }
 
 .App--marketing-page .embedded-dock-collapse-btn:hover {
-  background: #374151 !important;
-  color: #ffffff !important;
+  background: #e2e8f0 !important;
+  color: #1e293b !important;
 }
 
 .App--marketing-page .embedded-dock-resize-handle {
-  border-top-color: #4b5563 !important;
-  background: linear-gradient(180deg, #1f2937 0%, #111827 100%) !important;
+  border-top-color: #cbd5e1 !important;
+  background: linear-gradient(180deg, #e8edf3 0%, #e2e8f0 100%) !important;
 }
 
 .App--marketing-page .embedded-dock-resize-handle__label {
-  color: #d1d5db !important;
+  color: #64748b !important;
 }
 
 .App--marketing-page .embedded-banking-agent.embedded-banking-agent--bottom {
