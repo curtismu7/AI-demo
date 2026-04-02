@@ -1,5 +1,5 @@
 ---
-status: testing
+status: passed
 phase: 08-banking-transaction-integrity-fix-balance-updates-validate-all-actions-and-ensure-enterprise-grade-correctness
 source: [08-01-SUMMARY.md]
 started: 2026-04-02T00:00:00Z
@@ -9,13 +9,13 @@ updated: 2026-04-02T00:00:00Z
 ## Current Test
 <!-- OVERWRITE each test - shows where we are -->
 
-number: 3
-name: Agent Transfer → Balance Updates
+number: 4
+name: Read-Only Actions Don't Cause Disruption
 expected: |
-  Ask the agent to transfer between accounts — e.g. "Transfer $25 from checking to savings".
-  Confirm the action. Both account tiles (source and destination) should reflect the
-  new balances within 1 second, without a page reload.
-awaiting: user response
+  Ask the agent a read-only question — e.g. "Check my balance" or "Show recent transactions".
+  The dashboard should remain stable (no unexpected flicker or reload).
+  Balances should be unchanged.
+result: pass
 
 ## Tests
 
@@ -39,21 +39,21 @@ expected: |
   Ask the agent to transfer between accounts — e.g. "Transfer $25 from checking to savings".
   Confirm the action. Both account tiles (source and destination) should reflect the
   new balances within 1 second, without a page reload.
-result: pending
+result: pass
 
 ### 4. Read-Only Actions Don't Cause Disruption
 expected: |
   Ask the agent a read-only question — e.g. "Check my balance" or "Show recent transactions".
   The dashboard should remain stable (no unexpected flicker or reload).
   Balances should be unchanged.
-result: pending
+result: pass
 
 ## Summary
 
 total: 4
-passed: 2
+passed: 4
 issues: 0
-pending: 2
+pending: 0
 skipped: 0
 
 ## Gaps
