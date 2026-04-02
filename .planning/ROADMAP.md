@@ -381,6 +381,16 @@ Plans:
 - [ ] 28-01-PLAN.md — BFF route /api/admin/vercel-config (GET list + PATCH update via Vercel Projects API)
 - [ ] 28-02-PLAN.md — VercelConfigTab.js component + Config.js tab bar wiring + npm run build verify
 
+### Phase 29: use-case C sensitive data access - explicit authz least-data-necessary controls optional HITL for elevated actions
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 28
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 29 to break down)
+
 ---
 
 ## Dependency Order
