@@ -14,6 +14,8 @@ const VALID_BANKING_ACTIONS = new Set([
 const VALID_EDU_PANELS = new Set([
   'login-flow', 'token-exchange', 'may-act', 'mcp-protocol', 'introspection',
   'agent-gateway', 'rfc-index', 'step-up', 'pingone-authorize', 'cimd', 'human-in-loop',
+  'par', 'rar', 'jwt-client-auth', 'agentic-maturity', 'oidc-21', 'best-practices',
+  'langchain',
 ]);
 
 /**
@@ -78,6 +80,33 @@ function sanitizeNlResult(result, originalMessage) {
       }
     }
 
+    // Validate account type names for write actions — prevent LLM from using
+    // account types that don't exist in the demo (e.g. 'credit_card', 'investment').
+    if (['transfer', 'deposit', 'withdraw'].includes(action)) {
+      const p = result.banking?.params || {};
+      const VALID_REFS = new Set(['checking', 'savings', 'chk', 'sav']);
+      const isValidRef = (v) => {
+        if (v == null || v === '') return true; // omitted = ok (form will ask)
+        const s = String(v).trim().toLowerCase()
+          .replace(/\s+account$/, '').replace(/^(my|the|primary|main)\s+/, '');
+        if (VALID_REFS.has(s)) return true;
+        if (/^(chk-|sav-)/.test(s) || /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(s)) return true;
+        return false;
+      };
+      const toRef  = p.toId   || p.to_account_id;
+      const fromRef = p.fromId || p.from_account_id;
+      if (!isValidRef(toRef) || !isValidRef(fromRef)) {
+        const bad = (!isValidRef(toRef) ? toRef : fromRef) || 'that account';
+        return {
+          result: {
+            kind: 'none',
+            message: `This demo only has Checking and Savings accounts — "${bad}" isn't available here. Try: "transfer $250 from checking to savings".`,
+          },
+          rejected: true,
+          reason: 'invalid_account_type_name',
+        };
+      }
+    }
     return { result, rejected: false };
   }
 

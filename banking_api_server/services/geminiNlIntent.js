@@ -43,7 +43,8 @@ Examples of mcp_tools (always banking, never education):
   "show mcp tools"    → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
   "what tools are available" → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
   "list tools"        → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
-Only route to education panel mcp-protocol when the user asks HOW MCP works or WHAT MCP is (no list/show/get verb).`;
+Only route to education panel mcp-protocol when the user asks HOW MCP works or WHAT MCP is (no list/show/get verb).
+If the user asks to pay, transfer, or send money involving a "credit card", "credit account", or "investment account" → {"kind":"none","message":"This demo only supports Checking and Savings accounts. Credit cards and investment accounts are not available."}`;
 
 /**
  * @param {string} userMessage
