@@ -179,3 +179,74 @@
 .chat-widget {
   animation: slideInUp 0.3s ease-out;
 }
+
+/* ── LangChain provider badge + settings panel ── */
+.lc-badge {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 12px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 8px;
+  margin-left: auto;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.lc-badge:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.lc-settings-panel {
+  background: #fafafa;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lc-settings-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.lc-settings-panel__row label {
+  width: 60px;
+  font-weight: 600;
+  color: #555;
+  flex-shrink: 0;
+}
+.lc-settings-panel__row select,
+.lc-settings-panel__row input[type="password"] {
+  flex: 1;
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.lc-key-set {
+  color: #2e7d32;
+  font-size: 12px;
+}
+
+.lc-btn-save {
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.lc-btn-save:hover { background: #0d47a1; }
+.lc-btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.lc-learn-more {
+  font-size: 11px;
+  color: #1565c0;
+  text-decoration: none;
+}
+.lc-learn-more:hover { text-decoration: underline; }
