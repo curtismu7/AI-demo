@@ -1563,8 +1563,9 @@ export default function BankingAgent({
       }
 
       // Populate results panel + notify hosting dashboard (same CustomEvent in both display modes)
+      const isWriteAction = ['transfer', 'deposit', 'withdraw'].includes(actionId);
       let displayNormalized = normalizeAgentToolResult(response.result);
-      if (['transfer', 'deposit', 'withdraw'].includes(actionId)) {
+      if (isWriteAction) {
         try {
           const txRes = await getMyTransactions(30);
           const txNorm = normalizeAgentToolResult(txRes.result);
@@ -1596,8 +1597,13 @@ export default function BankingAgent({
       const { resultType, resultData } = inferAgentResultTypeAndData(displayNormalized);
 
       if (resultType) {
+        // For write actions (transfer/deposit/withdraw), always dispatch 'confirm' so the
+        // UserDashboard onAgentResult listener triggers fetchUserData to refresh balances.
+        // The panel may display 'transactions' (history after the write), but the dashboard
+        // must know a write occurred.
+        const eventType = isWriteAction ? 'confirm' : resultType;
         window.dispatchEvent(new CustomEvent('banking-agent-result', {
-          detail: { type: resultType, data: resultData, label },
+          detail: { type: eventType, data: resultData, label },
         }));
         if (displayMode === 'panel') {
           const titleMap = {
