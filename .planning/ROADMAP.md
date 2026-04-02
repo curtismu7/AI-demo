@@ -167,7 +167,7 @@ Plans:
 
 ### Phase 8: Banking transaction integrity — fix balance updates, validate all actions, and ensure enterprise-grade correctness
 
-**Goal:** [To be planned]
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
 **Requirements**: TBD
 **Depends on:** Phase 7
 **Plans:** 1/1 plans complete
@@ -177,30 +177,30 @@ Plans:
 
 ### Phase 9: CIBA step-up authentication — implement OTP modal, wire backchannel auth for write actions, and validate enterprise-grade UX
 
-**Goal:** [To be planned]
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
 **Requirements**: TBD
 **Depends on:** Phase 8
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 9 to break down)
 
 ### Phase 10: Enterprise-grade HITL — high-value transaction warnings, CIBA or OTP step-up based on configuration, and polished approval UX
 
-**Goal:** [To be planned]
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
 **Requirements**: TBD
 **Depends on:** Phase 9
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 10 to break down)
 
 ### Phase 11: Education content review and accuracy audit — OAuth RFCs MCP PingOne AI completeness check
 
-**Goal:** [To be planned]
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
 **Requirements**: TBD
 **Depends on:** Phase 10
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 11 to break down)
@@ -217,13 +217,73 @@ Plans:
 
 ### Phase 13: Dashboard first impression overhaul — professional clean layout, no duplicate buttons, agent visible above the fold, no sensitive credentials on screen
 
-**Goal:** [To be planned]
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
 **Requirements**: TBD
 **Depends on:** Phase 12
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 13 to break down)
+
+### Phase 14: Agent window polish — collapse cluttered left rail, prevent agent from covering the dashboard side panel
+
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 1 plan
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
+
+### Phase 15: Unified configuration + demo-data page — merge into single tabbed UI replacing separate Config and DemoData routes
+
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
+**Requirements**: TBD
+**Depends on:** Phase 14
+**Plans:** 1 plan
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 15 to break down)
+
+### Phase 16: Education content refresh — RFCs, AI agent standards, industry guidance
+
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 1 plan
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16 to break down)
+
+### Phase 17: Ping Identity for AI principles — audit, agent flow badges, education panel
+
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 1 plan
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 17 to break down)
+
+### Phase 18: Token Chain correctness — two-exchange support, robust event descriptions, agent request flow audit
+
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
+**Requirements**: TBD
+**Depends on:** Phase 17
+**Plans:** 1 plan
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
+### Phase 19: Demo Config page audit — verify all sections work and are necessary
+
+**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
+**Requirements**: TBD
+**Depends on:** Phase 18
+**Plans:** 1 plan
+
+Plans:
+- [ ] 19-01-PLAN.md — Remove dead code + lesson accordion + fix dark mode
 
 ---
 
