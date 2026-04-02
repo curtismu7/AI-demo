@@ -345,6 +345,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 25 to break down)
 
+### Phase 26: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 25
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 26 to break down)
+
 ---
 
 ## Dependency Order

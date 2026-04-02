@@ -75,3 +75,4 @@ Plan: 1 of 1
 - Phase 12 added: UI button consistency audit — standardize color scheme red and blue with white text no grey no purple
 - Phase 24 added: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 - Phase 25 added: LLM landscape — commercial and open-source models, capabilities overview, and comparison
+- Phase 26 added: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
