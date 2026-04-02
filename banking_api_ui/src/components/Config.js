@@ -13,6 +13,7 @@ import {
 } from '../config/agentMcpScopes';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
+import VercelConfigTab from './VercelConfigTab';
 import '../styles/appShellPages.css';
 import './Config.css';
 
@@ -429,6 +430,10 @@ export default function Config() {
   const [configPassword, setConfigPassword] = useState('');  // matches ADMIN_CONFIG_PASSWORD env var
   /** Server-computed OAuth redirect URIs for PingOne allowlists */
   const [redirectInfo, setRedirectInfo] = useState(null);
+  /** Deployment platform: 'vercel' | 'replit' | 'local' */
+  const [hostedOn, setHostedOn] = useState(null);
+  /** Active tab: 'setup' | 'vercel' */
+  const [activeTab, setActiveTab] = useState('setup');
 
   // ── Fetch from server + merge with IndexedDB cache ──
   const loadConfig = useCallback(async () => {
@@ -467,6 +472,7 @@ export default function Config() {
       setIsConfigured(data.isConfigured || false);
       setReadOnly(data.readOnly || false);
       setRedirectInfo(data.redirectInfo ?? null);
+      if (data.hostedOn) setHostedOn(data.hostedOn);
 
       // Persist public values back to IndexedDB
       await savePublicConfig(formUpdates);
@@ -607,6 +613,55 @@ export default function Config() {
 
       <div className="app-page-shell__body">
       <div className="config-page__main">
+
+        {/* Vercel Env tab bar — only visible when hosted on Vercel */}
+        {hostedOn === 'vercel' && (
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('setup')}
+              style={{
+                padding: '0.5rem 1.25rem',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontWeight: activeTab === 'setup' ? 700 : 400,
+                borderBottom: activeTab === 'setup' ? '2px solid #2563eb' : '2px solid transparent',
+                color: activeTab === 'setup' ? '#2563eb' : '#6b7280',
+                marginBottom: '-1px',
+                fontSize: '0.9rem',
+              }}
+            >
+              Setup
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('vercel')}
+              style={{
+                padding: '0.5rem 1.25rem',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontWeight: activeTab === 'vercel' ? 700 : 400,
+                borderBottom: activeTab === 'vercel' ? '2px solid #2563eb' : '2px solid transparent',
+                color: activeTab === 'vercel' ? '#2563eb' : '#6b7280',
+                marginBottom: '-1px',
+                fontSize: '0.9rem',
+              }}
+            >
+              Vercel Env
+            </button>
+          </div>
+        )}
+
+        {/* Vercel Env tab content */}
+        {activeTab === 'vercel' && hostedOn === 'vercel' && (
+          <VercelConfigTab />
+        )}
+
+        {/* Setup tab — hidden when Vercel tab is active */}
+        {(hostedOn !== 'vercel' || activeTab === 'setup') && (
+          <React.Fragment>
 
         {/* Read-only banner (hosted serverless, no KV) */}
         {readOnly && (
@@ -1567,6 +1622,9 @@ export default function Config() {
               {saving ? 'Saving…' : '💾 Save Configuration'}
             </button>
           </div>
+        )}
+
+          </React.Fragment>
         )}
 
       </div>

@@ -103,6 +103,8 @@ router.get('/', configReadLimiter, async (req, res) => {
       deploymentManagedPingOneOAuth: hosting.isDeploymentManagedPingOneOAuth(),
       /** Demo mode: destructive operations are limited — set via DEMO_MODE env var on shared/public deployments. */
       demoMode: !!process.env.DEMO_MODE,
+      /** Deployment platform: 'vercel' | 'replit' | 'local' -- used by UI to show environment-specific tabs. */
+      hostedOn: hosting.isVercel() ? 'vercel' : hosting.isReplit() ? 'replit' : 'local',
       /** Exact redirect URIs to register in PingOne for this deployment (server-computed). */
       redirectInfo,
     });

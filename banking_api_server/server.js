@@ -173,6 +173,7 @@ const cibaRoutes        = require('./routes/ciba');
 const authorizeRoutes   = require('./routes/authorize');
 const setupRoutes       = require('./routes/setup');
 const { router: featureFlagsRoutes } = require('./routes/featureFlags');
+const vercelConfigRoutes = require('./routes/vercelConfig');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
@@ -786,6 +787,7 @@ app.use('/api/admin/config', adminConfigRoutes);
 // Feature flags — admin-authenticated; registered before the broader /api/admin/* guard
 // so the route path is unambiguous.
 app.use('/api/admin/feature-flags', authenticateToken, featureFlagsRoutes);
+app.use('/api/admin/vercel-config', authenticateToken, vercelConfigRoutes);
 
 // PingOne redirect URI allowlist (JSON). Registered here BEFORE /api/auth so the path is not
 // handled only by routes/auth.js (avoids "Cannot GET" on some deployments).
