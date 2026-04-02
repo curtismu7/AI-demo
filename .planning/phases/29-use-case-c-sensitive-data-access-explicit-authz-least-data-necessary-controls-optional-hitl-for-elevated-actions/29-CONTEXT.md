@@ -27,21 +27,42 @@ This phase delivers:
 **Not in scope:** Write operations on sensitive fields, multi-level field classifications,
 production PII redaction, admin-side sensitive data management.
 
+5. **Rich account profile fields** — expand account data model with banking-realistic
+   fields (`routingNumber`, `accountNumberFull`, `swiftCode`, `iban`, `branchName`,
+   `branchCode`, `openedDate`); change `accountNumber` format from short `CHK-{UID}`
+   to 12-digit `000123456789` so masking to `****6789` is visually meaningful; show
+   public fields on Dashboard; sensitive fields (`routingNumber`, `accountNumberFull`)
+   gated by Phase 29 authz flow; all fields configurable and toggleable on Demo Data
+   page (per-account editable inputs + "include in response" checkboxes).
+
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
 ### A — Sensitive Data Fields (D-01)
-- **D-01:** The restricted data fields are: `accountNumber` (full, e.g. `CHK-ABC1234`)
-  and a new demo field `routingNumber` (e.g. `026073150`).
-- By default (no consent), `accountNumber` returns masked as `****1234` (last 4 chars)
-  and `routingNumber` is omitted entirely from the API response.
-- After consent is granted, both fields return in full. Data is **read-only** — no
-  writes to sensitive fields.
-- These fields live in the existing `accounts` data store (`accountNumber` already
-  exists; `routingNumber` is added as a demo-only field to each account record in
-  `provisioning` code, e.g. `026073150` for checking, `021000021` for savings).
+- **D-01:** Account data model expands significantly. Fields by sensitivity tier:
+
+  **Sensitive (require `banking:sensitive:read` + PAZ consent gate):**
+  - `accountNumberFull` — 12-digit e.g. `000012345678` (replaces short `CHK-{UID}` format);
+    masked to `****5678` by default
+  - `routingNumber` — e.g. `026073150` (checking), `021000021` (savings);
+    omitted entirely by default
+
+  **Public (always returned, no gate):**
+  - `swiftCode` — e.g. `CHASUS33`
+  - `iban` — e.g. `US12CHAS0000012345`
+  - `branchName` — e.g. `BX Finance Main Branch`
+  - `branchCode` — e.g. `001`
+  - `openedDate` — e.g. `2022-01-15`
+  - `accountHolderName` — from user profile
+
+- `accountNumber` format **changes** from `CHK-{UID}` to 12-digit `000012345678` so
+  masking to `****5678` is visually meaningful. Existing `accountNumber` field renamed
+  to `accountNumberFull`; `accountNumber` becomes the masked display value.
+- After consent is granted, both sensitive fields return in full. Data is **read-only**.
+- All fields stored in `demoScenarioStore` snapshot (survive cold-starts).
+- Per-field visibility configurable on Demo Data page (toggle "include in response").
 
 ### B — Authorization Gate (D-02)
 - **D-02:** The sensitive-data endpoint enforces BOTH:
@@ -81,6 +102,9 @@ production PII redaction, admin-side sensitive data management.
     inline styles, register in `EducationPanelsHost.js` + `educationCommands.js` +
     `educationIds.js`
 
+### Folded Todos
+- **Rich account profile fields** (todo: `2026-04-02-rich-account-profile-fields-routing-number-swift-iban-branch-configurable-in-demo-data-page.md`) — Expand account data model with banking-realistic fields; make configurable on Demo Data page. Account number format change is a prerequisite for Phase 29 consent-reveal masking to work visually. Fields: `routingNumber`, `accountNumberFull`, `swiftCode`, `iban`, `branchName`, `branchCode`, `openedDate`, `accountHolderName`.
+
 ### Agent's Discretion
 - Which specific agent chip / command triggers use-case C (e.g., "View full account
   details" chip in the banking agent)
@@ -115,6 +139,9 @@ production PII redaction, admin-side sensitive data management.
   `accountNumber` field shape (`CHK-{UID}`); `GET /api/accounts/my` response shape
 - `banking_api_server/data/store.js` — `createAccount`, `getAccountById`,
   `getAccountsByUserId`
+
+### Account data + Demo Data page
+- `banking_api_ui/src/components/DemoData.js` — Demo Data page where account fields become configurable; add "Account Profile Fields" section with per-account editors and field visibility toggles
 
 ### Education panel pattern
 - `banking_api_ui/src/components/education/EducationPanelsHost.js` — how to register panels

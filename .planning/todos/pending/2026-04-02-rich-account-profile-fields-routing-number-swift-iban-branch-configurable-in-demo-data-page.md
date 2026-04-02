@@ -2,6 +2,7 @@
 created: 2026-04-02T15:52:08.079Z
 title: Rich account profile fields — routing number, SWIFT, IBAN, branch, configurable in demo data page
 area: ui
+folded_into: Phase 29
 files:
   - banking_api_server/routes/accounts.js:74-116
   - banking_api_server/data/store.js:170-280
