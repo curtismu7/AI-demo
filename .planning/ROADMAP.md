@@ -383,14 +383,18 @@ Plans:
 
 ### Phase 29: use-case C sensitive data access - explicit authz least-data-necessary controls optional HITL for elevated actions
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Demonstrate Use-case C: agent requests masked sensitive account fields, double-gate (scope + PAZ) blocks until user clicks Reveal in consent banner, full values released after approval. Includes rich account data model, education panel, Demo Data configurability.
+**Requirements**: UC-C-01, UC-C-02, UC-C-03, UC-C-04
 **Depends on:** Phase 28
-**Plans:** 0 plans
+**Plans:** 6 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 29 to break down)
-
+- [ ] 29-01-PLAN.md — Account data model expansion (new fields, 12-digit format, GET /my masking)
+- [ ] 29-02-PLAN.md — BFF sensitive endpoint + sensitiveDataService.js (scope + PAZ + session consent)
+- [ ] 29-03-PLAN.md — MCP tool get_sensitive_account_details + scope catalog + local fallback
+- [ ] 29-04-PLAN.md — UI SensitiveConsentBanner + BankingAgent.js consent detection/retry
+- [ ] 29-05-PLAN.md — Demo Data page Account Profile Fields section
+- [ ] 29-06-PLAN.md — Education panel SensitiveDataPanel (2 tabs) + agent chip + build verify
 ### Phase 30: agent layout modes - float, left-dock, right-dock, bottom-dock with resizable panels and responsive 3-column layout adjustment
 
 **Goal:** [To be planned]
