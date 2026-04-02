@@ -26,4 +26,6 @@ export const EDU = {
   OIDC_21: 'oidc-21',
   /** LangChain 0.3.x — LCEL, multi-provider LLM switching, agent architecture */
   LANGCHAIN: 'langchain',
+  /** Agent builder landscape — LangChain, open-source frameworks, commercial platforms, and comparison */
+  AGENT_BUILDER_LANDSCAPE: 'agent-builder-landscape',
 };

@@ -20,6 +20,7 @@ import JwtClientAuthPanel from './JwtClientAuthPanel';
 import AgenticMaturityPanel from './AgenticMaturityPanel';
 import Oidc21Panel from './Oidc21Panel';
 import LangChainPanel from './LangChainPanel';
+import AgentBuilderLandscapePanel from './AgentBuilderLandscapePanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -47,6 +48,7 @@ export default function EducationPanelsHost() {
       <AgenticMaturityPanel isOpen={panel === EDU.AGENTIC_MATURITY} onClose={close} initialTabId={tab} />
       <Oidc21Panel isOpen={panel === EDU.OIDC_21} onClose={close} initialTabId={tab} />
       <LangChainPanel isOpen={panel === EDU.LANGCHAIN} onClose={close} initialTabId={tab} />
+      <AgentBuilderLandscapePanel isOpen={panel === EDU.AGENT_BUILDER_LANDSCAPE} onClose={close} initialTabId={tab} />
     </>
   );
 }

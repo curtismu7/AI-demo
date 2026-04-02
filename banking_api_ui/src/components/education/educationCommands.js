@@ -27,4 +27,6 @@ export const EDUCATION_COMMANDS = [
   { id: 'jwt-client-auth', label: 'JWT client auth (RFC 7523)', panel: EDU.JWT_CLIENT_AUTH, tab: 'what' },
   { id: 'agentic-maturity', label: '⭐ Agentic Maturity Model', panel: EDU.AGENTIC_MATURITY, tab: 'overview' },
   { id: 'langchain', label: '🔗 LangChain — LCEL + multi-provider', panel: EDU.LANGCHAIN, tab: 'overview' },
+  { id: 'agent-builders', label: '🤖 Agent Builder Landscape', panel: EDU.AGENT_BUILDER_LANDSCAPE, tab: 'langchain' },
+  { id: 'agent-builder-compare', label: '📊 Agent Builder Comparison', panel: EDU.AGENT_BUILDER_LANDSCAPE, tab: 'comparison' },
 ];
