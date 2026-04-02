@@ -461,6 +461,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 36 to break down)
 
+### Phase 37: Public-facing MCP server for external agents — read-only tool surface, scoped credentials, and access controls so external agents have limited safe access
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 36
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 37 to break down)
+
 ---
 
 ## Dependency Order

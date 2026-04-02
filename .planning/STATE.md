@@ -99,3 +99,4 @@ Plan: 2 of 2
 - Phase 34 added: Agent action logging — log what agent performed each action, which rights (scopes/permissions) were used, and record each step for observability and audit
 - Phase 35 added: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 - Phase 36 added: Postman collections and environments audit — update all collections and environments for any missing or changed API routes, auth flows, and MCP endpoints
+- Phase 37 added: Public-facing MCP server for external agents — read-only tool surface, scoped credentials, and access controls so external agents have limited safe access
