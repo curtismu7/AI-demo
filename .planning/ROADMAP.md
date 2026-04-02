@@ -280,10 +280,10 @@ Plans:
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
 **Requirements**: TBD
 **Depends on:** Phase 18
-**Plans:** 0/1 plans executed
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 19-01-PLAN.md — Remove dead code + lesson accordion + fix dark mode
+- [x] 19-01-PLAN.md — Remove dead code + lesson accordion + fix dark mode
 
 ### Phase 20: Postman collections — fix 1-exchange utilities and build industry-standard 2-exchange collection
 
