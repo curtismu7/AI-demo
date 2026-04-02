@@ -9,18 +9,30 @@ files:
 
 ## Problem
 
-When a user lands on the banking demo without logging in, the agent shows no useful chips — there is nothing to interact with until after authentication. This misses an opportunity to engage the user and demonstrate the agent's capabilities upfront. Additionally, there needs to be a clear pathway from the agent to initiate login.
+When a user lands on the banking demo without logging in, the agent shows no useful chips — there is nothing to interact with until after authentication. This misses an opportunity to engage the user and demonstrate the agent capabilities upfront. Additionally, there needs to be a clear pathway from the agent to initiate login.
+
+If an unauthenticated user types or taps something that requires a session (e.g. "show my balance", "transfer money"), the current code falls through to the BFF, fails with an auth error, and shows a generic message. It should be caught earlier with a friendly inline prompt.
 
 ## Solution
 
-Add a new "pre-login" chip group to `BankingAgent.js` that is shown only when the user is NOT authenticated (i.e., no session/user object). This group should sit above (or replace temporarily) the existing chip groups when unauthenticated.
+### 1. Pre-login chip group
 
-Requirements:
-- Show a distinct "Pre-login" chip group when `user === null` (or session not established)
-- Chips in this group should include demos the agent can run without account data — e.g., "What is OAuth?", "Explain PKCE", "What is MCP?", "Show me how this works"
-- One chip MUST be a "Sign in to your account →" chip that navigates to the login/OAuth flow (same as the CTA button on the landing page)
-- When the user IS authenticated, show all existing chip groups as-is — do NOT remove or modify them
-- Pre-login chip group should have a visual distinction (e.g., slightly different header label like "Try without signing in" or "Get started")
-- Chip groups should stack: pre-login group first, then authenticated groups (but authenticated groups only render after login)
+Add a chip group to BankingAgent.js shown only when user === null (no session established).
+
+- Chips include demos the agent can answer without account data: "What is OAuth?", "Explain PKCE", "What is MCP?", "How does this work?"
+- One chip MUST be "Sign in to your account \u2192" — navigates to the OAuth login flow (same path as the landing page CTA)
+- Label: "Try without signing in" or "Explore as guest"
+- When the user IS authenticated, show all existing chip groups unchanged
+- Do NOT remove or reorder any existing chip groups
+
+### 2. Auth-required action gating (unauthenticated user tries banking action)
+
+When intent dispatch detects a banking action (transfer, balance, deposit, etc.) and user === null:
+
+1. Do NOT attempt the BFF/API call
+2. Show a friendly in-chat message: "To check your balance I need you to sign in first. [Sign in to get started \u2192]"
+3. Render the login link as a tappable inline link or small "Sign in" button inside the agent message bubble
+4. Implement at the intent-dispatch layer in BankingAgent.js (before runAction / before the BFF call) — not just in the error handler
+5. The existing error path around line 1695 ("sign in to use the banking agent") can be kept as a fallback but this should be caught upstream
 
 Do not remove or reorder any existing chip groups.
