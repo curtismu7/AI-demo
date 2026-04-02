@@ -422,10 +422,14 @@ Plans:
 **Goal:** Extend the MCP server with 5 advanced capabilities: sequential thinking tool (inline collapsible reasoning steps in agent chat), async long-running task primitive with configurable UX mode (job ID / spinner / transparent) selectable on the Demo Config page, `.well-known/mcp-server` discovery endpoint, audit trail UI (`/audit` admin route backed by AuditLogger), and local MCP registry manifest + README setup guide. Also fixes the POST api/mcp/tool 400 error.
 **Requirements**: MCP-ADV-01, MCP-ADV-02, MCP-ADV-03, MCP-ADV-04, MCP-ADV-05
 **Depends on:** Phase 31
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 32 to break down)
+- [ ] 32-01-PLAN.md — Bug fix + GET /.well-known/mcp-server discovery endpoint
+- [ ] 32-02-PLAN.md — sequential_think MCP tool (server-side)
+- [ ] 32-03-PLAN.md — MCP registry manifest + audit BFF route
+- [ ] 32-04-PLAN.md — Sequential thinking UI + async UX mode config
+- [ ] 32-05-PLAN.md — Audit trail page (/audit admin route + AuditPage)
 
 ### Phase 33: token chain history persistence - record and restore token chain across page refreshes using sessionStorage or localStorage
 

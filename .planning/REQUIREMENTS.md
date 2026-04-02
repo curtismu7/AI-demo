@@ -71,3 +71,11 @@
 | EDU-01, EDU-02, EDU-03, EDU-04 | Phase 4 — Educational Content |
 | DOC-01, DOC-02 | Phase 5 — User Documentation |
 | TOKEN-FIX-01, TOKEN-FIX-02 | Phase 6 — Token Exchange Fix |
+
+### MCP Server Advanced Capabilities (Phase 32)
+
+- [ ] **MCP-ADV-01**: `sequential_think` MCP tool — AI agents can reason step-by-step through complex banking decisions; steps rendered inline in agent chat as a collapsible "Reasoning" chain; tool callable without user auth
+- [ ] **MCP-ADV-02**: Async long-running task UX — configurable display mode for long-running tool calls (job ID / spinner / transparent) selectable on the Demo Config page, stored in localStorage
+- [ ] **MCP-ADV-03**: `.well-known/mcp-server` discovery endpoint — publicly accessible GET endpoint on the MCP server returning a JSON manifest with tool list, auth requirements, version, and contact fields; no auth required
+- [ ] **MCP-ADV-04**: Audit trail observability — GET /api/mcp/audit BFF route backed by AuditLogger.queryAuditLogs(); new /audit admin page showing filterable event table with summary stats
+- [ ] **MCP-ADV-05**: MCP registry integration — `mcpServers` field in banking_mcp_server/package.json + README "AI Client Setup" section with Claude Desktop, Cursor, and Windsurf config snippets
