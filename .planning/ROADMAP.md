@@ -355,6 +355,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 26 to break down)
 
+### Phase 27: PingOne Authorize PAZ setup — transaction limit policy, AUD validation, act chain introspection to match RFC 8693 token exchange implementation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 26
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 27 to break down)
+
 ---
 
 ## Dependency Order

@@ -76,3 +76,4 @@ Plan: 3 of 3
 - Phase 24 added: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 - Phase 25 added: LLM landscape — commercial and open-source models, capabilities overview, and comparison
 - Phase 26 added: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
+- Phase 27 added: PingOne Authorize PAZ setup — transaction limit policy, AUD validation, act chain introspection to match RFC 8693 token exchange implementation
