@@ -325,6 +325,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd:plan-phase 23 to break down)
 
+### Phase 24: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 23
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 24 to break down)
+
 ---
 
 ## Dependency Order
