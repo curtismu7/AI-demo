@@ -421,6 +421,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 32 to break down)
 
+### Phase 33: token chain history persistence - record and restore token chain across page refreshes using sessionStorage or localStorage
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 32
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 33 to break down)
+
 ---
 
 ## Dependency Order
