@@ -365,6 +365,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 27 to break down)
 
+### Phase 28: Vercel config tab — read environment variables via Vercel API, display editable fields in UI, write non-secret vars back to Vercel, secrets entered by user and stored server-side only
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 27
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 28 to break down)
+
 ---
 
 ## Dependency Order
