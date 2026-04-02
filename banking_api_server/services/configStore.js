@@ -122,6 +122,7 @@ const FIELD_DEFS = {
   agent_gateway_audience:         { public: true,  default: 'https://agent-gateway.pingdemo.com' }, // Actor CC audience for Exchange #1
   ai_agent_intermediate_audience: { public: true,  default: '' }, // Exchange #1 result audience (Exchange #2 subject_token aud); defaults to mcp-server.pingdemo.com
   mcp_gateway_audience:           { public: true,  default: 'https://mcp-gateway.pingdemo.com' },   // Actor CC audience for Exchange #2
+  mcp_resource_uri_two_exchange:  { public: true,  default: 'https://resource-server.pingdemo.com' }, // Exchange #2 output audience (BX Finance Resource Server); must differ from mcp_resource_uri (1-exchange)
 
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
@@ -426,6 +427,7 @@ class ConfigStore {
       agent_gateway_audience:          ['AGENT_GATEWAY_AUDIENCE'],
       ai_agent_intermediate_audience:  ['AI_AGENT_INTERMEDIATE_AUDIENCE'],
       mcp_gateway_audience:            ['MCP_GATEWAY_AUDIENCE'],
+      mcp_resource_uri_two_exchange:  ['MCP_RESOURCE_URI_TWO_EXCHANGE'],
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
       marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],
       marketing_demo_password_hint: ['MARKETING_DEMO_PASSWORD_HINT'],

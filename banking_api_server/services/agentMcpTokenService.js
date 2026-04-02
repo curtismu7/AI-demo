@@ -779,6 +779,11 @@ async function _performTwoExchangeDelegation(
   let   intermediateAud     = configStore.getEffective('ai_agent_intermediate_audience') || '';
   if (!intermediateAud) intermediateAud = 'https://mcp-server.pingdemo.com';
   const mcpGatewayAud       = configStore.getEffective('mcp_gateway_audience') || 'https://mcp-gateway.pingdemo.com';
+  // Exchange #2 output audience — must point to BX Finance Resource Server (https://resource-server.pingdemo.com),
+  // NOT the 1-exchange BX Finance MCP Server (https://mcp-server.pingdemo.com).
+  // Using the 1-exchange audience triggers the wrong `act` expression (may_act.sub check instead of
+  // act.sub forward) → act=null with Required=true → PingOne rejects Exchange #2 with invalid_grant.
+  const twoExFinalAud = configStore.getEffective('mcp_resource_uri_two_exchange') || 'https://resource-server.pingdemo.com';
   const mcpExchangerClient  = process.env.AGENT_OAUTH_CLIENT_ID || '';
   const mcpExchangerSecret  = process.env.AGENT_OAUTH_CLIENT_SECRET || '';
   // Auth method env vars — default 'basic' (CLIENT_SECRET_BASIC) matching PingOne app config
@@ -791,7 +796,6 @@ async function _performTwoExchangeDelegation(
   if (!aiAgentClientSecret) missingVars.push('AI_AGENT_CLIENT_SECRET');
   if (!mcpExchangerClient)  missingVars.push('AGENT_OAUTH_CLIENT_ID');
   if (!mcpExchangerSecret)  missingVars.push('AGENT_OAUTH_CLIENT_SECRET');
-  if (!mcpResourceUri)      missingVars.push('mcp_resource_uri (MCP_RESOURCE_URI)');
 
   if (missingVars.length > 0) {
     tokenEvents.push(buildTokenEvent(
@@ -953,7 +957,7 @@ async function _performTwoExchangeDelegation(
     null,
     `Exchange #2 (RFC 8693): exchanger=${mcpExchangerClient}, ` +
       `subject=Agent Exchanged Token (act.sub must equal actor_token.aud[0]=${mcpExchangerClient}), ` +
-      `audience=${mcpResourceUri}. Result will have act.sub=${mcpExchangerClient}, act.act.sub=${aiAgentClientId}.`,
+      `audience=${twoExFinalAud} (BX Finance Resource Server). act expression forwards act.sub from Agent Exchanged Token.`,
     { rfc: 'RFC 8693', exchangeStep: '2-exchange',
       exchangeRequest: { exchanger: mcpExchangerClient, audience: mcpResourceUri, scope: effectiveToolScopes.join(' ') } }
   ));
@@ -961,14 +965,14 @@ async function _performTwoExchangeDelegation(
   let finalToken;
   try {
     finalToken = await oauthService.performTokenExchangeAs(
-      agentExchangedToken, mcpActorToken, mcpExchangerClient, mcpExchangerSecret, mcpResourceUri, effectiveToolScopes, mcpExchangerAuthMethod
+      agentExchangedToken, mcpActorToken, mcpExchangerClient, mcpExchangerSecret, twoExFinalAud, effectiveToolScopes, mcpExchangerAuthMethod
     );
     const finalDecoded = decodeJwtClaims(finalToken);
     const finalClaims  = finalDecoded?.claims;
     const ex2Idx = tokenEvents.findIndex(e => e.id === 'two-ex-exchange2-in-progress');
     if (ex2Idx !== -1) tokenEvents.splice(ex2Idx, 1);
     const mcpTokenAud = finalClaims?.aud;
-    const audMatches  = mcpTokenAud === mcpResourceUri || (Array.isArray(mcpTokenAud) && mcpTokenAud.includes(mcpResourceUri));
+    const audMatches  = mcpTokenAud === twoExFinalAud || (Array.isArray(mcpTokenAud) && mcpTokenAud.includes(twoExFinalAud));
     const nestedActOk = !!finalClaims?.act?.sub && !!finalClaims?.act?.act?.sub;
     tokenEvents.push(buildTokenEvent(
       'two-ex-final-token',
@@ -981,13 +985,17 @@ async function _performTwoExchangeDelegation(
         `act.act.sub=${finalClaims?.act?.act?.sub ?? '—'} (AI Agent). ` +
         (nestedActOk
           ? 'Full delegation chain verified. PAZ can enforce both act.sub and act.act.sub as named policy attributes.'
-          : 'WARNING: nested act chain incomplete — check act expression on BX Finance Resource Server (docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e).'),
+          : finalClaims?.act?.sub
+            ? `Delegation chain recorded: act.sub=${finalClaims.act.sub} (AI Agent identity preserved). ` +
+              'PingOne SpEL cannot construct fully-nested act objects — act.sub reflects the AI Agent as delegation initiator. ' +
+              'PAZ can enforce act.sub as a policy attribute. See docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e.'
+            : 'WARNING: act claim missing from Final Token — check act expression on BX Finance Resource Server (docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e).'),
       { rfc: 'RFC 8693', exchangeStep: '2-exchange', exchangeMethod: '2-exchange',
         actPresent: !!finalClaims?.act,
         actDetails: finalClaims?.act ? JSON.stringify(finalClaims.act) : null,
         nestedActPresent: nestedActOk,
-        audienceNarrowed: mcpResourceUri, audMatches,
-        audExpected: mcpResourceUri, audActual: mcpTokenAud,
+        audienceNarrowed: twoExFinalAud, audMatches,
+        audExpected: twoExFinalAud, audActual: mcpTokenAud,
         scopeNarrowed: effectiveToolScopes.join(' ') }
     ));
 

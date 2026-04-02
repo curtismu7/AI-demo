@@ -190,7 +190,9 @@ const FLAG_REGISTRY = [
       'Exchange #2: Agent Exchanged Token + MCP actor token → Final Token with nested act claim ' +
       '(act.sub = MCP_CLIENT_ID, act.act.sub = AI_AGENT_CLIENT_ID). ' +
       'Requires: AI_AGENT_CLIENT_ID, AI_AGENT_CLIENT_SECRET, AGENT_GATEWAY_AUDIENCE, AI_AGENT_INTERMEDIATE_AUDIENCE, ' +
-      'MCP_GATEWAY_AUDIENCE env vars, and AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET for Exchange #2. ' +
+      'MCP_GATEWAY_AUDIENCE, MCP_RESOURCE_URI_TWO_EXCHANGE env vars, and AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET for Exchange #2. ' +
+      'MCP_RESOURCE_URI_TWO_EXCHANGE must point to the BX Finance Resource Server (default: https://resource-server.pingdemo.com) — ' +
+      'NOT the same as the 1-exchange MCP_SERVER_RESOURCE_URI. Using the wrong audience causes Exchange #2 to fire the wrong `act` expression → invalid_grant. ' +
       'Also requires mayAct.sub on user records to be set to AI_AGENT_CLIENT_ID ' +
       '(not the Banking App client ID used in the 1-exchange pattern).',
     impact:
