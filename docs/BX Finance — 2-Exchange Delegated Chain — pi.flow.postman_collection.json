@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "2e4f8a1c-7b3d-4e9f-a5c2-8d6b1e0f3a7e",
     "name": "BX Finance — 2-Exchange Delegated Chain — pi.flow",
-    "description": "PingOne 2-Exchange Delegated Chain — PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md\n\nToken Chain:\n  Steps 1–4  — Subject Token (Authorization Code + PKCE via pi.flow)\n               aud=[\"https://ai-agent.pingdemo.com\"], may_act.sub=AI_AGENT_CLIENT_ID\n  Step 5a    — AI Agent Actor Token (Client Credentials: AI Agent App)\n               aud=[\"https://agent-gateway.pingdemo.com\"]\n  Step 5b    — Exchange #1: Subject Token + Agent Actor Token → Agent Exchanged Token\n               aud=[\"https://mcp-server.pingdemo.com\"], act.sub=AI_AGENT_CLIENT_ID\n  Step 6a    — MCP Actor Token (Client Credentials: MCP Service App)\n               aud=[\"https://mcp-gateway.pingdemo.com\"]\n  Step 6b    — Exchange #2: Agent Exchanged Token + MCP Actor Token → MCP Exchanged Token\n               aud=[\"https://resource-server.pingdemo.com\"]\n               act.sub=MCP_CLIENT_ID, act.act.sub=AI_AGENT_CLIENT_ID\n  Step 7     — PingOne API Token (Client Credentials: MCP Service)\n  Step 8     — User Lookup (PingOne Management API)\n  Utility A  — Introspect any saved token\n  Utility B  — Set mayAct on user record (sub must be AI_AGENT_CLIENT_ID)\n\nIMPORTANT: Do NOT include openid in any scope — it breaks resource-scoped requests.\n  Subject Token scope: profile email banking:agent:invoke\n  Actor token requests: audience param only (no scope, or app-minimal scope)\n  Exchange result scope: banking:accounts:read banking:transactions:read banking:transactions:write\n\nVariables to fill in before running:\n  client_id / client_secret        — BX Finance User app (issues Subject Token)\n  ai_agent_client_id / secret      — BX Finance AI Agent App (performs Exchange #1)\n  mcp_client_id / secret           — BX Finance MCP Service (performs Exchange #2 + CC for API)\n  username / password              — test user credentials\n  env_id                           — PingOne environment ID",
+    "description": "BX Finance 2-Exchange Delegated Chain — Full Flow (RFC 8693)\n\nAudience: Demo runners, customers (full 2-hop delegation scenario).\nPairs with: BX-Finance-Shared.postman_environment.json\n\nRuns the complete 2-exchange delegated chain.\n\nFlow:\n  Steps 1–4:  Auth Code + PKCE via pi.flow → Subject Token\n  Steps 5a–5b: Exchange #1 → Agent Exchanged Token (act.sub = AI Agent client)\n  Steps 6a–6b: Exchange #2 → MCP Exchanged Token (nested act chain)\n  Step 7:     Client Credentials → PingOne API Token\n  Step 8:     User Lookup\n\nThe final MCP token has a nested act chain: act.sub (MCP actor) → act.act.sub (AI Agent actor).\nSee docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md for full token claim shapes at each step.\n\nRun steps 1 → 2 → 3 → 4 → 5a → 5b → 6a → 6b → 7 → 8 in order.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1648215"
   },
@@ -150,7 +150,7 @@
             }
           ]
         },
-        "description": "Returns JSON flow instead of a browser redirect.\n\nscope must NOT include openid — it conflicts with resource= audience.\nresource={{ENDUSER_AUDIENCE}} = https://ai-agent.pingdemo.com ensures the Subject Token\ngets aud=[\"https://ai-agent.pingdemo.com\"] and may_act is present.\n\nExpected response:\n```json\n{\n  \"id\": \"<flow-id>\",\n  \"status\": \"USERNAME_PASSWORD_REQUIRED\",\n  \"_links\": {\n    \"usernamePassword.check\": { \"href\": \"https://auth.pingone.com/{envId}/flows/{flowId}\" }\n  }\n}\n```"
+        "description": "Initiates the pi.flow headless authorization. Generates PKCE code_verifier/challenge. resource={{ENDUSER_AUDIENCE}} ensures the resulting Subject Token's aud includes the AI Agent URI, enabling Exchange #1 in Step 5b. Saves flow_id and flow_href."
       },
       "response": []
     },
@@ -235,7 +235,7 @@
             "{{flow_href}}"
           ]
         },
-        "description": "Submits credentials to the flow URL from step 1.\n\nNo Authorization header — the flow ID in the URL is the implicit context.\nContent-Type must be application/vnd.pingidentity.usernamePassword.check+json."
+        "description": "Submits credentials to the pi.flow. Requires flow_id from Step 1 (valid for 120 seconds). Re-run Step 1 if you see a TIMEOUT error. Saves the resume URL."
       },
       "response": []
     },
@@ -308,7 +308,7 @@
             "{{resume_url}}"
           ]
         },
-        "description": "Resumes the flow after credential submission, returning the authorization code.\n\nPingOne may return JSON with authorizeResponse.code, or redirect to redirect_uri?code=...\nPostman follows redirects automatically — the test script handles both cases."
+        "description": "Resumes the pi.flow to obtain the authorization code. Saves auth_code."
       },
       "response": []
     },
@@ -449,7 +449,7 @@
             "token"
           ]
         },
-        "description": "Token 1 — Subject Token.\nclient_secret_post: credentials in body, no Authorization header.\nPKCE: code_verifier proves possession of code_challenge from step 1.\n\nAfter success: subject_token and user_sub saved. Check console for may_act claim.\nmay_act.sub must equal ai_agent_client_id (not banking_app_client_id).\nIf may_act is missing or wrong, run Utility B then re-run step 1."
+        "description": "Exchanges the authorization code for the Subject Token using client_secret_post + PKCE. Saves access_token (Subject Token), id_token, and user_sub."
       },
       "response": []
     },
@@ -555,7 +555,7 @@
             "token"
           ]
         },
-        "description": "AI Agent App gets its own Actor Token via Client Credentials.\naudience = https://agent-gateway.pingdemo.com (BX Finance Agent Gateway resource server).\nDo NOT include openid or any OIDC scope.\n\nThis token will be passed as actor_token in step 5b to prove the AI Agent's identity."
+        "description": "AI Agent client obtains its own actor token via client_credentials. This actor token is used as the actor_token in the RFC 8693 Exchange #1 (Step 5b). Saves agent_actor_token."
       },
       "response": []
     },
@@ -706,7 +706,7 @@
             "token"
           ]
         },
-        "description": "Exchange #1 (RFC 8693): Subject Token + Agent Actor Token → Agent Exchanged Token (Token 2).\n\nPingOne validates: subject_token.may_act.sub == actor_token.aud[0] == ai_agent_client_id.\nIf valid, issues Agent Exchanged Token with:\n  aud = [\"https://mcp-server.pingdemo.com\"]\n  sub = <user-id> (preserved)\n  act = { \"sub\": \"<AI_AGENT_CLIENT_ID>\" }\n\nRequires Token Exchange grant on BX Finance AI Agent App."
+        "description": "RFC 8693 Exchange #1: the end-user's Subject Token is exchanged for an Agent Exchanged Token. The AI Agent client is the actor (actor_token = agent_actor_token from Step 5a). Resulting token: aud = ENDUSER_AUDIENCE, act.sub = PINGONE_CORE_CLIENT_ID (AI Agent). Saves agent_exchanged_token."
       },
       "response": []
     },
@@ -815,7 +815,7 @@
             "token"
           ]
         },
-        "description": "MCP Service App gets its own Actor Token via Client Credentials.\naudience = https://mcp-gateway.pingdemo.com (BX Finance MCP Gateway resource server).\nDo NOT include openid or any OIDC scope.\n\nThis token will be passed as actor_token in step 6b to prove the MCP Service's identity."
+        "description": "MCP service client obtains its own actor token via client_credentials. Used as the actor_token in RFC 8693 Exchange #2 (Step 6b). Saves mcp_actor_token."
       },
       "response": []
     },
@@ -968,7 +968,7 @@
             "token"
           ]
         },
-        "description": "Exchange #2 (RFC 8693): Agent Exchanged Token + MCP Actor Token → MCP Exchanged Token (Token 3).\n\nPingOne validates: subject_token.act.sub == actor_token.aud[0] == mcp_client_id.\nIf valid, issues MCP Exchanged Token with nested act:\n  aud = [\"https://resource-server.pingdemo.com\"]\n  sub = <user-id> (preserved throughout)\n  act = {\n    \"sub\": \"<MCP_CLIENT_ID>\",      ← MCP performed Exchange #2\n    \"act\": {\n      \"sub\": \"<AI_AGENT_CLIENT_ID>\" ← AI Agent performed Exchange #1\n    }\n  }\n\nPAZ enforces act.sub and act.act.sub as policy attributes.\nRequires Token Exchange grant on BX Finance MCP Service App."
+        "description": "RFC 8693 Exchange #2: the Agent Exchanged Token is exchanged for the final MCP token. The MCP client is the actor (actor_token = mcp_actor_token from Step 6a). Resulting token: aud = MCP_RESOURCE_URI, act.sub = MCP_CLIENT_ID (outer actor), act.act.sub = PINGONE_CORE_CLIENT_ID (inner/AI Agent actor) — the nested act chain. Saves mcp_exchanged_token."
       },
       "response": []
     },
@@ -1072,7 +1072,7 @@
             "token"
           ]
         },
-        "description": "Independent Client Credentials grant for PingOne Management API access.\nThis is NOT part of the delegation chain — it is a separate machine-to-machine token.\nScopes p1:read:user and p1:update:user must be enabled on the app's Resources tab.\nApp type must be Native or Web App — NOT Worker.\nDo NOT include openid."
+        "description": "MCP service client obtains a PingOne Management API token via client_credentials. Required to call the user lookup API in Step 8. Saves pingone_api_token."
       },
       "response": []
     },
@@ -1152,7 +1152,7 @@
             "{{user_sub}}"
           ]
         },
-        "description": "Calls PingOne Management API to fetch the user record.\nUses PingOne API Token from step 7 — Bearer auth.\nValidates that mayAct.sub equals ai_agent_client_id (NOT banking_app_client_id).\nIf wrong, run Utility B to update it."
+        "description": "Looks up the user record in PingOne Management API by sub claim from the Subject Token. Returns user profile attributes. Requires pingone_api_token from Step 7."
       },
       "response": []
     },
@@ -1229,7 +1229,7 @@
             "introspect"
           ]
         },
-        "description": "Introspects a saved token (RFC 7662).\n\nDefault: mcp_exchanged_token (Token 3 — shows nested act chain).\nChange the token body param to inspect any of:\n  subject_token       — Token 1, shows may_act\n  agent_exchanged_token — Token 2, shows act.sub = AI Agent\n  mcp_exchanged_token — Token 3, shows act.sub=MCP, act.act.sub=AI Agent"
+        "description": "Introspects any token to verify its claims (active, sub, aud, scope, exp) and the act chain. Paste or reference the token you want to inspect."
       },
       "response": []
     },
@@ -1317,7 +1317,7 @@
             "{{user_sub}}"
           ]
         },
-        "description": "PATCHes mayAct = { sub: ai_agent_client_id } onto the user record.\n\nIMPORTANT: In the 2-exchange pattern, mayAct.sub must be the AI Agent App client ID\n— NOT the Banking App client ID used in the 1-exchange pattern.\n\nRun this if step 4 warns that may_act is missing or has the wrong sub.\nAfter patching, clear auth.pingone.com cookies in Postman, then re-run steps 1–4.\n\nRequires pingone_api_token (step 7) and user_sub (steps 1-4)."
+        "description": "Patches the PingOne user to add the mayAct attribute pointing to the AI Agent client (one-time setup). Required before running Steps 5b/6b for the first time. Enables the user's Subject Token to be used as the subject in RFC 8693 Exchange #1."
       },
       "response": []
     }

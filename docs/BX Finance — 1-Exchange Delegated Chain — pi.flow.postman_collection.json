@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "9f9ba0be-473c-4581-9411-42cf66c0ee6e",
     "name": "BX Finance — 1-Exchange Delegated Chain — pi.flow",
-    "description": "PingOne 3-Token Delegated Chain — PINGONE_MAY_ACT_SETUP.md\n\nToken Chain:\n  Steps 1–4 — Subject Token (Authorization Code + PKCE via pi.flow)\n  Step 5     — MCP Token (RFC 8693 Token Exchange: Subject → MCP)\n  Step 6     — PingOne API Token (Client Credentials: MCP Service)\n  Step 7     — User Lookup (PingOne Management API)\n  Utility A  — Introspect any saved token\n  Utility B  — Set mayAct on user record\n\nIMPORTANT: For the token exchange chain, the resource param in step 1 must be\nhttps://ai-agent.pingdemo.com (the BX Finance AI Agent audience) so the Subject\nToken gets aud=[\"https://ai-agent.pingdemo.com\"] and may_act is present.\n\nVariables to fill in before running:\n  client_id / client_secret     — BX Finance User app\n  banking_app_client_id/secret  — BX Finance Banking App (exchanger)\n  mcp_client_id/secret          — BX Finance MCP Service app\n  username / password           — test user credentials",
+    "description": "BX Finance 1-Exchange Delegated Chain — Full Flow (RFC 8693)\n\nAudience: Demo runners, customers.\nPairs with: BX-Finance-Shared.postman_environment.json\n\nRuns the complete 1-exchange delegated token chain end-to-end.\n\nFlow:\n  Steps 1–4: Auth Code + PKCE via pi.flow → Subject Token\n  Step 5:    RFC 8693 Exchange → MCP Token (act.sub = PINGONE_CORE_CLIENT_ID)\n  Step 6:    Client Credentials → PingOne API Token\n  Step 7:    User Lookup\n\nRun steps 1–7 in order. Tokens are saved automatically.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1648215"
   },
@@ -151,7 +151,7 @@
             }
           ]
         },
-        "description": "Returns JSON flow instead of a browser redirect.\n\nExpected response:\n```json\n{\n  \"id\": \"<flow-id>\",\n  \"status\": \"USERNAME_PASSWORD_REQUIRED\",\n  \"_links\": {\n    \"usernamePassword.check\": { \"href\": \"https://auth.pingone.com/{envId}/flows/{flowId}\" }\n  }\n}\n```"
+        "description": "Initiates the pi.flow headless authorization. Generates PKCE code_verifier and code_challenge. The resource={{ENDUSER_AUDIENCE}} parameter ensures the resulting Subject Token's aud includes the AI Agent resource URI, enabling the RFC 8693 exchange in Step 5. Saves flow_id and flow_href to collection variables."
       },
       "response": []
     },
@@ -238,7 +238,7 @@
             "{{flow_href}}"
           ]
         },
-        "description": "Submits credentials to the flow URL from step 1.\n\nNo Authorization header — the flow ID in the URL is the implicit context.\nContent-Type must be application/vnd.pingidentity.usernamePassword.check+json.\n\nIf auth code is not in the response, run step 3 (resume) to retrieve it."
+        "description": "Submits credentials to the pi.flow. Requires flow_id from Step 1 (valid for 120 seconds — re-run Step 1 if you see a TIMEOUT error). Saves the resume URL."
       },
       "response": []
     },
@@ -313,7 +313,7 @@
             "{{resume_url}}"
           ]
         },
-        "description": "Resumes the flow after credential submission, returning the authorization code.\n\nPingOne may return JSON with authorizeResponse.code, or redirect to redirect_uri?code=...\nPostman follows redirects automatically — the test script handles both cases."
+        "description": "Resumes the pi.flow to obtain the authorization code. Saves auth_code."
       },
       "response": []
     },
@@ -453,7 +453,7 @@
             "token"
           ]
         },
-        "description": "client_secret_post: client_id + client_secret in form body, no Authorization header.\nPKCE: code_verifier proves possession of the code_challenge from step 1.\n\nAfter success: subject_token and user_sub are saved. Check console for may_act claim.\nIf may_act is missing, run Utility B (Set mayAct) then re-run step 1."
+        "description": "Exchanges the authorization code for the Subject Token using client_secret_post + PKCE (RFC 7636). Saves access_token (Subject Token), id_token, and user_sub to collection variables."
       },
       "response": []
     },
@@ -581,7 +581,7 @@
             "token"
           ]
         },
-        "description": "RFC 8693 Token Exchange: Subject Token → MCP Token.\n\nPingOne validates subject_token.may_act.sub === banking_app_client_id.\nIf they match, issues MCP Token with act.sub = banking_app_client_id.\n\nRequires Token Exchange grant on BX Finance Banking App (doc Part 2b)."
+        "description": "RFC 8693 token exchange: the Subject Token (end-user's access token) is exchanged for an MCP-scoped token. The BFF client acts as the exchanger. Resulting token: aud = MCP_RESOURCE_URI, act.sub = PINGONE_CORE_CLIENT_ID, scope narrowed to MCP scopes. Saves mcp_token."
       },
       "response": []
     },
@@ -690,7 +690,7 @@
             "token"
           ]
         },
-        "description": "Client Credentials grant: BX Finance MCP Service → PingOne API Token (Token 3).\n\nThis is NOT a token exchange — independent credential grant.\nScopes p1:read:user and p1:update:user must be enabled on the app's Resources tab (doc Part 2c).\nApp type must be Native or Web App — NOT Worker (doc Part 2c)."
+        "description": "MCP service client obtains a PingOne Management API token via client_credentials. Required to call the user lookup API in Step 7. Saves pingone_api_token."
       },
       "response": []
     },
@@ -769,7 +769,7 @@
             "{{user_sub}}"
           ]
         },
-        "description": "Calls PingOne Management API to fetch the user record.\nUses Token 3 (PingOne API Token) — Bearer auth.\nValidates that mayAct.sub equals banking_app_client_id."
+        "description": "Looks up the user in PingOne Management API by sub claim. Returns user profile attributes. Requires pingone_api_token from Step 6."
       },
       "response": []
     },
@@ -842,7 +842,7 @@
             "introspect"
           ]
         },
-        "description": "Introspects a saved token (RFC 7662).\n\nChange the token body param to subject_token, mcp_token, or pingone_api_token.\nUses Banking App credentials for Basic auth (any confidential client works)."
+        "description": "Introspects any token to verify its claims (active, sub, aud, scope, exp, act chain). Paste or reference the token you want to inspect before running."
       },
       "response": []
     },
@@ -929,7 +929,7 @@
             "{{user_sub}}"
           ]
         },
-        "description": "PATCHes mayAct = { sub: banking_app_client_id } onto the user record.\n\nRun this if step 4 warns that may_act is missing from the Subject Token.\nAfter patching, re-run steps 1–4 to get a fresh Subject Token with the may_act claim.\n\nRequires pingone_api_token (run step 6 first) and user_sub (run steps 1-4 first)."
+        "description": "Patches the PingOne user to add the mayAct attribute (one-time setup per test user). Required before running Step 5 for the first time. Ensures the user's Subject Token can be delegated via RFC 8693 exchange."
       },
       "response": []
     }
