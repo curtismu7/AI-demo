@@ -2,13 +2,8 @@
 
 /* Free-floating draggable panel — no overlay, can be moved to secondary monitor */
 .log-viewer-float {
+  /* position and size are set via inline style by useDraggablePanel */
   position: fixed;
-  bottom: 24px;
-  left: 24px;
-  right: auto;
-  top: auto;
-  width: min(1400px, 95vw);
-  height: 70vh;
   min-height: 300px;
   min-width: 640px;
   display: flex;
@@ -19,7 +14,6 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   z-index: 9999;
   animation: slideUp 0.22s ease-out;
-  resize: both;
   overflow: hidden;
 }
 
@@ -452,6 +446,29 @@
   background: #94a3b8;
 }
 
+/* Resize grip — bottom-right corner, JS drag */
+.log-viewer-resize-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  opacity: 0.4;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M14 2 L14 14 L2 14' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") no-repeat center;
+  z-index: 1;
+}
+.log-viewer-resize-grip:hover { opacity: 0.8; }
+
+/* Float body — inner content area, fills the float container */
+.log-viewer-float__body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 /* Standalone / pop-out window mode */
 .log-viewer-standalone {
   width: 100%;
@@ -470,13 +487,9 @@
 /* Responsive */
 @media (max-width: 768px) {
   .log-viewer-float {
-    width: 100vw;
-    height: 60vh;
-    left: 0;
-    bottom: 0;
+    /* position/size set by JS; only visual overrides for small screens */
     border-radius: 8px 8px 0 0;
     min-width: unset;
-    resize: none;
   }
 
   .log-viewer-controls {
