@@ -11,7 +11,7 @@ const MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown, no explanation) with one of:
-{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd","tab":"what"}}
+{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|langchain","tab":"what"}}
 {"kind":"education","ciba":true,"tab":"what"}
 {"kind":"banking","banking":{"action":"balance","params":{}}}
 {"kind":"banking","banking":{"action":"accounts","params":{}}}
@@ -31,6 +31,7 @@ Examples:
 User wants banking operations OR to open help topics (OAuth, MCP, CIBA, token exchange, CIMD client registration, etc.).
 Prefer banking when the user asks to move money or list data; prefer education when they ask how something works.
 For CIMD / client-id-metadata / dynamic client registration / register a client / DCR / RFC 7591 → use panel cimd.
+For LangChain / LCEL / multi-provider LLM / model-agnostic / llm orchestration / langchain agent → use panel langchain.
 CRITICAL: For ANY request that contains "list", "show", or "get" combined with "mcp tools", "tools available",
 "available tools", or the standalone phrases "list tools" / "show tools" → ALWAYS output {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}.
 NEVER route these to education — not even if "mcp" appears in the phrase.

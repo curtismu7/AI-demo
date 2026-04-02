@@ -30,6 +30,7 @@ import BankingAdminOps from './components/BankingAdminOps';
 import TransactionConsentPage from './components/TransactionConsentPage';
 import DelegatedAccessPage from './components/DelegatedAccessPage';
 import FeatureFlagsPage from './components/FeatureFlagsPage';
+import LangChainPage from './pages/LangChainPage';
 
 import { savePublicConfig } from './services/configService';
 import { SpinnerProvider } from './context/SpinnerContext';
@@ -435,6 +436,7 @@ function AppWithAuth() {
                     <Route path="/feature-flags"
                       element={user ? <FeatureFlagsPage /> : <Navigate to="/" replace />}
                     />
+                    <Route path="/langchain" element={<LangChainPage />} />
                     <Route path="/settings" element={<AdminRoute user={user}><SecuritySettings user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/oauth-debug-logs"

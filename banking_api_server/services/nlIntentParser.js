@@ -72,6 +72,9 @@ function parseEducation(t) {
   if (/\b(cimd|client.?id.?metadata|client metadata document|self.?register|register client|dynamic client|dcr|rfc.?7591)\b/.test(t)) {
     return { kind: 'education', education: { panel: EDU.CIMD, tab: 'what' } };
   }
+  if (/\b(langchain|lang chain|lcel|llm orchestrat|multi.?provider.*llm|model.?agnostic.*llm)\b/.test(t)) {
+    return { kind: 'education', education: { panel: 'langchain', tab: 'overview' } };
+  }
   return null;
 }
 

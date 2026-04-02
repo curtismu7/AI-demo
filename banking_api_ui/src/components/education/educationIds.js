@@ -24,4 +24,6 @@ export const EDU = {
   AGENTIC_MATURITY: 'agentic-maturity',
   /** OpenID Connect 2.1 — what changed from Core 1.0, why it matters for AI agents */
   OIDC_21: 'oidc-21',
+  /** LangChain 0.3.x — LCEL, multi-provider LLM switching, agent architecture */
+  LANGCHAIN: 'langchain',
 };
