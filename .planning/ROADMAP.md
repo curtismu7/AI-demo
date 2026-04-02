@@ -451,6 +451,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 35 to break down)
 
+### Phase 36: Postman collections and environments audit — update all collections and environments for any missing or changed API routes, auth flows, and MCP endpoints
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 35
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 36 to break down)
+
 ---
 
 ## Dependency Order
