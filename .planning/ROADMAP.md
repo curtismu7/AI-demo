@@ -215,6 +215,16 @@ Plans:
 Plans:
 - [x] 12-01-PLAN.md — Button color system: add blue vars/class + convert all grey/orange buttons to blue
 
+### Phase 13: Dashboard first impression overhaul — professional clean layout, no duplicate buttons, agent visible above the fold, no sensitive credentials on screen
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)
+
 ---
 
 ## Dependency Order
