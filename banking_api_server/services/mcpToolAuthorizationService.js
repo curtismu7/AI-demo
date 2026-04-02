@@ -88,11 +88,20 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
   const USE_SIMULATED = simulatedAuthorizeService.isSimulatedModeEnabled(configStore);
   const FAIL_OPEN = configStore.get('ff_authorize_fail_open') !== 'false';
 
+  // PAZ Trust Framework parameter map (see docs/PINGONE_AUTHORIZE_PLAN.md §MCP Delegation):
+  // JWT aud                              → TokenAudience
+  // JWT act.client_id || act.sub         → ActClientId     (RFC 8693 §4.1 canonical: act.sub)
+  // JWT act.act.client_id || act.act.sub → NestedActClientId
+  // configStore mcp_resource_uri         → McpResourceUri
   const decoded = decodeJwtClaims(agentToken);
   const claims = decoded?.claims || {};
   const subjectId = userSub || claims.sub || '';
   const tokenAudience = claims.aud != null ? (Array.isArray(claims.aud) ? claims.aud.join(' ') : String(claims.aud)) : '';
-  const actClientId = claims.act && typeof claims.act === 'object' ? String(claims.act.client_id || '') : '';
+  // RFC 8693 §4.1: act.sub is the canonical actor identifier.
+  // act.client_id is PingOne-specific; fall back to act.sub when absent.
+  const actClientId = claims.act && typeof claims.act === 'object'
+    ? String(claims.act.client_id || claims.act.sub || '')
+    : '';
   const nestedActClientId = nestedActIdFromClaim(claims.act);
   const mcpResourceUri = configStore.getEffective('mcp_resource_uri') || '';
 

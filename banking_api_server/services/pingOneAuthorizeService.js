@@ -216,8 +216,8 @@ async function _evaluateViaDecisionEndpoint({ endpointId, userId, amount, type, 
  * @param {string} opts.userId
  * @param {string} opts.toolName
  * @param {string} [opts.tokenAudience] - MCP access token aud (string)
- * @param {string} [opts.actClientId] - act.client_id from MCP token
- * @param {string} [opts.nestedActClientId] - nested act.act.client_id or act.act.sub when present
+ * @param {string} [opts.actClientId] - act.client_id or act.sub from MCP token (RFC 8693 §4.1 canonical: act.sub)
+ * @param {string} [opts.nestedActClientId] - act.act.client_id or act.act.sub (nested delegation, RFC 8693 two-hop)
  * @param {string} [opts.mcpResourceUri] - expected MCP resource audience
  * @param {string} [opts.acr] - end-user ACR from session when available
  */
@@ -248,9 +248,9 @@ async function evaluateMcpToolDelegation({
     UserId: userId,
     ToolName: toolName || '',
     TokenAudience: tokenAudience != null ? String(tokenAudience) : '',
-    ActClientId: actClientId || '',
-    NestedActClientId: nestedActClientId || '',
-    McpResourceUri: mcpResourceUri || '',
+    ActClientId: actClientId || '',          // from act.client_id || act.sub
+    NestedActClientId: nestedActClientId || '', // from act.act.client_id || act.act.sub
+    McpResourceUri: mcpResourceUri || '',    // expected MCP resource URI from config
     ...(acr ? { Acr: acr } : {}),
     Timestamp: new Date().toISOString(),
   };
@@ -596,7 +596,7 @@ async function provisionDemoDecisionEndpoints(options = {}) {
     const r = await _createDecisionEndpointResource({
       name: DEMO_MCP_ENDPOINT_NAME,
       description:
-        'BX Finance demo — first MCP tool gate (DecisionContext=McpFirstTool). Created by Application Configuration bootstrap.',
+        'BX Finance demo — first MCP tool gate (DecisionContext=McpFirstTool). Trust Framework attributes: TokenAudience (aud), ActClientId (act.client_id|act.sub), NestedActClientId (act.act.client_id|act.act.sub). Created by Application Configuration bootstrap.',
       policyId,
       authorizationVersionId,
     });

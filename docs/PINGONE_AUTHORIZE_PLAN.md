@@ -288,3 +288,134 @@ Authorization uses a Bearer token obtained via Client Credentials from `BX Finan
 - `banking_api_server/services/simulatedAuthorizeService.js` — simulated Authorize for testing without PingOne
 
 ---
+
+---
+
+## Part 9 — AUD Validation in the MCP Delegation Policy
+
+The MCP delegation policy should validate that `TokenAudience` equals the expected MCP server URL. This prevents a token issued for a different resource server from being replayed at the MCP server.
+
+**Trust Framework condition (PingOne Authorize condition editor):**
+
+| Condition | Value | Outcome |
+|-----------|-------|---------|
+| `TokenAudience` equals `McpResourceUri` | `https://your-mcp-server.example.com` | PERMIT (token is for this MCP server) |
+| `TokenAudience` does not match | *(mismatch)* | DENY (token was issued for a different audience) |
+
+**Steps in PingOne Authorize:**
+1. Open your `BX Finance MCP Delegation` policy (or the policy linked to your MCP decision endpoint).
+2. In the Trust Framework attribute rules, add a condition:
+   - Attribute name: `TokenAudience`
+   - Operator: `equals`
+   - Expected value: your exact MCP server URI (e.g., `https://mcp.example.com` — must match `mcp_resource_uri` in Admin → Config)
+3. Branch: if condition fails → DENY with reason `aud_mismatch`
+
+> **Note:** The BFF also sends `McpResourceUri` as a separate attribute. You can use either for the comparison. `TokenAudience` is extracted from the actual MCP token; `McpResourceUri` comes from the BFF config.
+
+---
+
+## Part 10 — RFC 8693 act.sub vs act.client_id
+
+PingOne issues tokens with `act.client_id` (PingOne-specific extension) AND may also include `act.sub` (RFC 8693 §4.1 canonical actor identifier). The BX Finance BFF sends **both** in a coalesced value via `ActClientId`:
+
+```
+ActClientId = act.client_id  OR  act.sub  (whichever is present, in that priority)
+```
+
+**Why this matters for your PAZ policy:**
+
+In a full RFC 8693 two-hop chain, the actors are identified by URL (subject), not client_id:
+- `act.sub` = `https://bff.example.com` (BFF actor — acts on behalf of user)
+- `act.act.sub` = `https://agent1.example.com` (upstream agent — acts on behalf of BFF)
+
+But PingOne-based token exchange typically uses `act.client_id`:
+- `act.client_id` = `<UUID of BX Finance BFF Admin app>`
+
+**Policy design recommendation:**
+
+Configure your MCP delegation policy to check `ActClientId` against the **expected BFF Client ID** (the UUID from PingOne → Applications → `BX Finance Backend-for-Frontend (BFF) Admin` → Client ID):
+
+| Condition | Value | Outcome |
+|-----------|-------|---------|
+| `ActClientId` equals your BFF Client ID or URL | `<your-bff-client-id>` | PERMIT |
+| `ActClientId` is empty | *(empty)* | DENY (no actor — direct call, not delegated) |
+| `ActClientId` does not match | *(unknown actor)* | DENY |
+
+For `NestedActClientId` (agent check):
+- If you run a specific agent, check `NestedActClientId` equals the agent client ID / URL.
+- If you allow any upstream agent, skip the `NestedActClientId` check (or only deny on mismatch when non-empty).
+
+---
+
+## Part 11 — Transaction Limit Policy Examples
+
+The BFF sends these attributes to the **Transaction endpoint** (`BX Finance Demo — Transactions`):
+
+| Attribute | Type | Example | Description |
+|-----------|------|---------|-------------|
+| `UserId` | String | `abc123-def-456` | PingOne user subject ID |
+| `Amount` | Number | `1500.00` | Transaction amount in USD |
+| `TransactionType` | String | `transfer` | One of: transfer, deposit, withdrawal |
+| `Acr` | String | `level1` | Authentication context reference (from session) |
+| `Timestamp` | String | ISO-8601 | Request timestamp |
+
+**Example policy conditions (PingOne Authorize condition editor):**
+
+*Condition 1 — Block large transfers:*
+```
+IF TransactionType == "transfer" AND Amount > 5000
+THEN DENY
+     reason: "Transfer exceeds daily limit"
+```
+
+*Condition 2 — Require step-up MFA for high-value transactions:*
+```
+IF Amount > 1000 AND Acr != "level2"
+THEN DENY with obligation STEP_UP
+     obligation type: "STEP_UP"
+     message: "High-value transaction requires additional authentication"
+```
+
+*Condition 3 — Permit standard transactions:*
+```
+IF Amount <= 1000
+THEN PERMIT
+```
+
+**Step-up obligation shape:**
+When the step-up obligation is present in the PAZ response, the BFF automatically surfaces an MFA challenge to the user (CIBA backchannel or OTP redirect, per `step_up_method` config). The transaction is blocked until the user authenticates at the required level.
+
+---
+
+## Part 12 — Two-Hop act Chain Policy Design
+
+The MCP delegation policy validates a **two-hop delegation chain**:
+
+```
+User (sub)
+  └── delegated to: BFF (act.sub or act.client_id)              ← ActClientId
+        └── upstream agent: Agent1 (act.act.sub or act.act.client_id) ← NestedActClientId
+```
+
+**Recommended policy logic (MCP Decision Endpoint):**
+
+1. Check `DecisionContext == "McpFirstTool"` — guard against wrong endpoint
+2. Check `TokenAudience == <MCP server URI>` — AUD validation (Part 5)
+3. Check `ActClientId` is non-empty AND matches expected BFF identity (Part 6)
+4. (Optional) Check `NestedActClientId` matches expected agent identity
+5. Check `UserId` exists in your data store (PingOne user lookup attribute)
+6. PERMIT if all checks pass; DENY otherwise
+
+**PingOne Authorize Trust Framework attributes to create:**
+
+| Attribute Name | Type | Source |
+|----------------|------|--------|
+| `DecisionContext` | String | BFF parameter |
+| `UserId` | String | BFF parameter → PingOne user lookup |
+| `ToolName` | String | BFF parameter |
+| `TokenAudience` | String | BFF parameter (from JWT `aud`) |
+| `ActClientId` | String | BFF parameter (from JWT `act.client_id` or `act.sub`) |
+| `NestedActClientId` | String | BFF parameter (from JWT `act.act.client_id` or `act.act.sub`) |
+| `McpResourceUri` | String | BFF parameter (from config) |
+
+> **Tip:** Use the bootstrap button in **Admin → Monitoring → PingOne Authorize** to automatically create the two demo decision endpoints. You still need to create the policies and link them to the endpoints manually in PingOne.
