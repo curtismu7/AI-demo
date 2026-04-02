@@ -3,26 +3,26 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: active
-last_updated: "2026-04-02T14:00:00.000Z"
+last_updated: "2025-07-11T00:00:00.000Z"
 progress:
-  total_phases: 28
-  completed_phases: 13
-  total_plans: 41
-  completed_plans: 26
+  total_phases: 35
+  completed_phases: 14
+  total_plans: 47
+  completed_plans: 32
 ---
 
 # State — BX Finance AI Banking Demo
 
 **Milestone:** v1.0 — Complete Demo + Educational Content
-**Updated:** 2026-03-31
+**Updated:** 2025-07-11
 
 ---
 
 ## Current Position
 
-Phase: 28 — COMPLETE
-Plan: 2 of 2
-**Status:** Phase 28 complete — Phase 29 next
+Phase: 29 — COMPLETE
+Plan: 6 of 6
+**Status:** Phase 29 complete — Phase 30 next
 
 ---
 
@@ -39,9 +39,9 @@ Plan: 2 of 2
 - Phase 19 (demo-config-page-audit) — complete
 - Phase 20 (postman-collections) — complete (commits: 1c4f75f, 56df684, a549287, af3a767)
 - Phase 21 (customer-diagrams) — complete (commit: 772d2a5)
-- Phase 21 (customer-diagrams) — complete (commit: 772d2a5)
 - Phase 22 (agent-capability-audit) — complete (commits: bd866c6, 1448b7a)
 - Phase 23 (langchain-modernization) — complete (commits: f80d934, 343951c, 91789e8, c35b95e)
+- Phase 29 (use-case-c-sensitive-data-access) — complete (commit: 3ca82da)
 
 ---
 
@@ -67,12 +67,12 @@ Plan: 2 of 2
 ## Pending Todos
 
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
-- Redeploy to Vercel (3 code commits since last deploy: 5aa8147, 09598d7, 59786c6)
+- Redeploy to Vercel (commits since last deploy include Phase 29: 3ca82da)
 - When merged to main: update raw doc links from `fix/dashboard-fab-positioning` → `main`
-- **[TODO → Phase 4]** UI consistency audit — enterprise-grade cross-SPA visual polish (04-04-PLAN.md)
-- **[TODO → Phase 4]** Marketing page agent dock UI match — dock styling should match /marketing page design language (04-04-PLAN.md)
+- **[TODO -> Phase 4]** UI consistency audit — enterprise-grade cross-SPA visual polish (04-04-PLAN.md)
+- **[TODO -> Phase 4]** Marketing page agent dock UI match — dock styling should match /marketing page design language (04-04-PLAN.md)
 - **[Phase 6]** Fix RFC 8693 token exchange: PingOne returning "Unsupported authentication method" — investigate agentMcpTokenService.js client auth method
-- **[TODO → /demo-data]** Token Endpoint Auth Method selector — per-client picker (BASIC/POST/client_secret_jwt/private_key_jwt) on DemoDataPage; JWT key gen for JWT methods; BFF `jwtAssertionService.js` + `applyTokenEndpointAuth` extension
+- **[TODO -> /demo-data]** Token Endpoint Auth Method selector — per-client picker (BASIC/POST/client_secret_jwt/private_key_jwt) on DemoDataPage; JWT key gen for JWT methods; BFF jwtAssertionService.js + applyTokenEndpointAuth extension
 
 ---
 
@@ -98,8 +98,3 @@ Plan: 2 of 2
 - Phase 33 added: Token chain history persistence — record and restore token chain across page refreshes using sessionStorage or localStorage
 - Phase 34 added: Agent action logging — log what agent performed each action, which rights (scopes/permissions) were used, and record each step for observability and audit
 - Phase 35 added: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
-- Phase 36 added: Postman collections and environments audit — update all collections and environments for any missing or changed API routes, auth flows, and MCP endpoints
-- Phase 37 added: Public-facing MCP server for external agents — read-only tool surface, scoped credentials, and access controls so external agents have limited safe access
-- Phase 38 added: Family delegation — delegate account access to other family members with scoped permissions (view accounts, balances, deposits, withdrawals, transfers), delegation history, email notification, PingOne user provisioning, and worker app config tab
-- Phase 39 added: Architecture diagram — create draw.io diagram of the full app architecture (UI, BFF, MCP server, LangChain agent, PingOne, PingGateway) showing component relationships, auth flows, and token paths
-- Phase 40 added: PingGateway MCP security — education panel (securing MCP with PingGateway) + feasibility analysis: build custom gateway vs install PingGateway
