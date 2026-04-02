@@ -55,6 +55,11 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
         await applyAndReload({ placement: 'bottom', fab }, { reload: true });
         return;
       }
+      if (p === 'left-dock' || p === 'right-dock') {
+        setDashboardLayout('classic');
+        await applyAndReload({ placement: p, fab }, { reload: true });
+        return;
+      }
       await applyAndReload({ placement: 'none', fab: true }, { reload: true });
     },
     [placement, fab, applyAndReload]
@@ -78,7 +83,9 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
 
   const isLandingNav = variant === 'landing';
   const showFabCheckbox =
-    isLandingNav ? placement === 'bottom' : placement === 'middle' || placement === 'bottom';
+    isLandingNav
+      ? placement === 'bottom'
+      : placement === 'middle' || placement === 'bottom' || placement === 'left-dock' || placement === 'right-dock';
 
   return (
     <div
@@ -88,7 +95,7 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
         ariaLabel ||
         (isLandingNav
           ? 'AI banking agent: bottom dock or float'
-          : 'AI banking agent: middle column, bottom dock, or float; optional FAB')
+          : 'AI banking agent: left dock, middle column, right dock, bottom dock, or float; optional FAB')
       }
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
@@ -98,12 +105,34 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
         {!isLandingNav && (
           <button
             type="button"
+            className={`agent-ui-mode-toggle__btn${placement === 'left-dock' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
+            onClick={() => void handlePlacement('left-dock')}
+            aria-pressed={placement === 'left-dock'}
+            title="Assistant in a collapsible left sidebar (all pages)"
+          >
+            Left
+          </button>
+        )}
+        {!isLandingNav && (
+          <button
+            type="button"
             className={`agent-ui-mode-toggle__btn${placement === 'middle' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
             onClick={() => void handlePlacement('middle')}
             aria-pressed={placement === 'middle'}
             title="Assistant in the middle column (Split dashboard: token | agent | banking)"
           >
             Middle
+          </button>
+        )}
+        {!isLandingNav && (
+          <button
+            type="button"
+            className={`agent-ui-mode-toggle__btn${placement === 'right-dock' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
+            onClick={() => void handlePlacement('right-dock')}
+            aria-pressed={placement === 'right-dock'}
+            title="Assistant in a collapsible right sidebar (all pages)"
+          >
+            Right
           </button>
         )}
         <button

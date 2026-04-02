@@ -44,7 +44,7 @@
 
 .agent-ui-mode-toggle__segmented {
   display: inline-flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);

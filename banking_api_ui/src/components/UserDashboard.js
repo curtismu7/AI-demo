@@ -269,8 +269,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   }, [location.state, location.pathname, location.search, navigate]);
 
   const loadDemoFallback = (reason) => {
-    setAccounts(DEMO_ACCOUNTS);
-    setTransactions(DEMO_TRANSACTIONS);
+    // Guard: do not overwrite real account data if the user is already authenticated.
+    // This prevents a race condition where a momentary session blip on layout-switch
+    // reload causes DEMO_ACCOUNTS to replace real accounts (todo #11).
+    if (!user) {
+      setAccounts(DEMO_ACCOUNTS);
+      setTransactions(DEMO_TRANSACTIONS);
+    }
     notifyInfo(`Demo mode — ${reason}. Sign in to see your real accounts.`, {
       toastId: 'demo-mode',   // deduplicate across refreshes
       autoClose: 6000,
