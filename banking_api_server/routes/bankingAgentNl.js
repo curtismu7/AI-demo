@@ -46,4 +46,24 @@ router.get('/nl/status', (req, res) => {
   });
 });
 
+/** GET /api/banking-agent/search?q=... — BFF-side web search via Brave Search API.
+ * The BRAVE_SEARCH_API_KEY never leaves the server. */
+router.get('/search', async (req, res) => {
+  const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  if (!query) {
+    return res.status(400).json({ ok: false, error: 'query_required', message: 'q parameter is required' });
+  }
+  const braveSearchService = require('../services/braveSearchService');
+  try {
+    const result = await braveSearchService.search(query);
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    if (err.code === 'BRAVE_NOT_CONFIGURED') {
+      return res.status(503).json({ ok: false, error: err.code, message: err.message });
+    }
+    console.error('[bankingAgentNl] search error:', err);
+    return res.status(500).json({ ok: false, error: 'search_failed', message: 'Search request failed' });
+  }
+});
+
 module.exports = router;

@@ -135,6 +135,13 @@ function parseBanking(t) {
   if (/\b(logout|log out|sign out|signout)\b/.test(t)) {
     return { kind: 'banking', banking: { action: 'logout' } };
   }
+  // Web search: general queries not related to banking or OAuth education
+  if (
+    /\b(search|find info|look up|look up|what is|tell me about|who is)\b/i.test(t) &&
+    !/\b(account|balance|transaction|transfer|deposit|withdraw|mcp|rfc|oauth|token|ciba|pkce|scope|login|oidc)\b/i.test(t)
+  ) {
+    return { kind: 'banking', banking: { action: 'web_search', query: message } };
+  }
   return null;
 }
 

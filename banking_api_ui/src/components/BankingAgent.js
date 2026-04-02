@@ -1400,6 +1400,40 @@ export default function BankingAgent({
           toolProgressIdRef.current = null;
           return;
         }
+        case 'web_search': {
+          toast.update(toastId, { render: '\u{1F50D} Searching the web…' });
+          const q = encodeURIComponent(form.query || '');
+          let srRes;
+          try {
+            srRes = await fetch(`/api/banking-agent/search?q=${q}`, { credentials: 'include' });
+          } catch (netErr) {
+            throw new Error(`Web search network error: ${netErr.message}`);
+          }
+          const srData = await srRes.json().catch(() => ({}));
+          if (!srRes.ok) {
+            if (srData.error === 'BRAVE_NOT_CONFIGURED') {
+              addMessage('assistant', `\u26A0\uFE0F Web search is not configured.\n\n${srData.message || 'Set BRAVE_SEARCH_API_KEY in the server environment to enable web search.'}`, actionId);
+              toast.dismiss(toastId);
+              setLoading(false);
+              toolProgressIdRef.current = null;
+              return;
+            }
+            throw new Error(srData.message || `Search failed: ${srRes.status}`);
+          }
+          const srResults = (srData.results || [])
+            .map((r, i) => `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.description || ''}`)
+            .join('\n\n');
+          addMessage(
+            'assistant',
+            `\u{1F50D} Web search results for **"${srData.query || form.query || ''}"**:\n\n${srResults || 'No results found.'}`,
+            actionId,
+          );
+          setIsExpanded(true);
+          toast.update(toastId, { render: '\u2705 Search complete', type: 'success', isLoading: false, autoClose: agentToastMs.toolsLoaded });
+          setLoading(false);
+          toolProgressIdRef.current = null;
+          return;
+        }
         default:
           throw new Error(`Unknown action: ${actionId}`);
       }
