@@ -481,6 +481,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 38 to break down)
 
+### Phase 39: Architecture diagram — create draw.io diagram of the full app architecture (UI, BFF, MCP server, LangChain agent, PingOne, PingGateway) showing component relationships, auth flows, and token paths
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 38
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 39 to break down)
+
 ---
 
 ## Dependency Order
