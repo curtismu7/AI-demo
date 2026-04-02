@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useTokenChainOptional } from '../context/TokenChainContext';
+import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import './TokenChainDisplay.css';
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -470,51 +471,12 @@ function openInNewWindow(event) {
  * Rendered via createPortal into document.body so it can go off-screen.
  */
 function TokenInspectorPanel({ event, initialPos, onClose }) {
-  const [pos, setPos] = useState(initialPos);
-  const [size, setSize] = useState({ w: 800, h: 960 });
+  const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
+    initialPos,
+    { w: 800, h: 960 },
+    { minW: 400, minH: 320, storageKey: 'tci-inspector-panel' }
+  );
   const [collapsed, setCollapsed] = useState(false);
-
-  /** Drag from header. */
-  const handleDragStart = useCallback((e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const startX = e.clientX - pos.x;
-    const startY = e.clientY - pos.y;
-    const onMove = (ev) => setPos({ x: ev.clientX - startX, y: ev.clientY - startY });
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.userSelect = '';
-    };
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [pos.x, pos.y]);
-
-  /** Resize from bottom-right corner. */
-  const handleResizeStart = useCallback((e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startW = size.w;
-    const startH = size.h;
-    const onMove = (ev) => setSize({
-      w: Math.max(400, startW + ev.clientX - startX),
-      h: Math.max(320, startH + ev.clientY - startY),
-    });
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-    document.body.style.cursor = 'se-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [size.w, size.h]);
 
   const panel = (
     <div
