@@ -98,3 +98,4 @@ Plan: 6 of 6
 - Phase 33 added: Token chain history persistence — record and restore token chain across page refreshes using sessionStorage or localStorage
 - Phase 34 added: Agent action logging — log what agent performed each action, which rights (scopes/permissions) were used, and record each step for observability and audit
 - Phase 35 added: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
+- Phase 41 added: C4 top-down architecture diagram (draw.io) for the banking demo

@@ -505,6 +505,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 40 to break down)
 
+### Phase 41: C4 top-down architecture diagram (draw.io) for the banking demo
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 40
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 41 to break down)
+
 ---
 
 ## Dependency Order
