@@ -2380,13 +2380,13 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 /* ─── Marketing page: white site chrome → agents read as bold black/dark widgets ─ */
 .App--marketing-page .global-embedded-agent-dock-wrap {
-  background: #030712 !important;
+  background: #08142a !important;
   border-top: 3px solid #000000 !important;
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
 }
 
 .App--marketing-page .global-embedded-agent-dock-wrap--collapsed {
-  background: #111827 !important;
+  background: #0d1f3a !important;
   border-top-color: #000000 !important;
 }
 
@@ -2422,15 +2422,15 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .App--marketing-page .embedded-banking-agent.embedded-banking-agent--bottom {
-  background: #0a0a0a !important;
-  border: 2px solid #000000 !important;
+  background: #0a1628 !important;
+  border: 2px solid #0d2040 !important;
   border-radius: 10px !important;
 }
 
 /* Force high-contrast dark chat on marketing (float + bottom) even if ba-mode-light */
 .App--marketing-page .banking-agent-panel {
-  --ba-bg: #0a0a0a;
-  --ba-surface: #171717;
+  --ba-bg: #0a1628;
+  --ba-surface: #0e1f38;
   --ba-border: rgba(148, 163, 184, 0.35);
   --ba-text: #fafafa;
   --ba-muted: #a3a3a3;
@@ -2440,7 +2440,7 @@ body > .banking-agent-float-root .banking-agent-panel {
   --ba-agent-txt: #fafafa;
   --ba-accent: #dc2626;
   --ba-accent-h: #b91c1c;
-  --ba-input-bg: #0a0a0a;
+  --ba-input-bg: #0a1628;
   --ba-input-bd: #404040;
   --ba-chip-bg: rgba(64, 64, 64, 0.55);
   --ba-chip-bd: #525252;
@@ -2449,9 +2449,9 @@ body > .banking-agent-float-root .banking-agent-panel {
 }
 
 .App--marketing-page .banking-agent-fab {
-  background: #0a0a0a !important;
+  background: #0a1628 !important;
   color: #ffffff !important;
-  border: 2px solid #000000 !important;
+  border: 2px solid #0d2040 !important;
   box-shadow:
     0 10px 36px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
@@ -2463,14 +2463,14 @@ body > .banking-agent-float-root .banking-agent-panel {
 
 .App--marketing-page .banking-agent-fab:hover,
 .App--marketing-page .banking-agent-fab.open {
-  background: #171717 !important;
+  background: #12274a !important;
 }
 
 html[data-theme='dark'] .App--marketing-page .global-embedded-agent-dock-wrap {
-  background: #030712 !important;
+  background: #08142a !important;
 }
 
 html[data-theme='dark'] .App--marketing-page .embedded-agent-dock[data-agent-theme='light'] .embedded-banking-agent {
-  background: #0a0a0a !important;
-  border-color: #000000 !important;
+  background: #0a1628 !important;
+  border-color: #0d2040 !important;
 }

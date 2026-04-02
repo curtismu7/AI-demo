@@ -88,7 +88,7 @@ function MaturityDiagram() {
     whiteSpace: 'nowrap',
   });
   const questionStyle = {
-    background: '#1a1a1a',
+    background: '#1e2d4a',
     border: '2px dashed #dc2626',
     borderRadius: 8,
     padding: '8px 12px',
@@ -127,7 +127,7 @@ function MaturityDiagram() {
 
   return (
     <div style={{
-      background: '#111',
+      background: '#1a2035',
       borderRadius: 12,
       padding: '24px 20px',
       marginBottom: 20,

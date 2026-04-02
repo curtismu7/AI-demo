@@ -1,7 +1,7 @@
 /* Landing Page Styles - Marketing Focus */
 .landing-page {
   min-height: 100vh;
-  background: #0a0a0a;
+  background: #060c1c;
   color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   overflow-x: hidden;
@@ -14,7 +14,7 @@
   width: 100%;
   z-index: 1000;
   padding: 1rem 0;
-  background: rgba(10, 10, 10, 0.8);
+  background: rgba(6, 12, 28, 0.8);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
@@ -22,7 +22,7 @@
 
 .navbar.scrolled {
   padding: 0.75rem 0;
-  background: rgba(10, 10, 10, 0.95);
+  background: rgba(6, 12, 28, 0.95);
 }
 
 .nav-container {
@@ -504,7 +504,7 @@
 /* Features Section */
 .features {
   padding: 2.5rem 2rem;
-  background: linear-gradient(to bottom, #0a0a0a, #111111);
+  background: linear-gradient(to bottom, #060c1c, #0a1020);
 }
 
 .container {
@@ -572,7 +572,7 @@
 /* How It Works */
 .how-it-works {
   padding: 2.5rem 2rem;
-  background: #111111;
+  background: #0a1020;
 }
 
 .steps-container {
@@ -635,7 +635,7 @@
 /* Testimonials */
 .testimonials {
   padding: 2.5rem 2rem;
-  background: #111111;
+  background: #0a1020;
 }
 
 .testimonials-grid {
@@ -701,7 +701,7 @@
 
 /* Footer */
 .footer {
-  background: #0a0a0a;
+  background: #060c1c;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1.5rem 2rem 0.75rem;
 }
