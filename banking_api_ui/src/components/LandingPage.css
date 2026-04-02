@@ -1245,3 +1245,20 @@
 .landing-page--light .link-group a:hover {
   color: #2563eb;
 }
+
+/* Password reveal toggle */
+.landing-demo-cred-item--pass { display: inline-flex; align-items: center; gap: 5px; }
+.landing-demo-reveal-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0 5px;
+  font-size: 0.72rem;
+  font-family: sans-serif;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.65);
+  opacity: 0.8;
+  transition: opacity 0.15s, background 0.15s;
+}
+.landing-demo-reveal-btn:hover { opacity: 1; background: rgba(255,255,255,0.12); color: #fff; }

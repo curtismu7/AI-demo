@@ -18,6 +18,7 @@ const LandingPage = () => {
     passHint: '',
   });
   const [loginPanelOpen, setLoginPanelOpen] = React.useState(false);
+  const [passVisible, setPassVisible] = React.useState(false);
   const marketingModeRef = React.useRef('redirect');
 
   React.useEffect(() => {
@@ -239,8 +240,15 @@ const LandingPage = () => {
                   </span>
                 )}
                 {marketingCfg.passHint && (
-                  <span className="landing-demo-cred-item">
-                    <span className="landing-demo-cred-key">Pass:</span> {marketingCfg.passHint}
+                  <span className="landing-demo-cred-item landing-demo-cred-item--pass">
+                    <span className="landing-demo-cred-key">Pass:</span> {passVisible ? marketingCfg.passHint : '••••••••'}
+                    <button
+                      type="button"
+                      className="landing-demo-reveal-btn"
+                      onClick={() => setPassVisible(v => !v)}
+                      aria-label={passVisible ? 'Hide password' : 'Show password'}
+                      title={passVisible ? 'Hide password' : 'Show password'}
+                    >{passVisible ? 'Hide' : 'Show'}</button>
                   </span>
                 )}
               </div>

@@ -36,6 +36,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - **Phase 6 roadmap: token-exchange-fix** — added Phase 6 plan to address RFC 8693 token exchange "Unsupported authentication method" error from PingOne; requirements TOKEN-FIX-01, TOKEN-FIX-02
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - - **2-exchange token auth method fix** — `getClientCredentialsTokenAs` and `performTokenExchangeAs` previously hardcoded `client_secret_post`, causing "Unsupported authentication method" on the AI-Agent→MCP 2-exchange delegation path; both methods now route through `applyTokenEndpointAuth` with `method='basic'` default matching PingOne app configuration; `_performTwoExchangeDelegation` reads `AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD` / `MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD` env vars and passes them to all 4 call sites; 14 new auth-method unit tests added covering all 5 BFF token methods
@@ -55,6 +56,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `TOKEN_EXCHANGE` category added to `LOG_CATEGORIES` in `utils/logger.js`
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - **Agent consent gate UX** — clicking a tool chip or typing a query before accepting consent now opens `AgentConsentModal` with a friendly message instead of showing `❌ Agent consent required...` error in chat (commit `32e1667`)
@@ -68,6 +70,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `TokenExchangeSimulator` — now draggable and resizable (portal, starts viewport-filling, drag/resize freely)
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - **Investment (and extra) accounts lost on cold-start** — `dataStore` is in-memory only; `provisionDemoAccounts` deleted all accounts and re-created only checking+savings whenever the in-memory store was empty (every Vercel cold-start). Fix: `demoScenario PUT` now saves an `accountSnapshot` array to `demoScenarioStore` (Redis/KV) after every save; `GET /api/accounts/my` and `GET /api/demo-data` both try to restore from that snapshot before falling back to provisioning; `POST /accounts/reset-demo` updates the snapshot to the freshly provisioned 2-account state so future cold-starts restore the reset (commit `1a93c77`)
@@ -82,6 +85,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - **3-column Split Dashboard layout** — Token Chain (slim `220px`) | AI Agent (`1fr`) | Customer Accounts (`1fr`); all three columns same height, same row; action/suggestion chips now render as horizontal pill strip below the chat prompt instead of side column; responsive collapse at ≤1024px
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 
@@ -130,6 +134,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `banking_mcp_server/tests/helpers/integrationAxiosMock.ts` — shared axios mock for integration tests
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 
@@ -181,6 +186,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ### Added
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 
@@ -198,6 +204,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - README.md Vercel Deployment section covering setup wizard, required vars, common issues, and post-deploy verification checklist
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - Session store switched from `@upstash/redis` to `@vercel/kv` (confirmed direct dep); resolves `sessionStoreHealthy: false` caused by version mismatch
@@ -216,6 +223,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ### Added
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 
@@ -242,6 +250,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `scripts/release.js` — automates changelog versioning and git tagging on each deploy
 
 ### Fixed
+- **Landing page demo password masked by default** — password hint now shows as 8 bullets with a Show/Hide toggle (`passVisible` state); password is not visible on page load/screenshot; CSS `landing-demo-reveal-btn` styled for the dark hero context
 - **Marketing page dock background** — replaced near-black dock chrome (#08142a / #0d1f3a / #1f2937) with light slate tones (#f1f5f9 / #e2e8f0 / #e8edf3); borders #000000 u2192 #cbd5e1; text and icon colors updated for contrast on light background; box-shadow softened; FAB and inner chat panel dark theme unchanged
 - **ExchangeModeToggle card** — replaced dark-theme palette (#1e293b bg, #334155 borders, #94a3b8 text) with light-theme equivalents (#f8fafc, #e2e8f0, #475569); hover/active pill states updated from light-blue-on-dark to dark-blue-on-light; card now matches the white TokenChainDisplay card in the token rail column
 - Redis cold-start 500 on `/api/accounts/my`: `RedisStore.get()` error now returns empty session (→ 401) instead of propagating as a 500. See `REGRESSION_LOG.md`.
