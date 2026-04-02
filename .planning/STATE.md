@@ -100,3 +100,4 @@ Plan: 2 of 2
 - Phase 35 added: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 - Phase 36 added: Postman collections and environments audit — update all collections and environments for any missing or changed API routes, auth flows, and MCP endpoints
 - Phase 37 added: Public-facing MCP server for external agents — read-only tool surface, scoped credentials, and access controls so external agents have limited safe access
+- Phase 38 added: Family delegation — delegate account access to other family members with scoped permissions (view accounts, balances, deposits, withdrawals, transfers), delegation history, email notification, PingOne user provisioning, and worker app config tab

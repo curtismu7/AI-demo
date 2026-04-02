@@ -471,6 +471,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 37 to break down)
 
+### Phase 38: Family delegation — delegate account access to other family members with scoped permissions (view accounts, balances, deposits, withdrawals, transfers), delegation history, email notification, PingOne user provisioning, and worker app config tab
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 37
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 38 to break down)
+
 ---
 
 ## Dependency Order
