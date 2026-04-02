@@ -265,6 +265,146 @@ function AgentLayoutPreferences() {
   );
 }
 
+
+// ── LangChain Agent Configuration section ─────────────────────────────────
+function LangChainAgentConfig() {
+  const [status, setStatus] = React.useState(null);
+  const [saving, setSaving] = React.useState({});
+  const [keyInputs, setKeyInputs] = React.useState({});
+  const [messages, setMessages] = React.useState({});
+
+  const PROVIDERS = [
+    { id: 'groq',      label: 'Groq',      placeholder: 'gsk_…'          },
+    { id: 'openai',    label: 'OpenAI',     placeholder: 'sk-…'           },
+    { id: 'anthropic', label: 'Anthropic',  placeholder: 'sk-ant-…'       },
+    { id: 'google',    label: 'Google AI',  placeholder: 'AIza…'          },
+    { id: 'ollama',    label: 'Ollama',     placeholder: '(local — no key needed)' },
+  ];
+
+  useEffect(() => {
+    fetch('/api/langchain/config/status')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setStatus(d))
+      .catch(() => null);
+  }, []);
+
+  const handleProviderSelect = async (provider) => {
+    try {
+      const r = await fetch('/api/langchain/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, model: status?.default_models?.[provider] }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setStatus(prev => ({ ...prev, provider: d.provider, model: d.model, key_set: d.key_set }));
+      }
+    } catch {}
+  };
+
+  const handleSaveKey = async (keyType) => {
+    const key = keyInputs[keyType] || '';
+    if (!key.trim()) return;
+    setSaving(s => ({ ...s, [keyType]: true }));
+    setMessages(m => ({ ...m, [keyType]: '' }));
+    try {
+      const r = await fetch('/api/langchain/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_type: keyType, key: key.trim() }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        setStatus(prev => ({ ...prev, key_set: d.key_set }));
+        setKeyInputs(i => ({ ...i, [keyType]: '' }));
+        setMessages(m => ({ ...m, [keyType]: '✓ Saved (session only)' }));
+      } else {
+        setMessages(m => ({ ...m, [keyType]: '✗ ' + (d.error || 'Error') }));
+      }
+    } catch (e) {
+      setMessages(m => ({ ...m, [keyType]: '✗ Network error' }));
+    } finally {
+      setSaving(s => ({ ...s, [keyType]: false }));
+    }
+  };
+
+  const handleClearKey = async (keyType) => {
+    try {
+      const r = await fetch('/api/langchain/config/key/' + keyType, { method: 'DELETE' });
+      const d = await r.json();
+      if (d.ok) {
+        setStatus(prev => ({ ...prev, key_set: { ...prev.key_set, [keyType]: false } }));
+        setMessages(m => ({ ...m, [keyType]: 'Key cleared' }));
+      }
+    } catch {}
+  };
+
+  if (!status) return <p style={{ padding: '8px', color: '#888' }}>Loading LangChain config…</p>;
+
+  const activeProvider = status.provider || 'groq';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ margin: 0, fontSize: 14, color: '#666' }}>
+        Active provider: <strong>{activeProvider}</strong> — model: <code>{status.model}</code>
+      </p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+        {PROVIDERS.map(p => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => handleProviderSelect(p.id)}
+            className={activeProvider === p.id ? 'btn btn-primary' : 'btn btn-secondary'}
+            style={{ fontSize: 13 }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {PROVIDERS.filter(p => p.id !== 'ollama').map(p => (
+        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ width: 90, fontSize: 13, fontWeight: 500 }}>{p.label}</span>
+          {status.key_set?.[p.id] ? (
+            <>
+              <span style={{ fontSize: 12, color: '#2e7d32' }}>🔒 key set (session only)</span>
+              <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '2px 8px' }}
+                onClick={() => handleClearKey(p.id)}>Clear</button>
+            </>
+          ) : (
+            <>
+              <input
+                type="password"
+                placeholder={p.placeholder}
+                value={keyInputs[p.id] || ''}
+                onChange={e => setKeyInputs(i => ({ ...i, [p.id]: e.target.value }))}
+                style={{ flex: 1, minWidth: 200, maxWidth: 340, fontSize: 13, padding: '4px 8px',
+                         border: '1px solid #ccc', borderRadius: 4 }}
+                autoComplete="off"
+              />
+              <button type="button" className="btn btn-primary" style={{ fontSize: 12, padding: '4px 12px' }}
+                onClick={() => handleSaveKey(p.id)} disabled={saving[p.id]}>
+                {saving[p.id] ? '…' : 'Save'}
+              </button>
+            </>
+          )}
+          {messages[p.id] && (
+            <span style={{ fontSize: 12, color: messages[p.id].startsWith('✓') ? '#2e7d32' : '#c62828' }}>
+              {messages[p.id]}
+            </span>
+          )}
+        </div>
+      ))}
+
+      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
+        Keys are stored in your server session only and are never included in API responses.
+        Refresh or logout to clear all keys.
+      </p>
+    </div>
+  );
+}
+
 export default function Config() {
   const navigate = useNavigate();
   const { applyIndustryId } = useIndustryBranding();
@@ -1405,6 +1545,17 @@ export default function Config() {
             </div>
           )}
         </div>
+
+
+        {/* ── LangChain Agent configuration ── */}
+        <CollapsibleCard
+          title="LangChain Agent"
+          subtitle="Multi-provider LLM config — keys stored in session only, never returned to browser"
+          defaultOpen={false}
+          className="config-page__card--langchain"
+        >
+          <LangChainAgentConfig />
+        </CollapsibleCard>
 
         {/* ── Primary actions (page bottom — after all sections) ── */}
         {!readOnly && (

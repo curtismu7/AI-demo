@@ -176,6 +176,7 @@ const { router: featureFlagsRoutes } = require('./routes/featureFlags');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
+const langchainConfigRoutes = require('./routes/langchainConfig');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
@@ -811,6 +812,7 @@ app.use('/api/agent', agentIdentityRoutes);
 // NL route uses its own req.session?.user check — full JWT validation is not
 // needed here and causes invalid_token errors when JWKS fetch times out.
 app.use('/api/banking-agent', bankingAgentNlRoutes);
+app.use('/api/langchain', langchainConfigRoutes);
 app.use('/api/authorize', authorizeRoutes);
 app.use('/api/setup', setupRoutes);
 // MCP Inspector: no auth gate at the router level — tools/list returns local catalog for
@@ -970,6 +972,10 @@ const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./servi
 const { callToolLocal } = require('./services/mcpLocalTools');
 const { introspectToken } = require('./middleware/tokenIntrospection');
 const mcpFlowSseHub = require('./services/mcpFlowSseHub');
+
+// Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
+const mcpExchangeMode = require('./routes/mcpExchangeMode');
+app.use('/api/mcp', mcpExchangeMode);
 
 // Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
 const mcpExchangeMode = require('./routes/mcpExchangeMode');
