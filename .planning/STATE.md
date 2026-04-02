@@ -74,3 +74,4 @@ Plan: 1 of 1
 - Phase 11 added: Education content review and accuracy audit — OAuth RFCs MCP PingOne AI completeness check
 - Phase 12 added: UI button consistency audit — standardize color scheme red and blue with white text no grey no purple
 - Phase 24 added: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
+- Phase 25 added: LLM landscape — commercial and open-source models, capabilities overview, and comparison

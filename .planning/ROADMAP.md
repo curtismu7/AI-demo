@@ -335,6 +335,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 24 to break down)
 
+### Phase 25: LLM landscape — commercial and open-source models, capabilities overview, and comparison
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 24
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 25 to break down)
+
 ---
 
 ## Dependency Order
