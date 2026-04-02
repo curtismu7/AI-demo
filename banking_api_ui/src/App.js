@@ -46,6 +46,7 @@ import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import DashboardQuickNav from './components/DashboardQuickNav';
 import EmbeddedAgentDock from './components/EmbeddedAgentDock';
+import SideAgentDock from './components/SideAgentDock';
 import {
   isBankingAgentDashboardRoute,
   isDashboardQuickNavRoute,
@@ -120,7 +121,7 @@ function AppWithAuth() {
   const [searchParams] = useSearchParams();
   const pathNorm = pathname.replace(/\/$/, '') || '/';
   const isApiTrafficOnlyPage = pathNorm === '/api-traffic' || pathNorm === '/logs';
-  const { placement: agentPlacement } = useAgentUiMode();
+  const { placement: agentPlacement, fab: agentFab } = useAgentUiMode();
   const demoMode = useDemoMode();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -336,7 +337,8 @@ function AppWithAuth() {
     (marketingAgentSurface ||
       (Boolean(user) &&
         onDashboardAgentRoute &&
-        !(agentPlacement === 'middle' && onUserDashboardRoute)));
+        !(agentPlacement === 'middle' && onUserDashboardRoute) &&
+        !((agentPlacement === 'left-dock' || agentPlacement === 'right-dock') && !agentFab)));
 
   // Marketing `/` + `/marketing`: always reserve bottom dock (float + bottom) regardless of agent UI toggle.
   const hasEmbeddedDockLayout =
@@ -468,6 +470,14 @@ function AppWithAuth() {
             >
               Demo config
             </button>
+          )}
+          {/* Side dock — mounts globally for left-dock and right-dock placements */}
+          {(agentPlacement === 'left-dock' || agentPlacement === 'right-dock') && (
+            <SideAgentDock
+              user={user}
+              onLogout={logout}
+              side={agentPlacement === 'left-dock' ? 'left' : 'right'}
+            />
           )}
           {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
               order directly above the footer on marketing and other non-dashboard routes. */}
