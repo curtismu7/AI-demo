@@ -97,3 +97,4 @@ Plan: 0 of 0
 - Phase 32 added: MCP server advanced capabilities — sequential thinking tool, async long-running tasks (SEP-1686), .well-known server discovery, audit trail observability, MCP registry integration
 - Phase 33 added: Token chain history persistence — record and restore token chain across page refreshes using sessionStorage or localStorage
 - Phase 34 added: Agent action logging — log what agent performed each action, which rights (scopes/permissions) were used, and record each step for observability and audit
+- Phase 35 added: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
