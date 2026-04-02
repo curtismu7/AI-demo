@@ -93,6 +93,7 @@ router.get('/my', authenticateToken, async (req, res) => {
       
       return {
         ...transaction,
+        accountId: transaction.fromAccountId || transaction.toAccountId || null,
         performedBy: fullName,
         accountInfo: accountInfo
       };

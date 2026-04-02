@@ -23,7 +23,12 @@ export function getToolStepsForAction(actionId) {
       return [row('create_withdrawal')];
     case 'transfer':
       return [row('create_transfer')];
+    case 'query_user':
+      return [row('query_user_by_email')];
+    case 'web_search':
+      return [row('brave_search')];
     case 'mcp_tools':
+      // mcp_tools is a meta-action; individual tool calls show their own chips via BFF response
       return [];
     default:
       return [];
