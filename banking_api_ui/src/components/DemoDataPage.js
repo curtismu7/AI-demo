@@ -10,6 +10,7 @@ import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../co
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import { useEducationUI } from '../context/EducationUIContext';
+import { useTheme } from '../context/ThemeContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import './UserDashboard.css';
@@ -64,30 +65,12 @@ export default function DemoDataPage({ user, onLogout }) {
   const navigate = useNavigate();
   const { open } = useEducationUI();
   const { placement: agentPlacement } = useAgentUiMode();
+  const { theme, toggleTheme } = useTheme();
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
   const dashboardCrumbLabel = user?.role === 'admin' ? 'Admin' : 'Dashboard';
 
-  const [dashTheme, setDashTheme] = useState(() => {
-    try {
-      const t = localStorage.getItem('bx-dash-theme');
-      return t === 'dark' ? 'dark' : 'light';
-    } catch {
-      return 'light';
-    }
-  });
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = dashTheme;
-    try {
-      localStorage.setItem('bx-dash-theme', dashTheme);
-    } catch (_) {
-      /* ignore */
-    }
-  }, [dashTheme]);
 
-  const handleDashThemeToggle = useCallback(() => {
-    setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
-  }, []);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -358,10 +341,6 @@ export default function DemoDataPage({ user, onLogout }) {
     }
   };
 
-  /** Stable React key for a row before the server assigns an account id. */
-  // eslint-disable-next-line no-unused-vars
-  const getAccountRowKey = (a) => a.id || a._clientKey;
-
   /** Update a single field in a type slot. */
   const handleSlotChange = (type, field, value) => {
     setTypeSlots((prev) => ({ ...prev, [type]: { ...prev[type], [field]: value } }));
@@ -420,18 +399,6 @@ export default function DemoDataPage({ user, onLogout }) {
     loadScopes();
   }, [load, loadScopes]);
 
-  /** Updates a single account row (by id or draft _clientKey). */
-  // eslint-disable-next-line no-unused-vars
-  const handleAccountChange = (rowKey, field, value) => {
-    // kept for any legacy callers; no-op in new model
-  };
-
-  /** @deprecated replaced by type-slot model */
-  // eslint-disable-next-line no-unused-vars
-  const handleAddAccount = () => {};
-  /** @deprecated replaced by type-slot model */
-  // eslint-disable-next-line no-unused-vars
-  const handleRemoveDraft = () => {};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -643,11 +610,11 @@ export default function DemoDataPage({ user, onLogout }) {
           <button
             type="button"
             className="dashboard-toolbar-btn dashboard-toolbar-btn--theme"
-            onClick={handleDashThemeToggle}
-            aria-pressed={dashTheme === 'dark'}
-            title={dashTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            onClick={toggleTheme}
+            aria-pressed={theme === 'dark'}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
-            {dashTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
           </button>
           <button type="button" onClick={onLogout} className="dashboard-toolbar-btn dashboard-toolbar-btn--danger">
             Log out
@@ -691,6 +658,8 @@ export default function DemoDataPage({ user, onLogout }) {
             )}
           </section>
 
+<details>
+  <summary>🎓 Lesson: how can an AI reach your bank data?</summary>
           <section
             className="section demo-data-section demo-data-agent-auth-demo"
             aria-labelledby="demo-agent-auth-demo-heading"
@@ -873,6 +842,7 @@ export default function DemoDataPage({ user, onLogout }) {
               </div>
             )}
           </section>
+</details>
 
           <Link
             to={dashboardPath}
