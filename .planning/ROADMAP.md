@@ -411,6 +411,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 31 to break down)
 
+### Phase 32: MCP server advanced capabilities - sequential thinking tool, async long-running tasks primitive, well-known server discovery, audit trail observability, and MCP registry integration
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 31
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 32 to break down)
+
 ---
 
 ## Dependency Order
