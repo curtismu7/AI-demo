@@ -23,6 +23,8 @@ import { MCPMessage } from '../interfaces/mcp';
 import { MCPMessageHandler, MessageHandlerContext } from './MCPMessageHandler';
 import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
+import { BankingToolRegistry } from '../tools/BankingToolRegistry';
+import pkg from '../../package.json';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -94,6 +96,12 @@ export class HttpMCPTransport {
   // -------------------------------------------------------------------------
 
   async handleRequest(req: IncomingMessage, res: ServerResponse, pathname: string): Promise<void> {
+    // Public discovery endpoint — skip origin check (D-09: publicly discoverable)
+    if (pathname === '/.well-known/mcp-server' && req.method === 'GET') {
+      this.handleMcpDiscovery(res);
+      return;
+    }
+
     // MUST validate Origin header on all HTTP MCP requests to prevent DNS rebinding
     // (transport spec §2.0.1)
     if (!this.isOriginAllowed(req)) {
@@ -158,6 +166,45 @@ export class HttpMCPTransport {
       'Access-Control-Allow-Origin': '*',
     });
     res.end(JSON.stringify(metadata, null, 2));
+  }
+
+
+  // -------------------------------------------------------------------------
+  // GET /.well-known/mcp-server  — public MCP discovery manifest (D-07, D-08, D-09)
+  // -------------------------------------------------------------------------
+
+  private handleMcpDiscovery(res: ServerResponse): void {
+    const tools = BankingToolRegistry.getMCPToolDefinitions();
+    const manifest = {
+      name: 'BX Finance Banking MCP Server',
+      description:
+        'MCP server providing banking tools for AI agents — account access, transactions, transfers, ' +
+        'and balance queries. Implements MCP 2025-11-05 with OAuth 2.0 / PingOne authorization.',
+      version: pkg.version,
+      tools: tools.map((t) => ({ name: t.name, description: t.description })),
+      auth: {
+        type: 'oauth2',
+        required: true,
+        authorization_servers: [
+          process.env.PINGONE_ISSUER || this.config.authServerUrl,
+        ],
+        scopes: [
+          'banking:accounts:read',
+          'banking:transactions:read',
+          'banking:accounts:write',
+          'banking:sensitive:read',
+        ],
+      },
+      contact: {
+        url: 'https://github.com/pingidentity/pingsafe-banking-demo',
+      },
+    };
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=3600',
+    });
+    res.end(JSON.stringify(manifest, null, 2));
   }
 
   // -------------------------------------------------------------------------

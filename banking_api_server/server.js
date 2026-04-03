@@ -165,6 +165,7 @@ const oauthUserRoutes   = require('./routes/oauthUser');
 const oauthService      = require('./services/oauthService');
 const userRoutes        = require('./routes/users');
 const accountRoutes     = require('./routes/accounts');
+const sensitiveBankingRoutes = require('./routes/sensitiveBanking');
 const transactionRoutes = require('./routes/transactions');
 const demoScenarioRoutes = require('./routes/demoScenario');
 const adminRoutes       = require('./routes/admin');
@@ -836,6 +837,7 @@ app.get('/api/tokens/session-preview', (req, res) => {
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/accounts', authenticateToken, accountRoutes);
+app.use('/api/accounts', authenticateToken, sensitiveBankingRoutes);
 app.use('/api/transactions', authenticateToken, transactionRoutes);
 // GET /api/demo-scenario — return empty defaults when unauthenticated so the public
 // /demo-data page never triggers a 401 console error.  All mutating methods (PUT, PATCH)
@@ -995,7 +997,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   // Re-applying express.json() inline (already declared above) handles the route-level
   // parse, but if req.body is still empty we attempt a raw Buffer read as a last resort.
   let parsedBody = req.body || {};
-  if (!parsedBody.tool && req.readable) {
+  if (!parsedBody.tool && req.readableLength > 0) {
     try {
       const rawChunks = [];
       for await (const chunk of req) rawChunks.push(chunk);
@@ -1009,6 +1011,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
 
   if (!tool || typeof tool !== 'string') {
     const bodyKeys = Object.keys(parsedBody);
+    console.warn('[/api/mcp/tool] 400: body keys=[%s] readableLength=%d', bodyKeys.join(','), req.readableLength);
     return res.status(400).json({
       error: 'tool_name_required',
       message: `tool name is required. Received body keys: [${bodyKeys.join(', ') || 'none'}]`,
