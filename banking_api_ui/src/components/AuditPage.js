@@ -80,8 +80,8 @@ export default function AuditPage({ onClose } = {}) {
       'mcpAuditTrail',
       `width=${DEFAULT_W},height=${DEFAULT_H},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`
     );
-    // Close the in-browser floating window after launching the OS popup
-    if (onClose) onClose(); else navigate(-1);
+    // Defer close so browser accepts window.open before navigation changes page state
+    setTimeout(() => { if (onClose) onClose(); else navigate(-1); }, 50);
   }, [onClose, navigate]);
 
   const fetchEvents = useCallback(async () => {
