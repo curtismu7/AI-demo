@@ -433,13 +433,13 @@ Plans:
 
 ### Phase 33: token chain history persistence - record and restore token chain across page refreshes using sessionStorage or localStorage
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Persist token chain history[] across page refreshes via localStorage (cap 20, clear on logout). Fold in sub/act.sub claim display as User ID / Agent ID in TokenChainDisplay.
+**Requirements**: PERSIST-01, PERSIST-02, PERSIST-03, SUB-CLAIM-01
 **Depends on:** Phase 32
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 33 to break down)
+- [ ] 33-01-PLAN.md — localStorage persistence + sub/act.sub display + clear on logout
 
 ### Phase 34: Agent action logging — log what agent, what action, rights used, and each step
 
