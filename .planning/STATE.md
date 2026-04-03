@@ -11,7 +11,7 @@ progress:
   completed_plans: 64
 ---
 
-# State — BX Finance AI Banking Demo
+# State — Super Banking AI Banking Demo
 
 **Milestone:** v1.0 — Complete Demo + Educational Content
 **Updated:** 2025-07-11
@@ -62,6 +62,14 @@ Plan: 1 of 5
 ## Blockers
 
 (none)
+
+---
+
+## Quick Tasks Completed
+
+| ID | Task | Commit | Date |
+|---|---|---|---|
+| 260403-ibs | Rename BX Finance → Super Banking across docs, source, and UI | 04fa9c7 | 2026-04-03 |
 
 ---
 
