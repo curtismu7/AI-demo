@@ -4,6 +4,7 @@ services:
     runtime: docker
     rootDir: banking_mcp_server
     dockerfilePath: ./Dockerfile
+    startCommand: node dist/index.js
     region: oregon
     plan: free          # upgrade to starter ($7/mo) to avoid 15-min sleep on inactivity
 
