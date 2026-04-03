@@ -85,6 +85,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [cibaAuthReqId, setCibaAuthReqId] = useState(null);
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const [agentTriggeredStepUp, setAgentTriggeredStepUp] = useState(false);
+  const [agentCountdown, setAgentCountdown] = useState(0);
+  const autoInitiateTimerRef = useRef(null);    // [t1, t2, t3] setTimeout IDs
+  const handleCibaStepUpRef  = useRef(null);    // stays current — avoids stale closure
+  const stepUpVerifyHrefRef  = useRef(null);    // stays current — avoids stale closure
   const fetchingRef = React.useRef(false);
   /** Holds the agent HITL detail (actionId, form) while the consent modal is open so we can fire the confirmed event. */
   const agentHitlDetailRef = React.useRef(null);
@@ -385,12 +389,25 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     []
   );
 
+  // Keep refs current so stale closures (timers, event listeners) can call latest functions
+  useEffect(() => { handleCibaStepUpRef.current = handleCibaStepUp; }, [handleCibaStepUp]);
+  useEffect(() => { stepUpVerifyHrefRef.current = stepUpVerifyHref; }, [stepUpVerifyHref]);
+
   /** Clears step-up gate state and dismisses the persistent step-up toast. */
   const dismissStepUp = useCallback(() => {
     setStepUpRequired(false);
     setCibaAuthReqId(null);
     setCibaStatus('idle');
     toast.dismiss('customer-step-up');
+  }, []);
+
+  /** Cancel the auto-initiate countdown (agent-triggered flows). */
+  const cancelAutoInitiate = useCallback(() => {
+    if (autoInitiateTimerRef.current) {
+      autoInitiateTimerRef.current.forEach(clearTimeout);
+      autoInitiateTimerRef.current = null;
+    }
+    setAgentCountdown(0);
   }, []);
 
   // Poll CIBA status when a request is in flight
@@ -404,7 +421,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           setCibaAuthReqId(null);
           setStepUpRequired(false);
           await fetchUserData(true);
-          notifySuccess('Identity verified — please retry your transaction.');
+          notifySuccess(agentTriggeredStepUp
+            ? 'Identity verified — resuming agent request…'
+            : 'Identity verified — please retry your transaction.');
           if (agentTriggeredStepUp) {
             setAgentTriggeredStepUp(false);
             window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
@@ -421,10 +440,24 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   // Agent-triggered step-up: listen for agentStepUpRequested and activate CIBA flow
   useEffect(() => {
     const onAgentStepUp = (e) => {
-      const method = (e && e.detail && e.detail.step_up_method) || 'ciba';
+      const method = (e && e.detail && e.detail.step_up_method) || 'email';
       setAgentTriggeredStepUp(true);
       setStepUpRequired(true);
       setStepUpMethod(method);
+      // 3-second countdown: schedules 3 timeouts and auto-initiates on the last
+      setAgentCountdown(3);
+      const t1 = setTimeout(() => setAgentCountdown(2), 1000);
+      const t2 = setTimeout(() => setAgentCountdown(1), 2000);
+      const t3 = setTimeout(() => {
+        setAgentCountdown(0);
+        autoInitiateTimerRef.current = null;
+        if (method === 'ciba') {
+          handleCibaStepUpRef.current && handleCibaStepUpRef.current();
+        } else {
+          window.location.href = stepUpVerifyHrefRef.current || '/api/auth/oauth/user/stepup';
+        }
+      }, 3000);
+      autoInitiateTimerRef.current = [t1, t2, t3];
     };
     window.addEventListener('agentStepUpRequested', onAgentStepUp);
     return () => window.removeEventListener('agentStepUpRequested', onAgentStepUp);
@@ -452,7 +485,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           {stepUpMethod === 'ciba' ? (
             <>
-              {cibaStatus === 'idle' && (
+              {cibaStatus === 'idle' && agentTriggeredStepUp && agentCountdown > 0 && (
+                <>
+                  <span style={{ fontStyle: 'italic' }}>
+                    Starting in {agentCountdown}s…
+                  </span>
+                  <button type="button" className="dashboard-toast-error__btn" onClick={cancelAutoInitiate}>
+                    Cancel
+                  </button>
+                </>
+              )}
+              {cibaStatus === 'idle' && (!agentTriggeredStepUp || agentCountdown === 0) && (
                 <button type="button" className="dashboard-toast-error__btn" onClick={handleCibaStepUp}>
                   Verify via CIBA
                 </button>
@@ -471,13 +514,27 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               )}
             </>
           ) : (
-            <a
-              href={stepUpVerifyHref}
-              className="dashboard-toast-error__btn"
-              style={{ textDecoration: 'none', display: 'inline-block' }}
-            >
-              Verify now
-            </a>
+            <>
+              {agentTriggeredStepUp && agentCountdown > 0 && (
+                <>
+                  <span style={{ fontStyle: 'italic' }}>
+                    Redirecting in {agentCountdown}s…
+                  </span>
+                  <button type="button" className="dashboard-toast-error__btn" onClick={cancelAutoInitiate}>
+                    Cancel
+                  </button>
+                </>
+              )}
+              {(!agentTriggeredStepUp || agentCountdown === 0) && (
+                <a
+                  href={stepUpVerifyHref}
+                  className="dashboard-toast-error__btn"
+                  style={{ textDecoration: 'none', display: 'inline-block' }}
+                >
+                  Verify now
+                </a>
+              )}
+            </>
           )}
           <button type="button" className="dashboard-toast-error__btn" onClick={dismissStepUp}>
             Dismiss
@@ -498,7 +555,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     } else {
       toast.warning(body, opts);
     }
-  }, [stepUpRequired, stepUpMethod, cibaStatus, handleCibaStepUp, dismissStepUp, stepUpVerifyHref]);
+  }, [stepUpRequired, stepUpMethod, cibaStatus, handleCibaStepUp, dismissStepUp, stepUpVerifyHref, agentTriggeredStepUp, agentCountdown, cancelAutoInitiate]);
 
   // Demo mode: true when accounts haven't been replaced by real API data
   const isDemoMode = accounts.length > 0 && accounts.every(a => a._demo);
