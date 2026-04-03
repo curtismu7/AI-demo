@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "BX Finance — 1-Exchange Step-by-Step (RFC 8693)",
-    "description": "BX Finance 1-Exchange Delegated Chain — Step-by-Step (RFC 8693)\n\nAudience: Learners, workshop participants.\nPairs with: BX-Finance-Shared.postman_environment.json\n\nWalks through each OAuth/OIDC step individually so you can inspect tokens at every stage.\n\nToken chain:\n  Step 1:   Authorization Code + PKCE (pi.flow) → Subject Token (aud = ENDUSER_AUDIENCE)\n  Step 2:   RFC 8693 Token Exchange #1 → MCP Token (act.sub = PINGONE_CORE_CLIENT_ID)\n  Step 3:   Client Credentials → PingOne API Token\n  Step 4:   User Lookup (PingOne Management API)\n\nRun steps in order. Tokens are automatically saved to collection variables by test scripts.\n\nPrerequisites:\n  1. Import and select BX-Finance-Shared.postman_environment.json as the active environment.\n  2. Fill all required variables in the environment file.\n  3. Run Utility B (Set mayAct) once per test user before Step 2.",
+    "name": "BX Finance \u2014 1-Exchange Step-by-Step (RFC 8693)",
+    "description": "BX Finance 1-Exchange Delegated Chain \u2014 Step-by-Step (RFC 8693)\n\nAudience: Learners, workshop participants.\nPairs with: BX-Finance-Shared.postman_environment.json\n\nWalks through each OAuth/OIDC step individually so you can inspect tokens at every stage.\n\nToken chain:\n  Step 1:   Authorization Code + PKCE (pi.flow) \u2192 Subject Token (aud = ENDUSER_AUDIENCE)\n  Step 2:   RFC 8693 Token Exchange #1 \u2192 MCP Token (act.sub = PINGONE_CORE_CLIENT_ID)\n  Step 3:   Client Credentials \u2192 PingOne API Token\n  Step 4:   User Lookup (PingOne Management API)\n\nRun steps in order. Tokens are automatically saved to collection variables by test scripts.\n\nPrerequisites:\n  1. Import and select BX-Finance-Shared.postman_environment.json as the active environment.\n  2. Fill all required variables in the environment file.\n  3. Run Utility B (Set mayAct) once per test user before Step 2.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,37 +18,37 @@
     {
       "key": "PINGONE_CORE_USER_CLIENT_ID",
       "value": "",
-      "description": "Client ID — BX Finance User app"
+      "description": "Client ID \u2014 BX Finance User app"
     },
     {
       "key": "PINGONE_CORE_CLIENT_ID",
       "value": "",
-      "description": "Client ID — BX Finance Banking App"
+      "description": "Client ID \u2014 BX Finance Banking App"
     },
     {
       "key": "PINGONE_CORE_CLIENT_SECRET",
       "value": "",
-      "description": "Client Secret — BX Finance Banking App"
+      "description": "Client Secret \u2014 BX Finance Banking App"
     },
     {
       "key": "MCP_CLIENT_ID",
       "value": "",
-      "description": "Client ID — BX Finance MCP Service"
+      "description": "Client ID \u2014 BX Finance MCP Service"
     },
     {
       "key": "MCP_CLIENT_SECRET",
       "value": "",
-      "description": "Client Secret — BX Finance MCP Service"
+      "description": "Client Secret \u2014 BX Finance MCP Service"
     },
     {
       "key": "ENDUSER_AUDIENCE",
-      "value": "https://ai-agent.pingdemo.com",
-      "description": "Subject Token audience"
+      "value": "",
+      "description": "Subject Token audience \u2014 set via BX-Finance-Shared environment (ENDUSER_AUDIENCE)"
     },
     {
       "key": "MCP_RESOURCE_URI",
-      "value": "https://mcp-server.pingdemo.com",
-      "description": "MCP Token audience"
+      "value": "",
+      "description": "MCP Token audience \u2014 set via BX-Finance-Shared environment (MCP_RESOURCE_URI)"
     },
     {
       "key": "PINGONE_API_AUDIENCE",
@@ -58,22 +58,22 @@
     {
       "key": "subject_token",
       "value": "",
-      "description": "AUTO — saved by Step 1 test script after Postman completes the PKCE flow"
+      "description": "AUTO \u2014 saved by Step 1 test script after Postman completes the PKCE flow"
     },
     {
       "key": "mcp_token",
       "value": "",
-      "description": "AUTO — set by Step 2"
+      "description": "AUTO \u2014 set by Step 2"
     },
     {
       "key": "pingone_api_token",
       "value": "",
-      "description": "AUTO — set by Step 3"
+      "description": "AUTO \u2014 set by Step 3"
     },
     {
       "key": "user_sub",
       "value": "",
-      "description": "AUTO — set by Step 1 (user PingOne UUID from sub claim)"
+      "description": "AUTO \u2014 set by Step 1 (user PingOne UUID from sub claim)"
     },
     {
       "key": "TEST_USERNAME",
@@ -88,36 +88,36 @@
     {
       "key": "PINGONE_CORE_USER_CLIENT_SECRET",
       "value": "",
-      "description": "Client Secret of BX Finance User app — required if token endpoint auth = CLIENT_SECRET_POST"
+      "description": "Client Secret of BX Finance User app \u2014 required if token endpoint auth = CLIENT_SECRET_POST"
     },
     {
       "key": "pkce_code_verifier",
       "value": "",
-      "description": "AUTO — generated by Step 1a pre-request"
+      "description": "AUTO \u2014 generated by Step 1a pre-request"
     },
     {
       "key": "pkce_code_challenge",
       "value": "",
-      "description": "AUTO — generated by Step 1a pre-request"
+      "description": "AUTO \u2014 generated by Step 1a pre-request"
     },
     {
       "key": "flow_id",
       "value": "",
-      "description": "AUTO — saved by Step 1a from pi.flow response"
+      "description": "AUTO \u2014 saved by Step 1a from pi.flow response"
     },
     {
       "key": "auth_code",
       "value": "",
-      "description": "AUTO — saved by Step 1c from resume response"
+      "description": "AUTO \u2014 saved by Step 1c from resume response"
     }
   ],
   "item": [
     {
-      "name": "Step 1 — Subject Token (Headless PKCE via pi.flow)",
+      "name": "Step 1 \u2014 Subject Token (Headless PKCE via pi.flow)",
       "description": "Gets Token 1 (Subject Token) without a browser using PingOne's `pi.flow` headless mode.\n\nRun sub-requests in order: **1a -> 1b -> 1c -> 1d**\n\nSet `TEST_USERNAME` and `TEST_PASSWORD` in Collection Variables before running.",
       "item": [
         {
-          "name": "Step 1a — GET /authorize (pi.flow, get flowId)",
+          "name": "Step 1a \u2014 GET /authorize (pi.flow, get flowId)",
           "request": {
             "method": "GET",
             "auth": {
@@ -202,7 +202,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Step 1a: 200 OK — flow started', () => pm.response.to.have.status(200));",
+                  "pm.test('Step 1a: 200 OK \u2014 flow started', () => pm.response.to.have.status(200));",
                   "",
                   "const json = pm.response.json();",
                   "if (pm.response.code !== 200) {",
@@ -243,7 +243,7 @@
           ]
         },
         {
-          "name": "Step 1b — POST /flows/{flowId} (submit username + password)",
+          "name": "Step 1b \u2014 POST /flows/{flowId} (submit username + password)",
           "request": {
             "method": "POST",
             "auth": {
@@ -313,7 +313,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Step 1b: 200 OK — credentials accepted', () => pm.response.to.have.status(200));",
+                  "pm.test('Step 1b: 200 OK \u2014 credentials accepted', () => pm.response.to.have.status(200));",
                   "",
                   "const json = pm.response.json();",
                   "if (pm.response.code === 404 && json && json.code === 'NOT_FOUND') {",
@@ -324,7 +324,7 @@
                   "console.log('[Step 1b] Flow status:', json.status);",
                   "",
                   "if (json.status === 'COMPLETED') {",
-                  "    console.log('[Step 1b] Flow COMPLETED — run Step 1c to get the auth code.');",
+                  "    console.log('[Step 1b] Flow COMPLETED \u2014 run Step 1c to get the auth code.');",
                   "} else if (json.status === 'MFA_REQUIRED' || json.status === 'OTP_REQUIRED') {",
                   "    console.warn('[Step 1b] MFA required. This collection does not handle MFA steps. Disable MFA for the test user or use a bypass policy.');",
                   "} else {",
@@ -336,7 +336,7 @@
           ]
         },
         {
-          "name": "Step 1c — GET /as/resume (get auth code from completed flow)",
+          "name": "Step 1c \u2014 GET /as/resume (get auth code from completed flow)",
           "request": {
             "method": "GET",
             "auth": {
@@ -406,7 +406,7 @@
           ]
         },
         {
-          "name": "Step 1d — POST /as/token (exchange code for Subject Token)",
+          "name": "Step 1d \u2014 POST /as/token (exchange code for Subject Token)",
           "request": {
             "method": "POST",
             "auth": {
@@ -437,12 +437,12 @@
                 {
                   "key": "code",
                   "value": "{{auth_code}}",
-                  "description": "AUTO — set by Step 1c"
+                  "description": "AUTO \u2014 set by Step 1c"
                 },
                 {
                   "key": "code_verifier",
                   "value": "{{pkce_code_verifier}}",
-                  "description": "AUTO — set by Step 1a pre-request"
+                  "description": "AUTO \u2014 set by Step 1a pre-request"
                 },
                 {
                   "key": "redirect_uri",
@@ -465,7 +465,7 @@
                 "token"
               ]
             },
-            "description": "Exchanges the PKCE authorization code for the Subject Token (Token 1).\n\nPingOne validates:\n- `code` matches the flow that was completed in Steps 1a-1c\n- `code_verifier` matches the `code_challenge` sent in Step 1a (PKCE proof)\n- `redirect_uri` matches the registered value on the app\n\nThe Subject Token will have:\n- `aud = https://ai-agent.pingdemo.com` (ENDUSER_AUDIENCE)\n- `may_act.sub = PINGONE_CORE_CLIENT_ID` (required for Step 2 Token Exchange)\n\nIf `invalid_grant`: the code expired — rerun Steps 1a, 1b, 1c.\nIf `may_act` missing: run **Utility — Set mayAct on User** (needs Token 3), then rerun Steps 1a-1d."
+            "description": "Exchanges the PKCE authorization code for the Subject Token (Token 1).\n\nPingOne validates:\n- `code` matches the flow that was completed in Steps 1a-1c\n- `code_verifier` matches the `code_challenge` sent in Step 1a (PKCE proof)\n- `redirect_uri` matches the registered value on the app\n\nThe Subject Token will have:\n- `aud = https://{{ENDUSER_AUDIENCE}}` (ENDUSER_AUDIENCE)\n- `may_act.sub = PINGONE_CORE_CLIENT_ID` (required for Step 2 Token Exchange)\n\nIf `invalid_grant`: the code expired \u2014 rerun Steps 1a, 1b, 1c.\nIf `may_act` missing: run **Utility \u2014 Set mayAct on User** (needs Token 3), then rerun Steps 1a-1d."
           },
           "event": [
             {
@@ -489,7 +489,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Step 1d: Status 200 — token issued', () => pm.response.to.have.status(200));",
+                  "pm.test('Step 1d: Status 200 \u2014 token issued', () => pm.response.to.have.status(200));",
                   "",
                   "const json = pm.response.json();",
                   "if (pm.response.code !== 200) {",
@@ -523,7 +523,7 @@
                   "            }",
                   "",
                   "            const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];",
-                  "            pm.test('Step 1d: aud = ENDUSER_AUDIENCE (ai-agent.pingdemo.com)', () => {",
+                  "            pm.test('Step 1d: aud = ENDUSER_AUDIENCE ', () => {",
                   "                pm.expect(aud).to.include(pm.collectionVariables.get('ENDUSER_AUDIENCE'));",
                   "            });",
                   "",
@@ -539,7 +539,7 @@
                   "                    pm.expect(payload.may_act.sub).to.equal(expectedActorId);",
                   "                });",
                   "            } else {",
-                  "                console.warn('[Step 1d] WARNING: may_act missing. Run Utility — Set mayAct on User (needs Token 3 from Step 3), then rerun Steps 1a-1d.');",
+                  "                console.warn('[Step 1d] WARNING: may_act missing. Run Utility \u2014 Set mayAct on User (needs Token 3 from Step 3), then rerun Steps 1a-1d.');",
                   "            }",
                   "        } catch (e) {",
                   "            console.error('[Step 1d] Could not decode JWT:', e.message);",
@@ -554,7 +554,7 @@
       ]
     },
     {
-      "name": "Step 2 — MCP Token (RFC 8693 Token Exchange #1)",
+      "name": "Step 2 \u2014 MCP Token (RFC 8693 Token Exchange #1)",
       "request": {
         "method": "POST",
         "auth": {
@@ -597,7 +597,7 @@
             {
               "key": "audience",
               "value": "{{MCP_RESOURCE_URI}}",
-              "description": "https://mcp-server.pingdemo.com"
+              "description": "{{MCP_RESOURCE_URI}} (set in shared environment)"
             },
             {
               "key": "scope",
@@ -645,7 +645,7 @@
               "",
               "            // Verify audience",
               "            const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];",
-              "            pm.test('Step 2: aud = https://mcp-server.pingdemo.com', () => {",
+              "            pm.test('Step 2: aud = MCP_RESOURCE_URI', () => {",
               "                pm.expect(aud).to.include(pm.collectionVariables.get('MCP_RESOURCE_URI'));",
               "            });",
               "",
@@ -681,7 +681,7 @@
       ]
     },
     {
-      "name": "Step 3 — PingOne API Token (Client Credentials)",
+      "name": "Step 3 \u2014 PingOne API Token (Client Credentials)",
       "request": {
         "method": "POST",
         "auth": {
@@ -778,7 +778,7 @@
       ]
     },
     {
-      "name": "Step 4 — User Lookup (PingOne Management API)",
+      "name": "Step 4 \u2014 User Lookup (PingOne Management API)",
       "request": {
         "method": "GET",
         "auth": {
@@ -816,7 +816,7 @@
             "exec": [
               "const json = pm.response.json();",
               "",
-              "pm.test('Step 4: Status 200 — user lookup succeeded', () => pm.response.to.have.status(200));",
+              "pm.test('Step 4: Status 200 \u2014 user lookup succeeded', () => pm.response.to.have.status(200));",
               "pm.test('Step 4: id matches user_sub', () => {",
               "    pm.expect(json.id).to.equal((pm.environment.get('user_sub') || pm.collectionVariables.get('user_sub')));",
               "});",
@@ -831,7 +831,7 @@
               "            pm.expect(json.mayAct.sub).to.equal(pm.collectionVariables.get('PINGONE_CORE_CLIENT_ID'));",
               "        });",
               "    } else {",
-              "        console.warn('[Step 4] WARNING: mayAct attribute missing from user record. Token Exchange will fail at runtime. Set it via /demo-data → Enable may_act or via PATCH /users/{id}.');",
+              "        console.warn('[Step 4] WARNING: mayAct attribute missing from user record. Token Exchange will fail at runtime. Set it via /demo-data \u2192 Enable may_act or via PATCH /users/{id}.');",
               "    }",
               "}"
             ]
@@ -840,7 +840,7 @@
       ]
     },
     {
-      "name": "Utility — Decode Token (paste any JWT)",
+      "name": "Utility \u2014 Decode Token (paste any JWT)",
       "request": {
         "method": "POST",
         "auth": {
@@ -896,7 +896,7 @@
       ]
     },
     {
-      "name": "Utility — Set mayAct on User (PATCH)",
+      "name": "Utility \u2014 Set mayAct on User (PATCH)",
       "request": {
         "method": "PATCH",
         "auth": {

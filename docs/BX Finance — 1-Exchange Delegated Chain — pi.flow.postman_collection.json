@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "9f9ba0be-473c-4581-9411-42cf66c0ee6e",
-    "name": "BX Finance — 1-Exchange Delegated Chain — pi.flow",
-    "description": "BX Finance 1-Exchange Delegated Chain — Full Flow (RFC 8693)\n\nAudience: Demo runners, customers.\nPairs with: BX-Finance-Shared.postman_environment.json\n\nRuns the complete 1-exchange delegated token chain end-to-end.\n\nFlow:\n  Steps 1–4: Auth Code + PKCE via pi.flow → Subject Token\n  Step 5:    RFC 8693 Exchange → MCP Token (act.sub = PINGONE_CORE_CLIENT_ID)\n  Step 6:    Client Credentials → PingOne API Token\n  Step 7:    User Lookup\n\nRun steps 1–7 in order. Tokens are saved automatically.",
+    "name": "BX Finance \u2014 1-Exchange Delegated Chain \u2014 pi.flow",
+    "description": "BX Finance 1-Exchange Delegated Chain \u2014 Full Flow (RFC 8693)\n\nAudience: Demo runners, customers.\nPairs with: BX-Finance-Shared.postman_environment.json\n\nRuns the complete 1-exchange delegated token chain end-to-end.\n\nFlow:\n  Steps 1\u20134: Auth Code + PKCE via pi.flow \u2192 Subject Token\n  Step 5:    RFC 8693 Exchange \u2192 MCP Token (act.sub = PINGONE_CORE_CLIENT_ID)\n  Step 6:    Client Credentials \u2192 PingOne API Token\n  Step 7:    User Lookup\n\nRun steps 1\u20137 in order. Tokens are saved automatically.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1648215"
   },
@@ -16,21 +16,21 @@
             "type": "text/javascript",
             "exec": [
               "// --- PKCE + state generation (fully synchronous) ---",
-              "// crypto.subtle.digest is async — Postman fires the request before it resolves.",
+              "// crypto.subtle.digest is async \u2014 Postman fires the request before it resolves.",
               "// Use CryptoJS.SHA256 (synchronous). Deprecation warning is harmless.",
               "",
-              "// 1. code_verifier — 48 random bytes, base64url-encoded",
+              "// 1. code_verifier \u2014 48 random bytes, base64url-encoded",
               "const verifierBytes = new Uint8Array(48);",
               "crypto.getRandomValues(verifierBytes);",
               "const codeVerifier = btoa(String.fromCharCode(...verifierBytes))",
               "  .replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=/g, '');",
               "",
-              "// 2. code_challenge — SHA-256(verifier), base64url-encoded",
+              "// 2. code_challenge \u2014 SHA-256(verifier), base64url-encoded",
               "const hashWords = CryptoJS.SHA256(codeVerifier);",
               "const codeChallenge = CryptoJS.enc.Base64.stringify(hashWords)",
               "  .replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=/g, '');",
               "",
-              "// 3. state — CSRF token",
+              "// 3. state \u2014 CSRF token",
               "const stateBytes = new Uint8Array(24);",
               "crypto.getRandomValues(stateBytes);",
               "const state = Array.from(stateBytes).map(b => b.toString(16).padStart(2,'0')).join('');",
@@ -79,13 +79,13 @@
               "  if (body.resumeUrl) pm.collectionVariables.set('resume_url', body.resumeUrl);",
               "  if (body.authorizeResponse && body.authorizeResponse.code) {",
               "    pm.collectionVariables.set('auth_code', body.authorizeResponse.code);",
-              "    console.log('[Step 1] Session active — COMPLETED. auth_code:', body.authorizeResponse.code);",
-              "    console.log('[Step 1] *** SKIP steps 2 and 3 — go straight to step 4. ***');",
+              "    console.log('[Step 1] Session active \u2014 COMPLETED. auth_code:', body.authorizeResponse.code);",
+              "    console.log('[Step 1] *** SKIP steps 2 and 3 \u2014 go straight to step 4. ***');",
               "  } else {",
-              "    console.log('[Step 1] COMPLETED but no auth_code in response — try step 3 (resume).');",
+              "    console.log('[Step 1] COMPLETED but no auth_code in response \u2014 try step 3 (resume).');",
               "  }",
               "} else {",
-              "  console.log('[Step 1] status:', body.status, '— proceed to step 2.');",
+              "  console.log('[Step 1] status:', body.status, '\u2014 proceed to step 2.');",
               "}"
             ]
           }
@@ -167,9 +167,9 @@
               "if (!flowHref) {",
               "  const authCode = pm.collectionVariables.get('auth_code');",
               "  if (authCode) {",
-              "    throw new Error('flow_href is empty — step 1 returned COMPLETED (session active). Skip to step 4.');",
+              "    throw new Error('flow_href is empty \u2014 step 1 returned COMPLETED (session active). Skip to step 4.');",
               "  }",
-              "  throw new Error('flow_href is empty — run request 1 first');",
+              "  throw new Error('flow_href is empty \u2014 run request 1 first');",
               "}"
             ]
           }
@@ -190,7 +190,7 @@
               "  console.error('[Step 2] Error:', body.code || body.error, body.message || '');",
               "}",
               "",
-              "// Save resumeUrl so step 3 uses the correct flow — avoids stale flow_id variable",
+              "// Save resumeUrl so step 3 uses the correct flow \u2014 avoids stale flow_id variable",
               "if (body.resumeUrl) {",
               "  pm.collectionVariables.set('resume_url', body.resumeUrl);",
               "  console.log('[Step 2] resume_url:', body.resumeUrl);",
@@ -200,9 +200,9 @@
               "if (body.authorizeResponse && body.authorizeResponse.code) {",
               "  pm.collectionVariables.set('auth_code', body.authorizeResponse.code);",
               "  console.log('[Step 2] auth_code (direct):', body.authorizeResponse.code);",
-              "  console.log('[Step 2] Skip step 3 — go straight to step 4.');",
+              "  console.log('[Step 2] Skip step 3 \u2014 go straight to step 4.');",
               "} else {",
-              "  console.log('[Step 2] No direct auth code — proceed to step 3 (resume).');",
+              "  console.log('[Step 2] No direct auth code \u2014 proceed to step 3 (resume).');",
               "}"
             ]
           }
@@ -238,7 +238,7 @@
             "{{flow_href}}"
           ]
         },
-        "description": "Submits credentials to the pi.flow. Requires flow_id from Step 1 (valid for 120 seconds — re-run Step 1 if you see a TIMEOUT error). Saves the resume URL."
+        "description": "Submits credentials to the pi.flow. Requires flow_id from Step 1 (valid for 120 seconds \u2014 re-run Step 1 if you see a TIMEOUT error). Saves the resume URL."
       },
       "response": []
     },
@@ -254,9 +254,9 @@
               "if (!resumeUrl) {",
               "  const authCode = pm.collectionVariables.get('auth_code');",
               "  if (authCode) {",
-              "    throw new Error('resume_url is empty but auth_code is already set — skip to step 4.');",
+              "    throw new Error('resume_url is empty but auth_code is already set \u2014 skip to step 4.');",
               "  }",
-              "  throw new Error('resume_url is empty — run requests 1 and 2 first');",
+              "  throw new Error('resume_url is empty \u2014 run requests 1 and 2 first');",
               "}"
             ]
           }
@@ -281,7 +281,7 @@
               "    console.warn('[Step 3] No auth code in JSON response:', JSON.stringify(body));",
               "  }",
               "} else {",
-              "  // Redirect followed by Postman — code may be in the URL",
+              "  // Redirect followed by Postman \u2014 code may be in the URL",
               "  const url = pm.response.url || '';",
               "  const match = url.match(/[?&]code=([^&]+)/);",
               "  if (match) {",
@@ -325,10 +325,10 @@
           "script": {
             "exec": [
               "if (!pm.collectionVariables.get('auth_code')) {",
-              "  throw new Error('auth_code is empty — run requests 1, 2, and 3 first');",
+              "  throw new Error('auth_code is empty \u2014 run requests 1, 2, and 3 first');",
               "}",
               "if (!pm.collectionVariables.get('code_verifier')) {",
-              "  throw new Error('code_verifier is empty — re-run request 1 to regenerate PKCE');",
+              "  throw new Error('code_verifier is empty \u2014 re-run request 1 to regenerate PKCE');",
               "}"
             ],
             "type": "text/javascript",
@@ -373,13 +373,13 @@
               "    }",
               "    pm.test('Subject Token aud is AI Agent', () => {",
               "      const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
-              "      pm.expect(aud).to.include('https://ai-agent.pingdemo.com');",
+              "      pm.expect(aud).to.include(pm.environment.get('ENDUSER_AUDIENCE'));",
               "    });",
               "    if (claims.may_act) {",
               "      console.log('[Step 4] may_act:', JSON.stringify(claims.may_act));",
               "      pm.test('may_act.sub present', () => pm.expect(claims.may_act).to.have.property('sub'));",
               "    } else {",
-              "      console.warn('[Step 4] WARNING: may_act claim missing — set mayAct on the user record (doc Part 3c) and re-run');",
+              "      console.warn('[Step 4] WARNING: may_act claim missing \u2014 set mayAct on the user record (doc Part 3c) and re-run');",
               "    }",
               "  } catch(e) {",
               "    console.warn('[Step 4] Could not decode access token JWT:', e.message);",
@@ -458,7 +458,7 @@
       "response": []
     },
     {
-      "name": "5. Token Exchange — Subject Token → MCP Token (RFC 8693)",
+      "name": "5. Token Exchange \u2014 Subject Token \u2192 MCP Token (RFC 8693)",
       "event": [
         {
           "listen": "prerequest",
@@ -466,10 +466,10 @@
             "type": "text/javascript",
             "exec": [
               "if (!pm.collectionVariables.get('subject_token')) {",
-              "  throw new Error('subject_token is empty — run steps 1-4 first');",
+              "  throw new Error('subject_token is empty \u2014 run steps 1-4 first');",
               "}",
               "if (!pm.collectionVariables.get('banking_app_client_id') || pm.collectionVariables.get('banking_app_client_id') === 'YOUR_BANKING_APP_CLIENT_ID') {",
-              "  throw new Error('banking_app_client_id not set — fill in BX Finance Banking App client ID');",
+              "  throw new Error('banking_app_client_id not set \u2014 fill in BX Finance Banking App client ID');",
               "}"
             ]
           }
@@ -487,7 +487,7 @@
               "",
               "if (body.error) {",
               "  console.error('[Step 5] Error:', body.error, body.error_description || '');",
-              "  if (body.error === 'invalid_grant') console.error('[Step 5] FIX: may_act.sub on user does not match banking_app_client_id — run Utility B');",
+              "  if (body.error === 'invalid_grant') console.error('[Step 5] FIX: may_act.sub on user does not match banking_app_client_id \u2014 run Utility B');",
               "  if (body.error === 'unauthorized_client') console.error('[Step 5] FIX: Token Exchange grant not enabled on BX Finance Banking App (doc Part 2b)');",
               "}",
               "",
@@ -501,7 +501,7 @@
               "    const claims = JSON.parse(atob(pad(parts[1].replace(/-/g,'+').replace(/_/g,'/'))));",
               "    console.log('[Step 5] MCP Token claims:', JSON.stringify(claims, null, 2));",
               "    const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
-              "    pm.test('MCP Token aud is MCP Server', () => pm.expect(aud).to.include('https://mcp-server.pingdemo.com'));",
+              "    pm.test('MCP Token aud is MCP Server', () => pm.expect(aud).to.include(pm.environment.get('MCP_RESOURCE_URI')));",
               "    pm.test('act.sub present (delegation proof)', () => pm.expect(claims).to.have.nested.property('act.sub'));",
               "    if (claims.act) console.log('[Step 5] act:', JSON.stringify(claims.act));",
               "    pm.test('sub preserved from Subject Token', () => pm.expect(claims.sub).to.equal(pm.collectionVariables.get('user_sub')));",
@@ -539,7 +539,7 @@
             {
               "key": "subject_token",
               "value": "{{subject_token}}",
-              "description": "Token 1 — user's Subject Token from step 4"
+              "description": "Token 1 \u2014 user's Subject Token from step 4"
             },
             {
               "key": "subject_token_type",
@@ -551,7 +551,7 @@
             },
             {
               "key": "audience",
-              "value": "https://mcp-server.pingdemo.com",
+              "value": "{{MCP_RESOURCE_URI}}",
               "description": "BX Finance MCP Server audience"
             },
             {
@@ -561,7 +561,7 @@
             {
               "key": "client_id",
               "value": "{{PINGONE_CORE_CLIENT_ID}}",
-              "description": "BX Finance Banking App — exchanger identity"
+              "description": "BX Finance Banking App \u2014 exchanger identity"
             },
             {
               "key": "client_secret",
@@ -586,14 +586,14 @@
       "response": []
     },
     {
-      "name": "6. Client Credentials — MCP Service → PingOne API Token",
+      "name": "6. Client Credentials \u2014 MCP Service \u2192 PingOne API Token",
       "event": [
         {
           "listen": "prerequest",
           "script": {
             "exec": [
               "if (!pm.collectionVariables.get('mcp_client_id') || pm.collectionVariables.get('mcp_client_id') === 'YOUR_MCP_CLIENT_ID') {",
-              "  throw new Error('mcp_client_id not set — fill in BX Finance MCP Service client ID');",
+              "  throw new Error('mcp_client_id not set \u2014 fill in BX Finance MCP Service client ID');",
               "}"
             ],
             "type": "text/javascript",
@@ -614,7 +614,7 @@
               "if (body.error) {",
               "  console.error('[Step 6] Error:', body.error, body.error_description || '');",
               "  if (body.error === 'invalid_scope') console.error('[Step 6] FIX: p1:read:user / p1:update:user not enabled on MCP Service app (doc Part 2c)');",
-              "  if (body.error === 'unauthorized_client') console.error('[Step 6] FIX: App type may be Worker — must be Native or Web App (doc Part 2c)');",
+              "  if (body.error === 'unauthorized_client') console.error('[Step 6] FIX: App type may be Worker \u2014 must be Native or Web App (doc Part 2c)');",
               "}",
               "",
               "pm.test('access_token present', () => pm.expect(body).to.have.property('access_token'));",
@@ -703,10 +703,10 @@
             "type": "text/javascript",
             "exec": [
               "if (!pm.collectionVariables.get('pingone_api_token')) {",
-              "  throw new Error('pingone_api_token is empty — run step 6 first');",
+              "  throw new Error('pingone_api_token is empty \u2014 run step 6 first');",
               "}",
               "if (!pm.collectionVariables.get('user_sub')) {",
-              "  throw new Error('user_sub is empty — run steps 1-4 first to decode the Subject Token');",
+              "  throw new Error('user_sub is empty \u2014 run steps 1-4 first to decode the Subject Token');",
               "}"
             ]
           }
@@ -729,7 +729,7 @@
               "    pm.expect(body.mayAct.sub).to.equal(expectedSub);",
               "  });",
               "} else {",
-              "  console.warn('[Step 7] WARNING: mayAct attribute not set on user — run Utility B to set it');",
+              "  console.warn('[Step 7] WARNING: mayAct attribute not set on user \u2014 run Utility B to set it');",
               "}"
             ]
           }
@@ -774,7 +774,7 @@
       "response": []
     },
     {
-      "name": "Utility A — Introspect Token",
+      "name": "Utility A \u2014 Introspect Token",
       "event": [
         {
           "listen": "test",
@@ -785,7 +785,7 @@
               "const body = pm.response.json();",
               "console.log('[Utility A] Introspection result:', JSON.stringify(body, null, 2));",
               "if (!body.active) console.warn('[Utility A] Token is NOT active (expired or revoked)');",
-              "else console.log('[Utility A] Token active — sub:', body.sub, '| aud:', body.aud, '| scope:', body.scope);"
+              "else console.log('[Utility A] Token active \u2014 sub:', body.sub, '| aud:', body.aud, '| scope:', body.scope);"
             ]
           }
         }
@@ -847,7 +847,7 @@
       "response": []
     },
     {
-      "name": "Utility B — Set mayAct on User",
+      "name": "Utility B \u2014 Set mayAct on User",
       "event": [
         {
           "listen": "prerequest",
@@ -855,10 +855,10 @@
             "type": "text/javascript",
             "exec": [
               "if (!pm.collectionVariables.get('pingone_api_token')) {",
-              "  throw new Error('pingone_api_token is empty — run step 6 first');",
+              "  throw new Error('pingone_api_token is empty \u2014 run step 6 first');",
               "}",
               "if (!pm.collectionVariables.get('user_sub')) {",
-              "  throw new Error('user_sub is empty — run steps 1-4 first');",
+              "  throw new Error('user_sub is empty \u2014 run steps 1-4 first');",
               "}",
               "if (!pm.collectionVariables.get('banking_app_client_id') || pm.collectionVariables.get('banking_app_client_id') === 'YOUR_BANKING_APP_CLIENT_ID') {",
               "  throw new Error('banking_app_client_id not set');",
@@ -967,8 +967,8 @@
     },
     {
       "key": "ENDUSER_AUDIENCE",
-      "value": "https://ai-agent.pingdemo.com",
-      "description": "Subject Token audience — must match BX Finance AI Agent resource server audience for token exchange chain"
+      "value": "",
+      "description": "Subject Token audience \u2014 must match BX Finance AI Agent resource server audience for token exchange chain"
     },
     {
       "key": "TEST_USERNAME",
@@ -1003,7 +1003,7 @@
     {
       "key": "flow_href",
       "value": "",
-      "description": "Set automatically — _links.usernamePassword.check.href from authorize response"
+      "description": "Set automatically \u2014 _links.usernamePassword.check.href from authorize response"
     },
     {
       "key": "resume_url",
@@ -1033,17 +1033,17 @@
     {
       "key": "subject_token",
       "value": "",
-      "description": "Subject Token (Token 1) — copy of access_token, set by step 4"
+      "description": "Subject Token (Token 1) \u2014 copy of access_token, set by step 4"
     },
     {
       "key": "user_sub",
       "value": "",
-      "description": "User subject UUID — decoded from Subject Token, set by step 4"
+      "description": "User subject UUID \u2014 decoded from Subject Token, set by step 4"
     },
     {
       "key": "PINGONE_CORE_CLIENT_ID",
       "value": "YOUR_BANKING_APP_CLIENT_ID",
-      "description": "Client ID of BX Finance Banking App (exchanges Subject Token → MCP Token)"
+      "description": "Client ID of BX Finance Banking App (exchanges Subject Token \u2192 MCP Token)"
     },
     {
       "key": "PINGONE_CORE_CLIENT_SECRET",
@@ -1053,7 +1053,7 @@
     {
       "key": "MCP_CLIENT_ID",
       "value": "YOUR_MCP_CLIENT_ID",
-      "description": "Client ID of BX Finance MCP Service (client credentials → PingOne API Token)"
+      "description": "Client ID of BX Finance MCP Service (client credentials \u2192 PingOne API Token)"
     },
     {
       "key": "MCP_CLIENT_SECRET",
@@ -1063,12 +1063,12 @@
     {
       "key": "mcp_token",
       "value": "",
-      "description": "MCP Token (Token 2) — set by step 5 (token exchange)"
+      "description": "MCP Token (Token 2) \u2014 set by step 5 (token exchange)"
     },
     {
       "key": "pingone_api_token",
       "value": "",
-      "description": "PingOne API Token (Token 3) — set by step 6 (client credentials)"
+      "description": "PingOne API Token (Token 3) \u2014 set by step 6 (client credentials)"
     }
   ]
 }
