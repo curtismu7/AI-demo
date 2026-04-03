@@ -25,6 +25,8 @@ import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
 import { BankingToolRegistry } from '../tools/BankingToolRegistry';
 import pkg from '../../package.json';
+import { AuditLogger } from '../utils/AuditLogger';
+import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -99,6 +101,12 @@ export class HttpMCPTransport {
     // Public discovery endpoint — skip origin check (D-09: publicly discoverable)
     if (pathname === '/.well-known/mcp-server' && req.method === 'GET') {
       this.handleMcpDiscovery(res);
+      return;
+    }
+
+    // Internal audit endpoint (proxied by BFF /api/mcp/audit — admin-gated at BFF level)
+    if (pathname === '/audit' && req.method === 'GET') {
+      await this.handleAuditQuery(req, res);
       return;
     }
 
@@ -205,6 +213,58 @@ export class HttpMCPTransport {
       'Cache-Control': 'public, max-age=3600',
     });
     res.end(JSON.stringify(manifest, null, 2));
+  }
+
+  // -------------------------------------------------------------------------
+  // GET /audit  — internal audit log query (proxied by BFF, admin-gated there)
+  // -------------------------------------------------------------------------
+
+  private async handleAuditQuery(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const url = new URL(req.url ?? '/audit', 'http://localhost');
+    const summary = url.searchParams.get('summary') === '1';
+
+    // Lazily get (or init) AuditLogger singleton
+    let logger: AuditLogger;
+    try {
+      logger = AuditLogger.getInstance(Logger.getInstance(createDefaultLoggerConfig()));
+    } catch {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(summary
+        ? { totalEvents: 0, byEventType: {}, byOutcome: {}, recentActivity: [] }
+        : []
+      ));
+      return;
+    }
+
+    try {
+      if (summary) {
+        const summaryData = await logger.generateAuditSummary(new Date(0), new Date());
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          totalEvents: summaryData.totalEvents,
+          byEventType: summaryData.eventsByType,
+          byOutcome: {
+            success: summaryData.successfulOperations,
+            failure: summaryData.failedOperations,
+          },
+          recentActivity: [],
+        }));
+      } else {
+        const filters: Parameters<typeof logger.queryAuditLogs>[0] = {};
+        const eventType = url.searchParams.get('eventType');
+        const outcome = url.searchParams.get('outcome');
+        const limit = url.searchParams.get('limit');
+        if (eventType) filters.eventType = eventType as any;
+        if (outcome) filters.outcome = outcome as any;
+        if (limit) filters.limit = parseInt(limit, 10);
+        const events = await logger.queryAuditLogs(filters);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(events));
+      }
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'audit_query_failed', message: err instanceof Error ? err.message : 'Unknown error' }));
+    }
   }
 
   // -------------------------------------------------------------------------

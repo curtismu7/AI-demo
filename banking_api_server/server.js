@@ -176,6 +176,7 @@ const setupRoutes       = require('./routes/setup');
 const { router: featureFlagsRoutes } = require('./routes/featureFlags');
 const vercelConfigRoutes = require('./routes/vercelConfig');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
+const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const langchainConfigRoutes = require('./routes/langchainConfig');
@@ -821,6 +822,13 @@ app.use('/api/setup', setupRoutes);
 // MCP Inspector: no auth gate at the router level — tools/list returns local catalog for
 // unauthenticated visitors; tools/call and context check auth inside each handler.
 app.use('/api/mcp/inspector', mcpInspectorRoutes);
+// MCP Audit: admin-only route — proxies to MCP server /audit internal endpoint (D-11)
+app.use('/api/mcp/audit', (req, res, next) => {
+  if (!req.session?.user || req.session.user.role !== 'admin') {
+    return res.status(401).json({ error: 'admin_required', message: 'Admin session required to access audit log.' });
+  }
+  next();
+}, mcpAuditRouter);
 // Session preview uses session data only — no full JWT validation so it works even
 // when the session has a _cookie_session stub (Vercel cold-start / Upstash restore).
 // Must be registered BEFORE the auth-gated /api/tokens block.

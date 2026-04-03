@@ -61,5 +61,16 @@
     "jsonschema": "^1.4.1",
     "uuid": "^9.0.0",
     "ws": "^8.14.0"
+  },
+  "mcpServers": {
+    "bx-finance-banking": {
+      "transport": "http",
+      "url": "http://localhost:8080/mcp",
+      "description": "BX Finance Banking MCP Server \u2014 provides banking tools for AI agents",
+      "auth": {
+        "type": "oauth2",
+        "discovery_url": "http://localhost:8080/.well-known/mcp-server"
+      }
+    }
   }
 }

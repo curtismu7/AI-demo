@@ -99,6 +99,69 @@ Copy `.env.example` to `.env` and configure the required environment variables:
 - **Security Configuration**: Encryption keys and token storage
 - **Server Configuration**: Host, port, and connection limits
 
+
+## AI Client Setup
+
+Connect your AI client to the BX Finance Banking MCP server for tool-assisted banking demos.
+
+### Prerequisites
+1. Start the banking demo stack: `./run-bank.sh` or `npm run start` in `banking_api_server/`
+2. Start the MCP server: `npm run start` in `banking_mcp_server/`
+3. The MCP server runs at `http://localhost:8080` by default.
+
+### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "bx-finance-banking": {
+      "url": "http://localhost:8080/mcp",
+      "transport": "http"
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json` in your project root:
+```json
+{
+  "mcpServers": {
+    "bx-finance-banking": {
+      "url": "http://localhost:8080/mcp",
+      "transport": "http"
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+```json
+{
+  "mcpServers": {
+    "bx-finance-banking": {
+      "serverUrl": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+### Verify Connection
+
+After adding the config, restart your AI client. The following tools should appear:
+- `get_my_accounts` — list bank accounts
+- `get_account_balance` — balance for a specific account
+- `get_my_transactions` — transaction history
+- `sequential_think` — step-by-step reasoning for complex decisions
+
+> **Note:** Banking tools require OAuth authentication. The AI client will be prompted
+> to authenticate via PingOne when it first calls a banking tool.
+> See `/.well-known/mcp-server` on the running MCP server for the full tool list and auth info.
+
 ## License
 
 MIT
