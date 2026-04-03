@@ -631,7 +631,9 @@ export class BankingMCPServer extends EventEmitter {
       return;
     }
 
-    if (pathname === '/auth/callback') {
+    if (pathname === '/.well-known/mcp-server') {
+      await this.handleWellKnownMcpServer(req, res);
+    } else if (pathname === '/auth/callback') {
       await this.handleOAuthCallback(req, res, url);
     } else if (pathname === '/auth/status') {
       await this.handleAuthStatus(req, res, url);
@@ -640,6 +642,48 @@ export class BankingMCPServer extends EventEmitter {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
     }
+  }
+
+  /**
+   * RFC 9728 / MCP discovery — /.well-known/mcp-server
+   */
+  private async handleWellKnownMcpServer(_req: any, res: any): Promise<void> {
+    const { BankingToolRegistry } = await import('../tools/BankingToolRegistry');
+    const tools = BankingToolRegistry.getAllTools().map(t => ({
+      name: t.name,
+      description: t.description,
+      requiresUserAuth: t.requiresUserAuth,
+      requiredScopes: t.requiredScopes,
+    }));
+    const manifest = {
+      name: 'Banking MCP Server',
+      version: '1.0.0',
+      description: 'Secure banking operations MCP server with PingOne authentication',
+      protocolVersion: '2024-11-05',
+      tools,
+      auth: {
+        type: 'oauth2',
+        authorizationUrl: process.env.PINGONE_AUTH_URL
+          ? `${process.env.PINGONE_AUTH_URL}/authorize`
+          : undefined,
+        tokenUrl: process.env.PINGONE_AUTH_URL
+          ? `${process.env.PINGONE_AUTH_URL}/token`
+          : undefined,
+        scopes: [
+          'banking:accounts:read',
+          'banking:transactions:read',
+          'banking:transactions:write',
+          'banking:sensitive:read',
+        ],
+      },
+    };
+    const body = JSON.stringify(manifest, null, 2);
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-cache',
+    });
+    res.end(body);
   }
 
   /**
