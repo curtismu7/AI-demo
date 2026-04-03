@@ -2074,10 +2074,12 @@ export default function BankingAgent({
           body: JSON.stringify({ tool: 'sequential_think', params: { query } }),
           signal: AbortSignal.timeout(8000),
         });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         let steps = [], conclusion = '';
         try {
-          const parsed = JSON.parse(data.result ?? '{}');
+          const raw = data.result;
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
           steps = parsed.steps || [];
           conclusion = parsed.conclusion || '';
         } catch (_) {}

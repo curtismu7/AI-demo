@@ -215,6 +215,11 @@ router.post('/invoke', express.json(), async (req, res) => {
   try {
     await configStore.ensureInitialized();
 
+    // Tools that require no user auth — run locally without token exchange
+    if (noAuthTools.has(tool)) {
+      return await respondLocalInvoke();
+    }
+
     if (!getSessionBearerForMcp(req)) {
       return await respondLocalInvoke();
     }
