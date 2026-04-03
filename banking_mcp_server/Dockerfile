@@ -53,12 +53,13 @@ USER appuser
 # Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node scripts/health-check.js localhost 8080 /health || exit 1
+# Health check — use PORT env var (Render sets this; defaults to 8080 locally)
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
+    CMD node scripts/health-check.js localhost ${PORT:-8080} /.well-known/mcp-server || exit 1
 
 # Set environment
 ENV NODE_ENV=production
+ENV MCP_SERVER_HOST=0.0.0.0
 
 # Start the application
 CMD ["node", "dist/index.js"]
