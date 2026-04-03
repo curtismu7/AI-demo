@@ -12,7 +12,6 @@ import {
   refreshOAuthSession,
   callMcpTool,
 } from '../services/bankingAgentService';
-import SensitiveConsentBanner from './SensitiveConsentBanner';
 import { loadPublicConfig } from '../services/configService';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { useTokenChainOptional } from '../context/TokenChainContext';
@@ -710,10 +709,7 @@ export default function BankingAgent({
   /** True when the user has accepted the in-app agent consent agreement. */
   /** Pending HITL intent — shows AgentConsentModal (transaction mode) before OTP. */
   const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
-  /** Pending sensitive data consent — shows SensitiveConsentBanner when agent calls get_sensitive_account_details. */
-  const [sensitiveConsentPending, setSensitiveConsentPending] = useState(null);
-  /** True while POST /api/accounts/sensitive-consent is in flight. */
-  const [sensitiveConsentLoading, setSensitiveConsentLoading] = useState(false);
+
   /** Challenge ID issued after the user clicks Authorize in AgentConsentModal. */
   const [hitlChallengeId, setHitlChallengeId] = useState(null);
   /** Pending action awaiting CIBA step-up approval (ref: read in event listener closure). */
@@ -1062,9 +1058,11 @@ export default function BankingAgent({
   useEffect(() => {
     const onStepUpApproved = () => {
       if (!pendingStepUpActionRef.current) return;
-      const { actionId, form } = pendingStepUpActionRef.current;
+      const { actionId, form, method } = pendingStepUpActionRef.current;
       pendingStepUpActionRef.current = null;
-      addMessage('assistant', '✅ Authentication approved — retrying your request…', actionId);
+      const methodLabel = method === 'ciba' ? 'CIBA' : 'Email OTP';
+      const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      addMessage('assistant', `✅ ${methodLabel} approved — continuing your request (${ts})`, actionId);
       runAction(actionId, form);
     };
     window.addEventListener('cibaStepUpApproved', onStepUpApproved);
@@ -1352,33 +1350,6 @@ export default function BankingAgent({
   /**
    * Runs a banking tool. When fromNl is true, skips the extra user bubble (NL already echoed the ask).
    */
-  // ─── Sensitive data consent handlers ────────────────────────────────────────
-  const handleSensitiveReveal = async () => {
-    if (!sensitiveConsentPending) return;
-    setSensitiveConsentLoading(true);
-    try {
-      const res = await fetch('/api/accounts/sensitive-consent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('consent_failed');
-      toast.success('✓ Access granted (60s)', { autoClose: 2000 });
-      const { actionId: prevActionId, form: prevForm } = sensitiveConsentPending;
-      setSensitiveConsentPending(null);
-      setSensitiveConsentLoading(false);
-      runAction(prevActionId, prevForm, { skipUserLabel: true });
-    } catch {
-      setSensitiveConsentLoading(false);
-      toast.error('Failed to grant consent. Please try again.');
-    }
-  };
-
-  const handleSensitiveDeny = () => {
-    setSensitiveConsentPending(null);
-    addMessage('assistant', '🔒 Access denied — sensitive account details were not revealed.', null);
-  };
-
   async function runAction(actionId, form, opts = {}) {
     if (isAgentBlockedByConsentDecline()) {
       addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
@@ -1524,24 +1495,6 @@ export default function BankingAgent({
 
       const normalized = normalizeAgentToolResult(response.result);
 
-      // Check for sensitive data consent required (distinct from HITL dollar-amount flow)
-      // Must be checked BEFORE isAgentToolErrorResult because ok:false,consent_required:true
-      // has no 'error' field and would pass through to the success handler undetected.
-      const isSensitiveConsentNeeded = normalized &&
-        typeof normalized === 'object' &&
-        normalized.consent_required === true &&
-        normalized.reason === 'sensitive_data_access';
-
-      if (isSensitiveConsentNeeded) {
-        markToolProgressOutcome(false);
-        setSensitiveConsentPending({ actionId, form });
-        addMessage('assistant', '🔒 Access approval needed to view sensitive account details.', actionId);
-        toast.dismiss(toastId);
-        setLoading(false);
-        toolProgressIdRef.current = null;
-        return;
-      }
-
       if (isAgentToolErrorResult(normalized)) {
         markToolProgressOutcome(false);
         const tokenEventsErr = response.tokenEvents || [];
@@ -1567,11 +1520,11 @@ export default function BankingAgent({
           setHitlPendingIntent({ actionId, form, intentPayload });
         } else if (normalized.step_up_required === true || normalized.error === 'step_up_required') {
           const stepUpMethod = normalized.step_up_method || 'ciba';
-          pendingStepUpActionRef.current = { actionId, form };
-          addMessage('assistant',
-            `🔐 **Additional verification required.**\n\nThis transaction requires step-up authentication (${stepUpMethod === 'ciba' ? 'CIBA push approval' : 'MFA redirect'}).\n\nA verification prompt has been sent to your device. Approve it and your transaction will resume automatically.`,
-            actionId
-          );
+          pendingStepUpActionRef.current = { actionId, form, method: stepUpMethod };
+          const stepUpMessageBody = stepUpMethod === 'ciba'
+            ? `🔐 **Additional verification required.**\n\nCIBA push sent to your device — waiting for approval…\n\nApprove the request on your registered device and your action will resume automatically.`
+            : `🔐 **Additional verification required.**\n\nEmail OTP sent to your registered email — waiting for verification…\n\nComplete the verification and your action will resume automatically.`;
+          addMessage('assistant', stepUpMessageBody, actionId);
           window.dispatchEvent(new CustomEvent('agentStepUpRequested', { detail: { step_up_method: stepUpMethod } }));
           toast.dismiss(toastId);
           setLoading(false);
@@ -2373,14 +2326,6 @@ export default function BankingAgent({
               </div>
             )}
 
-            {/* High-value transaction consent — shown before OTP (HITL) */}
-            {sensitiveConsentPending && (
-              <SensitiveConsentBanner
-                onReveal={handleSensitiveReveal}
-                onDeny={handleSensitiveDeny}
-                loading={sensitiveConsentLoading}
-              />
-            )}
             {hitlPendingIntent && (
               <AgentConsentModal
                 transaction={hitlPendingIntent.intentPayload}
