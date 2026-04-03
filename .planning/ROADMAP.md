@@ -177,13 +177,19 @@ Plans:
 
 ### Phase 9: CIBA step-up authentication — implement OTP modal, wire backchannel auth for write actions, and validate enterprise-grade UX
 
-**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Goal:** Wire agent-triggered step-up to auto-initiate (CIBA or OTP) without manual click; change default to email/OTP; extend 428 step-up to sensitive account details; make threshold configurable in Admin Config; polish approval UX.
+
+**Requirements**: CIBA-01, CIBA-02, CIBA-03, CIBA-04
+
 **Depends on:** Phase 8
-**Plans:** 1 plan
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 9 to break down)
+- [ ] 09-01-PLAN.md — UserDashboard: auto-initiate countown + cancel + stale toast fix (CIBA-01)
+- [ ] 09-02-PLAN.md — BankingAgent: method-specific messages + confirmation card + remove SensitiveConsentBanner (CIBA-02, CIBA-04)
+- [ ] 09-03-PLAN.md — Server defaults: change method to email, add threshold to Admin Config (CIBA-03)
+- [ ] 09-04-PLAN.md — BFF + local path: sensitive details 428 step-up, ACR gate (CIBA-02)
+- [ ] 09-05-PLAN.md — MCP TypeScript: handle step_up_required from BFF (CIBA-02)
 
 ### Phase 10: Enterprise-grade HITL — high-value transaction warnings, CIBA or OTP step-up based on configuration, and polished approval UX
 
