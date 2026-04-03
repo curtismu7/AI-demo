@@ -48,6 +48,13 @@ export default function DashboardQuickNav({ user }) {
       >
         Dashboard
       </Link>
+      <Link
+        to="/agent"
+        className={`dashboard-quick-nav__btn${pathname === '/agent' ? ' dashboard-quick-nav__btn--active' : ''}`}
+        title="AI Agent"
+      >
+        Agent
+      </Link>
       {isAdmin && (
         <Link
           to="/admin/banking"

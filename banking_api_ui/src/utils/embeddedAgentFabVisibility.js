@@ -62,7 +62,7 @@ export function isDashboardQuickNavRoute(pathname, user) {
   if (isBankingAgentDashboardRoute(pathname)) return true;
   if (user?.role === 'admin' && p === '/admin/banking') return true;
   // Also show on secondary pages so the nav rail is always accessible while signed in
-  if (p === '/demo-data' || p === '/config' || p === '/mcp-inspector' || p === '/logs' || p === '/activity') return true;
+  if (p === '/demo-data' || p === '/config' || p === '/mcp-inspector' || p === '/logs' || p === '/activity' || p === '/agent') return true;
   return false;
 }
 
