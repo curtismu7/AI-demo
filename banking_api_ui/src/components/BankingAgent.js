@@ -1519,7 +1519,7 @@ export default function BankingAgent({
           toast.dismiss(toastId);
           setHitlPendingIntent({ actionId, form, intentPayload });
         } else if (normalized.step_up_required === true || normalized.error === 'step_up_required') {
-          const stepUpMethod = normalized.step_up_method || 'ciba';
+          const stepUpMethod = normalized.step_up_method || 'email';
           pendingStepUpActionRef.current = { actionId, form, method: stepUpMethod };
           const stepUpMessageBody = stepUpMethod === 'ciba'
             ? `🔐 **Additional verification required.**\n\nCIBA push sent to your device — waiting for approval…\n\nApprove the request on your registered device and your action will resume automatically.`

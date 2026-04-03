@@ -388,7 +388,7 @@ export class BankingToolProvider {
       if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
         const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
         const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
-          ? (axiosData['step_up_method'] as string) : 'ciba';
+          ? (axiosData['step_up_method'] as string) : 'email';
         return this.createSuccessResult(
           JSON.stringify(
             {
@@ -455,7 +455,7 @@ export class BankingToolProvider {
       if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
         const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
         const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
-          ? (axiosData['step_up_method'] as string) : 'ciba';
+          ? (axiosData['step_up_method'] as string) : 'email';
         return this.createSuccessResult(
           JSON.stringify(
             {
@@ -529,7 +529,7 @@ export class BankingToolProvider {
       if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
         const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
         const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
-          ? (axiosData['step_up_method'] as string) : 'ciba';
+          ? (axiosData['step_up_method'] as string) : 'email';
         return this.createSuccessResult(
           JSON.stringify(
             {
