@@ -78,6 +78,16 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-03 — Phase 32: duplicate `const mcpExchangeMode` crashed server on startup
+
+- **Root cause:** During Phase 32 (Plan 32-03) the `mcpExchangeMode` require block was accidentally duplicated in `banking_api_server/server.js` (lines 989–990 and 993–994). JavaScript `const` does not allow re-declaration in the same scope, so Node threw `SyntaxError: Identifier 'mcpExchangeMode' has already been declared` on every startup. The server could not start at all, making ALL authenticated API routes (which depend on a running BFF) return 401.
+- **Symptom:** Browser console showed 401s on `/api/demo-scenario`, `/api/admin/feature-flags`, `/api/accounts/my`, `/api/transactions/consent-challenge` — all `authenticateToken`-gated routes.
+- **Fix:** Removed the duplicate 4-line block (comment + `const mcpExchangeMode` + `app.use`). First declaration at line 989 retained.
+- **Files changed:** `banking_api_server/server.js`
+- **Commit:** `2eac0a9`
+- **Do not break:** `mcpExchangeMode` route is still registered once at `/api/mcp`. No behavior change — only the duplicate removed.
+
+
 ### 2026-04-02 — HITL/agent: MCP param names + NL form field + CIBA session save
 
 - **Root cause A (`bankingAgentService.js`):** `createDeposit` and `createWithdrawal` sent `account_id` as the MCP tool param, but the MCP server schema requires `to_account_id` / `from_account_id` respectively. With a valid PingOne token (MCP server path), validation failed immediately. Local-fallback path worked because `mcpLocalTools.js` accepts `account_id || to_account_id`.
