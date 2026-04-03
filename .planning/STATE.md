@@ -103,6 +103,7 @@ Plan: 1 of 5
 - Phase 25 added: LLM landscape — commercial and open-source models, capabilities overview, and comparison
 - Phase 45 added: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
 - Phase 43 added: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
+- Phase 48 added: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF/PAZ layer instead — update docs
 - Phase 44 added: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
 - Phase 46 added: Standardize PingOne app, resource, and scope naming across all use cases
 - Phase 47 added: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs

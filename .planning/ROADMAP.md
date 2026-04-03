@@ -590,6 +590,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 47 to break down)
 
+### Phase 48: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF PAZ layer instead update docs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 47
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 48 to break down)
+
 ---
 
 ## Dependency Order
