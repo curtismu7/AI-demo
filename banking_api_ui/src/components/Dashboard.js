@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import axios from 'axios';
 import { toast, notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
@@ -15,6 +15,7 @@ import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 
 const Dashboard = ({ user, onLogout }) => {
+  const location = useLocation();
   const { placement: agentPlacement } = useAgentUiMode();
   const { open } = useEducationUI();
   const { preset } = useIndustryBranding();
@@ -801,7 +802,7 @@ const Dashboard = ({ user, onLogout }) => {
           <Link to="/activity" className="btn btn-primary">
             View All Activity Logs
           </Link>
-          <Link to="/audit" className="btn btn-secondary">
+          <Link to="/audit" state={{ backgroundLocation: location }} className="btn btn-secondary">
             🔍 MCP Audit Trail
           </Link>
           <Link to="/users" className="btn btn-secondary">

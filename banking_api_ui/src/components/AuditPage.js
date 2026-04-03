@@ -10,7 +10,7 @@ const MIN_H = 300;
 const DEFAULT_W = 920;
 const DEFAULT_H = 620;
 
-export default function AuditPage() {
+export default function AuditPage({ onClose } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isPopout = searchParams.get('popout') === '1';
@@ -80,7 +80,9 @@ export default function AuditPage() {
       'mcpAuditTrail',
       `width=${DEFAULT_W},height=${DEFAULT_H},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`
     );
-  }, []);
+    // Close the in-browser floating window after launching the OS popup
+    if (onClose) onClose(); else navigate(-1);
+  }, [onClose, navigate]);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -221,7 +223,7 @@ export default function AuditPage() {
           <button type="button" className="audit-float-btn" onClick={openPopout} title="Open in new window (move to any screen)" aria-label="Pop out to new window">
             ⧉
           </button>
-          <button type="button" className="audit-float-close" onClick={() => navigate(-1)} title="Close" aria-label="Close audit log">
+          <button type="button" className="audit-float-close" onClick={() => onClose ? onClose() : navigate(-1)} title="Close" aria-label="Close audit log">
             ×
           </button>
         </div>

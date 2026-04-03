@@ -118,6 +118,8 @@ let _didLogOut = false;
 
 
 function AppWithAuth() {
+  const fullLocation = useLocation();
+  const backgroundLocation = fullLocation.state?.backgroundLocation;
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const pathNorm = pathname.replace(/\/$/, '') || '/';
@@ -418,7 +420,7 @@ function AppWithAuth() {
               ) : (
                 <main className="main-content">
                   <EducationBar />
-                  <Routes>
+                  <Routes location={backgroundLocation || fullLocation}>
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
@@ -451,6 +453,9 @@ function AppWithAuth() {
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
+                  {backgroundLocation && fullLocation.pathname === '/audit' && (
+                    <AdminRoute user={user}><AuditPage user={user} onClose={() => window.history.back()} /></AdminRoute>
+                  )}
                 </main>
               )
             } />
