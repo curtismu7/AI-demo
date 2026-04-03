@@ -541,6 +541,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 43 to break down)
 
+### Phase 44: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 43
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 44 to break down)
+
 ---
 
 ## Dependency Order
