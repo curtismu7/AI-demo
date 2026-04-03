@@ -601,6 +601,17 @@ export class BankingToolProvider {
     try {
       const response = await this.apiClient.getSensitiveAccountDetails(userToken);
 
+      // Step-up required (428 from BFF — ACR not elevated)
+      if (response && (response as any).ok === false && (response as any).step_up_required === true) {
+        const stepUpPayload = {
+          ok: false,
+          step_up_required: true,
+          error: 'step_up_required',
+          step_up_method: (response as any).step_up_method || 'email',
+        };
+        return this.createSuccessResult(JSON.stringify(stepUpPayload, null, 2));
+      }
+
       // BFF gate returned consent_required — surface as structured result
       if (response && (response as any).ok === false && (response as any).consent_required) {
         const consentPayload = {
