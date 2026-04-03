@@ -70,6 +70,7 @@ Plan: 1 of 5
 | ID | Task | Commit | Date |
 |---|---|---|---|
 | 260403-ibs | Rename BX Finance → Super Banking across docs, source, and UI | 04fa9c7 | 2026-04-03 |
+| 260403-ief | Rename PingOne apps and resources BX Finance → Super Banking (manual console) | 9a7fe9e | 2026-04-03 |
 
 ---
 
