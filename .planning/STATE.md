@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-03T12:42:26.038Z"
+last_updated: "2026-04-03T13:58:50.092Z"
 progress:
-  total_phases: 44
-  completed_phases: 24
-  total_plans: 61
-  completed_plans: 57
+  total_phases: 45
+  completed_phases: 27
+  total_plans: 69
+  completed_plans: 64
 ---
 
 # State — BX Finance AI Banking Demo
@@ -20,9 +20,9 @@ progress:
 
 ## Current Position
 
-Phase: 35 (user-facing-feature-documentation-update-docs-for-each-feature-explaining-what-it-does-and-why-it-was-added) — EXECUTING
-Plan: 1 of 1
-**Status:** Executing Phase 35
+Phase: 09 (ciba-step-up-authentication) — EXECUTING
+Plan: 1 of 5
+**Status:** Executing Phase 09
 
 ---
 
@@ -65,8 +65,9 @@ Plan: 1 of 1
 
 ---
 
-## Pending Todos
+## Pending Todos (28)
 
+- **[TODO -> auth]** Reorganize PingOne apps — OIDC agents to AI Agents group, OIDC user apps to Applications group
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
 - Redeploy to Vercel (commits since last deploy include Phase 29: 3ca82da)
@@ -93,6 +94,7 @@ Plan: 1 of 1
 - Phase 45 added: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
 - Phase 43 added: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
 - Phase 44 added: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
+- Phase 46 added: Standardize PingOne app, resource, and scope naming across all use cases
 - Phase 26 added: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
 - Phase 27 added: PingOne Authorize PAZ setup — transaction limit policy, AUD validation, act chain introspection to match RFC 8693 token exchange implementation
 - Phase 28 added: Vercel config tab — read environment variables via Vercel API, display editable fields in UI, write non-secret vars back to Vercel, secrets entered by user and stored server-side only
