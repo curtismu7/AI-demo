@@ -153,9 +153,9 @@ A draw.io diagram of the full 2-exchange token chain is included in this repo:
 | Step | Scope |
 |------|-------|
 | `/authorize` | `profile email banking:agent:invoke` |
-| Exchange #1 (AI Agent actor CC) | *(audience-only — no scope needed, or minimal app scope)* |
+| Exchange #1 (AI Agent actor CC) | `agent:invoke` ← required to associate Agent Gateway with the AI Agent App in PingOne |
 | Exchange #1 result (Agent Exchanged Token) | `banking:accounts:read banking:transactions:read banking:transactions:write` |
-| Exchange #2 (MCP actor CC) | *(audience-only — no scope needed, or minimal app scope)* |
+| Exchange #2 (MCP actor CC) | `mcp:invoke` ← required to associate MCP Gateway with the MCP Token Exchanger App in PingOne |
 | Exchange #2 result (MCP Exchanged Token) | `banking:accounts:read banking:transactions:read banking:transactions:write` |
 
 ---
@@ -267,9 +267,13 @@ Click **Save**.
 
 **Attribute Mappings tab:** No mappings needed. Leave this tab unchanged.
 
-**Scopes tab:** No scopes needed. This resource server is used purely for audience identity verification, not for granting capabilities.
+**Scopes tab → Add Scope:**
 
-> The **Super Banking AI Agent App** must be allowed to request tokens scoped to this audience. Enable **Super Banking Agent Gateway** on the AI Agent App's Resources tab in Step 2b.
+| Scope name | Description |
+|---|---|
+| `agent:invoke` | Required by PingOne to associate this resource with the Super Banking AI Agent App. The AI Agent App obtains a Client Credentials token carrying this scope and presents it as `actor_token` in Exchange #1. PingOne requires at least one scope on a resource before an app can select it on the Resources tab — without this, the resource won't appear on the app's Resources tab at all. |
+
+> The **Super Banking AI Agent App** must select `agent:invoke` from this resource on its Resources tab (Step 2b).
 
 ---
 
@@ -387,9 +391,13 @@ Click **Save**.
 
 **Attribute Mappings tab:** No mappings needed. Leave this tab unchanged.
 
-**Scopes tab:** No scopes needed. This resource server is used purely for actor identity — it does not grant capabilities.
+**Scopes tab → Add Scope:**
 
-> The **Super Banking MCP Token Exchanger** app must be allowed to request tokens scoped to this audience. Enable **Super Banking MCP Gateway** on the MCP Service's Resources tab in Step 2c.
+| Scope name | Description |
+|---|---|
+| `mcp:invoke` | Required by PingOne to associate this resource with the Super Banking MCP Token Exchanger App. The MCP Token Exchanger obtains a Client Credentials token carrying this scope and presents it as `actor_token` in Exchange #2. PingOne requires at least one scope on a resource before an app can select it on the Resources tab — without this, the resource won't appear on the app's Resources tab at all. |
+
+> The **Super Banking MCP Token Exchanger** app must select `mcp:invoke` from this resource on its Resources tab (Step 2c).
 
 ---
 
@@ -528,8 +536,8 @@ Click **Add Application** and fill in:
 
 **Resources tab → Allowed scopes — enable:**
 
-- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` from **Super Banking MCP Server** — these are the scopes the Agent Exchanged Token will carry
-- ✅ *(add the resource)* **Super Banking Agent Gateway** — no specific named scope needed; adding the resource allows the app to obtain a CC token with `audience=https://agent-gateway.pingdemo.com`
+- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` from **Super Banking MCP Server** — these flow into the Agent Exchanged Token (Exchange #1 output)
+- ✅ `agent:invoke` from **Super Banking Agent Gateway** — CC actor token scope; PingOne issues a token with `aud: https://agent-gateway.pingdemo.com` only when this app has this scope selected. Without it, the audience parameter is ignored and the wrong `aud` is returned.
 
 **Attribute Mappings tab:** No mappings needed. Leave this tab unchanged.
 
@@ -559,9 +567,9 @@ This app performs two roles in the 2-exchange chain:
 
 **Resources tab → Allowed scopes — enable:**
 
-- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` from **Super Banking Banking API**
-- ✅ *(audience scope — no named scope needed)* from **Super Banking MCP Gateway**
-- ✅ `p1:read:user`, `p1:update:user` from **PingOne API** *(for Management API calls)*
+- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` from **Super Banking Banking API** — these flow into the final MCP Exchanged Token (Exchange #2 output)
+- ✅ `mcp:invoke` from **Super Banking MCP Gateway** — CC actor token scope; PingOne issues a token with `aud: https://mcp-gateway.pingdemo.com` only when this app has this scope selected. Without it, the audience parameter is ignored and the wrong `aud` is returned.
+- ✅ `p1:read:user`, `p1:update:user` from **PingOne API** *(for Management API calls to read/update user records)*
 
 Copy the **Client ID** → `AGENT_OAUTH_CLIENT_ID` env var. Copy the **Client Secret** → `AGENT_OAUTH_CLIENT_SECRET` env var.
 
