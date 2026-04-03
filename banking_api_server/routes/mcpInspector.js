@@ -190,8 +190,10 @@ router.post('/invoke', express.json(), async (req, res) => {
   const mcpUrl = getMcpServerUrl();
   const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
 
+  // Tools that don't require user auth (no DB access, pure logic)
+  const noAuthTools = new Set(['sequential_think', 'query_user_by_email']);
   const respondLocalInvoke = async () => {
-    if (!effectiveUserId) {
+    if (!effectiveUserId && !noAuthTools.has(tool)) {
       return authRequired(res);
     }
     const started = Date.now();

@@ -46,16 +46,43 @@ async function ensureAccounts(userId) {
   const checkingId = `chk-${uid}`;
   const savingsId  = `sav-${uid}`;
 
+  // Generate realistic 12-digit account numbers from user uid (mirrors accounts.js)
+  const _mclDigits = uid.replace(/[^0-9a-f]/gi, '').slice(0, 10) || '0';
+  const _mclN      = parseInt(_mclDigits, 16) % 9999999999;
+  const checkingFull = '01' + String(_mclN).padStart(10, '0');
+  const savingsFull  = '02' + String(_mclN).padStart(10, '0');
+  const _mclIban     = parseInt(uid.replace(/[^0-9a-f]/gi, '').slice(0, 8) || '0', 16);
+  const _mclSfx1     = String(_mclIban % 100000000).padStart(8, '0');
+  const _mclSfx2     = String((_mclIban + 1) % 100000000).padStart(8, '0');
+
   const checking = await dataStore.createAccount({
     id: checkingId, userId,
-    accountNumber: `CHK-${uid.toUpperCase()}`, accountType: 'checking',
+    accountNumberFull: checkingFull,
+    accountNumber: `****${checkingFull.slice(-4)}`,
+    accountType: 'checking',
     balance: 3000.00, currency: 'USD', name: 'Checking Account',
+    routingNumber: '026073150',
+    swiftCode: 'CHASUS33',
+    iban: `US12CHAS${_mclSfx1}`,
+    branchName: 'BX Finance Main Branch',
+    branchCode: '001',
+    openedDate: '2022-01-15',
+    accountHolderName: '',
     createdAt: new Date('2024-01-15'),
   });
   const savings = await dataStore.createAccount({
     id: savingsId, userId,
-    accountNumber: `SAV-${uid.toUpperCase()}`, accountType: 'savings',
+    accountNumberFull: savingsFull,
+    accountNumber: `****${savingsFull.slice(-4)}`,
+    accountType: 'savings',
     balance: 2000.00, currency: 'USD', name: 'Savings Account',
+    routingNumber: '021000021',
+    swiftCode: 'CHASUS33',
+    iban: `US12CHAS${_mclSfx2}`,
+    branchName: 'BX Finance Main Branch',
+    branchCode: '001',
+    openedDate: '2022-03-10',
+    accountHolderName: '',
     createdAt: new Date('2024-01-15'),
   });
 
@@ -466,6 +493,24 @@ function listLocalInspectorTools() {
 
 // ─── dispatch ─────────────────────────────────────────────────────────────────
 
+
+/**
+ * Local implementation of sequential_think — pure reasoning, no auth or DB needed.
+ * Mirrors the BankingToolProvider.executeSequentialThink output shape.
+ */
+async function sequential_think({ query, context } = {}) {
+  if (!query) return JSON.stringify({ error: 'query is required' });
+  const q = String(query).trim();
+  const steps = [
+    { title: 'Understand the question', description: `Parsing: "${q}"` },
+    { title: 'Identify relevant context', description: context ? `Context provided: ${String(context).slice(0, 120)}` : 'No additional context supplied.' },
+    { title: 'Apply banking domain knowledge', description: 'Considering applicable accounts, balances, and transaction flows.' },
+    { title: 'Formulate response', description: 'Drawing a structured conclusion based on the above steps.' },
+  ];
+  const conclusion = `Sequential reasoning complete for: "${q}". Connect the MCP server (banking_mcp_server) for full AI-powered analysis.`;
+  return JSON.stringify({ steps, conclusion });
+}
+
 const TOOL_MAP = {
   get_my_accounts,
   get_account_balance,
@@ -473,6 +518,8 @@ const TOOL_MAP = {
   create_deposit,
   create_withdrawal,
   create_transfer,
+  get_sensitive_account_details,
+  sequential_think,
   // Legacy aliases
   list_accounts:     get_my_accounts,
   list_transactions: get_my_transactions,
@@ -497,4 +544,17 @@ async function callToolLocal(tool, params, userId) {
   return handler(params || {}, userId);
 }
 
-module.exports = { callToolLocal, listLocalInspectorTools };
+
+async function get_sensitive_account_details(params, userId) {
+  // Local fallback: sensitive endpoint requires browser session consent which isn't
+  // available in the local tool path. Return consent_required so the UI banner fires.
+  return {
+    ok: false,
+    consent_required: true,
+    reason: 'sensitive_data_access',
+    message: 'Accessing sensitive account details requires your approval in the browser. The agent will show a consent banner — click Reveal to proceed.',
+  };
+}
+
+module.exports = { callToolLocal, listLocalInspectorTools, get_sensitive_account_details,
+};
