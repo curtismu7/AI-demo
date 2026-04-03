@@ -20,6 +20,11 @@ A developer who completes a 5-minute walkthrough of the live demo should underst
 - ✓ MCP 2025-11-25 server (WebSocket, tool registry, BankingToolProvider, auth challenges) — existing
 - ✓ In-app education panels (TokenChain, MayAct, McpProtocol, PAR, HumanInLoop, BestPractices, LoginFlow, RFCIndex, etc.) — existing
 - ✓ Vercel deployment (banking-demo-puce.vercel.app, api/handler.js, Upstash Redis sessions) — existing
+- ✓ `/.well-known/mcp-server` discovery endpoint (HttpMCPTransport) — Phase 32
+- ✓ `sequential_think` MCP tool — structured 5-step reasoning, no auth required — Phase 32
+- ✓ Async UX mode selector (job-id/spinner/transparent) on Config page, localStorage-persisted — Phase 32
+- ✓ MCP audit trail (`/audit` admin route + `/api/mcp/audit` BFF proxy + AuditLogger) — Phase 32
+- ✓ MCP registry manifest (`mcpServers` in package.json + AI Client Setup in README) — Phase 32
 
 ### Active
 
@@ -73,6 +78,7 @@ A developer who completes a 5-minute walkthrough of the live demo should underst
 | WebSocket for BFF→MCP (not HTTP) | Stateful session management; auth challenge flow requires persistent connection | ✓ Good |
 | Vercel + Upstash for hosting | Easiest public demo URL; serverless constraints are known and mitigated | — Pending |
 | Education panels embedded in app | Learners see explanation in context of the live demo | ✓ Good |
+| Render.com for MCP WebSocket server | Vercel serverless doesn't support persistent WebSocket; Render Docker service handles it | ✓ Good |
 
 ## Evolution
 
@@ -92,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after initialization*
+*Last updated: 2026-04-03 after Phase 32*

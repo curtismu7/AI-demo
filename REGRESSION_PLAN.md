@@ -78,6 +78,16 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-03 — Phase 32: Render Docker deploy failed — prestart:prod hook rebuilt dist as non-root
+
+- **Root cause:** `banking_mcp_server/package.json` had `"prestart:prod": "npm run build:prod"` and `"prestart": "npm run build"`. In the Render Docker container the `dist/` directory is owned by `root` (built in the builder stage before the runtime stage switches to `appuser`). When `npm start:prod` triggers the prestart hook, `npm run build:prod` → `rm -rf dist` fails with `Permission denied`, crashing every deploy attempt.
+- **Symptom:** `rm: can't remove 'dist': Permission denied` → `Exited with status 1` in all 3 Render deploy attempts.
+- **Fix:** Removed `prestart` and `prestart:prod` scripts from `package.json`. `start:prod` now runs `node dist/index.js` directly. `dist/` is already compiled by the builder stage and copied into the final image — no rebuild needed at runtime.
+- **Files changed:** `banking_mcp_server/package.json` (commit `47722a1`); `banking_mcp_server/Dockerfile` (CMD changed to `node dist/index.js`), `render.yaml` (created)
+- **Commits:** `47722a1`, `60ee468`, `8ced87d`
+- **Do not break:** `npm run build:prod` still works for local development builds. Only the auto-trigger hooks were removed.
+
+
 ### 2026-04-03 — Phase 32: duplicate `const mcpExchangeMode` crashed server on startup
 
 - **Root cause:** During Phase 32 (Plan 32-03) the `mcpExchangeMode` require block was accidentally duplicated in `banking_api_server/server.js` (lines 989–990 and 993–994). JavaScript `const` does not allow re-declaration in the same scope, so Node threw `SyntaxError: Identifier 'mcpExchangeMode' has already been declared` on every startup. The server could not start at all, making ALL authenticated API routes (which depend on a running BFF) return 401.

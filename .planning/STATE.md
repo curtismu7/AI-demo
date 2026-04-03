@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-02T23:12:14.515Z"
+status: planning
+last_updated: "2026-04-03T11:21:58.689Z"
 progress:
-  total_phases: 41
-  completed_phases: 21
+  total_phases: 42
+  completed_phases: 22
   total_plans: 57
-  completed_plans: 49
+  completed_plans: 54
 ---
 
 # State — BX Finance AI Banking Demo
@@ -20,9 +20,9 @@ progress:
 
 ## Current Position
 
-Phase: 32 (mcp-server-advanced-capabilities-sequential-thinking-tool-async-long-running-tasks-primitive-well-known-server-discovery-audit-trail-observability-and-mcp-registry-integration) — EXECUTING
-Plan: 1 of 5
-**Status:** Executing Phase 32
+Phase: 33
+Plan: Not started
+**Status:** Ready to plan
 
 ---
 
@@ -54,6 +54,7 @@ Plan: 1 of 5
 | D-03 | WebSocket for BFF→MCP | foundation | Required for stateful auth challenge flow |
 | D-04 | Vercel + Upstash for hosting | foundation | Known serverless constraints documented in REGRESSION_PLAN.md |
 | D-05 | Education panels embedded in app | foundation | In-context explanation while demo runs |
+| D-06 | Render.com for MCP WebSocket server | Phase 32 | Vercel serverless can't hold persistent WebSocket; Render Docker service handles it |
 
 ---
 - [Phase 08]: Listen for banking-agent-result event in UserDashboard rather than prop/callback chain — keeps components decoupled
@@ -65,9 +66,8 @@ Plan: 1 of 5
 ---
 
 ## Pending Todos
-- **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
-- **[TODO -> MCP/docs]** Add /.well-known/mcp-server education and include in agent request flow — UX panel + README + optional live Try-it button
 
+- **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
 - Redeploy to Vercel (commits since last deploy include Phase 29: 3ca82da)
 - When merged to main: update raw doc links from `fix/dashboard-fab-positioning` → `main`
