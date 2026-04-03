@@ -70,8 +70,16 @@ LOG_UI=/tmp/bank-ui.log
 LOG_MCP=/tmp/bank-mcp-server.log
 LOG_AGENT=/tmp/bank-langchain-agent.log
 
-# Used by tail_bank_logs before the main banner runs (e.g. ./run-bank.sh tail)
+# Terminal colors (global — used by banner, status, and tail_bank_logs)
+BOLD='\033[1m'
 CYAN='\033[1;36m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+MAGENTA='\033[1;35m'
+BLUE='\033[1;34m'
+WHITE='\033[1;37m'
+RED='\033[1;31m'
+DIM='\033[2m'
 RESET='\033[0m'
 
 # ── Tail logs (one log 1–4, or all at once: 5 / all) ─────────────────────────
@@ -176,6 +184,46 @@ force_kill_listeners_on_banking_ports() {
   done
 }
 
+# Check if a TCP port is listening locally
+port_listening() {
+  local port="$1"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1
+}
+
+# Wait for a port with a timeout; prints 'up' or 'timeout'
+wait_for_port() {
+  local port="$1" timeout="${2:-25}" i=0
+  while [[ $i -lt $timeout ]]; do
+    port_listening "$port" && echo "up" && return 0
+    sleep 1
+    (( i++ )) || true
+  done
+  echo "timeout"
+}
+
+# Print a single-line status row for a service
+service_status_line() {
+  local label="$1" port="$2" url="${3:-}"
+  if port_listening "$port"; then
+    printf "  ${GREEN}${BOLD}  ✅  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "$label" "$port" "$url"
+  else
+    printf "  ${RED}${BOLD}  ❌  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}not yet ready${RESET}\n" "$label" "$port"
+  fi
+}
+
+# Print the full status table (used by both 'start' and 'status' subcommands)
+print_status_table() {
+  echo -e "${WHITE}${BOLD}  SERVICES${RESET}"
+  service_status_line "Banking API Server"  ${API_PORT}  "${API_URL}"
+  service_status_line "Banking MCP Server"  8080         "ws://localhost:8080"
+  service_status_line "LangChain Agent"     8888         "http://localhost:8888"
+  if port_listening ${UI_PORT}; then
+    printf "  ${GREEN}${BOLD}  ✅  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+  else
+    printf "  ${YELLOW}  ⏳  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}compiling… %s${RESET}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+  fi
+}
+
 # ── Stop mode ───────────────────────────────────────────────────────────────
 if [[ "${1}" == "stop" ]]; then
   echo "🛑 Stopping Banking services (run-bank.sh)..."
@@ -200,11 +248,58 @@ if [[ "${1}" == "stop" ]]; then
   exit 0
 fi
 
+# ── Status subcommand ───────────────────────────────────────────────────────
+if [[ "${1}" == "status" ]]; then
+  echo ""
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+  echo -e "${CYAN}${BOLD}   🏦  BX FINANCE — SERVICE STATUS                                ${RESET}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+  echo ""
+  print_status_table
+  echo ""
+  echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${RESET}"
+  echo -e "${GREEN}${BOLD}  │${RESET}  🌐  App           ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
+  echo -e "${GREEN}${BOLD}  │${RESET}  ⚙️   Admin Config  ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
+  echo -e "${GREEN}${BOLD}  │${RESET}  🔐  Admin Login   ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
+  echo -e "${GREEN}${BOLD}  │${RESET}  👤  User Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
+  echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
+  echo ""
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+  echo ""
+  exit 0
+fi
+
 # ── Tail-only mode ──────────────────────────────────────────────────────────
 if [[ "${1}" == "tail" ]]; then
   shift
   tail_bank_logs "${1:-}"
   exit 0
+fi
+
+# ── Auto-kill any existing Banking services before (re)starting ─────────────
+_any_running=false
+for _chk_port in ${API_PORT} ${UI_PORT} 8080 8888; do
+  if port_listening "$_chk_port"; then
+    _any_running=true
+    break
+  fi
+done
+if [[ "$_any_running" == "true" ]]; then
+  echo -e "${YELLOW}  ⟳  Stopping existing Banking services…${RESET}"
+  set +e
+  for _pf in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
+    if [[ -f "$_pf" ]]; then
+      _pid=$(cat "$_pf" 2>/dev/null || true)
+      rm -f "$_pf"
+      [[ -n "$_pid" ]] && kill_process_tree "$_pid" 2>/dev/null || true
+    fi
+  done
+  stop_listeners_on_banking_ports
+  sleep 1
+  force_kill_listeners_on_banking_ports
+  set -e
+  echo -e "${GREEN}  ✅  Previous services stopped.${RESET}"
+  echo ""
 fi
 
 # ── Dependency check ─────────────────────────────────────────────────────────
@@ -282,64 +377,49 @@ echo "🌐 Starting Banking UI on ${CLIENT_URL}..."
 ) &
 echo $! > "$PID_UI"
 
-# ── Banner ───────────────────────────────────────────────────────────────────
-# shellcheck disable=SC2034
-BOLD='\033[1m'
-CYAN='\033[1;36m'
-GREEN='\033[1;32m'
-YELLOW='\033[1;33m'
-MAGENTA='\033[1;35m'
-BLUE='\033[1;34m'
-WHITE='\033[1;37m'
-DIM='\033[2m'
-RESET='\033[0m'
+# ── Banner + health check ────────────────────────────────────────────────────
+echo ""
+echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${CYAN}${BOLD}   🏦  BX FINANCE BANKING DEMO — STARTING                         ${RESET}"
+echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""
+echo -e "${DIM}  Waiting for Banking API and MCP Server to come up…${RESET}"
+
+wait_for_port "${API_PORT}" 25 >/dev/null
+wait_for_port 8080 25 >/dev/null
+sleep 1   # give LangChain agent a moment too
 
 echo ""
-echo -e "${CYAN}${BOLD}*******************************************************************${RESET}"
-echo -e "${CYAN}${BOLD}*                                                                 *${RESET}"
-echo -e "${CYAN}${BOLD}*          🏦  BANKING DEMO — ALL SERVICES STARTED  🏦            *${RESET}"
-echo -e "${CYAN}${BOLD}*                                                                 *${RESET}"
-echo -e "${CYAN}${BOLD}*******************************************************************${RESET}"
+echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${CYAN}${BOLD}   🏦  BX FINANCE BANKING DEMO — STATUS                           ${RESET}"
+echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
-echo -e "${WHITE}${BOLD}  ABOUT${RESET}"
-echo -e "${DIM}  PingOne-powered banking demo with OAuth 2.0 login, AI banking${RESET}"
-echo -e "${DIM}  agent (BankingAgent FAB), and MCP tool integration. Runs${RESET}"
-echo -e "${DIM}  alongside MasterFlow with no port conflicts.${RESET}"
+print_status_table
 echo ""
 echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${RESET}"
-echo -e "${GREEN}${BOLD}  │${RESET}  🌐  Banking UI (App)     ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
-echo -e "${GREEN}${BOLD}  │${RESET}  ⚙️   Banking UI (Config)  ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
-echo -e "${GREEN}${BOLD}  │${RESET}  🔐  Admin Login flow      ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
-echo -e "${GREEN}${BOLD}  │${RESET}  👤  User Login flow       ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
+echo -e "${GREEN}${BOLD}  │${RESET}  🌐  App            ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
+echo -e "${GREEN}${BOLD}  │${RESET}  ⚙️   Admin Config   ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
+echo -e "${GREEN}${BOLD}  │${RESET}  🔐  Admin Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
+echo -e "${GREEN}${BOLD}  │${RESET}  👤  User Login     ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
 echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
-echo -e "${BLUE}${BOLD}  ┌─ PORTS ─────────────────────────────────────────────────────┐${RESET}"
-echo -e "${BLUE}${BOLD}  │${RESET}  ${MAGENTA}:${UI_PORT}${RESET}   Banking React UI     (CRA dev server)"
-echo -e "${BLUE}${BOLD}  │${RESET}  ${MAGENTA}:${API_PORT}${RESET}   Banking API Server   (Express)"
-echo -e "${BLUE}${BOLD}  │${RESET}  ${MAGENTA}:8080${RESET}  Banking MCP Server   (tool proxy)"
-echo -e "${BLUE}${BOLD}  │${RESET}  ${MAGENTA}:8888${RESET}  LangChain Agent      (Python FastAPI)"
-echo -e "${BLUE}${BOLD}  │${RESET}  ${DIM}:3000  MasterFlow UI      (not managed here)${RESET}"
-echo -e "${BLUE}${BOLD}  │${RESET}  ${DIM}:3001  MasterFlow API     (not managed here)${RESET}"
-echo -e "${BLUE}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
-echo ""
 echo -e "${MAGENTA}${BOLD}  ┌─ QUICK START ───────────────────────────────────────────────┐${RESET}"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  1. Open ${YELLOW}${CLIENT_URL}/config${RESET} and enter PingOne credentials"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  2. Open ${YELLOW}${CLIENT_URL}${RESET} — click ${WHITE}${BOLD}Login${RESET} to start an OAuth flow"
-echo -e "${MAGENTA}${BOLD}  │${RESET}  3. After login, use the 🤖 FAB (bottom-right) for BankingAgent"
-echo -e "${MAGENTA}${BOLD}  │${RESET}     • Ask: balance, accounts, transactions, withdraw, transfer"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  1. Open ${YELLOW}${CLIENT_URL}/config${RESET} → enter PingOne credentials"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  2. Open ${YELLOW}${CLIENT_URL}${RESET} → click ${WHITE}${BOLD}Login${RESET} to start an OAuth flow"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  3. After login: use the 🤖 FAB (bottom-right) for BankingAgent"
+echo -e "${MAGENTA}${BOLD}  │${RESET}     Ask: balance, accounts, transactions, transfer, withdraw"
 echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
-echo -e "${WHITE}${BOLD}  ┌─ LOGS / DEBUG ──────────────────────────────────────────────┐${RESET}"
-echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh tail${RESET}     — pick 1–4, ${BOLD}5/all${RESET} for every log (or: ${DIM}./run-bank.sh tail all${RESET})"
+echo -e "${WHITE}${BOLD}  ┌─ MANAGE ────────────────────────────────────────────────────┐${RESET}"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh status${RESET}   — live service health check"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh tail${RESET}     — pick log (${DIM}./run-bank.sh tail all${RESET} for all)"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh stop${RESET}     — stop all services"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_API}${RESET}"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_UI}${RESET}"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_MCP}${RESET}"
-echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_AGENT}${RESET}"
 echo -e "${WHITE}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
-echo -e "${YELLOW}  ℹ️  UI takes ~20s to compile.  To stop: ${BOLD}bash run-bank.sh stop${RESET}"
-echo ""
-echo -e "${CYAN}${BOLD}*******************************************************************${RESET}"
+echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 
 # Optional: offer to tail a log when run interactively (stdin is a TTY)
