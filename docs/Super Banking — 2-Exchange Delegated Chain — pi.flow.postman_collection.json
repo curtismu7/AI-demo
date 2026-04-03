@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "9f9ba0be-473c-4581-9411-42cf66c0ee6e",
-    "name": "BX Finance \u2014 1-Exchange Delegated Chain \u2014 pi.flow",
-    "description": "BX Finance 1-Exchange Delegated Chain \u2014 Full Flow (RFC 8693)\n\nAudience: Demo runners, customers.\nPairs with: BX-Finance-Shared.postman_environment.json\n\nRuns the complete 1-exchange delegated token chain end-to-end.\n\nFlow:\n  Steps 1\u20134: Auth Code + PKCE via pi.flow \u2192 Subject Token\n  Step 5:    RFC 8693 Exchange \u2192 MCP Token (act.sub = PINGONE_CORE_CLIENT_ID)\n  Step 6:    Client Credentials \u2192 PingOne API Token\n  Step 7:    User Lookup\n\nRun steps 1\u20137 in order. Tokens are saved automatically.",
+    "_postman_id": "2e4f8a1c-7b3d-4e9f-a5c2-8d6b1e0f3a7e",
+    "name": "Super Banking \u2014 2-Exchange Delegated Chain \u2014 pi.flow",
+    "description": "Super Banking 2-Exchange Delegated Chain \u2014 Full Flow (RFC 8693)\n\nAudience: Demo runners, customers (full 2-hop delegation scenario).\nPairs with: BX-Finance-Shared.postman_environment.json\n\nRuns the complete 2-exchange delegated chain.\n\nFlow:\n  Steps 1\u20134:  Auth Code + PKCE via pi.flow \u2192 Subject Token\n  Steps 5a\u20135b: Exchange #1 \u2192 Agent Exchanged Token (act.sub = AI Agent client)\n  Steps 6a\u20136b: Exchange #2 \u2192 MCP Exchanged Token (nested act chain)\n  Step 7:     Client Credentials \u2192 PingOne API Token\n  Step 8:     User Lookup\n\nThe final MCP token has a nested act chain: act.sub (MCP actor) \u2192 act.act.sub (AI Agent actor).\nSee docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md for full token claim shapes at each step.\n\nRun steps 1 \u2192 2 \u2192 3 \u2192 4 \u2192 5a \u2192 5b \u2192 6a \u2192 6b \u2192 7 \u2192 8 in order.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1648215"
   },
@@ -74,7 +74,6 @@
               "// PingOne returns COMPLETED immediately when an ST session cookie exists.",
               "// In that case: auth_code is already available, skip steps 2 and 3.",
               "if (body.status === 'COMPLETED') {",
-              "  // Clear flow_href so step 2 will throw a helpful error if accidentally run",
               "  pm.collectionVariables.set('flow_href', '');",
               "  if (body.resumeUrl) pm.collectionVariables.set('resume_url', body.resumeUrl);",
               "  if (body.authorizeResponse && body.authorizeResponse.code) {",
@@ -151,7 +150,7 @@
             }
           ]
         },
-        "description": "Initiates the pi.flow headless authorization. Generates PKCE code_verifier and code_challenge. The resource={{ENDUSER_AUDIENCE}} parameter ensures the resulting Subject Token's aud includes the AI Agent resource URI, enabling the RFC 8693 exchange in Step 5. Saves flow_id and flow_href to collection variables."
+        "description": "Initiates the pi.flow headless authorization. Generates PKCE code_verifier/challenge. resource={{ENDUSER_AUDIENCE}} ensures the resulting Subject Token's aud includes the AI Agent URI, enabling Exchange #1 in Step 5b. Saves flow_id and flow_href."
       },
       "response": []
     },
@@ -190,13 +189,11 @@
               "  console.error('[Step 2] Error:', body.code || body.error, body.message || '');",
               "}",
               "",
-              "// Save resumeUrl so step 3 uses the correct flow \u2014 avoids stale flow_id variable",
               "if (body.resumeUrl) {",
               "  pm.collectionVariables.set('resume_url', body.resumeUrl);",
               "  console.log('[Step 2] resume_url:', body.resumeUrl);",
               "}",
               "",
-              "// Auth code may come here directly (some flows) or from step 3 resume",
               "if (body.authorizeResponse && body.authorizeResponse.code) {",
               "  pm.collectionVariables.set('auth_code', body.authorizeResponse.code);",
               "  console.log('[Step 2] auth_code (direct):', body.authorizeResponse.code);",
@@ -238,7 +235,7 @@
             "{{flow_href}}"
           ]
         },
-        "description": "Submits credentials to the pi.flow. Requires flow_id from Step 1 (valid for 120 seconds \u2014 re-run Step 1 if you see a TIMEOUT error). Saves the resume URL."
+        "description": "Submits credentials to the pi.flow. Requires flow_id from Step 1 (valid for 120 seconds). Re-run Step 1 if you see a TIMEOUT error. Saves the resume URL."
       },
       "response": []
     },
@@ -268,7 +265,6 @@
             "exec": [
               "pm.test('Response is 200 OK', () => pm.response.to.have.status(200));",
               "",
-              "// Resume may return JSON (pi.flow) or redirect with ?code= in query string",
               "const contentType = pm.response.headers.get('content-type') || '';",
               "",
               "if (contentType.includes('application/json')) {",
@@ -281,7 +277,6 @@
               "    console.warn('[Step 3] No auth code in JSON response:', JSON.stringify(body));",
               "  }",
               "} else {",
-              "  // Redirect followed by Postman \u2014 code may be in the URL",
               "  const url = pm.response.url || '';",
               "  const match = url.match(/[?&]code=([^&]+)/);",
               "  if (match) {",
@@ -318,11 +313,12 @@
       "response": []
     },
     {
-      "name": "4. Exchange Code for Token (client_secret_post + PKCE)",
+      "name": "4. Exchange Code for Subject Token (client_secret_post + PKCE)",
       "event": [
         {
           "listen": "prerequest",
           "script": {
+            "type": "text/javascript",
             "exec": [
               "if (!pm.collectionVariables.get('auth_code')) {",
               "  throw new Error('auth_code is empty \u2014 run requests 1, 2, and 3 first');",
@@ -330,15 +326,13 @@
               "if (!pm.collectionVariables.get('code_verifier')) {",
               "  throw new Error('code_verifier is empty \u2014 re-run request 1 to regenerate PKCE');",
               "}"
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            ]
           }
         },
         {
           "listen": "test",
           "script": {
+            "type": "text/javascript",
             "exec": [
               "pm.test('Response is 200 OK', () => pm.response.to.have.status(200));",
               "pm.test('Response is JSON',   () => pm.response.to.be.json);",
@@ -359,7 +353,7 @@
               "",
               "console.log('[Step 4] expires_in:', body.expires_in, '| scope:', body.scope);",
               "",
-              "// Save as subject_token (Token 1) and decode claims for token exchange",
+              "// Save as subject_token (Token 1) and decode claims",
               "if (body.access_token) {",
               "  pm.collectionVariables.set('subject_token', body.access_token);",
               "  try {",
@@ -378,17 +372,21 @@
               "    if (claims.may_act) {",
               "      console.log('[Step 4] may_act:', JSON.stringify(claims.may_act));",
               "      pm.test('may_act.sub present', () => pm.expect(claims.may_act).to.have.property('sub'));",
+              "      const aiAgentId = pm.collectionVariables.get('ai_agent_client_id');",
+              "      if (aiAgentId && aiAgentId !== 'YOUR_AI_AGENT_CLIENT_ID') {",
+              "        pm.test('may_act.sub matches ai_agent_client_id', () => {",
+              "          pm.expect(claims.may_act.sub).to.equal(aiAgentId);",
+              "        });",
+              "      }",
               "    } else {",
-              "      console.warn('[Step 4] WARNING: may_act claim missing \u2014 set mayAct on the user record (doc Part 3c) and re-run');",
+              "      console.warn('[Step 4] WARNING: may_act claim missing.');",
+              "      console.warn('[Step 4] Run Utility B (Set mayAct) \u2014 value must be AI Agent App client ID, then re-run steps 1-4');",
               "    }",
               "  } catch(e) {",
               "    console.warn('[Step 4] Could not decode access token JWT:', e.message);",
               "  }",
               "}"
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            ]
           }
         }
       ],
@@ -435,10 +433,8 @@
               "value": "{{code_verifier}}"
             },
             {
-              "key": "scope ",
-              "value": "{{scope}}",
-              "type": "text",
-              "uuid": "0c42143f-7afd-44f4-9df9-bfec4c14898e"
+              "key": "scope",
+              "value": "{{scope}}"
             }
           ]
         },
@@ -453,23 +449,20 @@
             "token"
           ]
         },
-        "description": "Exchanges the authorization code for the Subject Token using client_secret_post + PKCE (RFC 7636). Saves access_token (Subject Token), id_token, and user_sub to collection variables."
+        "description": "Exchanges the authorization code for the Subject Token using client_secret_post + PKCE. Saves access_token (Subject Token), id_token, and user_sub."
       },
       "response": []
     },
     {
-      "name": "5. Token Exchange \u2014 Subject Token \u2192 MCP Token (RFC 8693)",
+      "name": "5a. Exchange #1: AI Agent Actor Token (Client Credentials)",
       "event": [
         {
           "listen": "prerequest",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "if (!pm.collectionVariables.get('subject_token')) {",
-              "  throw new Error('subject_token is empty \u2014 run steps 1-4 first');",
-              "}",
-              "if (!pm.collectionVariables.get('banking_app_client_id') || pm.collectionVariables.get('banking_app_client_id') === 'YOUR_BANKING_APP_CLIENT_ID') {",
-              "  throw new Error('banking_app_client_id not set \u2014 fill in BX Finance Banking App client ID');",
+              "if (!pm.collectionVariables.get('ai_agent_client_id') || pm.collectionVariables.get('ai_agent_client_id') === 'YOUR_AI_AGENT_CLIENT_ID') {",
+              "  throw new Error('ai_agent_client_id not set \u2014 fill in Super Banking AI Agent App client ID');",
               "}"
             ]
           }
@@ -483,30 +476,154 @@
               "pm.test('Response is JSON',   () => pm.response.to.be.json);",
               "",
               "const body = pm.response.json();",
-              "console.log('[Step 5] Token Exchange response:', JSON.stringify(body, null, 2));",
+              "console.log('[Step 5a] AI Agent Actor Token response:', JSON.stringify(body, null, 2));",
               "",
               "if (body.error) {",
-              "  console.error('[Step 5] Error:', body.error, body.error_description || '');",
-              "  if (body.error === 'invalid_grant') console.error('[Step 5] FIX: may_act.sub on user does not match banking_app_client_id \u2014 run Utility B');",
-              "  if (body.error === 'unauthorized_client') console.error('[Step 5] FIX: Token Exchange grant not enabled on BX Finance Banking App (doc Part 2b)');",
+              "  console.error('[Step 5a] Error:', body.error, body.error_description || '');",
+              "  if (body.error === 'invalid_scope') console.error('[Step 5a] FIX: No openid \u2014 CC does not support OIDC scopes');",
+              "  if (body.error === 'unauthorized_client') console.error('[Step 5a] FIX: Client Credentials grant not enabled on AI Agent App');",
               "}",
               "",
               "pm.test('access_token present', () => pm.expect(body).to.have.property('access_token'));",
               "",
               "if (body.access_token) {",
-              "  pm.collectionVariables.set('mcp_token', body.access_token);",
+              "  pm.collectionVariables.set('agent_actor_token', body.access_token);",
               "  try {",
               "    const parts = body.access_token.split('.');",
               "    const pad = s => s + '=='.slice(0, (4 - s.length % 4) % 4);",
               "    const claims = JSON.parse(atob(pad(parts[1].replace(/-/g,'+').replace(/_/g,'/'))));",
-              "    console.log('[Step 5] MCP Token claims:', JSON.stringify(claims, null, 2));",
-              "    const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
-              "    pm.test('MCP Token aud is MCP Server', () => pm.expect(aud).to.include(pm.environment.get('MCP_RESOURCE_URI')));",
-              "    pm.test('act.sub present (delegation proof)', () => pm.expect(claims).to.have.nested.property('act.sub'));",
-              "    if (claims.act) console.log('[Step 5] act:', JSON.stringify(claims.act));",
-              "    pm.test('sub preserved from Subject Token', () => pm.expect(claims.sub).to.equal(pm.collectionVariables.get('user_sub')));",
+              "    console.log('[Step 5a] Agent Actor Token claims:', JSON.stringify(claims, null, 2));",
+              "    pm.test('Agent Actor Token aud is Agent Gateway', () => {",
+              "      const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
+              "      pm.expect(aud.join(',')).to.include(pm.environment.get('ENDUSER_AUDIENCE'));",
+              "    });",
+              "    console.log('[Step 5a] Agent Actor Token ready \u2014 proceed to step 5b');",
               "  } catch(e) {",
-              "    console.warn('[Step 5] Could not decode MCP token:', e.message);",
+              "    console.warn('[Step 5a] Could not decode token:', e.message);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "key": "client_id",
+              "value": "{{PINGONE_CORE_CLIENT_ID}}",
+              "description": "Super Banking AI Agent App"
+            },
+            {
+              "key": "client_secret",
+              "value": "{{PINGONE_CORE_CLIENT_SECRET}}"
+            },
+            {
+              "key": "audience",
+              "value": "{{ENDUSER_AUDIENCE}}",
+              "description": "Super Banking Agent Gateway audience"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
+          "host": [
+            "{{PINGONE_BASE_URL}}"
+          ],
+          "path": [
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "as",
+            "token"
+          ]
+        },
+        "description": "AI Agent client obtains its own actor token via client_credentials. This actor token is used as the actor_token in the RFC 8693 Exchange #1 (Step 5b). Saves agent_actor_token."
+      },
+      "response": []
+    },
+    {
+      "name": "5b. Exchange #1: Subject Token \u2192 Agent Exchanged Token (RFC 8693)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.collectionVariables.get('subject_token')) {",
+              "  throw new Error('subject_token is empty \u2014 run steps 1-4 first');",
+              "}",
+              "if (!pm.collectionVariables.get('agent_actor_token')) {",
+              "  throw new Error('agent_actor_token is empty \u2014 run step 5a first');",
+              "}",
+              "if (!pm.collectionVariables.get('ai_agent_client_id') || pm.collectionVariables.get('ai_agent_client_id') === 'YOUR_AI_AGENT_CLIENT_ID') {",
+              "  throw new Error('ai_agent_client_id not set');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Response is 200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('Response is JSON',   () => pm.response.to.be.json);",
+              "",
+              "const body = pm.response.json();",
+              "console.log('[Step 5b] Exchange #1 response:', JSON.stringify(body, null, 2));",
+              "",
+              "if (body.error) {",
+              "  console.error('[Step 5b] Error:', body.error, body.error_description || '');",
+              "  if (body.error === 'invalid_grant') {",
+              "    console.error('[Step 5b] FIX: may_act.sub on user does not match ai_agent_client_id');",
+              "    console.error('[Step 5b] Run Utility B \u2014 set mayAct.sub = ai_agent_client_id, then re-run steps 1-4');",
+              "  }",
+              "  if (body.error === 'unauthorized_client') console.error('[Step 5b] FIX: Token Exchange grant not enabled on AI Agent App');",
+              "}",
+              "",
+              "pm.test('access_token present', () => pm.expect(body).to.have.property('access_token'));",
+              "",
+              "if (body.access_token) {",
+              "  pm.collectionVariables.set('agent_exchanged_token', body.access_token);",
+              "  try {",
+              "    const parts = body.access_token.split('.');",
+              "    const pad = s => s + '=='.slice(0, (4 - s.length % 4) % 4);",
+              "    const claims = JSON.parse(atob(pad(parts[1].replace(/-/g,'+').replace(/_/g,'/'))));",
+              "    console.log('[Step 5b] Agent Exchanged Token claims (Token 2):', JSON.stringify(claims, null, 2));",
+              "    pm.test('Agent Exchanged Token aud is MCP Server', () => {",
+              "      const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
+              "      pm.expect(aud).to.include(pm.environment.get('MCP_RESOURCE_URI'));",
+              "    });",
+              "    pm.test('act.sub present (AI Agent identity)', () => pm.expect(claims).to.have.nested.property('act.sub'));",
+              "    pm.test('sub preserved from Subject Token', () => pm.expect(claims.sub).to.equal(pm.collectionVariables.get('user_sub')));",
+              "    if (claims.act) {",
+              "      console.log('[Step 5b] act:', JSON.stringify(claims.act));",
+              "      const aiAgentId = pm.collectionVariables.get('ai_agent_client_id');",
+              "      if (aiAgentId) {",
+              "        pm.test('act.sub equals ai_agent_client_id', () => pm.expect(claims.act.sub).to.equal(aiAgentId));",
+              "      }",
+              "    }",
+              "    console.log('[Step 5b] Token 2 (Agent Exchanged Token) ready \u2014 proceed to step 6a');",
+              "  } catch(e) {",
+              "    console.warn('[Step 5b] Could not decode token:', e.message);",
               "  }",
               "}"
             ]
@@ -534,15 +651,24 @@
             {
               "key": "grant_type",
               "value": "urn:ietf:params:oauth:grant-type:token-exchange",
-              "description": "RFC 8693 token exchange"
+              "description": "RFC 8693"
             },
             {
               "key": "subject_token",
               "value": "{{subject_token}}",
-              "description": "Token 1 \u2014 user's Subject Token from step 4"
+              "description": "Token 1 \u2014 user Subject Token from step 4"
             },
             {
               "key": "subject_token_type",
+              "value": "urn:ietf:params:oauth:token-type:access_token"
+            },
+            {
+              "key": "actor_token",
+              "value": "{{agent_actor_token}}",
+              "description": "AI Agent Actor Token from step 5a"
+            },
+            {
+              "key": "actor_token_type",
               "value": "urn:ietf:params:oauth:token-type:access_token"
             },
             {
@@ -552,7 +678,7 @@
             {
               "key": "audience",
               "value": "{{MCP_RESOURCE_URI}}",
-              "description": "BX Finance MCP Server audience"
+              "description": "Super Banking MCP Server audience"
             },
             {
               "key": "scope",
@@ -561,12 +687,11 @@
             {
               "key": "client_id",
               "value": "{{PINGONE_CORE_CLIENT_ID}}",
-              "description": "BX Finance Banking App \u2014 exchanger identity"
+              "description": "Super Banking AI Agent App \u2014 exchanger"
             },
             {
               "key": "client_secret",
-              "value": "{{PINGONE_CORE_CLIENT_SECRET}}",
-              "description": "client_secret_post"
+              "value": "{{PINGONE_CORE_CLIENT_SECRET}}"
             }
           ]
         },
@@ -581,63 +706,63 @@
             "token"
           ]
         },
-        "description": "RFC 8693 token exchange: the Subject Token (end-user's access token) is exchanged for an MCP-scoped token. The BFF client acts as the exchanger. Resulting token: aud = MCP_RESOURCE_URI, act.sub = PINGONE_CORE_CLIENT_ID, scope narrowed to MCP scopes. Saves mcp_token."
+        "description": "RFC 8693 Exchange #1: the end-user's Subject Token is exchanged for an Agent Exchanged Token. The AI Agent client is the actor (actor_token = agent_actor_token from Step 5a). Resulting token: aud = ENDUSER_AUDIENCE, act.sub = PINGONE_CORE_CLIENT_ID (AI Agent). Saves agent_exchanged_token."
       },
       "response": []
     },
     {
-      "name": "6. Client Credentials \u2014 MCP Service \u2192 PingOne API Token",
+      "name": "6a. Exchange #2: MCP Actor Token (Client Credentials)",
       "event": [
         {
           "listen": "prerequest",
           "script": {
-            "exec": [
-              "if (!pm.collectionVariables.get('mcp_client_id') || pm.collectionVariables.get('mcp_client_id') === 'YOUR_MCP_CLIENT_ID') {",
-              "  throw new Error('mcp_client_id not set \u2014 fill in BX Finance MCP Service client ID');",
-              "}"
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "if (!pm.collectionVariables.get('agent_exchanged_token')) {",
+              "  throw new Error('agent_exchanged_token is empty \u2014 run steps 5a and 5b first');",
+              "}",
+              "if (!pm.collectionVariables.get('mcp_client_id') || pm.collectionVariables.get('mcp_client_id') === 'YOUR_MCP_CLIENT_ID') {",
+              "  throw new Error('mcp_client_id not set \u2014 fill in Super Banking MCP Service client ID');",
+              "}"
+            ]
           }
         },
         {
           "listen": "test",
           "script": {
+            "type": "text/javascript",
             "exec": [
               "pm.test('Response is 200 OK', () => pm.response.to.have.status(200));",
               "pm.test('Response is JSON',   () => pm.response.to.be.json);",
               "",
               "const body = pm.response.json();",
-              "console.log('[Step 6] Client Credentials response:', JSON.stringify(body, null, 2));",
+              "console.log('[Step 6a] MCP Actor Token response:', JSON.stringify(body, null, 2));",
               "",
               "if (body.error) {",
-              "  console.error('[Step 6] Error:', body.error, body.error_description || '');",
-              "  if (body.error === 'invalid_scope') console.error('[Step 6] FIX: p1:read:user / p1:update:user not enabled on MCP Service app (doc Part 2c)');",
-              "  if (body.error === 'unauthorized_client') console.error('[Step 6] FIX: App type may be Worker \u2014 must be Native or Web App (doc Part 2c)');",
+              "  console.error('[Step 6a] Error:', body.error, body.error_description || '');",
+              "  if (body.error === 'invalid_scope') console.error('[Step 6a] FIX: No openid \u2014 CC does not support OIDC scopes');",
+              "  if (body.error === 'unauthorized_client') console.error('[Step 6a] FIX: Client Credentials grant not enabled on MCP Service App');",
               "}",
               "",
               "pm.test('access_token present', () => pm.expect(body).to.have.property('access_token'));",
               "",
               "if (body.access_token) {",
-              "  pm.collectionVariables.set('pingone_api_token', body.access_token);",
+              "  pm.collectionVariables.set('mcp_actor_token', body.access_token);",
               "  try {",
               "    const parts = body.access_token.split('.');",
               "    const pad = s => s + '=='.slice(0, (4 - s.length % 4) % 4);",
               "    const claims = JSON.parse(atob(pad(parts[1].replace(/-/g,'+').replace(/_/g,'/'))));",
-              "    console.log('[Step 6] PingOne API Token claims:', JSON.stringify(claims, null, 2));",
-              "    const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
-              "    pm.test('PingOne API Token aud is api.pingone.com', () => pm.expect(aud.join(',')).to.include('api.pingone.com'));",
-              "    pm.test('scope includes p1:read:user', () => pm.expect(body.scope || '').to.include('p1:read:user'));",
+              "    console.log('[Step 6a] MCP Actor Token claims:', JSON.stringify(claims, null, 2));",
+              "    pm.test('MCP Actor Token aud is MCP Gateway', () => {",
+              "      const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
+              "      pm.expect(aud.join(',')).to.include(pm.environment.get('MCP_RESOURCE_URI'));",
+              "    });",
+              "    console.log('[Step 6a] MCP Actor Token ready \u2014 proceed to step 6b');",
               "  } catch(e) {",
-              "    console.warn('[Step 6] Could not decode token:', e.message);",
+              "    console.warn('[Step 6a] Could not decode token:', e.message);",
               "  }",
-              "  console.log('[Step 6] scope:', body.scope);",
               "}"
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            ]
           }
         }
       ],
@@ -666,12 +791,269 @@
             {
               "key": "client_id",
               "value": "{{MCP_CLIENT_ID}}",
-              "description": "BX Finance MCP Service"
+              "description": "Super Banking MCP Service"
             },
             {
               "key": "client_secret",
-              "value": "{{MCP_CLIENT_SECRET}}",
-              "description": "client_secret_post"
+              "value": "{{MCP_CLIENT_SECRET}}"
+            },
+            {
+              "key": "audience",
+              "value": "{{MCP_RESOURCE_URI}}",
+              "description": "Super Banking MCP Gateway audience"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
+          "host": [
+            "{{PINGONE_BASE_URL}}"
+          ],
+          "path": [
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "as",
+            "token"
+          ]
+        },
+        "description": "MCP service client obtains its own actor token via client_credentials. Used as the actor_token in RFC 8693 Exchange #2 (Step 6b). Saves mcp_actor_token."
+      },
+      "response": []
+    },
+    {
+      "name": "6b. Exchange #2: Agent Exchanged Token \u2192 MCP Exchanged Token (RFC 8693)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.collectionVariables.get('agent_exchanged_token')) {",
+              "  throw new Error('agent_exchanged_token is empty \u2014 run steps 5a and 5b first');",
+              "}",
+              "if (!pm.collectionVariables.get('mcp_actor_token')) {",
+              "  throw new Error('mcp_actor_token is empty \u2014 run step 6a first');",
+              "}",
+              "if (!pm.collectionVariables.get('mcp_client_id') || pm.collectionVariables.get('mcp_client_id') === 'YOUR_MCP_CLIENT_ID') {",
+              "  throw new Error('mcp_client_id not set');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Response is 200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('Response is JSON',   () => pm.response.to.be.json);",
+              "",
+              "const body = pm.response.json();",
+              "console.log('[Step 6b] Exchange #2 response:', JSON.stringify(body, null, 2));",
+              "",
+              "if (body.error) {",
+              "  console.error('[Step 6b] Error:', body.error, body.error_description || '');",
+              "  if (body.error === 'invalid_grant') {",
+              "    console.error('[Step 6b] FIX: Agent Exchanged Token has no act claim \u2014 check act expression on Super Banking MCP Server resource server (doc Part 1c)');",
+              "  }",
+              "  if (body.error === 'unauthorized_client') console.error('[Step 6b] FIX: Token Exchange grant not enabled on MCP Service App');",
+              "}",
+              "",
+              "pm.test('access_token present', () => pm.expect(body).to.have.property('access_token'));",
+              "",
+              "if (body.access_token) {",
+              "  pm.collectionVariables.set('mcp_exchanged_token', body.access_token);",
+              "  try {",
+              "    const parts = body.access_token.split('.');",
+              "    const pad = s => s + '=='.slice(0, (4 - s.length % 4) % 4);",
+              "    const claims = JSON.parse(atob(pad(parts[1].replace(/-/g,'+').replace(/_/g,'/'))));",
+              "    console.log('[Step 6b] MCP Exchanged Token claims (Token 3 \u2014 FINAL):', JSON.stringify(claims, null, 2));",
+              "    pm.test('MCP Exchanged Token aud is Resource Server', () => {",
+              "      const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
+              "      pm.expect(aud).to.include(pm.environment.get('MCP_RESOURCE_URI'));",
+              "    });",
+              "    pm.test('sub preserved from Subject Token', () => pm.expect(claims.sub).to.equal(pm.collectionVariables.get('user_sub')));",
+              "    pm.test('act.sub present (MCP identity \u2014 outer)', () => pm.expect(claims).to.have.nested.property('act.sub'));",
+              "    pm.test('act.act.sub present (AI Agent identity \u2014 inner)', () => pm.expect(claims).to.have.nested.property('act.act.sub'));",
+              "    if (claims.act) {",
+              "      console.log('[Step 6b] act (outer \u2014 MCP):', claims.act.sub);",
+              "      if (claims.act.act) console.log('[Step 6b] act.act (inner \u2014 AI Agent):', claims.act.act.sub);",
+              "      const mcpId = pm.collectionVariables.get('mcp_client_id');",
+              "      const aiId  = pm.collectionVariables.get('ai_agent_client_id');",
+              "      if (mcpId) pm.test('act.sub equals mcp_client_id', () => pm.expect(claims.act.sub).to.equal(mcpId));",
+              "      if (aiId && claims.act.act) pm.test('act.act.sub equals ai_agent_client_id', () => pm.expect(claims.act.act.sub).to.equal(aiId));",
+              "    }",
+              "    console.log('[Step 6b] \u2713 Full delegation chain verified \u2014 Token 3 ready for PAZ enforcement');",
+              "    console.log('[Step 6b] Now optionally run step 8 (User Lookup) or Utility A (Introspect)');",
+              "  } catch(e) {",
+              "    console.warn('[Step 6b] Could not decode token:', e.message);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "urn:ietf:params:oauth:grant-type:token-exchange",
+              "description": "RFC 8693"
+            },
+            {
+              "key": "subject_token",
+              "value": "{{agent_exchanged_token}}",
+              "description": "Token 2 \u2014 Agent Exchanged Token from step 5b"
+            },
+            {
+              "key": "subject_token_type",
+              "value": "urn:ietf:params:oauth:token-type:access_token"
+            },
+            {
+              "key": "actor_token",
+              "value": "{{mcp_actor_token}}",
+              "description": "MCP Actor Token from step 6a"
+            },
+            {
+              "key": "actor_token_type",
+              "value": "urn:ietf:params:oauth:token-type:access_token"
+            },
+            {
+              "key": "requested_token_type",
+              "value": "urn:ietf:params:oauth:token-type:access_token"
+            },
+            {
+              "key": "audience",
+              "value": "{{MCP_RESOURCE_URI}}",
+              "description": "Super Banking Resource Server audience (final token)"
+            },
+            {
+              "key": "scope",
+              "value": "banking:accounts:read banking:transactions:read banking:transactions:write"
+            },
+            {
+              "key": "client_id",
+              "value": "{{MCP_CLIENT_ID}}",
+              "description": "Super Banking MCP Service \u2014 exchanger"
+            },
+            {
+              "key": "client_secret",
+              "value": "{{MCP_CLIENT_SECRET}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{PINGONE_BASE_URL}}/{{PINGONE_ENVIRONMENT_ID}}/as/token",
+          "host": [
+            "{{PINGONE_BASE_URL}}"
+          ],
+          "path": [
+            "{{PINGONE_ENVIRONMENT_ID}}",
+            "as",
+            "token"
+          ]
+        },
+        "description": "RFC 8693 Exchange #2: the Agent Exchanged Token is exchanged for the final MCP token. The MCP client is the actor (actor_token = mcp_actor_token from Step 6a). Resulting token: aud = MCP_RESOURCE_URI, act.sub = MCP_CLIENT_ID (outer actor), act.act.sub = PINGONE_CORE_CLIENT_ID (inner/AI Agent actor) \u2014 the nested act chain. Saves mcp_exchanged_token."
+      },
+      "response": []
+    },
+    {
+      "name": "7. Client Credentials \u2014 MCP Service \u2192 PingOne API Token",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.collectionVariables.get('mcp_client_id') || pm.collectionVariables.get('mcp_client_id') === 'YOUR_MCP_CLIENT_ID') {",
+              "  throw new Error('mcp_client_id not set \u2014 fill in Super Banking MCP Service client ID');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Response is 200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('Response is JSON',   () => pm.response.to.be.json);",
+              "",
+              "const body = pm.response.json();",
+              "console.log('[Step 7] Client Credentials response:', JSON.stringify(body, null, 2));",
+              "",
+              "if (body.error) {",
+              "  console.error('[Step 7] Error:', body.error, body.error_description || '');",
+              "  if (body.error === 'invalid_scope') console.error('[Step 7] FIX: p1:read:user / p1:update:user not enabled on MCP Service app Resources tab');",
+              "  if (body.error === 'unauthorized_client') console.error('[Step 7] FIX: App type may be Worker \u2014 must be Native or Web App');",
+              "}",
+              "",
+              "pm.test('access_token present', () => pm.expect(body).to.have.property('access_token'));",
+              "",
+              "if (body.access_token) {",
+              "  pm.collectionVariables.set('pingone_api_token', body.access_token);",
+              "  try {",
+              "    const parts = body.access_token.split('.');",
+              "    const pad = s => s + '=='.slice(0, (4 - s.length % 4) % 4);",
+              "    const claims = JSON.parse(atob(pad(parts[1].replace(/-/g,'+').replace(/_/g,'/'))));",
+              "    console.log('[Step 7] PingOne API Token claims:', JSON.stringify(claims, null, 2));",
+              "    const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];",
+              "    pm.test('PingOne API Token aud is api.pingone.com', () => pm.expect(aud.join(',')).to.include('api.pingone.com'));",
+              "    pm.test('scope includes p1:read:user', () => pm.expect(body.scope || '').to.include('p1:read:user'));",
+              "  } catch(e) {",
+              "    console.warn('[Step 7] Could not decode token:', e.message);",
+              "  }",
+              "  console.log('[Step 7] scope:', body.scope);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "key": "client_id",
+              "value": "{{MCP_CLIENT_ID}}",
+              "description": "Super Banking MCP Service"
+            },
+            {
+              "key": "client_secret",
+              "value": "{{MCP_CLIENT_SECRET}}"
             },
             {
               "key": "scope",
@@ -690,12 +1072,12 @@
             "token"
           ]
         },
-        "description": "MCP service client obtains a PingOne Management API token via client_credentials. Required to call the user lookup API in Step 7. Saves pingone_api_token."
+        "description": "MCP service client obtains a PingOne Management API token via client_credentials. Required to call the user lookup API in Step 8. Saves pingone_api_token."
       },
       "response": []
     },
     {
-      "name": "7. User Lookup (PingOne Management API)",
+      "name": "8. User Lookup (PingOne Management API)",
       "event": [
         {
           "listen": "prerequest",
@@ -703,7 +1085,7 @@
             "type": "text/javascript",
             "exec": [
               "if (!pm.collectionVariables.get('pingone_api_token')) {",
-              "  throw new Error('pingone_api_token is empty \u2014 run step 6 first');",
+              "  throw new Error('pingone_api_token is empty \u2014 run step 7 first');",
               "}",
               "if (!pm.collectionVariables.get('user_sub')) {",
               "  throw new Error('user_sub is empty \u2014 run steps 1-4 first to decode the Subject Token');",
@@ -720,16 +1102,17 @@
               "pm.test('Response is JSON',   () => pm.response.to.be.json);",
               "",
               "const body = pm.response.json();",
-              "console.log('[Step 7] User record:', JSON.stringify(body, null, 2));",
+              "console.log('[Step 8] User record:', JSON.stringify(body, null, 2));",
               "",
-              "const expectedSub = pm.collectionVariables.get('banking_app_client_id');",
+              "const expectedSub = pm.collectionVariables.get('ai_agent_client_id');",
               "if (body.mayAct) {",
-              "  console.log('[Step 7] mayAct:', JSON.stringify(body.mayAct));",
-              "  pm.test('mayAct.sub matches banking_app_client_id', () => {",
+              "  console.log('[Step 8] mayAct:', JSON.stringify(body.mayAct));",
+              "  pm.test('mayAct.sub matches ai_agent_client_id', () => {",
               "    pm.expect(body.mayAct.sub).to.equal(expectedSub);",
               "  });",
               "} else {",
-              "  console.warn('[Step 7] WARNING: mayAct attribute not set on user \u2014 run Utility B to set it');",
+              "  console.warn('[Step 8] WARNING: mayAct attribute not set on user \u2014 run Utility B to set it');",
+              "  console.warn('[Step 8] mayAct.sub must be ai_agent_client_id (NOT banking_app_client_id)');",
               "}"
             ]
           }
@@ -769,7 +1152,7 @@
             "{{user_sub}}"
           ]
         },
-        "description": "Looks up the user in PingOne Management API by sub claim. Returns user profile attributes. Requires pingone_api_token from Step 6."
+        "description": "Looks up the user record in PingOne Management API by sub claim from the Subject Token. Returns user profile attributes. Requires pingone_api_token from Step 7."
       },
       "response": []
     },
@@ -785,7 +1168,11 @@
               "const body = pm.response.json();",
               "console.log('[Utility A] Introspection result:', JSON.stringify(body, null, 2));",
               "if (!body.active) console.warn('[Utility A] Token is NOT active (expired or revoked)');",
-              "else console.log('[Utility A] Token active \u2014 sub:', body.sub, '| aud:', body.aud, '| scope:', body.scope);"
+              "else {",
+              "  console.log('[Utility A] Token active \u2014 sub:', body.sub, '| aud:', body.aud, '| scope:', body.scope);",
+              "  if (body.act) console.log('[Utility A] act chain:', JSON.stringify(body.act, null, 2));",
+              "  if (body.may_act) console.log('[Utility A] may_act:', JSON.stringify(body.may_act));",
+              "}"
             ]
           }
         }
@@ -796,12 +1183,12 @@
           "basic": [
             {
               "key": "username",
-              "value": "{{PINGONE_CORE_CLIENT_ID}}",
+              "value": "{{MCP_CLIENT_ID}}",
               "type": "string"
             },
             {
               "key": "password",
-              "value": "{{PINGONE_CORE_CLIENT_SECRET}}",
+              "value": "{{MCP_CLIENT_SECRET}}",
               "type": "string"
             }
           ]
@@ -822,8 +1209,8 @@
           "urlencoded": [
             {
               "key": "token",
-              "value": "{{subject_token}}",
-              "description": "Change to mcp_token or pingone_api_token to inspect those"
+              "value": "{{mcp_exchanged_token}}",
+              "description": "Change to subject_token, agent_exchanged_token, or mcp_exchanged_token"
             },
             {
               "key": "token_type_hint",
@@ -842,12 +1229,12 @@
             "introspect"
           ]
         },
-        "description": "Introspects any token to verify its claims (active, sub, aud, scope, exp, act chain). Paste or reference the token you want to inspect before running."
+        "description": "Introspects any token to verify its claims (active, sub, aud, scope, exp) and the act chain. Paste or reference the token you want to inspect."
       },
       "response": []
     },
     {
-      "name": "Utility B \u2014 Set mayAct on User",
+      "name": "Utility B \u2014 Set mayAct on User (AI Agent Client ID)",
       "event": [
         {
           "listen": "prerequest",
@@ -855,13 +1242,13 @@
             "type": "text/javascript",
             "exec": [
               "if (!pm.collectionVariables.get('pingone_api_token')) {",
-              "  throw new Error('pingone_api_token is empty \u2014 run step 6 first');",
+              "  throw new Error('pingone_api_token is empty \u2014 run step 7 first');",
               "}",
               "if (!pm.collectionVariables.get('user_sub')) {",
               "  throw new Error('user_sub is empty \u2014 run steps 1-4 first');",
               "}",
-              "if (!pm.collectionVariables.get('banking_app_client_id') || pm.collectionVariables.get('banking_app_client_id') === 'YOUR_BANKING_APP_CLIENT_ID') {",
-              "  throw new Error('banking_app_client_id not set');",
+              "if (!pm.collectionVariables.get('ai_agent_client_id') || pm.collectionVariables.get('ai_agent_client_id') === 'YOUR_AI_AGENT_CLIENT_ID') {",
+              "  throw new Error('ai_agent_client_id not set \u2014 this is the value that goes in mayAct.sub');",
               "}"
             ]
           }
@@ -877,6 +1264,7 @@
               "if (body.mayAct) {",
               "  console.log('[Utility B] mayAct set to:', JSON.stringify(body.mayAct));",
               "  console.log('[Utility B] Now re-run steps 1-4 to get a fresh Subject Token with may_act claim.');",
+              "  console.log('[Utility B] Clear auth.pingone.com cookies in Postman first to avoid a stale session.');",
               "}"
             ]
           }
@@ -929,7 +1317,7 @@
             "{{user_sub}}"
           ]
         },
-        "description": "Patches the PingOne user to add the mayAct attribute (one-time setup per test user). Required before running Step 5 for the first time. Ensures the user's Subject Token can be delegated via RFC 8693 exchange."
+        "description": "Patches the PingOne user to add the mayAct attribute pointing to the AI Agent client (one-time setup). Required before running Steps 5b/6b for the first time. Enables the user's Subject Token to be used as the subject in RFC 8693 Exchange #1."
       },
       "response": []
     }
@@ -948,12 +1336,12 @@
     {
       "key": "PINGONE_CORE_USER_CLIENT_ID",
       "value": "62d5fb56-5a0a-406e-9005-eec2fee23b8f",
-      "description": "OAuth application client ID"
+      "description": "Super Banking User app \u2014 issues Subject Token via PKCE"
     },
     {
       "key": "PINGONE_CORE_USER_CLIENT_SECRET",
       "value": "YOUR_CLIENT_SECRET",
-      "description": "OAuth application client secret"
+      "description": "Super Banking User app client secret"
     },
     {
       "key": "PINGONE_CORE_USER_REDIRECT_URI",
@@ -963,12 +1351,12 @@
     {
       "key": "scope",
       "value": "profile email banking:agent:invoke",
-      "description": "Space-separated scopes"
+      "description": "Space-separated scopes. Do NOT include openid \u2014 conflicts with resource= audience."
     },
     {
       "key": "ENDUSER_AUDIENCE",
       "value": "",
-      "description": "Subject Token audience \u2014 must match BX Finance AI Agent resource server audience for token exchange chain"
+      "description": "Subject Token audience \u2014 Super Banking AI Agent resource server audience"
     },
     {
       "key": "TEST_USERNAME",
@@ -981,19 +1369,39 @@
       "description": "End-user password"
     },
     {
+      "key": "PINGONE_CORE_CLIENT_ID",
+      "value": "YOUR_AI_AGENT_CLIENT_ID",
+      "description": "Client ID of Super Banking AI Agent App (performs Exchange #1). Set as mayAct.sub on user records."
+    },
+    {
+      "key": "PINGONE_CORE_CLIENT_SECRET",
+      "value": "YOUR_AI_AGENT_CLIENT_SECRET",
+      "description": "Client Secret of Super Banking AI Agent App"
+    },
+    {
+      "key": "MCP_CLIENT_ID",
+      "value": "YOUR_MCP_CLIENT_ID",
+      "description": "Client ID of Super Banking MCP Service (performs Exchange #2 + Client Credentials for PingOne API)"
+    },
+    {
+      "key": "MCP_CLIENT_SECRET",
+      "value": "YOUR_MCP_CLIENT_SECRET",
+      "description": "Client Secret of Super Banking MCP Service"
+    },
+    {
       "key": "state",
       "value": "",
-      "description": "Auto-generated CSRF token"
+      "description": "Auto-generated CSRF token (set by step 1 pre-request script)"
     },
     {
       "key": "code_verifier",
       "value": "",
-      "description": "Auto-generated PKCE verifier"
+      "description": "Auto-generated PKCE verifier (set by step 1 pre-request script)"
     },
     {
       "key": "code_challenge",
       "value": "",
-      "description": "Auto-generated PKCE S256 challenge"
+      "description": "Auto-generated PKCE S256 challenge (set by step 1 pre-request script)"
     },
     {
       "key": "flow_id",
@@ -1018,7 +1426,7 @@
     {
       "key": "access_token",
       "value": "",
-      "description": "Set automatically from token response (Subject Token)"
+      "description": "Set automatically from token response (raw copy of subject_token)"
     },
     {
       "key": "id_token",
@@ -1033,7 +1441,7 @@
     {
       "key": "subject_token",
       "value": "",
-      "description": "Subject Token (Token 1) \u2014 copy of access_token, set by step 4"
+      "description": "Token 1 \u2014 Subject Token. aud={{ENDUSER_AUDIENCE}}, may_act.sub=AI_AGENT_CLIENT_ID. Set by step 4."
     },
     {
       "key": "user_sub",
@@ -1041,34 +1449,34 @@
       "description": "User subject UUID \u2014 decoded from Subject Token, set by step 4"
     },
     {
-      "key": "PINGONE_CORE_CLIENT_ID",
-      "value": "YOUR_BANKING_APP_CLIENT_ID",
-      "description": "Client ID of BX Finance Banking App (exchanges Subject Token \u2192 MCP Token)"
-    },
-    {
-      "key": "PINGONE_CORE_CLIENT_SECRET",
-      "value": "YOUR_BANKING_APP_CLIENT_SECRET",
-      "description": "Client Secret of BX Finance Banking App"
-    },
-    {
-      "key": "MCP_CLIENT_ID",
-      "value": "YOUR_MCP_CLIENT_ID",
-      "description": "Client ID of BX Finance MCP Service (client credentials \u2192 PingOne API Token)"
-    },
-    {
-      "key": "MCP_CLIENT_SECRET",
-      "value": "YOUR_MCP_CLIENT_SECRET",
-      "description": "Client Secret of BX Finance MCP Service"
-    },
-    {
-      "key": "mcp_token",
+      "key": "agent_actor_token",
       "value": "",
-      "description": "MCP Token (Token 2) \u2014 set by step 5 (token exchange)"
+      "description": "AI Agent Actor Token \u2014 aud={{ENDUSER_AUDIENCE}}. Set by step 5a."
+    },
+    {
+      "key": "agent_exchanged_token",
+      "value": "",
+      "description": "Token 2 \u2014 Agent Exchanged Token. aud={{MCP_RESOURCE_URI}}, act.sub=AI_AGENT_CLIENT_ID. Set by step 5b."
+    },
+    {
+      "key": "mcp_actor_token",
+      "value": "",
+      "description": "MCP Actor Token \u2014 aud={{MCP_RESOURCE_URI}}. Set by step 6a."
+    },
+    {
+      "key": "mcp_exchanged_token",
+      "value": "",
+      "description": "Token 3 \u2014 MCP Exchanged Token (final). aud={{MCP_RESOURCE_URI}}, act.sub=MCP, act.act.sub=AI_AGENT. Set by step 6b."
     },
     {
       "key": "pingone_api_token",
       "value": "",
-      "description": "PingOne API Token (Token 3) \u2014 set by step 6 (client credentials)"
+      "description": "PingOne Management API Token \u2014 set by step 7 (client credentials, independent of delegation chain)"
+    },
+    {
+      "key": "MCP_RESOURCE_URI",
+      "value": "",
+      "description": "MCP Server resource URI \u2014 used as resource= param in Exchange #2 (RFC 8693)"
     }
   ]
 }

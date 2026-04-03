@@ -50,7 +50,7 @@ function buildMetadata(req) {
       'banking:transactions:read',
       'banking:transactions:write',
     ],
-    resource_name: 'BX Finance Banking API',
+    resource_name: 'Super Banking Banking API',
     resource_documentation: 'https://datatracker.ietf.org/doc/html/rfc9728',
   };
 

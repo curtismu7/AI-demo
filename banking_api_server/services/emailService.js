@@ -77,7 +77,7 @@ function buildEmailHtml({ type, amount, fromAccount, toAccount, newBalance, tran
   <tr><td align="center" style="padding:32px 16px">
     <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
       <tr><td style="background:linear-gradient(135deg,#1a5d80,${color});padding:28px 32px">
-        <div style="color:#fff;font-size:13px;opacity:.8;margin-bottom:4px">BX Finance</div>
+        <div style="color:#fff;font-size:13px;opacity:.8;margin-bottom:4px">Super Banking</div>
         <div style="color:#fff;font-size:22px;font-weight:700">${icon} ${label} Confirmation</div>
       </td></tr>
       <tr><td style="padding:28px 32px">
@@ -94,7 +94,7 @@ function buildEmailHtml({ type, amount, fromAccount, toAccount, newBalance, tran
         </table>
       </td></tr>
       <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb">
-        <p style="margin:0;color:#9ca3af;font-size:12px">This is an automated confirmation from BX Finance Demo. Do not reply to this email.</p>
+        <p style="margin:0;color:#9ca3af;font-size:12px">This is an automated confirmation from Super Banking Demo. Do not reply to this email.</p>
       </td></tr>
     </table>
   </td></tr>
@@ -186,7 +186,7 @@ async function sendOtpEmail(userId, opts) {
   <tr><td align="center" style="padding:32px 16px">
     <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)">
       <tr><td style="background:linear-gradient(135deg,#1a5d80,#dc2626);padding:28px 32px">
-        <div style="color:#fff;font-size:13px;opacity:.8;margin-bottom:4px">BX Finance — Security</div>
+        <div style="color:#fff;font-size:13px;opacity:.8;margin-bottom:4px">Super Banking — Security</div>
         <div style="color:#fff;font-size:22px;font-weight:700">🔒 Transaction Verification Code</div>
       </td></tr>
       <tr><td style="padding:28px 32px">
@@ -209,7 +209,7 @@ async function sendOtpEmail(userId, opts) {
         </p>
       </td></tr>
       <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb">
-        <p style="margin:0;color:#9ca3af;font-size:12px">This is an automated security message from BX Finance Demo. Do not reply.</p>
+        <p style="margin:0;color:#9ca3af;font-size:12px">This is an automated security message from Super Banking Demo. Do not reply.</p>
       </td></tr>
     </table>
   </td></tr>
@@ -228,7 +228,7 @@ async function sendOtpEmail(userId, opts) {
         content: [
           {
             deliveryMethod: 'Email',
-            subject: `BX Finance — Your verification code: ${otpCode}`,
+            subject: `Super Banking — Your verification code: ${otpCode}`,
             body: html,
             charset: 'UTF-8',
           },

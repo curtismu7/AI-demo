@@ -1,4 +1,4 @@
-# ChatGPT integration plan — BX Finance banking demo
+# ChatGPT integration plan — Super Banking banking demo
 
 This document describes how to let end users interact with the banking backend from **their own ChatGPT experience** (Custom GPT Actions, ChatGPT “apps” / connectors, or similar), instead of—or in addition to—the in-app banking agent.
 

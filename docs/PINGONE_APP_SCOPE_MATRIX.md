@@ -1,4 +1,4 @@
-# PingOne applications & scopes — BX Finance banking demo
+# PingOne applications & scopes — Super Banking banking demo
 
 Operational guide: which **PingOne OAuth / worker applications** match this codebase, which **config keys** store their **client IDs**, and which **scopes** must exist on each app. Pair with **[`PINGONE_AUTHORIZE_PLAN.md`](./PINGONE_AUTHORIZE_PLAN.md)** for Authorize product APIs and BFF context.
 

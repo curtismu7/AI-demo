@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useMemo, useCallback } from
 
 export const TOUR_STEPS = [
   {
-    title: 'BX Finance AI Banking Demo',
+    title: 'Super Banking AI Banking Demo',
     body: 'This 5-minute tour walks through three distinct authentication flows and shows RFC 8693 token exchange in action.',
     action: null,
   },

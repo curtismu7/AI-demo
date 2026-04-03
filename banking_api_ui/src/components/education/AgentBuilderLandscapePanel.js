@@ -44,7 +44,7 @@ function LangChainContent() {
       <p style={{ marginTop: 0 }}>
         <strong>LangChain</strong> is the most widely adopted open-source framework for building LLM-powered
         applications and agents. It provides composable primitives — chains, agents, tools, memory — that work
-        with any LLM provider. The BX Finance demo's <code>langchain_agent/</code> uses LangChain 0.3.x to
+        with any LLM provider. The Super Banking demo's <code>langchain_agent/</code> uses LangChain 0.3.x to
         orchestrate the Banking Agent's tool calls via LCEL.
       </p>
 

@@ -82,7 +82,7 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
       label: 'Banking use case',
       content: (
         <>
-          <h4 style={{ marginTop: 0 }}>RAR for BX Finance / Open Banking</h4>
+          <h4 style={{ marginTop: 0 }}>RAR for Super Banking / Open Banking</h4>
           <p>
             RAR is the backbone of <strong>Open Banking (PSD2 / Berlin Group)</strong> and
             <strong>FAPI 2.0</strong> APIs. Instead of granting broad "transfer" scope, a
@@ -91,7 +91,7 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
           <Code>{`authorization_details=[
   {
     "type": "payment_initiation",
-    "creditorName": "BX Finance Payee",
+    "creditorName": "Super Banking Payee",
     "instructedAmount": {
       "currency": "USD",
       "amount": "125.00"
@@ -105,7 +105,7 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
             resource server enforces the <code>authorization_details</code> claim embedded in the JWT.
           </p>
           <p>
-            <strong>AI agent angle:</strong> when the BX Finance Banking Agent initiates a transfer,
+            <strong>AI agent angle:</strong> when the Super Banking Banking Agent initiates a transfer,
             a RAR-aware integration would encode the exact amount and accounts into the
             authorization request, giving the user and the AS a precise picture of what is being
             authorized — aligning with Ping Identity's "Enforce Least Privilege" best practice.
@@ -133,7 +133,7 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
     {
       "type": "payment_initiation",
       "instructedAmount": { "currency": "USD", "amount": "125.00" },
-      "creditorName": "BX Finance Payee"
+      "creditorName": "Super Banking Payee"
     }
   ]
 }`}</Code>
@@ -185,7 +185,7 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
       label: 'In this repo',
       content: (
         <>
-          <h3 style={{ marginTop: 0 }}>RAR in BX Finance</h3>
+          <h3 style={{ marginTop: 0 }}>RAR in Super Banking</h3>
           <EduImplIntro mock>
             Authorization requests from this app do not send <code>authorization_details</code> today; use this shape when integrating a PingOne policy that expects RAR.
           </EduImplIntro>

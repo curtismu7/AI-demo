@@ -1,4 +1,4 @@
-# MCP security gateway plan (PingGateway + BX Finance)
+# MCP security gateway plan (PingGateway + Super Banking)
 
 This document extends the team’s MCP gateway architecture plan with **official Ping transfer-of-information (TOI) material** for **PingGateway 2025.11.1 — MCP Security Gateway**.  
 Use it together with the public tutorial: [MCP security gateway | PingGateway 2025.11](https://docs.pingidentity.com/pinggateway/2025.11/mcp/index.html).
@@ -92,9 +92,9 @@ TOI aligns with **RFC 9728**: MCP clients can discover RS constraints **before**
 
 ---
 
-## Application to BX Finance (`banking_mcp_server`)
+## Application to Super Banking (`banking_mcp_server`)
 
-| BX Finance | PingGateway MCP plan |
+| Super Banking | PingGateway MCP plan |
 |------------|----------------------|
 | **MCP server** (`banking_mcp_server`, WebSocket, Railway/Fly/Render) | Place **behind** PingGateway; clients use `wss://` / HTTPS URL on the gateway, not the raw host. |
 | **PingOne OAuth** | Configure tokens so **`aud` / audience** matches **`resourceId`** on **McpProtectionFilter** (`resourceIdPointer` aligned with your token shape). |
@@ -108,4 +108,4 @@ TOI aligns with **RFC 9728**: MCP clients can discover RS constraints **before**
 
 | Date | Change |
 |------|--------|
-| 2026-03-25 | Initial plan: merged earlier BX Finance gateway outline with PingGateway **2025.11.1 MCP TOI** PDF (local path above) and public 2025.11 MCP doc link. |
+| 2026-03-25 | Initial plan: merged earlier Super Banking gateway outline with PingGateway **2025.11.1 MCP TOI** PDF (local path above) and public 2025.11 MCP doc link. |

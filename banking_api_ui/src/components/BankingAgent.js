@@ -551,7 +551,7 @@ function ResultsPanel({ panel, onClose, style }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-function welcomeMessage(u, focus = 'banking', brandShortName = 'BX Finance') {
+function welcomeMessage(u, focus = 'banking', brandShortName = 'Super Banking') {
   if (focus === 'config') {
     if (!u) {
       return `⚙️ Ask about PingOne, redirect URIs, OAuth scopes, **Agent MCP scopes** (limit transfers vs read-only), environment variables, and **industry branding** (${brandShortName} vs other presets) for this demo.`;

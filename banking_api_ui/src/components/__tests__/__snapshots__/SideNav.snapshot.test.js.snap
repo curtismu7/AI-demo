@@ -23,7 +23,7 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
       <span
         class="sidenav-brand-name"
       >
-        BX Finance
+        Super Banking
       </span>
       <button
         aria-label="Collapse sidebar"
@@ -536,7 +536,7 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
       <span
         class="sidenav-brand-name"
       >
-        BX Finance
+        Super Banking
       </span>
       <button
         aria-label="Collapse sidebar"

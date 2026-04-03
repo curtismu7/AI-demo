@@ -12,7 +12,7 @@ jest.mock('../../context/ThemeContext', () => ({
 }));
 
 jest.mock('../../context/IndustryBrandingContext', () => ({
-  useIndustryBranding: () => ({ preset: { shortName: 'BX Finance', id: 'banking' } }),
+  useIndustryBranding: () => ({ preset: { shortName: 'Super Banking', id: 'banking' } }),
 }));
 
 const renderFooter = (userOverrides = {}) =>

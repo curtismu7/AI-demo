@@ -779,8 +779,8 @@ async function _performTwoExchangeDelegation(
   let   intermediateAud     = configStore.getEffective('ai_agent_intermediate_audience') || '';
   if (!intermediateAud) intermediateAud = 'https://mcp-server.pingdemo.com';
   const mcpGatewayAud       = configStore.getEffective('mcp_gateway_audience') || 'https://mcp-gateway.pingdemo.com';
-  // Exchange #2 output audience — must point to BX Finance Resource Server (https://resource-server.pingdemo.com),
-  // NOT the 1-exchange BX Finance MCP Server (https://mcp-server.pingdemo.com).
+  // Exchange #2 output audience — must point to Super Banking Resource Server (https://resource-server.pingdemo.com),
+  // NOT the 1-exchange Super Banking MCP Server (https://mcp-server.pingdemo.com).
   // Using the 1-exchange audience triggers the wrong `act` expression (may_act.sub check instead of
   // act.sub forward) → act=null with Required=true → PingOne rejects Exchange #2 with invalid_grant.
   const twoExFinalAud = configStore.getEffective('mcp_resource_uri_two_exchange') || 'https://resource-server.pingdemo.com';
@@ -822,7 +822,7 @@ async function _performTwoExchangeDelegation(
     'acquiring',
     null,
     `AI Agent App (${aiAgentClientId}) getting Client Credentials actor token. ` +
-      `Audience: ${agentGatewayAud} (BX Finance Agent Gateway).`,
+      `Audience: ${agentGatewayAud} (Super Banking Agent Gateway).`,
     { rfc: 'RFC 8693 §2.1 (actor_token)', exchangeStep: '1-actor' }
   ));
 
@@ -916,7 +916,7 @@ async function _performTwoExchangeDelegation(
     'acquiring',
     null,
     `MCP Service App (${mcpExchangerClient}) getting Client Credentials actor token. ` +
-      `Audience: ${mcpGatewayAud} (BX Finance MCP Gateway).`,
+      `Audience: ${mcpGatewayAud} (Super Banking MCP Gateway).`,
     { rfc: 'RFC 8693 §2.1 (actor_token)', exchangeStep: '2-actor' }
   ));
 
@@ -957,7 +957,7 @@ async function _performTwoExchangeDelegation(
     null,
     `Exchange #2 (RFC 8693): exchanger=${mcpExchangerClient}, ` +
       `subject=Agent Exchanged Token (act.sub must equal actor_token.aud[0]=${mcpExchangerClient}), ` +
-      `audience=${twoExFinalAud} (BX Finance Resource Server). act expression forwards act.sub from Agent Exchanged Token.`,
+      `audience=${twoExFinalAud} (Super Banking Resource Server). act expression forwards act.sub from Agent Exchanged Token.`,
     { rfc: 'RFC 8693', exchangeStep: '2-exchange',
       exchangeRequest: { exchanger: mcpExchangerClient, audience: mcpResourceUri, scope: effectiveToolScopes.join(' ') } }
   ));
@@ -989,7 +989,7 @@ async function _performTwoExchangeDelegation(
             ? `Delegation chain recorded: act.sub=${finalClaims.act.sub} (AI Agent identity preserved). ` +
               'PingOne SpEL cannot construct fully-nested act objects — act.sub reflects the AI Agent as delegation initiator. ' +
               'PAZ can enforce act.sub as a policy attribute. See docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e.'
-            : 'WARNING: act claim missing from Final Token — check act expression on BX Finance Resource Server (docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e).'),
+            : 'WARNING: act claim missing from Final Token — check act expression on Super Banking Resource Server (docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e).'),
       { rfc: 'RFC 8693', exchangeStep: '2-exchange', exchangeMethod: '2-exchange',
         actPresent: !!finalClaims?.act,
         actDetails: finalClaims?.act ? JSON.stringify(finalClaims.act) : null,
@@ -1018,7 +1018,7 @@ async function _performTwoExchangeDelegation(
       null,
       `Exchange #2 failed: ${err.message}. ` +
         'Check that act.sub on the Agent Exchanged Token matches AGENT_OAUTH_CLIENT_ID ' +
-        'and that the act expression on BX Finance MCP Server resource server is correct.',
+        'and that the act expression on Super Banking MCP Server resource server is correct.',
       { error: err.message, httpStatus: err.httpStatus, pingoneError: err.pingoneError,
         pingoneErrorDescription: err.pingoneErrorDescription, exchangeStep: '2-exchange' }
     ));

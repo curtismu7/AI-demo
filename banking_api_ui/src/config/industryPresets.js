@@ -10,8 +10,8 @@
 export const INDUSTRY_PRESETS = [
   {
     id: 'bx_finance',
-    label: 'BX Finance (default)',
-    shortName: 'BX Finance',
+    label: 'Super Banking (default)',
+    shortName: 'Super Banking',
     tagline: 'PingOne AI IAM Core',
     description:
       'Default demo branding: crimson primary actions and blue dashboard header. Matches the stock logo at /logo.svg.',

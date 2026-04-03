@@ -1,6 +1,6 @@
 # PingOne: 1-Exchange Delegated Chain — Setup Guide
 
-Step-by-step setup for a **human → Banking App → MCP → PingOne API** delegated token chain using **one RFC 8693 token exchange**. This is the pattern implemented by the BX Finance demo.
+Step-by-step setup for a **human → Banking App → MCP → PingOne API** delegated token chain using **one RFC 8693 token exchange**. This is the pattern implemented by the Super Banking demo.
 
 > **2-exchange pattern (AI Agent as named identity):** See [PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md](PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md) for the production pattern where the AI Agent performs its own exchange and appears as `act.act.sub` in the final token.
 
@@ -57,7 +57,7 @@ Adding `openid` anywhere in this flow breaks things in two different ways depend
 2. Find `scope` → current value must be `profile email banking:agent:invoke` (no `openid`)
 3. Open **Step 6** → **Body tab** → find the `scope` row → must be `p1:read:user p1:update:user` (no `openid`)
 
-> **Why no ID token?** The BX Finance User app has `Response Type: Code` only — **ID Token is unchecked** in PingOne OIDC Settings. `openid` is the scope that triggers ID token issuance. Since there is no ID token in this flow and the access token audience is a custom resource server, `openid` must be absent.
+> **Why no ID token?** The Super Banking User app has `Response Type: Code` only — **ID Token is unchecked** in PingOne OIDC Settings. `openid` is the scope that triggers ID token issuance. Since there is no ID token in this flow and the access token audience is a custom resource server, `openid` must be absent.
 
 ---
 
@@ -81,12 +81,12 @@ Subject Token  [TOKEN 1 — user's session token]
     aud: ["https://ai-agent.pingdemo.com"],      ← AI Agent service validates this token
     scope: "profile email banking:agent:invoke",
     may_act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }
-              ↑ the client ID UUID of BX Finance Banking App — permits it to exchange this token
+              ↑ the client ID UUID of Super Banking Banking App — permits it to exchange this token
   │
   │  Token Exchange #1 (RFC 8693)
   │  Banking app server POSTs the Subject Token to PingOne's /token endpoint.
   │  PingOne checks: may_act.sub == actorToken.aud[0]? → issues MCP Token.
-  │  Exchanger: BX Finance Banking App (PINGONE_CORE_CLIENT_ID)
+  │  Exchanger: Super Banking Banking App (PINGONE_CORE_CLIENT_ID)
   ▼
 MCP Token  [TOKEN 2 — delegated tool-call token]
   { sub: "<user-id>",
@@ -98,7 +98,7 @@ MCP Token  [TOKEN 2 — delegated tool-call token]
   │  Client Credentials grant (NOT a token exchange)
   │  MCP server POSTs its own client_id + client_secret to PingOne.
   │  PingOne issues a scoped PingOne API token (p1:read:user, p1:update:user).
-  │  Caller: BX Finance MCP Service (MCP_CLIENT_ID)
+  │  Caller: Super Banking MCP Service (MCP_CLIENT_ID)
   ▼
 PingOne API Token  [TOKEN 3 — scoped PingOne Management API token]
   { aud: ["https://api.pingone.com"],
@@ -113,8 +113,8 @@ PingOne Management API  (/v1/environments/{envId}/users/{userId})
 | Token | Audience URL | How issued | Issuer |
 |-------|-------------|------------|--------|
 | **Subject Token** | `https://ai-agent.pingdemo.com` | PKCE login | PingOne (user auth) |
-| **MCP Token** | `https://mcp-server.pingdemo.com` | RFC 8693 Token Exchange #1 | BX Finance Banking App |
-| **PingOne API Token** | `https://api.pingone.com` | Client Credentials | BX Finance MCP Service |
+| **MCP Token** | `https://mcp-server.pingdemo.com` | RFC 8693 Token Exchange #1 | Super Banking Banking App |
+| **PingOne API Token** | `https://api.pingone.com` | Client Credentials | Super Banking MCP Service |
 | *(actor token)* | `https://agent-gateway.pingdemo.com` | *(internal — proves banking app identity for Exchange #1)* | — |
 
 > **`may_act` → `act` transition:** `may_act` in the Subject Token declares who is *allowed* to exchange it. After exchange, that identity becomes the `act` claim. Each subsequent exchange nests a new `act` layer, forming a full delegation chain.
@@ -148,25 +148,25 @@ Use this table as your single source of truth when filling in PingOne forms and 
 
 | Item | Field | Exact value |
 |------|-------|-------------|
-| Agent Resource Server | Name | `BX Finance AI Agent` |
+| Agent Resource Server | Name | `Super Banking AI Agent` |
 | Agent Resource Server | Audience | `https://ai-agent.pingdemo.com` |
 | Agent Resource Server | Scope | `banking:agent:invoke` |
-| MCP Resource Server | Name | `BX Finance MCP Server` |
+| MCP Resource Server | Name | `Super Banking MCP Server` |
 | MCP Resource Server | Audience | `https://mcp-server.pingdemo.com` |
 | MCP Resource Server | Scope 1 | `banking:accounts:read` |
 | MCP Resource Server | Scope 2 | `banking:transactions:read` |
 | MCP Resource Server | Scope 3 | `banking:transactions:write` |
-| Agent Gateway Resource Server | Name | `BX Finance Agent Gateway` |
+| Agent Gateway Resource Server | Name | `Super Banking Agent Gateway` |
 | Agent Gateway Resource Server | Audience | `https://agent-gateway.pingdemo.com` |
-| User OIDC App | Name | `BX Finance User` |
-| Banking App (exchanger app) | Name | `BX Finance Banking App` |
-| MCP Service App | Name | `BX Finance MCP Service` |
-| `mayAct.sub` value on user records | equals | `PINGONE_CORE_CLIENT_ID` — the client ID UUID of BX Finance Banking App |
+| User OIDC App | Name | `Super Banking User` |
+| Banking App (exchanger app) | Name | `Super Banking Banking App` |
+| MCP Service App | Name | `Super Banking MCP Service` |
+| `mayAct.sub` value on user records | equals | `PINGONE_CORE_CLIENT_ID` — the client ID UUID of Super Banking Banking App |
 | User Schema Attribute | Attribute name | `mayAct` |
 | User Schema Attribute | Type | `JSON` |
-| Token Claim — `act` on MCP Token | Where configured | **BX Finance MCP Server resource Attributes tab** (Step 1b) — NOT the application |
+| Token Claim — `act` on MCP Token | Where configured | **Super Banking MCP Server resource Attributes tab** (Step 1b) — NOT the application |
 | Token Claim — `act` expression | Expression | `(#root.context.requestData.subjectToken?.may_act?.sub != null && #root.context.requestData.subjectToken?.may_act?.sub == #root.context.requestData.actorToken?.aud?.get(0))?#root.context.requestData.subjectToken?.may_act:null` |
-| Token Claim — `may_act` on Subject Token | Where configured | **BX Finance AI Agent resource Attributes tab** (Step 1a) — NOT the application |
+| Token Claim — `may_act` on Subject Token | Where configured | **Super Banking AI Agent resource Attributes tab** (Step 1a) — NOT the application |
 | Token Claim — `may_act` expression | Expression | `user.mayAct` |
 | Env var — Subject Token audience | `ENDUSER_AUDIENCE` | `https://ai-agent.pingdemo.com` |
 | Env var — MCP Token audience | `MCP_RESOURCE_URI` | `https://mcp-server.pingdemo.com` |
@@ -181,7 +181,7 @@ Use this table as your single source of truth when filling in PingOne forms and 
 
 ---
 
-### 1a. Create: BX Finance AI Agent  *(Subject Token audience)*
+### 1a. Create: Super Banking AI Agent  *(Subject Token audience)*
 
 This resource server gives the Subject Token a meaningful audience URL. The AI Agent service checks that incoming tokens have `aud = https://ai-agent.pingdemo.com` before allowing tool invocations.
 
@@ -191,9 +191,9 @@ Click **Add Resource** and fill in exactly:
 
 | Field | Type in |
 |-------|---------|
-| **Resource name** | `BX Finance AI Agent` |
+| **Resource name** | `Super Banking AI Agent` |
 | **Audience** | `https://ai-agent.pingdemo.com` |
-| **Description** | `Audience resource server for the BX Finance AI Agent The Subject Token issued at user login is scoped to this resource and carries the may act claim that authorizes token exchange` |
+| **Description** | `Audience resource server for the Super Banking AI Agent The Subject Token issued at user login is scoped to this resource and carries the may act claim that authorizes token exchange` |
 | **Access token time to live (seconds)** | `3600` |
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Basic` |
 
@@ -241,13 +241,13 @@ Click **Save**.
 | Field | Type in |
 |-------|---------|
 | **Scope name** | `banking:agent:invoke` |
-| **Description** | `Grants the bearer permission to invoke the BX Finance AI Agent on behalf of the authenticated user Present on the Subject Token validated by the banking app before token exchange` |
+| **Description** | `Grants the bearer permission to invoke the Super Banking AI Agent on behalf of the authenticated user Present on the Subject Token validated by the banking app before token exchange` |
 
 Click **Save**.
 
 ---
 
-### 1b. Create: BX Finance MCP Server  *(MCP Token audience)*
+### 1b. Create: Super Banking MCP Server  *(MCP Token audience)*
 
 Click **Add Resource** and fill in exactly:
 
@@ -255,9 +255,9 @@ Click **Add Resource** and fill in exactly:
 
 | Field | Type in |
 |-------|---------|
-| **Resource name** | `BX Finance MCP Server` |
+| **Resource name** | `Super Banking MCP Server` |
 | **Audience** | `https://mcp-server.pingdemo.com` |
-| **Description** | `Audience resource server for the BX Finance MCP Model Context Protocol server MCP Tokens scoped to this resource are used for delegated banking tool calls` |
+| **Description** | `Audience resource server for the Super Banking MCP Model Context Protocol server MCP Tokens scoped to this resource are used for delegated banking tool calls` |
 | **Access token time to live (seconds)** | `3600` |
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Basic` |
 
@@ -375,7 +375,7 @@ In **Applications → Resources** locate the built-in resource named **"PingOne 
 
 ---
 
-### 1d. Create: BX Finance Agent Gateway  *(banking app actor token audience)*
+### 1d. Create: Super Banking Agent Gateway  *(banking app actor token audience)*
 
 This resource server exists solely to give the banking app server an audience URI that PingOne can verify during token exchange. When the banking app requests an actor token scoped to `https://agent-gateway.pingdemo.com`, PingOne can confirm the actor is really this app — not an impersonator.
 
@@ -385,9 +385,9 @@ Click **Add Resource** and fill in exactly:
 
 | Field | Type in |
 |-------|---------|
-| **Resource name** | `BX Finance Agent Gateway` |
+| **Resource name** | `Super Banking Agent Gateway` |
 | **Audience** | `https://agent-gateway.pingdemo.com` |
-| **Description** | `Audience resource server for the BX Finance banking app server The banking app obtains a token scoped to this audience to use as its actor token during RFC 8693 token exchange PingOne reads the actor tokens client_id UUID and compares it to may_act sub on the users Subject Token` |
+| **Description** | `Audience resource server for the Super Banking banking app server The banking app obtains a token scoped to this audience to use as its actor token during RFC 8693 token exchange PingOne reads the actor tokens client_id UUID and compares it to may_act sub on the users Subject Token` |
 | **Access token time to live (seconds)** | `3600` |
 | **Token Introspection Endpoint Authentication Method** | `Client Secret Basic` |
 
@@ -401,7 +401,7 @@ No mappings needed. Leave this tab unchanged.
 
 No scopes needed. This resource server is used purely for audience identity, not for granting capabilities.
 
-> The Banking App application must be allowed to request tokens scoped to this audience. Enable **BX Finance Agent Gateway** on the Banking App's Resources tab in Step 2b.
+> The Banking App application must be allowed to request tokens scoped to this audience. Enable **Super Banking Agent Gateway** on the Banking App's Resources tab in Step 2b.
 
 ---
 
@@ -411,7 +411,7 @@ No scopes needed. This resource server is used purely for audience identity, not
 
 ---
 
-### 2a. Configure: BX Finance User  *(issues Subject Token)*
+### 2a. Configure: Super Banking User  *(issues Subject Token)*
 
 Open the existing end-user OIDC application. Verify or update:
 
@@ -419,8 +419,8 @@ Open the existing end-user OIDC application. Verify or update:
 
 | Field | Type in |
 |-------|---------|
-| **Application name** | `BX Finance User` |
-| **Description** | `End user web application for BX Finance banking customers Issues Subject Tokens via Authorization Code and PKCE The Subject Token carries may_act authorizing the Banking App to perform token exchange` |
+| **Application name** | `Super Banking User` |
+| **Description** | `End user web application for Super Banking banking customers Issues Subject Tokens via Authorization Code and PKCE The Subject Token carries may_act authorizing the Banking App to perform token exchange` |
 | **Icon** | *(optional — leave blank or upload a logo)* |
 | **Home Page URL** | `https://banking-demo-puce.vercel.app` |
 | **Signon URL** | `https://banking-demo-puce.vercel.app` |
@@ -441,13 +441,13 @@ Open the existing end-user OIDC application. Verify or update:
 
 **Resources tab → Allowed scopes — enable:**
 
-- ✅ `banking:agent:invoke` from **BX Finance AI Agent**
+- ✅ `banking:agent:invoke` from **Super Banking AI Agent**
 - ✅ `profile`, `email`, `offline_access` *(standard — already present)*
 - ❌ Do **NOT** enable or request `openid` — it causes PingOne to reject the authorize request when `resource=https://ai-agent.pingdemo.com` is present
 
 **Attribute Mappings tab:**
 
-No custom mapping needed here for `may_act`. The `may_act` claim in the access token is produced by the expression configured on the **BX Finance AI Agent resource server** (Step 1a, Attribute Mappings tab).
+No custom mapping needed here for `may_act`. The `may_act` claim in the access token is produced by the expression configured on the **Super Banking AI Agent resource server** (Step 1a, Attribute Mappings tab).
 
 > **Why not here?** Application OIDC attribute mappings only deliver claims to **UserInfo** and **ID Token** — they cannot inject claims into an access token. Access token claims must be defined on the resource server the token is scoped to (Step 1a).
 
@@ -457,7 +457,7 @@ Click **Save**.
 
 ---
 
-### 2b. Configure: BX Finance Banking App  *(exchanges Subject Token → MCP Token)*
+### 2b. Configure: Super Banking Banking App  *(exchanges Subject Token → MCP Token)*
 
 This is the banking app's server-side component. It holds user sessions and performs Token Exchange #1: trading the user's Subject Token for a narrower MCP-scoped token. Its Client ID is what you store in `mayAct` on each user record.
 
@@ -467,7 +467,7 @@ Open the existing application. Verify or update:
 
 | Field | Type in |
 |-------|---------|
-| **Application name** | `BX Finance Banking App` |
+| **Application name** | `Super Banking Banking App` |
 | **Description** | `Banking app server Authenticates users and performs Token Exchange 1 to get an MCP-scoped token on behalf of the authenticated user The Client ID of this app must be set as the mayAct sub value on all user profiles that use the AI agent` |
 | **Icon** | *(optional — leave blank or upload a logo)* |
 | **Home Page URL** | `https://banking-demo-puce.vercel.app` |
@@ -491,7 +491,7 @@ Open the existing application. Verify or update:
 **Resources tab:**
 
 1. Click the **+** (Add) icon.
-2. A list of resources appears. Expand **BX Finance MCP Server** and enable:
+2. A list of resources appears. Expand **Super Banking MCP Server** and enable:
 
    - ✅ `banking:accounts:read`
    - ✅ `banking:transactions:read`
@@ -499,15 +499,15 @@ Open the existing application. Verify or update:
 
 3. Click **Save**.
 
-> **BX Finance Agent Gateway is not needed here.** The Banking App authenticates the token exchange with its own `client_id` and `client_secret` (standard client authentication). PingOne identifies it as the actor via that `client_id` — no special audience-scoped token is needed. Adding BX Finance Agent Gateway to this app's Resources would only be required if the Banking App were separately acquiring a token scoped to `https://agent-gateway.pingdemo.com` to forward as an explicit `actor_token` parameter — which is not the default flow.
+> **Super Banking Agent Gateway is not needed here.** The Banking App authenticates the token exchange with its own `client_id` and `client_secret` (standard client authentication). PingOne identifies it as the actor via that `client_id` — no special audience-scoped token is needed. Adding Super Banking Agent Gateway to this app's Resources would only be required if the Banking App were separately acquiring a token scoped to `https://agent-gateway.pingdemo.com` to forward as an explicit `actor_token` parameter — which is not the default flow.
 
 **Attribute Mappings tab:**
 
-No custom mapping needed here for the token exchange. The `act` claim in the MCP Token is produced by the expression configured on the **BX Finance MCP Server resource server** (Step 1b, Attribute Mappings tab). Application attribute mappings apply to tokens issued directly *for* the app (e.g. authorization code, client credentials) — not to tokens the app receives as an exchanger. Leave this tab unchanged.
+No custom mapping needed here for the token exchange. The `act` claim in the MCP Token is produced by the expression configured on the **Super Banking MCP Server resource server** (Step 1b, Attribute Mappings tab). Application attribute mappings apply to tokens issued directly *for* the app (e.g. authorization code, client credentials) — not to tokens the app receives as an exchanger. Leave this tab unchanged.
 
 ---
 
-### 2c. Create: BX Finance MCP Worker  *(exchanges MCP Token → Resource Token)*
+### 2c. Create: Super Banking MCP Worker  *(exchanges MCP Token → Resource Token)*
 
 Click **Add Application**:
 
@@ -515,8 +515,8 @@ Click **Add Application**:
 
 | Field | Type in |
 |-------|---------|
-| **Application name** | `BX Finance MCP Service` |
-| **Description** | `Machine to machine application for the BX Finance MCP server Uses Client Credentials to obtain a scoped PingOne API token for user lookup The MCP Token carrying the delegation context is validated separately` |
+| **Application name** | `Super Banking MCP Service` |
+| **Description** | `Machine to machine application for the Super Banking MCP server Uses Client Credentials to obtain a scoped PingOne API token for user lookup The MCP Token carrying the delegation context is validated separately` |
 | **Icon** | *(optional — leave blank)* |
 | **Home Page URL** | *(leave blank — no UI)* |
 | **Signon URL** | *(leave blank — no UI)* |
@@ -559,7 +559,7 @@ Click **Save**, then copy the **Client ID** and **Client Secret** — these beco
 |-------|---------|
 | **Attribute name** | `mayAct` |
 | **Display name** | `May Act` |
-| **Description** | `JSON object identifying the OAuth client authorized to exchange this users Subject Token Must match the client ID UUID of BX Finance Banking App PingOne validates this on every token exchange request` |
+| **Description** | `JSON object identifying the OAuth client authorized to exchange this users Subject Token Must match the client ID UUID of Super Banking Banking App PingOne validates this on every token exchange request` |
 | **Type** | `JSON` |
 | **Required** | `No` |
 | **Unique** | `No` |
@@ -578,23 +578,23 @@ After completing Steps 1–3a, log in as the test user from a browser and inspec
   "may_act": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
 }
 ```
-`may_act.sub` is the **client ID UUID** of BX Finance Banking App, not a URL.
+`may_act.sub` is the **client ID UUID** of Super Banking Banking App, not a URL.
 
 If `may_act` is absent:
 - Confirm the `mayAct` attribute was set on the user record (Step 3c)
-- Confirm the Attribute Mapping was added to `BX Finance User` (Step 2a)
+- Confirm the Attribute Mapping was added to `Super Banking User` (Step 2a)
 - Confirm `banking:agent:invoke` scope is in the authorize request (`ENDUSER_AUDIENCE` is set)
 
 ---
 
 ### 3c. Set `mayAct` on the User Record
 
-The value must be the **client ID UUID of BX Finance Banking App** (`PINGONE_CORE_CLIENT_ID`). This is what PingOne compares against `actorToken.aud[0]` during Token Exchange #1.
+The value must be the **client ID UUID of Super Banking Banking App** (`PINGONE_CORE_CLIENT_ID`). This is what PingOne compares against `actorToken.aud[0]` during Token Exchange #1.
 
 **Option A — PingOne Admin Console:**
 1. **Directory → Users** → open the user
 2. Find **Custom Attributes → mayAct**
-3. Enter the UUID of BX Finance Banking App:
+3. Enter the UUID of Super Banking Banking App:
 ```json
 { "sub": "<client-id-uuid-of-BX-Finance-Banking-App>" }
 ```
@@ -608,7 +608,7 @@ Content-Type: application/json
 { "mayAct": { "sub": "<client-id-uuid-of-BX-Finance-Banking-App>" } }
 ```
 
-**Option C — BX Finance Demo App (recommended):**
+**Option C — Super Banking Demo App (recommended):**
 
 Navigate to `/demo-data` and scroll to the **Token Exchange — may_act demo** section. Every logged-in user sees this section. What is displayed depends on role:
 
@@ -641,18 +641,18 @@ These toggles map to the `ff_inject_may_act` and `ff_inject_audience` feature fl
 PINGONE_ENVIRONMENT_ID=<your-pingone-environment-id>
 PINGONE_REGION=com
 
-# ── BX Finance User app (issues Subject Token) ────────────────────────────────
-PINGONE_CORE_USER_CLIENT_ID=<Client ID of "BX Finance User">
-PINGONE_CORE_USER_CLIENT_SECRET=<Client Secret of "BX Finance User">
+# ── Super Banking User app (issues Subject Token) ────────────────────────────────
+PINGONE_CORE_USER_CLIENT_ID=<Client ID of "Super Banking User">
+PINGONE_CORE_USER_CLIENT_SECRET=<Client Secret of "Super Banking User">
 
-# ── BX Finance Banking App (exchanges Subject Token → MCP Token) ──────────────
-PINGONE_CORE_CLIENT_ID=<Client ID of "BX Finance Banking App">
-PINGONE_CORE_CLIENT_SECRET=<Client Secret of "BX Finance Banking App">
+# ── Super Banking Banking App (exchanges Subject Token → MCP Token) ──────────────
+PINGONE_CORE_CLIENT_ID=<Client ID of "Super Banking Banking App">
+PINGONE_CORE_CLIENT_SECRET=<Client Secret of "Super Banking Banking App">
 
-# ── Subject Token audience  (must exactly match "BX Finance AI Agent" Audience)
+# ── Subject Token audience  (must exactly match "Super Banking AI Agent" Audience)
 ENDUSER_AUDIENCE=https://ai-agent.pingdemo.com
 
-# ── MCP Token audience  (must exactly match "BX Finance MCP Server" Audience) ─
+# ── MCP Token audience  (must exactly match "Super Banking MCP Server" Audience) ─
 MCP_RESOURCE_URI=https://mcp-server.pingdemo.com
 
 # ── Feature flag: keep false so banking:agent:invoke scope is included in /authorize ─────────
@@ -662,9 +662,9 @@ MCP_RESOURCE_URI=https://mcp-server.pingdemo.com
 ### `banking_mcp_server/.env`  (on the MCP server)
 
 ```env
-# ── BX Finance MCP Service app (Client Credentials → PingOne API Token) ───────
-MCP_CLIENT_ID=<Client ID of "BX Finance MCP Service">
-MCP_CLIENT_SECRET=<Client Secret of "BX Finance MCP Service">
+# ── Super Banking MCP Service app (Client Credentials → PingOne API Token) ───────
+MCP_CLIENT_ID=<Client ID of "Super Banking MCP Service">
+MCP_CLIENT_SECRET=<Client Secret of "Super Banking MCP Service">
 
 # ── PingOne API Token audience ─────────────────────────────────────────────────
 PINGONE_API_AUDIENCE=https://api.pingone.com
@@ -680,7 +680,7 @@ PINGONE_REGION=com
 
 ### Subject Token → MCP Token  (Token Exchange #1)
 
-Performed by: **BX Finance Banking App** using `PINGONE_CORE_CLIENT_ID` / `PINGONE_CORE_CLIENT_SECRET`
+Performed by: **Super Banking Banking App** using `PINGONE_CORE_CLIENT_ID` / `PINGONE_CORE_CLIENT_SECRET`
 
 The banking app server calls PingOne's token endpoint, presenting the user's Subject Token as the `subject_token` and its own access token (audience `https://agent-gateway.pingdemo.com`) as the `actor_token`. PingOne checks that `subject_token.may_act.sub` matches `actor_token.aud[0]` before issuing the MCP Token.
 
@@ -698,13 +698,13 @@ client_id=PINGONE_CORE_CLIENT_ID
 &scope=banking:accounts:read banking:transactions:read banking:transactions:write
 ```
 
-> **Note:** Do not include `openid` in the subject token authorize request. The **BX Finance User** app has `Response Type: Code` only (no ID Token checked). Adding `openid` causes PingOne to reject the authorize request when `resource=` is also present, because `openid` triggers the OIDC contract which conflicts with a custom resource audience in the same request.
+> **Note:** Do not include `openid` in the subject token authorize request. The **Super Banking User** app has `Response Type: Code` only (no ID Token checked). Adding `openid` causes PingOne to reject the authorize request when `resource=` is also present, because `openid` triggers the OIDC contract which conflicts with a custom resource audience in the same request.
 
 PingOne validates: `subject_token.may_act.sub` === `actor_token.aud[0]` — both must equal the Banking App's client ID UUID (`PINGONE_CORE_CLIENT_ID`). If they match, PingOne issues the MCP Token with `act.sub = <PINGONE_CORE_CLIENT_ID>`.
 
 ### MCP Service → PingOne API Token  (Client Credentials — Token 3)
 
-Performed by: **BX Finance MCP Service** using `MCP_CLIENT_ID` / `MCP_CLIENT_SECRET`
+Performed by: **Super Banking MCP Service** using `MCP_CLIENT_ID` / `MCP_CLIENT_SECRET`
 
 The MCP server requests a scoped PingOne API token using Client Credentials. This is **not** a token exchange — it is a separate, independent credential grant that gives the MCP server permission to call the PingOne Management API.
 
@@ -749,12 +749,12 @@ Open the collection → **Variables tab** and fill in:
 | Variable | Where to find it |
 |---|---|
 | `env_id` | PingOne Console → Environment → Settings |
-| `client_id` | Client ID of **BX Finance User** app |
-| `client_secret` | Client Secret of **BX Finance User** app |
-| `banking_app_client_id` | Client ID of **BX Finance Banking App** |
-| `banking_app_client_secret` | Client Secret of **BX Finance Banking App** |
-| `mcp_client_id` | Client ID of **BX Finance MCP Service** app |
-| `mcp_client_secret` | Client Secret of **BX Finance MCP Service** app |
+| `client_id` | Client ID of **Super Banking User** app |
+| `client_secret` | Client Secret of **Super Banking User** app |
+| `banking_app_client_id` | Client ID of **Super Banking Banking App** |
+| `banking_app_client_secret` | Client Secret of **Super Banking Banking App** |
+| `mcp_client_id` | Client ID of **Super Banking MCP Service** app |
+| `mcp_client_secret` | Client Secret of **Super Banking MCP Service** app |
 | `username` | Test user login |
 | `password` | Test user password |
 
@@ -762,7 +762,7 @@ Pre-filled: `base_url`, `resource` (`https://ai-agent.pingdemo.com`), `redirect_
 
 ### One-time PingOne setup
 
-Add `https://oauth.pstmn.io/v1/callback` as a **Redirect URI** on the **BX Finance User** app (Configuration tab). This allows Postman's OAuth2 helper to complete the PKCE flow. Remove it after testing if desired.
+Add `https://oauth.pstmn.io/v1/callback` as a **Redirect URI** on the **Super Banking User** app (Configuration tab). This allows Postman's OAuth2 helper to complete the PKCE flow. Remove it after testing if desired.
 
 ### ⚠️ Clear cookies before each full run
 
@@ -833,7 +833,7 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
   "may_act": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
 }
 ```
-`may_act.sub` = the **client ID UUID** of BX Finance Banking App. PingOne compares this to the actor token’s `client_id` during Exchange #1.
+`may_act.sub` = the **client ID UUID** of Super Banking Banking App. PingOne compares this to the actor token’s `client_id` during Exchange #1.
 
 **MCP Token** — after Token Exchange #1 (Token 2):
 ```json
@@ -844,7 +844,7 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
   "act": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
 }
 ```
-`act.sub` = **client ID UUID** of BX Finance Banking App — verifiable proof it performed Exchange #1.
+`act.sub` = **client ID UUID** of Super Banking Banking App — verifiable proof it performed Exchange #1.
 
 **PingOne API Token** — from Client Credentials (Token 3):
 ```json
@@ -862,12 +862,12 @@ The MCP server holds both Token 2 (proves who the user is + delegation) and Toke
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Subject Token `aud` is the app client ID, not `https://ai-agent.pingdemo.com` | `ENDUSER_AUDIENCE` not set, or `resource=` missing from `/authorize` | Set `ENDUSER_AUDIENCE=https://ai-agent.pingdemo.com`; ensure `ff_oidc_only_authorize=false` |
-| `invalid_scope: banking:agent:invoke` on login | Scope not allowed on `BX Finance User` app | Part 2a — enable `banking:agent:invoke` scope on the Resources tab |
+| `invalid_scope: banking:agent:invoke` on login | Scope not allowed on `Super Banking User` app | Part 2a — enable `banking:agent:invoke` scope on the Resources tab |
 | `may_act` missing from Subject Token | Token claim mapping missing, or user's `mayAct` attribute is null | Part 3b (add claim map) and Part 3c (set attribute on user) |
 | `may_act` is a plain string, not an object | `mayAct` schema attribute type is `STRING` | Delete and re-create as type `JSON`; re-set the value on the user |
 | Subject Token → MCP Token: `invalid_grant` | `may_act.sub` doesn’t match the Banking App’s client ID | Set `mayAct` = `{ "sub": "<PINGONE_CORE_CLIENT_ID-UUID>" }` on the user — use Option C (demo app) to set it automatically |
-| Subject Token → MCP Token: `unauthorized_client` | `BX Finance Banking App` missing Token Exchange grant type | Part 2b — enable Token Exchange grant |
-| MCP Service client credentials failing (`invalid_scope: p1:read:user`) | `p1:read:user`/`p1:update:user` not enabled on app Resources tab | Enable both scopes on the **Resources tab** of **BX Finance MCP Service** (Part 2c). Do **not** add `openid` to the CC scope — it causes `invalid_scope` for Web App type client credentials |
+| Subject Token → MCP Token: `unauthorized_client` | `Super Banking Banking App` missing Token Exchange grant type | Part 2b — enable Token Exchange grant |
+| MCP Service client credentials failing (`invalid_scope: p1:read:user`) | `p1:read:user`/`p1:update:user` not enabled on app Resources tab | Enable both scopes on the **Resources tab** of **Super Banking MCP Service** (Part 2c). Do **not** add `openid` to the CC scope — it causes `invalid_scope` for Web App type client credentials |
 | MCP Service client credentials failing (`unauthorized_client`) | App type is Worker (role-based, can't use resource scopes) | Part 2c — create as Native or Web App type, not Worker |
 | `May not request scopes for multiple resources` on login | `banking:agent:invoke` and `banking:*` scopes mixed in the same `/authorize` | Keep only `banking:agent:invoke` as a non-OIDC scope on the user app; `banking:*` scopes come via exchange, not direct login |
 

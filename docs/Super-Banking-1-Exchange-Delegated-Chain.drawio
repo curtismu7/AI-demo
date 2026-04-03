@@ -6,7 +6,7 @@
     <!-- ══════════════════════════════════════════════════════════════════ -->
     <!-- TITLE                                                              -->
     <!-- ══════════════════════════════════════════════════════════════════ -->
-    <mxCell id="2" value="BX Finance — 1-Exchange Delegated Chain (RFC 8693)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=17;fontStyle=1;" vertex="1" parent="1">
+    <mxCell id="2" value="Super Banking — 1-Exchange Delegated Chain (RFC 8693)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=17;fontStyle=1;" vertex="1" parent="1">
       <mxGeometry x="20" y="12" width="1360" height="30" as="geometry"/>
     </mxCell>
     <mxCell id="3" value="One RFC 8693 token exchange: Subject Token → MCP Token. MCP Server independently gets PingOne API token via Client Credentials." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;" vertex="1" parent="1">
@@ -44,7 +44,7 @@
     <mxCell id="104" value="&lt;b&gt;TOKEN 1 — Subject Token&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot; style=&quot;font-size:10px;&quot;&gt;{&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;sub&quot;:  &quot;&amp;lt;user-id&amp;gt;&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;aud&quot;:  [&quot;https://ai-agent.pingdemo.com&quot;],&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;scope&quot;: &quot;profile email banking:agent:invoke&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;may_act&quot;: { &quot;sub&quot;: &quot;&amp;lt;BANKING_APP_CLIENT_ID&amp;gt;&quot; }&lt;br&gt;}&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="580" y="88" width="800" height="116" as="geometry"/>
     </mxCell>
-    <mxCell id="105" value="may_act.sub = Banking App client ID&lt;br&gt;configured on BX Finance AI Agent resource server (Attribute Mappings tab)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f0cd00;fontSize=10;align=center;" vertex="1" parent="1">
+    <mxCell id="105" value="may_act.sub = Banking App client ID&lt;br&gt;configured on Super Banking AI Agent resource server (Attribute Mappings tab)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f0cd00;fontSize=10;align=center;" vertex="1" parent="1">
       <mxGeometry x="580" y="210" width="800" height="24" as="geometry"/>
     </mxCell>
 
@@ -63,7 +63,7 @@
     <mxCell id="204" value="&lt;b&gt;TOKEN 2 — MCP Token&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot; style=&quot;font-size:10px;&quot;&gt;{&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;sub&quot;:  &quot;&amp;lt;user-id&amp;gt;&quot;,   &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;// preserved from Token 1&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;aud&quot;:  [&quot;https://mcp-server.pingdemo.com&quot;],&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;scope&quot;: &quot;banking:accounts:read  banking:transactions:read  banking:transactions:write&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;act&quot;:  { &quot;sub&quot;: &quot;&amp;lt;BANKING_APP_CLIENT_ID&amp;gt;&quot; }  // may_act promoted to act&lt;br&gt;}&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="580" y="248" width="800" height="120" as="geometry"/>
     </mxCell>
-    <mxCell id="205" value="act.sub = BANKING_APP_CLIENT_ID. Proves delegation: user authorised Banking App to act on their behalf.&lt;br&gt;SpEL on BX Finance MCP Server resource: (subjectToken?.may_act?.sub == actorToken?.aud?.get(0)) ? subjectToken?.may_act : null" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f0cd00;fontSize=10;align=center;" vertex="1" parent="1">
+    <mxCell id="205" value="act.sub = BANKING_APP_CLIENT_ID. Proves delegation: user authorised Banking App to act on their behalf.&lt;br&gt;SpEL on Super Banking MCP Server resource: (subjectToken?.may_act?.sub == actorToken?.aud?.get(0)) ? subjectToken?.may_act : null" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f0cd00;fontSize=10;align=center;" vertex="1" parent="1">
       <mxGeometry x="580" y="374" width="800" height="28" as="geometry"/>
     </mxCell>
 
@@ -150,14 +150,14 @@
     <mxCell id="533" value="Client Credentials (MCP Service)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="440" y="792" width="220" height="30" as="geometry"/>
     </mxCell>
-    <mxCell id="534" value="BX Finance MCP Service (no user sub)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+    <mxCell id="534" value="Super Banking MCP Service (no user sub)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="660" y="792" width="300" height="30" as="geometry"/>
     </mxCell>
 
     <!-- ══════════════════════════════════════════════════════════════════ -->
     <!-- SpEL NOTE                                                          -->
     <!-- ══════════════════════════════════════════════════════════════════ -->
-    <mxCell id="600" value="&lt;b&gt;PingOne SpEL — BX Finance MCP Server resource → Attribute Mappings → act claim:&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot; style=&quot;font-size:10px;&quot;&gt;(#root.context.requestData.subjectToken?.may_act?.sub != null &amp;amp;&amp;amp; #root.context.requestData.subjectToken?.may_act?.sub == #root.context.requestData.actorToken?.aud?.get(0))&lt;br&gt;&amp;nbsp;&amp;nbsp;? #root.context.requestData.subjectToken?.may_act : null&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#f0cd00;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+    <mxCell id="600" value="&lt;b&gt;PingOne SpEL — Super Banking MCP Server resource → Attribute Mappings → act claim:&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot; style=&quot;font-size:10px;&quot;&gt;(#root.context.requestData.subjectToken?.may_act?.sub != null &amp;amp;&amp;amp; #root.context.requestData.subjectToken?.may_act?.sub == #root.context.requestData.actorToken?.aud?.get(0))&lt;br&gt;&amp;nbsp;&amp;nbsp;? #root.context.requestData.subjectToken?.may_act : null&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffde7;strokeColor=#f0cd00;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="20" y="838" width="1360" height="52" as="geometry"/>
     </mxCell>
 

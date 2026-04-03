@@ -23,7 +23,7 @@ function _sanitizeUrl(url) {
 
 /**
  * Static examples for PingOne allowlists — register every host you actually use.
- * Paths are fixed; origins match common BX Finance deployments (local + custom API domain).
+ * Paths are fixed; origins match common Super Banking deployments (local + custom API domain).
  */
 const REFERENCE_REDIRECT_SETS = [
   {

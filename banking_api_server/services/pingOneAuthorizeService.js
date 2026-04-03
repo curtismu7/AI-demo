@@ -32,7 +32,7 @@
  *   isMcpDelegationDecisionReady()  — worker + MCP decision endpoint ID configured
  *   getDecisionEndpoints()        — list all decision endpoints in the environment
  *   isWorkerCredentialReady()   — env + worker client id/secret (no decision endpoint required)
- *   provisionDemoDecisionEndpoints(opts) — create/link BX Finance demo decision endpoints via Platform API
+ *   provisionDemoDecisionEndpoints(opts) — create/link Super Banking demo decision endpoints via Platform API
  */
 
 'use strict';
@@ -41,8 +41,8 @@ const crypto = require('crypto');
 const configStore = require('./configStore');
 
 /** Stable names — idempotent GET list + create if missing */
-const DEMO_TX_ENDPOINT_NAME = 'BX Finance Demo — Transactions';
-const DEMO_MCP_ENDPOINT_NAME = 'BX Finance Demo — MCP first tool';
+const DEMO_TX_ENDPOINT_NAME = 'Super Banking Demo — Transactions';
+const DEMO_MCP_ENDPOINT_NAME = 'Super Banking Demo — MCP first tool';
 
 const REGION_TLD_MAP = {
   com: 'com',
@@ -584,7 +584,7 @@ async function provisionDemoDecisionEndpoints(options = {}) {
     const r = await _createDecisionEndpointResource({
       name: DEMO_TX_ENDPOINT_NAME,
       description:
-        'BX Finance demo — transactions (Trust Framework: Amount, TransactionType, UserId, Acr, Timestamp). Created by Application Configuration bootstrap.',
+        'Super Banking demo — transactions (Trust Framework: Amount, TransactionType, UserId, Acr, Timestamp). Created by Application Configuration bootstrap.',
       policyId,
       authorizationVersionId,
     });
@@ -596,7 +596,7 @@ async function provisionDemoDecisionEndpoints(options = {}) {
     const r = await _createDecisionEndpointResource({
       name: DEMO_MCP_ENDPOINT_NAME,
       description:
-        'BX Finance demo — first MCP tool gate (DecisionContext=McpFirstTool). Trust Framework attributes: TokenAudience (aud), ActClientId (act.client_id|act.sub), NestedActClientId (act.act.client_id|act.act.sub). Created by Application Configuration bootstrap.',
+        'Super Banking demo — first MCP tool gate (DecisionContext=McpFirstTool). Trust Framework attributes: TokenAudience (aud), ActClientId (act.client_id|act.sub), NestedActClientId (act.act.client_id|act.act.sub). Created by Application Configuration bootstrap.',
       policyId,
       authorizationVersionId,
     });

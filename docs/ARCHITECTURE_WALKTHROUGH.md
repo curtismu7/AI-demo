@@ -1,6 +1,6 @@
-# BX Finance — Architecture Walkthrough
+# Super Banking — Architecture Walkthrough
 
-> **Who this is for:** Engineers and architects who want to understand the BX Finance 3-layer stack end-to-end — what token exists where at each step of each auth flow, and which RFCs govern each hop.
+> **Who this is for:** Engineers and architects who want to understand the Super Banking 3-layer stack end-to-end — what token exists where at each step of each auth flow, and which RFCs govern each hop.
 >
 > **Companion diagrams:** See the draw.io files in this `docs/` directory for visual sequence diagrams of each flow.
 
@@ -8,7 +8,7 @@
 
 ## 1. Component Map
 
-BX Finance is a three-layer stack. Each layer has a clear responsibility boundary:
+Super Banking is a three-layer stack. Each layer has a clear responsibility boundary:
 
 | Layer | Name | Role | Codebase location |
 |-------|------|------|-------------------|

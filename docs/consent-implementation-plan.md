@@ -1,4 +1,4 @@
-# BX Finance — Agent Consent Implementation Plan
+# Super Banking — Agent Consent Implementation Plan
 
 _Implements the consent pattern from "Securing AI Agents with PingOne using Delegation and Least Privilege"_
 _Last updated: 2026-03-27_
@@ -22,7 +22,7 @@ If they have NOT consented, the token exchange **must be blocked** before PingOn
 
 ## Current state (gap analysis)
 
-| What the PDF requires | What BX Finance does today | Gap |
+| What the PDF requires | What Super Banking does today | Gap |
 |---|---|---|
 | `acr` stored in session after login | `acr` extracted in auth middleware (`req.user.acr`) but **never stored in session** | Store in session on callback |
 | `acr` returned to frontend | Not in `/api/auth/oauth/user/status` response | Add to status endpoint |
@@ -51,7 +51,7 @@ PingOne admin console → **User Experience > Agreements** → **+**
 
 Add English language content:
 - Language: `English (en)`
-- Agreement text: `I consent to allow BX Finance AI agents to act on my behalf`
+- Agreement text: `I consent to allow Super Banking AI agents to act on my behalf`
 - **Enable the agreement** (toggle on the Agreements page)
 
 ### Step 2 — Create the authentication policy
@@ -238,7 +238,7 @@ transaction challenges — keep that as-is):
   <div className="ba-consent-required">
     <p>
       <strong>🔒 Agent permission required</strong><br />
-      BX Finance AI needs your permission to act on your behalf.
+      Super Banking AI needs your permission to act on your behalf.
       This is a one-time consent (valid 180 days).
     </p>
     <button

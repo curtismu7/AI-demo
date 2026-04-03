@@ -1,12 +1,12 @@
-# BX Finance Postman Collections — Quick-Start Guide
+# Super Banking Postman Collections — Quick-Start Guide
 
 ## Collections Overview
 
 | Collection | Audience | Best for |
 |------------|----------|----------|
 | `BX-Finance-1-Exchange-Step-by-Step.postman_collection.json` | Learner | Understanding each OAuth step individually |
-| `BX Finance — 1-Exchange Delegated Chain — pi.flow.postman_collection.json` | Demo runner | Running the full 1-exchange flow quickly |
-| `BX Finance — 2-Exchange Delegated Chain — pi.flow.postman_collection.json` | Demo runner | Running the full 2-exchange (nested delegation) flow |
+| `Super Banking — 1-Exchange Delegated Chain — pi.flow.postman_collection.json` | Demo runner | Running the full 1-exchange flow quickly |
+| `Super Banking — 2-Exchange Delegated Chain — pi.flow.postman_collection.json` | Demo runner | Running the full 2-exchange (nested delegation) flow |
 | `BX-Finance-Advanced-Utilities.postman_collection.json` | Engineer | PAZ policy decisions, token revocation |
 
 All collections use: `BX-Finance-Shared.postman_environment.json`
@@ -17,7 +17,7 @@ All collections use: `BX-Finance-Shared.postman_environment.json`
 
 Before running any collection:
 
-1. **Import the shared environment** — In Postman: **Import** → select `BX-Finance-Shared.postman_environment.json`. Then select **BX Finance — Shared** from the environment dropdown (top-right in Postman).
+1. **Import the shared environment** — In Postman: **Import** → select `BX-Finance-Shared.postman_environment.json`. Then select **Super Banking — Shared** from the environment dropdown (top-right in Postman).
 2. **Fill in your values** — In the environment editor, set:
    - `PINGONE_ENVIRONMENT_ID` — your PingOne environment ID (Admin Console → Settings → Environment ID)
    - `PINGONE_CORE_USER_CLIENT_ID` / `PINGONE_CORE_USER_CLIENT_SECRET` — end-user app credentials
@@ -43,11 +43,11 @@ Each step saves its output token to a collection variable. After Step 2, use **U
 
 ## If you're a Demo Runner (want to run the full flow quickly)
 
-**1-Exchange flow** — Use: **`BX Finance — 1-Exchange Delegated Chain — pi.flow`** + shared env
+**1-Exchange flow** — Use: **`Super Banking — 1-Exchange Delegated Chain — pi.flow`** + shared env
 
 Run steps **1 → 2 → 3 → 4 → 5 → 6 → 7** in order. Steps 1–4 complete the pi.flow authorization; Step 5 performs the RFC 8693 token exchange.
 
-**2-Exchange flow** — Use: **`BX Finance — 2-Exchange Delegated Chain — pi.flow`** + shared env
+**2-Exchange flow** — Use: **`Super Banking — 2-Exchange Delegated Chain — pi.flow`** + shared env
 
 Run steps **1 → 2 → 3 → 4 → 5a → 5b → 6a → 6b → 7 → 8** in order. Steps 5b and 6b are the two RFC 8693 token exchanges that build the nested `act` chain. The final MCP token's `act.sub` is the MCP client, and `act.act.sub` is the AI Agent client.
 
@@ -68,7 +68,7 @@ Use: **`BX-Finance-Advanced-Utilities`** + shared env
 |-------|-------|-----|
 | `stale flow_id` / `TIMEOUT` | pi.flow `flow_id` is valid for 120 seconds. Step 1b timed out. | Re-run Step 1 (Initiate Authorization) to start a new flow, then immediately run Step 2 (Submit Username + Password). |
 | `Variable not set` (pre-request script throws) | A required collection or environment variable is empty. | Read the error message — it names the missing variable. Open the environment editor and fill it in. |
-| `Environment not selected` | No environment is active in Postman — all `{{VARS}}` resolve to empty strings. | Select **BX Finance — Shared** from the environment dropdown (top-right corner in Postman). |
+| `Environment not selected` | No environment is active in Postman — all `{{VARS}}` resolve to empty strings. | Select **Super Banking — Shared** from the environment dropdown (top-right corner in Postman). |
 | `invalid_grant` on token exchange | Subject Token expired, `may_act` not set on user, or `resource` audience mismatch. | Re-run the login steps to get a fresh Subject Token. Verify Utility B (Set mayAct) has been run for the test user. Verify `ENDUSER_AUDIENCE` matches the resource URI registered in PingOne. |
 | PAZ returns 404 | `PAZ_DECISION_ENDPOINT_ID` is wrong or empty. | Find the correct UUID in PingOne Admin → Authorize → Decision Endpoints → copy it from the endpoint's URL. |
 | Token Revocation returns 401 | `MCP_CLIENT_ID` or `MCP_CLIENT_SECRET` is wrong. | Check MCP client credentials in the shared environment file. |

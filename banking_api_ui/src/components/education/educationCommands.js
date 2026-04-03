@@ -34,4 +34,6 @@ export const EDUCATION_COMMANDS = [
   { id: 'llm-compare', label: '📊 LLM Comparison', panel: EDU.LLM_LANDSCAPE, tab: 'comparison' },
   { id: 'ai-platforms', label: '🌐 AI Platform Landscape', panel: EDU.AI_PLATFORM_LANDSCAPE, tab: 'aws' },
   { id: 'ai-platform-compare', label: '📊 AI Platform Comparison', panel: EDU.AI_PLATFORM_LANDSCAPE, tab: 'comparison' },
+  { id: 'sensitive-data', label: '🔒 Sensitive Data & Selective Disclosure', panel: EDU.SENSITIVE_DATA, tab: 'least-data' },
+  { id: 'sensitive-data-rar', label: '🔒 Selective Disclosure: RAR / RFC 9396', panel: EDU.SENSITIVE_DATA, tab: 'rar-selective' },
 ];

@@ -1,4 +1,4 @@
-# BX Finance — Session & Login Reliability Plan
+# Super Banking — Session & Login Reliability Plan
 
 _Last updated: 2026-03-27_
 

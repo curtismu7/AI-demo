@@ -43,6 +43,13 @@ export const AGENT_MCP_SCOPE_CATALOG = [
     description: 'Resolve user by email for agent workflows (query_user_by_email).',
     group: 'specific',
   },
+{
+    scope: 'banking:sensitive:read',
+    label: 'Sensitive account details',
+    description:
+      'Access full account number and routing number. Requires explicit user consent each session. Used by get_sensitive_account_details.',
+    group: 'sensitive',
+  },
 ];
 
 export const DEFAULT_AGENT_MCP_ALLOWED_SCOPES = AGENT_MCP_SCOPE_CATALOG.map((c) => c.scope).join(' ');
