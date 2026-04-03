@@ -454,13 +454,13 @@ Plans:
 
 ### Phase 35: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 
-**Goal:** [To be planned]
+**Goal:** Update FEATURES.md and CHANGELOG.md to document all features added in phases 29–34, with what-it-does and why-it-was-added explanations for each.
 **Requirements**: TBD
 **Depends on:** Phase 34
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 35 to break down)
+- [ ] 35-01-PLAN.md — Update FEATURES.md and CHANGELOG.md for phases 29–34
 
 ### Phase 36: Postman collections and environments audit — update all collections and environments for any missing or changed API routes, auth flows, and MCP endpoints
 
