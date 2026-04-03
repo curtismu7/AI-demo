@@ -271,7 +271,7 @@ Click **Save**.
 
 | Scope name | Description |
 |---|---|
-| `agent:invoke` | Required by PingOne to associate this resource with the Super Banking AI Agent App. The AI Agent App obtains a Client Credentials token carrying this scope and presents it as `actor_token` in Exchange #1. PingOne requires at least one scope on a resource before an app can select it on the Resources tab — without this, the resource won't appear on the app's Resources tab at all. |
+| `agent:invoke` | Required by PingOne to associate this resource with the Super Banking AI Agent App. The AI Agent App obtains a Client Credentials token carrying this scope and presents it as the actor_token in Exchange #1. PingOne requires at least one scope on a resource before an app can select it on the Resources tab - without this, the resource will not appear on the app's Resources tab at all. |
 
 > The **Super Banking AI Agent App** must select `agent:invoke` from this resource on its Resources tab (Step 2b).
 
@@ -395,7 +395,7 @@ Click **Save**.
 
 | Scope name | Description |
 |---|---|
-| `mcp:invoke` | Required by PingOne to associate this resource with the Super Banking MCP Token Exchanger App. The MCP Token Exchanger obtains a Client Credentials token carrying this scope and presents it as `actor_token` in Exchange #2. PingOne requires at least one scope on a resource before an app can select it on the Resources tab — without this, the resource won't appear on the app's Resources tab at all. |
+| `mcp:invoke` | Required by PingOne to associate this resource with the Super Banking MCP Token Exchanger App. The MCP Token Exchanger obtains a Client Credentials token carrying this scope and presents it as the actor_token in Exchange #2. PingOne requires at least one scope on a resource before an app can select it on the Resources tab - without this, the resource will not appear on the app's Resources tab at all. |
 
 > The **Super Banking MCP Token Exchanger** app must select `mcp:invoke` from this resource on its Resources tab (Step 2c).
 
