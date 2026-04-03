@@ -37,7 +37,7 @@
 .App.App--has-quick-nav {
   --float-edge: 12px;
   --stack-fab-top-quick-nav: var(--stack-fab-top-base);
-  --quick-nav-stack-height: calc(4 * var(--stack-fab-height) + 3 * var(--stack-fab-gap));
+  --quick-nav-stack-height: calc(7 * var(--stack-fab-height) + 6 * var(--stack-fab-gap)); /* overridden by DashboardQuickNav.js */
   --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height) + var(--stack-fab-gap));
   /* Page content clears quick nav + demo */
   --rail-content-gap: 16px;
@@ -405,7 +405,7 @@ html[data-theme='dark'] .App--marketing-page .main-content {
   }
   .App.App--has-quick-nav {
     --stack-fab-top-quick-nav: var(--stack-fab-top-base);
-    --quick-nav-stack-height: calc(4 * var(--stack-fab-height) + 3 * var(--stack-fab-gap));
+    --quick-nav-stack-height: calc(7 * var(--stack-fab-height) + 6 * var(--stack-fab-gap));
     --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height) + var(--stack-fab-gap));
   }
   .App.App--has-nav-dash {

@@ -1,4 +1,5 @@
 // banking_api_ui/src/components/DashboardQuickNav.js
+import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { isDashboardQuickNavRoute } from '../utils/embeddedAgentFabVisibility';
 import './DashboardQuickNav.css';
@@ -11,11 +12,20 @@ const POPOUT = 'width=1400,height=900,scrollbars=yes,resizable=yes';
  */
 export default function DashboardQuickNav({ user }) {
   const { pathname } = useLocation();
+  const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    if (!user || !isDashboardQuickNavRoute(pathname, user)) return;
+    // Home + Dashboard + Agent + [Banking admin] + [Config admin] + API + Logs
+    const count = 5 + (isAdmin ? 2 : 0);
+    const height = count * 44 + (count - 1) * 8;
+    document.documentElement.style.setProperty('--quick-nav-stack-height', `${height}px`);
+  }, [isAdmin, user, pathname]);
+
   if (!user || !isDashboardQuickNavRoute(pathname, user)) {
     return null;
   }
 
-  const isAdmin = user?.role === 'admin';
   const dashboardPath = user ? (isAdmin ? '/admin' : '/dashboard') : '/dashboard';
 
   const openApiPopout = () => {
