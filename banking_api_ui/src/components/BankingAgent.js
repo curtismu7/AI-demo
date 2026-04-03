@@ -465,12 +465,21 @@ function TransactionsTable({ transactions }) {
 
 /** Renders sequential_think reasoning steps as a collapsible block. */
 function ReasoningSteps({ steps, conclusion }) {
-  if (!steps?.length) return null;
+  if (!steps?.length && !conclusion) {
+    return (
+      <div className="ba-reasoning ba-reasoning--empty">
+        <span className="ba-reasoning__icon" aria-hidden>🧠</span>
+        <span className="ba-reasoning__label" style={{color:'var(--color-text-secondary,#6b7280)',fontSize:'0.85rem',marginLeft:6}}>
+          Sequential thinking unavailable (MCP server not connected)
+        </span>
+      </div>
+    );
+  }
   return (
-    <details className="ba-reasoning">
+    <details className="ba-reasoning" open>
       <summary className="ba-reasoning__summary">
         <span className="ba-reasoning__icon" aria-hidden>🧠</span>
-        <span className="ba-reasoning__label">Reasoning ({steps.length} steps)</span>
+        <span className="ba-reasoning__label">Reasoning ({steps?.length ?? 0} steps)</span>
       </summary>
       <div className="ba-reasoning__body">
         <ol className="ba-reasoning__steps">
@@ -2063,6 +2072,7 @@ export default function BankingAgent({
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tool: 'sequential_think', params: { query } }),
+          signal: AbortSignal.timeout(8000),
         });
         const data = await res.json();
         let steps = [], conclusion = '';
