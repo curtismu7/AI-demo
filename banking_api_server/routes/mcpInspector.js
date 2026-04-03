@@ -197,7 +197,7 @@ router.post('/invoke', express.json(), async (req, res) => {
       return authRequired(res);
     }
     const started = Date.now();
-    const result = await callToolLocal(tool, params || {}, effectiveUserId);
+    const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
     const durationMs = Date.now() - started;
     return res.json({
       result,
