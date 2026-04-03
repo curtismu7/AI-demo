@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Every user-visible feature in BX Finance, grouped by area.
+Every user-visible feature in Super Banking, grouped by area.
 Update this file when a feature is **added**, **removed**, or when test coverage changes.
 
 **Column guide:**

@@ -1,9 +1,9 @@
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
-**BX Finance — AI Banking Demo**
+**Super Banking — AI Banking Demo**
 
-A hands-on educational demo that teaches developers, architects, and conference audiences how to implement secure AI agent authentication using real OAuth 2.0 / OIDC standards. The demo uses a fictional bank (BX Finance) to show three distinct authentication flows, two token exchange patterns (RFC 8693), CIBA, and the full MCP 2025-11-25 spec — all running live, with in-app education panels explaining each concept as it happens.
+A hands-on educational demo that teaches developers, architects, and conference audiences how to implement secure AI agent authentication using real OAuth 2.0 / OIDC standards. The demo uses a fictional bank (Super Banking) to show three distinct authentication flows, two token exchange patterns (RFC 8693), CIBA, and the full MCP 2025-11-25 spec — all running live, with in-app education panels explaining each concept as it happens.
 
 **Core Value:** A developer who completes a 5-minute walkthrough of the live demo should understand exactly how to implement a secure, delegated AI agent that acts on behalf of a human user without ever exposing raw tokens to the browser or the agent.
 
