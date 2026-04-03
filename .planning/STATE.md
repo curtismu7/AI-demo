@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-03T11:21:58.689Z"
+status: planning
+last_updated: "2026-04-03T12:30:00Z"
 progress:
-  total_phases: 42
-  completed_phases: 22
-  total_plans: 57
-  completed_plans: 54
+  total_phases: 44
+  completed_phases: 24
+  total_plans: 58
+  completed_plans: 56
 ---
 
 # State — BX Finance AI Banking Demo
@@ -20,9 +20,9 @@ progress:
 
 ## Current Position
 
-Phase: 33
-Plan: 1 of 1
-**Status:** Executing Phase 33
+Phase: 34
+Plan: Not started
+**Status:** Ready to plan
 
 ---
 
@@ -70,7 +70,7 @@ Plan: 1 of 1
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
 - Redeploy to Vercel (commits since last deploy include Phase 29: 3ca82da)
-- When merged to main: update raw doc links from `fix/dashboard-fab-positioning` → `main`
+- ~~When merged to main: update raw doc links~~ *(merged to main 2026-04-03)*
 - **[TODO -> Phase 4]** UI consistency audit — enterprise-grade cross-SPA visual polish (04-04-PLAN.md)
 - **[TODO -> Phase 4]** Marketing page agent dock UI match — dock styling should match /marketing page design language (04-04-PLAN.md)
 - **[Phase 6]** Fix RFC 8693 token exchange: PingOne returning "Unsupported authentication method" — investigate agentMcpTokenService.js client auth method

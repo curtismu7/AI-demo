@@ -436,7 +436,7 @@ Plans:
 **Goal:** Persist token chain history[] across page refreshes via localStorage (cap 20, clear on logout). Fold in sub/act.sub claim display as User ID / Agent ID in TokenChainDisplay.
 **Requirements**: PERSIST-01, PERSIST-02, PERSIST-03, SUB-CLAIM-01
 **Depends on:** Phase 32
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 33-01-PLAN.md — localStorage persistence + sub/act.sub display + clear on logout

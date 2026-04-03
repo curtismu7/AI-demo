@@ -25,6 +25,8 @@ A developer who completes a 5-minute walkthrough of the live demo should underst
 - ✓ Async UX mode selector (job-id/spinner/transparent) on Config page, localStorage-persisted — Phase 32
 - ✓ MCP audit trail (`/audit` admin route + `/api/mcp/audit` BFF proxy + AuditLogger) — Phase 32
 - ✓ MCP registry manifest (`mcpServers` in package.json + AI Client Setup in README) — Phase 32
+- ✓ Token chain history persisted in localStorage (lazy init, 300ms debounce, clear on logout) — Phase 33
+- ✓ JWT claim human-readable labels in token chain panel (sub → "User ID", act → "Agent ID" pill) — Phase 33
 
 ### Active
 
