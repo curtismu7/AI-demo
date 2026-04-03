@@ -21,6 +21,8 @@ export default function AuditPage({ onClose } = {}) {
   const [error, setError] = useState(null);
   const [filterEventType, setFilterEventType] = useState('');
   const [filterOutcome, setFilterOutcome] = useState('');
+  const [filterAgentId, setFilterAgentId] = useState('');
+  const [filterOperation, setFilterOperation] = useState('');
 
   // Floating window position + size — centred on first render (not used in popout mode)
   const [pos, setPos] = useState(() => ({
@@ -91,6 +93,8 @@ export default function AuditPage({ onClose } = {}) {
       const params = new URLSearchParams();
       if (filterEventType) params.set('eventType', filterEventType);
       if (filterOutcome) params.set('outcome', filterOutcome);
+      if (filterAgentId) params.set('agentId', filterAgentId);
+      if (filterOperation) params.set('operation', filterOperation);
       const paramStr = params.toString();
       const [eventsRes, summaryRes] = await Promise.all([
         fetch(`/api/mcp/audit${paramStr ? '?' + paramStr : ''}`, { credentials: 'include' }),
@@ -108,7 +112,7 @@ export default function AuditPage({ onClose } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filterEventType, filterOutcome]);
+  }, [filterEventType, filterOutcome, filterAgentId, filterOperation]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -148,6 +152,22 @@ export default function AuditPage({ onClose } = {}) {
           <option value="">All outcomes</option>
           {OUTCOMES.filter(Boolean).map(o => <option key={o} value={o}>{o}</option>)}
         </select>
+        <input
+          type="text"
+          value={filterAgentId}
+          onChange={e => setFilterAgentId(e.target.value)}
+          className="audit-filter-select"
+          placeholder="Agent ID…"
+          aria-label="Filter by agent ID"
+        />
+        <input
+          type="text"
+          value={filterOperation}
+          onChange={e => setFilterOperation(e.target.value)}
+          className="audit-filter-select"
+          placeholder="Tool / operation…"
+          aria-label="Filter by tool or operation"
+        />
       </div>
       {error && (
         <div className="audit-page__error">
@@ -160,22 +180,33 @@ export default function AuditPage({ onClose } = {}) {
           <table className="audit-table">
             <thead>
               <tr>
-                <th>Time</th><th>Event Type</th><th>User ID</th><th>Outcome</th><th>Resource / Tool</th><th>Details</th>
+                <th>Time</th><th>Event Type</th><th>Agent ID</th><th>User ID</th><th>Tool / Operation</th><th>Outcome</th><th>Duration</th><th>Details</th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={6} className="audit-table__empty">Loading…</td></tr>}
-              {!loading && events.length === 0 && <tr><td colSpan={6} className="audit-table__empty">No audit events found.</td></tr>}
+              {loading && <tr><td colSpan={8} className="audit-table__empty">Loading…</td></tr>}
+              {!loading && events.length === 0 && <tr><td colSpan={8} className="audit-table__empty">No audit events found.</td></tr>}
               {!loading && events.map((ev, i) => (
                 <tr key={ev.eventId ?? i} className={`audit-row audit-row--${ev.outcome}`}>
                   <td className="audit-cell--time">{formatTime(ev.timestamp)}</td>
                   <td><span className="audit-badge audit-badge--type">{ev.eventType}</span></td>
+                  <td className="audit-cell--user" title={ev.agentId ?? ''}>{ev.agentId ? ev.agentId.slice(0, 16) + (ev.agentId.length > 16 ? '…' : '') : '—'}</td>
                   <td className="audit-cell--user">{ev.userId ?? '—'}</td>
+                  <td>{ev.operation ?? ev.resourceType ?? '—'}</td>
                   <td><span className={`audit-badge audit-badge--outcome audit-badge--outcome--${ev.outcome}`}>{ev.outcome}</span></td>
-                  <td>{ev.resourceType ?? ev.operation ?? '—'}</td>
+                  <td className="audit-cell--duration">{ev.duration != null ? `${ev.duration}ms` : '—'}</td>
                   <td className="audit-cell--details">
-                    {ev.details ? (
-                      <details><summary>show</summary><pre className="audit-details-pre">{JSON.stringify(ev.details, null, 2)}</pre></details>
+                    {(ev.details || ev.scope || ev.requestSummary) ? (
+                      <details>
+                        <summary>show</summary>
+                        <pre className="audit-details-pre">{JSON.stringify({
+                          ...(ev.scope ? { scope: ev.scope } : {}),
+                          ...(ev.tokenType ? { tokenType: ev.tokenType } : {}),
+                          ...(ev.requestSummary ? { requestSummary: ev.requestSummary } : {}),
+                          ...(ev.responseSummary ? { responseSummary: ev.responseSummary } : {}),
+                          ...(ev.details ?? {}),
+                        }, null, 2)}</pre>
+                      </details>
                     ) : '—'}
                   </td>
                 </tr>
