@@ -253,6 +253,19 @@ export class BankingAPIClient {
   }
 
   /**
+   * Get sensitive account details (full account number + routing number).
+   * Returns the raw BFF response — caller handles consent_required / denied shapes.
+   */
+  async getSensitiveAccountDetails(userToken: string): Promise<Record<string, unknown>> {
+    const response = await this.makeAuthenticatedRequest<Record<string, unknown>>(
+      'GET',
+      '/api/accounts/sensitive-details',
+      userToken
+    );
+    return response.data;
+  }
+
+  /**
    * Validate transaction amount
    */
   private validateTransactionAmount(amount: number): void {
