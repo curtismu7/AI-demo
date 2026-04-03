@@ -1,7 +1,7 @@
-# SPIFFE / SPIRE — Implementation Plan (BX Finance Banking Demo)
+# SPIFFE / SPIRE — Implementation Plan (Super Banking Banking Demo)
 
 This document defines the integration strategy for **SPIFFE** (Secure Production Identity
-Framework For Everyone) in BX Finance. It follows the same structure as
+Framework For Everyone) in Super Banking. It follows the same structure as
 `PINGONE_AUTHORIZE_PLAN.md` and should be updated as work progresses.
 
 ---
@@ -27,7 +27,7 @@ SPIFFE is a CNCF standard for **cryptographic workload identity**.  Instead of s
 
 ## Why it matters for this demo
 
-BX Finance already demonstrates **RFC 8693 Token Exchange** with an `actor_token` (client
+Super Banking already demonstrates **RFC 8693 Token Exchange** with an `actor_token` (client
 credentials) to prove *which service* is acting on the user's behalf.  The `act` claim
 carries `client_id` — a PingOne secret.
 

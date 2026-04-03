@@ -1,6 +1,6 @@
 # Vercel Deployment Setup Guide
 
-Complete guide for deploying the BX Finance Banking Demo to Vercel.
+Complete guide for deploying the Super Banking Banking Demo to Vercel.
 
 ---
 

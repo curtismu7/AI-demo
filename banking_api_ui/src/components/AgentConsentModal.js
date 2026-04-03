@@ -137,7 +137,7 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss }) 
           ) : (
             <>
               <p className="acm-body">
-                The <strong>BX Finance AI Assistant</strong> is requesting permission to act
+                The <strong>Super Banking AI Assistant</strong> is requesting permission to act
                 on your behalf — for example, checking balances, viewing transactions, and
                 initiating transfers.
               </p>
@@ -148,7 +148,7 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss }) 
                 <li>⛔ The agent cannot change your credentials or contact details</li>
               </ul>
               <p className="acm-legal">
-                By clicking <em>Allow</em> you consent to allow the BX Finance AI agent to act
+                By clicking <em>Allow</em> you consent to allow the Super Banking AI agent to act
                 on your behalf for the duration of this session, under the{' '}
                 <a
                   href="https://www.rfc-editor.org/rfc/rfc8693"

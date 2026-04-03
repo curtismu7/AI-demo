@@ -23,6 +23,7 @@ import LangChainPanel from './LangChainPanel';
 import AgentBuilderLandscapePanel from './AgentBuilderLandscapePanel';
 import LlmLandscapePanel from './LlmLandscapePanel';
 import AiPlatformLandscapePanel from './AiPlatformLandscapePanel';
+import SensitiveDataPanel from './SensitiveDataPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -53,6 +54,7 @@ export default function EducationPanelsHost() {
       <AgentBuilderLandscapePanel isOpen={panel === EDU.AGENT_BUILDER_LANDSCAPE} onClose={close} initialTabId={tab} />
       <LlmLandscapePanel isOpen={panel === EDU.LLM_LANDSCAPE} onClose={close} initialTabId={tab} />
       <AiPlatformLandscapePanel isOpen={panel === EDU.AI_PLATFORM_LANDSCAPE} onClose={close} initialTabId={tab} />
+      <SensitiveDataPanel isOpen={panel === EDU.SENSITIVE_DATA} onClose={close} initialTabId={tab} />
     </>
   );
 }

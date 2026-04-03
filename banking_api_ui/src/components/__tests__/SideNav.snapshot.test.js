@@ -6,7 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import SideNav from '../SideNav';
 
 jest.mock('../../context/IndustryBrandingContext', () => ({
-  useIndustryBranding: () => ({ preset: { shortName: 'BX Finance', id: 'banking' } }),
+  useIndustryBranding: () => ({ preset: { shortName: 'Super Banking', id: 'banking' } }),
 }));
 
 jest.mock('../../context/EducationUIContext', () => ({

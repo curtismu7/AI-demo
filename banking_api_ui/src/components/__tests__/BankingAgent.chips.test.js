@@ -23,7 +23,7 @@ jest.mock('../../context/ThemeContext', () => ({
 
 jest.mock('../../context/IndustryBrandingContext', () => ({
   useIndustryBranding: () => ({
-    preset: { shortName: 'BX Finance', name: 'BX Finance' },
+    preset: { shortName: 'Super Banking', name: 'Super Banking' },
   }),
 }));
 
@@ -436,7 +436,7 @@ describe('Education popup chips (⚡ button)', () => {
 describe('Server status chips in header', () => {
   it('shows brand name in the panel when logged in', () => {
     renderAgent({ user: customerUser, mode: 'inline' });
-    expect(screen.getByText(/BX Finance/i)).toBeInTheDocument();
+    expect(screen.getByText(/Super Banking/i)).toBeInTheDocument();
   });
 
   it('does not crash in float mode (server chips rendered after open)', async () => {

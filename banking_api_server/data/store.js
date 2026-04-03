@@ -163,6 +163,15 @@ class DataStore {
     return deleted;
   }
 
+  /**
+   * Account schema fields (stored in in-memory Map, passed through from createAccount):
+   * id, userId, accountType, name, balance, currency, status, createdAt, isActive,
+   * accountNumberFull (12-digit raw, e.g. "010123456789"),
+   * accountNumber (masked display value "****XXXX"),
+   * routingNumber (9-digit ABA routing, sensitive — omitted from GET /api/accounts/my),
+   * swiftCode (e.g. "CHASUS33"), iban, branchName, branchCode,
+   * openedDate (ISO date string), accountHolderName.
+   */
   getAllAccounts() {
     return Array.from(this.accounts.values());
   }

@@ -1,4 +1,4 @@
-# CLAUDE.md — Agent guide (BX Finance Banking Demo)
+# CLAUDE.md — Agent guide (Super Banking Banking Demo)
 
 **Canonical** agent instructions for this repo. [`AGENTS.md`](AGENTS.md) points here for tools that expect that filename.
 

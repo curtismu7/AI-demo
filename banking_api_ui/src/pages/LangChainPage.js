@@ -55,7 +55,7 @@ export default function LangChainPage() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <Link to="/" style={{ fontSize: 13, color: '#1565c0', textDecoration: 'none' }}>← Back</Link>
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700 }}>LangChain in BX Finance</h1>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700 }}>LangChain in Super Banking</h1>
       </div>
 
       {/* Live model indicator */}

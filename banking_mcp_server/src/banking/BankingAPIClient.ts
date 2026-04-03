@@ -257,12 +257,31 @@ export class BankingAPIClient {
    * Returns the raw BFF response — caller handles consent_required / denied shapes.
    */
   async getSensitiveAccountDetails(userToken: string): Promise<Record<string, unknown>> {
-    const response = await this.makeAuthenticatedRequest<Record<string, unknown>>(
-      'GET',
-      '/api/accounts/sensitive-details',
-      userToken
-    );
-    return response.data;
+    try {
+      const response = await this.makeAuthenticatedRequest<Record<string, unknown>>(
+        'GET',
+        '/api/accounts/sensitive-details',
+        userToken
+      );
+      return response.data;
+    } catch (error: any) {
+      // 428 step_up_required — extract body so BankingToolProvider can handle it gracefully
+      const status = error?.statusCode ?? error?.response?.status;
+      if (status === 428) {
+        const body = error?.originalError?.response?.data;
+        if (body && body.step_up_required) {
+          return body as Record<string, unknown>;
+        }
+        // Fallback if body not accessible via originalError
+        return {
+          ok: false,
+          step_up_required: true,
+          error: 'step_up_required',
+          step_up_method: 'email',
+        };
+      }
+      throw error; // Re-throw all other errors
+    }
   }
 
   /**

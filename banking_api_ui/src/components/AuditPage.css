@@ -290,3 +290,11 @@
   overflow-y: auto;
   padding: 16px;
 }
+
+.audit-cell--duration {
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85em;
+  color: var(--text-muted, #888);
+}

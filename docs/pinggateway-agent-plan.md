@@ -1,4 +1,4 @@
-# BX Finance — Secure AI Agent: PingGateway + Consent Implementation Plan
+# Super Banking — Secure AI Agent: PingGateway + Consent Implementation Plan
 
 _Source: "Securing AI Agents with PingOne using Delegation and Least Privilege"_
 _Last updated: 2026-03-27_
@@ -7,14 +7,14 @@ _Last updated: 2026-03-27_
 
 ## Decision: Extend the existing app, not a new one
 
-**Short answer: extend BX Finance.**
+**Short answer: extend Super Banking.**
 
 The PDF describes the same banking chatbot use case — a digital assistant acting on behalf
-of a customer to read balances and make transfers. BX Finance already implements the core
+of a customer to read balances and make transfers. Super Banking already implements the core
 pattern: Authorization Code + PKCE → user token with `may_act` → RFC 8693 token exchange
 → MCP token with `act` claim → MCP server.
 
-The PDF adds **two layers BX Finance is missing**:
+The PDF adds **two layers Super Banking is missing**:
 
 1. **User consent** — a PingOne consent agreement that gates agent delegation, enforced
    in the BFF before token exchange and surfaced in the agent panel UI
@@ -37,7 +37,7 @@ PDF pattern:
   Agent → Token Exchange (subject=User Token, actor=Agent Token) → MCP Token (act+sub)
   Agent → PingGateway /mcp (Bearer: MCP Token) → MCP Server
 
-BX Finance today:
+Super Banking today:
   User → Banking Web App (OIDC/PKCE, NO consent step)  ⚠️ no acr, may_act unverified
   BFF  → PingOne Client Credentials → Actor Token        ⚠️ disabled (USE_AGENT_ACTOR_FOR_MCP=false)
   BFF  → Token Exchange → MCP Token                     ⚠️ proceeds even without may_act
@@ -46,7 +46,7 @@ BX Finance today:
 
 ### Gap analysis
 
-| PDF Requirement | BX Finance Today | Gap |
+| PDF Requirement | Super Banking Today | Gap |
 |---|---|---|
 | OIDC Web App with PKCE | ✅ `user_client_id` | None |
 | Consent Agreement ("Agent Consent") | ❌ Not present | New PingOne config + app enforcement |
@@ -75,7 +75,7 @@ BX Finance today:
 
 When a user first uses the AI agent, PingOne must show them a consent agreement:
 
-> _"I consent to allow BX Finance AI agents to act on my behalf"_
+> _"I consent to allow Super Banking AI agents to act on my behalf"_
 
 After they accept:
 - User token carries `acr: "Agent-Consent-Login"` — proof consent occurred this session
@@ -97,7 +97,7 @@ All of these are admin console steps. Complete them before any code or env var c
 
 **A1. Register the AI Agent** _(Applications > AI Agents — already done ✅)_
 
-BX Finance already uses PingOne AI Agents. Confirm the registered agent has:
+Super Banking already uses PingOne AI Agents. Confirm the registered agent has:
 
 | Field | Required value |
 |---|---|
@@ -151,7 +151,7 @@ PingOne admin console → **User Experience > Agreements** → **+**
 
 Add English language:
 - Language: `English (en)`
-- Agreement text: `I consent to allow BX Finance AI agents to act on my behalf`
+- Agreement text: `I consent to allow Super Banking AI agents to act on my behalf`
 
 **Enable the agreement** (toggle on the Agreements page after saving).
 
@@ -522,7 +522,7 @@ banner which handles high-value transaction challenges):
   <div className="ba-consent-required">
     <p>
       <strong>🔒 Agent permission required</strong><br />
-      BX Finance AI needs your permission to act on your behalf.
+      Super Banking AI needs your permission to act on your behalf.
       This is a one-time consent (valid 180 days).
     </p>
     <button className="ba-consent-btn" onClick={handleGrantConsent}>
@@ -629,7 +629,7 @@ unchanged, so local development without PingGateway continues to work.
 1. User clicks "Customer sign in" on Landing Page
    └─► PingOne: Login step
    └─► PingOne: "Agent Consent" Agreement Prompt
-         "I consent to allow BX Finance AI agents to act on my behalf"
+         "I consent to allow Super Banking AI agents to act on my behalf"
    └─► User accepts ✅
    └─► User token issued:
          acr:     "Agent-Consent-Login"
@@ -782,7 +782,7 @@ No consent → blocked:
         Copy Resource ID + Client Secret → PingGateway RESOURCE_SECRET_ID
 
 [ ] A3. Create "Agent Consent" agreement
-        English text: "I consent to allow BX Finance AI agents to act on my behalf"
+        English text: "I consent to allow Super Banking AI agents to act on my behalf"
         Enable the agreement toggle
 
 [ ] A4. Create "Agent-Consent-Login" auth policy

@@ -1,4 +1,4 @@
-# BX Finance — Complete Setup Guide
+# Super Banking — Complete Setup Guide
 
 > **First-time developer?** Follow this guide top-to-bottom to go from a fresh PingOne trial account + fresh repo clone to a running local demo with all three auth flows operational.
 
@@ -39,7 +39,7 @@ You need **three PingOne OAuth applications** (two for browser login, one worker
 Before creating the apps, define the Resource that the custom `banking:*` scopes belong to.
 
 1. PingOne Admin → **Environment** → **Resources** (or **APIs**)
-2. Click **Add Resource** → give it any name (e.g. `BX Finance Banking API`)
+2. Click **Add Resource** → give it any name (e.g. `Super Banking Banking API`)
 3. **Audience**: `banking_mcp_01` (or your preferred value; must match `REACT_APP_ENDUSER_AUDIENCE`)
 4. Add the following **custom scopes**:
 

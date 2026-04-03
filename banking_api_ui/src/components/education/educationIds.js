@@ -30,6 +30,8 @@ export const EDU = {
   AGENT_BUILDER_LANDSCAPE: 'agent-builder-landscape',
   /** LLM landscape — commercial and open-source models, capabilities overview, and comparison */
   LLM_LANDSCAPE: 'llm-landscape',
+  /** Sensitive Data & Selective Disclosure — field-level scopes, least-data principle, RAR */
+  SENSITIVE_DATA: 'sensitive-data',
   /** AI platform landscape — AWS, Microsoft, Google, IBM, Anthropic, OpenAI tools overview and vendor comparison */
   AI_PLATFORM_LANDSCAPE: 'ai-platform-landscape',
 };

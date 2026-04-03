@@ -177,13 +177,19 @@ Plans:
 
 ### Phase 9: CIBA step-up authentication — implement OTP modal, wire backchannel auth for write actions, and validate enterprise-grade UX
 
-**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Goal:** Wire agent-triggered step-up to auto-initiate (CIBA or OTP) without manual click; change default to email/OTP; extend 428 step-up to sensitive account details; make threshold configurable in Admin Config; polish approval UX.
+
+**Requirements**: CIBA-01, CIBA-02, CIBA-03, CIBA-04
+
 **Depends on:** Phase 8
-**Plans:** 1 plan
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 9 to break down)
+- [ ] 09-01-PLAN.md — UserDashboard: auto-initiate countown + cancel + stale toast fix (CIBA-01)
+- [ ] 09-02-PLAN.md — BankingAgent: method-specific messages + confirmation card + remove SensitiveConsentBanner (CIBA-02, CIBA-04)
+- [ ] 09-03-PLAN.md — Server defaults: change method to email, add threshold to Admin Config (CIBA-03)
+- [ ] 09-04-PLAN.md — BFF + local path: sensitive details 428 step-up, ACR gate (CIBA-02)
+- [ ] 09-05-PLAN.md — MCP TypeScript: handle step_up_required from BFF (CIBA-02)
 
 ### Phase 10: Enterprise-grade HITL — high-value transaction warnings, CIBA or OTP step-up based on configuration, and polished approval UX
 
@@ -436,40 +442,43 @@ Plans:
 **Goal:** Persist token chain history[] across page refreshes via localStorage (cap 20, clear on logout). Fold in sub/act.sub claim display as User ID / Agent ID in TokenChainDisplay.
 **Requirements**: PERSIST-01, PERSIST-02, PERSIST-03, SUB-CLAIM-01
 **Depends on:** Phase 32
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 33-01-PLAN.md — localStorage persistence + sub/act.sub display + clear on logout
 
 ### Phase 34: Agent action logging — log what agent, what action, rights used, and each step
 
-**Goal:** [To be planned]
+**Goal:** Extend the Phase 32 AuditLogger stub into a real, persistent audit pipeline. Every MCP tool invocation logged with full agent identity, rights used, and step detail — visible in the admin audit panel and stored in Upstash Redis.
 **Requirements**: TBD
 **Depends on:** Phase 33
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 34 to break down)
+- [x] 34-01-PLAN.md — MCP server: Upstash Redis persistence for AuditLogger (write + read + schema extension)
+- [ ] 34-02-PLAN.md — Admin UI + BFF: agent audit fields display (agentId, duration, scope, filters)
 
 ### Phase 35: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 
-**Goal:** [To be planned]
+**Goal:** Update FEATURES.md and CHANGELOG.md to document all features added in phases 29–34, with what-it-does and why-it-was-added explanations for each.
 **Requirements**: TBD
 **Depends on:** Phase 34
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 35 to break down)
+- [x] 35-01-PLAN.md — Update FEATURES.md and CHANGELOG.md for phases 29–34
 
 ### Phase 36: Postman collections and environments audit — update all collections and environments for any missing or changed API routes, auth flows, and MCP endpoints
 
-**Goal:** [To be planned]
+**Goal:** Full audit and update of all Postman collections and environment files — staleness fixes, 2-exchange audience correction, 3 new env vars, 2 new collections (MCP-Tools + BFF-API), stray files moved to docs/.
 **Requirements**: TBD
 **Depends on:** Phase 35
-**Plans:** 0 plans
+**Plans:** 0/3 plans executed
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 36 to break down)
+- [ ] 36-01-PLAN.md — File organization + shared environment (3 new vars, move strays to docs/)
+- [ ] 36-02-PLAN.md — Full audit of all existing collections + 2-exchange audience correction + Advanced-Utilities expansion
+- [ ] 36-03-PLAN.md — Create BX-Finance-MCP-Tools and BX-Finance-BFF-API collections
 
 ### Phase 37: Public-facing MCP server for external agents — read-only tool surface, scoped credentials, and access controls so external agents have limited safe access
 
@@ -550,6 +559,46 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 44 to break down)
+
+### Phase 45: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 44
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 45 to break down)
+
+### Phase 46: Standardize PingOne app, resource, and scope naming across all use cases
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 45
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 46 to break down)
+
+### Phase 47: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 46
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 47 to break down)
+
+### Phase 48: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF PAZ layer instead update docs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 47
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] TBD (run /gsd-plan-phase 48 to break down) (completed 2026-04-03)
 
 ---
 

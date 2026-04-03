@@ -582,7 +582,7 @@ router.get('/stepup', (req, res) => {
     const codeVerifier = oauthService.generateCodeVerifier();
     const redirectUri = getUserRedirectUri(req);
     const nonce = crypto.randomBytes(16).toString('hex');
-    const url = oauthService.generateAuthorizationUrl(state, codeVerifier, { acr_values: acrValue, nonce }, redirectUri);
+    const url = oauthService.generateAuthorizationUrl(state, codeVerifier, { acr_values: acrValue, nonce, max_age: 0 }, redirectUri);
 
     // Persist PKCE + state + redirect URI + where to go after MFA
     req.session.oauthState = state;

@@ -1,6 +1,6 @@
-# BX Finance — UI Quality Criteria
+# Super Banking — UI Quality Criteria
 
-This document encodes the explicit, gradable standards for "professional banking UI" in BX Finance.
+This document encodes the explicit, gradable standards for "professional banking UI" in Super Banking.
 It is the authoritative source for `banking_api_ui/tests/e2e/ui-quality.spec.js`.
 
 Inspired by: https://www.anthropic.com/engineering/harness-design-long-running-apps
@@ -88,11 +88,11 @@ When making UI changes, check each criterion applies. When adding new UI feature
 
 ## Criterion 5 — Brand & Professional Standards
 
-**What**: Every page must present BX Finance branding consistently and contain no raw code artifacts.
+**What**: Every page must present Super Banking branding consistently and contain no raw code artifacts.
 
 | Rule | Standard |
 |------|---------|
-| Brand name | Exactly "BX Finance" (not "BXFinance", "BX finance", etc.) |
+| Brand name | Exactly "Super Banking" (not "BXFinance", "BX finance", etc.) |
 | Dashboard sections | "Your Accounts" + "Recent Transactions" always present |
 | Visible text | No HTML entities (`&lt;`, `&amp;`), no raw JSON key patterns |
 | Images | No broken images (zero `img` with empty `src` or 0 natural width) |

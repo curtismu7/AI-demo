@@ -35,6 +35,8 @@ router.get('/', async (req, res) => {
     if (req.query.limit) params.set('limit', String(req.query.limit));
     if (req.query.since) params.set('since', String(req.query.since));
     if (req.query.summary) params.set('summary', String(req.query.summary));
+    if (req.query.agentId) params.set('agentId', String(req.query.agentId));
+    if (req.query.operation) params.set('operation', String(req.query.operation));
 
     const paramStr = params.toString();
     const url = `${base}/audit${paramStr ? '?' + paramStr : ''}`;

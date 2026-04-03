@@ -118,11 +118,11 @@ const FIELD_DEFS = {
 
   // 2-Exchange delegated chain — audiences and AI Agent App credentials
   // Required only when ff_two_exchange_delegation is ON
-  ai_agent_client_id:             { public: true,  default: '' }, // BX Finance AI Agent App client ID — performs Exchange #1
+  ai_agent_client_id:             { public: true,  default: '' }, // Super Banking AI Agent App client ID — performs Exchange #1
   agent_gateway_audience:         { public: true,  default: 'https://agent-gateway.pingdemo.com' }, // Actor CC audience for Exchange #1
   ai_agent_intermediate_audience: { public: true,  default: '' }, // Exchange #1 result audience (Exchange #2 subject_token aud); defaults to mcp-server.pingdemo.com
   mcp_gateway_audience:           { public: true,  default: 'https://mcp-gateway.pingdemo.com' },   // Actor CC audience for Exchange #2
-  mcp_resource_uri_two_exchange:  { public: true,  default: 'https://resource-server.pingdemo.com' }, // Exchange #2 output audience (BX Finance Resource Server); must differ from mcp_resource_uri (1-exchange)
+  mcp_resource_uri_two_exchange:  { public: true,  default: 'https://resource-server.pingdemo.com' }, // Exchange #2 output audience (Super Banking Resource Server); must differ from mcp_resource_uri (1-exchange)
 
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
@@ -140,7 +140,8 @@ const FIELD_DEFS = {
   // Step-up authentication method for large transfers / withdrawals
   // 'ciba'  → back-channel (CIBA) challenge shown inline on the dashboard
   // 'email' → OIDC re-authentication redirect (PingOne email / OTP MFA)
-  step_up_method: { public: true, default: 'ciba' },
+  step_up_method: { public: true, default: 'email' },
+  step_up_amount_threshold: { public: true, default: 250 },
 
   /** UI industry / white-label preset (client applies colors + logo). See banking_api_ui/src/config/industryPresets.js */
   ui_industry_preset: { public: true, default: 'bx_finance' },
@@ -421,6 +422,7 @@ class ConfigStore {
       debug_oauth:                      ['DEBUG_OAUTH'],
       ciba_enabled:           ['CIBA_ENABLED'],
       step_up_method:         ['STEP_UP_METHOD'],
+      step_up_amount_threshold: ['STEP_UP_AMOUNT_THRESHOLD'],
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
       ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],
       ai_agent_client_id:              ['AI_AGENT_CLIENT_ID'],

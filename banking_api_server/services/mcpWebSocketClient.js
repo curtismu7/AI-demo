@@ -145,7 +145,7 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
           const initParams = {
             protocolVersion: getMcpProtocolVersion(),
             capabilities: {},
-            clientInfo: { name: 'banking-api-server', version: '1.0.0', description: 'BX Finance Banking BFF — MCP WebSocket client' },
+            clientInfo: { name: 'banking-api-server', version: '1.0.0', description: 'Super Banking Banking BFF — MCP WebSocket client' },
           };
           if (agentToken) initParams.agentToken = agentToken;
           if (userSub) initParams.userSub = userSub;

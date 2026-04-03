@@ -12,6 +12,7 @@
 'use strict';
 
 const dataStore = require('../data/store');
+const runtimeSettings = require('../config/runtimeSettings');
 const txConsent = require('./transactionConsentChallenge');
 
 /**
@@ -64,7 +65,7 @@ async function ensureAccounts(userId) {
     routingNumber: '026073150',
     swiftCode: 'CHASUS33',
     iban: `US12CHAS${_mclSfx1}`,
-    branchName: 'BX Finance Main Branch',
+    branchName: 'Super Banking Main Branch',
     branchCode: '001',
     openedDate: '2022-01-15',
     accountHolderName: '',
@@ -79,7 +80,7 @@ async function ensureAccounts(userId) {
     routingNumber: '021000021',
     swiftCode: 'CHASUS33',
     iban: `US12CHAS${_mclSfx2}`,
-    branchName: 'BX Finance Main Branch',
+    branchName: 'Super Banking Main Branch',
     branchCode: '001',
     openedDate: '2022-03-10',
     accountHolderName: '',
@@ -536,23 +537,47 @@ const TOOL_MAP = {
  * @param {string} userId   - Authenticated user's ID (from session)
  * @returns {Promise<{ content: Array<{ type: string, text: string }> }>}
  */
-async function callToolLocal(tool, params, userId) {
+async function callToolLocal(tool, params, userId, req) {
   const handler = TOOL_MAP[tool];
   if (!handler) {
     return { error: `Unknown tool "${tool}". Available: ${Object.keys(TOOL_MAP).filter(k => !['list_accounts','list_transactions','deposit','withdraw','transfer'].includes(k)).join(', ')}` };
   }
-  return handler(params || {}, userId);
+  return handler(params || {}, userId, req);
 }
 
 
-async function get_sensitive_account_details(params, userId) {
-  // Local fallback: sensitive endpoint requires browser session consent which isn't
-  // available in the local tool path. Return consent_required so the UI banner fires.
+async function get_sensitive_account_details(params, userId, req) {
+  const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue') || 'Multi_factor';
+  const userAcr = String(req?.user?.acr || req?.user?.['pingone:acr'] || '');
+  const hasElevatedAcr = userAcr === STEP_UP_ACR || userAcr.split(' ').includes(STEP_UP_ACR);
+
+  if (!hasElevatedAcr) {
+    // No elevated ACR — trigger step-up (same pattern as high-value transactions)
+    return {
+      ok: false,
+      step_up_required: true,
+      error: 'step_up_required',
+      step_up_method: runtimeSettings.get('stepUpMethod') || 'email',
+    };
+  }
+
+  // ACR elevated — return sensitive account data from local store
+  const accounts = dataStore.getAccountsByUserId(userId);
+  if (!accounts || accounts.length === 0) {
+    return { ok: false, error: 'No accounts found for this user.' };
+  }
   return {
-    ok: false,
-    consent_required: true,
-    reason: 'sensitive_data_access',
-    message: 'Accessing sensitive account details requires your approval in the browser. The agent will show a consent banner — click Reveal to proceed.',
+    ok: true,
+    accounts: accounts.map(a => ({
+      id: a.id,
+      accountType: a.accountType,
+      name: a.name,
+      accountNumber: a.accountNumber,
+      accountNumberFull: a.accountNumberFull || null,
+      routingNumber: a.routingNumber || null,
+      swiftCode: a.swiftCode || null,
+      iban: a.iban || null,
+    })),
   };
 }
 

@@ -69,16 +69,43 @@ async function provisionDemoAccounts(userId) {
     }
   }
 
+  // Generate realistic 12-digit account numbers from user uid
+  const _acctDigits = uid.replace(/[^0-9a-f]/gi, '').slice(0, 10) || '0';
+  const _acctN = parseInt(_acctDigits, 16) % 9999999999;
+  const checkingFull = '01' + String(_acctN).padStart(10, '0');
+  const savingsFull  = '02' + String(_acctN).padStart(10, '0');
+  const _ibanBase    = parseInt(uid.replace(/[^0-9a-f]/gi, '').slice(0, 8) || '0', 16);
+  const _ibanSfx1    = String(_ibanBase % 100000000).padStart(8, '0');
+  const _ibanSfx2    = String((_ibanBase + 1) % 100000000).padStart(8, '0');
+
   const checking = await dataStore.createAccount({
     id: checkingId, userId,
-    accountNumber: `CHK-${uid.toUpperCase()}`, accountType: 'checking',
+    accountNumberFull: checkingFull,
+    accountNumber: `****${checkingFull.slice(-4)}`,
+    accountType: 'checking',
     balance: 3000.00, currency: 'USD', name: 'Checking Account',
+    routingNumber: '026073150',
+    swiftCode: 'CHASUS33',
+    iban: `US12CHAS${_ibanSfx1}`,
+    branchName: 'Super Banking Main Branch',
+    branchCode: '001',
+    openedDate: '2022-01-15',
+    accountHolderName: '',
     createdAt: new Date('2024-01-15'),
   });
   const savings = await dataStore.createAccount({
     id: savingsId, userId,
-    accountNumber: `SAV-${uid.toUpperCase()}`, accountType: 'savings',
+    accountNumberFull: savingsFull,
+    accountNumber: `****${savingsFull.slice(-4)}`,
+    accountType: 'savings',
     balance: 2000.00, currency: 'USD', name: 'Savings Account',
+    routingNumber: '021000021',
+    swiftCode: 'CHASUS33',
+    iban: `US12CHAS${_ibanSfx2}`,
+    branchName: 'Super Banking Main Branch',
+    branchCode: '001',
+    openedDate: '2022-03-10',
+    accountHolderName: '',
     createdAt: new Date('2024-01-15'),
   });
 
@@ -118,7 +145,24 @@ router.get('/my', authenticateToken, async (req, res) => {
         await demoScenarioStore.save(req.user.id, { accountSnapshot: snapshot });
       }
     }
-    res.json({ accounts: userAccounts });
+    res.json({
+      accounts: userAccounts.map(account => ({
+        id: account.id,
+        accountType: account.accountType,
+        name: account.name,
+        balance: account.balance,
+        currency: account.currency,
+        status: account.status || 'active',
+        accountNumber: account.accountNumber || ('****' + (account.accountNumberFull || '').slice(-4)),
+        swiftCode: account.swiftCode || 'CHASUS33',
+        iban: account.iban || '',
+        branchName: account.branchName || 'Super Banking Main Branch',
+        branchCode: account.branchCode || '001',
+        openedDate: account.openedDate || null,
+        accountHolderName: req.user && (req.user.name || (req.user.given_name ? req.user.given_name + ' ' + (req.user.family_name || '') : null) || req.user.sub) || '',
+        createdAt: account.createdAt,
+      })),
+    });
   } catch (error) {
     console.error('Error getting user accounts:', error);
     res.status(500).json({ error: 'Failed to get your accounts' });

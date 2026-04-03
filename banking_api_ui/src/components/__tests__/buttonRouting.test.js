@@ -57,7 +57,7 @@ jest.mock('../../services/sessionResolver', () => ({
 
 // Context mocks
 jest.mock('../../context/IndustryBrandingContext', () => ({
-  useIndustryBranding: () => ({ preset: { shortName: 'BX Finance', name: 'BX Finance' } }),
+  useIndustryBranding: () => ({ preset: { shortName: 'Super Banking', name: 'Super Banking' } }),
 }));
 jest.mock('../../context/AgentUiModeContext', () => ({
   useAgentUiMode: () => ({ placement: 'none', fab: true, setAgentUi: jest.fn() }),

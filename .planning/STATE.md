@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-03T11:21:58.689Z"
+last_updated: "2026-04-03T21:16:05.508Z"
 progress:
-  total_phases: 42
-  completed_phases: 22
-  total_plans: 57
-  completed_plans: 54
+  total_phases: 48
+  completed_phases: 29
+  total_plans: 70
+  completed_plans: 70
 ---
 
-# State — BX Finance AI Banking Demo
+# State — Super Banking AI Banking Demo
 
 **Milestone:** v1.0 — Complete Demo + Educational Content
 **Updated:** 2025-07-11
@@ -20,9 +20,8 @@ progress:
 
 ## Current Position
 
-Phase: 33
-Plan: 1 of 1
-**Status:** Executing Phase 33
+Phase: 48 (remove-invalid-spel-act-expression) — COMPLETE
+**Status:** Phase 48 complete. Next: Phase 09 (ciba-step-up-authentication) — 5 plans all have summaries; needs completion check.
 
 ---
 
@@ -42,6 +41,7 @@ Plan: 1 of 1
 - Phase 22 (agent-capability-audit) — complete (commits: bd866c6, 1448b7a)
 - Phase 23 (langchain-modernization) — complete (commits: f80d934, 343951c, 91789e8, c35b95e)
 - Phase 29 (use-case-c-sensitive-data-access) — complete (commit: 3ca82da)
+- Phase 48 (remove-invalid-spel-act-expression) — complete (commits: d4c0a7a, fc86d8d)
 
 ---
 
@@ -58,6 +58,7 @@ Plan: 1 of 1
 
 ---
 - [Phase 08]: Listen for banking-agent-result event in UserDashboard rather than prop/callback chain — keeps components decoupled
+- [Phase 48]: Removed invalid SpEL act expression from Step 1e — PingOne handles act nesting natively per RFC 8693 §4.4
 
 ## Blockers
 
@@ -65,12 +66,23 @@ Plan: 1 of 1
 
 ---
 
-## Pending Todos
+## Quick Tasks Completed
 
+| ID | Task | Commit | Date |
+|---|---|---|---|
+| 260403-ibs | Rename BX Finance → Super Banking across docs, source, and UI | 04fa9c7 | 2026-04-03 |
+| 260403-ief | Rename PingOne apps and resources BX Finance → Super Banking (manual console) | 9a7fe9e | 2026-04-03 |
+| 260403-igq | Fix PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md to canonical Super Banking naming | b08495e | 2026-04-03 |
+
+---
+
+## Pending Todos (30)
+
+- **[TODO -> auth]** Reorganize PingOne apps — OIDC agents to AI Agents group, OIDC user apps to Applications group
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
 - Redeploy to Vercel (commits since last deploy include Phase 29: 3ca82da)
-- When merged to main: update raw doc links from `fix/dashboard-fab-positioning` → `main`
+- ~~When merged to main: update raw doc links~~ *(merged to main 2026-04-03)*
 - **[TODO -> Phase 4]** UI consistency audit — enterprise-grade cross-SPA visual polish (04-04-PLAN.md)
 - **[TODO -> Phase 4]** Marketing page agent dock UI match — dock styling should match /marketing page design language (04-04-PLAN.md)
 - **[Phase 6]** Fix RFC 8693 token exchange: PingOne returning "Unsupported authentication method" — investigate agentMcpTokenService.js client auth method
@@ -90,8 +102,12 @@ Plan: 1 of 1
 - Phase 12 added: UI button consistency audit — standardize color scheme red and blue with white text no grey no purple
 - Phase 24 added: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 - Phase 25 added: LLM landscape — commercial and open-source models, capabilities overview, and comparison
+- Phase 45 added: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
 - Phase 43 added: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
+- Phase 48 added: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF/PAZ layer instead — update docs
 - Phase 44 added: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
+- Phase 46 added: Standardize PingOne app, resource, and scope naming across all use cases
+- Phase 47 added: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 - Phase 26 added: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
 - Phase 27 added: PingOne Authorize PAZ setup — transaction limit policy, AUD validation, act chain introspection to match RFC 8693 token exchange implementation
 - Phase 28 added: Vercel config tab — read environment variables via Vercel API, display editable fields in UI, write non-secret vars back to Vercel, secrets entered by user and stored server-side only

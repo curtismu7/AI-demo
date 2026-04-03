@@ -280,6 +280,8 @@ router.get('/', async (req, res) => {
           username: PROFILE_UI_FALLBACK.username,
         },
       },
+      accountProfileFields: scenario.accountProfileFields || {},
+      accountProfileFields: scenario.accountProfileFields || {},
       persistenceNote:
         (process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT) &&
         !demoScenarioStore.isPersistenceConfigured()
@@ -445,6 +447,24 @@ router.put('/', async (req, res) => {
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body, 'accountProfileFields')) {
+      const rawProf = req.body.accountProfileFields;
+      if (rawProf === null) {
+        await demoScenarioStore.save(uid, { accountProfileFields: null });
+      } else if (rawProf && typeof rawProf === 'object' && !Array.isArray(rawProf)) {
+        await demoScenarioStore.save(uid, { accountProfileFields: rawProf });
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'accountProfileFields')) {
+      const rawProf = req.body.accountProfileFields;
+      if (rawProf === null) {
+        await demoScenarioStore.save(uid, { accountProfileFields: null });
+      } else if (rawProf && typeof rawProf === 'object' && !Array.isArray(rawProf)) {
+        await demoScenarioStore.save(uid, { accountProfileFields: rawProf });
+      }
+    }
+
     if (Object.prototype.hasOwnProperty.call(req.body, 'userData')) {
       let user = dataStore.getUserById(uid);
       if (!user) {
@@ -597,7 +617,7 @@ module.exports.patchMayAct = patchMayAct;
  *
  * Checks two things that must both be true for `may_act` to appear in the Subject Token:
  *   1. The signed-in user's `mayAct` custom attribute in PingOne.
- *   2. The `BX Finance User` OIDC app's attribute mappings — does a `may_act` mapping exist?
+ *   2. The `Super Banking User` OIDC app's attribute mappings — does a `may_act` mapping exist?
  *
  * Returns a structured report so the demo page can show exactly what is missing.
  */
@@ -630,7 +650,7 @@ async function diagnoseMayAct(req, res) {
     bffClientId,
     checks: {
       userAttribute: { label: 'mayAct on user record', pass: false, value: null, detail: null },
-      appMapping:    { label: 'may_act mapping on BX Finance User app', pass: false, value: null, detail: null },
+      appMapping:    { label: 'may_act mapping on Super Banking User app', pass: false, value: null, detail: null },
     },
     diagnosis: [],
     nextStep: null,
@@ -658,7 +678,7 @@ async function diagnoseMayAct(req, res) {
     report.checks.userAttribute.detail = `PingOne user GET failed: ${err.response?.status} — ${err.response?.data?.message || err.message}`;
   }
 
-  // ── Check 2: BX Finance User app attribute mappings ─────────────────────────
+  // ── Check 2: Super Banking User app attribute mappings ─────────────────────────
   // Find the app by client_id = userAppClientId, then check its attribute mappings
   try {
     // List OIDC apps, find the one matching userAppClientId
@@ -699,17 +719,17 @@ async function diagnoseMayAct(req, res) {
     report.diagnosis.push('✅ User attribute: mayAct is set correctly on this user record.');
   }
   if (!report.checks.appMapping.pass) {
-    report.diagnosis.push('❌ App mapping: no may_act attribute mapping found on BX Finance User app.');
+    report.diagnosis.push('❌ App mapping: no may_act attribute mapping found on Super Banking User app.');
   } else {
-    report.diagnosis.push('✅ App mapping: may_act attribute mapping exists on BX Finance User app.');
+    report.diagnosis.push('✅ App mapping: may_act attribute mapping exists on Super Banking User app.');
   }
 
   if (!report.checks.userAttribute.pass && !report.checks.appMapping.pass) {
-    report.nextStep = 'Fix both: (1) Click "Enable may_act" on /demo-data to set the user attribute. (2) Add the may_act mapping to the BX Finance User app in PingOne Console → Applications → BX Finance User → Attribute Mappings tab. Then re-login for a fresh token.';
+    report.nextStep = 'Fix both: (1) Click "Enable may_act" on /demo-data to set the user attribute. (2) Add the may_act mapping to the Super Banking User app in PingOne Console → Applications → Super Banking User → Attribute Mappings tab. Then re-login for a fresh token.';
   } else if (!report.checks.userAttribute.pass) {
     report.nextStep = 'Click "Enable may_act" on /demo-data (or use the Postman "Utility — Set mayAct" request). Then sign out and back in for a fresh token.';
   } else if (!report.checks.appMapping.pass) {
-    report.nextStep = 'Add the may_act attribute mapping to the BX Finance User app in PingOne Console → Applications → BX Finance User → Attribute Mappings tab. Expression: (#root.user.mayAct != null ? #root.user.mayAct : null). Then re-login.';
+    report.nextStep = 'Add the may_act attribute mapping to the Super Banking User app in PingOne Console → Applications → Super Banking User → Attribute Mappings tab. Expression: (#root.user.mayAct != null ? #root.user.mayAct : null). Then re-login.';
   } else {
     report.nextStep = 'Both checks pass. Sign out and back in to get a fresh Subject Token — may_act should now appear.';
   }

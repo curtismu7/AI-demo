@@ -323,7 +323,7 @@ function ComparisonContent() {
         <li><strong>Cheapest capable model:</strong> GPT-4o mini, Claude 3.5 Haiku, or Mistral Small 3 — all strong for high-volume pipelines.</li>
         <li><strong>Local inference / privacy:</strong> Ollama + Llama 3.1 8B or Mistral 7B — runs on 8-16 GB RAM with quantisation.</li>
         <li><strong>European data residency:</strong> Mistral Large 2 (Le Chat / Azure EU regions) or open-source Mistral on EU infra.</li>
-        <li><strong>This demo:</strong> The BX Finance LangChain agent is model-agnostic — configurable via <code>OPENAI_MODEL</code> env var in <code>langchain_agent/</code>.</li>
+        <li><strong>This demo:</strong> The Super Banking LangChain agent is model-agnostic — configurable via <code>OPENAI_MODEL</code> env var in <code>langchain_agent/</code>.</li>
       </ul>
 
       <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '1rem', fontStyle: 'italic' }}>

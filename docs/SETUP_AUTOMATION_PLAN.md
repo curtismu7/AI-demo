@@ -1,4 +1,4 @@
-# BX Finance — Full tenant setup automation plan
+# Super Banking — Full tenant setup automation plan
 
 > **Goal:** A new operator can bring a **fresh PingOne environment** + **fresh app deployment** to “first successful admin login + customer login + agent MCP” with **minimal manual PingOne console work**, using **scripts**, a **Setup** wizard page (buttons + status), and **idempotent** Management API calls.
 
