@@ -84,7 +84,8 @@ const EMPTY_FORM = {
   // Step-up authentication for large transfers / withdrawals
   // 'ciba'  → back-channel (CIBA) challenge shown inline; no page redirect
   // 'email' → OIDC re-authentication redirect (email / OTP MFA via PingOne)
-  step_up_method: 'ciba',
+  step_up_method: 'email',
+  step_up_amount_threshold: 250,
   // Whether the CIBA feature is enabled globally (also surfaces in CIBA panel)
   ciba_enabled: 'false',
   /** Industry / white-label UI preset (server + IndustryBrandingContext). */
@@ -1341,6 +1342,22 @@ export default function Config() {
                   back-channel auth request; the user approves on their registered device.{' '}
                   <strong>Email / OTP:</strong> the browser redirects to PingOne for a fresh MFA
                   sign-in (email code, TOTP, etc.).
+                </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Step-up threshold ($)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  min="0"
+                  step="1"
+                  value={form.step_up_amount_threshold}
+                  onChange={(e) => handleChange('step_up_amount_threshold', e.target.value)}
+                  disabled={readOnly}
+                  placeholder="250"
+                />
+                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  Minimum transaction amount (USD) that triggers step-up authentication. Default: $250.
                 </p>
               </div>
               <div className="form-group">

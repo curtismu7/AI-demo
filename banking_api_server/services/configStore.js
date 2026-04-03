@@ -140,7 +140,8 @@ const FIELD_DEFS = {
   // Step-up authentication method for large transfers / withdrawals
   // 'ciba'  → back-channel (CIBA) challenge shown inline on the dashboard
   // 'email' → OIDC re-authentication redirect (PingOne email / OTP MFA)
-  step_up_method: { public: true, default: 'ciba' },
+  step_up_method: { public: true, default: 'email' },
+  step_up_amount_threshold: { public: true, default: 250 },
 
   /** UI industry / white-label preset (client applies colors + logo). See banking_api_ui/src/config/industryPresets.js */
   ui_industry_preset: { public: true, default: 'bx_finance' },
@@ -421,6 +422,7 @@ class ConfigStore {
       debug_oauth:                      ['DEBUG_OAUTH'],
       ciba_enabled:           ['CIBA_ENABLED'],
       step_up_method:         ['STEP_UP_METHOD'],
+      step_up_amount_threshold: ['STEP_UP_AMOUNT_THRESHOLD'],
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
       ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],
       ai_agent_client_id:              ['AI_AGENT_CLIENT_ID'],
