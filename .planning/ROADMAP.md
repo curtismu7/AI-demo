@@ -570,6 +570,26 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 45 to break down)
 
+### Phase 46: Standardize PingOne app, resource, and scope naming across all use cases
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 45
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 46 to break down)
+
+### Phase 47: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 46
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 47 to break down)
+
 ---
 
 ## Dependency Order
