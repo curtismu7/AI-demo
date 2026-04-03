@@ -33,7 +33,7 @@ Use the [1-exchange pattern](PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md) instead when
 | **Super Banking Agent Gateway** (resource server) | Banking App actor token audience | AI Agent actor token audience | ✅ Reuse — no config change |
 | **Super Banking MCP Server** (resource server) | Final MCP Token audience | Exchange #1 output audience | ✅ Reuse — same `act` expression works for both; PingOne checks `may_act.sub == actorToken.aud[0]` regardless of which UUID is in each field |
 | **Super Banking User App** (app) | OIDC login | OIDC login | ✅ Reuse — no change |
-| **Super Banking Admin App** (app) | Exchange #1 exchanger | Not in the exchange chain (BFF bypasses it when flag is ON) | ✅ Reuse — keep the app; 2-exchange does not break or remove it |
+| **Super Banking Admin App** (app) | Exchange #1 exchanger | Not in the exchange chain (BFF bypasses it when flag is ON) | ✅ Reuse — keep the app; 2-exchange does not break or remove it. See Step 2d if missing. |
 | **Super Banking MCP Token Exchanger** (app) | Client Credentials for PingOne API | Exchange #2 exchanger + Client Credentials for PingOne API | ✅ Modify — add `Token Exchange` grant; enable Super Banking MCP Gateway and Super Banking Banking API scopes |
 | **PingOne API** (built-in resource server) | CC token audience | CC token audience | ✅ Reuse — no change |
 | **`mayAct` user schema attribute** | Holds Banking App UUID | Holds AI Agent App UUID | ✅ Reuse schema — change the **value** on user records |
@@ -572,6 +572,50 @@ This app performs two roles in the 2-exchange chain:
 - ✅ `p1:read:user`, `p1:update:user` from **PingOne API** *(for Management API calls to read/update user records)*
 
 Copy the **Client ID** → `AGENT_OAUTH_CLIENT_ID` env var. Copy the **Client Secret** → `AGENT_OAUTH_CLIENT_SECRET` env var.
+
+---
+
+### 2d. Create if missing: Super Banking Admin App *(1-exchange exchanger — not used in 2-exchange chain)*
+
+This app performs Token Exchange #1 in the **1-exchange pattern**. It is **not in the 2-exchange chain** — the BFF bypasses it when `FF_TWO_EXCHANGE_DELEGATION=true`. However it must exist in PingOne for the 1-exchange fallback to work, and its client ID is stored in `PINGONE_ADMIN_CLIENT_ID` in the BFF `.env`.
+
+> **If the app already exists:** Confirm it has `Token Exchange` and `Authorization Code` grant types and `banking:accounts:read/transactions:read/transactions:write` from **Super Banking MCP Server** on its Resources tab. No other changes needed.
+
+If the app is missing, click **Add Application** → **Applications** category and fill in:
+
+**Overview tab:**
+
+| Field | Value |
+|-------|-------|
+| **Application name** | `Super Banking Admin App` |
+| **Description** | `Banking app server. Authenticates users and performs Exchange #1 in the 1-exchange delegation pattern to get an MCP-scoped token on behalf of the authenticated user. The Client ID of this app must be set as mayAct.sub on user records when using 1-exchange mode.` |
+| **Home Page URL** | `https://banking-demo-puce.vercel.app` |
+| **Signon URL** | `https://banking-demo-puce.vercel.app` |
+
+**Configuration tab → Grant Types — enable all of these:**
+
+- ✅ `Authorization Code`
+- ✅ `Refresh Token`
+- ✅ `Token Exchange` ← required for 1-exchange delegation
+- ✅ `Client Initiated Backchannel Authentication (CIBA)` *(required for step-up auth)*
+
+| Field | Value |
+|-------|-------|
+| **PKCE enforcement** | `S256_REQUIRED` |
+| **Token endpoint auth method** | `CLIENT_SECRET_POST` |
+| **Redirect URIs** | `https://banking-demo-puce.vercel.app/api/auth/oauth/callback` |
+| | `http://localhost:3000/api/auth/oauth/callback` |
+| | `http://localhost:4000/api/auth/oauth/callback` |
+
+**Resources tab → Allowed scopes — enable:**
+
+- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` from **Super Banking MCP Server**
+
+**Attribute Mappings tab:** No mappings needed. Leave unchanged.
+
+Click **Save**, then:
+- Copy the **Client ID** → `PINGONE_ADMIN_CLIENT_ID` env var
+- Copy the **Client Secret** → `PINGONE_ADMIN_CLIENT_SECRET` env var
 
 ---
 
