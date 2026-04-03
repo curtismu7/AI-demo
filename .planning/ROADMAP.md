@@ -457,10 +457,10 @@ Plans:
 **Goal:** Update FEATURES.md and CHANGELOG.md to document all features added in phases 29–34, with what-it-does and why-it-was-added explanations for each.
 **Requirements**: TBD
 **Depends on:** Phase 34
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 35-01-PLAN.md — Update FEATURES.md and CHANGELOG.md for phases 29–34
+- [x] 35-01-PLAN.md — Update FEATURES.md and CHANGELOG.md for phases 29–34
 
 ### Phase 36: Postman collections and environments audit — update all collections and environments for any missing or changed API routes, auth flows, and MCP endpoints
 
