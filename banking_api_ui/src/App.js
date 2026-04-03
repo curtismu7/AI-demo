@@ -365,6 +365,7 @@ function AppWithAuth() {
 
     window.dispatchEvent(new CustomEvent('userLoggedOut'));
 
+    localStorage.removeItem('tokenChainHistory');
     window.location.href = '/api/auth/logout';
   };
 

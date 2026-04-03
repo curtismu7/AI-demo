@@ -40,6 +40,20 @@ function ClaimsPanel({ claims, alg }) {
     return '';
   };
 
+  /** Human-readable label for well-known JWT / RFC 8693 claims. */
+  const claimLabel = (key) => {
+    if (key === 'sub')     { return 'sub — User ID'; }
+    if (key === 'act')     { return 'act — Delegation (Agent)'; }
+    if (key === 'may_act') { return 'may_act — Permitted Agent'; }
+    if (key === 'iss')     { return 'iss — Issuer'; }
+    if (key === 'aud')     { return 'aud — Audience'; }
+    if (key === 'exp')     { return 'exp — Expires'; }
+    if (key === 'iat')     { return 'iat — Issued At'; }
+    if (key === 'nbf')     { return 'nbf — Not Before'; }
+    if (key === 'scope')   { return 'scope — Scopes'; }
+    return key;
+  };
+
   const fmtVal = (key, val) => {
     if (typeof val === 'object') { return JSON.stringify(val, null, 2); }
     if (key === 'exp' || key === 'iat' || key === 'nbf') {
@@ -54,8 +68,11 @@ function ClaimsPanel({ claims, alg }) {
       {alg && <div className="tcd-claims-alg">alg: {alg}</div>}
       {Object.entries(claims).map(([k, v]) => (
         <div key={k} className={`tcd-claim ${highlight(k, v)}`}>
-          <span className="tcd-claim-key">{k}</span>
+          <span className="tcd-claim-key">{claimLabel(k)}</span>
           <span className="tcd-claim-sep">:</span>
+          {k === 'act' && v && typeof v === 'object' && v.sub && (
+            <span className="tcd-claim-agent-id"> Agent ID: {v.sub}</span>
+          )}
           <pre className="tcd-claim-val">{fmtVal(k, v)}</pre>
         </div>
       ))}
