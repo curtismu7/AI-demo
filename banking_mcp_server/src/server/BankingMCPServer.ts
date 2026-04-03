@@ -12,6 +12,7 @@ import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManag
 import { BankingSessionManager } from '../storage/BankingSessionManager';
 import { BankingToolProvider } from '../tools/BankingToolProvider';
 import { MCPMessageHandler, MessageHandlerContext } from './MCPMessageHandler';
+import { HttpMCPTransport } from './HttpMCPTransport';
 
 export interface ServerConfig {
   host: string;
@@ -31,6 +32,8 @@ export interface ConnectionInfo {
   connectedAt: Date;
   lastActivity: Date;
   messageCount: number;
+  /** SHOULD (spec lifecycle): set to true when client sends notifications/initialized. */
+  initialized?: boolean;
 }
 
 export interface ServerStats {
@@ -47,6 +50,7 @@ export class BankingMCPServer extends EventEmitter {
   private httpServer: HttpServer | null = null;
   private connections: Map<string, ConnectionInfo> = new Map();
   private messageHandler: MCPMessageHandler;
+  private httpTransport: HttpMCPTransport | null = null;
   private config: ServerConfig;
   private stats: ServerStats;
   private isRunning: boolean = false;
@@ -60,6 +64,27 @@ export class BankingMCPServer extends EventEmitter {
     super();
     this.config = config;
     this.messageHandler = new MCPMessageHandler(authManager, sessionManager, toolProvider);
+
+    // HTTP Streamable MCP transport (spec 2025-11-25 — Phase D).
+    // Enabled unless HTTP_MCP_TRANSPORT_ENABLED is explicitly set to 'false'.
+    if (process.env.HTTP_MCP_TRANSPORT_ENABLED !== 'false') {
+      const resourceUrl = process.env.MCP_RESOURCE_URL ||
+        `http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}`;
+      const authServerUrl = process.env.PINGONE_AUTHORIZATION_ENDPOINT
+        ? process.env.PINGONE_AUTHORIZATION_ENDPOINT.replace('/authorize', '').replace(/\/+$/, '')
+        : (process.env.PINGONE_BASE_URL ?? 'https://auth.pingone.com/unknown/as');
+      const allowedOrigins = (process.env.MCP_ALLOWED_ORIGINS ?? '')
+        .split(',')
+        .map(o => o.trim())
+        .filter(Boolean);
+      this.httpTransport = new HttpMCPTransport(
+        { resourceUrl, authServerUrl, allowedOrigins },
+        this.messageHandler,
+        sessionManager,
+        authManager
+      );
+    }
+
     this.stats = {
       totalConnections: 0,
       activeConnections: 0,
@@ -110,6 +135,12 @@ export class BankingMCPServer extends EventEmitter {
 
       if (this.config.enableLogging) {
         console.log(`[BankingMCPServer] Server started on ${this.config.host}:${this.config.port}`);
+        if (this.httpTransport) {
+          const resourceUrl = process.env.MCP_RESOURCE_URL ||
+            `http://${this.config.host === '0.0.0.0' ? 'localhost' : this.config.host}:${this.config.port}`;
+          console.log(`[BankingMCPServer] HTTP MCP transport enabled — POST ${resourceUrl}/mcp`);
+          console.log(`[BankingMCPServer] RFC 9728 metadata — GET ${resourceUrl}/.well-known/oauth-protected-resource`);
+        }
       }
 
       this.emit('serverStarted', {
@@ -281,8 +312,8 @@ export class BankingMCPServer extends EventEmitter {
       // Route message to appropriate handler
       const response = await this.routeMessage(connectionId, message);
       
-      // Only send response if message had an id (not a notification)
-      if (response && message.id !== undefined) {
+      // Only send response for requests (JSON-RPC notifications have no id)
+      if (response !== null && response !== undefined && message.id !== undefined && message.id !== null) {
         await this.sendResponse(connectionId, response);
       }
 
@@ -454,7 +485,37 @@ export class BankingMCPServer extends EventEmitter {
   private async routeMessage(connectionId: string, message: MCPMessage): Promise<MCPResponse | null> {
     const connection = this.connections.get(connectionId);
     if (!connection) {
+      if (message.id === undefined || message.id === null) {
+        return null;
+      }
       return this.createErrorResponse(message.id, -32603, 'Connection not found');
+    }
+
+    // SHOULD (spec lifecycle): intercept notifications/initialized to set per-connection flag.
+    // This is handled here (not delegated) so we can track state on ConnectionInfo.
+    if (message.method === 'notifications/initialized') {
+      connection.initialized = true;
+      if (this.config.enableLogging) {
+        console.log(`[BankingMCPServer] Connection ${connectionId}: lifecycle ready (notifications/initialized received)`);
+      }
+      return null;
+    }
+
+    // SHOULD (spec lifecycle): reject tool/prompt/resource requests that arrive before the client
+    // has completed the initialization handshake (initialize → notifications/initialized).
+    // ping is always allowed; initialize is the first step.
+    if (!connection.initialized &&
+        message.method !== 'initialize' &&
+        message.method !== 'ping') {
+      if (message.id !== undefined && message.id !== null) {
+        console.warn(`[BankingMCPServer] Premature request ${message.method} from ${connectionId} (notifications/initialized not yet received)`);
+        return this.createErrorResponse(
+          message.id,
+          -32600,
+          'Session not initialized — send notifications/initialized before making requests'
+        );
+      }
+      return null; // ignore premature notifications silently
     }
 
     // Create message handler context
@@ -528,15 +589,17 @@ export class BankingMCPServer extends EventEmitter {
    * Validate MCP message structure
    */
   private isValidMCPMessage(message: any): message is MCPMessage {
-    return (
-      typeof message === 'object' &&
-      message !== null &&
-      typeof message.method === 'string' &&
-      (message.id === undefined || 
-       typeof message.id === 'string' || 
-       typeof message.id === 'number' || 
-       message.id === null)
-    );
+    if (typeof message !== 'object' || message === null || typeof message.method !== 'string') {
+      return false;
+    }
+    // JSON-RPC: request id MUST NOT be null; notifications MUST NOT include id (use notifications/* methods)
+    if (message.id === null) {
+      return false;
+    }
+    if (message.id === undefined) {
+      return typeof message.method === 'string' && message.method.startsWith('notifications/');
+    }
+    return typeof message.id === 'string' || typeof message.id === 'number';
   }
 
   /**
@@ -558,16 +621,69 @@ export class BankingMCPServer extends EventEmitter {
    */
   private async handleHttpRequest(req: any, res: any): Promise<void> {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    
-    if (url.pathname === '/auth/callback') {
+    const pathname = url.pathname;
+
+    // Spec-compliant HTTP MCP transport routes (RFC 9728 metadata + POST /mcp)
+    if (this.httpTransport &&
+        (pathname === '/.well-known/oauth-protected-resource' ||
+         pathname === '/mcp')) {
+      await this.httpTransport.handleRequest(req, res, pathname);
+      return;
+    }
+
+    if (pathname === '/.well-known/mcp-server') {
+      await this.handleWellKnownMcpServer(req, res);
+    } else if (pathname === '/auth/callback') {
       await this.handleOAuthCallback(req, res, url);
-    } else if (url.pathname === '/auth/status') {
+    } else if (pathname === '/auth/status') {
       await this.handleAuthStatus(req, res, url);
     } else {
       // Default response for other paths
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
     }
+  }
+
+  /**
+   * RFC 9728 / MCP discovery — /.well-known/mcp-server
+   */
+  private async handleWellKnownMcpServer(_req: any, res: any): Promise<void> {
+    const { BankingToolRegistry } = await import('../tools/BankingToolRegistry');
+    const tools = BankingToolRegistry.getAllTools().map(t => ({
+      name: t.name,
+      description: t.description,
+      requiresUserAuth: t.requiresUserAuth,
+      requiredScopes: t.requiredScopes,
+    }));
+    const manifest = {
+      name: 'Banking MCP Server',
+      version: '1.0.0',
+      description: 'Secure banking operations MCP server with PingOne authentication',
+      protocolVersion: '2024-11-05',
+      tools,
+      auth: {
+        type: 'oauth2',
+        authorizationUrl: process.env.PINGONE_AUTH_URL
+          ? `${process.env.PINGONE_AUTH_URL}/authorize`
+          : undefined,
+        tokenUrl: process.env.PINGONE_AUTH_URL
+          ? `${process.env.PINGONE_AUTH_URL}/token`
+          : undefined,
+        scopes: [
+          'banking:accounts:read',
+          'banking:transactions:read',
+          'banking:transactions:write',
+          'banking:sensitive:read',
+        ],
+      },
+    };
+    const body = JSON.stringify(manifest, null, 2);
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-cache',
+    });
+    res.end(body);
   }
 
   /**

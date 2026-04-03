@@ -120,6 +120,48 @@ export class TokenIntrospector {
       console.log(`[TokenIntrospector] may_act validated: actor=${mayAct.client_id}`);
     }
 
+    // Optional defense-in-depth: match reference architecture checks for act.sub, act.client_id,
+    // and act.act.sub (e.g. MCP identity as URI vs PingOne client id). Off unless env vars are set.
+    const expectedActSub = process.env.MCP_EXPECTED_ACT_SUB?.trim();
+    const expectedActClientId = process.env.MCP_EXPECTED_ACT_CLIENT_ID?.trim();
+    const expectedActActSub = process.env.MCP_EXPECTED_ACT_ACT_SUB?.trim();
+    if (expectedActSub) {
+      const act = tokenInfo.act;
+      const got = act?.sub ? String(act.sub) : '';
+      if (got !== expectedActSub) {
+        console.error(`[TokenIntrospector] act.sub mismatch: expected ${expectedActSub}, got ${got || '(empty)'}`);
+        throw new AuthenticationError(
+          'Token act.sub does not match MCP_EXPECTED_ACT_SUB',
+          AuthErrorCodes.INVALID_AGENT_TOKEN
+        );
+      }
+      console.log(`[TokenIntrospector] act.sub validated against MCP_EXPECTED_ACT_SUB`);
+    }
+    if (expectedActClientId) {
+      const act = tokenInfo.act;
+      const got = act?.client_id ? String(act.client_id) : '';
+      if (got !== expectedActClientId) {
+        console.error(`[TokenIntrospector] act.client_id mismatch: expected ${expectedActClientId}, got ${got || '(empty)'}`);
+        throw new AuthenticationError(
+          'Token act.client_id does not match MCP_EXPECTED_ACT_CLIENT_ID',
+          AuthErrorCodes.INVALID_AGENT_TOKEN
+        );
+      }
+      console.log(`[TokenIntrospector] act.client_id validated against MCP_EXPECTED_ACT_CLIENT_ID`);
+    }
+    if (expectedActActSub) {
+      const nested = tokenInfo.act?.act;
+      const got = nested && typeof nested === 'object' ? String(nested.sub || '') : '';
+      if (got !== expectedActActSub) {
+        console.error(`[TokenIntrospector] act.act.sub mismatch: expected ${expectedActActSub}, got ${got || '(empty)'}`);
+        throw new AuthenticationError(
+          'Token act.act.sub does not match MCP_EXPECTED_ACT_ACT_SUB',
+          AuthErrorCodes.INVALID_AGENT_TOKEN
+        );
+      }
+      console.log(`[TokenIntrospector] act.act.sub validated against MCP_EXPECTED_ACT_ACT_SUB`);
+    }
+
     // Check if token is expired
     if (tokenInfo.exp && tokenInfo.exp < Math.floor(Date.now() / 1000)) {
       throw new AuthenticationError(

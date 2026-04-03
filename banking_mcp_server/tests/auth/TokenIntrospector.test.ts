@@ -204,6 +204,136 @@ describe('TokenIntrospector', () => {
 
       expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
     });
+
+    describe('optional MCP_EXPECTED_ACT_SUB / MCP_EXPECTED_ACT_CLIENT_ID / MCP_EXPECTED_ACT_ACT_SUB', () => {
+      afterEach(() => {
+        delete process.env.MCP_EXPECTED_ACT_SUB;
+        delete process.env.MCP_EXPECTED_ACT_CLIENT_ID;
+        delete process.env.MCP_EXPECTED_ACT_ACT_SUB;
+      });
+
+      it('should accept token when MCP_EXPECTED_ACT_SUB matches act.sub', async () => {
+        process.env.MCP_EXPECTED_ACT_SUB = 'https://mcp-server.example.com';
+        const mockTokenInfo: TokenInfo = {
+          active: true,
+          client_id: 'test-client',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          act: { sub: 'https://mcp-server.example.com' },
+        };
+
+        mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
+
+        const result = await tokenIntrospector.validateAgentToken('delegated-token');
+
+        expect(result.isValid).toBe(true);
+      });
+
+      it('should reject when MCP_EXPECTED_ACT_SUB does not match act.sub', async () => {
+        process.env.MCP_EXPECTED_ACT_SUB = 'https://mcp-server.example.com';
+        const mockTokenInfo: TokenInfo = {
+          active: true,
+          client_id: 'test-client',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          act: { sub: 'https://other.example.com' },
+        };
+
+        mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
+
+        await expect(tokenIntrospector.validateAgentToken('bad-act-sub')).rejects.toMatchObject({
+          code: AuthErrorCodes.INVALID_AGENT_TOKEN,
+          message: 'Token act.sub does not match MCP_EXPECTED_ACT_SUB',
+        });
+      });
+
+      it('should accept token when MCP_EXPECTED_ACT_CLIENT_ID matches act.client_id (no act.sub)', async () => {
+        process.env.MCP_EXPECTED_ACT_CLIENT_ID = 'bff-exchange-client-abc';
+        const mockTokenInfo: TokenInfo = {
+          active: true,
+          client_id: 'token-client',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          act: { client_id: 'bff-exchange-client-abc' },
+        };
+
+        mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
+
+        const result = await tokenIntrospector.validateAgentToken('act-client-id-only');
+
+        expect(result.isValid).toBe(true);
+      });
+
+      it('should reject when MCP_EXPECTED_ACT_CLIENT_ID does not match act.client_id', async () => {
+        process.env.MCP_EXPECTED_ACT_CLIENT_ID = 'expected-bff-id';
+        const mockTokenInfo: TokenInfo = {
+          active: true,
+          client_id: 'test-client',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          act: { client_id: 'wrong-bff-id' },
+        };
+
+        mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
+
+        await expect(tokenIntrospector.validateAgentToken('bad-act-client-id')).rejects.toMatchObject({
+          code: AuthErrorCodes.INVALID_AGENT_TOKEN,
+          message: 'Token act.client_id does not match MCP_EXPECTED_ACT_CLIENT_ID',
+        });
+      });
+
+      it('should accept when both MCP_EXPECTED_ACT_SUB and MCP_EXPECTED_ACT_CLIENT_ID match', async () => {
+        process.env.MCP_EXPECTED_ACT_SUB = 'https://mcp.example/';
+        process.env.MCP_EXPECTED_ACT_CLIENT_ID = 'bff-client';
+        const mockTokenInfo: TokenInfo = {
+          active: true,
+          client_id: 'test-client',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          act: { sub: 'https://mcp.example/', client_id: 'bff-client' },
+        };
+
+        mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
+
+        const result = await tokenIntrospector.validateAgentToken('both-act-claims');
+
+        expect(result.isValid).toBe(true);
+      });
+
+      it('should accept token when MCP_EXPECTED_ACT_ACT_SUB matches nested act.act.sub', async () => {
+        process.env.MCP_EXPECTED_ACT_ACT_SUB = 'https://agent1.example.com';
+        const mockTokenInfo: TokenInfo = {
+          active: true,
+          client_id: 'test-client',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          act: {
+            sub: 'https://mcp-server.example.com',
+            act: { sub: 'https://agent1.example.com' },
+          },
+        };
+
+        mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
+
+        const result = await tokenIntrospector.validateAgentToken('nested-act-token');
+
+        expect(result.isValid).toBe(true);
+      });
+
+      it('should reject when MCP_EXPECTED_ACT_ACT_SUB does not match nested act.act.sub', async () => {
+        process.env.MCP_EXPECTED_ACT_ACT_SUB = 'https://agent1.example.com';
+        const mockTokenInfo: TokenInfo = {
+          active: true,
+          client_id: 'test-client',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          act: {
+            sub: 'https://mcp-server.example.com',
+            act: { sub: 'https://wrong-agent.example.com' },
+          },
+        };
+
+        mockAxiosInstance.post.mockResolvedValue({ data: mockTokenInfo });
+
+        await expect(tokenIntrospector.validateAgentToken('bad-nested')).rejects.toMatchObject({
+          code: AuthErrorCodes.INVALID_AGENT_TOKEN,
+          message: 'Token act.act.sub does not match MCP_EXPECTED_ACT_ACT_SUB',
+        });
+      });
+    });
   });
 
   describe('validateTokenScopes', () => {

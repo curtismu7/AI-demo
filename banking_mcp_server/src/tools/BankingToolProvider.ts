@@ -201,11 +201,26 @@ export class BankingToolProvider {
     context: ToolExecutionContext,
     agentToken?: string
   ): Promise<BankingToolResult> {
-    // For tools that don't require user auth, use agent token if available
+    // Tools that do not require user auth — dispatch directly without token resolution
+    if (!tool.requiresUserAuth) {
+      switch (tool.handler) {
+        case 'executeSequentialThink':
+          return await this.executeSequentialThink(
+            context.params as { query: string; context?: string }
+          );
+        default:
+          return this.createErrorResult(`Unknown non-auth tool handler: ${tool.handler}`);
+      }
+    }
+
+    // Token selection: prefer the BFF-issued delegated token (RFC 8693 agentToken) when
+    // available — it carries the act claim proving the delegation chain and has the correct
+    // audience for the BFF's data APIs. Fall back to the raw session user token only when
+    // no delegated token was provided (e.g. ff_skip_token_exchange=true or direct MCP call).
     let token: string;
-    if (!tool.requiresUserAuth && agentToken) {
+    if (agentToken) {
       token = agentToken;
-      console.log(`[BankingToolProvider] Using agent token for ${tool.name}`);
+      console.log(`[BankingToolProvider] Using BFF-exchanged delegated token for ${tool.name}`);
     } else {
       const userToken = this.getUserTokenForScopes(context.session, tool.requiredScopes);
       if (!userToken) {
@@ -217,7 +232,7 @@ export class BankingToolProvider {
         );
       }
       token = userToken.accessToken;
-      console.log(`[BankingToolProvider] Using user token for ${tool.name}`);
+      console.log(`[BankingToolProvider] Using session user token for ${tool.name} (no delegated token)`);
     }
 
     switch (tool.handler) {
@@ -241,6 +256,9 @@ export class BankingToolProvider {
 
       case 'executeQueryUserByEmail':
         return await this.executeQueryUserByEmail(token, context.params as { email: string });
+
+      case 'executeGetSensitiveAccountDetails':
+        return await this.executeGetSensitiveAccountDetails(token);
 
       default:
         return this.createErrorResult(`Unknown tool handler: ${tool.handler}`);
@@ -367,6 +385,24 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
+          ? (axiosData['step_up_method'] as string) : 'ciba';
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'step_up_required',
+              step_up_required: true,
+              step_up_method: stepUpMethod,
+              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
+              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
+            },
+            null,
+            2
+          )
+        );
+      }
       if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
         return this.createSuccessResult(
           JSON.stringify(
@@ -416,6 +452,24 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
+          ? (axiosData['step_up_method'] as string) : 'ciba';
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'step_up_required',
+              step_up_required: true,
+              step_up_method: stepUpMethod,
+              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
+              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
+            },
+            null,
+            2
+          )
+        );
+      }
       if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
         return this.createSuccessResult(
           JSON.stringify(
@@ -472,6 +526,24 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
+          ? (axiosData['step_up_method'] as string) : 'ciba';
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'step_up_required',
+              step_up_required: true,
+              step_up_method: stepUpMethod,
+              message: `This transaction requires additional authentication (${stepUpMethod.toUpperCase()}). Please complete the step-up verification to proceed.`,
+              amount_threshold: typeof axiosData['amount_threshold'] === 'number' ? axiosData['amount_threshold'] : null,
+            },
+            null,
+            2
+          )
+        );
+      }
       if (error instanceof BankingAPIError && error.errorCode === 'consent_challenge_required') {
         return this.createSuccessResult(
           JSON.stringify(
@@ -516,6 +588,82 @@ export class BankingToolProvider {
       }
       throw error; // Re-throw other errors to be handled by main executeTool method
     }
+  }
+
+
+  /**
+   * Execute get_sensitive_account_details tool.
+   * Calls GET /accounts/sensitive-details on the BFF.
+   * Returns consent_required:true in the result text if the BFF gate is not satisfied.
+   */
+  private async executeGetSensitiveAccountDetails(userToken: string): Promise<BankingToolResult> {
+    console.log(`[BankingToolProvider] Calling Banking API: getSensitiveAccountDetails`);
+    try {
+      const response = await this.apiClient.getSensitiveAccountDetails(userToken);
+
+      // BFF gate returned consent_required — surface as structured result
+      if (response && (response as any).ok === false && (response as any).consent_required) {
+        const consentPayload = {
+          ok: false,
+          consent_required: true,
+          reason: (response as any).reason || 'sensitive_data_access',
+        };
+        return this.createSuccessResult(JSON.stringify(consentPayload, null, 2));
+      }
+
+      if (!response || (response as any).ok === false) {
+        return this.createErrorResult(`Access denied: ${(response as any)?.reason || 'paz_denied'}`);
+      }
+
+      return this.createSuccessResult(JSON.stringify({
+        success: true,
+        accounts: (response as any).accounts || [],
+      }, null, 2));
+    } catch (error) {
+      console.error('[BankingToolProvider] getSensitiveAccountDetails error:', error);
+      return this.createErrorResult(
+        `Failed to retrieve sensitive account details: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Execute sequential_think tool — structured step-by-step reasoning
+   * No user auth required; reasons about banking decisions without accessing live data.
+   */
+  private async executeSequentialThink(
+    params: { query: string; context?: string }
+  ): Promise<BankingToolResult> {
+    const { query, context: ctx } = params;
+
+    const steps: Array<{ title: string; description: string }> = [
+      {
+        title: 'Understand the request',
+        description: `Parsing: "${query}"${ctx ? `. Additional context: ${ctx}` : ''}.`
+      },
+      {
+        title: 'Identify relevant factors',
+        description: 'Considering account balances, transaction history, applicable limits, and user goals.'
+      },
+      {
+        title: 'Evaluate options',
+        description: 'Weighing the available actions against constraints: authorization scopes, daily limits, and account eligibility.'
+      },
+      {
+        title: 'Assess risk and impact',
+        description: 'Checking for potential issues: insufficient funds, scope requirements, consent gates, or regulatory flags.'
+      },
+      {
+        title: 'Formulate recommendation',
+        description: 'Based on analysis, selecting the most appropriate approach that satisfies the request safely.'
+      }
+    ];
+
+    const conclusion = `Analysis complete for: "${query}". Proceeding with recommended approach.`;
+    const result = { steps, conclusion };
+    console.log(`[BankingToolProvider] sequential_think completed: ${steps.length} steps for query: "${query.slice(0, 60)}"`);
+
+    return this.createSuccessResult(JSON.stringify(result, null, 2));
   }
 
   /**

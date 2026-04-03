@@ -53,6 +53,21 @@ export class BankingToolRegistry {
       }
     },
 
+
+    get_sensitive_account_details: {
+      name: 'get_sensitive_account_details',
+      description: 'Retrieve sensitive account details (full account number and routing number). Requires banking:sensitive:read scope and user consent — the UI will prompt the user to approve access before this data is released.',
+      requiresUserAuth: true,
+      requiredScopes: ['banking:sensitive:read'],
+      handler: 'executeGetSensitiveAccountDetails',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        required: [],
+        additionalProperties: false
+      }
+    },
+
     get_my_transactions: {
       name: 'get_my_transactions',
       description: 'Retrieve user\'s transaction history',
@@ -182,6 +197,34 @@ export class BankingToolRegistry {
           }
         },
         required: ['email'],
+        additionalProperties: false
+      }
+    },
+
+    sequential_think: {
+      name: 'sequential_think',
+      description: 'Reason step-by-step through a complex banking question or decision. '
+        + 'Returns a structured chain of reasoning steps with titles, descriptions, and a final conclusion. '
+        + 'Use this before making complex decisions (e.g., transfer eligibility, account analysis, loan assessment).',
+      requiresUserAuth: false,
+      requiredScopes: [],
+      handler: 'executeSequentialThink',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'The question or decision to reason through (e.g. "Should I transfer $500 from savings to checking?")',
+            minLength: 1,
+            maxLength: 500
+          },
+          context: {
+            type: 'string',
+            description: 'Optional additional context (e.g. account balances, user situation)',
+            maxLength: 1000
+          }
+        },
+        required: ['query'],
         additionalProperties: false
       }
     }

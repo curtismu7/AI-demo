@@ -29,6 +29,8 @@ export interface HandshakeMessage extends MCPMessage {
     clientInfo?: {
       name: string;
       version: string;
+      /** Optional human-readable description (spec 2025-11-25). */
+      description?: string;
     };
     agentToken?: string;
   };
@@ -93,17 +95,37 @@ export interface ServerInfo {
 
 export interface ToolDefinition {
   name: string;
+  /** Optional human-readable display name shown in UIs (spec 2025-11-25). */
+  title?: string;
   description: string;
   inputSchema: JSONSchema;
+  /** Optional JSON Schema 2020-12 for structured output. When present, tool results MUST include structuredContent. */
+  outputSchema?: JSONSchema;
+  /** Optional display icons (spec 2025-11-25). */
+  icons?: Array<{ src: string; mimeType?: string; sizes?: string[] }>;
+  /** Optional metadata about tool behaviour. Treat as untrusted unless from a trusted server. */
+  annotations?: Record<string, any>;
+  /** Task-augmented execution support (spec 2025-11-25). Default: 'forbidden'. */
+  execution?: {
+    taskSupport?: 'forbidden' | 'optional' | 'required';
+  };
   requiresUserAuth: boolean;
   requiredScopes: string[];
 }
 
 export interface ToolResult {
-  type: 'text' | 'image' | 'resource';
+  type: 'text' | 'image' | 'audio' | 'resource' | 'resource_link';
   text?: string;
   data?: string;
   mimeType?: string;
+  /** For resource_link: URI of the referenced resource. */
+  uri?: string;
+  /** For resource_link: display name. */
+  name?: string;
+  /** Structured output object when the tool declared an outputSchema (spec 2025-11-25). */
+  structuredContent?: Record<string, any>;
+  /** Optional annotations (audience, priority, lastModified) per spec. */
+  annotations?: Record<string, any>;
   success?: boolean;
   error?: string;
   authChallenge?: AuthorizationRequest;

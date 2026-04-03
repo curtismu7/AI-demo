@@ -35,8 +35,14 @@ export interface TokenInfo {
   aud?: string;
   iss?: string;
   /** RFC 8693 §4.1 — present on delegated tokens issued via token exchange.
-   *  Identifies the actor (client) that performed the exchange on behalf of `sub`. */
-  act?: { client_id?: string; sub?: string; iss?: string };
+   *  Identifies the actor (client) that performed the exchange on behalf of `sub`.
+   *  Nested `act` may appear for multi-hop delegation (e.g. MCP layer then agent). */
+  act?: {
+    client_id?: string;
+    sub?: string;
+    iss?: string;
+    act?: { client_id?: string; sub?: string; iss?: string };
+  };
 }
 
 export interface PingOneConfig {

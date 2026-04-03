@@ -40,6 +40,20 @@ export interface EnvironmentVariables {
   MAX_CONNECTIONS?: string;
   SESSION_TIMEOUT?: string;
 
+  // HTTP MCP transport (spec 2025-11-25 — Phase D)
+  /** Set to 'false' to disable the HTTP Streamable MCP transport (default: enabled). */
+  HTTP_MCP_TRANSPORT_ENABLED?: string;
+  /** Public base URL of this server used in RFC 9728 metadata and WWW-Authenticate, e.g. https://mcp.example.com */
+  MCP_RESOURCE_URL?: string;
+  /** Comma-separated allowed HTTP Origin headers. Empty = allow all (suitable for demo/server-to-server). */
+  MCP_ALLOWED_ORIGINS?: string;
+  /**
+   * Resource URI used for RFC 8707 audience validation on inbound agent tokens.
+   * When set, TokenIntrospector rejects tokens whose `aud` claim does not include this value.
+   * Recommended: set to the same value as MCP_RESOURCE_URL.
+   */
+  MCP_SERVER_RESOURCE_URI?: string;
+
   // PingOne configuration
   PINGONE_BASE_URL?: string;
   PINGONE_CLIENT_ID?: string;
@@ -59,6 +73,10 @@ export interface EnvironmentVariables {
   TOKEN_STORAGE_PATH?: string;
   SESSION_CLEANUP_INTERVAL?: string;
   MAX_SESSION_DURATION?: string;
+
+  // Per-request timeouts (spec SHOULD — MCP 2025-11-25 §lifecycle/timeouts)
+  /** Tool call execution timeout in ms (default: 30000). Applies to the executeTool call only; CIBA waits are excluded. */
+  TOOL_CALL_TIMEOUT_MS?: string;
 
   // Logging configuration
   LOG_LEVEL?: string;

@@ -164,8 +164,43 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         description: expect.stringContaining('banking operations')
       });
       expect(response.result!.capabilities).toMatchObject({
-        tools: { listChanged: false }
+        tools: { listChanged: false },
+        logging: {}
       });
+
+      ws.close();
+    });
+
+    it('should complete initialize → notifications/initialized → tools/list (spec lifecycle)', async () => {
+      const ws = new WebSocket(`ws://localhost:${serverPort}`);
+      await new Promise<void>((resolve, reject) => {
+        ws.on('open', resolve);
+        ws.on('error', reject);
+      });
+
+      const initRes = await sendMessageAndWaitForResponse(ws, {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-11-25',
+          capabilities: {},
+          clientInfo: { name: 'LifecycleTest', version: '1.0.0' }
+        }
+      } as MCPMessage);
+
+      expect(initRes.result?.protocolVersion).toBe('2025-11-25');
+      ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
+
+      const listRes = await sendMessageAndWaitForResponse(ws, {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/list',
+        params: {}
+      } as MCPMessage);
+
+      expect(listRes.result?.tools).toBeInstanceOf(Array);
+      expect(listRes.result!.tools!.length).toBeGreaterThan(0);
 
       ws.close();
     });
@@ -320,6 +355,8 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
       };
 
       await sendMessageAndWaitForResponse(authenticatedWs, handshakeMessage);
+      // Complete lifecycle per MCP spec (SHOULD: notifications/initialized before requests)
+      authenticatedWs.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
     });
 
     afterEach(() => {
@@ -422,6 +459,8 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
       };
 
       await sendMessageAndWaitForResponse(authenticatedWs, handshakeMessage);
+      // Complete lifecycle per MCP spec (SHOULD: notifications/initialized before requests)
+      authenticatedWs.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
     });
 
     afterEach(() => {
@@ -758,6 +797,8 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         };
 
         await sendMessageAndWaitForResponse(ws, handshakeMessage);
+        // Complete lifecycle per MCP spec before sending tool calls
+        ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
 
         // Setup user tokens for each session
         await setupSessionWithUserTokens(ws, i);
@@ -821,6 +862,13 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
           ws.on('open', resolve);
           ws.on('error', reject);
         });
+        // Complete lifecycle per MCP spec: initialize then notifications/initialized
+        await sendMessageAndWaitForResponse(ws, {
+          id: `load-init-${i}`,
+          method: 'initialize',
+          params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'load-test', version: '1.0.0' } }
+        } as any);
+        ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
       }
 
       const startTime = Date.now();
@@ -892,6 +940,14 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
         ws.on('open', resolve);
         ws.on('error', reject);
       });
+
+      // Complete lifecycle per MCP spec before testing unknown methods
+      await sendMessageAndWaitForResponse(ws, {
+        id: 'unknown-init',
+        method: 'initialize',
+        params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'Test Client', version: '1.0.0' } }
+      } as any);
+      ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
 
       const unknownMethodMessage = {
         id: 'unknown-method',
