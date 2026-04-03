@@ -82,6 +82,10 @@ export interface EnvironmentVariables {
   LOG_LEVEL?: string;
   AUDIT_LOG_PATH?: string;
   SECURITY_LOG_PATH?: string;
+  /** Upstash Redis REST URL — required for AuditLogger persistence. */
+  UPSTASH_REDIS_REST_URL?: string;
+  /** Upstash Redis REST token — required for AuditLogger persistence. */
+  UPSTASH_REDIS_REST_TOKEN?: string;
 }
 
 export const DEFAULT_CONFIG: Omit<BankingMCPServerConfig, 'pingone'> = {

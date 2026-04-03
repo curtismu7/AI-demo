@@ -257,6 +257,10 @@ export class HttpMCPTransport {
         if (eventType) filters.eventType = eventType as any;
         if (outcome) filters.outcome = outcome as any;
         if (limit) filters.limit = parseInt(limit, 10);
+        const agentId = url.searchParams.get("agentId");
+        const operation = url.searchParams.get("operation");
+        if (agentId) filters.agentId = agentId;
+        if (operation) filters.operation = operation;
         const events = await logger.queryAuditLogs(filters);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(events));

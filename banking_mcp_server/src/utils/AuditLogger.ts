@@ -4,6 +4,7 @@
  */
 
 import { Logger } from './Logger.js';
+import { Redis } from '@upstash/redis';
 
 export interface AuditEvent {
   eventId: string;
@@ -22,6 +23,14 @@ export interface AuditEvent {
   duration?: number;
   errorCode?: string;
   errorMessage?: string;
+  /** OAuth scopes on the token used for this operation. */
+  scope?: string[];
+  /** Token type that authorized this operation. 'exchanged' for RFC 8693 derived tokens. */
+  tokenType?: 'agent' | 'user' | 'exchanged';
+  /** Sanitized summary of tool input params (no raw secrets). */
+  requestSummary?: string;
+  /** Outcome summary (not raw response data). */
+  responseSummary?: string;
 }
 
 export interface BankingOperationAudit {
@@ -37,7 +46,7 @@ export interface BankingOperationAudit {
 
 export interface AuthenticationAudit {
   operation: 'agent_token_validation' | 'user_authorization' | 'token_refresh' | 'token_revocation';
-  tokenType?: 'agent' | 'user' | 'refresh';
+  tokenType?: 'agent' | 'user' | 'refresh' | 'exchanged';
   scopes?: string[];
   grantType?: string;
   clientId?: string;
@@ -57,8 +66,42 @@ export class AuditLogger {
   private logger: Logger;
   private static instance: AuditLogger;
 
+  private redis: Redis | null = null;
+
   constructor(logger: Logger) {
     this.logger = logger;
+  }
+
+  private getRedis(): Redis | null {
+    if (this.redis) return this.redis;
+    const url = process.env['UPSTASH_REDIS_REST_URL'];
+    const token = process.env['UPSTASH_REDIS_REST_TOKEN'];
+    if (!url || !token) return null;
+    this.redis = new Redis({ url, token });
+    return this.redis;
+  }
+
+  private sanitizeParams(params: Record<string, unknown>): Record<string, unknown> {
+    const SENSITIVE = /password|secret|token|key|credential|authorization/i;
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(params)) {
+      result[k] = SENSITIVE.test(k) ? '[REDACTED]' : v;
+    }
+    return result;
+  }
+
+  private async writeToRedis(event: AuditEvent): Promise<void> {
+    const client = this.getRedis();
+    if (!client) return;
+    try {
+      const key = 'mcp:audit:events';
+      const entry = JSON.stringify(event);
+      await client.lpush(key, entry);
+      await client.ltrim(key, 0, 499);
+      await client.expire(key, 604800);
+    } catch (err) {
+      process.stderr.write('[AuditLogger] Redis write failed: ' + (err instanceof Error ? err.message : String(err)) + '\n');
+    }
   }
 
   static getInstance(logger?: Logger): AuditLogger {
@@ -151,6 +194,7 @@ export class AuditLogger {
       auditEvent,
       operation: 'audit_banking'
     });
+    await this.writeToRedis(auditEvent);
   }
 
   /**
@@ -193,6 +237,7 @@ export class AuditLogger {
       auditEvent,
       operation: 'audit_authentication'
     });
+    await this.writeToRedis(auditEvent);
   }
 
   /**
@@ -238,6 +283,7 @@ export class AuditLogger {
       auditEvent,
       operation: 'audit_authorization'
     });
+    await this.writeToRedis(auditEvent);
   }
 
   /**
@@ -281,6 +327,7 @@ export class AuditLogger {
       auditEvent,
       operation: 'audit_session'
     });
+    await this.writeToRedis(auditEvent);
   }
 
   /**
@@ -321,6 +368,7 @@ export class AuditLogger {
       operation: 'audit_security',
       severity
     });
+    await this.writeToRedis(auditEvent);
   }
 
   /**
@@ -337,14 +385,36 @@ export class AuditLogger {
     endTime?: Date;
     limit?: number;
   }): Promise<AuditEvent[]> {
-    // In a real implementation, this would query the actual log storage
-    // For now, we'll return an empty array and log the query attempt
-    await this.logger.debug('Audit log query requested', {
-      filters,
-      operation: 'audit_query'
-    });
-    
-    return [];
+    const client = this.getRedis();
+    if (!client) {
+      await this.logger.debug('Audit log query: Redis not configured, returning empty', { filters, operation: 'audit_query' });
+      return [];
+    }
+
+    try {
+      const raw = await client.lrange('mcp:audit:events', 0, 499);
+      let events: AuditEvent[] = raw
+        .map((entry: unknown) => {
+          try { return JSON.parse(typeof entry === 'string' ? entry : JSON.stringify(entry)) as AuditEvent; }
+          catch { return null; }
+        })
+        .filter((e: AuditEvent | null): e is AuditEvent => e !== null);
+
+      if (filters.eventType) events = events.filter(e => e.eventType === filters.eventType);
+      if (filters.operation) events = events.filter(e => e.operation === filters.operation);
+      if (filters.userId) events = events.filter(e => e.userId === filters.userId);
+      if (filters.agentId) events = events.filter(e => e.agentId === filters.agentId);
+      if (filters.sessionId) events = events.filter(e => e.sessionId === filters.sessionId);
+      if (filters.outcome) events = events.filter(e => e.outcome === filters.outcome);
+      if (filters.startTime) events = events.filter(e => new Date(e.timestamp) >= filters.startTime!);
+      if (filters.endTime) events = events.filter(e => new Date(e.timestamp) <= filters.endTime!);
+
+      const limit = filters.limit ?? 100;
+      return events.slice(0, limit);
+    } catch (err) {
+      await this.logger.warn('Audit query failed', { err: err instanceof Error ? err.message : String(err), operation: 'audit_query' });
+      return [];
+    }
   }
 
   /**
@@ -366,21 +436,41 @@ export class AuditLogger {
     topUsers: Array<{ userId: string; eventCount: number }>;
     topOperations: Array<{ operation: string; eventCount: number }>;
   }> {
-    // In a real implementation, this would analyze the actual audit logs
-    await this.logger.info('Audit summary generation requested', {
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      filters,
-      operation: 'audit_summary'
-    });
+    await this.logger.info('Generating audit summary', { startTime: startTime.toISOString(), endTime: endTime.toISOString(), filters, operation: 'audit_summary' });
+
+    const events = await this.queryAuditLogs({ startTime, endTime, ...filters, limit: 500 });
+
+    const eventsByType: Record<string, number> = {};
+    const userCounts: Record<string, number> = {};
+    const opCounts: Record<string, number> = {};
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const ev of events) {
+      eventsByType[ev.eventType] = (eventsByType[ev.eventType] ?? 0) + 1;
+      if (ev.userId) userCounts[ev.userId] = (userCounts[ev.userId] ?? 0) + 1;
+      opCounts[ev.operation] = (opCounts[ev.operation] ?? 0) + 1;
+      if (ev.outcome === 'success') successCount++;
+      else if (ev.outcome === 'failure') failureCount++;
+    }
+
+    const topUsers = Object.entries(userCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([userId, eventCount]) => ({ userId, eventCount }));
+
+    const topOperations = Object.entries(opCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([operation, eventCount]) => ({ operation, eventCount }));
 
     return {
-      totalEvents: 0,
-      successfulOperations: 0,
-      failedOperations: 0,
-      eventsByType: {},
-      topUsers: [],
-      topOperations: []
+      totalEvents: events.length,
+      successfulOperations: successCount,
+      failedOperations: failureCount,
+      eventsByType,
+      topUsers,
+      topOperations,
     };
   }
 }
