@@ -97,7 +97,7 @@ class OAuthUserService {
       state: state,
       code_challenge: this.generateCodeChallenge(codeVerifier),
       code_challenge_method: 'S256',
-      login_hint: 'bankuser'
+      login_hint: options.login_hint || 'bankuser'
     });
 
     if (usePiFlow) {
@@ -109,6 +109,9 @@ class OAuthUserService {
     }
     if (options.nonce) {
       params.set('nonce', options.nonce);
+    }
+    if (options.max_age !== undefined) {
+      params.set('max_age', String(options.max_age));
     }
 
     return `${this.config.authorizationEndpoint}?${params.toString()}`;
