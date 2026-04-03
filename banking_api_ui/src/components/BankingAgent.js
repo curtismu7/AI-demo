@@ -796,6 +796,14 @@ export default function BankingAgent({
     }
   }, [location.state]);
 
+  // Open floating panel when 'banking-agent-open' event is dispatched (e.g. nav Agent button)
+  useEffect(() => {
+    if (isInline) return;
+    const handler = () => setIsOpen(true);
+    window.addEventListener('banking-agent-open', handler);
+    return () => window.removeEventListener('banking-agent-open', handler);
+  }, [isInline]);
+
   // Auto-open when redirected back from OAuth login (?oauth=success in URL)
   useEffect(() => {
     if (searchParams.get('oauth') === 'success') {

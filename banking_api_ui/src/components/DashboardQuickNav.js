@@ -58,13 +58,14 @@ export default function DashboardQuickNav({ user }) {
       >
         Dashboard
       </Link>
-      <Link
-        to="/agent"
-        className={`dashboard-quick-nav__btn${pathname === '/agent' ? ' dashboard-quick-nav__btn--active' : ''}`}
-        title="AI Agent"
+      <button
+        type="button"
+        className="dashboard-quick-nav__btn"
+        title="Open AI Agent panel"
+        onClick={() => window.dispatchEvent(new CustomEvent('banking-agent-open'))}
       >
         Agent
-      </Link>
+      </button>
       {isAdmin && (
         <Link
           to="/admin/banking"
