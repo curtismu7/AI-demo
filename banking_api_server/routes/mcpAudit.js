@@ -17,8 +17,16 @@ function mcpHttpBase() {
  * Proxy to MCP server internal /audit endpoint.
  * Supported query params: eventType, outcome, limit, since, summary
  * Requires admin session (enforced at server.js registration level).
+ *
+ * When the MCP server is unreachable (e.g. Vercel without a deployed MCP server),
+ * returns an empty result rather than a 502 so the UI shows an empty state.
  */
 router.get('/', async (req, res) => {
+  const isSummary = req.query.summary === '1' || req.query.summary === 'true';
+  const emptyFallback = isSummary
+    ? { total: 0, byOutcome: {}, byEventType: {} }
+    : [];
+
   try {
     const base = mcpHttpBase();
     const params = new URLSearchParams();
@@ -33,23 +41,21 @@ router.get('/', async (req, res) => {
 
     const upstream = await fetch(url, {
       headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!upstream.ok) {
-      return res.status(502).json({
-        error: 'mcp_audit_unavailable',
-        message: `MCP server returned ${upstream.status}`,
-      });
+      console.warn(`[mcpAudit] upstream returned ${upstream.status} — returning empty fallback`);
+      res.set('x-mcp-unavailable', 'true');
+      return res.json(emptyFallback);
     }
 
     const data = await upstream.json();
     return res.json(data);
   } catch (err) {
-    console.error('[mcpAudit] fetch error:', err.message);
-    return res.status(502).json({
-      error: 'mcp_audit_unavailable',
-      message: err.message,
-    });
+    console.warn('[mcpAudit] MCP server unreachable:', err.message, '— returning empty fallback');
+    res.set('x-mcp-unavailable', 'true');
+    return res.json(emptyFallback);
   }
 });
 
