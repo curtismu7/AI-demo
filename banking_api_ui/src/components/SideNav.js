@@ -24,21 +24,21 @@ const ADMIN_NAV = [
     ],
   },
   {
-    group: 'Developer Tools',
+    group: 'Configuration',
     items: [
-      { to: '/demo-data',          label: 'Demo config',      icon: '⚙️' },
-      { to: '/mcp-inspector',      label: 'MCP Inspector',    icon: '🔌' },
-      { to: '/oauth-debug-logs',   label: 'OAuth Logs',       icon: '🔍' },
-      { to: '/client-registration',label: 'Client Reg.',      icon: '📝' },
+      { to: '/config',             label: 'App Config',       icon: '⚙️' },
+      { to: '/settings',           label: 'Security',         icon: '🔐' },
+      { to: '/demo-data',          label: 'Demo Data',        icon: '🗄️' },
+      { to: '/onboarding',         label: 'Setup Guide',      icon: '🚀' },
+      { to: '/setup/pingone',      label: 'PingOne Ref.',     icon: '📘' },
     ],
   },
   {
-    group: 'System',
+    group: 'Developer Tools',
     items: [
-      { to: '/onboarding',   label: 'Setup Guide',     icon: '🚀' },
-      { to: '/setup/pingone', label: 'PingOne ref.',   icon: '📘' },
-      { to: '/config',       label: 'Config',          icon: '⚙️' },
-      { to: '/settings',     label: 'Security',        icon: '🔐' },
+      { to: '/mcp-inspector',      label: 'MCP Inspector',    icon: '🔌' },
+      { to: '/oauth-debug-logs',   label: 'OAuth Logs',       icon: '🔍' },
+      { to: '/client-registration',label: 'Client Reg.',      icon: '📝' },
     ],
   },
 ];
