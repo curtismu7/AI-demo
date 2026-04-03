@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/DashboardQuickNav.js
 import { useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { isDashboardQuickNavRoute } from '../utils/embeddedAgentFabVisibility';
 import './DashboardQuickNav.css';
 
@@ -12,6 +12,7 @@ const POPOUT = 'width=1400,height=900,scrollbars=yes,resizable=yes';
  */
 export default function DashboardQuickNav({ user }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
@@ -62,7 +63,16 @@ export default function DashboardQuickNav({ user }) {
         type="button"
         className="dashboard-quick-nav__btn"
         title="Open AI Agent panel"
-        onClick={() => window.dispatchEvent(new CustomEvent('banking-agent-open'))}
+        onClick={() => {
+          const agentRoutes = ['/', '/admin', '/dashboard', '/marketing'];
+          const norm = pathname.replace(/\/$/, '') || '/';
+          if (agentRoutes.includes(norm)) {
+            window.dispatchEvent(new CustomEvent('banking-agent-open'));
+          } else {
+            const dest = isAdmin ? '/admin' : '/dashboard';
+            navigate(dest, { state: { openAgent: true } });
+          }
+        }}
       >
         Agent
       </button>

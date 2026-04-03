@@ -789,8 +789,9 @@ export default function BankingAgent({
   }, [location.pathname, isInline]);
 
   // Auto-open when returning from /config (Config.js navigates back with scrollToAgent:true)
+  // Also handles Agent nav button redirect (state.openAgent)
   useEffect(() => {
-    if (location.state?.scrollToAgent) {
+    if (location.state?.scrollToAgent || location.state?.openAgent) {
       setIsOpen(true);
       window.history.replaceState({}, '');
     }
