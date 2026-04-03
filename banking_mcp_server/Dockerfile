@@ -61,7 +61,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 ENV NODE_ENV=production
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/index.js"]
 
 # Labels for metadata
 LABEL maintainer="Banking MCP Server Team"
