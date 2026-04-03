@@ -2474,3 +2474,16 @@ html[data-theme='dark'] .App--marketing-page .embedded-agent-dock[data-agent-the
   background: #0a1628 !important;
   border-color: #0d2040 !important;
 }
+
+
+/* ba-reasoning: sequential thinking */
+.ba-reasoning { border-left: 2px solid #e5e7eb; margin: 4px 8px; padding: 4px 0; font-size: 0.8rem; }
+.ba-reasoning__summary { cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 6px 8px; font-size: 0.8rem; color: #6b7280; list-style: none; }
+.ba-reasoning__summary::-webkit-details-marker { display: none; }
+.ba-reasoning__body { padding: 4px 8px 8px; }
+.ba-reasoning__steps { padding-left: 20px; margin: 8px 0; }
+.ba-reasoning__step { margin-bottom: 8px; }
+.ba-reasoning__step-title { display: block; font-weight: 600; color: #374151; }
+.ba-reasoning__step-desc { color: #6b7280; margin: 2px 0 0; }
+.ba-reasoning__conclusion { color: #1d4ed8; font-style: italic; margin-top: 8px; padding: 6px; background: #eff6ff; border-radius: 4px; }
+.banking-agent-msg-bubble--reasoning { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 2px 4px; max-width: 100%; }

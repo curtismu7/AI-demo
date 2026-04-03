@@ -171,6 +171,7 @@ function TextField({ label, fieldKey, value, onChange, help, placeholder, type =
 // ─── Main component ───────────────────────────────────────────────────────────
 // ─── Display Preferences (localStorage only) ─────────────────────────────────
 const DISPLAY_MODE_KEY = 'agentDisplayMode';
+const ASYNC_UX_MODE_KEY = 'agentAsyncToolMode';
 
 function DisplayPreferences() {
   const [mode, setMode] = useState(() => localStorage.getItem(DISPLAY_MODE_KEY) || 'panel');
@@ -230,6 +231,89 @@ function DisplayPreferences() {
         <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: '#1d4ed8' }}>
           💡 Full Page mode: Agent results will update the account cards and transaction table on your dashboard.
           The Agent chat stays open for follow-up questions.
+        </div>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+function AsyncUxPreferences() {
+  const [mode, setMode] = React.useState(
+    () => localStorage.getItem(ASYNC_UX_MODE_KEY) || 'job-id'
+  );
+
+  function handleChange(val) {
+    setMode(val);
+    localStorage.setItem(ASYNC_UX_MODE_KEY, val);
+  }
+
+  return (
+    <CollapsibleCard
+      title="Async Tool Display Mode"
+      subtitle="How the agent shows long-running MCP tool calls"
+      defaultOpen={false}
+      className="config-page__async-prefs"
+    >
+      <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+        Controls how the banking agent communicates progress when a tool call
+        takes time to complete (e.g., a simulated background job).
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="agentAsyncToolMode"
+            value="job-id"
+            checked={mode === 'job-id'}
+            onChange={() => handleChange('job-id')}
+            style={{ marginTop: '3px', flexShrink: 0 }}
+          />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Job ID (default)</div>
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+              Agent immediately returns a job ID and polls visibly: &quot;Job created: #abc123,
+              checking status…&quot; — shows the async pattern explicitly.
+            </div>
+          </div>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="agentAsyncToolMode"
+            value="spinner"
+            checked={mode === 'spinner'}
+            onChange={() => handleChange('spinner')}
+            style={{ marginTop: '3px', flexShrink: 0 }}
+          />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Progress Spinner</div>
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+              Agent shows a spinner / progress indicator while the tool runs,
+              then displays the result when done.
+            </div>
+          </div>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="agentAsyncToolMode"
+            value="transparent"
+            checked={mode === 'transparent'}
+            onChange={() => handleChange('transparent')}
+            style={{ marginTop: '3px', flexShrink: 0 }}
+          />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Transparent</div>
+            <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+              Agent polls silently in the background and shows only the final result.
+              Simulates a &quot;fire and forget&quot; experience without visible async state.
+            </div>
+          </div>
+        </label>
+      </div>
+      {mode === 'job-id' && (
+        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', fontSize: '0.8rem', color: '#166534' }}>
+          💡 Job ID mode: the agent will report &quot;Job #abc123 created&quot; and poll until complete — great for demos showing async patterns.
         </div>
       )}
     </CollapsibleCard>
@@ -1460,6 +1544,8 @@ export default function Config() {
 
         {/* ── Display Preferences (localStorage only — no server POST) ── */}
         <DisplayPreferences />
+
+        <AsyncUxPreferences />
 
         <AgentLayoutPreferences />
 

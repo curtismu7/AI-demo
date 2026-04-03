@@ -463,6 +463,32 @@ function TransactionsTable({ transactions }) {
   );
 }
 
+/** Renders sequential_think reasoning steps as a collapsible block. */
+function ReasoningSteps({ steps, conclusion }) {
+  if (!steps?.length) return null;
+  return (
+    <details className="ba-reasoning">
+      <summary className="ba-reasoning__summary">
+        <span className="ba-reasoning__icon" aria-hidden>🧠</span>
+        <span className="ba-reasoning__label">Reasoning ({steps.length} steps)</span>
+      </summary>
+      <div className="ba-reasoning__body">
+        <ol className="ba-reasoning__steps">
+          {steps.map((step, i) => (
+            <li key={i} className="ba-reasoning__step">
+              <span className="ba-reasoning__step-title">{step.title}</span>
+              {step.description && (
+                <p className="ba-reasoning__step-desc">{step.description}</p>
+              )}
+            </li>
+          ))}
+        </ol>
+        {conclusion && <p className="ba-reasoning__conclusion">💡 {conclusion}</p>}
+      </div>
+    </details>
+  );
+}
+
 /** Renders MCP-style tool step chips (read/update account, transactions) between user ask and reply. */
 function ToolProgressChips({ steps }) {
   if (!steps?.length) return null;
@@ -2023,6 +2049,37 @@ export default function BankingAgent({
       addMessage('assistant', AGENT_CONSENT_BLOCK_USER_MESSAGE);
       return;
     }
+
+    // Sequential thinking trigger: "think: [query]" or "reason: [query]"
+    const thinkMatch = text.match(/^(?:think|reason):\s*(.+)/i);
+    if (thinkMatch) {
+      const query = thinkMatch[1].trim();
+      addMessage('user', text);
+      setNlInput('');
+      setNlLoading(true);
+      try {
+        const res = await fetch('/api/mcp/inspector/invoke', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tool: 'sequential_think', params: { query } }),
+        });
+        const data = await res.json();
+        let steps = [], conclusion = '';
+        try {
+          const parsed = JSON.parse(data.result ?? '{}');
+          steps = parsed.steps || [];
+          conclusion = parsed.conclusion || '';
+        } catch (_) {}
+        addMessage('reasoning', '', null, { steps, conclusion });
+      } catch (err) {
+        addMessage('error', `Sequential thinking failed: ${err.message}`);
+      } finally {
+        setNlLoading(false);
+      }
+      return;
+    }
+
     setNlLoading(true);
     addMessage('user', text);
     setNlInput('');
@@ -2501,6 +2558,16 @@ export default function BankingAgent({
                   </div>
                 )}
                 {messages.map(msg => {
+                  if (msg.role === 'reasoning') {
+                    return (
+                      <div key={msg.id} className="banking-agent-msg reasoning">
+                        <span className="banking-agent-msg-avatar banking-agent-msg-avatar--tool" aria-hidden>🧠</span>
+                        <div className="banking-agent-msg-bubble banking-agent-msg-bubble--reasoning">
+                          <ReasoningSteps steps={msg.steps} conclusion={msg.conclusion} />
+                        </div>
+                      </div>
+                    );
+                  }
                   if (msg.role === 'tool-progress') {
                     return (
                       <div key={msg.id} className="banking-agent-msg tool-progress">
