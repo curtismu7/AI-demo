@@ -57,6 +57,15 @@ export default function DashboardQuickNav({ user }) {
           Banking
         </Link>
       )}
+      {isAdmin && (
+        <Link
+          to="/config"
+          className={`dashboard-quick-nav__btn${pathname === '/config' ? ' dashboard-quick-nav__btn--active' : ''}`}
+          title="App Config — async UX, display preferences, industry"
+        >
+          Config
+        </Link>
+      )}
       <button type="button" className="dashboard-quick-nav__btn" onClick={openApiPopout} title="Open API traffic in a new window">
         API
       </button>
