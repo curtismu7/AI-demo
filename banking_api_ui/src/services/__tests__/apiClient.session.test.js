@@ -39,9 +39,10 @@ const sharedPost = mockClient.post;
 /** Captured at module load so assertions survive jest.restoreAllMocks() between tests */
 const axiosCreateOptions = axios.create.mock.calls[0][0];
 
+// Index 0 = spinner interceptor, index 1 = traffic-stamp, index 2 = auth token
 const requestInterceptorFn =
-  mockClient.interceptors.request.use.mock.calls[1] &&
-  mockClient.interceptors.request.use.mock.calls[1][0];
+  mockClient.interceptors.request.use.mock.calls[2] &&
+  mockClient.interceptors.request.use.mock.calls[2][0];
 
 const responseInterceptorFn =
   mockClient.interceptors.response.use.mock.calls[0] &&

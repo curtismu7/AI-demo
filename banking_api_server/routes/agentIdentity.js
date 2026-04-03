@@ -1,6 +1,7 @@
 // banking_api_server/routes/agentIdentity.js
 /**
- * Human ↔ agent representative identity: optional ROPC re-check and PingOne user provisioning.
+ * Human ↔ agent representative identity: optional PingOne user provisioning and (lab-only) password-grant re-check.
+ * Main demos use OAuth code + PKCE or marketing pi.flow — not this route. Password grant here is gated by env and PingOne app config.
  */
 'use strict';
 
@@ -38,7 +39,7 @@ router.get('/identity/status', async (req, res) => {
 
 /**
  * POST /api/agent/identity/bootstrap
- * body: { username?, password? } — optional ROPC to prove credential ownership when login changes.
+ * body: { username?, password? } — optional resource-owner (password) grant re-check when enabled (lab); otherwise mapping only.
  */
 router.post('/identity/bootstrap', express.json(), async (req, res) => {
   const u = sessionUser(req);

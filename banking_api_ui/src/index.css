@@ -4,12 +4,26 @@
   box-sizing: border-box;
 }
 
+/* Toast notifications must sit above all fixed/portal UI (hamburger menu is z-index 10055). */
+.Toastify__toast-container {
+  z-index: 10100 !important;
+}
+
 /* App-wide primary actions: red fill, white label (floating FABs use their own classes). */
 :root {
   --app-primary-red: #b91c1c;
   --app-primary-red-hover: #991b1b;
   --app-primary-red-mid: #dc2626;
   --app-primary-red-border: #7f1d1d;
+  --app-primary-blue: #1d4ed8;
+  --app-primary-blue-hover: #1e3a8a;
+  --app-primary-blue-mid: #2563eb;
+  --app-primary-blue-border: #1e40af;
+  /* IndustryBrandingContext overrides these + dashboard / config hero gradients */
+  --brand-dashboard-header-start: #1e3a8a;
+  --brand-dashboard-header-end: #1e40af;
+  --brand-app-shell-hero-start: #1e3a8a;
+  --brand-app-shell-hero-end: #2563eb;
 }
 
 body {
@@ -372,6 +386,31 @@ body {
   background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   color: #fff;
 }
+
+.btn-blue {
+  background: linear-gradient(180deg, var(--app-primary-blue-mid) 0%, var(--app-primary-blue) 100%);
+  color: #fff;
+  border: 1px solid var(--app-primary-blue-border);
+}
+
+.btn-blue:hover {
+  background: linear-gradient(180deg, var(--app-primary-blue) 0%, var(--app-primary-blue-hover) 100%);
+  border-color: var(--app-primary-blue-hover);
+  color: #fff;
+}
+
+.btn-blue:focus-visible {
+  color: #fff;
+  outline: 2px solid var(--app-primary-blue-mid);
+  outline-offset: 2px;
+}
+
+.btn-blue:disabled,
+.btn-blue[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 
 .form-group {
   margin-bottom: 1rem;

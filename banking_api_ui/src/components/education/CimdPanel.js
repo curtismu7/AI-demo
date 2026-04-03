@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/education/CimdPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EduImplIntro, SNIP_CIMD_WELL_KNOWN } from './educationImplementationSnippets';
 
 export default function CimdPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
@@ -314,6 +315,19 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
               </a>
             </li>
           </ul>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Serving the metadata URL</h3>
+          <EduImplIntro repoPath="banking_api_server/routes/clientRegistration.js + server.js">
+            Registration uses PingOne Management API; the hosted JSON is read from <code>cimdStore</code>.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_CIMD_WELL_KNOWN}</pre>
         </>
       ),
     },

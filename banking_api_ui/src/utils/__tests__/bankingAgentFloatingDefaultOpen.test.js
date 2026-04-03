@@ -9,6 +9,11 @@ describe('isBankingAgentFloatingDefaultOpen', () => {
     expect(isBankingAgentFloatingDefaultOpen('/admin/')).toBe(false);
   });
 
+  it('defaults open on /marketing so the real floating agent is visible', () => {
+    expect(isBankingAgentFloatingDefaultOpen('/marketing')).toBe(true);
+    expect(isBankingAgentFloatingDefaultOpen('/marketing/')).toBe(true);
+  });
+
   it('defaults open on non-dashboard tool routes', () => {
     expect(isBankingAgentFloatingDefaultOpen('/logs')).toBe(true);
     expect(isBankingAgentFloatingDefaultOpen('/mcp-inspector')).toBe(true);

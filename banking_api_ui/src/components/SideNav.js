@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import './SideNav.css';
 
 const ADMIN_NAV = [
@@ -23,20 +24,21 @@ const ADMIN_NAV = [
     ],
   },
   {
-    group: 'Developer Tools',
+    group: 'Configuration',
     items: [
-      { to: '/demo-data',          label: 'Demo config',      icon: '⚙️' },
-      { to: '/mcp-inspector',      label: 'MCP Inspector',    icon: '🔌' },
-      { to: '/oauth-debug-logs',   label: 'OAuth Logs',       icon: '🔍' },
-      { to: '/client-registration',label: 'Client Reg.',      icon: '📝' },
+      { to: '/config',             label: 'App Config',       icon: '⚙️' },
+      { to: '/settings',           label: 'Security',         icon: '🔐' },
+      { to: '/demo-data',          label: 'Demo Data',        icon: '🗄️' },
+      { to: '/onboarding',         label: 'Setup Guide',      icon: '🚀' },
+      { to: '/setup/pingone',      label: 'PingOne Ref.',     icon: '📘' },
     ],
   },
   {
-    group: 'System',
+    group: 'Developer Tools',
     items: [
-      { to: '/onboarding',   label: 'Setup Guide',     icon: '🚀' },
-      { to: '/config',       label: 'Config',          icon: '⚙️' },
-      { to: '/settings',     label: 'Security',        icon: '🔐' },
+      { to: '/mcp-inspector',      label: 'MCP Inspector',    icon: '🔌' },
+      { to: '/oauth-debug-logs',   label: 'OAuth Logs',       icon: '🔍' },
+      { to: '/client-registration',label: 'Client Reg.',      icon: '📝' },
     ],
   },
 ];
@@ -53,6 +55,7 @@ const USER_NAV = [
 ];
 
 export default function SideNav({ user, onLogout }) {
+  const { preset } = useIndustryBranding();
   const [collapsed, setCollapsed] = useState(false);
   const edu = useEducationUIOptional();
   const isAdmin = user?.role === 'admin';
@@ -88,7 +91,7 @@ export default function SideNav({ user, onLogout }) {
           </div>
         </div>
         {!collapsed && (
-          <span className="sidenav-brand-name">BX Finance</span>
+          <span className="sidenav-brand-name">{preset.shortName}</span>
         )}
         <button
           type="button"

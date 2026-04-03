@@ -70,31 +70,35 @@ The user's raw access token is shared from the Backend-for-Frontend (BFF) sessio
 There is no delegation record. The MCP server cannot distinguish "user calling directly"
 from "Backend-for-Frontend (BFF) acting on user's behalf."
 
+**Names:** *User access token* = end-user OAuth access token in the BFF session. *MCP access token* = delegated token for MCP (RFC 8693); in this legacy path it is absent — the user token is reused.
+
 ```
+Abbrev: userAT = user access token (session)
+
 ┌────────────┐     session cookie      ┌──────────────────────┐
 │  Browser   │ ─────────────────────── │   Banking Backend-for-Frontend (BFF)        │
 │  (React)   │                         │   (Port 3001)        │
 └────────────┘                         │                      │
                                        │  session = {         │
-                                       │    accessToken: T1   │ ← user's raw token
+                                       │ accessToken: userAT  │ ← user access token
                                        │    (sub=user123)     │
                                        │  }                   │
                                        └──────────┬───────────┘
                                                   │
                                     POST /api/mcp/tool
-                                    agentToken = T1   ← same token, no delegation
+                               agentToken = userAT ← same token, no delegation
                                                   │
                                        ┌──────────▼───────────┐
                                        │   MCP Server         │
                                        │   (Port 8080)        │
                                        │                      │
-                                       │  Validates T1        │
+                                       │  Validates userAT    │
                                        │  sub  = user123  ✅  │
                                        │  aud  = ?        ⚠️  │  ← aud not enforced
                                        │  act  = ?        ❌  │  ← no delegation record
                                        └──────────┬───────────┘
                                                   │
-                                    calls Banking API with T1
+                                    calls Banking API with userAT
                                                   │
                                        ┌──────────▼───────────┐
                                        │   Banking API        │
@@ -104,7 +108,7 @@ from "Backend-for-Frontend (BFF) acting on user's behalf."
 Problems:
   ✗  MCP server cannot prove the Backend-for-Frontend (BFF) sent the token (no act claim)
   ✗  Token scoped for browser use, not MCP use (same aud)
-  ✗  If T1 leaks anywhere in the chain, attacker has full user token
+  ✗  If the user access token leaks anywhere in the chain, attacker has full user token
   ✗  No audit trail of delegation
 ```
 
@@ -112,23 +116,25 @@ Problems:
 
 ### AFTER: RFC 8693 Token Exchange (Target)
 
-The Backend-for-Frontend (BFF) exchanges the user token for a **new, narrowly-scoped, delegated token**
+The Backend-for-Frontend (BFF) exchanges the **user access token** for a **new MCP access token** (narrowly scoped, delegated)
 with `act` identifying the Backend-for-Frontend (BFF) as the actor. The MCP server gets a token it can
-validate is properly delegated — not a raw user token.
+validate is properly delegated — not the raw user session token.
 
 ```
+Abbrev: userAT = user access token · mcpAT = MCP access token (delegated, RFC 8693)
+
 ┌────────────┐    session cookie       ┌──────────────────────────────────────┐
 │  Browser   │ ──────────────────────  │   Banking Backend-for-Frontend (BFF)  (Port 3001)           │
 │  (React)   │                         │                                      │
 └────────────┘                         │  session = {                         │
-                                       │    accessToken: T1 (user, aud=Backend-for-Frontend (BFF))   │
+                                       │ accessToken: userAT (user, aud=BFF)    │
                                        │  }                                   │
                                        │                                      │
                                        │  Before calling MCP:                 │
                                        │  POST /token (Token Exchange)        │
                                        │  ┌──────────────────────────────┐   │
                                        │  │ grant_type = token-exchange   │   │
-                                       │  │ subject_token = T1            │   │
+                                       │  │ subject_token = userAT        │   │
                                        │  │ subject_token_type = access   │   │
                                        │  │ audience = mcp-server-uri     │   │
                                        │  │ scope = banking:accounts:read │   │ ← downscoped
@@ -138,9 +144,9 @@ validate is properly delegated — not a raw user token.
                                              ┌────────▼────────┐
                                              │    PingOne      │
                                              │                 │
-                                             │  Validates T1   │
+                                             │  Validates userAT │
                                              │  Checks may_act │
-                                             │  Issues T2:     │
+                                             │  Issues mcpAT:  │
                                              │  {              │
                                              │   sub: user123  │ ← still the user
                                              │   aud: mcp-uri  │ ← scoped to MCP
@@ -151,11 +157,11 @@ validate is properly delegated — not a raw user token.
                                              │   scope: narrow │ ← only what MCP needs
                                              │  }              │
                                              └────────┬────────┘
-                                                      │ T2 (delegated)
+                                                      │ mcpAT (MCP access token)
                                        ┌──────────────▼───────────────────────┐
                                        │   MCP Server  (Port 8080)            │
                                        │                                      │
-                                       │  Validates T2:                       │
+                                       │  Validates mcpAT:                    │
                                        │  sub  = user123          ✅           │ ← who the action is for
                                        │  aud  = mcp-server-uri   ✅           │ ← correct audience
                                        │  act  = bff-client       ✅           │ ← who sent it
@@ -163,7 +169,7 @@ validate is properly delegated — not a raw user token.
                                        │  exp  = (valid)          ✅           │
                                        └──────────────┬───────────────────────┘
                                                       │
-                                         Calls Banking API with T2
+                                         Calls Banking API with mcpAT
                                                       │
                                        ┌──────────────▼───────────┐
                                        │   Banking API            │
@@ -175,11 +181,11 @@ validate is properly delegated — not a raw user token.
                                        └──────────────────────────┘
 
 Benefits:
-  ✓  MCP token scoped only to MCP (aud = mcp-server-uri)
+  ✓  MCP access token scoped only to MCP (aud = mcp-server-uri)
   ✓  act claim proves Backend-for-Frontend (BFF) is the actor — full audit trail
-  ✓  T1 (user's browser token) never leaves the Backend-for-Frontend (BFF)
+  ✓  User access token never leaves the Backend-for-Frontend (BFF)
   ✓  Scope is downscoped to only what the tool needs
-  ✓  PingOne validates the delegation policy before issuing T2
+  ✓  PingOne validates the delegation policy before issuing the MCP access token
 ```
 
 ---
@@ -266,7 +272,7 @@ Benefits:
 │               │                      │                                          │
 │  ┌────────────▼────────────────┐     │                                          │
 │  │  Session Store              │     │                                          │
-│  │  { accessToken (T1)         │     │                                          │
+│  │  { accessToken (user AT)    │     │                                          │
 │  │    idToken, refreshToken }  │     │                                          │
 │  └────────────┬────────────────┘     │                                          │
 │               │                      │                                          │
@@ -398,14 +404,14 @@ Browser                   Backend-for-Frontend (BFF) (3001)               PingOn
    │                          │   redirect_uri=...    │
    │                          │ ─────────────────►   │
    │                          │                       │
-   │                          │  { access_token: T1   │
+   │                          │  { access_token: user AT   │
    │                          │    refresh_token: R1  │
    │                          │    id_token: ID1 }    │
    │                          │ ◄─────────────────   │
    │                          │                       │
    │                          │  session.regenerate() │ ← prevents session fixation
    │                          │  session.oauthTokens  │
-   │                          │   = { T1, R1, ID1 }   │
+   │                          │   = { user AT, R1, ID1 }   │
    │                          │                       │
    │  302 → /dashboard        │                       │
    │  Set-Cookie: session=... │ ← httpOnly, secure    │
@@ -519,30 +525,30 @@ Browser (React)          Backend-for-Frontend (BFF) /api/mcp/tool         MCP Se
      │    params: {} }          │                         │                    │
      │ ───────────────────────► │                         │                    │
      │                          │                         │                    │
-     │                          │  Extract T1 from session│                    │
+     │                          │  Extract user AT from session│                    │
      │                          │                         │                    │
      │                          │  [TARGET: Token Exchange]                    │
      │                          │  POST PingOne /token    │                    │
-     │                          │  subject_token=T1       │                    │
+     │                          │  subject_token=user AT  │                    │
      │                          │  audience=mcp-server    │                    │
-     │                          │  → Issues T2 with act   │                    │
+     │                          │  → Issues mcp AT + act   │                    │
      │                          │    claim (bff-client)   │                    │
      │                          │                         │                    │
      │                          │  WS Connect             │                    │
      │                          │ ───────────────────►   │                    │
      │                          │                         │                    │
      │                          │  MCP initialize         │                    │
-     │                          │  { agentToken: T2 }     │                    │
+     │                          │  { agentToken: mcp AT }   │                    │
      │                          │ ───────────────────►   │                    │
      │                          │                         │                    │
-     │                          │  handshake OK (T2 valid)│                    │
+     │                          │  handshake OK (mcp AT ok)│                    │
      │                          │ ◄───────────────────   │                    │
      │                          │                         │                    │
      │                          │  tools/call             │                    │
      │                          │  { list_accounts }      │                    │
      │                          │ ───────────────────►   │                    │
      │                          │                         │  GET /api/accounts │
-     │                          │                         │  Bearer T2         │
+     │                          │                         │  Bearer mcp AT     │
      │                          │                         │ ─────────────────► │
      │                          │                         │  [ accounts ]      │
      │                          │                         │ ◄───────────────── │

@@ -1,26 +1,51 @@
 // banking_api_server/services/mcpWebSocketClient.js
 /**
- * JSON-RPC over WebSocket client for banking_mcp_server (MCP 2024-11-05).
+ * JSON-RPC over WebSocket client for banking_mcp_server (MCP 2025-11-25 handshake + tools).
  * Shared by /api/mcp/tool and /api/mcp/inspector/*.
+ *
+ * Lifecycle: initialize → notifications/initialized → tools/list | tools/call (per MCP spec).
  */
 const WebSocket = require('ws');
 const configStore = require('./configStore');
 
-/** Scopes requested for RFC 8693 token exchange per MCP tool (must match BankingToolRegistry names). */
+/** Protocol version sent on initialize — runtime-configurable via Feature Flag 'mcp_use_legacy_protocol'.
+ *  OFF (default) = 2025-11-25 (current spec).  ON = 2024-11-05 (previous spec).
+ *  Falls back to MCP_CLIENT_PROTOCOL_VERSION env var, then 2025-11-25. */
+const MCP_CLIENT_PROTOCOL_VERSION = process.env.MCP_CLIENT_PROTOCOL_VERSION || '2025-11-25';
+
+/** Returns the protocol version to use for the current connection (checked at call time). */
+function getMcpProtocolVersion() {
+  const legacyFlag = configStore.getEffective('mcp_use_legacy_protocol');
+  if (legacyFlag === true || legacyFlag === 'true') return '2024-11-05';
+  return MCP_CLIENT_PROTOCOL_VERSION;
+}
+
+/** Versions this client can interoperate with — disconnect on mismatch (spec SHOULD). */
+const SUPPORTED_PROTOCOL_VERSIONS = new Set(['2025-11-25', '2024-11-05']);
+
+/** Scopes requested for RFC 8693 token exchange per MCP tool (must match BankingToolRegistry names).
+ *  Each tool lists [specific, broad] so either the precise scope OR the umbrella scope is sufficient.
+ *  banking:read  = view own data (accounts, balances, transactions)
+ *  banking:write = mutate data (transfer, deposit, withdrawal) */
 const MCP_TOOL_SCOPES = {
-  get_my_accounts: ['banking:accounts:read'],
-  get_account_balance: ['banking:accounts:read'],
-  get_my_transactions: ['banking:transactions:read'],
-  create_transfer: ['banking:transactions:write'],
-  create_deposit: ['banking:transactions:write'],
-  create_withdrawal: ['banking:transactions:write'],
-  query_user_by_email: ['ai_agent'],
+  // Read tools — specific scope OR broad banking:read
+  get_my_accounts:             ['banking:accounts:read', 'banking:read'],
+  get_account_balance:         ['banking:accounts:read', 'banking:read'],
+  get_my_transactions:         ['banking:transactions:read', 'banking:read'],
+  // Write tools — specific scope OR broad banking:write
+  create_transfer:             ['banking:transactions:write', 'banking:write'],
+  create_deposit:              ['banking:transactions:write', 'banking:write'],
+  create_withdrawal:           ['banking:transactions:write', 'banking:write'],
+  // Query tool — agent identity lookup scope
+  query_user_by_email:         ['ai_agent'],
   // Legacy aliases (if still used anywhere)
-  list_accounts: ['banking:accounts:read'],
-  list_transactions: ['banking:transactions:read'],
-  transfer: ['banking:transactions:write'],
-  deposit: ['banking:transactions:write'],
-  withdraw: ['banking:transactions:write'],
+  list_accounts:               ['banking:accounts:read', 'banking:read'],
+  list_transactions:           ['banking:transactions:read', 'banking:read'],
+  transfer:                    ['banking:transactions:write', 'banking:write'],
+  deposit:                     ['banking:transactions:write', 'banking:write'],
+  withdraw:                    ['banking:transactions:write', 'banking:write'],
+  banking_get_account_balance: ['banking:accounts:read', 'banking:read'],
+  banking_create_transfer:     ['banking:transactions:write', 'banking:write'],
 };
 
 function getMcpServerUrl() {
@@ -40,6 +65,10 @@ function getSessionBearerForMcp(req) {
   const raw = getSessionAccessToken(req);
   if (!raw || typeof raw !== 'string' || raw === '_cookie_session') return null;
   return raw;
+}
+
+function jsonRpcIdsMatch(a, b) {
+  return a === b || String(a) === String(b);
 }
 
 /** Limit concurrent MCP WebSocket handshakes per process (connection pool / back-pressure). */
@@ -75,7 +104,7 @@ function releaseMcpWsSlot() {
 }
 
 /**
- * After initialize, run one follow-up JSON-RPC method and return the result body.
+ * After initialize + notifications/initialized, run one follow-up JSON-RPC method and return the result body.
  * @param {'tools/list'|'tools/call'} followMethod
  * @param {object} followParams
  * @param {string|null} [userSub] - User subject identifier passed as trusted metadata (not auth credential)
@@ -91,11 +120,14 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
       }
     };
 
+    const INIT_REQUEST_ID = 1;
+    const FOLLOW_REQUEST_ID = 2;
+
     acquireMcpWsSlot()
       .then(() => {
         const ws = new WebSocket(getMcpServerUrl());
-        let msgId = 1;
-        let initialized = false;
+        /** @type {'awaiting_init' | 'awaiting_follow'} */
+        let phase = 'awaiting_init';
 
         const timeout = setTimeout(() => {
           ws.terminate();
@@ -111,18 +143,17 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
 
         ws.on('open', () => {
           const initParams = {
-            protocolVersion: '2024-11-05',
-            clientInfo: { name: 'banking-api-server' },
+            protocolVersion: getMcpProtocolVersion(),
+            capabilities: {},
+            clientInfo: { name: 'banking-api-server', version: '1.0.0', description: 'BX Finance Banking BFF — MCP WebSocket client' },
           };
           if (agentToken) initParams.agentToken = agentToken;
-          // userSub is the user's PingOne sub — passed as trusted metadata so the
-          // MCP server knows whose data to operate on without receiving the User token directly.
           if (userSub) initParams.userSub = userSub;
           if (correlationId) initParams.correlationId = correlationId;
           ws.send(
             JSON.stringify({
               jsonrpc: '2.0',
-              id: msgId++,
+              id: INIT_REQUEST_ID,
               method: 'initialize',
               params: initParams,
             })
@@ -140,12 +171,40 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
             return;
           }
 
-          if (!initialized) {
-            initialized = true;
+          if (phase === 'awaiting_init') {
+            if (!jsonRpcIdsMatch(msg.id, INIT_REQUEST_ID)) {
+              clearTimeout(timeout);
+              safeRelease();
+              reject(new Error(`MCP unexpected response id (expected initialize ${INIT_REQUEST_ID})`));
+              return;
+            }
+            if (msg.error) {
+              clearTimeout(timeout);
+              ws.close();
+              safeRelease();
+              reject(new Error(msg.error.message || JSON.stringify(msg.error)));
+              return;
+            }
+            // SHOULD (spec lifecycle): disconnect if server negotiated a version we cannot speak.
+            const negotiatedVersion = msg.result && msg.result.protocolVersion;
+            if (!SUPPORTED_PROTOCOL_VERSIONS.has(negotiatedVersion)) {
+              clearTimeout(timeout);
+              ws.close();
+              safeRelease();
+              reject(new Error(`MCP server negotiated unsupported protocol version: ${negotiatedVersion}`));
+              return;
+            }
+            phase = 'awaiting_follow';
             ws.send(
               JSON.stringify({
                 jsonrpc: '2.0',
-                id: msgId++,
+                method: 'notifications/initialized',
+              })
+            );
+            ws.send(
+              JSON.stringify({
+                jsonrpc: '2.0',
+                id: FOLLOW_REQUEST_ID,
                 method: followMethod,
                 params: followParams || {},
               })
@@ -153,15 +212,22 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
             return;
           }
 
-          clearTimeout(timeout);
-          ws.close();
-
-          if (msg.error) {
-            safeRelease();
-            reject(new Error(msg.error.message || JSON.stringify(msg.error)));
-          } else {
-            safeRelease();
-            resolve(msg.result);
+          if (phase === 'awaiting_follow') {
+            if (!jsonRpcIdsMatch(msg.id, FOLLOW_REQUEST_ID)) {
+              clearTimeout(timeout);
+              safeRelease();
+              reject(new Error(`MCP unexpected response id (expected ${followMethod} ${FOLLOW_REQUEST_ID})`));
+              return;
+            }
+            clearTimeout(timeout);
+            ws.close();
+            if (msg.error) {
+              safeRelease();
+              reject(new Error(msg.error.message || JSON.stringify(msg.error)));
+            } else {
+              safeRelease();
+              resolve(msg.result);
+            }
           }
         });
       })
@@ -185,6 +251,8 @@ function mcpCallTool(toolName, toolParams, agentToken, userSub, correlationId) {
 
 module.exports = {
   MCP_TOOL_SCOPES,
+  MCP_CLIENT_PROTOCOL_VERSION,
+  getMcpProtocolVersion,
   getMcpServerUrl,
   getSessionAccessToken,
   getSessionBearerForMcp,

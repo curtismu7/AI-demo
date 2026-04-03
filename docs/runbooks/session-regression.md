@@ -1,66 +1,22 @@
-# Session regression — how to test and what to check
+# Session Regression — Overview
 
-This runbook complements automated tests (`npm run test:session` in `banking_api_server`) and Playwright API smoke (`session-regression.spec.js`).
+> **This file is now an index only.**
+> The full regression runbooks have been split into focused files so no single
+> document exceeds ~10 000 tokens.
 
-## Automated (run locally or in CI)
+| Runbook | What it covers |
+|---------|---------------|
+| [regression/api-session.md](regression/api-session.md) | Jest unit tests, BFF store ping, API smoke (server required) |
+| [regression/ui-browser.md](regression/ui-browser.md) | Playwright browser E2E — customer dashboard, landing page, admin, Banking Agent |
+| [regression/post-deploy.md](regression/post-deploy.md) | Manual smoke checks after production or preview deploys |
+| [regression/index.md](regression/index.md) | Quick reference — run everything command |
 
-From the repo root (or `cd banking_api_server` first):
+## Fastest path
 
 ```bash
+# Session + OAuth unit tests (no server, no browser)
 npm run test:session
-```
 
-Covers: `authSession` (including BFF store ping contract), `authStateCookie`, `bffSessionGating`, `upstashSessionStore`, `session-store-resilience`, `oauth-e2e-integration`.
-
-Full API suite (includes OAuth scope, step-up, and **transaction consent challenge** / HITL flows):
-
-```bash
-cd banking_api_server && npm test -- --forceExit
-```
-
-If you only need session + OAuth BFF coverage, use `npm run test:session` (see above). Run the full suite before release when changing **`routes/transactions.js`**, **`transactionConsentChallenge.js`**, or **`middleware/auth`** scope rules.
-
-### UI (React) — browser E2E with mocked API
-
-Playwright can exercise **`UserDashboard`**, marketing **`LandingPage`**, and related flows without a live **`banking_api_server`** by stubbing `/api/*` in **`tests/e2e/customer-dashboard.spec.js`** and **`landing-marketing.spec.js`**.
-
-From repo root:
-
-```bash
+# UI smoke (no server — mocked API)
 npm run test:e2e:ui:smoke
 ```
-
-Full browser Playwright suite (admin dashboard, Banking Agent, security settings, etc.):
-
-```bash
-npm run test:e2e:ui
-```
-
-## API smoke (server must be running)
-
-Session-only (faster than full API Playwright suite):
-
-```bash
-cd banking_api_ui && BANKING_API_BASE=http://127.0.0.1:3001 npm run test:e2e:session
-```
-
-Full Playwright API config (includes `session-regression.spec.js` and other API specs):
-
-```bash
-cd banking_api_ui && BANKING_API_BASE=http://127.0.0.1:3001 npm run test:e2e:api
-```
-
-Adjust `BANKING_API_BASE` to your API port.
-
-## After production or preview deploy (manual)
-
-1. Sign in with PingOne (customer or admin).
-2. Open **`/api/auth/debug?deep=1`** in a new tab (same origin as the app).
-3. Confirm:
-   - **`accessTokenStub: false`** when you expect a real OAuth session (if `true`, MCP/NL will not work; see `REGRESSION_LOG.md`).
-   - **`sessionStoreHealthy: true`** when using Upstash (if `false`, check `sessionStoreError` and Vercel env for `KV_REST_*`).
-   - With **`?deep=1`**, **`redisPersist.redisKeyPresent`** should be **`true`** after a successful login that persisted the session (if `false`, the `connect.sid` row is missing in Redis — sign out and sign in again).
-
-## What tests cannot catch
-
-- Redis `SET` failures that still call `session.save` success (store swallows errors) — rely on logs (`[session-store] Upstash SET error`) and the debug endpoint.

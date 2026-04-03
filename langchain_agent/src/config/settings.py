@@ -52,16 +52,22 @@ class MCPConfig:
 @dataclass
 class LangChainConfig:
     """Configuration for LangChain agent."""
-    model_name: str = "gpt-3.5-turbo"
+    model_name: str = "llama-3.1-8b-instant"
     temperature: float = 0.7
     max_tokens: int = 1000
     openai_api_key: str = ""
     verbose: bool = False
     max_iterations: int = 10
     max_execution_time: int = 60  # seconds
-    # WebSocket streaming: MCP tool lifecycle + optional LLM token deltas (ChatOpenAI only)
+    # WebSocket streaming: MCP tool lifecycle + optional LLM token deltas
     stream_mcp_tool_events: bool = True
     stream_llm_tokens: bool = True
+    # Multi-provider support
+    provider: str = "groq"
+    groq_api_key: str = ""
+    anthropic_api_key: str = ""
+    google_api_key: str = ""
+    ollama_base_url: str = "http://localhost:11434"
 
 
 @dataclass

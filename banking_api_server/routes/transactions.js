@@ -4,10 +4,30 @@ const dataStore = require('../data/store');
 const { authenticateToken, requireScopes } = require('../middleware/auth');
 const { blockInDemoMode } = require('../middleware/demoMode');
 const runtimeSettings = require('../config/runtimeSettings');
-const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
+const transactionAuthorizationService = require('../services/transactionAuthorizationService');
 const configStore = require('../services/configStore');
 const { sendTransactionConfirmation } = require('../services/emailService');
 const txConsent = require('../services/transactionConsentChallenge');
+const demoScenarioStore = require('../services/demoScenarioStore');
+
+/**
+ * Re-hydrate a user's accounts from the Redis snapshot on cold-start.
+ * Prevents 404 "From account not found" when a Vercel lambda is recycled
+ * between challenge creation and the consent-confirm POST.
+ */
+async function restoreAccountsFromSnapshot(userId) {
+  try {
+    const scenario = await demoScenarioStore.load(userId);
+    if (!Array.isArray(scenario.accountSnapshot) || scenario.accountSnapshot.length === 0) return;
+    for (const snap of scenario.accountSnapshot) {
+      if (!dataStore.getAccountById(snap.id)) {
+        await dataStore.createAccount({ ...snap, userId, createdAt: new Date() });
+      }
+    }
+  } catch (e) {
+    console.warn('[transactions] restoreAccountsFromSnapshot failed:', e.message);
+  }
+}
 
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -35,8 +55,16 @@ router.get('/', authenticateToken, requireScopes(['banking:transactions:read', '
 
 
 // Get user's own transactions (end users)
-router.get('/my', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
+// No banking:* scope required — standard PingOne tokens without a custom resource server
+// only carry openid/profile/email. Once a resource server is configured in PingOne and
+// ENDUSER_AUDIENCE is set, restore: requireScopes(['banking:transactions:read', 'banking:read'])
+router.get('/my', authenticateToken, async (req, res) => {
   try {
+    // Log RFC 8693 delegated access for audit/demo visibility
+    if (req.user.isDelegated) {
+      console.log(`[transactions] Delegated access — sub=${req.user.id} act.sub=${req.user.actor?.sub}`);
+    }
+
     // Add cache headers for frequent polling
     res.set({
       'Cache-Control': 'private, max-age=10', // Cache for 10 seconds
@@ -65,6 +93,7 @@ router.get('/my', authenticateToken, requireScopes(['banking:transactions:read',
       
       return {
         ...transaction,
+        accountId: transaction.fromAccountId || transaction.toAccountId || null,
         performedBy: fullName,
         accountInfo: accountInfo
       };
@@ -82,17 +111,27 @@ router.get('/my', authenticateToken, requireScopes(['banking:transactions:read',
 });
 
 // Session-bound consent challenge for high-value transactions (HITL). Registered before /:id so "consent-challenge" is not captured as an id.
+// No banking:* scope required — same reasoning as POST /; session ownership is enforced inside txConsent.
 router.post(
   '/consent-challenge',
   authenticateToken,
-  requireScopes(['banking:transactions:write', 'banking:write']),
-  (req, res) => {
+  async (req, res) => {
+    // Re-hydrate accounts from Redis snapshot in case this Lambda was cold-started.
+    if (req.user.role !== 'admin') {
+      await restoreAccountsFromSnapshot(req.user.id);
+    }
     const result = txConsent.createChallenge(req, req.body);
     if (!result.ok) return res.status(result.status).json(result.json);
-    return res.status(201).json({
-      challengeId: result.challengeId,
-      expiresAt: result.expiresAt,
-      snapshot: result.snapshot,
+    // Explicitly save session to Redis before responding — on Vercel the next
+    // GET /consent-challenge/:id may land on a different Lambda and must find
+    // the challenge already persisted (auto-save races with the next request).
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error:', saveErr);
+      return res.status(201).json({
+        challengeId: result.challengeId,
+        expiresAt: result.expiresAt,
+        snapshot: result.snapshot,
+      });
     });
   },
 );
@@ -100,13 +139,50 @@ router.post(
 router.post(
   '/consent-challenge/:challengeId/confirm',
   authenticateToken,
-  requireScopes(['banking:transactions:write', 'banking:write']),
-  (req, res) => {
-    const result = txConsent.confirmChallenge(req, req.params.challengeId);
+  async (req, res) => {
+    const result = await txConsent.confirmChallenge(req, req.params.challengeId);
     if (!result.ok) return res.status(result.status).json(result.json);
-    return res.status(200).json({
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (confirm):', saveErr);
+      return res.status(200).json({
+        challengeId: result.challengeId,
+        otpSent: result.otpSent,
+        otpExpiresAt: result.otpExpiresAt,
+        ...(result.otpCodeFallback ? { otpCodeFallback: result.otpCodeFallback } : {}),
+      });
+    });
+  },
+);
+
+router.post(
+  '/consent-challenge/:challengeId/verify-otp',
+  authenticateToken,
+  (req, res) => {
+    const { otpCode } = req.body || {};
+    const result = txConsent.verifyOtp(req, req.params.challengeId, otpCode);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('[ConsentChallenge] session save error (verify-otp):', saveErr);
+      return res.status(200).json({
+        challengeId: result.challengeId,
+        confirmExpiresAt: result.confirmExpiresAt,
+      });
+    });
+  },
+);
+
+/** Read pending challenge snapshot for the consent UI (must be registered before GET /:id). */
+router.get(
+  '/consent-challenge/:challengeId',
+  authenticateToken,
+  (req, res) => {
+    const result = txConsent.getChallenge(req, req.params.challengeId);
+    if (!result.ok) return res.status(result.status).json(result.json);
+    return res.json({
       challengeId: result.challengeId,
-      confirmExpiresAt: result.confirmExpiresAt,
+      snapshot: result.snapshot,
+      status: result.status,
+      expiresAt: result.expiresAt,
     });
   },
 );
@@ -132,9 +208,19 @@ router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read'
 });
 
 // Create new transaction (admin or end user)
-router.post('/', authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
+// No banking:* scope required — standard PingOne tokens without a custom resource server
+// only carry openid/profile/email. Once a resource server is configured in PingOne and
+// ENDUSER_AUDIENCE is set, restore requireScopes(['banking:transactions:write', 'banking:write']).
+// Ownership is enforced below (non-admin users can only act on their own accounts).
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { fromAccountId, toAccountId, amount, type, description, userId } = req.body;
+
+    // Re-hydrate accounts from Redis snapshot in case this Lambda was cold-started.
+    // Must run before any getAccountById lookup below.
+    if (req.user.role !== 'admin') {
+      await restoreAccountsFromSnapshot(req.user.id);
+    }
 
     // Validate amount
     const parsedAmount = parseFloat(req.body.amount);
@@ -246,56 +332,56 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
     }
     // ── End step-up gate ──────────────────────────────────────────────────────
 
-    // ── PingOne Authorize gate ────────────────────────────────────────────────
-    // When enabled, evaluates the transaction against the configured Authorize
-    // policy decision point. Applies to transfers and withdrawals only.
-    // configStore fields take precedence; runtimeSettings toggle allows live
-    // enable/disable without a config save.
-    const AUTHORIZE_ENABLED =
-      (configStore.get('authorize_enabled') === 'true' || configStore.get('authorize_enabled') === true) ||
-      runtimeSettings.get('authorizeEnabled');
-    const AUTHORIZE_POLICY_ID =
-      configStore.get('authorize_policy_id') ||
-      runtimeSettings.get('authorizePolicyId');
-    const AUTHORIZE_TYPES = ['transfer', 'withdrawal'];
+    // ── Transaction authorization (PingOne Authorize or simulated) ──────────
+    // Unified in transactionAuthorizationService — see docs/PINGONE_AUTHORIZE_PLAN.md
+    const AUTHORIZE_FAIL_OPEN = configStore.get('ff_authorize_fail_open') !== 'false'; // default true
+    /** @type {object|null} */
+    let authorizeEvaluation = null;
 
-    if (AUTHORIZE_ENABLED && AUTHORIZE_POLICY_ID && req.user.role !== 'admin' && AUTHORIZE_TYPES.includes(type)) {
-      try {
-        const { decision, stepUpRequired } = await pingOneAuthorizeService.evaluateTransaction({
-          policyId: AUTHORIZE_POLICY_ID,
-          userId: req.user.id,
-          amount: parseFloat(amount),
-          type,
-          acr: req.user.acr,
+    const authz = await transactionAuthorizationService.evaluateTransactionPolicy({
+      runtimeSettings,
+      userRole: req.user.role,
+      userId: req.user.id,
+      amount: parseFloat(amount),
+      type,
+      acr: req.user.acr,
+    });
+
+    if (authz.ran) {
+      if (authz.block) {
+        return res.status(authz.block.status).json(authz.block.body);
+      }
+      if (authz.simulatedError) {
+        console.error(`[Authorize][Simulated] unexpected error: ${authz.simulatedError.message}`);
+        return res.status(500).json({
+          error: 'simulated_authorize_error',
+          error_description: 'Simulated policy evaluation failed unexpectedly.',
         });
-        console.log(`[Authorize] Policy ${AUTHORIZE_POLICY_ID} — user ${req.user.id} — type ${type} — decision: ${decision} — stepUpRequired: ${stepUpRequired}`);
-
-        // Policy signalled that a step-up is required (obligation/advice)
-        if (stepUpRequired) {
-          const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue');
-          const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
-          return res.status(428).json({
-            error: 'step_up_required',
-            error_description: 'This transaction requires additional authentication (MFA) as required by the authorization policy.',
-            step_up_acr: STEP_UP_ACR,
-            step_up_method: stepUpMethod,
-            step_up_url: '/api/auth/oauth/user/stepup',
-            authorize_policy_id: AUTHORIZE_POLICY_ID,
+      }
+      if (authz.pingoneError) {
+        if (AUTHORIZE_FAIL_OPEN) {
+          console.warn(`[Authorize] Policy evaluation error — failing open (ff_authorize_fail_open=true): ${authz.pingoneError.message}`);
+        } else {
+          console.error(`[Authorize] Policy evaluation error — failing closed (ff_authorize_fail_open=false): ${authz.pingoneError.message}`);
+          return res.status(503).json({
+            error: 'authorize_unavailable',
+            error_description: 'Transaction policy evaluation failed and fail-open is disabled. Try again or contact an administrator.',
           });
         }
-
-        if (decision === 'DENY') {
-          return res.status(403).json({
-            error: 'transaction_denied',
-            error_description: 'This transaction was denied by the authorization policy.',
-            authorize_policy_id: AUTHORIZE_POLICY_ID,
-          });
+      }
+      if (authz.permit && authz.evaluation) {
+        authorizeEvaluation = authz.evaluation;
+        const ev = authz.evaluation;
+        if (ev.engine === 'simulated') {
+          console.log(
+            `[Authorize][Simulated] ${ev.path} — user ${req.user.id} — type ${type} — decision: ${ev.decision}${ev.decisionId ? ` — decisionId: ${ev.decisionId}` : ''}`
+          );
+        } else {
+          const ref = ev.authorizeRef || '';
+          console.log(
+            `[Authorize] ${ev.path} ${ref} — user ${req.user.id} — type ${type} — decision: ${ev.decision}${ev.decisionId ? ` — decisionId: ${ev.decisionId}` : ''}`
+          );
         }
-      } catch (err) {
-        // Fail open with a warning so a misconfigured Authorize integration
-        // does not block all transactions. Change to fail-closed here if your
-        // security posture requires it.
-        console.warn(`[Authorize] Policy evaluation error — failing open: ${err.message}`);
       }
     }
     // ── End Authorize gate ────────────────────────────────────────────────────
@@ -360,7 +446,8 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       res.status(201).json({
         message: 'Transfer completed successfully',
         withdrawalTransaction,
-        depositTransaction
+        depositTransaction,
+        ...(authorizeEvaluation && { authorizeEvaluation }),
       });
     } else {
       // For non-transfer transactions, create single transaction
@@ -405,7 +492,8 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
 
       res.status(201).json({
         message: 'Transaction created successfully',
-        transaction
+        transaction,
+        ...(authorizeEvaluation && { authorizeEvaluation }),
       });
     }
   } catch (error) {

@@ -46,16 +46,43 @@ async function ensureAccounts(userId) {
   const checkingId = `chk-${uid}`;
   const savingsId  = `sav-${uid}`;
 
+  // Generate realistic 12-digit account numbers from user uid (mirrors accounts.js)
+  const _mclDigits = uid.replace(/[^0-9a-f]/gi, '').slice(0, 10) || '0';
+  const _mclN      = parseInt(_mclDigits, 16) % 9999999999;
+  const checkingFull = '01' + String(_mclN).padStart(10, '0');
+  const savingsFull  = '02' + String(_mclN).padStart(10, '0');
+  const _mclIban     = parseInt(uid.replace(/[^0-9a-f]/gi, '').slice(0, 8) || '0', 16);
+  const _mclSfx1     = String(_mclIban % 100000000).padStart(8, '0');
+  const _mclSfx2     = String((_mclIban + 1) % 100000000).padStart(8, '0');
+
   const checking = await dataStore.createAccount({
     id: checkingId, userId,
-    accountNumber: `CHK-${uid.toUpperCase()}`, accountType: 'checking',
+    accountNumberFull: checkingFull,
+    accountNumber: `****${checkingFull.slice(-4)}`,
+    accountType: 'checking',
     balance: 3000.00, currency: 'USD', name: 'Checking Account',
+    routingNumber: '026073150',
+    swiftCode: 'CHASUS33',
+    iban: `US12CHAS${_mclSfx1}`,
+    branchName: 'BX Finance Main Branch',
+    branchCode: '001',
+    openedDate: '2022-01-15',
+    accountHolderName: '',
     createdAt: new Date('2024-01-15'),
   });
   const savings = await dataStore.createAccount({
     id: savingsId, userId,
-    accountNumber: `SAV-${uid.toUpperCase()}`, accountType: 'savings',
+    accountNumberFull: savingsFull,
+    accountNumber: `****${savingsFull.slice(-4)}`,
+    accountType: 'savings',
     balance: 2000.00, currency: 'USD', name: 'Savings Account',
+    routingNumber: '021000021',
+    swiftCode: 'CHASUS33',
+    iban: `US12CHAS${_mclSfx2}`,
+    branchName: 'BX Finance Main Branch',
+    branchCode: '001',
+    openedDate: '2022-03-10',
+    accountHolderName: '',
     createdAt: new Date('2024-01-15'),
   });
 
@@ -79,13 +106,32 @@ async function ensureAccounts(userId) {
 
 /**
  * Resolve a value that may be an account type name ('checking', 'savings') or partial
- * name to the actual account ID. Returns the original value if it already looks like an ID.
+ * name to the actual account ID. Returns the original value if it already looks like an ID
+ * AND that ID exists in the user's provisioned accounts.
+ *
+ * If the value looks like a real ID (chk-*, sav-*, UUID) but is NOT in the user's accounts
+ * (e.g. a stale/fake ID from the UI fallback like 'chk-5'), we fall back to type-based
+ * resolution so that create_deposit/create_withdrawal still work without an error.
  */
 function resolveAccountId(idOrType, accounts) {
   if (!idOrType) return null;
   const s = String(idOrType).trim();
   // Already looks like an ID (chk-*, sav-*, or UUID)
-  if (/^(chk-|sav-)/i.test(s) || /^[0-9a-f]{8}-/i.test(s)) return s;
+  if (/^(chk-|sav-)/i.test(s) || /^[0-9a-f]{8}-/i.test(s)) {
+    // Only trust it when it's actually in this user's account list.
+    if (accounts.some(a => a.id === s)) return s;
+    // Stale / fake ID (e.g. 'chk-5' from UI generateFakeAccounts): fall back by prefix type.
+    if (/^chk-/i.test(s)) {
+      const byType = accounts.find(a => String(a.accountType || '').toLowerCase() === 'checking');
+      if (byType) return byType.id;
+    }
+    if (/^sav-/i.test(s)) {
+      const byType = accounts.find(a => String(a.accountType || '').toLowerCase() === 'savings');
+      if (byType) return byType.id;
+    }
+    // No type match — return as-is and let the caller report 'not found'.
+    return s;
+  }
   const lower = s.toLowerCase().replace(/^(my|the|primary|main)\s+/, '');
   const byType = accounts.find(a => String(a.accountType || '').toLowerCase() === lower);
   if (byType) return byType.id;
@@ -105,19 +151,24 @@ async function get_my_accounts(params, userId) {
 
 async function get_account_balance(params, userId) {
   const raw = params.account_id;
-  const account_id =
+  const rawStr =
     raw &&
     typeof raw === 'string' &&
     !/^(optional|omit|n\/a|none|unknown)$/i.test(String(raw).trim())
       ? raw
       : undefined;
+
+  // Always load the user's accounts so we can resolve type-name IDs like 'checking'/'savings'
+  // (the UI may submit these when liveAccounts hasn't loaded yet — resolveAccountId handles it).
+  const accounts = await ensureAccounts(userId);
+  const account_id = rawStr ? resolveAccountId(rawStr, accounts) : null;
+
   let account = null;
   if (account_id) {
     account = dataStore.getAccountById(account_id);
     if (!account) return { error: `Account ${account_id} not found` };
     if (account.userId !== userId) return { error: 'Access denied — not your account' };
   } else {
-    const accounts = await ensureAccounts(userId);
     account = accounts.find((a) => String(a.accountType || '').toLowerCase() === 'checking') || accounts[0];
     if (!account) return { error: 'No accounts found for this user' };
   }
@@ -442,6 +493,24 @@ function listLocalInspectorTools() {
 
 // ─── dispatch ─────────────────────────────────────────────────────────────────
 
+
+/**
+ * Local implementation of sequential_think — pure reasoning, no auth or DB needed.
+ * Mirrors the BankingToolProvider.executeSequentialThink output shape.
+ */
+async function sequential_think({ query, context } = {}) {
+  if (!query) return JSON.stringify({ error: 'query is required' });
+  const q = String(query).trim();
+  const steps = [
+    { title: 'Understand the question', description: `Parsing: "${q}"` },
+    { title: 'Identify relevant context', description: context ? `Context provided: ${String(context).slice(0, 120)}` : 'No additional context supplied.' },
+    { title: 'Apply banking domain knowledge', description: 'Considering applicable accounts, balances, and transaction flows.' },
+    { title: 'Formulate response', description: 'Drawing a structured conclusion based on the above steps.' },
+  ];
+  const conclusion = `Sequential reasoning complete for: "${q}". Connect the MCP server (banking_mcp_server) for full AI-powered analysis.`;
+  return JSON.stringify({ steps, conclusion });
+}
+
 const TOOL_MAP = {
   get_my_accounts,
   get_account_balance,
@@ -449,6 +518,8 @@ const TOOL_MAP = {
   create_deposit,
   create_withdrawal,
   create_transfer,
+  get_sensitive_account_details,
+  sequential_think,
   // Legacy aliases
   list_accounts:     get_my_accounts,
   list_transactions: get_my_transactions,
@@ -473,4 +544,17 @@ async function callToolLocal(tool, params, userId) {
   return handler(params || {}, userId);
 }
 
-module.exports = { callToolLocal, listLocalInspectorTools };
+
+async function get_sensitive_account_details(params, userId) {
+  // Local fallback: sensitive endpoint requires browser session consent which isn't
+  // available in the local tool path. Return consent_required so the UI banner fires.
+  return {
+    ok: false,
+    consent_required: true,
+    reason: 'sensitive_data_access',
+    message: 'Accessing sensitive account details requires your approval in the browser. The agent will show a consent banner — click Reveal to proceed.',
+  };
+}
+
+module.exports = { callToolLocal, listLocalInspectorTools, get_sensitive_account_details,
+};

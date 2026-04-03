@@ -2,7 +2,7 @@
  * Tests for POST /api/banking-agent/nl — natural language intent route.
  *
  * Covers:
- *   - 401 when no session user
+ *   - Anonymous POST allowed (marketing agent); context { anonymous: true }
  *   - 400 when message is missing or empty
  *   - Role context (role + firstName) extracted from session and forwarded to parseNaturalLanguage
  *   - Admin role context passed correctly
@@ -26,6 +26,11 @@ jest.mock('../../services/geminiNlIntent', () => ({
 
 const { parseNaturalLanguage } = require('../../services/geminiNlIntent');
 const nlRouter = require('../../routes/bankingAgentNl');
+
+// Prevent mock implementation from one describe block affecting another (Jest parallel / order).
+beforeEach(() => {
+  parseNaturalLanguage.mockReset();
+});
 
 // ── App factory ───────────────────────────────────────────────────────────────
 
@@ -61,14 +66,21 @@ const CUSTOMER_USER = {
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 
-describe('POST /api/banking-agent/nl — auth guard', () => {
-  it('returns 401 when no session user', async () => {
+describe('POST /api/banking-agent/nl — anonymous allowed', () => {
+  it('parses without session user (anonymous marketing agent)', async () => {
+    parseNaturalLanguage.mockResolvedValueOnce({
+      source: 'heuristic',
+      result: { kind: 'education', education: { panel: 'login-flow', tab: 'what' } },
+    });
     const app = buildApp(null);
     const res = await request(app)
       .post('/api/banking-agent/nl')
-      .send({ message: 'check my balance' });
-    expect(res.status).toBe(401);
-    expect(res.body.error).toBe('authentication_required');
+      .send({ message: 'how does oauth login work' });
+    expect(res.status).toBe(200);
+    expect(parseNaturalLanguage).toHaveBeenCalledWith(
+      'how does oauth login work',
+      expect.objectContaining({ anonymous: true }),
+    );
   });
 
   it('proceeds when session user is present', async () => {

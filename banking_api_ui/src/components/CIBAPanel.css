@@ -2,6 +2,20 @@
    CIBAPanel.css — styles for the floating CIBA drawer
    ========================================================= */
 
+/* Monospace snippet block (CIBA tab "BFF code") */
+.ciba-code-pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow: auto;
+  max-height: min(360px, 50vh);
+  margin: 0;
+}
+
 /* ---------- CIBA guide trigger — top of left-side rail (same width/height as CIMD / Logs / Demo config) ---------- */
 .ciba-fab {
   position: fixed;
@@ -75,7 +89,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
-  z-index: 1210;
+  z-index: 10062;
 }
 
 /* ---------- Drawer ---------- */
@@ -87,7 +101,7 @@
   /* Width is set via inline style (resizable); fallback gives Token Chain / tokenx tab room */
   width: min(840px, 96vw);
   background: #fff;
-  z-index: 1220;
+  z-index: 10063;
   display: flex;
   flex-direction: column;
   box-shadow: -6px 0 40px rgba(0, 0, 0, 0.18);

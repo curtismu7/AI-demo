@@ -15,12 +15,14 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { notifyError } from '../utils/appToast';
 import './CIBAPanel.css';
 import {
   CibaWhatContent,
   CibaFullStackContent,
   TokenExchangeContent,
 } from './education/educationContent';
+import { EduImplIntro, SNIP_CIBA_INITIATE } from './education/educationImplementationSnippets';
 
 // ---------------------------------------------------------------------------
 // Static content
@@ -143,7 +145,6 @@ function TryItTab({ cibaStatus }) {
   const [acrValues, setAcrValues]   = useState('');
   const [status, setStatus]         = useState('idle'); // idle|loading|pending|approved|denied|error|expired
   const [authReqId, setAuthReqId]   = useState(null);
-  const [errorMsg, setErrorMsg]     = useState('');
   const [pollLog, setPollLog]       = useState([]);
   const [expiresAt, setExpiresAt]   = useState(null);
   const [timeLeft, setTimeLeft]     = useState(null);
@@ -187,7 +188,7 @@ function TryItTab({ cibaStatus }) {
         if (s === 'denied') {
           stopPolling();
           setStatus('denied');
-          setErrorMsg(err.response?.data?.message || 'User denied the request');
+          notifyError(err.response?.data?.message || 'User denied the request');
           log('denied by user');
         } else if (err.response?.status === 410) {
           stopPolling();
@@ -215,7 +216,6 @@ function TryItTab({ cibaStatus }) {
   const initiate = async () => {
     if (!cibaStatus?.enabled) return;
     setStatus('loading');
-    setErrorMsg('');
     setPollLog([]);
     setAuthReqId(null);
     log('initiating CIBA request…');
@@ -234,7 +234,7 @@ function TryItTab({ cibaStatus }) {
     } catch (err) {
       setStatus('error');
       const d = err.response?.data;
-      setErrorMsg(d?.message || d?.error || err.message);
+      notifyError(d?.message || d?.error || err.message);
       log(`error: ${d?.message || err.message}`);
     }
   };
@@ -312,9 +312,6 @@ function TryItTab({ cibaStatus }) {
               placeholder="e.g. Multi_factor"
             />
           </label>
-          {status === 'error' && (
-            <div className="ciba-notice ciba-notice--error">{errorMsg}</div>
-          )}
           <button className="ciba-btn ciba-btn--primary" onClick={initiate}>
             📲 Start CIBA request
           </button>
@@ -339,12 +336,6 @@ function TryItTab({ cibaStatus }) {
             <div className="ciba-notice ciba-notice--success">
               ✅ User approved! Tokens stored server-side in the Backend-for-Frontend (BFF) session.
               They are never sent to this browser.
-            </div>
-          )}
-
-          {status === 'denied' && (
-            <div className="ciba-notice ciba-notice--error">
-              ❌ {errorMsg || 'User denied the request or it expired.'}
             </div>
           )}
 
@@ -397,10 +388,11 @@ export default function CIBAPanel() {
     { id: 'tryit',     label: '▶ Try It' },
     { id: 'appflow',   label: 'App Flows' },
     { id: 'setup',     label: 'PingOne Setup' },
+    { id: 'bffcode',   label: 'BFF code' },
   ];
 
   useEffect(() => {
-    const valid = new Set(['what', 'roles', 'fullstack', 'tokenx', 'vslogin', 'tryit', 'appflow', 'setup']);
+    const valid = new Set(['what', 'roles', 'fullstack', 'tokenx', 'vslogin', 'tryit', 'appflow', 'setup', 'bffcode']);
     const onEdu = (e) => {
       setOpen(true);
       const t = e.detail?.tab;
@@ -409,6 +401,13 @@ export default function CIBAPanel() {
     window.addEventListener('education-open-ciba', onEdu);
     return () => window.removeEventListener('education-open-ciba', onEdu);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
 
   // ── Resize drag (left edge handle) ────────────────────────────────────────
   const handleResizeMouseDown = useCallback((e) => {
@@ -442,17 +441,7 @@ export default function CIBAPanel() {
 
   return (
     <>
-      {/* Floating trigger button */}
-      <button
-        className={`ciba-fab${open ? ' ciba-fab--open' : ''}`}
-        onClick={() => setOpen((o) => !o)}
-        title="Learn CIBA — backchannel authentication & app flows"
-        aria-label="Open CIBA guide and try backchannel authentication"
-      >
-        <span className="ciba-fab-icon">📲</span>
-        <span className="ciba-fab-label">CIBA guide</span>
-        {cibaStatus?.enabled && <span className="ciba-fab-dot" title="CIBA enabled" />}
-      </button>
+      {/* CIBA guide FAB removed — open via Learn menu, Banking Agent, or window event `education-open-ciba`. */}
 
       {/* Drawer overlay */}
       {open && (
@@ -675,6 +664,19 @@ CIBA_AUTH_REQUEST_EXPIRY=300`}</CodeBlock>
                 still resolves the user. For <strong>email-only</strong> CIBA, no extra device is required. For a{' '}
                 <strong>push</strong> path, users may already have Microsoft Authenticator via Azure AD — depends on your IdP and DaVinci flow.
               </div>
+            </div>
+          )}
+
+          {activeTab === 'bffcode' && (
+            <div className="ciba-tab-content">
+              <h3 className="ciba-section-title">CIBA routes in the Banking API</h3>
+              <p className="ciba-section-desc">
+                The floating panel&apos;s <strong>Try It</strong> tab calls these endpoints; tokens stay in the BFF session.
+              </p>
+              <EduImplIntro repoPath="banking_api_server/routes/ciba.js + services/cibaService.js">
+                Initiate requires an authenticated session with a <code>login_hint</code> (email).
+              </EduImplIntro>
+              <pre className="ciba-code-pre">{SNIP_CIBA_INITIATE}</pre>
             </div>
           )}
 

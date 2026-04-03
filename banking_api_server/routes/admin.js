@@ -5,6 +5,27 @@ const router = express.Router();
 const dataStore = require('../data/store');
 const { requireAdmin, requireScopes } = require('../middleware/auth');
 const runtimeSettings = require('../config/runtimeSettings');
+const {
+  resolvePingOneUserForLookup,
+  phoneLast4Matches,
+} = require('../services/pingOneUserLookupService');
+const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
+const {
+  probeManagementApiAccess,
+  getManagementWorkerConfigStatus,
+  runPingOneBootstrap,
+} = require('../services/pingoneBootstrapService');
+
+/** When SETUP_MASTER_KEY is set, POST /setup/pingone-bootstrap-run must send matching X-Setup-Master-Key. */
+function requireSetupMasterKeyIfConfigured(req, res, next) {
+  const key = process.env.SETUP_MASTER_KEY;
+  if (!key || !String(key).trim()) return next();
+  if (req.headers['x-setup-master-key'] === String(key).trim()) return next();
+  return res.status(403).json({
+    error: 'setup_master_key_required',
+    message: 'Set header X-Setup-Master-Key to match the SETUP_MASTER_KEY environment variable.',
+  });
+}
 
 // Get system statistics
 router.get('/stats', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
@@ -29,6 +50,114 @@ router.get('/stats', requireAdmin, requireScopes(['banking:admin']), (req, res) 
 
   } catch (error) {
     console.error('Get stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+const TX_LOOKUP_LIMIT = 100;
+
+/**
+ * POST body: { username, phoneLast4 } — verify last 4 digits against PingOne mobile and/or local phone,
+ * return merged profile (PingOne where available), accounts with balances, and recent transactions.
+ */
+router.post('/transactions/lookup', requireAdmin, requireScopes(['banking:admin']), async (req, res) => {
+  try {
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const phoneLast4 = typeof req.body.phoneLast4 === 'string' ? req.body.phoneLast4.trim() : '';
+    if (!username || !phoneLast4) {
+      return res.status(400).json({ error: 'username and phoneLast4 are required' });
+    }
+    const want = phoneLast4.replace(/\D/g, '').slice(-4);
+    if (want.length !== 4) {
+      return res.status(400).json({ error: 'phoneLast4 must be 4 digits' });
+    }
+
+    const users = dataStore.getAllUsers();
+    const user = users.find((u) => String(u.username || '').toLowerCase() === username.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let pingOneResolved;
+    try {
+      pingOneResolved = await resolvePingOneUserForLookup(user);
+    } catch (e) {
+      console.warn('Admin lookup: PingOne resolve error:', e.message);
+      pingOneResolved = { user: null, matchedBy: null, error: e.message || 'lookup_failed' };
+    }
+
+    const p1 = pingOneResolved?.user || null;
+    if (!phoneLast4Matches(want, user, p1)) {
+      return res.status(403).json({ error: 'Phone verification failed' });
+    }
+
+    const firstName = p1?.givenName || user.firstName || '';
+    const lastName = p1?.familyName || user.lastName || '';
+    const fullName = (p1?.fullName || `${firstName} ${lastName}`.trim() || user.username).trim();
+    const email = p1?.email || user.email || '';
+    const phoneOnRecord = p1?.mobilePhone || user.phone || '';
+
+    let transactions = dataStore.getTransactionsByUserId(user.id);
+    transactions = [...transactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const slice = transactions.slice(0, TX_LOOKUP_LIMIT);
+
+    const enriched = slice.map((tx) => {
+      const fromAccount = tx.fromAccountId ? dataStore.getAccountById(tx.fromAccountId) : null;
+      const toAccount = tx.toAccountId ? dataStore.getAccountById(tx.toAccountId) : null;
+      let accountInfo = '—';
+      if (fromAccount) {
+        accountInfo = `${fromAccount.accountType} - ${fromAccount.accountNumber}`;
+      } else if (toAccount) {
+        accountInfo = `${toAccount.accountType} - ${toAccount.accountNumber}`;
+      }
+      return {
+        ...tx,
+        accountInfo,
+        performedBy: fullName || user.username,
+      };
+    });
+
+    const accounts = dataStore.getAccountsByUserId(user.id).map((a) => ({
+      id: a.id,
+      accountNumber: a.accountNumber,
+      accountType: a.accountType,
+      balance: a.balance,
+      currency: a.currency || 'USD',
+      isActive: a.isActive !== false,
+    }));
+
+    const pingOnePayload = p1
+      ? {
+          linked: true,
+          userId: p1.id,
+          matchedBy: pingOneResolved.matchedBy || null,
+          lifecycleStatus: p1.lifecycleStatus || '',
+          enabled: p1.enabled,
+        }
+      : {
+          linked: false,
+          reason: pingOneResolved?.error || 'not_found',
+        };
+
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        firstName,
+        lastName,
+        fullName,
+        email,
+        phone: phoneOnRecord,
+        phoneOnRecord,
+      },
+      pingOne: pingOnePayload,
+      accounts,
+      transactions: enriched,
+      count: enriched.length,
+      totalTransactions: transactions.length,
+    });
+  } catch (error) {
+    console.error('Admin transactions lookup error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -508,5 +637,53 @@ router.post('/banking/accounts/:accountId/seed-charges', requireAdmin, requireSc
     res.status(500).json({ error: 'seed_failed', message: error.message });
   }
 });
+
+/**
+ * GET /api/admin/setup/management-probe — list OIDC apps via PingOne Management API (read-only).
+ * Requires admin session + bearer auth via authenticateToken on /api/admin.
+ */
+router.get('/setup/management-probe', requireAdmin, async (_req, res) => {
+  try {
+    const result = await probeManagementApiAccess();
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('management-probe error:', error);
+    res.status(500).json({ ok: false, error: error.message || 'probe_failed' });
+  }
+});
+
+/**
+ * GET /api/admin/setup/worker-credentials — which server-side workers are configured (no secrets).
+ */
+router.get('/setup/worker-credentials', requireAdmin, (_req, res) => {
+  res.status(200).json({
+    management: getManagementWorkerConfigStatus(),
+    authorizeWorkerReady: pingOneAuthorizeService.isWorkerCredentialReady(),
+  });
+});
+
+/**
+ * POST /api/admin/setup/pingone-bootstrap-run
+ * Body: { publicBaseUrl: string, dryRun?: boolean, includeUsers?: boolean }
+ */
+router.post(
+  '/setup/pingone-bootstrap-run',
+  requireAdmin,
+  requireSetupMasterKeyIfConfigured,
+  async (req, res) => {
+    try {
+      const { publicBaseUrl, dryRun, includeUsers } = req.body || {};
+      const result = await runPingOneBootstrap({
+        publicBaseUrl,
+        dryRun: !!dryRun,
+        includeUsers: includeUsers !== false,
+      });
+      res.status(result.ok ? 200 : 422).json(result);
+    } catch (error) {
+      console.error('pingone-bootstrap-run error:', error);
+      res.status(500).json({ ok: false, error: error.message || 'bootstrap_failed' });
+    }
+  }
+);
 
 module.exports = router;

@@ -95,6 +95,14 @@ jest.mock('../../services/pingOneAuthorizeService', () => ({
   evaluateTransaction: jest.fn(() =>
     Promise.resolve({ decision: global.__authorizeGateMockDecision || 'PERMIT', raw: {} })
   ),
+  evaluateMcpToolDelegation: jest.fn().mockResolvedValue({
+    decision: 'PERMIT',
+    stepUpRequired: false,
+    raw: {},
+    decisionId: null,
+    path: 'decision-endpoint',
+  }),
+  isMcpDelegationDecisionReady: jest.fn(() => false),
 }));
 
 const app = require('../../server');

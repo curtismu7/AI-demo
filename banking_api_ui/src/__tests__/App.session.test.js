@@ -39,12 +39,15 @@ jest.mock('axios', () => {
 
 jest.mock('react-router-dom', () => ({
   BrowserRouter: ({ children }) => children,
+  Router:        ({ children }) => children,
   Routes:        ({ children }) => children,
   Route:         () => null,
   Navigate:      () => null,
   Link:          ({ children, to, ...rest }) => <a href={typeof to === 'string' ? to : ''} {...rest}>{children}</a>,
   useNavigate:   () => jest.fn(),
   useLocation:   () => ({ pathname: '/', search: '' }),
+  /** AppWithAuth reads query params for OAuth error toasts — must be iterable [params, setParams]. */
+  useSearchParams: () => [new URLSearchParams(''), jest.fn()],
 }));
 
 // Minimal stubs for heavy child components that can't render in jsdom
@@ -76,7 +79,11 @@ jest.mock('../context/TokenChainContext', () => ({
 }));
 jest.mock('../context/AgentUiModeContext', () => ({
   AgentUiModeProvider: ({ children }) => children,
-  useAgentUiMode: () => ({ mode: 'floating', setMode: jest.fn() }),
+  useAgentUiMode: () => ({
+    placement: 'none',
+    fab: true,
+    setAgentUi: jest.fn(),
+  }),
 }));
 jest.mock('../services/configService', () => ({
   savePublicConfig: jest.fn().mockResolvedValue(undefined),
@@ -87,6 +94,7 @@ jest.mock('../services/demoScenarioService', () => {
     __esModule: true,
     fetchDemoScenario,
     persistBankingAgentUiMode: jest.fn(() => Promise.resolve(true)),
+    persistBankingAgentUi: jest.fn(() => Promise.resolve(true)),
   };
 });
 jest.mock('react-toastify', () => ({

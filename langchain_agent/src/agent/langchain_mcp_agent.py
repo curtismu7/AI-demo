@@ -6,14 +6,13 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
 
-from langchain.agents import AgentExecutor, create_openai_functions_agent
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 from langchain.memory import ConversationBufferMemory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import BaseTool
-#from langchain_openai import OpenAI, ChatOpenAI
-from langchain.llms import OpenAI
-from langchain.chat_models import ChatOpenAI
+from langchain_core.language_models.chat_models import BaseChatModel
+from .llm_factory import get_llm
 
 from mcp.tool_registry import MCPClientManager
 from authentication.oauth_manager import OAuthAuthenticationManager
@@ -67,32 +66,27 @@ class LangChainMCPAgent(TracingMixin):
         
         logger.info("Initialized LangChain MCP Agent")
     
-    def _initialize_llm(self) -> Union[ChatOpenAI, OpenAI]:
-        """Initialize the language model for the agent."""
-        try:
-            # Try to use ChatOpenAI for better function calling support
-            llm = ChatOpenAI(
-                model_name=self.config.langchain.model_name,
-                temperature=self.config.langchain.temperature,
-                max_tokens=self.config.langchain.max_tokens,
-                openai_api_key=self.config.langchain.openai_api_key,
-                streaming=bool(
-                    getattr(self.config.langchain, "stream_llm_tokens", True)
-                ),
-            )
-            logger.info(f"Initialized ChatOpenAI with model {self.config.langchain.model_name}")
-            return llm
-        except Exception as e:
-            logger.warning(f"Failed to initialize ChatOpenAI, falling back to OpenAI: {e}")
-            # Fallback to regular OpenAI
-            llm = OpenAI(
-                model_name=self.config.langchain.model_name,
-                temperature=self.config.langchain.temperature,
-                max_tokens=self.config.langchain.max_tokens,
-                openai_api_key=self.config.langchain.openai_api_key
-            )
-            logger.info(f"Initialized OpenAI with model {self.config.langchain.model_name}")
-            return llm
+    def _initialize_llm(self) -> BaseChatModel:
+        """Initialize the language model for the agent via multi-provider factory."""
+        lc = self.config.langchain
+        provider = getattr(lc, "provider", None) or "groq"
+        api_key_map = {
+            "groq": getattr(lc, "groq_api_key", ""),
+            "openai": getattr(lc, "openai_api_key", ""),
+            "anthropic": getattr(lc, "anthropic_api_key", ""),
+            "google": getattr(lc, "google_api_key", ""),
+        }
+        llm = get_llm(
+            provider=provider,
+            model=lc.model_name or None,
+            api_key=api_key_map.get(provider) or None,
+            temperature=lc.temperature,
+            max_tokens=lc.max_tokens,
+            streaming=bool(getattr(lc, "stream_llm_tokens", True)),
+            ollama_base_url=getattr(lc, "ollama_base_url", "http://localhost:11434"),
+        )
+        logger.info("Initialized LLM via factory: provider=%s model=%s", provider, lc.model_name)
+        return llm
     
     async def initialize_tools(self) -> None:
         """Initialize MCP tools for the agent."""
@@ -219,7 +213,7 @@ Remember to maintain conversation context and provide helpful, accurate response
         prompt = await self._create_agent_prompt(session_id)
         
         # Create agent
-        agent = create_openai_functions_agent(
+        agent = create_tool_calling_agent(
             llm=self.llm,
             tools=self._tools,
             prompt=prompt

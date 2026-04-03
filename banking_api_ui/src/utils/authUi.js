@@ -1,6 +1,9 @@
 // banking_api_ui/src/utils/authUi.js
 /** Shared helpers for re-auth CTAs when the UI shows session/login errors. */
 
+/** Dispatched with `detail: { message, role: 'admin' | 'customer' }` so `App` can show an on-page banner. */
+export const SESSION_REAUTH_EVENT = 'banking-session-reauth';
+
 /**
  * True when an inline error message is asking the user to authenticate again.
  * @param {unknown} message

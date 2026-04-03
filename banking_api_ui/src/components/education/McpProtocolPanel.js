@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import EducationDrawer from '../shared/EducationDrawer';
 import { McpProtocolContent, OAuthApiCheatsheet } from './educationContent';
+import { EduImplIntro, SNIP_MCP_BROWSER, SNIP_MCP_BFF } from './educationImplementationSnippets';
 
 const TOOLS = [
   { name: 'get_my_accounts', scopes: 'banking read', returns: 'List of accounts for the user' },
@@ -81,6 +82,65 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
       ),
     },
     {
+      id: 'auth-challenge',
+      label: 'Auth challenge',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>What is an auth challenge?</h3>
+          <p>
+            An <strong>auth challenge</strong> occurs when an MCP tool call requires additional
+            authorization before it can proceed. Rather than silently failing, the server signals
+            the need for user approval so the flow can complete after authorization is granted.
+          </p>
+
+          <h4>Three trigger scenarios in this demo</h4>
+          <ol style={{ paddingLeft: '1.25rem', lineHeight: 1.7 }}>
+            <li>
+              <strong>Amount threshold exceeded</strong> — transfers above the configured CIBA threshold
+              trigger a push notification to the user out-of-band. The agent waits and retries when approval arrives.
+            </li>
+            <li>
+              <strong>PingOne Authorize gate</strong> — high-risk tools (e.g., large withdrawals) are checked
+              against a policy decision point before the token exchange proceeds.
+            </li>
+            <li>
+              <strong>Mid-flow session loss</strong> — if the user&rsquo;s session expires during an agent
+              operation, an inline login prompt appears in the browser. After re-authentication, the agent
+              continues automatically.
+            </li>
+          </ol>
+
+          <h4>Flow sequence</h4>
+          <pre className="edu-code" style={{ fontSize: '0.78rem', lineHeight: 1.6, overflowX: 'auto' }}>{
+`User clicks "Transfer $10,000" in agent
+     ↓
+BFF POST /api/mcp/tool → mcpToolAuthorizationService
+     ↓
+PingOne Authorize gate checks RAR / scopes
+     ↓  [step-up needed]
+BFF returns { error: "step_up_required", cibaRequired: true }
+     ↓
+UI shows "Approval needed" — polls /api/ciba/status every 5s
+     ↓  [user approves on device / email link]
+BFF retries tool call with elevated token
+     ↓
+Tool executes; result returned to agent`
+          }</pre>
+
+          <h4>Why this pattern matters</h4>
+          <p>
+            Agent operations get consent while keeping the user in control. The token is never escalated
+            silently — every step-up is user-visible and audit-logged. This aligns with HITL (Human-in-the-loop)
+            best practices and the FAPI 2.0 security profile for high-value transactions.
+          </p>
+
+          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: '1rem' }}>
+            Note: &ldquo;All token exchange happens inside the BFF (server-side). The browser only holds a session cookie.&rdquo;
+          </p>
+        </>
+      ),
+    },
+    {
       id: 'inspector',
       label: 'Live inspector',
       content: (
@@ -89,6 +149,48 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
             Use the in-app <Link to="/mcp-inspector">MCP Inspector</Link> to see all available tools in real time
             and try calling them directly through your current session.
           </p>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Browser vs BFF</h3>
+          <EduImplIntro repoPath="banking_api_ui/src/services/bankingAgentService.js">
+            The React app only POSTs JSON; cookies carry the session.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_MCP_BROWSER}</pre>
+          <EduImplIntro repoPath="banking_api_server/server.js">
+            After resolving the MCP access token (and gates), the BFF calls the MCP WebSocket client.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_MCP_BFF}</pre>
+
+          <h3 style={{ marginTop: '1.25rem' }}>Key source files</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <thead>
+              <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left' }}>What</th>
+                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left' }}>File</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['BFF MCP tool proxy entry point', 'banking_api_server/server.js (POST /api/mcp/tool)'],
+                ['Authorization gate (PingOne Authorize)', 'banking_api_server/services/mcpToolAuthorizationService.js'],
+                ['Token resolution & exchange', 'banking_api_server/services/agentMcpTokenService.js'],
+                ['MCP server tool handler', 'banking_mcp_server/src/tools/BankingToolProvider.ts'],
+                ['UI inline auth challenge', 'banking_api_ui/src/components/BankingAgent.js'],
+                ['SSE flow milestones', 'banking_api_server/services/mcpFlowSseHub.js'],
+              ].map(([what, file], i) => (
+                <tr key={file} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '0.4rem 0.6rem', fontWeight: 500 }}>{what}</td>
+                  <td style={{ padding: '0.4rem 0.6rem' }}><code className="edu-code" style={{ fontSize: '0.75rem' }}>{file}</code></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </>
       ),
     },

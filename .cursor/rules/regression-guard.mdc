@@ -1,0 +1,99 @@
+---
+description: Enforces the BX Finance regression plan on every code change. Read and follow before touching any file.
+globs: ["banking_api_ui/src/**", "banking_api_server/**", "vercel.json", "*.js", "*.css", "*.ts"]
+alwaysApply: true
+---
+
+# Regression Guard — Read Before Every Change
+
+Full plan: `/Users/cmuir/P1Import-apps/Banking/REGRESSION_PLAN.md`
+
+Agent workflow and repo conventions: `/Users/cmuir/P1Import-apps/Banking/CLAUDE.md`
+
+---
+
+## Before Making Any Change
+
+1. **Check the Critical Do-Not-Break table** (Section 1 of REGRESSION_PLAN.md). If you are touching a listed file, state explicitly what you will NOT break.
+
+2. **Minimal change only.** Name the component, name the element, change only that. Adjacent code is off-limits unless the task explicitly covers it.
+
+3. **Run `npm run build`** in `banking_api_ui/` after every UI edit. Build must exit 0 before proceeding.
+
+---
+
+## Critical Do-Not-Break Areas (quick reference)
+
+| Area | Files to protect |
+|---|---|
+| OAuth admin login | `routes/oauth.js`, `config/oauth.js` |
+| OAuth user login | `routes/oauthUser.js`, `config/oauthUser.js` |
+| CRA proxy | `banking_api_ui/src/setupProxy.js`, `banking_api_ui/.env` |
+| Session persistence | `server.js`, `routes/oauth.js` (`req.session.save()`) |
+| Upstash session store | `services/upstashSessionStore.js` — `cb(err)` must always be called |
+| Token audience check | `middleware/auth.js` — never hardcode `aud` defaults |
+| Status endpoint token expiry | `routes/oauthUser.js`, `routes/oauth.js` — check `expiresAt` |
+| REAUTH_KEY loop guard | `UserDashboard.js` `fetchUserData` — key cleared ONLY on success |
+| Admin role detection | `routes/oauthUser.js` 4-signal check: allowlist → population → claim → existing record |
+| configStore / Config UI | `services/configStore.js`, `routes/adminConfig.js` |
+| BankingAgent FAB | `components/BankingAgent.js`, `App.js` |
+| Float panel resize | `BankingAgent.css` (no max-width/max-height), `BankingAgent.js` (90% caps) |
+| Dashboard 401 / session | `UserDashboard.js` `fetchUserData` 401 → redirect, not banner |
+| Left rail + quick nav | `App.js`, `App.css`, `DashboardQuickNav.js`, `embeddedAgentFabVisibility.js` |
+| Split/Classic + HITL | `dashboardLayout.js`, `customerSplit3Dashboard.js`, `TransactionConsentModal.js` |
+| Vercel SPA routing | `vercel.json` (SPA catch-all rewrite must stay) |
+| OAuth redirect origin | `routes/oauth.js`, `routes/oauthUser.js` — no localhost hardcodes |
+| Vercel build | `banking_api_ui/package.json`, `vercel.json` |
+
+---
+
+## Pre-Deploy Checklist (run before every `vercel --prod` or `git push`)
+
+- [ ] `npm run build` exits 0 in `banking_api_ui/`
+- [ ] No new `console.error` or unhandled rejections in browser console
+- [ ] Admin login → callback → `/admin` dashboard works
+- [ ] User login → callback → `/dashboard` works
+- [ ] BankingAgent FAB visible on login page (unauthenticated)
+- [ ] BankingAgent shows banking actions after login
+- [ ] Direct navigation to `/config`, `/dashboard` returns the page (not 404)
+- [ ] OAuth callbacks redirect to correct hostname (not localhost)
+- [ ] MCP tool calls succeed (Accounts, Transactions, Balance)
+
+---
+
+## After Fixing a Bug
+
+Add an entry to **Section 4 — Bug Fix Log** in `REGRESSION_PLAN.md`:
+
+```markdown
+### YYYY-MM-DD — Short description (commit `abc1234`)
+- **Symptom:** What the user saw
+- **Root cause:** Why it happened
+- **Fix:** What changed
+- **Files:** list of files
+- **Regression check:** How to verify it stays fixed
+```
+
+---
+
+## Change Budget Rules (Layer 3)
+
+- Name the component (`UserDashboard`, `Header`, `BankingAgent`, etc.)
+- Name the specific element (button, color, padding, class)
+- Say "do not touch" for adjacent code you want preserved
+- One logical change per request — multiple changes = regression risk
+- Never clean up unrelated code during a feature/fix
+
+---
+
+## Port Layout (Local Dev)
+
+| Service | Port |
+|---|---|
+| Banking API (run-bank.sh) | 3002 |
+| Banking UI (run-bank.sh) | 4000 |
+| Banking API (default) | 3001 |
+| Banking UI (default) | 3000 |
+
+Proxy: `REACT_APP_API_PORT` in `banking_api_ui/.env` (3002 for run-bank.sh).  
+If you change the port, update **both** `run-bank.sh` AND `banking_api_ui/.env`.

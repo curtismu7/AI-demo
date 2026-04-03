@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
+import { notifyError, notifyWarning } from '../utils/appToast';
+import { getCalls, subscribe as subscribeMcpCalls, appendMcpCall } from '../services/mcpCallStore';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import PageNav from './PageNav';
@@ -40,7 +42,6 @@ const McpInspector = ({ user, onLogout }) => {
   const [selectedTool, setSelectedTool] = useState(null);
   const [paramsJson, setParamsJson] = useState('{}');
   const [lastInvoke, setLastInvoke] = useState(null);
-  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const langchainInspector =
@@ -48,19 +49,26 @@ const McpInspector = ({ user, onLogout }) => {
 
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
 
+  // Dedicated MCP call history — updated synchronously by bankingAgentService + Invoke button
+  const [mcpHistory, setMcpHistory] = useState(getCalls);
+
+  useEffect(() => {
+    const unsub = subscribeMcpCalls(setMcpHistory);
+    return unsub;
+  }, []);
+
   const loadContext = useCallback(async () => {
     try {
       const { data } = await apiClient.get('/api/mcp/inspector/context');
       setContext(data);
     } catch (e) {
       console.error(e);
-      setError(formatAxiosError(e, 'Failed to load inspector context'));
+      notifyError(formatAxiosError(e, 'Failed to load inspector context'));
     }
   }, []);
 
   const refreshTools = useCallback(async () => {
     setLoadingTools(true);
-    setError('');
     try {
       const { data } = await apiClient.get('/api/mcp/inspector/tools');
       setTools(data.tools || []);
@@ -72,7 +80,7 @@ const McpInspector = ({ user, onLogout }) => {
             : null
       );
     } catch (e) {
-      setError(formatAxiosError(e, 'tools/list failed'));
+      notifyError(formatAxiosError(e, 'tools/list failed'));
       setTools([]);
       setToolsSourceInfo(null);
     } finally {
@@ -97,20 +105,22 @@ const McpInspector = ({ user, onLogout }) => {
     try {
       params = JSON.parse(paramsJson || '{}');
     } catch {
-      setError('Arguments must be valid JSON');
+      notifyWarning('Arguments must be valid JSON');
       return;
     }
     setBusy(true);
-    setError('');
+    const t0 = Date.now();
     try {
       const { data } = await apiClient.post('/api/mcp/inspector/invoke', {
         tool: selectedTool.name,
         params,
       });
+      appendMcpCall(selectedTool.name, 200, Date.now() - t0, data.result ?? data);
       setLastInvoke(data);
     } catch (e) {
+      appendMcpCall(selectedTool.name, e.response?.status ?? 0, Date.now() - t0, null, formatAxiosError(e, 'Invoke failed'));
       setLastInvoke(null);
-      setError(formatAxiosError(e, 'Invoke failed'));
+      notifyError(formatAxiosError(e, 'Invoke failed'));
     } finally {
       setBusy(false);
     }
@@ -159,16 +169,55 @@ const McpInspector = ({ user, onLogout }) => {
         </div>
 
         <div className="mcp-inspector">
-          {error && (
-            <div className="mcp-inspector__banner mcp-inspector__banner--error" role="alert">
-              {error}
+          <section className="app-page-card demo-data-section mcp-history">
+            <div className="mcp-history__header">
+              <h2 className="mcp-history__title">Session MCP call history</h2>
+              <span className="mcp-history__count">{mcpHistory.length} call{mcpHistory.length !== 1 ? 's' : ''}</span>
             </div>
-          )}
+            {mcpHistory.length === 0 ? (
+              <p className="mcp-inspector__muted mcp-history__empty">
+                No MCP tool calls yet this session. Use the Banking Agent or the <em>Invoke</em> panel below to make a <code>tools/call</code>.
+              </p>
+            ) : (
+              <ol className="mcp-history__list">
+                {mcpHistory.map(entry => {
+                  const ok = entry.status >= 200 && entry.status < 300;
+                  const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '';
+                  // Extract a short summary from the result (content array → text, or message)
+                  const resultText = (() => {
+                    const r = entry.result;
+                    if (!r) return entry.errorMsg || null;
+                    const content = typeof r === 'object'
+                      ? (r.content?.[0]?.text || r.message || null)
+                      : (typeof r === 'string' ? r : null);
+                    if (typeof content === 'string') return content.length > 120 ? content.slice(0, 120) + '…' : content;
+                    return null;
+                  })();
+                  return (
+                    <li key={entry.id} className={`mcp-history__item${ok ? ' mcp-history__item--ok' : ' mcp-history__item--err'}`}>
+                      <span className="mcp-history__status-dot" aria-hidden="true" />
+                      <div className="mcp-history__item-body">
+                        <span className="mcp-history__tool">{entry.tool}</span>
+                        {ts && <span className="mcp-history__time">{ts}</span>}
+                        <span className={`mcp-history__badge${ok ? ' mcp-history__badge--ok' : ' mcp-history__badge--err'}`}>
+                          {ok ? `${entry.status} OK` : `${entry.status || 'ERR'}`}
+                        </span>
+                        {entry.duration != null && (
+                          <span className="mcp-history__duration">{entry.duration} ms</span>
+                        )}
+                        {resultText && <p className="mcp-history__result">{resultText}</p>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </section>
 
           <section className="app-page-card demo-data-section">
             <h2>How MCP tools work (this demo)</h2>
             <p className="demo-data-hint mcp-inspector__hint-tight">
-              Use the education buttons above for deep dives: <strong>MCP protocol</strong>, <strong>token exchange</strong>,{' '}
+              Use the education buttons above for deep dives: <strong>MCP protocol</strong>, <strong>token exchange</strong>,
               <strong>introspection</strong>, and <strong>Agent Gateway</strong>. Short version: the Backend-for-Frontend (BFF) holds your session and may
               RFC 8693 exchange before <code>tools/call</code>; the MCP server calls the Banking API with Bearer tokens.
             </p>

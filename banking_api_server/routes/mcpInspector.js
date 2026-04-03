@@ -9,6 +9,8 @@ const configStore = require('../services/configStore');
 const { resolveMcpAccessTokenWithEvents } = require('../services/agentMcpTokenService');
 const {
   MCP_TOOL_SCOPES,
+  MCP_CLIENT_PROTOCOL_VERSION,
+  getMcpProtocolVersion,
   getMcpServerUrl,
   getSessionBearerForMcp,
   mcpListTools,
@@ -60,7 +62,7 @@ router.get('/context', async (req, res) => {
       description:
         'Banking Backend-for-Frontend (BFF) acts as MCP Host for the browser: session cookie auth, optional RFC 8693 token exchange, then WebSocket JSON-RPC to the MCP server.',
       transport: { clientToBff: 'HTTPS + session cookie', bffToMcp: 'WebSocket JSON-RPC 2.0' },
-      mcpProtocolVersion: '2024-11-05',
+      mcpProtocolVersion: getMcpProtocolVersion(),
       mcpServerConfigured: !!getMcpServerUrl(),
       tokenExchangeEnabled: !!mcpResourceUri,
       bankingAgentInspectorUrl: langchainInspectorUrl,
@@ -77,7 +79,8 @@ router.get('/context', async (req, res) => {
             mcpResourceUri
               ? 'RFC 8693 token exchange before MCP: narrow scopes + MCP audience + act/delegation (configured).'
               : 'Token exchange not configured (MCP_SERVER_RESOURCE_URI empty) — demo may pass session token to MCP as today.',
-          mcpClientTransport: 'Backend-for-Frontend (BFF) opens WebSocket JSON-RPC (initialize → tools/list / tools/call).',
+          mcpClientTransport:
+            'Backend-for-Frontend (BFF) opens WebSocket JSON-RPC (initialize → notifications/initialized → tools/list / tools/call).',
           bestForShowing:
             'PingOne + OAuth for humans, session-bound tokens, and why exchange + least privilege protect backends from the browser.',
         },
@@ -122,9 +125,6 @@ router.get('/tools', async (req, res) => {
   const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
 
   const respondLocalCatalog = (reason) => {
-    if (!effectiveUserId) {
-      return authRequired(res);
-    }
     return res.json({
       timingsMs: { roundTrip: 0 },
       tools: listLocalInspectorTools(),
@@ -167,7 +167,7 @@ router.get('/tools', async (req, res) => {
         _source: 'mcp_server',
       });
     } catch (err) {
-      if (isMcpUnreachableError(err) && effectiveUserId) {
+      if (isMcpUnreachableError(err)) {
         console.warn('[MCP Inspector] tools/list MCP unreachable, using local catalog:', err.message);
         return respondLocalCatalog(`mcp_unreachable: ${err.message}`);
       }
@@ -190,8 +190,10 @@ router.post('/invoke', express.json(), async (req, res) => {
   const mcpUrl = getMcpServerUrl();
   const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
 
+  // Tools that don't require user auth (no DB access, pure logic)
+  const noAuthTools = new Set(['sequential_think', 'query_user_by_email']);
   const respondLocalInvoke = async () => {
-    if (!effectiveUserId) {
+    if (!effectiveUserId && !noAuthTools.has(tool)) {
       return authRequired(res);
     }
     const started = Date.now();
@@ -212,6 +214,11 @@ router.post('/invoke', express.json(), async (req, res) => {
 
   try {
     await configStore.ensureInitialized();
+
+    // Tools that require no user auth — run locally without token exchange
+    if (noAuthTools.has(tool)) {
+      return await respondLocalInvoke();
+    }
 
     if (!getSessionBearerForMcp(req)) {
       return await respondLocalInvoke();

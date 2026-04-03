@@ -1,0 +1,820 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`SideNav snapshot renders admin nav without change 1`] = `
+<div>
+  <aside
+    class="sidenav"
+  >
+    <div
+      class="sidenav-brand"
+    >
+      <div
+        class="sidenav-brand-logo"
+      >
+        <div
+          class="sidenav-logo-grid"
+        >
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+      <span
+        class="sidenav-brand-name"
+      >
+        BX Finance
+      </span>
+      <button
+        aria-label="Collapse sidebar"
+        class="sidenav-collapse-btn"
+        title="Collapse sidebar"
+        type="button"
+      >
+        ‹
+      </button>
+    </div>
+    <div
+      class="sidenav-user"
+    >
+      <div
+        class="sidenav-user-avatar"
+      >
+        ?
+      </div>
+      <div
+        class="sidenav-user-info"
+      >
+        <div
+          class="sidenav-user-name"
+        >
+           
+        </div>
+        <div
+          class="sidenav-user-role"
+        >
+          👑 Admin
+        </div>
+      </div>
+    </div>
+    <nav
+      class="sidenav-nav"
+    >
+      <div
+        class="sidenav-group"
+      >
+        <div
+          class="sidenav-group-label"
+        >
+          Overview
+        </div>
+        <a
+          class="sidenav-link"
+          href="/admin"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            ⊞
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Dashboard
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/agent"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            💬
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            AI Agent
+          </span>
+        </a>
+      </div>
+      <div
+        class="sidenav-group"
+      >
+        <div
+          class="sidenav-group-label"
+        >
+          Management
+        </div>
+        <a
+          class="sidenav-link"
+          href="/activity"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            📋
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Activity Logs
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/users"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            👥
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Users
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/accounts"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🏦
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Accounts
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/admin/banking"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🏧
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Banking admin
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/transactions"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            ↔
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Transactions
+          </span>
+        </a>
+      </div>
+      <div
+        class="sidenav-group"
+      >
+        <div
+          class="sidenav-group-label"
+        >
+          Developer Tools
+        </div>
+        <a
+          class="sidenav-link"
+          href="/demo-data"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            ⚙️
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Demo config
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/mcp-inspector"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🔌
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            MCP Inspector
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/oauth-debug-logs"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🔍
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            OAuth Logs
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/client-registration"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            📝
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Client Reg.
+          </span>
+        </a>
+      </div>
+      <div
+        class="sidenav-group"
+      >
+        <div
+          class="sidenav-group-label"
+        >
+          System
+        </div>
+        <a
+          class="sidenav-link"
+          href="/onboarding"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🚀
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Setup Guide
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/setup/pingone"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            📘
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            PingOne ref.
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/config"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            ⚙️
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Config
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/settings"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🔐
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Security
+          </span>
+        </a>
+      </div>
+    </nav>
+    <div
+      class="sidenav-group sidenav-learn"
+    >
+      <div
+        class="sidenav-group-label"
+      >
+        Learn & Explore
+      </div>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="Login Flow"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔐
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          Login Flow
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="Token Exchange"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔄
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          Token Exchange
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="may_act / act"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          📋
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          may_act / act
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="PKCE"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔑
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          PKCE
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="CIBA"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          📲
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          CIBA
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="MCP Protocol"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔌
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          MCP Protocol
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="Introspection"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔍
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          Introspection
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="Agent Gateway"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🌐
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          Agent Gateway
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="RFC Index"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          📑
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          RFC Index
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="CIMD"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          📄
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          CIMD
+        </span>
+      </button>
+    </div>
+    <div
+      class="sidenav-footer"
+    >
+      <button
+        class="sidenav-logout-btn"
+        title="Sign out"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          ⏻
+        </span>
+        <span>
+          Sign out
+        </span>
+      </button>
+    </div>
+  </aside>
+</div>
+`;
+
+exports[`SideNav snapshot renders user nav without change 1`] = `
+<div>
+  <aside
+    class="sidenav"
+  >
+    <div
+      class="sidenav-brand"
+    >
+      <div
+        class="sidenav-brand-logo"
+      >
+        <div
+          class="sidenav-logo-grid"
+        >
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+      <span
+        class="sidenav-brand-name"
+      >
+        BX Finance
+      </span>
+      <button
+        aria-label="Collapse sidebar"
+        class="sidenav-collapse-btn"
+        title="Collapse sidebar"
+        type="button"
+      >
+        ‹
+      </button>
+    </div>
+    <div
+      class="sidenav-user"
+    >
+      <div
+        class="sidenav-user-avatar"
+      >
+        ?
+      </div>
+      <div
+        class="sidenav-user-info"
+      >
+        <div
+          class="sidenav-user-name"
+        >
+           
+        </div>
+        <div
+          class="sidenav-user-role"
+        >
+          👤 Customer
+        </div>
+      </div>
+    </div>
+    <nav
+      class="sidenav-nav"
+    >
+      <div
+        class="sidenav-group"
+      >
+        <div
+          class="sidenav-group-label"
+        >
+          My Banking
+        </div>
+        <a
+          class="sidenav-link"
+          href="/dashboard"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            📊
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            My Dashboard
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/agent"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            💬
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            AI Agent
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/demo-data"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            ⚙️
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Demo config
+          </span>
+        </a>
+      </div>
+    </nav>
+    <div
+      class="sidenav-group sidenav-learn"
+    >
+      <div
+        class="sidenav-group-label"
+      >
+        Learn & Explore
+      </div>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="Login Flow"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔐
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          Login Flow
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="Token Exchange"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔄
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          Token Exchange
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="may_act / act"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          📋
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          may_act / act
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="PKCE"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔑
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          PKCE
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="CIBA"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          📲
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          CIBA
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="MCP Protocol"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔌
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          MCP Protocol
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="Introspection"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🔍
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          Introspection
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="Agent Gateway"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          🌐
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          Agent Gateway
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="RFC Index"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          📑
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          RFC Index
+        </span>
+      </button>
+      <button
+        class="sidenav-link sidenav-learn-btn"
+        title="CIMD"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          📄
+        </span>
+        <span
+          class="sidenav-link-label"
+        >
+          CIMD
+        </span>
+      </button>
+    </div>
+    <div
+      class="sidenav-footer"
+    >
+      <button
+        class="sidenav-logout-btn"
+        title="Sign out"
+        type="button"
+      >
+        <span
+          class="sidenav-link-icon"
+        >
+          ⏻
+        </span>
+        <span>
+          Sign out
+        </span>
+      </button>
+    </div>
+  </aside>
+</div>
+`;

@@ -3,115 +3,384 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import { useDemoTour } from '../context/DemoTourContext';
+import AgentUiModeToggle from './AgentUiModeToggle';
+import { useDemoMode } from '../hooks/useDemoMode';
 import './EducationBar.css';
 
 /**
- * Global learn pill bar for authenticated users (below main header area).
+ * Top-right hamburger: Agent UI + OAuth/learn shortcuts (full mode) or Agent UI only (DEMO_MODE).
  */
 export default function EducationBar() {
+  const demoMode = useDemoMode();
   const { open } = useEducationUI();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const menuRef = useRef(null);
+
+  const close = () => setPanelOpen(false);
+  const tour = useDemoTour();
 
   useEffect(() => {
     const onDoc = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target)) close();
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
+  useEffect(() => {
+    if (!panelOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [panelOpen]);
+
   const openCiba = () => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('education-open-ciba', { detail: { tab: 'what' } }));
     }
-    setMenuOpen(false);
+    close();
   };
 
   const openCimd = () => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('education-open-cimd', { detail: { tab: 'what' } }));
     }
-    setMenuOpen(false);
+    close();
   };
 
   const openApiTraffic = () => {
     window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes');
+    close();
   };
 
-  return (
-    <div className="edu-bar" role="navigation" aria-label="Learn topics">
-      <div className="edu-bar-inner">
-        <div className="dropdown edu-bar-group" ref={menuRef}>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-primary edu-bar-btn"
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-          >
-            OAuth Flows
-          </button>
-          {menuOpen && (
-            <div className="dropdown-menu show edu-bar-dropdown" role="menu">
-              <button type="button" className="dropdown-item" role="menuitem" onClick={() => { open(EDU.LOGIN_FLOW, 'what'); setMenuOpen(false); }}>
-                Authorization Code + PKCE
-              </button>
-              <button type="button" className="dropdown-item" role="menuitem" onClick={() => { open(EDU.LOGIN_FLOW, 'ciba'); setMenuOpen(false); }}>
-                CIBA (OOB) — short (drawer)
-              </button>
-              <button type="button" className="dropdown-item" role="menuitem" onClick={() => { openCiba(); }}>
-                CIBA — full guide (floating)
-              </button>
-              <button type="button" className="dropdown-item" role="menuitem" onClick={() => { open(EDU.TOKEN_EXCHANGE, 'why'); setMenuOpen(false); }}>
-                Token Exchange (RFC 8693)
-              </button>
-            </div>
-          )}
-        </div>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.TOKEN_EXCHANGE, 'why')}>
-          Token Exchange
-        </button>
-        <NavLink
-          to="/demo-data"
-          className={({ isActive }) =>
-            `btn btn-sm btn-outline-primary edu-bar-btn${isActive ? ' edu-bar-btn--active' : ''}`
-          }
-          title="Sandbox accounts, balances, profile, MFA threshold, agent layout"
+  if (demoMode === true) {
+    return (
+      <div className="edu-bar edu-bar--dock" ref={menuRef}>
+        <button
+          type="button"
+          className="edu-bar-hamburger"
+          aria-expanded={panelOpen}
+          aria-controls="edu-bar-panel"
+          aria-label="Agent UI menu"
+          onClick={() => setPanelOpen((o) => !o)}
         >
-          Demo config
-        </NavLink>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.MAY_ACT, 'what')}>
-          may_act / act
+          <span className="edu-bar-hamburger__line" aria-hidden="true" />
+          <span className="edu-bar-hamburger__line" aria-hidden="true" />
+          <span className="edu-bar-hamburger__line" aria-hidden="true" />
         </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.LOGIN_FLOW, 'pkce')}>
-          PKCE
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openCiba}>
-          CIBA
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.MCP_PROTOCOL, 'what')}>
-          MCP Protocol
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.INTROSPECTION, 'why')}>
-          Introspection
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.AGENT_GATEWAY, 'overview')}>
-          Agent Gateway
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.HUMAN_IN_LOOP, 'what')}>
-          Human-in-the-loop
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={() => open(EDU.RFC_INDEX, 'index')}>
-          RFC Index
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openCimd}>
-          CIMD
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-primary edu-bar-btn" onClick={openApiTraffic} title="Open API Traffic Viewer in new window">
-          🌐 API
-        </button>
+        {panelOpen && (
+          <div
+            id="edu-bar-panel"
+            className="edu-bar-panel edu-bar-panel--minimal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edu-bar-panel-title"
+          >
+            <h2 id="edu-bar-panel-title" className="edu-bar-panel__title">
+              Agent UI
+            </h2>
+            <AgentUiModeToggle variant="eduBar" className="edu-bar-agent-toggle" />
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('agent-flow-diagram-open'));
+                close();
+              }}
+            >
+              Agent flow diagram
+            </button>
+          </div>
+        )}
       </div>
+    );
+  }
+
+  return (
+    <div className="edu-bar edu-bar--dock" ref={menuRef}>
+      <button
+        type="button"
+        className="edu-bar-hamburger"
+        aria-expanded={panelOpen}
+        aria-controls="edu-bar-panel"
+        aria-label="Learn topics and agent UI"
+        onClick={() => setPanelOpen((o) => !o)}
+      >
+        <span className="edu-bar-hamburger__line" aria-hidden="true" />
+        <span className="edu-bar-hamburger__line" aria-hidden="true" />
+        <span className="edu-bar-hamburger__line" aria-hidden="true" />
+      </button>
+      {panelOpen && (
+        <div
+          id="edu-bar-panel"
+          className="edu-bar-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edu-bar-panel-title"
+        >
+          <h2 id="edu-bar-panel-title" className="edu-bar-panel__title">
+            Learn &amp; agent
+          </h2>
+
+          <div className="edu-bar-panel__section">
+            <AgentUiModeToggle variant="eduBar" className="edu-bar-agent-toggle" />
+          </div>
+
+          <div className="edu-bar-panel__section">
+            <button
+              type="button"
+              className="edu-bar-panel__btn edu-bar-panel__btn--featured"
+              onClick={() => {
+                tour.start();
+                close();
+              }}
+            >
+              🗺 Guided Demo Tour (5 min)
+            </button>
+          </div>
+
+          <div className="edu-bar-panel__section">
+            <button
+              type="button"
+              className="edu-bar-panel__btn edu-bar-panel__btn--featured"
+              onClick={() => {
+                open(EDU.BEST_PRACTICES, 'overview');
+                close();
+              }}
+            >
+              ⭐ AI Agent Best Practices
+            </button>
+          </div>
+
+          <div className="edu-bar-panel__section">
+            <p className="edu-bar-panel__heading">OAuth flows</p>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.LOGIN_FLOW, 'what');
+                close();
+              }}
+            >
+              Authorization Code + PKCE
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.LOGIN_FLOW, 'ciba');
+                close();
+              }}
+            >
+              CIBA (OOB) — short (drawer)
+            </button>
+            <button type="button" className="edu-bar-panel__btn" onClick={openCiba}>
+              CIBA — full guide (floating)
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.TOKEN_EXCHANGE, 'why');
+                close();
+              }}
+            >
+              Token Exchange (RFC 8693)
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.PAR, 'what');
+                close();
+              }}
+            >
+              PAR (RFC 9126)
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.RAR, 'what');
+                close();
+              }}
+            >
+              RAR (RFC 9396)
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.JWT_CLIENT_AUTH, 'what');
+                close();
+              }}
+            >
+              JWT client auth (RFC 7523)
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.OIDC_21, 'what');
+                close();
+              }}
+            >
+              OIDC 2.1 spec alignment
+            </button>
+          </div>
+
+          <div className="edu-bar-panel__section">
+            <p className="edu-bar-panel__heading">Shortcuts</p>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.TOKEN_EXCHANGE, 'why');
+                close();
+              }}
+            >
+              Token Exchange
+            </button>
+            <NavLink
+              to="/demo-data"
+              className={({ isActive }) =>
+                `edu-bar-panel__btn edu-bar-panel__link${isActive ? ' edu-bar-panel__link--active' : ''}`
+              }
+              title="Sandbox accounts, balances, profile, MFA threshold, agent layout"
+              onClick={close}
+            >
+              Demo config
+            </NavLink>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.MAY_ACT, 'what');
+                close();
+              }}
+            >
+              may_act / act
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.LOGIN_FLOW, 'pkce');
+                close();
+              }}
+            >
+              PKCE
+            </button>
+            <button type="button" className="edu-bar-panel__btn" onClick={openCiba}>
+              CIBA
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.MCP_PROTOCOL, 'what');
+                close();
+              }}
+            >
+              MCP Protocol
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.INTROSPECTION, 'why');
+                close();
+              }}
+            >
+              Introspection
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.AGENT_GATEWAY, 'overview');
+                close();
+              }}
+            >
+              Agent Gateway
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.HUMAN_IN_LOOP, 'what');
+                close();
+              }}
+            >
+              Human-in-the-loop
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.RFC_INDEX, 'index');
+                close();
+              }}
+            >
+              RFC Index
+            </button>
+            <button type="button" className="edu-bar-panel__btn" onClick={openCimd}>
+              CIMD
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.PAR, 'what');
+                close();
+              }}
+            >
+              PAR
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.RAR, 'what');
+                close();
+              }}
+            >
+              RAR
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                open(EDU.JWT_CLIENT_AUTH, 'what');
+                close();
+              }}
+            >
+              JWT client auth
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={openApiTraffic}
+              title="Open API Traffic Viewer in new window"
+            >
+              🌐 API
+            </button>
+            <button
+              type="button"
+              className="edu-bar-panel__btn"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('agent-flow-diagram-open'));
+                close();
+              }}
+            >
+              Agent flow diagram
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

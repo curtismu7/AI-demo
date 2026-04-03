@@ -11,7 +11,7 @@ const MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown, no explanation) with one of:
-{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd","tab":"what"}}
+{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|langchain","tab":"what"}}
 {"kind":"education","ciba":true,"tab":"what"}
 {"kind":"banking","banking":{"action":"balance","params":{}}}
 {"kind":"banking","banking":{"action":"accounts","params":{}}}
@@ -25,11 +25,23 @@ Examples:
   "transfer 400 from checking to savings" → {"kind":"banking","banking":{"action":"transfer","params":{"fromId":"checking","toId":"savings","amount":400}}}
   "deposit 100 into savings" → {"kind":"banking","banking":{"action":"deposit","params":{"toId":"savings","amount":100}}}
   "withdraw 50 from checking" → {"kind":"banking","banking":{"action":"withdraw","params":{"fromId":"checking","amount":50}}}
+  "search for PingOne token exchange" → {"kind":"banking","banking":{"action":"web_search","query":"PingOne token exchange"}}
+  "find information about RFC 8693" → {"kind":"banking","banking":{"action":"web_search","query":"RFC 8693"}}
 
 User wants banking operations OR to open help topics (OAuth, MCP, CIBA, token exchange, CIMD client registration, etc.).
 Prefer banking when the user asks to move money or list data; prefer education when they ask how something works.
 For CIMD / client-id-metadata / dynamic client registration / register a client / DCR / RFC 7591 → use panel cimd.
-For "list tools", "show MCP tools", "what tools are available" → use action mcp_tools.`;
+For LangChain / LCEL / multi-provider LLM / model-agnostic / llm orchestration / langchain agent → use panel langchain.
+CRITICAL: For ANY request that contains "list", "show", or "get" combined with "mcp tools", "tools available",
+"available tools", or the standalone phrases "list tools" / "show tools" → ALWAYS output {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}.
+NEVER route these to education — not even if "mcp" appears in the phrase.
+Examples of mcp_tools (always banking, never education):
+  "list of mcp tools" → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
+  "show mcp tools"    → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
+  "what tools are available" → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
+  "list tools"        → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
+Only route to education panel mcp-protocol when the user asks HOW MCP works or WHAT MCP is (no list/show/get verb).
+If the user asks to pay, transfer, or send money involving a "credit card", "credit account", or "investment account" → {"kind":"none","message":"This demo only supports Checking and Savings accounts. Credit cards and investment accounts are not available."}`;
 
 /**
  * @param {string} userMessage

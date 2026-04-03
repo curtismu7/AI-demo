@@ -4,6 +4,12 @@
  * Calls the PingOne Management API to create / list OAuth applications.
  * Uses a client_credentials grant with the admin (worker) client so that
  * Management-API tokens are obtained server-side and never exposed to the UI.
+ *
+ * Trust boundary (PingOne egress):
+ * - Browser → this BFF only (/api/* with session or Bearer). The SPA does not call api.pingone or auth.pingone.
+ * - Human OAuth (authorize, token, JWKS) runs in routes/oauth*.js and config/oauth*.js — must stay on the BFF.
+ * - banking_mcp_server calls PingOne for token introspection / CIBA for MCP tools, then calls this API for data.
+ *   Banking tools are not intended to re-implement full Management API; keep worker credentials on the BFF.
  */
 const axios = require('axios');
 const configStore = require('./configStore');
@@ -118,10 +124,10 @@ async function createApplication(metadata) {
 }
 
 /**
- * List all OIDC applications in the PingOne environment.
- * Returns a summarised array (id, name, type, enabled, createdAt).
+ * Raw OIDC application objects from PingOne (for bootstrap idempotency / matching by name).
+ * @returns {Promise<object[]>}
  */
-async function listApplications() {
+async function listOidcApplicationsRaw() {
   const envId  = configStore.getEffective('pingone_environment_id');
   const region = configStore.getEffective('pingone_region') || 'com';
   const token  = await getManagementToken();
@@ -129,9 +135,18 @@ async function listApplications() {
   const url = `https://api.pingone.${region}/v1/environments/${envId}/applications?filter=protocol%20eq%20%22OPENID_CONNECT%22`;
   const response = await axios.get(url, {
     headers: { Authorization: `Bearer ${token}` },
+    timeout: 20000,
   });
 
-  const items = response.data?._embedded?.applications || [];
+  return response.data?._embedded?.applications || [];
+}
+
+/**
+ * List all OIDC applications in the PingOne environment.
+ * Returns a summarised array (id, name, type, enabled, createdAt).
+ */
+async function listApplications() {
+  const items = await listOidcApplicationsRaw();
   return items.map(a => ({
     id:        a.id,
     name:      a.name,
@@ -142,4 +157,4 @@ async function listApplications() {
   }));
 }
 
-module.exports = { createApplication, listApplications };
+module.exports = { createApplication, listApplications, listOidcApplicationsRaw, getManagementToken };

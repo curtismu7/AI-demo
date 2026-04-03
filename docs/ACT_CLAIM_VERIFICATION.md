@@ -8,8 +8,8 @@ This document explains how to verify that PingOne is correctly issuing `act` and
 
 The banking demo architecture relies on delegation claims to establish a clear chain of custody:
 
-- **`may_act`** (in T1 - user token): Prospectively authorizes the Backend-for-Frontend (BFF) to exchange the token
-- **`act`** (in T2 - exchanged token): Identifies the current actor (Backend-for-Frontend (BFF)) acting on behalf of the user
+- **`may_act`** (in the **user access token**): Prospectively authorizes the Backend-for-Frontend (BFF) to exchange the token
+- **`act`** (in the **MCP access token** after exchange): Identifies the current actor (Backend-for-Frontend (BFF)) acting on behalf of the user
 
 Without these claims, the delegation chain is invisible in audit logs and token introspection.
 
@@ -84,20 +84,20 @@ ACCESS_TOKEN=eyJhbGc... node scripts/verify-act-claims.js
 ```
 
 The script will:
-- Decode the user token (T1) and check for `may_act`
-- Perform token exchange to get T2
-- Decode T2 and check for `act`
+- Decode the user access token and check for `may_act`
+- Perform token exchange to get the MCP access token
+- Decode the MCP access token and check for `act`
 - Report findings with clear success/failure indicators
 
 ### Method 2: Manual Token Inspection
 
-1. **Capture User Token (T1)**
+1. **Capture user access token**
    - Log in to the application
    - Open browser DevTools → Network tab
    - Find any API request to `/api/accounts` or similar
    - The server has the token in `req.session.oauthTokens.accessToken`
 
-2. **Decode T1**
+2. **Decode user access token**
    ```bash
    # Use jwt.io or decode manually
    echo "eyJhbGc..." | base64 -d
@@ -119,7 +119,7 @@ The script will:
    - Use the Banking Agent to call any MCP tool
    - Check server logs for token exchange events
 
-5. **Decode T2 (Exchanged Token)**
+5. **Decode MCP access token (exchanged)**
    - Extract from MCP server logs or intercept WebSocket traffic
    - Decode and look for `act` claim:
    ```json
@@ -141,15 +141,15 @@ The application includes a Token Chain visualization panel:
 2. Execute any banking operation (e.g., "Show my accounts")
 3. Click the **Token Chain** button in the UI
 4. Review the token events:
-   - Event 1: User Token (T1) - should show `may_act` present/absent
+   - Event 1: User access token — should show `may_act` present/absent
    - Event 2: Token Exchange - should show success/failure
-   - Event 3: Exchanged Token (T2) - should show `act` present/absent
+   - Event 3: MCP access token — should show `act` present/absent
 
 ## Expected Results
 
 ### ✅ Success Scenario
 
-**User Token (T1):**
+**User access token:**
 ```json
 {
   "sub": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -164,7 +164,7 @@ The application includes a Token Chain visualization panel:
 }
 ```
 
-**Exchanged Token (T2):**
+**MCP access token:**
 ```json
 {
   "sub": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -181,7 +181,7 @@ The application includes a Token Chain visualization panel:
 
 ### ❌ Failure Scenarios
 
-#### Scenario 1: may_act Missing from T1
+#### Scenario 1: may_act missing from user access token
 
 **Symptom:** Token exchange fails with error
 ```
@@ -195,9 +195,9 @@ The application includes a Token Chain visualization panel:
 
 **Fix:** Configure may_act token policy (see Configuration Steps above)
 
-#### Scenario 2: Token Exchange Succeeds but act Missing from T2
+#### Scenario 2: Token exchange succeeds but act missing from MCP access token
 
-**Symptom:** T2 is issued but contains no `act` claim
+**Symptom:** MCP access token is issued but contains no `act` claim
 
 **Impact:** Delegation chain is invisible. Audit logs cannot show "Backend-for-Frontend (BFF) acting on behalf of user"
 
@@ -235,13 +235,13 @@ The application includes a Token Chain visualization panel:
 ### Token Exchange Fails with "invalid_grant"
 
 1. Check PingOne application has Token Exchange grant enabled
-2. Verify `may_act` claim is present in T1
+2. Verify `may_act` claim is present in the user access token
 3. Check PingOne logs for detailed error message
 4. Ensure Backend-for-Frontend (BFF) client credentials are correct
 
-### act Claim Not Present in T2
+### act claim not present in MCP access token
 
-1. Verify token exchange succeeded (T2 was issued)
+1. Verify token exchange succeeded (MCP access token was issued)
 2. Check PingOne token exchange policy configuration
 3. Review PingOne documentation on delegation claims
 4. Contact PingOne support if policy is configured but claim still missing

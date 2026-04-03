@@ -41,6 +41,20 @@ git checkout <last-version-tag> -- <key-file>
 | Session debug `GET /api/auth/debug` (diagnosis hints, optional `?deep=1` Redis probe vs `req.session`) | active | `banking_api_server/server.js`, `banking_api_server/services/upstashSessionStore.js` (`getPersistenceDebug`) | `s:upstashSessionStore.test.js` |
 | BFF `GET /api/auth/session` includes `sessionStoreHealthy` + `cookieOnlyBffSession` | active | `banking_api_server/server.js`, `banking_api_server/routes/auth.js` | — |
 | Login — `error=session_persist_failed` when OAuth callback cannot persist session | active | `banking_api_ui/src/components/Login.js`, `banking_api_server/routes/oauthUser.js`, `banking_api_server/routes/oauth.js` | — |
+| Session reliability P0–P3 — retry delays, Upstash re-fetch, reconnecting banner, role-switch endpoint, fatal session.regenerate | active | `banking_api_server/server.js`, `banking_api_server/routes/oauth.js`, `banking_api_server/routes/oauthUser.js`, `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/App.js` | — |
+| `POST /api/auth/switch` — role-switch endpoint clears session + redirects to correct login URL | active | `banking_api_server/server.js` | — |
+| Customer authorize — optional **`use_pi_flow=1`** on `GET /api/auth/oauth/user/login` forces **`response_type=pi.flow`** (`oauthUserService` `forcePiFlow`) for supported PingOne apps | active | `banking_api_server/services/oauthUserService.js`, `banking_api_server/routes/oauthUser.js` | `s:oauthUserService.test.js` |
+| End-user OAuth callback **errors** redirect to **`postLoginReturnToPath` or `/marketing`** (not `/login`); **`App.js`** toasts via **`endUserOAuthErrorToast.js`** | active | `banking_api_server/routes/oauthUser.js`, `banking_api_ui/src/App.js`, `banking_api_ui/src/utils/endUserOAuthErrorToast.js` | — |
+
+---
+
+## Marketing & public landing
+
+| Feature | Status | Key files | Test file |
+|---|---|---|---|
+| Customer sign-in mode — **Redirect** (code + PKCE) vs **slide panel + pi.flow** (`marketing_customer_login_mode`); demo username/password hints | active | `banking_api_server/services/configStore.js`, `banking_api_ui/src/components/LandingPage.js`, `LandingPage.css`, `Config.js`, `DemoDataPage.js`, `banking_api_ui/src/services/configService.js` | `u:components/__tests__/DemoDataPage.test.js` (config load/save surface) |
+| BankingAgent on marketing — customer login respects marketing mode (`use_pi_flow` when slide) + `return_to=/marketing` for agent-driven OAuth | active | `banking_api_ui/src/components/BankingAgent.js` | `s:bankingAgentNl.test.js`, `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
+| Landing page — condensed hero and section spacing | active | `banking_api_ui/src/components/LandingPage.css`, `LandingPage.js` | — |
 
 ---
 
@@ -52,8 +66,13 @@ git checkout <last-version-tag> -- <key-file>
 | Transaction history (`GET /my` — requires `banking:transactions:read` or `banking:read`) | active | `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/Transactions.js` | `s:transaction-flows.test.js`, `s:scope-integration.test.js`, `s:oauth-scope-integration.test.js` |
 | Customer dashboard page (Banking Agent **`banking-agent-result`** refresh; 401 retry + soft session warning; **`dashboardToast`** dedupe) | active | `banking_api_ui/src/components/UserDashboard.js`, `banking_api_ui/src/services/accountsHydration.js`, `banking_api_ui/src/utils/dashboardToast.js` | `accountsHydration.test.js` |
 | Step-up authentication gate (high-value transactions) | active | `banking_api_server/middleware/authorizeGate.js`, `banking_api_server/middleware/stepUpGate.js` | `s:step-up-gate.test.js`, `s:authorize-gate.test.js` |
+| PingOne Authorize — Decision Endpoints evaluation (Phase 2) | active | `banking_api_server/services/pingOneAuthorizeService.js`, `banking_api_server/routes/transactions.js` | — |
+| PingOne Authorize — Recent Decisions API (Phase 3) | active | `banking_api_server/routes/authorize.js` | — |
 | Transaction consent challenge (high-value transfers — PingOne-style consent) | active | `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/TransactionConsentPage.js` | `s:transaction-consent-challenge.test.js` |
+| OTP email verification for high-value transactions (after consent) | active | `banking_api_server/services/emailService.js` (`sendOtpEmail`), `banking_api_server/services/transactionConsentChallenge.js` (`verifyOtp`), `banking_api_server/routes/transactions.js`, `banking_api_ui/src/components/TransactionConsentModal.js` | `s:transaction-consent-challenge.test.js` |
 | Agent blocked after consent decline (until re-auth) | active | `banking_api_ui/src/services/agentAccessConsent.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
+| Delegated Access — grant family member access to 1+ accounts; RFC 8693 Act-as explainer | active | `banking_api_ui/src/components/DelegatedAccessPage.js`, `banking_api_ui/src/components/DelegatedAccessPage.css` | `u:components/__tests__/DelegatedAccessPage.test.js` |
+| Token Exchange Simulator — live 2-col Act-as inspector: token chain left, JWT claims + API call right; fires real POST /api/mcp/tool | active | `banking_api_ui/src/components/DelegatedAccessPage.js` (`TokenExchangeSimulator`, `SimEventRow`, `SimEventDetail`) | `u:components/__tests__/DelegatedAccessPage.test.js` |
 
 ---
 
@@ -79,8 +98,10 @@ git checkout <last-version-tag> -- <key-file>
 
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
-| Floating agent button | active | `banking_api_ui/src/components/BankingAgent.js` | `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
-| Embedded agent mode (side panel) | active | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/Config.js`, `banking_api_ui/src/components/DemoDataPage.js` | `u:components/__tests__/DemoDataPage.test.js`, `u:context/__tests__/AgentUiModeContext.test.js` |
+| Agent UI placement — Middle / Bottom / Float + optional FAB | active | `banking_api_ui/src/context/AgentUiModeContext.js`, `banking_api_ui/src/components/AgentUiModeToggle.js` | `u:context/__tests__/AgentUiModeContext.test.js`, `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
+| Floating agent FAB (Float placement) | active | `banking_api_ui/src/components/BankingAgent.js` | `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
+| Bottom embedded dock — integrated, drag-to-resize, flush to content | active | `banking_api_ui/src/components/EmbeddedAgentDock.js` | `u:context/__tests__/AgentUiModeContext.test.js` |
+| Middle split-column agent — slim token rail, 3-column grid | active | `banking_api_ui/src/components/UserDashboard.js`, `banking_api_ui/src/components/UserDashboard.css` | — |
 | Agent ↔ customer dashboard sync (`banking-agent-result`; post-write **`get_my_transactions`**) | active | `banking_api_ui/src/components/BankingAgent.js`, `banking_api_ui/src/components/UserDashboard.js` | — |
 | Agent layout preference persisted to server | active | `banking_api_ui/src/services/demoScenarioService.js`, `banking_api_server/routes/demoScenario.js` | `s:demo-scenario-api.test.js` |
 | Natural-language banking intents (NL → API) | active | `banking_api_server/routes/bankingAgentNl.js`, `banking_api_server/services/nlIntentParser.js`, `banking_api_ui/src/services/bankingAgentNlService.js` | `s:bankingAgentNl.test.js`, `s:nlIntentParser.test.js` |
@@ -89,6 +110,8 @@ git checkout <last-version-tag> -- <key-file>
 | Groq NL backend | active | `banking_api_server/services/groqNlIntent.js` | `s:nlIntentParser.test.js` |
 | Agent identity / impersonation (act-as) | active | `banking_api_server/routes/agentIdentity.js`, `banking_api_server/services/agentIdentityStore.js` | — |
 | Cookie-only / stub-token session messaging + deep session debug link (`/api/auth/debug?deep=1`) | active | `banking_api_ui/src/components/BankingAgent.js` | — |
+| Session reconnecting banner — polls `/api/auth/session` every 2s while `cookieOnlyBffSession:true` | active | `banking_api_ui/src/components/BankingAgent.js` | — |
+| Always on-behalf-of — RFC 8693 actor_token always used when `AGENT_OAUTH_CLIENT_ID` set; `on-behalf-of-warning` Token Chain event when unset | active | `banking_api_server/services/agentMcpTokenService.js` | `s:agentMcpTokenService.test.js` |
 
 ---
 
@@ -113,6 +136,7 @@ git checkout <last-version-tag> -- <key-file>
 | Education drawer / modal shell | active | `banking_api_ui/src/components/shared/EducationDrawer.js`, `banking_api_ui/src/components/shared/EducationModal.js` | `u:components/shared/__tests__/EducationDrawer.test.js` |
 | Login flow guide | active | `banking_api_ui/src/components/education/LoginFlowPanel.js` | — |
 | Token chain display + guide | active | `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/education/TokenChainPanel.js` | — |
+| Token Inspector panel — floating draggable/resizable/collapsible detail popup per token event | active | `banking_api_ui/src/components/TokenChainDisplay.js`, `banking_api_ui/src/components/TokenChainDisplay.css` | — |
 | Token introspection guide | active | `banking_api_ui/src/components/education/IntrospectionPanel.js` | — |
 | Token exchange guide | active | `banking_api_ui/src/components/education/TokenExchangePanel.js` | — |
 | Step-up auth guide | active | `banking_api_ui/src/components/education/StepUpPanel.js` | — |
@@ -123,6 +147,8 @@ git checkout <last-version-tag> -- <key-file>
 | PingOne Authorize guide | active | `banking_api_ui/src/components/education/PingOneAuthorizePanel.js` | — |
 | RFC index guide | active | `banking_api_ui/src/components/education/RFCIndexPanel.js` | — |
 | Human-in-the-loop (HITL) / consent education | active | `banking_api_ui/src/components/education/HumanInLoopPanel.js` | — |
+| AI Agent Best Practices guide (Ping Identity 5 practices) | active | `banking_api_ui/src/components/education/BestPracticesPanel.js` | — |
+| SPIFFE implementation plan | plan | `docs/SPIFFE_PLAN.md` | — |
 
 ---
 
@@ -143,3 +169,4 @@ git checkout <last-version-tag> -- <key-file>
 | Session regression — `npm run test:session` (API Jest subset) | active | root `package.json`, `banking_api_server/package.json` | `authSession.test.js` (+ pattern in `test:session` script) |
 | Session API smoke (Playwright `request`) — `npm run test:e2e:session` | active | `banking_api_ui/tests/e2e/session-regression.spec.js`, `banking_api_ui/package.json` | `session-regression.spec.js` |
 | UI browser E2E smoke (Playwright Chromium; mocked API) — `npm run test:e2e:ui:smoke` | active | `banking_api_ui/tests/e2e/customer-dashboard.spec.js`, `landing-marketing.spec.js`, `playwright.config.js` | `customer-dashboard.spec.js`, `landing-marketing.spec.js` |
+| Banking Agent FAB E2E — `npm run test:e2e:agent` | active | `banking_api_ui/src/components/BankingAgent.js`, `playwright.config.js` | `banking-agent.spec.js` |

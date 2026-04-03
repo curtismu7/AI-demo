@@ -31,6 +31,13 @@ export default function EducationModal({
     }
   }, [isOpen, initialTabId, tabs]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const active = tabs.find((t) => t.id === activeId) || tabs[0];
@@ -42,28 +49,30 @@ export default function EducationModal({
         className="edu-modal"
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby="edu-modal-title"
       >
         <div className="edu-modal-inner">
-          <div className="edu-drawer-header">
-            <h2 className="edu-drawer-title">{title}</h2>
+          <div className="edu-drawer-topbar">
+            <div className="edu-drawer-tabs" role="tablist" aria-label="Section">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeId === t.id}
+                  className={`edu-drawer-tab${activeId === t.id ? ' edu-drawer-tab--active' : ''}`}
+                  onClick={() => setActiveId(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
             <button type="button" className="edu-drawer-close" onClick={onClose} aria-label="Close">
-              ×
+              ✕
             </button>
           </div>
-          <div className="edu-drawer-tabs" role="tablist">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={activeId === t.id}
-                className={`edu-drawer-tab${activeId === t.id ? ' edu-drawer-tab--active' : ''}`}
-                onClick={() => setActiveId(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="edu-drawer-title-row">
+            <h2 id="edu-modal-title" className="edu-drawer-title">{title}</h2>
           </div>
           <div className="edu-modal-body scroll-area">
             {active?.content}

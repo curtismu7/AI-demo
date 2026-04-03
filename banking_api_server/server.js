@@ -165,17 +165,25 @@ const oauthUserRoutes   = require('./routes/oauthUser');
 const oauthService      = require('./services/oauthService');
 const userRoutes        = require('./routes/users');
 const accountRoutes     = require('./routes/accounts');
+const sensitiveBankingRoutes = require('./routes/sensitiveBanking');
 const transactionRoutes = require('./routes/transactions');
 const demoScenarioRoutes = require('./routes/demoScenario');
 const adminRoutes       = require('./routes/admin');
 const adminConfigRoutes = require('./routes/adminConfig');
 const cibaRoutes        = require('./routes/ciba');
+const authorizeRoutes   = require('./routes/authorize');
+const setupRoutes       = require('./routes/setup');
+const { router: featureFlagsRoutes } = require('./routes/featureFlags');
+const vercelConfigRoutes = require('./routes/vercelConfig');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
+const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
+const langchainConfigRoutes = require('./routes/langchainConfig');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
+const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetadata');
 const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
 
@@ -400,6 +408,33 @@ app.use((req, res, next) => {
 // land on a fresh instance with no in-memory session data.
 app.use(restoreSessionFromCookie);
 
+// P1 — Upstash re-fetch: when a _auth-cookie restore left us with no tokens
+// (Lambda B cold-start race), attempt one Upstash read with the session ID to
+// pull the tokens that Lambda A wrote. Non-fatal; no-op outside Upstash-REST deployments.
+app.use(async (req, _res, next) => {
+  if (!req.session?._restoredFromCookie) return next();
+  if (req.session.oauthTokens && req.session.oauthTokens.accessToken !== '_cookie_session') return next();
+  if (!sessionStore || typeof sessionStore.get !== 'function') return next();
+  const sid = req.sessionID;
+  if (!sid) return next();
+  try {
+    sessionStore.get(sid, (err, stored) => {
+      if (!err && stored?.oauthTokens && stored.oauthTokens.accessToken !== '_cookie_session') {
+        Object.assign(req.session, stored);
+        req.session._restoredFromCookie = false;
+        req.session.save((saveErr) => {
+          if (saveErr) console.warn('[session-refetch] save after Upstash re-fetch failed:', saveErr.message);
+        });
+        console.log('[session-refetch] Tokens recovered from Upstash for cookie-only session sid=' + sid.slice(0, 8) + '…');
+      }
+      next();
+    });
+  } catch (refetchErr) {
+    console.warn('[session-refetch] Non-fatal re-fetch error:', refetchErr.message);
+    next();
+  }
+});
+
 // RFC 6749 §6 — silently refresh near-expired end-user access tokens on
 // authenticated API routes so UIs never serve stale tokens to downstream services.
 // Include /api/auth/oauth so GET /api/auth/oauth/user/status (and admin /status) run
@@ -426,6 +461,50 @@ app.get('/api/healthz', (req, res) => {
     timestamp: new Date().toISOString(),
     port: PORT 
   });
+});
+
+// P2 — Role switch: initiates an OAuth re-login to a different role without a
+// full sign-out cycle.  Stashes the current tokens in Upstash under a keyed
+// prev-session entry (60s TTL) and redirects to PingOne for the target role.
+app.post('/api/auth/switch', (req, res) => {
+  const { targetRole } = req.body || {};
+  if (!['admin', 'customer'].includes(targetRole)) {
+    return res.status(400).json({ error: 'invalid_target', message: 'targetRole must be "admin" or "customer".' });
+  }
+
+  // Stash current tokens (non-fatal; best-effort)
+  const prevTokens = req.session?.oauthTokens;
+  const prevUser   = req.session?.user;
+  if (prevTokens && upstashSessionStoreInstance && prevUser?.id) {
+    const key = `sessions:prev:${prevUser.id}`;
+    upstashSessionStoreInstance.kv.set(key, JSON.stringify({ oauthTokens: prevTokens, user: prevUser }), { ex: 60 })
+      .catch(e => console.warn('[auth/switch] Failed to stash previous session:', e.message));
+  }
+
+  // Clear current auth
+  delete req.session.oauthTokens;
+  delete req.session.user;
+  delete req.session.clientType;
+  delete req.session.oauthType;
+  clearAuthCookie(res, isProduction);
+
+  // Set switch_target cookie so the OAuth callback knows where to redirect
+  const cookieOpts = {
+    httpOnly: true,
+    sameSite: isProduction ? 'none' : 'lax',
+    secure: isProduction,
+    maxAge: 5 * 60 * 1000, // 5 minutes
+    path: '/',
+  };
+  res.cookie('_switch_target', targetRole, cookieOpts);
+
+  // Return the appropriate login URL for the client to navigate to
+  const origin = req.headers.origin || '';
+  const loginUrl = targetRole === 'admin'
+    ? `${origin}/api/auth/oauth/login`
+    : `${origin}/api/auth/oauth/user/login`;
+
+  req.session.save(() => res.json({ redirectUrl: loginUrl }));
 });
 
 // Belt-and-suspenders cookie/session clear — called by the SPA after it detects
@@ -707,6 +786,11 @@ app.get('/api/auth/debug', async (req, res) => {
 // authenticateToken middleware that guards the broader /api/admin/* prefix.
 app.use('/api/admin/config', adminConfigRoutes);
 
+// Feature flags — admin-authenticated; registered before the broader /api/admin/* guard
+// so the route path is unambiguous.
+app.use('/api/admin/feature-flags', authenticateToken, featureFlagsRoutes);
+app.use('/api/admin/vercel-config', authenticateToken, vercelConfigRoutes);
+
 // PingOne redirect URI allowlist (JSON). Registered here BEFORE /api/auth so the path is not
 // handled only by routes/auth.js (avoids "Cannot GET" on some deployments).
 app.get('/api/auth/oauth/redirect-info', (req, res) => {
@@ -732,19 +816,61 @@ app.use('/api/agent', agentIdentityRoutes);
 // NL route uses its own req.session?.user check — full JWT validation is not
 // needed here and causes invalid_token errors when JWKS fetch times out.
 app.use('/api/banking-agent', bankingAgentNlRoutes);
-app.use('/api/mcp/inspector', authenticateToken, mcpInspectorRoutes);
+app.use('/api/langchain', langchainConfigRoutes);
+app.use('/api/authorize', authorizeRoutes);
+app.use('/api/setup', setupRoutes);
+// MCP Inspector: no auth gate at the router level — tools/list returns local catalog for
+// unauthenticated visitors; tools/call and context check auth inside each handler.
+app.use('/api/mcp/inspector', mcpInspectorRoutes);
+// MCP Audit: admin-only route — proxies to MCP server /audit internal endpoint (D-11)
+app.use('/api/mcp/audit', (req, res, next) => {
+  if (!req.session?.user || req.session.user.role !== 'admin') {
+    return res.status(401).json({ error: 'admin_required', message: 'Admin session required to access audit log.' });
+  }
+  next();
+}, mcpAuditRouter);
+// Session preview uses session data only — no full JWT validation so it works even
+// when the session has a _cookie_session stub (Vercel cold-start / Upstash restore).
+// Must be registered BEFORE the auth-gated /api/tokens block.
+app.get('/api/tokens/session-preview', (req, res) => {
+  try {
+    const { buildSessionPreviewTokenEvents } = require('./services/agentMcpTokenService');
+    const { tokenEvents } = buildSessionPreviewTokenEvents(req);
+    res.json({ tokenEvents });
+  } catch (err) {
+    console.error('Token session-preview error:', err);
+    res.json({ tokenEvents: [] });
+  }
+});
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/accounts', authenticateToken, accountRoutes);
+app.use('/api/accounts', authenticateToken, sensitiveBankingRoutes);
 app.use('/api/transactions', authenticateToken, transactionRoutes);
+// GET /api/demo-scenario — return empty defaults when unauthenticated so the public
+// /demo-data page never triggers a 401 console error.  All mutating methods (PUT, PATCH)
+// still hit authenticateToken via the router below.
+app.get('/api/demo-scenario', (req, res, next) => {
+  if (req.session?.user) return next();
+  return res.json({ accounts: [], settings: {}, defaults: null, userData: {}, persistenceNote: null });
+});
 app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
 app.use('/api/logs', logsRoutes);
 
+// PATCH /api/demo/may-act — set/clear mayAct attribute on the signed-in PingOne user
+app.patch('/api/demo/may-act', express.json(), authenticateToken, demoScenarioRoutes.patchMayAct);
+// GET /api/demo/may-act/diagnose — check user attribute + app mapping config
+app.get('/api/demo/may-act/diagnose', authenticateToken, demoScenarioRoutes.diagnoseMayAct);
+
 // Public CIMD well-known endpoint — no authentication required.
 // Mounted after session/auth middleware but before static files.
 app.get('/.well-known/oauth-client/:clientId', wellKnownHandler);
+
+// RFC 9728 — Protected Resource Metadata (public, no authentication required)
+app.use('/.well-known/oauth-protected-resource', protectedResourceMetadataRoutes);
+app.use('/api/rfc9728', protectedResourceMetadataRoutes);
 
 // Import OAuth health check and monitoring
 const { checkOAuthProviderHealth } = require('./middleware/oauthErrorHandler');
@@ -853,28 +979,120 @@ const { oauthErrorHandler } = require('./middleware/oauthErrorHandler');
 // scoped to the MCP server audience — the user's raw token never leaves the Backend-for-Frontend (BFF).
 
 const { resolveMcpAccessTokenWithEvents } = require('./services/agentMcpTokenService');
+const mcpToolAuthorizationService = require('./services/mcpToolAuthorizationService');
 const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./services/mcpWebSocketClient');
 const { callToolLocal } = require('./services/mcpLocalTools');
 const { introspectToken } = require('./middleware/tokenIntrospection');
+const mcpFlowSseHub = require('./services/mcpFlowSseHub');
+
+// Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
+const mcpExchangeMode = require('./routes/mcpExchangeMode');
+app.use('/api/mcp', mcpExchangeMode);
+
+// GET /api/mcp/tool/events?trace=<uuid> — Server-Sent Events for live MCP tool pipeline phases
+app.get('/api/mcp/tool/events', (req, res) => {
+  mcpFlowSseHub.handleSseGet(req, res);
+});
 
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), async (req, res) => {
-  const { tool, params } = req.body || {};
+  // Defensive re-parse: on Vercel serverless the global express.json() may not have
+  // buffered the body by the time this route handler runs (cold-start / middleware race).
+  // Re-applying express.json() inline (already declared above) handles the route-level
+  // parse, but if req.body is still empty we attempt a raw Buffer read as a last resort.
+  let parsedBody = req.body || {};
+  if (!parsedBody.tool && req.readableLength > 0) {
+    try {
+      const rawChunks = [];
+      for await (const chunk of req) rawChunks.push(chunk);
+      if (rawChunks.length) {
+        parsedBody = JSON.parse(Buffer.concat(rawChunks).toString('utf8'));
+      }
+    } catch (_) { /* leave parsedBody as-is */ }
+  }
+  const { tool, params, flowTraceId: bodyFlowTrace } = parsedBody;
+  const flowTraceId = typeof bodyFlowTrace === 'string' ? bodyFlowTrace.trim() : '';
 
   if (!tool || typeof tool !== 'string') {
-    return res.status(400).json({ error: 'tool name is required' });
+    const bodyKeys = Object.keys(parsedBody);
+    console.warn('[/api/mcp/tool] 400: body keys=[%s] readableLength=%d', bodyKeys.join(','), req.readableLength);
+    return res.status(400).json({
+      error: 'tool_name_required',
+      message: `tool name is required. Received body keys: [${bodyKeys.join(', ') || 'none'}]`,
+    });
   }
+
+  if (flowTraceId) {
+    if (mcpFlowSseHub.ensurePostTrace(flowTraceId, req.sessionID) !== 'ok') {
+      return res.status(403).json({
+        error: 'invalid_flow_trace',
+        message: 'flowTraceId is not valid for this session.',
+      });
+    }
+  }
+
+  const emit = (payload) => {
+    if (flowTraceId) {
+      mcpFlowSseHub.publish(flowTraceId, { ...payload, tool: payload.tool || tool });
+    }
+  };
+
+  if (flowTraceId) {
+    let traceEnded = false;
+    const endFlowTraceOnce = () => {
+      if (traceEnded) return;
+      traceEnded = true;
+      mcpFlowSseHub.endTrace(flowTraceId);
+    };
+    res.on('finish', endFlowTraceOnce);
+    res.on('close', endFlowTraceOnce);
+  }
+
+  emit({ phase: 'request_accepted' });
 
   let agentToken;
   let userSub = null;
   let tokenEvents = [];
   try {
+    emit({ phase: 'resolving_access_token' });
     const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
     agentToken = resolved.token;
     tokenEvents = resolved.tokenEvents;
     userSub = resolved.userSub || null;
+    const evs = tokenEvents || [];
+    emit({
+      phase: 'access_token_ready',
+      hasUserToken: evs.some((e) => e && e.id === 'user-token'),
+      exchanged: evs.some((e) => e && e.id === 'exchanged-token'),
+      exchangeRequired: evs.some((e) => e && e.id === 'exchange-required'),
+    });
   } catch (err) {
     console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
+    emit({ phase: 'access_token_error', code: err.code || 'token_exchange_failed' });
+
+    // When the exchange fails because the subject token lacks the required scopes
+    // (e.g. ENDUSER_AUDIENCE login path only carries banking:agent:invoke, not
+    // banking:write), PingOne returns 400 "At least one scope must be granted".
+    // In that case, fall back to the local tool handler so the operation still
+    // completes — the UI receives _exchangeFailed:true so it can show a soft
+    // informational message instead of an error toast.
+    const sessionUser = req.session?.user;
+    const isExchangeScopeError = err.httpStatus === 400 || err.code === 'token_exchange_failed';
+    if (sessionUser?.id && isExchangeScopeError) {
+      const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+      console.log(`[MCP Local] ${tool} — exchange failed (${err.code}), falling back to local handler`);
+      try {
+        emit({ phase: 'local_tool_start', path: 'exchange_failed_fallback' });
+        const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+        const result = await callToolLocal(tool, params || {}, effectiveUserId);
+        emit({ phase: 'local_tool_done', path: 'exchange_failed_fallback' });
+        return res.json({ result, tokenEvents: fallbackEvents, _localFallback: true, _exchangeFailed: true });
+      } catch (localErr) {
+        console.error(`[MCP Local] Error calling ${tool} after exchange failure:`, localErr.message);
+        // Fall through to original error response
+      }
+    }
+
     const status = err.httpStatus || 502;
     const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
     return res.status(status).json({
@@ -885,34 +1103,104 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
   }
 
   if (!agentToken) {
+    emit({ phase: 'no_bearer_token_branch' });
     // No bearer token (cookie-only or degraded session) — use local handler if session user present.
     // This lets the banking agent work for basic operations even without a fully-hydrated Redis session.
     const sessionUser = req.session?.user;
     if (sessionUser?.id) {
       console.log(`[MCP Local] ${tool} — no bearer token (cookie-only session), using local handler`);
       try {
-        const result = await callToolLocal(tool, params || {}, sessionUser.id);
+        emit({ phase: 'local_tool_start', path: 'no_bearer' });
+        // Use oauthId (PingOne sub/UUID) when available — accounts are stored under the UUID
+        // not the local sequential dataStore id, matching what authenticateToken sets on req.user.id.
+        const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+        const result = await callToolLocal(tool, params || {}, effectiveUserId);
+        emit({ phase: 'local_tool_done', path: 'no_bearer' });
         return res.json({ result, tokenEvents, _localFallback: true });
       } catch (localErr) {
         console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
+        emit({ phase: 'local_tool_error', path: 'no_bearer' });
         return res.status(502).json({ error: 'mcp_error', message: localErr.message, tokenEvents });
       }
     }
+    emit({ phase: 'no_bearer_no_user' });
     const r = mcpNoBearerResponse(req, tokenEvents);
     return res.status(r.status).json(r.body);
+  }
+
+  // PingOne Authorize (or simulated) on first MCP tool use per session — docs/PINGONE_AUTHORIZE_PLAN.md §7
+  /** @type {object|undefined} */
+  let mcpAuthorizeEvaluationThisRequest;
+  try {
+    emit({ phase: 'authorize_gate_begin' });
+    const mcpAuthz = await mcpToolAuthorizationService.evaluateMcpFirstToolGate({
+      req,
+      tool,
+      agentToken,
+      userSub,
+      userAcr: req.session?.user?.acr,
+    });
+    if (mcpAuthz.ran && mcpAuthz.block) {
+      emit({ phase: 'authorize_denied', status: mcpAuthz.block.status });
+      return res.status(mcpAuthz.block.status).json({
+        ...mcpAuthz.block.body,
+        tokenEvents,
+        mcpAuthorizeEvaluation: {
+          decisionContext: mcpAuthz.block.body.decisionContext,
+          decisionId: mcpAuthz.block.body.decisionId,
+        },
+      });
+    }
+    if (mcpAuthz.ran && mcpAuthz.simulatedError) {
+      emit({ phase: 'authorize_simulated_error' });
+      console.error(`[MCP Authorize][Simulated] unexpected error: ${mcpAuthz.simulatedError.message}`);
+      return res.status(500).json({
+        error: 'mcp_authorize_error',
+        error_description: 'Simulated MCP authorization evaluation failed unexpectedly.',
+        tokenEvents,
+      });
+    }
+    if (mcpAuthz.ran && mcpAuthz.pingoneError) {
+      emit({ phase: 'authorize_unavailable' });
+      console.error(`[MCP Authorize] PingOne error — failing closed: ${mcpAuthz.pingoneError.message}`);
+      return res.status(503).json({
+        error: 'mcp_authorize_unavailable',
+        error_description: 'PingOne Authorize is unavailable for MCP tool access.',
+        tokenEvents,
+      });
+    }
+    if (mcpAuthz.ran && mcpAuthz.permit) {
+      emit({ phase: 'authorize_permitted' });
+      req.session.mcpFirstToolAuthorizeDone = true;
+      mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
+    }
+    if (!mcpAuthz.ran) {
+      emit({ phase: 'authorize_gate_skipped' });
+    }
+  } catch (mcpAuthzErr) {
+    emit({ phase: 'authorize_internal_error' });
+    console.error('[MCP Authorize] Unexpected error in gate:', mcpAuthzErr.message);
+    return res.status(500).json({
+      error: 'mcp_authorize_internal',
+      message: mcpAuthzErr.message,
+      tokenEvents,
+    });
   }
 
   // Introspect session token for zero-trust validation (RFC 7662)
   const sessionAccessToken = getSessionAccessToken(req);
   const introspectionConfigured = !!process.env.PINGONE_INTROSPECTION_ENDPOINT;
   if (introspectionConfigured) {
+    emit({ phase: 'introspection_begin' });
     if (!sessionAccessToken || sessionAccessToken === '_cookie_session') {
+      emit({ phase: 'introspection_skipped_no_session_token' });
       const r = mcpNoBearerResponse(req, tokenEvents);
       return res.status(r.status).json(r.body);
     }
     try {
       const introspectionResult = await introspectToken(sessionAccessToken);
       if (!introspectionResult.active) {
+        emit({ phase: 'introspection_inactive' });
         console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
         return res.status(401).json({
           error: 'token_inactive',
@@ -920,10 +1208,14 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
           tokenEvents,
         });
       }
+      emit({ phase: 'introspection_active_ok' });
     } catch (err) {
+      emit({ phase: 'introspection_error_degraded' });
       console.error(`[MCP Proxy] Session token introspection error for tool ${tool}:`, err.message);
       // Continue on introspection failure (graceful degradation) but log the error
     }
+  } else {
+    emit({ phase: 'introspection_not_configured' });
   }
 
   // ── Try remote MCP server first; fall back to local handler if unreachable ──
@@ -934,10 +1226,17 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     // Skip the WebSocket attempt entirely when running on Vercel with no MCP_SERVER_URL
     // configured — localhost:8080 is guaranteed to be unreachable serverless.
     if (isLocalDefault && process.env.VERCEL) {
+      emit({ phase: 'mcp_remote_skipped_vercel' });
       throw Object.assign(new Error('MCP_SERVER_URL not configured; using local tool handler'), { useLocal: true });
     }
+    emit({ phase: 'mcp_remote_begin' });
     const result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
-    return res.json({ result, tokenEvents });
+    emit({ phase: 'mcp_remote_done' });
+    const out = { result, tokenEvents };
+    if (mcpAuthorizeEvaluationThisRequest) {
+      out.mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
+    }
+    return res.json(out);
   } catch (err) {
     const isConnErr =
       err.useLocal ||
@@ -948,22 +1247,30 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       (err.code && ['ECONNREFUSED', 'ENETUNREACH', 'ETIMEDOUT'].includes(err.code));
 
     if (!isConnErr) {
+      emit({ phase: 'mcp_remote_tool_error' });
       console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
       return res.status(502).json({ error: 'mcp_error', message: err.message, tokenEvents });
     }
 
+    emit({ phase: 'mcp_remote_unreachable' });
     // ── Local fallback ──────────────────────────────────────────────────────
     const sessionUser = req.session?.user;
     if (!sessionUser?.id) {
+      emit({ phase: 'local_fallback_blocked_no_user' });
       const r = mcpNoBearerResponse(req, tokenEvents);
       return res.status(r.status).json(r.body);
     }
 
     console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);
     try {
-      const result = await callToolLocal(tool, params || {}, sessionUser.id);
+      emit({ phase: 'local_tool_start', path: 'remote_fallback' });
+      // Use oauthId (PingOne sub/UUID) — accounts are keyed by UUID (same as authenticateToken / REST routes).
+      const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+      const result = await callToolLocal(tool, params || {}, effectiveUserId);
+      emit({ phase: 'local_tool_done', path: 'remote_fallback' });
       return res.json({ result, tokenEvents, _localFallback: true });
     } catch (localErr) {
+      emit({ phase: 'local_tool_error', path: 'remote_fallback' });
       console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
       return res.status(502).json({ error: 'mcp_error', message: localErr.message, tokenEvents });
     }
@@ -978,8 +1285,10 @@ if (!process.env.VERCEL) {
   const fs = require('fs');
   if (fs.existsSync(buildPath)) {
     app.use(express.static(buildPath));
-    // SPA fallback — serve index.html for all non-API routes
+    // SPA fallback — serve index.html for all non-API routes.
+    // Must not be cached so browsers always fetch the latest asset hashes.
     app.get('*', (req, res) => {
+      res.set('Cache-Control', 'no-store');
       res.sendFile(path.join(buildPath, 'index.html'));
     });
     console.log('[static] Serving React build from', buildPath);

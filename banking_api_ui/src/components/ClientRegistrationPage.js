@@ -6,8 +6,8 @@
  * the resulting PingOne credentials plus the hosted CIMD document URL.
  */
 import React, { useState, useCallback } from 'react';
-import axios from 'axios';
-import { toast } from 'react-toastify';
+import apiClient from '../services/apiClient';
+import { notifySuccess, notifyError } from '../utils/appToast';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import AdminSubPageShell from './AdminSubPageShell';
@@ -231,12 +231,12 @@ export default function ClientRegistrationPage({ user, onLogout }) {
         ...(logoUri.trim()   && { logo_uri:   logoUri.trim() }),
         ...(clientUri.trim() && { client_uri: clientUri.trim() }),
       };
-      const resp = await axios.post('/api/clients/register', payload, { withCredentials: true });
+      const resp = await apiClient.post('/api/clients/register', payload);
       setResult(resp.data);
-      toast.success('Client registered successfully in PingOne!');
+      notifySuccess('Client registered successfully in PingOne!');
     } catch (err) {
       const msg = err.response?.data?.detail || err.response?.data?.error || err.message;
-      toast.error(`Registration failed: ${msg}`);
+      notifyError(`Registration failed: ${msg}`);
     } finally {
       setSubmitting(false);
     }
@@ -283,7 +283,7 @@ export default function ClientRegistrationPage({ user, onLogout }) {
       <div style={{ maxWidth: '760px', margin: '0 auto' }}>
         <div style={{
           marginBottom: '32px', padding: '14px 16px', background: '#eef2ff',
-          borderLeft: '4px solid #6366f1', borderRadius: '0 6px 6px 0', fontSize: '13px', color: '#3730a3',
+          borderLeft: '4px solid #2563eb', borderRadius: '0 6px 6px 0', fontSize: '13px', color: '#1e40af',
         }}>
           <strong>How this works:</strong> You define the metadata below (CIMD format). The server
           calls the PingOne Management API to create the OAuth application, then hosts the

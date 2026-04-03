@@ -1,0 +1,152 @@
+/* AgentConsentModal — draggable + resizable floating card */
+
+.acm-card {
+  background: #152a52;
+  border: 1px solid rgba(65, 105, 225, 0.45);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(10, 20, 50, 0.65);
+  color: #e8eefc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative; /* for resize grip */
+}
+
+/* Drag handle — icon + title row, cursor grab */
+.acm-drag-handle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1.5rem 1rem;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #1a3a6e 0%, #152a52 100%);
+  border-bottom: 1px solid rgba(65, 105, 225, 0.3);
+}
+
+.acm-drag-handle:active { cursor: grabbing; }
+
+.acm-icon {
+  font-size: 2rem;
+  text-align: center;
+}
+
+.acm-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+  color: #e8eefc;
+}
+
+/* Scrollable body */
+.acm-body-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.acm-body {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #c7d7ff;
+}
+
+.acm-list {
+  margin: 0;
+  padding: 0 0 0 0.25rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #9db4e8;
+}
+
+.acm-list li {
+  line-height: 1.4;
+}
+
+.acm-legal {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6b87c4;
+  line-height: 1.5;
+}
+
+.acm-legal a {
+  color: #7aa3f5;
+  text-underline-offset: 2px;
+}
+
+.acm-error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #fca5a5;
+  background: rgba(185, 28, 28, 0.2);
+  border: 1px solid rgba(185, 28, 28, 0.4);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+
+.acm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 0.85rem 1.5rem 1.2rem;
+  border-top: 1px solid rgba(65, 105, 225, 0.25);
+  flex-shrink: 0;
+}
+
+.acm-btn {
+  padding: 0.55rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.acm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.acm-btn--primary {
+  background: #4169e1;
+  color: #fff;
+}
+
+.acm-btn--primary:hover:not(:disabled) {
+  background: #3155c5;
+}
+
+.acm-btn--secondary {
+  background: rgba(65, 105, 225, 0.15);
+  color: #9db4e8;
+  border: 1px solid rgba(65, 105, 225, 0.35);
+}
+
+.acm-btn--secondary:hover:not(:disabled) {
+  background: rgba(65, 105, 225, 0.25);
+}
+
+/* Transaction-mode list — bold key, lighter value */
+.acm-list--transaction {
+  background: rgba(65, 105, 225, 0.08);
+  border: 1px solid rgba(65, 105, 225, 0.2);
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  font-size: 0.88rem;
+}
+
+.acm-list--transaction li {
+  color: #c7d7ff;
+}

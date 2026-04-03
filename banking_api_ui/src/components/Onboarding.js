@@ -34,6 +34,9 @@ export default function Onboarding() {
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <Link to="/" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}>← Sign in</Link>
+            <Link to="/setup/pingone" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem' }}>
+              PingOne reference
+            </Link>
             <Link
               to="/config"
               style={{
@@ -75,6 +78,11 @@ export default function Onboarding() {
 
         <div style={{ ...cardStyle, borderColor: '#a7f3d0', background: '#f0fdf4' }}>
           <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#166534' }}>Hosted demo (Vercel, Replit, …)</h2>
+          <p style={{ margin: '0 0 0.75rem 0', color: '#166534', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+            <strong>Vercel:</strong> run the env wizard from the repo root — open the{' '}
+            <Link to="/setup" style={{ color: '#15803d', fontWeight: 600 }}>Deployment setup</Link>{' '}
+            page for copy-paste commands (<code>npm run setup:vercel</code>).
+          </p>
           <ol style={olStyle}>
             <li>
               <strong>Always two PingOne applications</strong> — admin staff app and end-user app — each with its own client ID (and secret if confidential). Deployment env vars supply both (e.g. <code>PINGONE_ADMIN_*</code> and <code>PINGONE_USER_*</code>); Authorize worker, environment ID, etc. are <strong>stored on the backend</strong> — not typed in by visitors.
@@ -115,7 +123,7 @@ export default function Onboarding() {
         </div>
 
         <div style={{ ...cardStyle, borderColor: '#e9d5ff', background: '#faf5ff' }}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#5b21b6' }}>Localhost (development)</h2>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#2563eb' }}>Localhost (development)</h2>
           <ol style={olStyle}>
             <li>Create <strong>two</strong> PingOne OIDC web apps — one for admin sign-in and one for customers — the same two-client model as hosted deployments.</li>
             <li>The configuration page shows <strong>Admin OAuth App</strong> and <strong>End-User OAuth App</strong> separately so each client ID, secret, and redirect URI maps to the correct PingOne app.</li>

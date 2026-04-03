@@ -1112,6 +1112,14 @@ export default function CimdSimPanel() {
     return () => window.removeEventListener('education-open-cimd', onEdu);
   }, []);
 
+  // ESC key closes the drawer
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   // Drag-to-resize left edge
   const onMouseDown = useCallback((e) => {
     isResizing.current = true;
@@ -1149,16 +1157,7 @@ export default function CimdSimPanel() {
 
   return (
     <>
-      {/* ── Floating action button ──────────────────────────────────────────── */}
-      <button
-        className={`cimd-fab${open ? ' cimd-fab--open' : ''}`}
-        onClick={() => setOpen(o => !o)}
-        title="CIMD Simulator — Client ID Metadata Document interactive guide"
-        aria-label="Open CIMD guide and simulator"
-      >
-        <span className="cimd-fab-icon">📄</span>
-        <span className="cimd-fab-label">CIMD Simulator</span>
-      </button>
+      {/* CIMD Simulator FAB removed — open via Learn menu, Banking Agent, or window event `education-open-cimd`. */}
 
       {/* ── Backdrop overlay ────────────────────────────────────────────────── */}
       {open && (

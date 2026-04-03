@@ -8,6 +8,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const { logger } = require('../utils/logger');
+const exchangeAuditStore = require('../services/exchangeAuditStore');
 
 /**
  * Get application logs from file system
@@ -121,6 +122,36 @@ router.get('/vercel', async (req, res) => {
 });
 
 /**
+ * Get token-exchange audit events from Redis.
+ * Survives Vercel Lambda isolation — events written by any Lambda are visible here.
+ * Returns empty array when Redis (Upstash KV) is not configured.
+ */
+router.get('/exchange', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit || '200', 10), 500);
+    const events = await exchangeAuditStore.readExchangeEvents(limit);
+
+    // Normalise to the same shape as /console so LogViewer can handle both.
+    const logs = events.map((ev, idx) => ({
+      id: `redis:${ev.timestamp || idx}:${ev.type || 'exchange'}`,
+      timestamp: ev.timestamp || new Date().toISOString(),
+      level: ev.level || (ev.type === 'exchange-failed' ? 'error' : 'info'),
+      message: ev.message || JSON.stringify(ev),
+      args: [ev],
+      _src: 'exchange',
+    }));
+
+    res.json({
+      logs,
+      total: logs.length,
+      source: exchangeAuditStore.USE_KV ? 'redis' : 'in-process',
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message, logs: [] });
+  }
+});
+
+/**
  * Get recent console logs from memory
  * This captures logs from the current Node.js process
  */
@@ -175,10 +206,36 @@ function captureLog(level, args) {
   }
 }
 
-router.get('/console', (req, res) => {
+router.get('/console', async (req, res) => {
   const { level, search, limit = 100, since } = req.query;
 
   let filteredLogs = [...recentLogs];
+
+  // Merge Redis exchange audit events so they survive Vercel Lambda isolation.
+  // If the token exchange happened in a different Lambda, its recentLogs are
+  // empty here — Redis is the cross-Lambda bridge.
+  if (exchangeAuditStore.USE_KV) {
+    try {
+      const redisEvents = await exchangeAuditStore.readExchangeEvents(200);
+      // Build a quick-lookup set from in-process messages to avoid exact duplicates
+      // (same Lambda: event already captured in recentLogs via console interceptor).
+      const inProcessMessages = new Set(recentLogs.map((l) => l.message));
+      for (const ev of redisEvents) {
+        const msg = ev.message || JSON.stringify(ev);
+        if (inProcessMessages.has(msg)) continue; // already present from same Lambda
+        filteredLogs.push({
+          id: `redis:${ev.timestamp || Date.now()}:${ev.type || 'exchange'}`,
+          timestamp: ev.timestamp || new Date().toISOString(),
+          level: ev.level || (ev.type === 'exchange-failed' ? 'error' : 'info'),
+          message: msg,
+          args: [ev],
+          _src: 'exchange',
+        });
+      }
+    } catch (_) {
+      // Non-fatal — serve in-process logs without Redis augmentation
+    }
+  }
 
   // Filter by level
   if (level) {

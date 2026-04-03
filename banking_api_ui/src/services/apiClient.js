@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl';
-import { appendTrafficEntry, redactHeaders, redactBody, tryParseJson } from './apiTrafficStore';
+import { appendTrafficEntry, redactHeaders, redactBody, tryParseJson, normalizeHeaders } from './apiTrafficStore';
+import { spinner } from './spinnerService';
 
 class ApiClient {
   constructor() {
@@ -14,6 +15,32 @@ class ApiClient {
   }
 
   setupInterceptors() {
+    // ── Spinner — show overlay for every non-silent API request ───────────────
+    this.client.interceptors.request.use(
+      (config) => {
+        if (!config._silent) {
+          try { spinner.increment((config.method || 'GET').toUpperCase(), config.url || ''); } catch (_) {}
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    this.client.interceptors.response.use(
+      (response) => {
+        if (!response.config?._silent) {
+          try { spinner.decrement(false); } catch (_) {}
+        }
+        return response;
+      },
+      (error) => {
+        if (!error.config?._silent) {
+          try { spinner.decrement(true); } catch (_) {} // isError → skip min display so toasts show
+        }
+        return Promise.reject(error);
+      }
+    );
+
     // ── Traffic capture — stamp request start time ────────────────────────────
     this.client.interceptors.request.use(
       (config) => { config._trafficStart = Date.now(); return config; },
@@ -46,9 +73,9 @@ class ApiClient {
             url,
             status: response.status,
             duration: cfg._trafficStart ? Date.now() - cfg._trafficStart : null,
-            requestHeaders: redactHeaders(cfg.headers || {}),
+            requestHeaders: redactHeaders(normalizeHeaders(cfg.headers || {})),
             requestBody: reqBody ?? null,
-            responseHeaders: response.headers || {},
+            responseHeaders: normalizeHeaders(response.headers),
             responseBody: response.data ?? null,
             source: 'axios',
             timestamp: new Date().toISOString(),
@@ -60,14 +87,16 @@ class ApiClient {
         const cfg = error.config || {};
         const url = cfg.url || '';
         if (url.startsWith('/api/')) {
+          let errReqBody = cfg.data ? (tryParseJson(cfg.data) ?? cfg.data) : null;
+          if (errReqBody && typeof errReqBody === 'object') errReqBody = redactBody(errReqBody);
           appendTrafficEntry({
             method: (cfg.method || 'GET').toUpperCase(),
             url,
             status: error.response?.status ?? 0,
             duration: cfg._trafficStart ? Date.now() - cfg._trafficStart : null,
-            requestHeaders: redactHeaders(cfg.headers || {}),
-            requestBody: cfg.data ? (tryParseJson(cfg.data) ?? cfg.data) : null,
-            responseHeaders: error.response?.headers || {},
+            requestHeaders: redactHeaders(normalizeHeaders(cfg.headers || {})),
+            requestBody: errReqBody,
+            responseHeaders: normalizeHeaders(error.response?.headers),
             responseBody: error.response?.data ?? null,
             error: error.message,
             source: 'axios',
@@ -147,6 +176,14 @@ class ApiClient {
   }
 
   async refreshToken() {
+    // BFF pattern: the server holds the access token and refreshes it transparently
+    // via the refreshIfExpiring middleware before every authenticated request.
+    // The client never has the token, so there is nothing to refresh here.
+    // Returning null causes the interceptor to re-raise the original error without
+    // noisy fallback refresh attempts to /api/auth/oauth/refresh.
+    return null;
+
+    // eslint-disable-next-line no-unreachable
     try {
       // Try to refresh the end user token first
       try {

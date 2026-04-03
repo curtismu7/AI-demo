@@ -1,0 +1,46 @@
+/* banking_api_ui/src/styles/draggablePanel.css
+   Shared styles for the draggable + resizable panel pattern. */
+
+/* Dim backdrop — rendered behind the floating panel; click closes the panel. */
+.drp-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 9990;
+}
+
+/* Bottom-right resize grip — placed absolutely inside the panel. */
+.drp-resize-grip {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  cursor: se-resize;
+  /* Diagonal stripe pattern: visible triangle in bottom-right corner */
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    rgba(148, 163, 184, 0.55) 40%,
+    rgba(148, 163, 184, 0.55) 55%,
+    transparent 55%,
+    transparent 65%,
+    rgba(148, 163, 184, 0.35) 65%
+  );
+  border-bottom-right-radius: inherit;
+  z-index: 1;
+  transition: opacity 0.15s;
+}
+
+.drp-resize-grip:hover {
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    rgba(99, 102, 241, 0.75) 40%,
+    rgba(99, 102, 241, 0.75) 55%,
+    transparent 55%,
+    transparent 65%,
+    rgba(99, 102, 241, 0.5) 65%
+  );
+}

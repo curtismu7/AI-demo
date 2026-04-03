@@ -208,12 +208,25 @@ class UpstashSessionStore extends Store {
   }
 
   /**
-   * Write session — update cache immediately; persist to Upstash async.
-   * Non-fatal when circuit is open or Upstash errors — user gets cookie-only session.
+   * Write session — update cache immediately; persist to Upstash.
+   *
+   * Errors are propagated to the caller (cb(err)) so that critical callers such
+   * as the OAuth callback's explicit req.session.save() can detect a failed write
+   * and redirect to an error page rather than silently continuing with a session
+   * that will be invisible on the next serverless Lambda instance.
+   *
+   * The synchronous in-memory cache is always updated first, so warm Lambda
+   * instances continue to work.  Cross-instance persistence requires Upstash.
    */
   set(sid, session, cb) {
     this._cache.set(sid, session); // synchronous — in-process update first
-    if (this._circuit.isOpen) return cb(null); // skip Redis while tripped
+
+    // Circuit open → Upstash is known-unavailable; propagate so callers can react.
+    if (this._circuit.isOpen) {
+      const reason = this._circuit.lastError || 'circuit OPEN (Upstash unavailable)';
+      console.warn(`[session-store] Upstash SET skipped — ${reason}. Session persisted to in-memory cache only.`);
+      return cb(new Error(`Session not persisted to Redis: ${reason}`));
+    }
 
     const ttl = this._ttl(session);
     this.kv
@@ -222,7 +235,7 @@ class UpstashSessionStore extends Store {
       .catch((err) => {
         this._circuit.onFailure(err);
         console.error('[session-store] Upstash SET error (session not persisted to Redis):', err.message);
-        cb(null);
+        cb(err);
       });
   }
 

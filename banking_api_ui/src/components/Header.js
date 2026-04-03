@@ -1,16 +1,45 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import BrandLogo from './BrandLogo';
 import './Header.css';
+
+/**
+ * Calls POST /api/auth/switch then navigates to the returned login URL.
+ * The OAuth callback clears the _switch_target cookie and redirects to the
+ * correct dashboard. The plan (P2) describes the full flow with token stashing.
+ */
+async function callSwitchRole(targetRole) {
+  const r = await fetch('/api/auth/switch', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetRole }),
+  });
+  if (!r.ok) throw new Error(`Switch failed: ${r.status}`);
+  const { redirectUrl } = await r.json();
+  window.location.href = redirectUrl;
+}
 
 const Header = ({ user, onLogout }) => {
   const location = useLocation();
   const isAdmin = user?.role === 'admin';
+  const [switching, setSwitching] = useState(false);
+
+  const handleSwitchRole = async () => {
+    setSwitching(true);
+    try {
+      await callSwitchRole(isAdmin ? 'customer' : 'admin');
+    } catch (e) {
+      console.error('[Header] Role switch failed:', e.message);
+      setSwitching(false);
+    }
+  };
 
   return (
     <header className="header app-top-header">
       <div className="container">
         <div className="app-top-header__brand">
-          <img className="app-top-header__logo" src="/logo.svg" alt="Banking App Logo" />
+          <BrandLogo className="app-top-header__logo" height={32} width={32} />
           <h1 className="app-top-header__title">
             {isAdmin ? 'Accounts API Admin Dashboard' : 'Personal Account Dashboard'}
           </h1>
@@ -71,6 +100,15 @@ const Header = ({ user, onLogout }) => {
             )}
             <div className="app-top-header__user">
               <span>Welcome, {user.firstName} {user.lastName}</span>
+              <button
+                type="button"
+                onClick={handleSwitchRole}
+                disabled={switching}
+                className="btn btn-secondary header-switch-role-btn"
+                title={`Switch to ${isAdmin ? 'Customer' : 'Admin'} view`}
+              >
+                {switching ? '…' : `⇄ ${isAdmin ? 'Customer' : 'Admin'} view`}
+              </button>
               <button type="button" onClick={onLogout} className="btn btn-secondary">
                 Logout
               </button>

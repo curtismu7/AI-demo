@@ -333,13 +333,17 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('transactions');
     });
 
-    it('should reject GET /api/transactions/my when token lacks banking:transactions:read or banking:read', async () => {
+    it('should allow GET /api/transactions/my for any authenticated user (no banking:* scope required)', async () => {
+      // The /transactions/my endpoint intentionally omits requireScopes() because standard
+      // PingOne tokens without a custom resource server only carry openid/profile/email.
+      // Any authenticated user can read their own transactions; row-level ownership is
+      // enforced inside the handler (returns only the caller’s rows).
       const token = createOAuthToken(['banking:write']);
       const response = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
-      expect(response.status).toBe(403);
-      expect(response.body.error).toBe('insufficient_scope');
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('transactions');
     });
 
     it('should allow access to POST /api/transactions with banking:transactions:write scope', async () => {
@@ -380,7 +384,9 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should deny access to POST /api/transactions without required scopes', async () => {
+    it('POST /api/transactions proceeds past auth regardless of scope (no banking:* write scope required)', async () => {
+      // The POST /transactions endpoint intentionally omits requireScopes() — see route comment.
+      // The request reaches the data layer and fails at account lookup (not scope check).
       const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
@@ -393,9 +399,9 @@ describe('Scope-based Authorization Integration Tests', () => {
           description: 'Test deposit'
         });
       
-      expect(response.status).toBe(403);
-      expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:transactions:write', 'banking:write']);
+      // Reaches data layer — no scope block; 404 because the account doesn’t exist
+      expect(response.status).toBe(404);
+      expect(response.body.error).not.toBe('insufficient_scope');
     });
 
     it('should test transfer operations with banking:transactions:write scope', async () => {
@@ -418,7 +424,9 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should deny transfer operations without banking:transactions:write scope', async () => {
+    it('POST /api/transactions transfer proceeds to data layer regardless of read-only scope', async () => {
+      // No banking:transaction:write scope required — see route comment.
+      // Request reaches handler and fails at account lookup, not at scope check.
       const token = createOAuthToken(['banking:transactions:read']);
       
       const response = await request(app)
@@ -432,9 +440,8 @@ describe('Scope-based Authorization Integration Tests', () => {
           description: 'Test transfer'
         });
       
-      expect(response.status).toBe(403);
-      expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:transactions:write', 'banking:write']);
+      expect(response.status).toBe(404);
+      expect(response.body.error).not.toBe('insufficient_scope');
     });
 
     it('should allow access to PUT /api/transactions/:id with banking:transactions:write scope', async () => {

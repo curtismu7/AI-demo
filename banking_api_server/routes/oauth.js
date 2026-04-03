@@ -13,6 +13,8 @@ const {
 } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
+const oauthConfig = require('../config/oauth');
+const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -75,9 +77,10 @@ router.get('/login', (req, res) => {
     req.session.oauthNonce = nonce;
 
     // Generate authorization URL (includes code_challenge derived from verifier)
-    const resourceParam = process.env.ENDUSER_AUDIENCE
-      ? `&resource=${encodeURIComponent(process.env.ENDUSER_AUDIENCE)}`
-      : '';
+    const resourceParam = buildPingOneAuthorizeResourceQueryParam(
+      process.env.ENDUSER_AUDIENCE,
+      oauthConfig.scopes,
+    );
     const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce) + resourceParam;
 
     const cfg = oauthService.config || {};
@@ -243,10 +246,14 @@ router.get('/callback', async (req, res) => {
     const authedUser = user;
     const redirectOrigin = getFrontendOrigin(req);
 
-    // Non-fatal: if regenerate fails, continue with existing session (Vercel cold start).
+    // P3 — Session regenerate failure is now fatal (prevents session fixation).
+    // If regenerate fails the user retries sign-in once; the UX cost is acceptable
+    // compared to serving the pre-login session ID after authentication.
     req.session.regenerate((regenErr) => {
       if (regenErr) {
-        console.warn('[oauth/callback] Session regenerate failed (continuing):', regenErr.message);
+        console.error('[oauth/callback] Session regenerate FAILED — aborting login (session fixation risk):', regenErr.message);
+        clearAuthCookie(res, _isProd());
+        return res.redirect(`${redirectOrigin}/login?error=session_regenerate_failed`);
       }
       req.session.oauthTokens = oauthTokens;
       req.session.user = authedUser;
@@ -274,6 +281,8 @@ router.get('/callback', async (req, res) => {
           oauthType: 'admin',
           expiresAt: oauthTokens.expiresAt,
         }, _isProd());
+        // Clear role-switch cookie if this login was triggered by POST /api/auth/switch
+        res.clearCookie('_switch_target', { path: '/', sameSite: _isProd() ? 'none' : 'lax', secure: _isProd() });
         res.redirect(`${redirectOrigin}/admin?oauth=success`);
       });
     });
@@ -292,8 +301,14 @@ router.get('/callback', async (req, res) => {
  * Logout - clear local session and end PingOne SSO session
  */
 router.get('/logout', (req, res) => {
-  const idToken = req.session.oauthTokens?.idToken || null;
+  const idToken      = req.session.oauthTokens?.idToken      || null;
+  const accessToken  = req.session.oauthTokens?.accessToken  || null;
+  const refreshToken = req.session.oauthTokens?.refreshToken || null;
   const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
+
+  // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
+  if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
+  if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
 
   req.session.destroy((err) => {
     if (err) {
@@ -324,7 +339,11 @@ router.get('/logout', (req, res) => {
 router.get('/status', (req, res) => {
   const token = req.session.oauthTokens?.accessToken;
   const hasOAuthToken = !!(token && token !== '_cookie_session');
-  const isAuthenticated = !!(req.session.user && hasOAuthToken);
+  // Check expiry — expired token → authenticated: false so callers don't attempt
+  // protected API routes and enter a 401 redirect loop.
+  const expiresAt = req.session.oauthTokens?.expiresAt;
+  const tokenNotExpired = !expiresAt || Date.now() < expiresAt;
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && tokenNotExpired);
   
   res.json({
     authenticated: isAuthenticated,

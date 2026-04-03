@@ -1,55 +1,175 @@
 // banking_api_ui/src/context/AgentUiModeContext.js
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-const STORAGE_KEY = 'banking_agent_ui_mode';
+const STORAGE_KEY_LEGACY = 'banking_agent_ui_mode';
+const STORAGE_KEY_V2 = 'banking_agent_ui_v2';
+
+/**
+ * @typedef {object} AgentUiState
+ * @property {'middle' | 'bottom' | 'none' | 'left-dock' | 'right-dock'} placement — Middle = split column agent; Bottom = dock; none = float-only; left-dock = collapsible left sidebar (width-resizable); right-dock = collapsible right sidebar (width-resizable).
+ * @property {boolean} fab — Also show floating FAB on dashboard routes (invalid with placement none unless true).
+ */
+
+const defaultState = /** @type {AgentUiState} */ ({
+  placement: 'none',
+  fab: true,
+});
+
+function readLegacyMode() {
+  try {
+    const m = localStorage.getItem(STORAGE_KEY_LEGACY);
+    if (m === 'embedded') return { placement: 'bottom', fab: false };
+    if (m === 'both') return { placement: 'bottom', fab: true };
+    return { placement: 'none', fab: true };
+  } catch {
+    return { ...defaultState };
+  }
+}
+
+/** Keep ThemeContext + older code that reads `banking_agent_ui_mode` in sync. */
+function syncLegacyString(state) {
+  try {
+    if (state.placement === 'none') {
+      localStorage.setItem(STORAGE_KEY_LEGACY, 'floating');
+      return;
+    }
+    if (state.placement === 'bottom' && !state.fab) {
+      localStorage.setItem(STORAGE_KEY_LEGACY, 'embedded');
+      return;
+    }
+    if (state.placement === 'bottom' && state.fab) {
+      localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
+      return;
+    }
+    if (state.placement === 'middle' && !state.fab) {
+      localStorage.setItem(STORAGE_KEY_LEGACY, 'embedded');
+      return;
+    }
+    if (state.placement === 'left-dock') {
+      localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
+      return;
+    }
+    if (state.placement === 'right-dock') {
+      localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * @returns {AgentUiState}
+ */
+function readState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_V2);
+    if (raw) {
+      const o = JSON.parse(raw);
+      const p = o?.placement;
+      const fab = o?.fab;
+      if (
+        (p === 'middle' || p === 'bottom' || p === 'none' || p === 'left-dock' || p === 'right-dock') &&
+        typeof fab === 'boolean'
+      ) {
+        if (p === 'none' && !fab) {
+          return { placement: 'none', fab: true };
+        }
+        return { placement: p, fab };
+      }
+      // Dock types with non-boolean fab default to true
+      if ((p === 'left-dock' || p === 'right-dock') && typeof fab !== 'boolean') {
+        return { placement: p, fab: true };
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  return readLegacyMode();
+}
 
 const AgentUiModeContext = createContext({
-  mode: 'floating',
-  setMode: () => {},
+  placement: 'none',
+  fab: true,
+  setAgentUi: () => {},
 });
 
 /**
- * floating — FAB + overlay panel (default); hidden on Demo config (`/demo-data`).
- * embedded — bottom dock only on `/`, `/admin`, `/dashboard`; no FAB on other routes (logs, MCP, etc.).
+ * Middle — embedded assistant in dashboard split column (token | agent | banking).
+ * Bottom — full-width bottom dock on dashboard routes (+ /config).
+ * Float — corner FAB only (no embedded chrome); fab is always true.
+ * Left-dock — agent in collapsible left sidebar (width-resizable). Right-dock — agent in collapsible right sidebar (width-resizable).
+ * fab — when Middle or Bottom, also show the floating FAB (Middle+Float or Bottom+Float; never Middle+Bottom).
  */
 export function AgentUiModeProvider({ children }) {
-  const [mode, setModeState] = useState(() => {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY);
-      return v === 'embedded' ? 'embedded' : 'floating';
-    } catch {
-      return 'floating';
-    }
-  });
+  const [state, setState] = useState(() => readState());
 
-  const setMode = useCallback((next) => {
-    const m = next === 'embedded' ? 'embedded' : 'floating';
-    setModeState(m);
+  useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, m);
+      if (!localStorage.getItem(STORAGE_KEY_V2)) {
+        const s = readState();
+        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(s));
+      }
+      syncLegacyString(readState());
     } catch {
-      // ignore
-    }
-    try {
-      window.dispatchEvent(new CustomEvent('banking-agent-ui-mode', { detail: { mode: m } }));
-    } catch {
-      // ignore
+      /* ignore */
     }
   }, []);
 
-  /** Keep in sync when another tab changes localStorage (storage event does not fire in the writer tab). */
+  const setAgentUi = useCallback((next) => {
+    setState((prev) => {
+      const placement = next.placement !== undefined ? next.placement : prev.placement;
+      let fab = next.fab !== undefined ? next.fab : prev.fab;
+      if (placement === 'none') {
+        fab = true;
+      }
+      const out = { placement, fab };
+      try {
+        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(out));
+      } catch {
+        /* ignore */
+      }
+      syncLegacyString(out);
+      try {
+        window.dispatchEvent(
+          new CustomEvent('banking-agent-ui-mode', { detail: out })
+        );
+      } catch {
+        /* ignore */
+      }
+      return out;
+    });
+  }, []);
+
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key !== STORAGE_KEY || e.newValue == null) return;
-      const m = e.newValue === 'embedded' ? 'embedded' : 'floating';
-      setModeState(m);
+      if (e.key !== STORAGE_KEY_V2 || e.newValue == null) return;
+      try {
+        const o = JSON.parse(e.newValue);
+        if (o?.placement && typeof o.fab === 'boolean') {
+          setState(o);
+        }
+      } catch {
+        /* ignore */
+      }
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const value = useMemo(() => ({ mode, setMode }), [mode, setMode]);
-  return <AgentUiModeContext.Provider value={value}>{children}</AgentUiModeContext.Provider>;
+  const value = useMemo(
+    () => ({
+      placement: state.placement,
+      fab: state.fab,
+      setAgentUi,
+    }),
+    [state.placement, state.fab, setAgentUi]
+  );
+
+  return (
+    <AgentUiModeContext.Provider value={value}>{children}</AgentUiModeContext.Provider>
+  );
 }
 
 export function useAgentUiMode() {

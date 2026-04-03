@@ -43,6 +43,18 @@
       "role": "admin",
       "createdAt": "2024-01-01T00:00:00.000Z",
       "isActive": true
+    },
+    {
+      "id": "5",
+      "username": "bankuser",
+      "email": "bankuser@example.com",
+      "firstName": "Demo",
+      "lastName": "Bankuser",
+      "password": "$2a$10$v9MUO.i8Xc6KL41VFbgu..BRDONABYsX5MuzXYYikToQ527VqUBqG",
+      "role": "customer",
+      "phone": "+15551231586",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "isActive": true
     }
   ],
   "accounts": [
@@ -94,6 +106,26 @@
       "balance": 1800.25,
       "currency": "USD",
       "createdAt": "2024-02-01T00:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "id": "6",
+      "userId": "5",
+      "accountNumber": "CHK-DEMO-0001",
+      "accountType": "checking",
+      "balance": 5000,
+      "currency": "USD",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "id": "7",
+      "userId": "5",
+      "accountNumber": "SAV-DEMO-0001",
+      "accountType": "savings",
+      "balance": 10000,
+      "currency": "USD",
+      "createdAt": "2024-01-01T00:00:00.000Z",
       "isActive": true
     }
   ],
@@ -163,6 +195,39 @@
       "status": "completed",
       "createdAt": "2024-03-06T13:30:00.000Z",
       "userId": "1"
+    },
+    {
+      "id": "7",
+      "fromAccountId": "6",
+      "toAccountId": null,
+      "amount": 100,
+      "type": "withdrawal",
+      "description": "ATM withdrawal",
+      "status": "completed",
+      "createdAt": "2024-03-10T10:00:00.000Z",
+      "userId": "5"
+    },
+    {
+      "id": "8",
+      "fromAccountId": null,
+      "toAccountId": "6",
+      "amount": 2500,
+      "type": "deposit",
+      "description": "Payroll deposit",
+      "status": "completed",
+      "createdAt": "2024-03-11T09:00:00.000Z",
+      "userId": "5"
+    },
+    {
+      "id": "9",
+      "fromAccountId": "6",
+      "toAccountId": "7",
+      "amount": 500,
+      "type": "transfer",
+      "description": "Transfer to savings",
+      "status": "completed",
+      "createdAt": "2024-03-12T14:30:00.000Z",
+      "userId": "5"
     }
   ],
   "activityLogs": [

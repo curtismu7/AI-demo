@@ -65,16 +65,29 @@ const logTokenInfo = (token, context = '') => {
 };
 
 /**
+ * Apply client credentials for POST /token per the declared auth method.
+ * method: 'basic' (default, CLIENT_SECRET_BASIC) → Authorization: Basic header
+ *         'post'  (CLIENT_SECRET_POST)            → client_secret in request body
+ * All PingOne apps in this project default to CLIENT_SECRET_BASIC — only override
+ * via tokenEndpointAuthMethod / AGENT_TOKEN_ENDPOINT_AUTH_METHOD when your PingOne
+ * app is explicitly configured for CLIENT_SECRET_POST.
+ */
+function applyTokenEndpointAuth(clientId, clientSecret, method, body, headers) {
+  if (!clientSecret) return;
+  if (method === 'post') {
+    body.set('client_secret', clientSecret);
+    return;
+  }
+  // Default: CLIENT_SECRET_BASIC (Authorization: Basic header)
+  const credentials = `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`;
+  headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`;
+}
+
+/**
  * Apply admin client credentials for POST /token per PingOne app setting (basic vs post).
  */
 function applyAdminTokenEndpointClientAuth(config, body, headers) {
-  if (!config.clientSecret) return;
-  if (config.tokenEndpointAuthMethod === 'post') {
-    body.set('client_secret', config.clientSecret);
-    return;
-  }
-  const credentials = `${encodeURIComponent(config.clientId)}:${encodeURIComponent(config.clientSecret)}`;
-  headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`;
+  applyTokenEndpointAuth(config.clientId, config.clientSecret, config.tokenEndpointAuthMethod, body, headers);
 }
 
 class OAuthService {
@@ -193,20 +206,27 @@ class OAuthService {
       scope: scopeStr,
       client_id: this.config.clientId,
     });
-    if (this.config.clientSecret) {
-      body.set('client_secret', this.config.clientSecret);
-    }
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyAdminTokenEndpointClientAuth(this.config, body, headers);
     try {
-      const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const exchanged = response.data.access_token;
       if (!exchanged) throw new Error('Token exchange response missing access_token');
       console.log(`[TokenExchange] Issued delegated token for audience=${audience} scope="${scopeStr}"`);
       return exchanged;
     } catch (error) {
-      console.error('[TokenExchange] Failed:', error.response?.data || error.message);
-      throw new Error(`Token exchange failed: ${error.response?.data?.error_description || error.message}`);
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[TokenExchange] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Token exchange failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, scope: scopeStr, client_id: this.config.clientId };
+      throw richErr;
     }
   }
 
@@ -231,20 +251,27 @@ class OAuthService {
       scope: scopeStr,
       client_id: this.config.clientId,
     });
-    if (this.config.clientSecret) {
-      body.set('client_secret', this.config.clientSecret);
-    }
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyAdminTokenEndpointClientAuth(this.config, body, headers);
     try {
-      const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const exchanged = response.data.access_token;
       if (!exchanged) throw new Error('Token exchange response missing access_token');
       console.log(`[TokenExchange+Actor] Delegated token audience=${audience} scope="${scopeStr}"`);
       return exchanged;
     } catch (error) {
-      console.error('[TokenExchange+Actor] Failed:', error.response?.data || error.message);
-      throw new Error(`Actor token exchange failed: ${error.response?.data?.error_description || error.message}`);
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[TokenExchange+Actor] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Actor token exchange failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, scope: scopeStr, client_id: this.config.clientId };
+      throw richErr;
     }
   }
 
@@ -260,22 +287,118 @@ class OAuthService {
       throw new Error('AGENT_OAUTH_CLIENT_ID and AGENT_OAUTH_CLIENT_SECRET must be set for agent actor tokens');
     }
     const scope = process.env.AGENT_OAUTH_CLIENT_SCOPES || 'openid';
+    const agentAuthMethod = (process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: clientId,
-      client_secret: clientSecret,
       scope,
     });
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyTokenEndpointAuth(clientId, clientSecret, agentAuthMethod, body, headers);
     try {
-      const response = await axios.post(this.config.tokenEndpoint, body.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const at = response.data.access_token;
       if (!at) throw new Error('Client credentials response missing access_token');
       return at;
     } catch (error) {
-      console.error('[AgentClientCredentials] Failed:', error.response?.data || error.message);
-      throw new Error(`Agent client credentials failed: ${error.response?.data?.error_description || error.message}`);
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[AgentClientCredentials] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Agent client credentials failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { scope, client_id: clientId };
+      throw richErr;
+    }
+  }
+
+  /**
+   * Generic Client Credentials token for any explicit clientId/clientSecret + audience.
+   * Used in the 2-exchange delegation chain where each exchanger has its own identity.
+   *
+   * @param {string} clientId
+   * @param {string} clientSecret
+   * @param {string} audience  Resource server audience URI (returned token will have aud=[audience])
+   */
+  async getClientCredentialsTokenAs(clientId, clientSecret, audience, method = 'basic') {
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      audience,
+    });
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
+      const at = response.data.access_token;
+      if (!at) throw new Error('Client credentials response missing access_token');
+      console.log(`[CC-As] Issued actor token for client=${clientId} audience=${audience}`);
+      return at;
+    } catch (error) {
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[CC-As] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Client credentials failed for ${clientId}: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, client_id: clientId };
+      throw richErr;
+    }
+  }
+
+  /**
+   * RFC 8693 Token Exchange performed by an explicit exchanger (clientId/clientSecret).
+   * Used in the 2-exchange chain where AI Agent and MCP Service have distinct credentials.
+   *
+   * @param {string}   subjectToken   - Incoming subject token
+   * @param {string}   actorToken     - Actor token (exchanger's CC token)
+   * @param {string}   clientId       - Exchanger's client ID
+   * @param {string}   clientSecret   - Exchanger's client secret
+   * @param {string}   audience       - Requested token audience
+   * @param {string[]} scopes         - Requested scopes
+   */
+  async performTokenExchangeAs(subjectToken, actorToken, clientId, clientSecret, audience, scopes, method = 'basic') {
+    const scopeStr = Array.isArray(scopes) ? scopes.join(' ') : scopes;
+    const body = new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      subject_token: subjectToken,
+      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      actor_token: actorToken,
+      actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      audience,
+      scope: scopeStr,
+      client_id: clientId,
+    });
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
+      const exchanged = response.data.access_token;
+      if (!exchanged) throw new Error('Token exchange response missing access_token');
+      console.log(`[Exchange-As] client=${clientId} audience=${audience} scope="${scopeStr}"`);
+      return exchanged;
+    } catch (error) {
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[Exchange-As] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Token exchange failed for ${clientId}: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, scope: scopeStr, client_id: clientId };
+      throw richErr;
     }
   }
 

@@ -1,0 +1,112 @@
+/* SideAgentDock.css — Fixed left/right sidebar dock for the banking AI agent */
+
+.side-agent-dock {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 900;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.2s ease;
+}
+
+.side-agent-dock--left {
+  left: 0;
+  border-right: 1px solid #e2e8f0;
+}
+
+.side-agent-dock--right {
+  right: 0;
+  border-left: 1px solid #e2e8f0;
+}
+
+.side-agent-dock--collapsed {
+  width: 0 !important;
+  overflow: hidden;
+  border: none;
+}
+
+/* Resize drag handle — full height, 6px wide, on the inner edge */
+.side-agent-dock__resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 10;
+  border: none;
+  padding: 0;
+}
+
+.side-agent-dock--left .side-agent-dock__resize-handle {
+  right: 0;
+}
+
+.side-agent-dock--right .side-agent-dock__resize-handle {
+  left: 0;
+}
+
+.side-agent-dock__resize-handle:hover,
+.side-agent-dock__resize-handle:active {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* Collapse/expand tab — small strip button on the outer edge */
+.side-agent-dock__collapse-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 48px;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: #475569;
+  z-index: 20;
+  padding: 0;
+  line-height: 1;
+}
+
+.side-agent-dock--left .side-agent-dock__collapse-btn {
+  right: -20px;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+}
+
+.side-agent-dock--right .side-agent-dock__collapse-btn {
+  left: -20px;
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+}
+
+.side-agent-dock__collapse-btn:hover {
+  background: #cbd5e1;
+  color: #1e293b;
+}
+
+/* Agent body — fills the dock, overflow handled by BankingAgent internals */
+.side-agent-dock__body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Body shift — applied via document.documentElement class by the component */
+html.app-has-side-dock-left--open body {
+  padding-left: var(--side-dock-width, 340px);
+  transition: padding-left 0.2s ease;
+}
+
+html.app-has-side-dock-right--open body {
+  padding-right: var(--side-dock-width, 340px);
+  transition: padding-right 0.2s ease;
+}

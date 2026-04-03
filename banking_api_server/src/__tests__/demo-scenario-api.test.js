@@ -146,19 +146,24 @@ describe('Demo scenario API — account create/update', () => {
     expect(String(created.accountNumber || '')).toMatch(/^MMK-/);
   });
 
-  it('PUT defaults checking name when new row name is empty', async () => {
+  it('PUT defaults savings name when new row name is empty', async () => {
+    // Send a new savings account row with no name — the route should apply the
+    // DEMO_DEFAULT_ACCOUNT_NAMES fallback ('Savings Account').
+    // We use 'savings' here (not 'checking') because the test setup already has
+    // an existing checking account; the route upserts by type when one already
+    // exists, so only types absent from the user's portfolio trigger a create.
     const app = makeApp();
     const res = await request(app)
       .put('/')
       .send({
         accounts: [
           { id: 'a-existing', name: 'Main Checking', balance: 50 },
-          { accountType: 'checking', balance: 0 },
+          { accountType: 'savings', balance: 0 },
         ],
       });
 
     expect(res.status).toBe(200);
-    const created = res.body.accounts.find((a) => a.name === 'Checking Account' && a.id !== 'a-existing');
+    const created = res.body.accounts.find((a) => a.name === 'Savings Account');
     expect(created).toBeDefined();
   });
 
@@ -296,10 +301,52 @@ describe('Demo scenario API — account create/update', () => {
     );
   });
 
+  it('PUT persists bankingAgentUiMode both', async () => {
+    const app = makeApp();
+    const res = await request(app).put('/').send({ bankingAgentUiMode: 'both' });
+    expect(res.status).toBe(200);
+    expect(demoScenarioStore.save).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ bankingAgentUiMode: 'both' }),
+    );
+  });
+
   it('PUT returns 400 for invalid bankingAgentUiMode', async () => {
     const app = makeApp();
     const res = await request(app).put('/').send({ bankingAgentUiMode: 'sidebar' });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_banking_agent_ui_mode');
+  });
+
+  it('GET includes settings.bankingAgentUi derived from legacy mode', async () => {
+    demoScenarioStore.load.mockResolvedValueOnce({
+      stepUpAmountThreshold: null,
+      bankingAgentUiMode: 'both',
+    });
+    const app = makeApp();
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.body.settings.bankingAgentUi).toEqual({ placement: 'bottom', fab: true });
+  });
+
+  it('PUT persists bankingAgentUi object', async () => {
+    const app = makeApp();
+    const ui = { placement: 'middle', fab: false };
+    const res = await request(app).put('/').send({ bankingAgentUi: ui });
+    expect(res.status).toBe(200);
+    expect(demoScenarioStore.save).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({
+        bankingAgentUi: ui,
+        bankingAgentUiMode: 'embedded',
+      }),
+    );
+  });
+
+  it('PUT returns 400 for invalid bankingAgentUi', async () => {
+    const app = makeApp();
+    const res = await request(app).put('/').send({ bankingAgentUi: { placement: 'sidebar', fab: true } });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('invalid_banking_agent_ui');
   });
 });

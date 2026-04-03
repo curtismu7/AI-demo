@@ -3,6 +3,7 @@ import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
 import { useEducationUI } from '../../context/EducationUIContext';
 import { EDU } from './educationIds';
+import { EduImplIntro, SNIP_RFC_INDEX } from './educationImplementationSnippets';
 
 const ROWS = [
   { rfc: 'RFC 6749', name: 'OAuth 2.0 Authorization Framework', app: 'Authorization Code flow', href: 'https://datatracker.ietf.org/doc/html/rfc6749', panel: EDU.LOGIN_FLOW, tab: 'what' },
@@ -14,7 +15,10 @@ const ROWS = [
   { rfc: 'RFC 8707', name: 'Resource Indicators', app: 'Bind aud to RS URL', href: 'https://datatracker.ietf.org/doc/html/rfc8707', panel: EDU.AGENT_GATEWAY, tab: 'rfc8707' },
   { rfc: 'RFC 9449', name: 'DPoP', app: 'Optional egress binding', href: 'https://datatracker.ietf.org/doc/html/rfc9449', panel: EDU.AGENT_GATEWAY, tab: 'overview' },
   { rfc: 'RFC 9728', name: 'OAuth for MCP', app: 'MCP AS discovery', href: 'https://datatracker.ietf.org/doc/html/rfc9728', panel: EDU.AGENT_GATEWAY, tab: 'rfc9728' },
-  { rfc: 'RFC 7523', name: 'JWT Client Auth', app: 'client_assertion in exchange', href: 'https://datatracker.ietf.org/doc/html/rfc7523', panel: EDU.TOKEN_EXCHANGE, tab: 'after' },
+  { rfc: 'RFC 7523', name: 'JWT Client Auth', app: 'client_assertion in exchange', href: 'https://datatracker.ietf.org/doc/html/rfc7523', panel: EDU.JWT_CLIENT_AUTH, tab: 'what' },
+  { rfc: 'RFC 9126', name: 'Pushed Authorization Requests (PAR)', app: 'Server-to-server auth request before browser redirect', href: 'https://datatracker.ietf.org/doc/html/rfc9126', panel: EDU.PAR, tab: 'what' },
+  { rfc: 'RFC 9396', name: 'Rich Authorization Requests (RAR)', app: 'Structured authorization_details for fine-grained consent', href: 'https://datatracker.ietf.org/doc/html/rfc9396', panel: EDU.RAR, tab: 'what' },
+  { rfc: 'RFC 9700', name: 'OAuth 2.0 Security Best Current Practice', app: 'Security baseline — PKCE required, implicit flow banned, redirect URI exact match', href: 'https://datatracker.ietf.org/doc/html/rfc9700', panel: null, tab: null },
   { rfc: 'OIDC Core 1.0', name: 'OpenID Connect', app: 'openid scope, /userinfo', href: 'https://openid.net/specs/openid-connect-core-1_0.html', panel: EDU.LOGIN_FLOW, tab: 'what' },
   { rfc: 'OIDC CIBA', name: 'Backchannel Auth', app: 'bc-authorize, poll /token; OOB email or push', href: 'https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html', panel: null, tab: null, ciba: true },
   { rfc: 'Pattern', name: 'Human-in-the-loop (HITL)', app: 'High-value consent; agent lockout if declined', href: 'https://en.wikipedia.org/wiki/Human-in-the-loop', panel: EDU.HUMAN_IN_LOOP, tab: 'what' },
@@ -78,12 +82,25 @@ export default function RFCIndexPanel({ isOpen, onClose, initialTabId }) {
     </>
   );
 
+  const implTab = (
+    <>
+      <h3 style={{ marginTop: 0 }}>What this panel does in code</h3>
+      <EduImplIntro repoPath="banking_api_ui/src/components/education/RFCIndexPanel.js">
+        Rows dispatch <code>open(panel, tab)</code> or the CIBA window event — they do not implement OAuth by themselves.
+      </EduImplIntro>
+      <pre className="edu-code">{SNIP_RFC_INDEX}</pre>
+    </>
+  );
+
   return (
     <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
       title="RFC & spec index"
-      tabs={[{ id: 'index', label: 'Index', content }]}
+      tabs={[
+        { id: 'index', label: 'Index', content },
+        { id: 'inrepo', label: 'This panel', content: implTab },
+      ]}
       initialTabId={initialTabId || 'index'}
     />
   );

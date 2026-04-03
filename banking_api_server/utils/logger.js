@@ -19,6 +19,7 @@ const LOG_CATEGORIES = {
   OAUTH_VALIDATION: 'oauth_validation',
   SCOPE_VALIDATION: 'scope_validation',
   TOKEN_INTROSPECTION: 'token_introspection',
+  TOKEN_EXCHANGE: 'token_exchange',
   PROVIDER_HEALTH: 'provider_health',
   AUTHENTICATION: 'authentication',
   AUTHORIZATION: 'authorization',

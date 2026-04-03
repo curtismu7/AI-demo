@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const oauthConfig = require('../config/oauth');
+const configStore = require('../services/configStore');
 const { validateToken: validatePingOneToken } = require('../services/tokenValidationService');
 const { 
   BANKING_SCOPES, 
@@ -20,8 +21,14 @@ const {
 const SKIP_TOKEN_SIGNATURE_VALIDATION = process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true';
 const DEBUG_TOKENS = process.env.DEBUG_TOKENS === 'true';
 const DEBUG_SCOPES = process.env.DEBUG_SCOPES === 'true';
-const ENDUSER_AUDIENCE = process.env.ENDUSER_AUDIENCE || 'banking_jk_enduser';
-const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || 'banking_mcp_01_JK';
+// Audience values — read from env only; no hardcoded fallbacks.
+// When not set, audience validation is skipped (tokens are still JWKS-verified).
+// Set ENDUSER_AUDIENCE and AI_AGENT_AUDIENCE in your deployment env to enforce
+// that tokens were issued for this specific resource server.
+// MCP_RESOURCE_URI is the audience for BFF-exchanged MCP delegated tokens (RFC 8693).
+const ENDUSER_AUDIENCE  = process.env.ENDUSER_AUDIENCE  || null;
+const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || null;
+const MCP_RESOURCE_URI  = process.env.MCP_RESOURCE_URI  || null;
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
 const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 
@@ -298,6 +305,21 @@ const requireScopes = (requiredScopes, requireAll = false) => {
         });
         return next();
       }
+
+      // Simplified-auth bypass: when ff_oidc_only_authorize is ON, the user token only carries
+      // OIDC scopes (no banking:*) because the authorize request was stripped down to avoid
+      // PingOne's "May not request scopes for multiple resources" error. Scope gates on banking
+      // routes relax to session-authenticated identity (same approach as admin role bypass).
+      const oidcOnlyMode =
+        configStore.getEffective('ff_oidc_only_authorize') === true ||
+        configStore.getEffective('ff_oidc_only_authorize') === 'true';
+      if (oidcOnlyMode) {
+        logger.debug(LOG_CATEGORIES.AUTHORIZATION, 'Scope check bypassed — ff_oidc_only_authorize ON', {
+          ...requestContext,
+          required_scopes: scopesToCheck
+        });
+        return next();
+      }
       
       logger.debug(LOG_CATEGORIES.SCOPE_VALIDATION, 'Starting scope validation middleware', {
         ...requestContext,
@@ -489,13 +511,19 @@ const validatePingOneCoreToken = async (token, requestContext = {}) => {
       issuer: oauthConfig.issuer,
     });
 
-    // Audience validation: if the deployment has configured known audiences,
-    // reject tokens whose aud does not include at least one of them.
-    // This prevents tokens issued for other resources from being replayed here.
-    const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE].filter(Boolean);
+    // Audience validation: only enforced when ENDUSER_AUDIENCE or AI_AGENT_AUDIENCE
+    // are explicitly set in the deployment environment.
+    // Tokens from PingOne without a custom resource server have aud='https://api.pingone.com'
+    // which is always accepted as a valid PingOne-issued token.
+    const PINGONE_DEFAULT_AUD = 'https://api.pingone.com';
+    const knownAudiences = [ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE, MCP_RESOURCE_URI].filter(Boolean);
     if (knownAudiences.length > 0 && payload.aud) {
       const tokenAuds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-      const hasMatch = knownAudiences.some((a) => tokenAuds.includes(a));
+      // Accept tokens issued for a configured custom resource server OR for the
+      // default PingOne API audience (no custom resource server configured).
+      const hasMatch =
+        knownAudiences.some((a) => tokenAuds.includes(a)) ||
+        tokenAuds.includes(PINGONE_DEFAULT_AUD);
       if (!hasMatch) {
         throw new Error(`Token audience [${tokenAuds.join(', ')}] does not match any known audience for this service.`);
       }
@@ -553,6 +581,20 @@ const authenticateToken = async (req, res, next) => {
       // This prevents token relay — the token never needs to leave the backend.
       const sessionToken = req.session?.oauthTokens?.accessToken;
       if (sessionToken) {
+        // Short-circuit the _cookie_session stub — it is a placeholder set by
+        // restoreSessionFromCookie when no real OAuth token is in the session
+        // (typically Upstash is unavailable).  There is no point running JWKS
+        // validation on it; return 401 immediately with a clear code.
+        if (sessionToken === '_cookie_session') {
+          logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Session token is _cookie_session stub — re-authentication required', requestContext);
+          throw new OAuthError(
+            OAUTH_ERROR_TYPES.AUTHENTICATION_REQUIRED,
+            'Session requires re-authentication (session not persisted to Redis)',
+            401,
+            { hint: 'Sign in again to refresh the session' },
+          );
+        }
+
         logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Using session token as fallback (no Authorization header)', requestContext);
         // Re-use the full validation pipeline below via reassignment
         const authHeader2 = `Bearer ${sessionToken}`;
@@ -598,7 +640,9 @@ const authenticateToken = async (req, res, next) => {
             userType: userType,
             tokenType: 'oauth',
             acr: decoded.acr || null,
-            scopes: scopes
+            scopes: scopes,
+            isDelegated: !!decoded.act,
+            actor: decoded.act || null
           };
           logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Session-based token authentication successful (BFF)', {
             ...requestContext,
@@ -699,7 +743,10 @@ const authenticateToken = async (req, res, next) => {
         userType: userType,
         tokenType: 'oauth',
         acr: decoded.acr || null,      // PingOne sets this when acr_values was requested
-        scopes: scopes // Add parsed scopes to user object
+        scopes: scopes,
+        // RFC 8693 delegation: enrich req.user when token carries an act claim
+        isDelegated: !!decoded.act,
+        actor: decoded.act || null     // { sub: <actor_client_id> } or { sub, act: { sub: ... } } for nested
       };
       
       return next();

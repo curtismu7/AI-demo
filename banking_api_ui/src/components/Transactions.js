@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
+import { notifyError } from '../utils/appToast';
+import { toastAdminSessionError } from '../utils/dashboardToast';
+import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 const Transactions = ({ user, onLogout }) => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchTransactions();
@@ -19,21 +21,20 @@ const Transactions = ({ user, onLogout }) => {
       setLoading(true);
       const sessionUser = await resolveSessionUser();
       if (!sessionUser) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
         return;
       }
       const response = await bffAxios.get('/api/transactions');
       setTransactions(response.data.transactions);
-      setError('');
     } catch (error) {
       console.error('Transactions error:', error);
-      
+
       if (error.response?.status === 401) {
-        setError('Your session has expired. Please log in again.');
+        toastAdminSessionError('Your session has expired. Please log in again.', navigateToAdminOAuthLogin);
       } else if (error.response?.status === 403) {
-        setError('You do not have permission to view transactions.');
+        notifyError('You do not have permission to view transactions.');
       } else {
-        setError('Failed to load transactions');
+        notifyError('Failed to load transactions');
       }
     } finally {
       setLoading(false);
@@ -72,12 +73,6 @@ const Transactions = ({ user, onLogout }) => {
   return (
     <AdminSubPageShell title="Transactions" lead="Review transfers, deposits, and withdrawals.">
       <PageNav user={user} onLogout={onLogout} title="Transactions" />
-
-      {error && (
-        <div className="alert alert-error">
-          {error}
-        </div>
-      )}
 
       <div className="app-page-card">
         <div className="card-header">

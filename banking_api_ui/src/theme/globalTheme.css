@@ -194,8 +194,13 @@ html[data-theme='dark'] .embedded-banking-agent {
 }
 
 html[data-theme='dark'] .global-embedded-agent-dock-wrap {
+  background: #0f172a;
+}
+
+html[data-theme='dark'] .global-embedded-agent-dock-wrap--collapsed {
   border-top-color: #334155;
   background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  box-shadow: 0 -3px 16px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] .embedded-agent-dock {
@@ -205,7 +210,7 @@ html[data-theme='dark'] .embedded-agent-dock {
 }
 
 html[data-theme='dark'] .embedded-agent-dock__title {
-  color: #f1f5f9;
+  color: #94a3b8;
 }
 
 html[data-theme='dark'] .embedded-agent-dock__lead {
@@ -220,52 +225,36 @@ html[data-theme='dark'] .embedded-banking-agent-lead {
   color: #94a3b8;
 }
 
-html[data-theme='dark'] .edu-bar {
-  background: linear-gradient(to bottom, #1e293b 0%, #0f172a 100%);
-  border-bottom-color: #334155;
+html[data-theme='dark'] .edu-bar-panel {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
 }
 
-html[data-theme='dark'] .edu-bar-dropdown .dropdown-item:hover {
-  background: #334155;
-  color: #fecaca;
+html[data-theme='dark'] .edu-bar-panel__title {
+  color: #f1f5f9;
 }
 
-html[data-theme='dark'] .embedded-dock-resize-handle {
-  color: #cbd5e1;
-  border-top-color: rgba(148, 163, 184, 0.35);
-  background: linear-gradient(
-    180deg,
-    rgba(51, 65, 85, 0.55) 0%,
-    rgba(30, 41, 59, 0.85) 100%
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-html[data-theme='dark'] .embedded-dock-resize-handle__bar {
-  background: rgba(226, 232, 240, 0.45);
-  box-shadow: none;
-}
-
-html[data-theme='dark'] .embedded-dock-resize-handle__label {
+html[data-theme='dark'] .edu-bar-panel__heading {
   color: #94a3b8;
 }
 
+html[data-theme='dark'] .embedded-dock-resize-handle {
+  border-top-color: rgba(51, 65, 85, 0.8);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.3) 100%);
+}
+
+html[data-theme='dark'] .embedded-dock-resize-handle__bar {
+  background: rgba(148, 163, 184, 0.35);
+}
+
 html[data-theme='dark'] .embedded-dock-resize-handle:hover {
-  border-top-color: rgba(96, 165, 250, 0.45);
-  background: linear-gradient(
-    180deg,
-    rgba(65, 105, 225, 0.35) 0%,
-    rgba(30, 58, 110, 0.55) 100%
-  );
-  color: #e2e8f0;
+  border-top-color: rgba(96, 165, 250, 0.5);
+  background: linear-gradient(180deg, rgba(30, 58, 138, 0.3) 0%, rgba(15, 23, 42, 0.2) 100%);
 }
 
 html[data-theme='dark'] .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__bar {
-  background: rgba(147, 197, 253, 0.85);
-}
-
-html[data-theme='dark'] .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__label {
-  color: #bfdbfe;
+  background: rgba(147, 197, 253, 0.7);
 }
 
 /*
@@ -475,4 +464,103 @@ html[data-theme='dark'] .mcp-inspector__banner--error {
   background: rgba(127, 29, 29, 0.25);
   border-color: #7f1d1d;
   color: #fecaca;
+}
+
+/* ─── Marketing landing (/ , /marketing): always light page (ignore app dark theme) ─ */
+html[data-theme='dark']:has(.App--marketing-page) body {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .navbar {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-bottom-color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .navbar.scrolled {
+  background: rgba(255, 255, 255, 0.99) !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .nav-link {
+  color: #475569 !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .nav-link:hover {
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .brand-name {
+  color: #ffffff !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .hero-subtitle,
+html[data-theme='dark'] .landing-page.landing-page--light .section-header p,
+html[data-theme='dark'] .landing-page.landing-page--light .feature-card p,
+html[data-theme='dark'] .landing-page.landing-page--light .step p {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .feature-card h3,
+html[data-theme='dark'] .landing-page.landing-page--light .step h3,
+html[data-theme='dark'] .landing-page.landing-page--light .cta-content h2 {
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .features {
+  background: linear-gradient(to bottom, #ffffff, #f1f5f9) !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .how-it-works {
+  background: #ffffff !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .feature-card {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .floating-card {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light .message-bubble {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .landing-page.landing-page--light footer.footer {
+  background: #ffffff !important;
+  border-top-color: #e5e7eb !important;
+  color: #475569 !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer {
+  background: #ffffff !important;
+  border-top-color: #e5e7eb !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer .footer-brand-text {
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer .footer-copyright {
+  color: #64748b !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer .footer-theme-toggle {
+  background: #f8fafc !important;
+  border-color: #e5e7eb !important;
+  color: #0f172a !important;
+}
+
+html[data-theme='dark'] .App--marketing-page > footer.footer .footer-demo-config {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1d4ed8 !important;
 }

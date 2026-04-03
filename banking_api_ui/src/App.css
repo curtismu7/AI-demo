@@ -2,6 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   /* Bottom-right stack: CIBA guide (regular button) above agent FAB — shared by CIBAPanel + BankingAgent */
   --float-edge: 28px;
   --float-gap: 12px;
@@ -12,18 +13,15 @@
   --agent-panel-bottom: calc(
     var(--ciba-bottom) + var(--ciba-action-height) + var(--float-gap)
   );
-  /* Left-side rail: HOME → [Dashboard when signed in] → CIBA → … — CIBA top = --stack-fab-top-base */
+  /* Left-side rail (top → bottom): Quick nav (when present) → Demo config — CIBA/CIMD FABs removed */
   --stack-fab-width: 220px;
   --stack-fab-height: 44px;
   --stack-fab-gap: 8px;
   --stack-fab-top-home: 16px;
   --stack-fab-top-dash: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
-  /* One slot after HOME when logged out; App--has-nav-dash shifts base below Dashboard */
-  --stack-fab-top-base: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-api:  calc(var(--stack-fab-top-logs)  + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-demo: calc(var(--stack-fab-top-api)   + var(--stack-fab-height) + var(--stack-fab-gap));
+  --stack-fab-top-base: 12px;
+  /* Demo config FAB — first slot when quick nav hidden (config, landing, …) */
+  --stack-fab-top-demo: var(--stack-fab-top-base);
   /* Keep left-side FABs inside the viewport */
   --stack-fab-viewport-max: max(
     0px,
@@ -35,26 +33,88 @@
   --stack-fab-used-width: min(var(--stack-fab-width), var(--stack-fab-viewport-max));
 }
 
-/* Second nav row (Dashboard) present — push CIBA and everything below down one slot */
+/* Quick nav (signed-in /, /admin, /dashboard only) — extra stack + content inset */
+.App.App--has-quick-nav {
+  --float-edge: 12px;
+  --stack-fab-top-quick-nav: var(--stack-fab-top-base);
+  --quick-nav-stack-height: calc(7 * var(--stack-fab-height) + 6 * var(--stack-fab-gap)); /* overridden by DashboardQuickNav.js */
+  --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height) + var(--stack-fab-gap));
+  /* Page content clears quick nav + demo */
+  --rail-content-gap: 16px;
+  --left-rail-inset: calc(
+    var(--float-edge) + var(--stack-fab-used-width) + var(--rail-content-gap)
+  );
+  padding-left: var(--left-rail-inset);
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .App.App--has-quick-nav {
+    --rail-content-gap: 8px;
+    --stack-fab-width: 168px;
+  }
+}
+
+/* Second nav row (Dashboard) present — push rail stack below Home + Dashboard */
 .App.App--has-nav-dash {
   --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
 }
 
-/* On the /dashboard route the UserDashboard header is ~146px tall.
-   Use direct top overrides (not CSS vars) so media-query var recalcs can't win. */
-.App.App--on-dashboard .ciba-fab        { top: 156px; }
-.App.App--on-dashboard .cimd-fab        { top: calc(156px + var(--stack-fab-height, 44px) + var(--stack-fab-gap, 8px)); }
-.App.App--on-dashboard .log-viewer-fab  { top: calc(156px + (var(--stack-fab-height, 44px) + var(--stack-fab-gap, 8px)) * 2); }
+/* On /dashboard, UserDashboard header clears the rail — shift entire stack below it */
+.App.App--on-dashboard {
+  --stack-fab-top-base: 156px;
+}
 
-/* Embedded dock sits in normal document flow at the bottom of <main> (see App.js) */
+/* Embedded dock — flows as part of the page content, not a floating widget */
 .global-embedded-agent-dock-wrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
   width: 100%;
-  z-index: 2;
+  max-width: min(1400px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0;
+  box-sizing: border-box;
+  /* Above .footer (z-index 10) when the layout stacks at the bottom of the viewport */
+  z-index: 12;
   pointer-events: auto;
-  border-top: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
+  background: #fff;
+  border-top: 2px solid #e2e8f0;
+}
+
+/* Collapsed: just the header bar */
+.global-embedded-agent-dock-wrap--collapsed {
+  background: #f8fafc;
+}
+
+/* Toolbar — looks like a page section header, not a widget titlebar */
+.embedded-agent-dock__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 20px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  /* Left accent bar — anchors it to the page visually */
+  border-left: 4px solid #2563eb;
+}
+
+.embedded-agent-dock__toolbar .embedded-agent-dock__head {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Title text — matches page section heading style */
+.embedded-agent-dock__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e3a5f;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .global-embedded-agent-dock-wrap .embedded-agent-dock {
@@ -71,13 +131,7 @@
   padding-top: 0;
 }
 
-/* Collapsed state — only the header bar is visible */
-.global-embedded-agent-dock-wrap .embedded-agent-dock--collapsed {
-  background: transparent;
-  box-shadow: none;
-}
-
-/* Collapse / expand toggle button in the dock header */
+/* Collapse / expand toggle */
 .embedded-dock-collapse-btn {
   background: transparent;
   border: 1px solid rgba(148, 163, 184, 0.4);
@@ -96,7 +150,7 @@
   color: #334155;
 }
 
-/* Drag handle between dock title and agent (resize height) */
+/* Resize handle — minimal drag grip between content and dock */
 .embedded-dock-resize-handle {
   flex-shrink: 0;
   width: 100%;
@@ -104,14 +158,14 @@
   margin: 0;
   padding: 3px 0;
   border: none;
-  border-top: 1px solid rgba(148, 163, 184, 0.45);
   cursor: ns-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(241, 245, 249, 0.9);
+  background: #f1f5f9;
   user-select: none;
   -webkit-user-select: none;
+  transition: background 0.15s;
 }
 
 .embedded-dock-resize-handle__grip {
@@ -123,28 +177,37 @@
 
 .embedded-dock-resize-handle__bar {
   display: block;
-  width: 48px;
-  height: 4px;
+  width: 32px;
+  height: 3px;
   border-radius: 2px;
-  background: rgba(71, 85, 105, 0.45);
+  background: rgba(100, 116, 139, 0.3);
+  transition: background 0.15s, width 0.15s;
 }
 
 .embedded-dock-resize-handle__label {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .embedded-dock-resize-handle:hover {
-  background: rgba(219, 234, 254, 0.8);
-  border-top-color: rgba(65, 105, 225, 0.35);
+  background: #e2e8f0;
 }
 
 .embedded-dock-resize-handle:hover .embedded-dock-resize-handle__bar {
-  background: rgba(37, 99, 235, 0.65);
+  background: rgba(37, 99, 235, 0.5);
+  width: 44px;
 }
 
 .embedded-dock-resize-handle:active {
   cursor: ns-resize;
-  background: rgba(191, 219, 254, 0.85);
+  background: #dbeafe;
 }
 
 .embedded-dock-resize-handle:focus-visible {
@@ -162,6 +225,22 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+}
+
+/* Signed-in /marketing: <main> must stay white when html[data-theme=dark] */
+.App--marketing-page .main-content {
+  background-color: #ffffff;
+}
+
+html[data-theme='dark'] .App--marketing-page .main-content {
+  background-color: #ffffff;
+}
+
+/* When the bottom agent is embedded inside the dashboard (not App-level),
+   make main-content a flex column so UserDashboard can fill + attach agent flush. */
+.App--has-embedded-dock .main-content {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Embedded agent: page scrolls above; assistant is part of the layout at the bottom (not fixed over the page) */
@@ -244,15 +323,15 @@
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #475569 0%, #64748b 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, var(--app-primary-blue-mid) 0%, var(--app-primary-blue) 100%);
+  border: 1px solid var(--app-primary-blue-border);
   color: #fff;
   -webkit-text-fill-color: #fff;
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.22);
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.3);
   transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
   z-index: 1001;
   display: inline-flex;
@@ -265,8 +344,8 @@
 
 .nav-home-fab:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(71, 85, 105, 0.4);
-  background: linear-gradient(135deg, #334155 0%, #64748b 100%);
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.4);
+  background: linear-gradient(135deg, var(--app-primary-blue) 0%, var(--app-primary-blue-hover) 100%);
 }
 
 .nav-home-fab:active {
@@ -286,15 +365,15 @@
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #b45309 0%, #ea580c 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, var(--app-primary-blue-mid) 0%, var(--app-primary-blue) 100%);
+  border: 1px solid var(--app-primary-blue-border);
   color: #fff;
   -webkit-text-fill-color: #fff;
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.3);
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.3);
   transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
   z-index: 1001;
   display: inline-flex;
@@ -307,52 +386,11 @@
 
 .nav-dashboard-fab:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.45);
-  background: linear-gradient(135deg, #c2410c 0%, #f97316 100%);
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.45);
+  background: linear-gradient(135deg, var(--app-primary-blue) 0%, var(--app-primary-blue-hover) 100%);
 }
 
 .nav-dashboard-fab:active {
-  transform: scale(0.97);
-}
-
-/* Log Viewer FAB — below CIMD in left-side rail (size matches --stack-fab-*) */
-.log-viewer-fab {
-  position: fixed;
-  top: var(--stack-fab-top-logs, 120px);
-  left: var(--float-edge, 28px);
-  box-sizing: border-box;
-  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
-  max-width: var(--stack-fab-viewport-max, 100vw);
-  min-width: 0;
-  height: var(--stack-fab-height, 44px);
-  min-height: var(--stack-fab-height, 44px);
-  padding: 0 12px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
-  z-index: 1001;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  user-select: none;
-}
-
-.log-viewer-fab:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
-  background: linear-gradient(135deg, #7c8ef5 0%, #8b5cf6 100%);
-}
-
-.log-viewer-fab:active {
   transform: scale(0.97);
 }
 
@@ -362,68 +400,25 @@
     --stack-fab-height: 42px;
     --stack-fab-top-home: 14px;
     --stack-fab-top-dash: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-base: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-cimd: calc(var(--stack-fab-top-base) + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-logs: calc(var(--stack-fab-top-cimd) + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-api:  calc(var(--stack-fab-top-logs)  + var(--stack-fab-height) + var(--stack-fab-gap));
-    --stack-fab-top-demo: calc(var(--stack-fab-top-api)   + var(--stack-fab-height) + var(--stack-fab-gap));
+    --stack-fab-top-base: 12px;
+    --stack-fab-top-demo: var(--stack-fab-top-base);
+  }
+  .App.App--has-quick-nav {
+    --stack-fab-top-quick-nav: var(--stack-fab-top-base);
+    --quick-nav-stack-height: calc(7 * var(--stack-fab-height) + 6 * var(--stack-fab-gap));
+    --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height) + var(--stack-fab-gap));
   }
   .App.App--has-nav-dash {
     --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
   }
-  .ciba-fab,
-  .cimd-fab,
   .nav-home-fab,
   .nav-dashboard-fab,
-  .log-viewer-fab,
-  .api-traffic-fab,
   .demo-config-fab {
     font-size: 0.75rem;
   }
 }
 
-/* API Traffic FAB — 4th slot in left-side rail */
-.api-traffic-fab {
-  position: fixed;
-  top: var(--stack-fab-top-api, 172px);
-  left: var(--float-edge, 28px);
-  box-sizing: border-box;
-  width: var(--stack-fab-used-width, min(220px, calc(100vw - 56px)));
-  max-width: var(--stack-fab-viewport-max, 100vw);
-  min-width: 0;
-  height: var(--stack-fab-height, 44px);
-  min-height: var(--stack-fab-height, 44px);
-  padding: 0 12px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.25);
-  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
-  z-index: 1001;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  user-select: none;
-}
-
-.api-traffic-fab:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-  background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
-}
-
-.api-traffic-fab:active {
-  transform: scale(0.97);
-}
-
-/* Global Demo Config FAB — bottom of left-side rail */
+/* Global Demo Config FAB — left-side rail (below quick nav when present) */
 .demo-config-fab {
   position: fixed;
   top: var(--stack-fab-top-demo, 224px);
@@ -436,7 +431,7 @@
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #fff;
   -webkit-text-fill-color: #fff;
@@ -444,7 +439,7 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.35);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
   transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
   z-index: 1001;
   display: inline-flex;
@@ -455,8 +450,8 @@
 
 .demo-config-fab:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.45);
-  background: linear-gradient(135deg, #0f8c82 0%, #2dd4bf 100%);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.45);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
 .demo-config-fab:active {
@@ -497,7 +492,13 @@
   .btn-outline-primary:focus,
   .btn-outline-primary:focus-visible,
   .btn-outline-primary:active,
-  .btn-outline-primary:visited
+  .btn-outline-primary:visited,
+  .btn-blue,
+  .btn-blue:hover,
+  .btn-blue:focus,
+  .btn-blue:focus-visible,
+  .btn-blue:active,
+  .btn-blue:visited
 ) {
   color: #fff !important;
   -webkit-text-fill-color: #fff !important;
@@ -508,7 +509,8 @@
   .btn-secondary,
   .btn-danger,
   .btn-success,
-  .btn-outline-primary
+  .btn-outline-primary,
+  .btn-blue
 ):any-link {
   text-decoration: none !important;
 }
@@ -593,18 +595,6 @@
 
 /* Top-right stack FABs — Ping global button/link color must not override labels or currentColor icons */
 .App.end-user-nano :is(
-  .ciba-fab,
-  .ciba-fab:hover,
-  .ciba-fab:focus,
-  .ciba-fab:focus-visible,
-  .ciba-fab:active,
-  .ciba-fab--open,
-  .cimd-fab,
-  .cimd-fab:hover,
-  .cimd-fab:focus,
-  .cimd-fab:focus-visible,
-  .cimd-fab:active,
-  .cimd-fab--open,
   .nav-home-fab,
   .nav-home-fab:hover,
   .nav-home-fab:focus,
@@ -615,16 +605,6 @@
   .nav-dashboard-fab:focus,
   .nav-dashboard-fab:focus-visible,
   .nav-dashboard-fab:active,
-  .log-viewer-fab,
-  .log-viewer-fab:hover,
-  .log-viewer-fab:focus,
-  .log-viewer-fab:focus-visible,
-  .log-viewer-fab:active,
-  .api-traffic-fab,
-  .api-traffic-fab:hover,
-  .api-traffic-fab:focus,
-  .api-traffic-fab:focus-visible,
-  .api-traffic-fab:active,
   .demo-config-fab,
   .demo-config-fab:hover,
   .demo-config-fab:focus,
@@ -663,4 +643,84 @@
 
 .dashboard-toast-error__btn:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Push main layout below fixed session banner */
+.App.App--session-reauth {
+  padding-top: 5.5rem;
+}
+
+@media (max-width: 520px) {
+  .App.App--session-reauth {
+    padding-top: 6.5rem;
+  }
+}
+
+/* Full-width session prompt — “log in again” (replaces toast for login-style errors; see dashboardToast.js) */
+.session-reauth-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10050;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom: 1px solid #f59e0b;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  box-sizing: border-box;
+}
+
+.session-reauth-banner__inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.session-reauth-banner__text {
+  margin: 0;
+  flex: 1 1 240px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #78350f;
+  line-height: 1.45;
+}
+
+.session-reauth-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.session-reauth-banner__btn {
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.session-reauth-banner__btn--primary {
+  background: #b45309;
+  color: #fff;
+  border-color: #92400e;
+}
+
+.session-reauth-banner__btn--primary:hover {
+  background: #92400e;
+}
+
+.session-reauth-banner__btn--ghost {
+  background: transparent;
+  color: #78350f;
+  border-color: rgba(120, 53, 15, 0.35);
+}
+
+.session-reauth-banner__btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.5);
 }

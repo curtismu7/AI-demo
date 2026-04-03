@@ -1,10 +1,13 @@
 // banking_api_ui/src/services/apiTrafficStore.js
+import { spinner } from './spinnerService';
 /**
  * In-memory ring buffer for API request/response traffic.
  * Subscribed by ApiTrafficPanel; populated by axios interceptors + fetch wrapper.
  */
 
 const MAX_ENTRIES = 200;
+/** Max characters stored per raw string body (fetch); avoids runaway memory on huge downloads. */
+const MAX_CAPTURE_BODY_CHARS = 2_000_000;
 const LS_KEY = 'api-traffic-store';
 let entries = [];
 let paused = false;
@@ -51,6 +54,18 @@ export function redactBody(body) {
     out[k] = REDACT_BODY_KEYS.has(String(k).toLowerCase()) ? '***' : v;
   }
   return out;
+}
+
+/** Flatten AxiosHeaders / Headers into a plain object for display. */
+export function normalizeHeaders(headers) {
+  if (!headers) return {};
+  if (typeof headers.toJSON === 'function') return headers.toJSON();
+  if (typeof headers.forEach === 'function' && typeof Object.fromEntries === 'function') {
+    try {
+      return Object.fromEntries(headers.entries());
+    } catch (_) {}
+  }
+  return typeof headers === 'object' ? { ...headers } : {};
 }
 
 /** Try to JSON-parse a text string; return the object or null. */
@@ -141,7 +156,8 @@ export function appendTokenEvents(toolName, tokenEvents = []) {
 let fetchPatched = false;
 
 /**
- * Patch window.fetch once to capture /api/* calls into the traffic store.
+ * Patch window.fetch once to capture /api/* calls into the traffic store
+ * and show the global spinner for same-origin API requests (unless `init._silent`).
  * Call from index.js before React renders.
  */
 export function patchFetch() {
@@ -158,6 +174,8 @@ export function patchFetch() {
     if (!url || !url.startsWith('/api/')) return origFetch(input, init);
 
     const method = (init?.method || 'GET').toUpperCase();
+    /** When true, skip global spinner (parity with axios `config._silent` — background session polls). */
+    const silent = !!(init && init._silent);
     const start = Date.now();
     const reqHeaders = redactHeaders(
       init?.headers instanceof Headers
@@ -178,19 +196,34 @@ export function patchFetch() {
     }
     if (reqBody && typeof reqBody === 'object') reqBody = redactBody(reqBody);
 
+    if (!silent) {
+      try { spinner.increment(method, url); } catch (_) {}
+    }
+
     try {
       const response = await origFetch(input, init);
       const duration = Date.now() - start;
       const resHeaders = Object.fromEntries(response.headers.entries());
 
+      if (!silent) {
+        try { spinner.decrement(false); } catch (_) {}
+      }
+
       // Clone so the original body is still readable by the caller
       response.clone().text().then(text => {
         const parsed = tryParseJson(text);
+        let responseBody = parsed;
+        if (parsed === null && text) {
+          responseBody =
+            text.length > MAX_CAPTURE_BODY_CHARS
+              ? `${text.slice(0, MAX_CAPTURE_BODY_CHARS)}\n… [truncated ${text.length - MAX_CAPTURE_BODY_CHARS} chars]`
+              : text;
+        }
         appendTrafficEntry({
           method, url, status: response.status, duration,
           requestHeaders: reqHeaders, requestBody: reqBody,
           responseHeaders: resHeaders,
-          responseBody: parsed ?? (text ? text.slice(0, 8192) : null),
+          responseBody,
           source: 'fetch',
           timestamp: new Date().toISOString(),
         });
@@ -198,6 +231,9 @@ export function patchFetch() {
 
       return response;
     } catch (err) {
+      if (!silent) {
+        try { spinner.decrement(true); } catch (_) {}
+      }
       appendTrafficEntry({
         method, url, status: 0, duration: Date.now() - start,
         requestHeaders: reqHeaders, requestBody: reqBody,

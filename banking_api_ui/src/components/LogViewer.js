@@ -6,6 +6,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { toastLogStore } from '../services/toastLogStore';
+import { notifyError } from '../utils/appToast';
+import { createPortal } from 'react-dom';
+import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import './LogViewer.css';
 
 /** Stable React key + dedup across sources (id from server when present). */
@@ -45,7 +48,6 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   const [logs, setLogs] = useState([]);
   const [toastLogs, setToastLogs] = useState(() => toastLogStore.getAll() || []);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [filter, setFilter] = useState({
     level: '',
@@ -56,6 +58,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
   const [stats, setStats] = useState(null);
   const logContainerRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [selfOpen, setSelfOpen] = useState(false);
   const replaceLogsOnNextFetchRef = useRef(true);
   const isRuntimeMessageLog = (log) =>
     log?.category === 'runtime messages' ||
@@ -81,7 +84,6 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
         return;
       }
       if (!silent) setLoading(true);
-      setError(null);
 
       const params = {
         limit: 500,
@@ -101,7 +103,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
       };
 
       if (filter.source === 'all') {
-        const sources = ['console', 'app', 'vercel'];
+        const sources = ['console', 'app', 'vercel', 'exchange'];
         const results = await Promise.allSettled(
           sources.map(src => axios.get(`/api/logs/${src}`, { params }))
         );
@@ -112,7 +114,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
           const reason = rej?.reason;
           const msg =
             reason instanceof Error ? reason.message : String(reason || 'Network error');
-          setError(msg);
+          notifyError(msg);
           replaceLogsOnNextFetchRef.current = true;
           setLogs([]);
         } else {
@@ -134,7 +136,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
       }
     } catch (err) {
       console.error('Error fetching logs:', err);
-      setError(err.message);
+      notifyError(err.message);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -178,15 +180,45 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
     }
   }, [filter.category]);
 
+  // In float mode (non-standalone), manage open state internally via custom events.
+  // In standalone mode, use the isOpen prop passed by the parent.
+  const openState = standalone ? isOpen : selfOpen;
+
+  // Listen for 'banking-log-viewer-open' event to open as floating panel.
   useEffect(() => {
-    if (isOpen) {
+    if (standalone) return;
+    const handler = () => setSelfOpen(true);
+    window.addEventListener('banking-log-viewer-open', handler);
+    return () => window.removeEventListener('banking-log-viewer-open', handler);
+  }, [standalone]);
+
+  // Escape key closes floating panel.
+  useEffect(() => {
+    if (standalone || !openState) return;
+    const onKey = (e) => { if (e.key === 'Escape') { setSelfOpen(false); if (onClose) onClose(); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [standalone, openState, onClose]);
+
+  // Draggable + resizable panel position (defaults to bottom-left, matching prior CSS).
+  const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
+    () => ({
+      x: Math.max(16, window.innerWidth - Math.min(1400, Math.round(window.innerWidth * 0.92)) - 16),
+      y: Math.max(16, window.innerHeight - Math.round(window.innerHeight * 0.70) - 16),
+    }),
+    { w: Math.min(1400, Math.round(window.innerWidth * 0.92)), h: Math.round(window.innerHeight * 0.70) },
+    { storageKey: 'log-viewer-panel', minW: 640, minH: 300 }
+  );
+
+  useEffect(() => {
+    if (openState) {
       fetchLogs({ silent: false });
       fetchStats();
     }
-  }, [isOpen, fetchLogs, fetchStats]);
+  }, [openState, fetchLogs, fetchStats]);
 
   useEffect(() => {
-    if (!isOpen || !autoRefresh) return;
+    if (!openState || !autoRefresh) return;
     if (filter.category === 'toast messages') return;
 
     const interval = setInterval(() => {
@@ -195,7 +227,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
     }, 2000); // Refresh every 2 seconds
 
     return () => clearInterval(interval);
-  }, [isOpen, autoRefresh, fetchLogs, fetchStats, filter.category]);
+  }, [openState, autoRefresh, fetchLogs, fetchStats, filter.category]);
 
   useEffect(() => {
     if (!autoScroll || !logContainerRef.current) return;
@@ -207,6 +239,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
     });
   }, [logs, autoScroll]);
 
+  // eslint-disable-next-line no-unused-vars -- available for caller use
   const clearLogs = async () => {
     if (filter.category === 'toast messages') {
       if (!window.confirm('Clear all recorded toast messages from this browser session?')) return;
@@ -224,10 +257,11 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
       fetchStats();
     } catch (err) {
       console.error('Error clearing logs:', err);
-      setError(err.message);
+      notifyError(err.message);
     }
   };
 
+  // eslint-disable-next-line no-unused-vars -- kept for keyboard shortcut use
   const downloadLogs = () => {
     const content = logs.map(log => JSON.stringify(log)).join('\n');
     const blob = new Blob([content], { type: 'application/json' });
@@ -260,11 +294,11 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
     });
   };
 
-  if (!standalone && !isOpen) return null;
+  if (!standalone && !openState) return null;
 
   const inner = (
-    <div className={standalone ? 'log-viewer-standalone' : 'log-viewer-modal'}>
-        <div className="log-viewer-header">
+    <div className={standalone ? 'log-viewer-standalone' : 'log-viewer-float__body'}>
+        <div className="log-viewer-header" onMouseDown={!standalone ? handleDragStart : undefined}>
           <h2>📊 Log Viewer</h2>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {!standalone && (
@@ -277,7 +311,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
                 ⊞
               </button>
             )}
-            {!standalone && <button className="close-button" onClick={onClose}>✕</button>}
+            {!standalone && <button className="close-button" onClick={() => { setSelfOpen(false); if (onClose) onClose(); }}>✕</button>}
           </div>
         </div>
 
@@ -328,6 +362,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
               <option value="console">Console Logs</option>
               <option value="app">Application Logs</option>
               <option value="vercel">Vercel Logs</option>
+              <option value="exchange">Exchange Audit</option>
             </select>
           </div>
 
@@ -377,19 +412,6 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
             </label>
           </div>
 
-          <button onClick={() => fetchLogs({ silent: false })} disabled={loading} className="refresh-button">
-            🔄 Refresh
-          </button>
-
-          <button onClick={downloadLogs} className="download-button">
-            💾 Download
-          </button>
-
-          {(filter.category === 'toast messages' || filter.source === 'console' || filter.source === 'all') && (
-            <button onClick={clearLogs} className="clear-button">
-              🗑️ Clear
-            </button>
-          )}
         </div>
 
         {stats && (
@@ -398,12 +420,6 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
             <span style={{ color: '#ef4444' }}>Errors: {stats.byLevel?.error || 0}</span>
             <span style={{ color: '#f59e0b' }}>Warnings: {stats.byLevel?.warn || 0}</span>
             <span style={{ color: '#3b82f6' }}>Info: {stats.byLevel?.info || 0}</span>
-          </div>
-        )}
-
-        {error && (
-          <div className="log-error">
-            ⚠️ Error: {error}
           </div>
         )}
 
@@ -478,10 +494,23 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
 
   if (standalone) return inner;
 
-  return (
-    <div className="log-viewer-overlay">
+  return createPortal(
+    <div
+      className="log-viewer-float"
+      style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
+      role="dialog"
+      aria-modal="false"
+      aria-label="Log Viewer"
+    >
       {inner}
-    </div>
+      <div
+        className="log-viewer-resize-grip"
+        onMouseDown={handleResizeStart}
+        aria-hidden="true"
+        title="Drag to resize"
+      />
+    </div>,
+    document.body
   );
 };
 

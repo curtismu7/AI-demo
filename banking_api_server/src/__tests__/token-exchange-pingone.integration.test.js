@@ -10,7 +10,7 @@
  */
 
 const live =
-  process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true' &&
+  (process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' || process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true') &&
   String(process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN || '').trim().length > 0;
 
 describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', () => {
@@ -57,5 +57,60 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
     const payload = JSON.parse(Buffer.from(mcpToken.split('.')[1], 'base64url').toString('utf8'));
     expect(payload.sub).toBeTruthy();
     expect(payload.aud !== undefined || payload.scope).toBeTruthy();
+  });
+});
+
+(live ? describe : describe.skip)('PingOne live — performTokenExchangeWithActor and getAgentClientCredentialsToken', () => {
+  jest.setTimeout(120000);
+
+  beforeAll(async () => {
+    const configStore = require('../../services/configStore');
+    await configStore.ensureInitialized();
+  });
+
+  /**
+   * Exchanges a user token + agent actor token for an MCP token using RFC 8693 actor exchange.
+   * Requires INTEGRATION_SUBJECT_ACCESS_TOKEN and INTEGRATION_AGENT_ACCESS_TOKEN env vars.
+   * The act claim is informational only — warns if absent (PingOne policy may not be set up yet).
+   */
+  it('performTokenExchangeWithActor returns a 3-part JWT with sub and aud', async () => {
+    const oauthService = require('../../services/oauthService');
+    const configStore  = require('../../services/configStore');
+    const subject  = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
+    const actor    = process.env.INTEGRATION_AGENT_ACCESS_TOKEN;
+    if (!actor) {
+      console.warn('[SKIP] INTEGRATION_AGENT_ACCESS_TOKEN not set — skipping performTokenExchangeWithActor live test');
+      return;
+    }
+    const mcpUri = configStore.getEffective('mcp_resource_uri');
+    expect(mcpUri).toBeTruthy();
+    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
+    const mcpToken = await oauthService.performTokenExchangeWithActor(subject, actor, mcpUri, scopes);
+    expect(typeof mcpToken).toBe('string');
+    expect(mcpToken.split('.')).toHaveLength(3);
+    const payload = JSON.parse(Buffer.from(mcpToken.split('.')[1], 'base64url').toString('utf8'));
+    expect(payload.sub).toBeTruthy();
+    if (!payload.act) {
+      console.warn('[INFO] act claim not present — PingOne delegation policy may not be configured (see PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md)');
+    }
+  });
+
+  /**
+   * Fetches an agent client-credentials token using AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET.
+   * Validates it is a properly-formed JWT.
+   */
+  it('getAgentClientCredentialsToken returns a 3-part JWT with a non-null aud', async () => {
+    const oauthService = require('../../services/oauthService');
+    const clientId = process.env.AGENT_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      console.warn('[SKIP] AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET not set — skipping live test');
+      return;
+    }
+    const agentToken = await oauthService.getAgentClientCredentialsToken();
+    expect(typeof agentToken).toBe('string');
+    expect(agentToken.split('.')).toHaveLength(3);
+    const payload = JSON.parse(Buffer.from(agentToken.split('.')[1], 'base64url').toString('utf8'));
+    expect(payload.aud !== undefined || payload.sub).toBeTruthy();
   });
 });

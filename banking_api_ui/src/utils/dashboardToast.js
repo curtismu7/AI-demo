@@ -1,24 +1,17 @@
 // banking_api_ui/src/utils/dashboardToast.js
-import React from 'react';
 import { toast } from 'react-toastify';
-import { errorMessageSuggestsLogin } from './authUi';
+import { errorMessageSuggestsLogin, SESSION_REAUTH_EVENT } from './authUi';
 
 /**
- * Show an error toast; session-style messages get a Sign in action (customer BFF).
+ * Show an error toast; session-style messages raise an app-level banner with Sign in (see App.js).
  * @param {string} message
- * @param {() => void} onSignIn
+ * @param {() => void} _onSignIn — kept for call-site compatibility; routing uses `SESSION_REAUTH_EVENT` role `customer`
  */
-export function toastCustomerError(message, onSignIn) {
+export function toastCustomerError(message, _onSignIn) {
   if (message == null || message === '') return;
   if (errorMessageSuggestsLogin(message)) {
-    toast.error(
-      <div className="dashboard-toast-error">
-        <p className="dashboard-toast-error__text">{message}</p>
-        <button type="button" className="dashboard-toast-error__btn" onClick={onSignIn}>
-          Sign in
-        </button>
-      </div>,
-      { autoClose: 20000, toastId: 'customer-auth-required' }
+    window.dispatchEvent(
+      new CustomEvent(SESSION_REAUTH_EVENT, { detail: { message, role: 'customer' } })
     );
     return;
   }
@@ -26,21 +19,15 @@ export function toastCustomerError(message, onSignIn) {
 }
 
 /**
- * Admin dashboard session errors — Sign in uses admin OAuth.
+ * Admin dashboard session errors — login CTA is shown on-page (banner), not only as toast.
  * @param {string} message
- * @param {() => void} onAdminSignIn
+ * @param {() => void} _onAdminSignIn — kept for compatibility; role `admin` in event detail
  */
-export function toastAdminSessionError(message, onAdminSignIn) {
+export function toastAdminSessionError(message, _onAdminSignIn) {
   if (message == null || message === '') return;
   if (errorMessageSuggestsLogin(message)) {
-    toast.error(
-      <div className="dashboard-toast-error">
-        <p className="dashboard-toast-error__text">{message}</p>
-        <button type="button" className="dashboard-toast-error__btn" onClick={onAdminSignIn}>
-          Admin sign in
-        </button>
-      </div>,
-      { autoClose: 20000, toastId: 'admin-auth-required' }
+    window.dispatchEvent(
+      new CustomEvent(SESSION_REAUTH_EVENT, { detail: { message, role: 'admin' } })
     );
     return;
   }

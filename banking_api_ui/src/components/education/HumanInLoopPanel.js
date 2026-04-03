@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/education/HumanInLoopPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EduImplIntro, SNIP_HITL_CONSENT } from './educationImplementationSnippets';
 
 export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
@@ -136,8 +137,8 @@ export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
       content: (
         <>
           <p>
-            In this demo, <strong>transfers, withdrawals, and deposits over $500</strong> require a dedicated{' '}
-            <strong>consent page</strong> in the browser. The server first issues a <strong>consent challenge</strong>{' '}
+            In this demo, <strong>transfers, withdrawals, and deposits over $500</strong> open a{' '}
+            <strong>consent popup</strong> in the browser. The server first issues a <strong>consent challenge</strong>{' '}
             stored in your session; after you confirm, you post the transaction with a matching{' '}
             <code>consentChallengeId</code>. The AI banking assistant cannot complete that path without your
             browser session and the one-time challenge.
@@ -162,7 +163,7 @@ export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
       content: (
         <>
           <p>
-            If you <strong>cancel</strong> on the consent screen and confirm that you decline to authorize,
+            If you <strong>cancel</strong> on the consent popup and confirm that you decline to authorize,
             the demo treats that as a <strong>policy decision</strong>: the transaction is denied, and the{' '}
             <strong>AI banking assistant is disabled</strong> for this browser session until you sign out and
             sign in again.
@@ -172,6 +173,19 @@ export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
             <strong>user attestation</strong> — refusing required consent can trigger a controlled lockout of
             automated channels while leaving the normal dashboard (and sign-out) available.
           </p>
+        </>
+      ),
+    },
+    {
+      id: 'inrepo',
+      label: 'In this repo',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Consent challenge from the server</h3>
+          <EduImplIntro repoPath="banking_api_server/services/mcpLocalTools.js (and transaction consent routes)">
+            Large agent-initiated writes return an error payload the UI turns into a modal; retry includes <code>consentChallengeId</code>.
+          </EduImplIntro>
+          <pre className="edu-code">{SNIP_HITL_CONSENT}</pre>
         </>
       ),
     },

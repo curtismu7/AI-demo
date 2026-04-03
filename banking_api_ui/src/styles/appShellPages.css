@@ -13,7 +13,11 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.75rem 1.5rem 1.5rem;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: linear-gradient(
+    135deg,
+    var(--brand-app-shell-hero-start, #1e3a8a) 0%,
+    var(--brand-app-shell-hero-end, #2563eb) 100%
+  );
   color: #fff;
   border-radius: 0 0 12px 12px;
   box-shadow: 0 8px 24px rgba(30, 58, 138, 0.22);
@@ -172,6 +176,18 @@
 .app-page-toolbar-btn--danger:hover {
   background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   border-color: var(--app-primary-red-hover);
+  color: #fff;
+}
+
+.app-page-toolbar-btn--theme {
+  background: linear-gradient(180deg, var(--app-primary-blue-mid) 0%, var(--app-primary-blue) 100%);
+  border-color: var(--app-primary-blue-border);
+  color: #fff;
+}
+
+.app-page-toolbar-btn--theme:hover {
+  background: linear-gradient(180deg, var(--app-primary-blue) 0%, var(--app-primary-blue-hover) 100%);
+  border-color: var(--app-primary-blue-hover);
   color: #fff;
 }
 

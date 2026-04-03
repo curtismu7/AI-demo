@@ -10,21 +10,61 @@ const { v4: uuidv4 } = require('uuid');
 const { getFrontendOrigin, getUserRedirectUri, validateRedirectUriOrigin, getExpectedFrontendOrigin } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
+const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
+
+/**
+ * Same-origin SPA path only — used after customer OAuth to return to marketing home instead of /dashboard.
+ * @param {unknown} raw
+ * @returns {string|null}
+ */
+function sanitizePostLoginReturnPath(raw) {
+  if (raw == null || typeof raw !== 'string') return null;
+  const t = raw.trim();
+  if (!t.startsWith('/') || t.startsWith('//') || t.length > 160) return null;
+  if (!/^[/a-zA-Z0-9._~-]+$/.test(t)) return null;
+  return t;
+}
+
+/**
+ * After end-user OAuth failure, redirect to an SPA path where App still mounts BankingAgent
+ * (`/` and `/marketing`). `/login` is not in that set — users lose FAB + dock there.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {Record<string, string>} params query keys (values truncated)
+ * @param {string|null} [pathOverride] e.g. postLoginReturnToPath || '/marketing'
+ */
+function redirectEndUserOAuthSpaFailure(req, res, params, pathOverride) {
+  const origin = getFrontendOrigin(req);
+  const path =
+    typeof pathOverride === 'string' && pathOverride.startsWith('/')
+      ? pathOverride
+      : (sanitizePostLoginReturnPath(req.session?.postLoginReturnToPath) || '/marketing');
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v == null) continue;
+    const s = String(v);
+    if (!s) continue;
+    q.set(k, s.length > 400 ? s.slice(0, 400) : s);
+  }
+  res.redirect(`${origin}${path}?${q.toString()}`);
+}
 
 /**
  * Create sample accounts and transactions for new customers
  */
 async function createSampleDataForCustomer(userId, firstName, lastName) {
   try {
-    // Create sample accounts
+    // Create sample accounts with deterministic starting balances.
+    // Random values were used previously but produced confusing totals;
+    // fixed balances keep the demo consistent and predictable.
     const checkingAccount = await dataStore.createAccount({
       id: uuidv4(),
       userId: userId,
       accountNumber: `100${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`,
       accountType: 'checking',
-      balance: Math.floor(Math.random() * 5000) + 1000, // Random balance between 1000-6000
+      balance: 3000.00,
       currency: 'USD',
       createdAt: new Date(),
       isActive: true
@@ -35,7 +75,7 @@ async function createSampleDataForCustomer(userId, firstName, lastName) {
       userId: userId,
       accountNumber: `100${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`,
       accountType: 'savings',
-      balance: Math.floor(Math.random() * 15000) + 5000, // Random balance between 5000-20000
+      balance: 2000.00,
       currency: 'USD',
       createdAt: new Date(),
       isActive: true
@@ -143,6 +183,13 @@ router.get('/login', (req, res) => {
       clearAuthCookie(res, _isProd());
     }
 
+    const returnPath = sanitizePostLoginReturnPath(req.query.return_to);
+    if (returnPath) {
+      req.session.postLoginReturnToPath = returnPath;
+    } else {
+      delete req.session.postLoginReturnToPath;
+    }
+
     const state = oauthService.generateState();
     const codeVerifier = oauthService.generateCodeVerifier();
     const redirectUri = getUserRedirectUri(req);
@@ -154,13 +201,22 @@ router.get('/login', (req, res) => {
       return res.status(400).json({ error: 'invalid_redirect_uri', message: uriCheck.reason });
     }
 
-    const resourceParam = process.env.ENDUSER_AUDIENCE
-      ? `&resource=${encodeURIComponent(process.env.ENDUSER_AUDIENCE)}`
-      : '';
+    const resourceParam = buildPingOneAuthorizeResourceQueryParam(
+      process.env.ENDUSER_AUDIENCE,
+      oauthUserConfig.scopes,
+    );
 
     // Generate a nonce for OIDC replay protection (RFC 6749 / OIDC Core §3.1.2.1)
     const nonce = crypto.randomBytes(16).toString('hex');
-    const url = oauthService.generateAuthorizationUrl(state, codeVerifier, { nonce }, redirectUri) + resourceParam;
+    const forcePiFlow =
+      req.query.use_pi_flow === '1' || String(req.query.use_pi_flow || '').toLowerCase() === 'true';
+    const url =
+      oauthService.generateAuthorizationUrl(
+        state,
+        codeVerifier,
+        { nonce, ...(forcePiFlow ? { forcePiFlow: true } : {}) },
+        redirectUri
+      ) + resourceParam;
 
     // Store state, verifier and redirect URI in session for CSRF protection and PKCE
     req.session.oauthState = state;
@@ -176,6 +232,7 @@ router.get('/login', (req, res) => {
     // Persist PKCE state before redirecting so the callback can validate.
     // Non-fatal: state/verifier are already in the signed PKCE cookie (setPkceCookie above),
     // so the callback can recover even when the Redis session write fails (Vercel cold start).
+    req.session.oauthLoginStartedAt = Date.now();
     req.session.save((err) => {
       if (err) {
         console.warn('[oauth/user] Session save failed before PingOne redirect (PKCE cookie is fallback):', err.message);
@@ -185,7 +242,7 @@ router.get('/login', (req, res) => {
     });
   } catch (error) {
     console.error('OAuth login error:', error);
-    res.redirect(`${getFrontendOrigin(req)}/login?error=oauth_init_failed`);
+    redirectEndUserOAuthSpaFailure(req, res, { error: 'oauth_init_failed' });
   }
 });
 
@@ -208,10 +265,14 @@ router.get('/callback', async (req, res) => {
       }
     }
 
-    // Check for OAuth errors
+    // Check for OAuth errors (PingOne sends error + optional error_description)
     if (error) {
-      console.error('OAuth error:', error);
-      return res.redirect(`${getFrontendOrigin(req)}/login?error=oauth_error`);
+      console.error('[oauth/user/callback] IdP error:', error, req.query.error_description || '');
+      return redirectEndUserOAuthSpaFailure(req, res, {
+        error:           'oauth_provider',
+        idp_error:       String(error).slice(0, 120),
+        error_description: String(req.query.error_description || '').slice(0, 400),
+      });
     }
     
     // Validate state — prefer session, fall back to PKCE cookie (Vercel serverless)
@@ -222,14 +283,14 @@ router.get('/callback', async (req, res) => {
     if (!state || state !== resolvedState) {
       console.error('[oauth/user/callback] Invalid state. session:', sessionState, 'cookie:', pkceCookie?.state, 'received:', state);
       clearPkceCookie(res, _isProd());
-      return res.redirect(`${getFrontendOrigin(req)}/login?error=invalid_state`);
+      return redirectEndUserOAuthSpaFailure(req, res, { error: 'invalid_state' });
     }
 
     // Validate code parameter
     if (!code) {
-      console.error('No authorization code received');
+      console.error('[oauth/user/callback] No authorization code (pi.flow may use a different callback shape than code flow)');
       clearPkceCookie(res, _isProd());
-      return res.redirect(`${getFrontendOrigin(req)}/login?error=no_code`);
+      return redirectEndUserOAuthSpaFailure(req, res, { error: 'no_code' });
     }
 
     // Retrieve and clear the PKCE code verifier and redirect URI from session / cookie
@@ -260,7 +321,7 @@ router.get('/callback', async (req, res) => {
     if (expectedNonce && idTokenClaims.nonce) {
       if (idTokenClaims.nonce !== expectedNonce) {
         console.error('[oauth/user/callback] Nonce mismatch — possible ID token replay attack');
-        return res.redirect(`${getFrontendOrigin(req)}/login?error=nonce_mismatch`);
+        return redirectEndUserOAuthSpaFailure(req, res, { error: 'nonce_mismatch' });
       }
     } else if (expectedNonce && tokenData.id_token && !idTokenClaims.nonce) {
       console.warn('[oauth/user/callback] ID token has no nonce claim');
@@ -282,18 +343,46 @@ router.get('/callback', async (req, res) => {
     console.log('Looking for existing user:', oauthUser.username);
     console.log('Found user:', user);
     
-    if (!user) {
-      // Create new end user (customer role)
-      console.log('Creating new end user as customer:', oauthUser.username);
-      oauthUser.role = 'customer'; // Ensure customer role
+    // Resolve admin role using four signals (any one is sufficient):
+    //  1. admin_username allowlist  — permanent override (bankadmin, service accounts)
+    //  2. PingOne population ID     — admin users live in a dedicated PingOne population
+    //  3. PingOne custom claim      — attribute named by admin_role_claim matches admin_role value
+    //  4. Existing dataStore record — preserve admin granted in a previous session
+    const configuredAdminRole       = configStore.getEffective('admin_role') || 'admin';
+    const configuredAdminUsernames  = (configStore.getEffective('admin_username') || '')
+      .split(',').map(u => u.trim()).filter(Boolean);
+    const configuredAdminPopulation = (configStore.getEffective('admin_population_id') || '').trim();
+    const configuredRoleClaim       = (configStore.getEffective('admin_role_claim') || '').trim();
+
+    // Signal 1: username allowlist — always wins, no PingOne attribute needed
+    const usernameIsAdmin = configuredAdminUsernames.includes(oauthUser.username);
+
+    // Signal 2: population — PingOne includes population.id in userinfo when mapped;
+    // also check top-level populationId as some app configs surface it there.
+    let populationIsAdmin = false;
+    if (configuredAdminPopulation && !usernameIsAdmin) {
+      const popId = mergedUserInfo?.population?.id || mergedUserInfo?.populationId || null;
+      populationIsAdmin = popId === configuredAdminPopulation;
+    }
+
+    // Signal 3: custom claim — supports string or array (e.g. group membership list)
+    let claimIsAdmin = false;
+    if (configuredRoleClaim && !usernameIsAdmin && !populationIsAdmin) {
+      const claimValue = mergedUserInfo[configuredRoleClaim];
+      claimIsAdmin = Array.isArray(claimValue)
+        ? claimValue.includes(configuredAdminRole)
+        : claimValue === configuredAdminRole;
+    }
+
+    // Signal 4: existing record — don't downgrade someone already marked admin
+    const existingRoleAdmin = user?.role === 'admin';
+
+    if (usernameIsAdmin || populationIsAdmin || claimIsAdmin || existingRoleAdmin) {
+      oauthUser.role = 'admin';
+      console.log(`[oauth/user/callback] Granting admin to ${oauthUser.username} (allowlist=${usernameIsAdmin}, population=${populationIsAdmin}, claim[${configuredRoleClaim}]=${claimIsAdmin}, existing=${existingRoleAdmin})`);
     } else {
-      console.log('Found existing user:', user.username, 'with role:', user.role);
-      // Preserve existing role (don't downgrade admin users)
-      if (user.role === 'admin') {
-        oauthUser.role = 'admin';
-      } else {
-        oauthUser.role = 'customer';
-      }
+      oauthUser.role = 'customer';
+      console.log(`[oauth/user/callback] Granting customer role to ${oauthUser.username}`);
     }
     
     if (!user) {
@@ -368,20 +457,52 @@ router.get('/callback', async (req, res) => {
     const origin = getFrontendOrigin(req);
     // Preserve step-up return destination across session regeneration
     const stepUpReturnTo = req.session.stepUpReturnTo || null;
+    const postLoginReturnToPath = sanitizePostLoginReturnPath(req.session.postLoginReturnToPath) || null;
+
+    // Detect silent SSO: if PingOne returned in < 2 s the user had an active session
+    // and was not prompted for credentials. Pass sso_silent=1 to the SPA so it can
+    // inform the user. Threshold is 2000 ms — normal credential entry takes 5–30 s.
+    const loginStartedAt = req.session.oauthLoginStartedAt || null;
+    const loginElapsedMs = loginStartedAt ? Date.now() - loginStartedAt : null;
+    const silentSso = loginElapsedMs !== null && loginElapsedMs < 2000;
+
+    // Decode access token to extract consent ACR and may_act for session storage.
+    // These are used by the consent gate in agentMcpTokenService and the agent UI.
+    let accessTokenAcr = null;
+    let accessTokenMayAct = null;
+    try {
+      const parts = (tokenData.access_token || '').split('.');
+      if (parts.length === 3) {
+        const atClaims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+        accessTokenAcr    = atClaims.acr    || idTokenClaims.acr    || null;
+        accessTokenMayAct = atClaims.may_act || null;
+      }
+    } catch (_) { /* non-fatal — acr / may_act stay null */ }
 
     console.log('End user OAuth login successful for:', authedUser.username);
 
     // Regenerate session before storing credentials to prevent session fixation.
-    // Non-fatal on Vercel: if regenerate fails we continue with the existing session.
+    // P3 — failure is now fatal (abort login) to eliminate the session fixation risk.
     req.session.regenerate((regenErr) => {
       if (regenErr) {
-        console.warn('[oauth/user/callback] Session regenerate failed (continuing with existing session):', regenErr.message);
+        console.error('[oauth/user/callback] Session regenerate FAILED — aborting login:', regenErr.message);
+        clearAuthCookie(res, _isProd());
+        return redirectEndUserOAuthSpaFailure(
+          req,
+          res,
+          { error: 'session_regenerate_failed' },
+          postLoginReturnToPath || '/marketing'
+        );
       }
 
       req.session.oauthTokens = oauthTokens;
       req.session.user = authedUser;
       req.session.clientType = clientType;
       req.session.oauthType = 'user';
+      // Consent gate: store ACR and may_act from the user access token so the
+      // MCP token-exchange guard can check them without re-decoding the JWT.
+      req.session.consentAcr = accessTokenAcr;
+      req.session.mayAct     = accessTokenMayAct;
       if (stepUpReturnTo) {
         req.session.stepUpReturnTo = stepUpReturnTo;
       }
@@ -394,7 +515,12 @@ router.get('/callback', async (req, res) => {
               console.error('[oauth/user/callback] session.destroy after failed save:', destroyErr.message);
             }
             clearAuthCookie(res, _isProd());
-            return res.redirect(`${origin}/login?error=session_persist_failed`);
+            return redirectEndUserOAuthSpaFailure(
+              req,
+              res,
+              { error: 'session_persist_failed' },
+              postLoginReturnToPath || '/marketing'
+            );
           });
         }
         console.log('[oauth/user/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
@@ -408,14 +534,20 @@ router.get('/callback', async (req, res) => {
           expiresAt: oauthTokens.expiresAt,
         }, _isProd());
 
+        // Clear role-switch cookie if this login was triggered by POST /api/auth/switch
+        res.clearCookie('_switch_target', { path: '/', sameSite: _isProd() ? 'none' : 'lax', secure: _isProd() });
+
         if (stepUpReturnTo) {
           return res.redirect(stepUpReturnTo);
         }
 
+        const ssoParam = silentSso ? '&sso_silent=1' : '';
         if (authedUser.role === 'admin') {
-          res.redirect(`${origin}/admin?oauth=success`);
+          res.redirect(`${origin}/admin?oauth=success${ssoParam}`);
+        } else if (postLoginReturnToPath) {
+          res.redirect(`${origin}${postLoginReturnToPath}?oauth=success${ssoParam}`);
         } else {
-          res.redirect(`${origin}/dashboard?oauth=success`);
+          res.redirect(`${origin}/dashboard?oauth=success${ssoParam}`);
         }
       });
     });
@@ -424,10 +556,11 @@ router.get('/callback', async (req, res) => {
     console.error('OAuth callback error:', error);
     const detail = error.pingoneError || 'unknown';
     const desc   = error.pingoneDesc   || '';
-    const query  = desc
-      ? `error=callback_failed&detail=${encodeURIComponent(detail)}&info=${encodeURIComponent(desc)}`
-      : `error=callback_failed&detail=${encodeURIComponent(detail)}`;
-    res.redirect(`${getFrontendOrigin(req)}/login?${query}`);
+    redirectEndUserOAuthSpaFailure(req, res, {
+      error:  'callback_failed',
+      detail: String(detail).slice(0, 120),
+      ...(desc ? { info: String(desc).slice(0, 400) } : {}),
+    });
   }
 });
 
@@ -482,8 +615,17 @@ router.get('/stepup', (req, res) => {
 router.get('/status', (req, res) => {
   const token = req.session.oauthTokens?.accessToken;
   const hasOAuthToken = !!(token && token !== '_cookie_session');
-  const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
-  
+  // Check expiry so that an expired session token does not report authenticated:true
+  // and then cause every downstream API call to return 401 (producing a redirect loop).
+  // refreshIfExpiring middleware runs first; if refresh succeeded the token is already
+  // updated in req.session before we get here, so this check is transparent for valid sessions.
+  const expiresAt = req.session.oauthTokens?.expiresAt;
+  const tokenNotExpired = !expiresAt || Date.now() < expiresAt;
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && tokenNotExpired && req.session.oauthType === 'user');
+
+  // In-app consent flag — set by POST /api/auth/oauth/user/consent (no PingOne dependency)
+  const consentGiven = isAuthenticated && req.session.agentConsentGiven === true;
+
   res.json({
     authenticated: isAuthenticated,
     user: isAuthenticated ? {
@@ -498,7 +640,54 @@ router.get('/status', (req, res) => {
     // accessToken intentionally omitted — token stays on the backend (Backend-for-Frontend (BFF) pattern)
     tokenType: isAuthenticated ? req.session.oauthTokens.tokenType : null,
     expiresAt: isAuthenticated ? req.session.oauthTokens.expiresAt : null,
-    clientType: isAuthenticated ? req.session.clientType : null
+    clientType: isAuthenticated ? req.session.clientType : null,
+    // In-app consent gate field — consumed by BankingAgent.js and agentMcpTokenService
+    consentGiven,
+    consentedAt: isAuthenticated ? (req.session.agentConsentedAt || null) : null,
+    mayAct: isAuthenticated ? (req.session.mayAct || null) : null,
+  });
+});
+
+/**
+ * POST /api/auth/oauth/user/consent
+ * Record that the authenticated end-user has accepted the in-app agent consent agreement.
+ * Sets req.session.agentConsentGiven = true (no PingOne round-trip needed).
+ */
+router.post('/consent', (req, res) => {
+  const token = req.session.oauthTokens?.accessToken;
+  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
+
+  if (!isAuthenticated) {
+    return res.status(401).json({ error: 'not_authenticated', message: 'Must be logged in as a customer to grant agent consent.' });
+  }
+
+  req.session.agentConsentGiven  = true;
+  req.session.agentConsentedAt   = new Date().toISOString();
+
+  req.session.save((err) => {
+    if (err) {
+      console.error('[consent] Session save failed:', err.message);
+      return res.status(500).json({ error: 'session_save_failed' });
+    }
+    console.log('[consent] Agent consent granted for user:', req.session.user?.username);
+    res.json({ consentGiven: true, consentedAt: req.session.agentConsentedAt });
+  });
+});
+
+/**
+ * DELETE /api/auth/oauth/user/consent
+ * Revoke the in-app agent consent for the current session (for testing / demo reset).
+ */
+router.delete('/consent', (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'not_authenticated' });
+  }
+  req.session.agentConsentGiven = false;
+  delete req.session.agentConsentedAt;
+  req.session.save((err) => {
+    if (err) return res.status(500).json({ error: 'session_save_failed' });
+    res.json({ consentGiven: false });
   });
 });
 
@@ -594,6 +783,15 @@ router.post('/refresh', async (req, res) => {
     console.error('[refresh] Token refresh failed:', err.message);
     return res.status(401).json({ error: 'refresh_failed', message: err.message });
   }
+});
+
+/**
+ * GET /api/auth/oauth/user/consent-url
+ * @deprecated — In-app consent is now handled via POST /consent.
+ * Kept for backwards-compat; signals caller to use the in-app modal.
+ */
+router.get('/consent-url', (req, res) => {
+  return res.json({ deprecated: true, useInAppConsent: true });
 });
 
 module.exports = router;

@@ -3,10 +3,12 @@ import { useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
+import { notifyError } from '../utils/appToast';
+import { useIndustryBranding } from '../context/IndustryBrandingContext';
 
 const Login = () => {
+  const { preset } = useIndustryBranding();
   const [loading] = useState(false);
-  const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
   const edu = useEducationUIOptional();
   const [oauthDebug, setOauthDebug] = useState(null);
@@ -70,7 +72,7 @@ const Login = () => {
         default:
           errorMessage = 'Something went wrong during sign-in. Please try again.';
       }
-      setError(errorMessage);
+      notifyError(errorMessage);
     }
   }, [searchParams]);
 
@@ -94,19 +96,13 @@ const Login = () => {
                   <div className="logo-square"></div>
                   <div className="logo-square"></div>
                 </div>
-                <span className="bank-name">BX Finance</span>
+                <span className="bank-name">{preset.shortName}</span>
               </div>
             </div>
             <h1>Secure Account Access</h1>
-            <p className="login-product-line">PingOne AI IAM Core</p>
+            <p className="login-product-line">{preset.tagline || 'PingOne AI IAM Core'}</p>
             <p>Sign in to access your banking services</p>
           </div>
-
-          {error && (
-            <div className="alert alert-error">
-              {error}
-            </div>
-          )}
 
           <div className="oauth-login">
             <div className="oauth-options">
@@ -159,6 +155,10 @@ const Login = () => {
             </button>
             <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
               <Link to="/onboarding">Setup checklist</Link>
+              {' · '}
+              <Link to="/setup">Vercel setup</Link>
+              {' · '}
+              <Link to="/setup/pingone">PingOne reference</Link>
               {' · '}
               <span>Admin vs customer: use the Learn bar after sign-in, or the CIBA guide (floating).</span>
             </span>

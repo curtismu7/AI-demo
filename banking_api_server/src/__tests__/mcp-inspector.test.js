@@ -107,7 +107,7 @@ describe('MCP Inspector routes', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.role).toBe('mcp_host_proxy');
-    expect(res.body.mcpProtocolVersion).toBe('2024-11-05');
+    expect(res.body.mcpProtocolVersion).toBe('2025-11-25');
     expect(res.body.mcpHosts).toMatchObject({
       bff: expect.objectContaining({ id: 'bff' }),
       langchain: expect.objectContaining({ id: 'langchain' }),
@@ -115,9 +115,12 @@ describe('MCP Inspector routes', () => {
     expect(res.body.tokenExchangeEnabled).toBe(false);
   });
 
-  it('GET /api/mcp/inspector/tools returns 401 without authentication', async () => {
+  it('GET /api/mcp/inspector/tools returns local catalog without authentication (no 401)', async () => {
+    // Unauthenticated users get the local tool catalog (no bearer = no MCP token);
+    // a 401 would block the demo inspector from being useful during development.
     const res = await request(app).get('/api/mcp/inspector/tools');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body._source).toBe('local_catalog');
   });
 
   it('GET /api/mcp/inspector/tools returns tools from mcpListTools', async () => {

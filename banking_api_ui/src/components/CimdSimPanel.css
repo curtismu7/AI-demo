@@ -1,9 +1,9 @@
 /* =========================================================
    CimdSimPanel.css — styles for the CIMD floating simulator drawer
-   Below CIBA in top-right stack (top from --stack-fab-top-cimd on .App)
+   (FAB trigger removed; panel opens via Learn / agent / education-open-cimd.)
    ========================================================= */
 
-/* ---------- FAB Button ---------- */
+/* ---------- FAB Button (unused — kept for reference if re-enabled) ---------- */
 .cimd-fab {
   position: fixed;
   top: var(--stack-fab-top-cimd, 68px);

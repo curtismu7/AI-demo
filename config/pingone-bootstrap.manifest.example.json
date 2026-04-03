@@ -1,0 +1,35 @@
+{
+  "about": "Example PingOne bootstrap manifest. Copy to pingone-bootstrap.manifest.json and customize. See docs/SETUP_AUTOMATION_PLAN.md.",
+  "version": 1,
+  "publicUrlTemplate": "https://{your-production-host}",
+  "resourceServer": {
+    "name": "BX Finance Banking API",
+    "audience": "https://api.example.com/banking",
+    "scopes": [
+      { "name": "banking:accounts:read", "description": "Read account balances" },
+      { "name": "banking:transactions:read", "description": "Read transactions" },
+      { "name": "banking:admin", "description": "Administrative banking operations" }
+    ]
+  },
+  "applications": {
+    "admin_oidc": {
+      "name": "BX Finance — Admin sign-in",
+      "type": "WEB_APP",
+      "note": "Redirect: {PUBLIC_URL}/api/auth/oauth/callback"
+    },
+    "user_oidc": {
+      "name": "BX Finance — Customer sign-in",
+      "type": "WEB_APP",
+      "note": "Redirect: {PUBLIC_URL}/api/auth/oauth/user/callback"
+    },
+    "authorize_worker": {
+      "name": "BX Finance — Authorize worker",
+      "type": "WORKER",
+      "note": "Client credentials for PingOne Authorize + decision endpoint bootstrap"
+    }
+  },
+  "demoUsers": [
+    { "username": "bankadmin", "email": "bankadmin@example.com" },
+    { "username": "bankuser", "email": "bankuser@example.com" }
+  ]
+}
