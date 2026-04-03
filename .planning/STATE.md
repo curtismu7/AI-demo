@@ -65,6 +65,7 @@ Plan: 1 of 5
 ---
 
 ## Pending Todos
+- **[TODO -> MCP/docs]** Add /.well-known/mcp-server education and include in agent request flow — UX panel + README + optional live Try-it button
 
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
 - Redeploy to Vercel (commits since last deploy include Phase 29: 3ca82da)
