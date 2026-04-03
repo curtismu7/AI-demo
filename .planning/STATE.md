@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-04-03T12:35:11.862Z"
+status: executing
+last_updated: "2026-04-03T12:42:26.038Z"
 progress:
   total_phases: 44
   completed_phases: 24
-  total_plans: 60
+  total_plans: 61
   completed_plans: 57
 ---
 
@@ -20,9 +20,9 @@ progress:
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
-**Status:** Ready to plan
+Phase: 35 (user-facing-feature-documentation-update-docs-for-each-feature-explaining-what-it-does-and-why-it-was-added) — EXECUTING
+Plan: 1 of 1
+**Status:** Executing Phase 35
 
 ---
 
@@ -90,6 +90,7 @@ Plan: Not started
 - Phase 12 added: UI button consistency audit — standardize color scheme red and blue with white text no grey no purple
 - Phase 24 added: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 - Phase 25 added: LLM landscape — commercial and open-source models, capabilities overview, and comparison
+- Phase 45 added: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
 - Phase 43 added: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
 - Phase 44 added: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
 - Phase 26 added: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison

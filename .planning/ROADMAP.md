@@ -554,6 +554,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 44 to break down)
 
+### Phase 45: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 44
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 45 to break down)
+
 ---
 
 ## Dependency Order
