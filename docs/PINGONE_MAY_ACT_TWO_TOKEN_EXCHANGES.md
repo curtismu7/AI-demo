@@ -421,37 +421,15 @@ Click **Add Resource** and fill in:
 
 Click **Save**.
 
-**Attribute Mappings tab — `act` claim for Exchange #2 output:**
+**Attribute Mappings tab:**
 
-| Field | Value |
-|-------|-------|
-| **Attribute name** | `act` |
-| **Expression** | `#root.context.requestData.subjectToken?.act?.sub != null ? #root.context.requestData.subjectToken?.act : null` |
-| **Required** | ✅ Yes |
+No custom mapping needed. Leave this tab unchanged.
 
-> **Expression explained:** This forwards the `act` claim from the Agent Exchanged Token (Exchange #1 output) into the final MCP Exchanged Token. The result is `{ "sub": "<AI_AGENT_CLIENT_ID>" }` — showing that the AI Agent initiated the delegation chain on behalf of the user.
+> **Why not here?** PingOne automatically constructs the nested `act` claim during Exchange #2 — no attribute expression is needed. The outer `act.sub` is set to the MCP Service's `client_id` (the exchanger), and the inner `act.act` is promoted from the `act` claim on the Agent Exchanged Token (preserving the AI Agent's identity from Exchange #1). This is standard RFC 8693 §4.4 behavior.
 >
-> **PingOne SpEL limitation:** PingOne does not support inline object/map construction (`{'key': value}` syntax) in attribute expressions. As a result, the fully nested RFC 8693 §5.4 structure `{ "sub": "<MCP_CLIENT_ID>", "act": { "sub": "<AI_AGENT_CLIENT_ID>" } }` is not achievable as a single expression. The expression above returns the AI Agent's identity as `act.sub`, which preserves the delegation proof. The BFF's `two-ex-final-token` tokenEvent log records both actors separately.
-
-> **How to test:**
-> ```json
-> {
->   "context": {
->     "requestData": {
->       "subjectToken": {
->         "act": { "sub": "<AI_AGENT_CLIENT_ID>" }
->       },
->       "actorToken": {
->         "aud": ["<MCP_CLIENT_ID>"]
->       }
->     }
->   }
-> }
-> ```
-> Expected result:
-> ```json
-> { "sub": "<AI_AGENT_CLIENT_ID>" }
-> ```
+> **PingOne SpEL limitation (for reference):** If you try to write a custom `act` expression on this resource server, it will fail. PingOne's SpEL evaluator cannot navigate nested Map entries via `?.` safe navigation (the `act` claim is a JSON object — `subjectToken?.act?.sub` returns null). Additionally, PingOne SpEL does not support inline Map construction (`{'key': value}` syntax), so the RFC 8693 §5.4 nested structure cannot be produced as an expression.
+>
+> **Where the chain is enforced:** The BFF's `_performTwoExchangeDelegation()` decodes the Final Token and verifies `act.sub` (MCP Service) and `act.act.sub` (AI Agent) are both present. PAZ enforces these as named policy attributes during token introspection.
 
 **Scopes tab → Add three scopes:**
 
