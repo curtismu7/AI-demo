@@ -531,6 +531,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 42 to break down)
 
+### Phase 43: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 42
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 43 to break down)
+
 ---
 
 ## Dependency Order
