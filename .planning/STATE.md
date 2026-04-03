@@ -65,6 +65,7 @@ Plan: 1 of 5
 ---
 
 ## Pending Todos
+- **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
 - **[TODO -> MCP/docs]** Add /.well-known/mcp-server education and include in agent request flow — UX panel + README + optional live Try-it button
 
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
@@ -100,3 +101,4 @@ Plan: 1 of 5
 - Phase 34 added: Agent action logging — log what agent performed each action, which rights (scopes/permissions) were used, and record each step for observability and audit
 - Phase 35 added: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 - Phase 41 added: C4 top-down architecture diagram (draw.io) for the banking demo
+- Phase 42 added: Persist demo accounts across server restarts using env file on Vercel and SQLite on local

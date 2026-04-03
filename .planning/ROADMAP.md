@@ -521,6 +521,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 41 to break down)
 
+### Phase 42: Persist demo accounts across server restarts using env file on Vercel and SQLite on local
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 41
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 42 to break down)
+
 ---
 
 ## Dependency Order
