@@ -443,13 +443,14 @@ Plans:
 
 ### Phase 34: Agent action logging — log what agent, what action, rights used, and each step
 
-**Goal:** [To be planned]
+**Goal:** Extend the Phase 32 AuditLogger stub into a real, persistent audit pipeline. Every MCP tool invocation logged with full agent identity, rights used, and step detail — visible in the admin audit panel and stored in Upstash Redis.
 **Requirements**: TBD
 **Depends on:** Phase 33
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 34 to break down)
+- [ ] 34-01-PLAN.md — MCP server: Upstash Redis persistence for AuditLogger (write + read + schema extension)
+- [ ] 34-02-PLAN.md — Admin UI + BFF: agent audit fields display (agentId, duration, scope, filters)
 
 ### Phase 35: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 
