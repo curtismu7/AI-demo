@@ -9,6 +9,7 @@ import BankingAgent from './components/BankingAgent';
 import Dashboard from './components/Dashboard';
 import UserDashboard from './components/UserDashboard';
 import ActivityLogs from './components/ActivityLogs';
+import AuditPage from './components/AuditPage';
 import Users from './components/Users';
 import Accounts from './components/Accounts';
 import Transactions from './components/Transactions';
@@ -426,6 +427,7 @@ function AppWithAuth() {
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
                     <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />
                     <Route path="/activity" element={<AdminRoute user={user}><ActivityLogs user={user} onLogout={logout} /></AdminRoute>} />
+                    <Route path="/audit" element={<AdminRoute user={user}><AuditPage user={user} /></AdminRoute>} />
                     <Route path="/users" element={<AdminRoute user={user}><Users user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/accounts" element={<AdminRoute user={user}><Accounts user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/transactions" element={<AdminRoute user={user}><Transactions user={user} onLogout={logout} /></AdminRoute>} />

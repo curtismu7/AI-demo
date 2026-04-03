@@ -801,6 +801,9 @@ const Dashboard = ({ user, onLogout }) => {
           <Link to="/activity" className="btn btn-primary">
             View All Activity Logs
           </Link>
+          <Link to="/audit" className="btn btn-secondary">
+            🔍 MCP Audit Trail
+          </Link>
           <Link to="/users" className="btn btn-secondary">
             Manage Users
           </Link>
