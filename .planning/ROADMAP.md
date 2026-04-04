@@ -196,12 +196,12 @@ Plans:
 **Goal:** Enterprise-grade HITL approval UX: amber high-value warning in consent UI (≥$500), surface-adaptive HITL card (inline for middle/dock, modal for FAB), and toolbar anatomy consistency across all 3 agent surfaces.
 **Requirements**: HITL-01, HITL-02, HITL-03
 **Depends on:** Phase 9
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 10-01-PLAN.md — AgentConsentModal: high-value amber warning + z-index fix + spec-compliant labels (HITL-01)
-- [ ] 10-02-PLAN.md — Inline HITL card for middle/dock surfaces; modal kept for FAB (HITL-02)
-- [ ] 10-03-PLAN.md — EmbeddedAgentDock toolbar: chevron icons + 44px height (HITL-03)
+- [x] 10-01-PLAN.md — AgentConsentModal: high-value amber warning + z-index fix + spec-compliant labels (HITL-01)
+- [x] 10-02-PLAN.md — Inline HITL card for middle/dock surfaces; modal kept for FAB (HITL-02)
+- [x] 10-03-PLAN.md — EmbeddedAgentDock toolbar: chevron icons + 44px height (HITL-03)
 
 ### Phase 11: Education content review and accuracy audit — OAuth RFCs MCP PingOne AI completeness check
 
