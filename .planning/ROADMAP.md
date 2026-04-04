@@ -620,6 +620,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 50 to break down)
 
+### Phase 51: Auth rules audit tests and demo config section for login OTP and high-value transaction gates
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 50
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 51 to break down)
+
 ---
 
 ## Dependency Order

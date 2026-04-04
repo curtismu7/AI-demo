@@ -122,3 +122,4 @@ Phase: 48 (remove-invalid-spel-act-expression) — COMPLETE
 - Phase 35 added: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 - Phase 41 added: C4 top-down architecture diagram (draw.io) for the banking demo
 - Phase 42 added: Persist demo accounts across server restarts using env file on Vercel and SQLite on local
+- Phase 51 added: Auth rules audit tests and demo config section for login OTP and high-value transaction gates
