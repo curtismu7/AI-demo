@@ -42,6 +42,11 @@ const FIELD_META = {
     ],
     description: 'Authentication method used for step-up challenges. "PingOne MFA" uses the deviceAuthentications API and requires PINGONE_MFA_POLICY_ID.',
   },
+  stepUpWithdrawalsAlways: {
+    label: 'All Withdrawals Require Step-up',
+    type: 'toggle',
+    description: 'When enabled, ALL withdrawal transactions require MFA step-up regardless of the amount threshold above. Recommended for demos — ensures step-up is always demonstrated.',
+  },
   authorizeEnabled: {
     label: 'PingOne Authorize Integration',
     type: 'toggle',
@@ -209,6 +214,7 @@ const SecuritySettings = ({ user, onLogout }) => {
     'stepUpAcrValue',
     'stepUpTransactionTypes',
     'stepUpMethod',
+    'stepUpWithdrawalsAlways',
     'authorizeEnabled',
     'authorizePolicyId',
   ];

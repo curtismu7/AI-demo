@@ -317,6 +317,23 @@ router.post('/', authenticateToken, async (req, res) => {
     const STEP_UP_TYPES = runtimeSettings.get('stepUpTransactionTypes');
     const STEP_UP_ENABLED = runtimeSettings.get('stepUpEnabled');
 
+    const STEP_UP_WITHDRAWALS_ALWAYS = runtimeSettings.get('stepUpWithdrawalsAlways');
+    if (STEP_UP_ENABLED && req.user.role !== 'admin' && type === 'withdrawal' && STEP_UP_WITHDRAWALS_ALWAYS) {
+      // Withdrawal always requires step-up — bypass threshold check
+      const userAcr = req.user.acr;
+      if (!userAcr || userAcr !== STEP_UP_ACR) {
+        const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
+        return res.status(428).json({
+          error: 'step_up_required',
+          error_description: 'All withdrawals require additional MFA authentication.',
+          step_up_acr: STEP_UP_ACR,
+          step_up_method: stepUpMethod,
+          step_up_url: '/api/auth/oauth/user/stepup',
+          amount_threshold: 0,
+        });
+      }
+    }
+
     if (STEP_UP_ENABLED && req.user.role !== 'admin' && STEP_UP_TYPES.includes(type) && parseFloat(amount) >= STEP_UP_THRESHOLD) {
       const userAcr = req.user.acr;
       if (!userAcr || userAcr !== STEP_UP_ACR) {

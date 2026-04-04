@@ -44,8 +44,14 @@ function checkLocalStepUp(type, amount, req) {
   if (!runtimeSettings.get('stepUpEnabled')) return null;
   const types = runtimeSettings.get('stepUpTransactionTypes');
   if (!Array.isArray(types) || !types.includes(type)) return null;
-  const threshold = runtimeSettings.get('stepUpAmountThreshold') ?? 0;
-  if (parseFloat(amount) < threshold) return null;
+  // If stepUpWithdrawalsAlways is enabled, skip threshold for withdrawals
+  const withdrawalsAlways = runtimeSettings.get('stepUpWithdrawalsAlways');
+  if (type === 'withdrawal' && withdrawalsAlways) {
+    // Do not skip based on amount — fall through to step-up check below
+  } else {
+    const threshold = runtimeSettings.get('stepUpAmountThreshold') ?? 0;
+    if (parseFloat(amount) < threshold) return null;
+  }
   const sessionUser = req?.session?.user;
   if (sessionUser?.role === 'admin') return null;
   // Email OTP step-up: if the user completed OTP verification in this session, allow once.

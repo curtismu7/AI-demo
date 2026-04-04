@@ -19,6 +19,8 @@ const settings = {
 
   // Which transaction types require step-up
   stepUpTransactionTypes: ['transfer', 'withdrawal'],
+  // When true, ALL withdrawals require step-up regardless of stepUpAmountThreshold
+  stepUpWithdrawalsAlways: true,
 
   // Future: PingOne Authorize integration
   authorizeEnabled: false,
