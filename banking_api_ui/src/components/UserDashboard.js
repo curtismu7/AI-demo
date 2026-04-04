@@ -94,6 +94,21 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [otpEmail, setOtpEmail] = useState('');
   const [otpDaId, setOtpDaId] = useState(null);
   const [otpDeviceId, setOtpDeviceId] = useState(null);
+  // TOTP step-up modal state
+  const [totpModalOpen, setTotpModalOpen] = useState(false);
+  const [totpDaId, setTotpDaId] = useState(null);
+  const [totpDeviceId, setTotpDeviceId] = useState(null);
+  const [totpCode, setTotpCode] = useState('');
+  const [totpError, setTotpError] = useState(null);
+  const [totpSubmitting, setTotpSubmitting] = useState(false);
+  // Push notification step-up state
+  const [pushModalOpen, setPushModalOpen] = useState(false);
+  const [pushDaId, setPushDaId] = useState(null);
+  const [pushPolling, setPushPolling] = useState(false);
+  // Device picker state (shown when multiple MFA devices enrolled)
+  const [devicePickerOpen, setDevicePickerOpen] = useState(false);
+  const [devicePickerDevices, setDevicePickerDevices] = useState([]);
+  const [devicePickerDaId, setDevicePickerDaId] = useState(null);
   const autoInitiateTimerRef = useRef(null);    // [t1, t2, t3] setTimeout IDs
   const handleCibaStepUpRef  = useRef(null);    // stays current — avoids stale closure
   const handleInitiateOtpRef = useRef(null);    // stays current — avoids stale closure
@@ -398,28 +413,130 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     []
   );
 
-  /** Initiate PingOne MFA challenge, auto-select EMAIL device, open OTP modal. */
+  /** Initiate PingOne MFA challenge and route to correct modal by device type. */
   const handleInitiateOtp = useCallback(async () => {
     try {
       const { data } = await apiClient.post('/api/auth/mfa/challenge');
-      const emailDevice = data.devices?.find(d => d.type === 'EMAIL' || d.type === 'SMS');
-      if (!emailDevice) {
-        notifyError('No email MFA device enrolled. Please enroll an email device in PingOne.');
+      const devices = data.devices || [];
+      if (!devices.length) {
+        notifyError('No MFA devices enrolled. Please enroll a device in PingOne.');
         return;
       }
-      await apiClient.put(`/api/auth/mfa/challenge/${data.daId}`, { deviceId: emailDevice.id });
-      setOtpDaId(data.daId);
-      setOtpDeviceId(emailDevice.id);
-      setOtpEmail(user?.email || emailDevice.nickname || '');
-      setOtpCode('');
-      setOtpError('');
-      setOtpModalOpen(true);
       setStepUpRequired(false);
       toast.dismiss('customer-step-up');
+      // Route by device type — single device: auto-route; multiple: show picker
+      if (devices.length > 1) {
+        setDevicePickerDevices(devices);
+        setDevicePickerDaId(data.daId);
+        setDevicePickerOpen(true);
+        return;
+      }
+      const device = devices[0];
+      if (device.type === 'EMAIL' || device.type === 'SMS') {
+        await apiClient.put(`/api/auth/mfa/challenge/${data.daId}`, { deviceId: device.id });
+        setOtpDaId(data.daId);
+        setOtpDeviceId(device.id);
+        setOtpEmail(user?.email || device.nickname || '');
+        setOtpCode('');
+        setOtpError('');
+        setOtpModalOpen(true);
+      } else if (device.type === 'TOTP') {
+        await handleTotpChallengeRef.current(data.daId, device);
+      } else if (device.type === 'MOBILE') {
+        await handlePushChallengeRef.current(data.daId, device);
+      } else {
+        // FIDO2 handled in 52-05; for now show picker
+        setDevicePickerDevices(devices);
+        setDevicePickerDaId(data.daId);
+        setDevicePickerOpen(true);
+      }
     } catch (err) {
-      notifyError('Could not send OTP: ' + (err.response?.data?.message || err.message));
+      notifyError('Could not initiate MFA: ' + (err.response?.data?.message || err.message));
     }
   }, [user]);
+
+  /** Select a device from the picker and route to the correct challenge modal. */
+  const handleDevicePick = useCallback(async (device) => {
+    try {
+      const daId = devicePickerDaId;
+      setDevicePickerOpen(false);
+      if (device.type === 'EMAIL' || device.type === 'SMS') {
+        await apiClient.put(`/api/auth/mfa/challenge/${daId}`, { deviceId: device.id });
+        setOtpDaId(daId);
+        setOtpDeviceId(device.id);
+        setOtpEmail(user?.email || device.nickname || '');
+        setOtpCode('');
+        setOtpError('');
+        setOtpModalOpen(true);
+      } else if (device.type === 'TOTP') {
+        await handleTotpChallengeRef.current(daId, device);
+      } else if (device.type === 'MOBILE') {
+        await handlePushChallengeRef.current(daId, device);
+      } else if (device.type === 'FIDO2') {
+        // FIDO2 handled in 52-05 — fall back to message
+        notifyError('FIDO2 step-up is not yet implemented. Please enroll an email or TOTP device.');
+      }
+    } catch (err) {
+      notifyError('Could not select device: ' + (err.response?.data?.message || err.message));
+    }
+  }, [devicePickerDaId, user]);
+
+  const handleTotpChallengeRef = useRef(null);
+  const handlePushChallengeRef  = useRef(null);
+
+  /** Select a TOTP device and open the TOTP code entry modal. */
+  const handleTotpChallenge = useCallback(async (daId, device) => {
+    try {
+      await apiClient.put(`/api/auth/mfa/challenge/${daId}`, { deviceId: device.id });
+      setTotpDaId(daId);
+      setTotpDeviceId(device.id);
+      setTotpCode('');
+      setTotpError(null);
+      setTotpModalOpen(true);
+    } catch (err) {
+      notifyError('Could not initiate TOTP challenge: ' + (err.response?.data?.message || err.message));
+    }
+  }, []);
+
+  /** Verify a TOTP code. */
+  const handleTotpSubmit = useCallback(async () => {
+    setTotpSubmitting(true);
+    setTotpError(null);
+    try {
+      const { data } = await apiClient.put(`/api/auth/mfa/challenge/${totpDaId}`, {
+        deviceId: totpDeviceId,
+        otp: totpCode,
+      });
+      if (!data.completed) {
+        setTotpError('Incorrect code. Please check your authenticator app and try again.');
+        return;
+      }
+      setTotpModalOpen(false);
+      setTotpCode('');
+      setStepUpRequired(false);
+      notifySuccess(agentTriggeredStepUp ? 'Identity verified \u2014 resuming agent request\u2026' : 'Identity verified \u2014 please retry your transaction.');
+      if (agentTriggeredStepUp) {
+        setAgentTriggeredStepUp(false);
+        window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
+      }
+    } catch (err) {
+      setTotpError(err.response?.data?.message || 'Incorrect code. Please try again.');
+    } finally {
+      setTotpSubmitting(false);
+    }
+  }, [totpDaId, totpDeviceId, totpCode, agentTriggeredStepUp]);
+
+  /** Select a push (MOBILE) device and open the push waiting panel. */
+  const handlePushChallenge = useCallback(async (daId, device) => {
+    try {
+      await apiClient.put(`/api/auth/mfa/challenge/${daId}`, { deviceId: device.id });
+      setPushDaId(daId);
+      setPushPolling(true);
+      setPushModalOpen(true);
+    } catch (err) {
+      notifyError('Could not send push notification: ' + (err.response?.data?.message || err.message));
+    }
+  }, []);
 
   /** Verify the OTP code via PingOne MFA; on success resume the pending agent action. */
   const handleVerifyOtp = useCallback(async () => {
@@ -449,6 +566,33 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   // Keep refs current so stale closures (timers, event listeners) can call latest functions
   useEffect(() => { handleCibaStepUpRef.current = handleCibaStepUp; }, [handleCibaStepUp]);
   useEffect(() => { handleInitiateOtpRef.current = handleInitiateOtp; }, [handleInitiateOtp]);
+  useEffect(() => { handleTotpChallengeRef.current = handleTotpChallenge; }, [handleTotpChallenge]);
+  useEffect(() => { handlePushChallengeRef.current = handlePushChallenge; }, [handlePushChallenge]);
+
+  // Push polling: poll /api/auth/mfa/challenge/:daId/status every 3s while waiting
+  useEffect(() => {
+    if (!pushDaId || !pushPolling) return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await apiClient.get(`/api/auth/mfa/challenge/${pushDaId}/status`);
+        if (data.completed || data.status === 'COMPLETED') {
+          setPushPolling(false);
+          setPushModalOpen(false);
+          setStepUpRequired(false);
+          notifySuccess(agentTriggeredStepUp ? 'Identity verified \u2014 resuming agent request\u2026' : 'Identity verified \u2014 please retry your transaction.');
+          if (agentTriggeredStepUp) {
+            setAgentTriggeredStepUp(false);
+            window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
+          }
+        } else if (data.status === 'PUSH_CONFIRMATION_TIMED_OUT' || data.status === 'FAILED') {
+          setPushPolling(false);
+          setPushModalOpen(false);
+          notifyError('Push notification timed out or was denied. Please try again.');
+        }
+      } catch (_) { /* keep polling on transient network errors */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [pushDaId, pushPolling]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { stepUpVerifyHrefRef.current = stepUpVerifyHref; }, [stepUpVerifyHref]);
 
   /** Clears step-up gate state and dismisses the persistent step-up toast. */
@@ -1605,6 +1749,102 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   Resend code
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOTP Step-Up Modal */}
+      {totpModalOpen && (
+        <div className="otp-step-up-overlay" onClick={() => setTotpModalOpen(false)}>
+          <div className="otp-step-up-modal otp-step-up-modal--totp" onClick={(e) => e.stopPropagation()}>
+            <div className="otp-step-up-modal__header">
+              <h3 className="otp-step-up-modal__title">🔐 Verify Your Identity</h3>
+              <button className="otp-step-up-modal__close" onClick={() => setTotpModalOpen(false)} aria-label="Close">✕</button>
+            </div>
+            <div className="otp-step-up-modal__body">
+              <p className="otp-step-up-modal__lead">
+                Enter the 6-digit code from your <strong>authenticator app</strong>.
+              </p>
+              <input
+                className={`otp-step-up-modal__input${totpError ? ' otp-step-up-modal__input--error' : ''}`}
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                autoFocus
+                value={totpCode}
+                onChange={(e) => { setTotpCode(e.target.value.replace(/\D/g, '')); setTotpError(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && totpCode.length === 6 && !totpSubmitting) handleTotpSubmit(); }}
+              />
+              {totpError && <p className="otp-step-up-modal__error">{totpError}</p>}
+              <p className="otp-step-up-modal__hint">Open your authenticator app and enter the current 6-digit code.</p>
+            </div>
+            <div className="otp-step-up-modal__actions">
+              <button className="otp-step-up-modal__btn-ghost" onClick={() => setTotpModalOpen(false)}>Cancel</button>
+              <button
+                className="otp-step-up-modal__btn-primary"
+                disabled={totpCode.length !== 6 || totpSubmitting}
+                onClick={handleTotpSubmit}
+              >{totpSubmitting ? 'Verifying…' : 'Verify'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Device Picker — shown when multiple MFA devices are enrolled */}
+      {devicePickerOpen && (
+        <div className="otp-step-up-overlay" onClick={() => setDevicePickerOpen(false)}>
+          <div className="otp-step-up-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="otp-step-up-modal__header">
+              <h3 className="otp-step-up-modal__title">🔐 Choose Verification Method</h3>
+              <button className="otp-step-up-modal__close" onClick={() => setDevicePickerOpen(false)} aria-label="Close">✕</button>
+            </div>
+            <div className="otp-step-up-modal__body">
+              <p className="otp-step-up-modal__lead">Select how you want to verify your identity:</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                {devicePickerDevices.map(device => (
+                  <button
+                    key={device.id}
+                    className="otp-step-up-modal__btn-ghost"
+                    style={{ textAlign: 'left' }}
+                    onClick={() => handleDevicePick(device)}
+                  >
+                    {device.type === 'EMAIL' && '📧 '}
+                    {device.type === 'SMS' && '📱 '}
+                    {device.type === 'TOTP' && '🔑 '}
+                    {device.type === 'MOBILE' && '📲 '}
+                    {device.type === 'FIDO2' && '🔐 '}
+                    {device.type === 'EMAIL' ? 'Email code' : device.type === 'SMS' ? 'SMS code' : device.type === 'TOTP' ? 'Authenticator app' : device.type === 'MOBILE' ? 'Push notification' : 'Passkey / FIDO2'}
+                    {device.nickname ? ` (${device.nickname})` : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Push Notification Waiting Panel */}
+      {pushModalOpen && (
+        <div className="otp-step-up-overlay">
+          <div className="otp-step-up-modal otp-step-up-modal--push">
+            <div className="otp-step-up-modal__header">
+              <h3 className="otp-step-up-modal__title">📲 Check Your Device</h3>
+            </div>
+            <div className="otp-step-up-modal__body" style={{ textAlign: 'center', padding: '1rem 0' }}>
+              <div className="push-waiting-spinner" />
+              <p className="otp-step-up-modal__lead" style={{ marginTop: '1rem' }}>
+                A push notification was sent to your registered device.<br />
+                <strong>Tap Approve</strong> in the PingOne app to continue.
+              </p>
+              <p className="otp-step-up-modal__hint">Waiting for approval…</p>
+            </div>
+            <div className="otp-step-up-modal__actions" style={{ justifyContent: 'center' }}>
+              <button
+                className="otp-step-up-modal__btn-ghost"
+                onClick={() => { setPushPolling(false); setPushModalOpen(false); }}
+              >Cancel</button>
             </div>
           </div>
         </div>
