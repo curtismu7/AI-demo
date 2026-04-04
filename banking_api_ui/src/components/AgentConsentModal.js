@@ -20,7 +20,7 @@ import './AgentConsentModal.css';
  *   onAccept    — callback; called after consent is confirmed.
  *   onDismiss   — callback; user closed the modal without accepting.
  */
-export default function AgentConsentModal({ transaction, onAccept, onDismiss }) {
+export default function AgentConsentModal({ transaction, onAccept, onDismiss, hitlThreshold = 500 }) {
   const [accepting, setAccepting] = useState(false);
   const [error, setError]         = useState(null);
 
@@ -78,7 +78,7 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss }) 
           top:      pos.y,
           width:    size.w,
           height:   size.h,
-          zIndex:   9991,
+          zIndex:   100070,
         }}
         role="dialog"
         aria-modal="true"
@@ -87,7 +87,7 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss }) 
         {/* Drag handle — header area */}
         <div
           className="acm-drag-handle"
-          onMouseDown={handleDragStart}
+          onPointerDown={handleDragStart}
           title="Drag to move"
         >
           <span className="acm-icon" aria-hidden="true">{transaction ? '💸' : '🤖'}</span>
@@ -122,6 +122,11 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss }) 
                   <li>📝 <strong>Note:</strong> {transaction.description}</li>
                 )}
               </ul>
+              {Number(transaction.amount || 0) >= hitlThreshold && (
+                <div className="acm-high-value-warning">
+                  ⚠ This transaction exceeds ${hitlThreshold.toLocaleString()}. Please verify before confirming.
+                </div>
+              )}
               <ul className="acm-list">
                 <li>✅ A one-time verification code will be sent to your email</li>
                 <li>✅ The code expires in 10 minutes</li>
@@ -171,7 +176,7 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss }) 
             onClick={onDismiss}
             disabled={accepting}
           >
-            Not now
+            Cancel
           </button>
           <button
             type="button"
@@ -179,7 +184,7 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss }) 
             onClick={handleAccept}
             disabled={accepting}
           >
-            {accepting ? 'Saving…' : transaction ? 'Authorize' : 'Allow'}
+            {accepting ? 'Confirming…' : transaction ? 'Confirm' : 'Allow'}
           </button>
         </div>
 

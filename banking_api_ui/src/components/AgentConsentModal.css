@@ -150,3 +150,15 @@
 .acm-list--transaction li {
   color: #c7d7ff;
 }
+
+/* ─── High-value transaction warning ─────────────────────────────────────── */
+.acm-high-value-warning {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+  padding: 8px 12px;
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}

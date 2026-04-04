@@ -619,6 +619,60 @@ const TOPIC_MESSAGES = {
   'human-in-loop': `👤 Human-in-the-loop (HITL) for the banking agent:\n\n• Over $500 the server issues a consent challenge in your session; after you confirm in the consent popup, POST /transactions must include matching consentChallengeId (one-time use).\n• The agent cannot complete that path without your browser session.\n• If you decline, this demo disables the assistant until you sign out and sign in again.\n• HITL ≠ MITM (attack). Open the drawer: What is HITL · Patterns & best practices · This app and the agent · Declining and lockout.`,
 };
 
+
+// ─── Inline HITL consent card (middle / dock surfaces) ─────────────────
+
+/**
+ * HitlInlineCard — Rendered inside the chat panel for middle/dock surfaces.
+ * Replicates the consent-challenge flow without a portal overlay.
+ */
+function HitlInlineCard({ transaction, threshold, onConfirm, onCancel }) {
+  const [submitting, setSubmitting] = useState(false);
+  const isHighValue = transaction && Number(transaction.amount || 0) >= threshold;
+
+  return (
+    <div className={`ba-inline-consent-card${isHighValue ? ' ba-inline-consent-card--high-value' : ''}`}>
+      <div className="ba-inline-consent-head">🔒 Confirm Action</div>
+      {transaction && (
+        <ul className="ba-inline-consent-details">
+          <li>💰 <strong>Amount:</strong> ${Number(transaction.amount || 0).toFixed(2)}</li>
+          {transaction.type && <li>📋 <strong>Type:</strong> {transaction.type}</li>}
+          {transaction.fromAccountId && <li>📤 <strong>From:</strong> {transaction.fromAccountId}</li>}
+          {transaction.toAccountId && <li>📥 <strong>To:</strong> {transaction.toAccountId}</li>}
+          {transaction.description && <li>📝 <strong>Note:</strong> {transaction.description}</li>}
+        </ul>
+      )}
+      {isHighValue && (
+        <div className="ba-inline-consent-warning">
+          ⚠ This transaction exceeds ${Number(threshold).toLocaleString()}. Please verify before confirming.
+        </div>
+      )}
+      <div className="ba-inline-consent-actions">
+        <button
+          type="button"
+          className="ba-inline-consent-cancel"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="ba-inline-consent-confirm"
+          disabled={submitting}
+          onClick={async () => {
+            setSubmitting(true);
+            await onConfirm();
+            setSubmitting(false);
+          }}
+        >
+          {submitting ? 'Processing…' : 'Confirm ✓'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * @param {object} props
  * @param {'float' | 'inline'} [props.mode]
@@ -1544,7 +1598,7 @@ export default function BankingAgent({
             actionId
           );
           toast.dismiss(toastId);
-          setHitlPendingIntent({ actionId, form, intentPayload });
+          setHitlPendingIntent({ actionId, form, intentPayload, threshold: normalized.hitl_threshold_usd ?? 500 });
         } else if (normalized.step_up_required === true || normalized.error === 'step_up_required') {
           const stepUpMethod = normalized.step_up_method || 'email';
           pendingStepUpActionRef.current = { actionId, form, method: stepUpMethod };
@@ -2353,31 +2407,42 @@ export default function BankingAgent({
               </div>
             )}
 
-            {hitlPendingIntent && (
-              <AgentConsentModal
-                transaction={hitlPendingIntent.intentPayload}
-                onAccept={async () => {
-                  const { actionId, intentPayload } = hitlPendingIntent;
-                  try {
-                    const { data } = await bffAxios.post('/api/transactions/consent-challenge', intentPayload);
-                    const cid = data?.challengeId;
-                    if (!cid) {
-                      notifyError('Could not start consent — no challenge id from server.');
-                      setHitlPendingIntent(null);
-                      return;
-                    }
+            {hitlPendingIntent && (() => {
+              const handleHitlConfirm = async () => {
+                const { actionId, intentPayload } = hitlPendingIntent;
+                try {
+                  const { data } = await bffAxios.post('/api/transactions/consent-challenge', intentPayload);
+                  const cid = data?.challengeId;
+                  if (!cid) {
+                    notifyError('Could not start consent — no challenge id from server.');
                     setHitlPendingIntent(null);
-                    // Pass snapshot from POST response directly — avoids GET race on Vercel
-                    setHitlChallengeId({ challengeId: cid, actionId, snapshot: data.snapshot || null });
-                  } catch (ex) {
-                    const msg = ex.response?.data?.message || ex.response?.data?.error || ex.message || 'Could not start consent flow.';
-                    notifyError(msg);
-                    setHitlPendingIntent(null);
+                    return;
                   }
-                }}
-                onDismiss={() => setHitlPendingIntent(null)}
-              />
-            )}
+                  setHitlPendingIntent(null);
+                  // Pass snapshot from POST response directly — avoids GET race on Vercel
+                  setHitlChallengeId({ challengeId: cid, actionId, snapshot: data.snapshot || null });
+                } catch (ex) {
+                  const msg = ex.response?.data?.message || ex.response?.data?.error || ex.message || 'Could not start consent flow.';
+                  notifyError(msg);
+                  setHitlPendingIntent(null);
+                }
+              };
+              return (isInline || isBottomDock) ? (
+                <HitlInlineCard
+                  transaction={hitlPendingIntent.intentPayload}
+                  threshold={hitlPendingIntent.threshold ?? 500}
+                  onConfirm={handleHitlConfirm}
+                  onCancel={() => setHitlPendingIntent(null)}
+                />
+              ) : (
+                <AgentConsentModal
+                  transaction={hitlPendingIntent.intentPayload}
+                  hitlThreshold={hitlPendingIntent.threshold ?? 500}
+                  onAccept={handleHitlConfirm}
+                  onDismiss={() => setHitlPendingIntent(null)}
+                />
+              );
+            })()}
 
             {/* OTP + transaction execution — rendered once challenge is created */}
             {hitlChallengeId && (

@@ -137,7 +137,16 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
         </button>
       )}
 
-      <div className="embedded-agent-dock__toolbar">
+      <div
+        className="embedded-agent-dock__toolbar"
+        style={{
+          minHeight: 44,
+          borderBottom: '1px solid rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
         <div className="embedded-agent-dock__head">
           <h2 className="embedded-agent-dock__title">
             {isConfigPage ? 'Application setup assistant' : 'AI banking assistant'}
@@ -149,8 +158,9 @@ export default function EmbeddedAgentDock({ user, onLogout, agentPlacement }) {
           onClick={() => setCollapsed((c) => !c)}
           aria-expanded={!collapsed}
           title={collapsed ? 'Expand assistant' : 'Collapse assistant'}
+          aria-label={collapsed ? 'Expand assistant' : 'Collapse assistant'}
         >
-          {collapsed ? '▲ Expand' : '▼ Collapse'}
+          {collapsed ? '▴' : '▾'}
         </button>
       </div>
 
