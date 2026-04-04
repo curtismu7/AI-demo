@@ -485,7 +485,7 @@ Plans:
 **Goal:** Add `readOnly` tool tiers to MCP server + `/.well-known/mcp-server` manifest v2 with access tiers + education panel discovery tab + README AI client discovery section
 **Requirements**: MCP-PUB-01, MCP-PUB-02, MCP-PUB-03, MCP-PUB-04, MCP-PUB-05
 **Depends on:** Phase 36
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 37-01-PLAN.md — `readOnly` metadata in BankingToolRegistry + `tools/list` filter + `/.well-known/mcp-server` manifest v2 (tool access tiers)
