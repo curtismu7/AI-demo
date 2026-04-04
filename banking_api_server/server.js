@@ -171,6 +171,7 @@ const demoScenarioRoutes = require('./routes/demoScenario');
 const adminRoutes       = require('./routes/admin');
 const adminConfigRoutes = require('./routes/adminConfig');
 const cibaRoutes        = require('./routes/ciba');
+const mfaRoutes         = require('./routes/mfa');
 const authorizeRoutes   = require('./routes/authorize');
 const setupRoutes       = require('./routes/setup');
 const { router: featureFlagsRoutes } = require('./routes/featureFlags');
@@ -812,6 +813,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/auth/oauth/user', oauthUserRoutes);
 app.use('/api/auth/ciba', cibaRoutes);
+app.use('/api/auth/mfa',  mfaRoutes);
 app.use('/api/agent', agentIdentityRoutes);
 // NL route uses its own req.session?.user check — full JWT validation is not
 // needed here and causes invalid_token errors when JWKS fetch times out.
@@ -1095,7 +1097,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       try {
         emit({ phase: 'local_tool_start', path: 'exchange_failed_fallback' });
         const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-        const result = await callToolLocal(tool, params || {}, effectiveUserId);
+        const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
         emit({ phase: 'local_tool_done', path: 'exchange_failed_fallback' });
         return res.json({ result, tokenEvents: fallbackEvents, _localFallback: true, _exchangeFailed: true });
       } catch (localErr) {
@@ -1125,7 +1127,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
         // Use oauthId (PingOne sub/UUID) when available — accounts are stored under the UUID
         // not the local sequential dataStore id, matching what authenticateToken sets on req.user.id.
         const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-        const result = await callToolLocal(tool, params || {}, effectiveUserId);
+        const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
         emit({ phase: 'local_tool_done', path: 'no_bearer' });
         return res.json({ result, tokenEvents, _localFallback: true });
       } catch (localErr) {
@@ -1277,7 +1279,7 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
       emit({ phase: 'local_tool_start', path: 'remote_fallback' });
       // Use oauthId (PingOne sub/UUID) — accounts are keyed by UUID (same as authenticateToken / REST routes).
       const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-      const result = await callToolLocal(tool, params || {}, effectiveUserId);
+      const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
       emit({ phase: 'local_tool_done', path: 'remote_fallback' });
       return res.json({ result, tokenEvents, _localFallback: true });
     } catch (localErr) {
