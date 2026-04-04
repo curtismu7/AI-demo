@@ -493,13 +493,15 @@ Plans:
 
 ### Phase 38: Family delegation — delegate account access to other family members with scoped permissions (view accounts, balances, deposits, withdrawals, transfers), delegation history, email notification, PingOne user provisioning, and worker app config tab
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Build a family account delegation feature: /delegation page for managing delegates, BFF delegation API with PingOne user provisioning and email notifications, scoped permissions (view/write), delegation history, and a Worker App config tab on /config.
+**Requirements**: DELEG-01, DELEG-02, DELEG-03, DELEG-04, DELEG-05, DELEG-06, DELEG-07
 **Depends on:** Phase 37
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 38 to break down)
+- [ ] 38-01-PLAN.md — BFF delegationService.js + delegation API routes
+- [ ] 38-02-PLAN.md — Worker App config tab + GET /admin/config/worker-test endpoint
+- [ ] 38-03-PLAN.md — DelegationPage.js, App.js wire-up, UserDashboard link, build verify
 
 ### Phase 39: Architecture diagram — create draw.io diagram of the full app architecture (UI, BFF, MCP server, LangChain agent, PingOne, PingGateway) showing component relationships, auth flows, and token paths
 

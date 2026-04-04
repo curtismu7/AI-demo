@@ -79,3 +79,15 @@
 - [ ] **MCP-ADV-03**: `.well-known/mcp-server` discovery endpoint — publicly accessible GET endpoint on the MCP server returning a JSON manifest with tool list, auth requirements, version, and contact fields; no auth required
 - [ ] **MCP-ADV-04**: Audit trail observability — GET /api/mcp/audit BFF route backed by AuditLogger.queryAuditLogs(); new /audit admin page showing filterable event table with summary stats
 - [ ] **MCP-ADV-05**: MCP registry integration — `mcpServers` field in banking_mcp_server/package.json + README "AI Client Setup" section with Claude Desktop, Cursor, and Windsurf config snippets
+
+---
+
+## Family Delegation (Phase 38)
+
+- [ ] **DELEG-01**: Delegation data service — SQLite-backed (local) / in-memory (Vercel) store for delegation records. Schema: `{ id, delegatorUserId, delegateUserId, delegateEmail, delegatorEmail, scopes[], status, granted_at, revoked_at }`. CRUD via `delegationService.js`.
+- [ ] **DELEG-02**: Delegation REST API — `POST /api/delegation` (grant), `GET /api/delegation` (list active), `DELETE /api/delegation/:id` (revoke), `GET /api/delegation/history` (all records). Auth-guarded by `authenticateToken`.
+- [ ] **DELEG-03**: PingOne delegate user provisioning — on grant, look up delegate by email; create PingOne user if not found (worker client_credentials, Management API).
+- [ ] **DELEG-04**: Email notifications — send PingOne User Message API email to delegate on grant and revoke. Best-effort (errors logged; do not block delegation operation).
+- [ ] **DELEG-05**: Worker App config tab — new "Worker App" tab on `/config` page. Editable fields for `pingone_client_id`, `pingone_client_secret`, `pingone_environment_id`. Save via existing `configStore`. "Test Connection" button calls `GET /api/admin/config/worker-test` and shows pass/fail.
+- [ ] **DELEG-06**: `/delegation` management page — dedicated React page with: add-delegate form (email + scope checkboxes), active delegates list with revoke, delegation history table.
+- [ ] **DELEG-07**: App wiring — `/delegation` route in React Router, "Manage Delegates" nav link in UserDashboard. `npm run build` exits 0.
