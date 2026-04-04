@@ -600,6 +600,16 @@ Plans:
 Plans:
 - [x] TBD (run /gsd-plan-phase 48 to break down) (completed 2026-04-03)
 
+### Phase 49: Setup wizard — credential input page that creates .env, provisions Vercel env vars, creates PingOne apps and resource servers, and attaches scopes via Management API worker token
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 48
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 49 to break down)
+
 ---
 
 ## Dependency Order
