@@ -64,6 +64,11 @@ const FIELD_DEFS = {
   pingone_client_id:     { public: true,  default: '' },
   pingone_client_secret: { public: false, default: '' },
 
+  // Dedicated management API worker credentials — used by WorkerAppConfigTab and delegationService.
+  // Preferred over pingone_client_id when set. Env: PINGONE_MGMT_CLIENT_ID / PINGONE_MGMT_CLIENT_SECRET.
+  pingone_mgmt_client_id:     { public: true,  default: '' },
+  pingone_mgmt_client_secret: { public: false, default: '' },
+
   // PingOne authorize: pi.flow + response_mode=pi.flow for apps that support it (e.g. DaVinci flow policies).
   // See https://developer.pingidentity.com/pingone-api/auth/auth-config-options/browserless-authentication-flow-options.html
   admin_pingone_authorize_pi_flow: { public: true, default: 'false' },
@@ -406,6 +411,8 @@ class ConfigStore {
       ],
       pingone_client_id:     ['PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_CIMD_CLIENT_ID'],
       pingone_client_secret: ['PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_CIMD_CLIENT_SECRET'],
+      pingone_mgmt_client_id:     ['PINGONE_MGMT_CLIENT_ID', 'PINGONE_MANAGEMENT_CLIENT_ID'],
+      pingone_mgmt_client_secret: ['PINGONE_MGMT_CLIENT_SECRET', 'PINGONE_MANAGEMENT_CLIENT_SECRET'],
       admin_pingone_authorize_pi_flow: ['PINGONE_ADMIN_AUTHORIZE_PI_FLOW'],
       user_pingone_authorize_pi_flow:  ['PINGONE_USER_AUTHORIZE_PI_FLOW'],
       admin_role:             ['ADMIN_ROLE'],

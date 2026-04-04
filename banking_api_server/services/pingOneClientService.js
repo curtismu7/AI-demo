@@ -18,11 +18,12 @@ const configStore = require('./configStore');
 async function getManagementToken() {
   const envId   = configStore.getEffective('pingone_environment_id');
   const region  = configStore.getEffective('pingone_region') || 'com';
-  const clientId     = configStore.getEffective('pingone_client_id');
-  const clientSecret = configStore.getEffective('pingone_client_secret');
+  // Prefer dedicated management worker credentials; fall back to shared pingone_client_id/secret.
+  const clientId     = configStore.getEffective('pingone_mgmt_client_id') || configStore.getEffective('pingone_client_id');
+  const clientSecret = configStore.getEffective('pingone_mgmt_client_secret') || configStore.getEffective('pingone_client_secret');
 
   if (!envId || !clientId || !clientSecret) {
-    throw new Error('PingOne admin credentials not configured (pingone_environment_id / pingone_client_id / pingone_client_secret)');
+    throw new Error('PingOne management worker credentials not configured. Set pingone_mgmt_client_id + pingone_mgmt_client_secret (or pingone_client_id + pingone_client_secret) via the Worker App tab at /config.');
   }
 
   const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;

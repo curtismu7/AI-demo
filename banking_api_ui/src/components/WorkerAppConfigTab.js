@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
 const WORKER_FIELDS = [
-  { key: 'pingone_environment_id', label: 'Environment ID',       secret: false, placeholder: 'PingOne Environment UUID' },
-  { key: 'pingone_client_id',      label: 'Worker Client ID',     secret: false, placeholder: 'Management API worker client_id' },
-  { key: 'pingone_client_secret',  label: 'Worker Client Secret', secret: true,  placeholder: '••••••••••••' },
+  { key: 'pingone_environment_id',    label: 'Environment ID',             secret: false, placeholder: 'PingOne Environment UUID' },
+  { key: 'pingone_mgmt_client_id',    label: 'Management Worker Client ID', secret: false, placeholder: 'client_id with Management API access' },
+  { key: 'pingone_mgmt_client_secret', label: 'Management Worker Secret',  secret: true,  placeholder: '••••••••••••' },
 ];
 
 export default function WorkerAppConfigTab() {
-  const [values, setValues]   = useState({ pingone_environment_id: '', pingone_client_id: '', pingone_client_secret: '' });
+  const [values, setValues]   = useState({ pingone_environment_id: '', pingone_mgmt_client_id: '', pingone_mgmt_client_secret: '' });
   const [saving, setSaving]   = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [testing, setTesting] = useState(false);
@@ -20,10 +20,10 @@ export default function WorkerAppConfigTab() {
         const cfg = data.config || {};
         setValues(v => ({
           ...v,
-          pingone_environment_id: cfg.pingone_environment_id || '',
-          pingone_client_id:      cfg.pingone_client_id || '',
+          pingone_environment_id:    cfg.pingone_environment_id || '',
+          pingone_mgmt_client_id:    cfg.pingone_mgmt_client_id || '',
           // Secret is masked — keep blank so user can re-enter if needed
-          pingone_client_secret:  '',
+          pingone_mgmt_client_secret: '',
         }));
       })
       .catch(() => {}); // silent — config may not be set yet
