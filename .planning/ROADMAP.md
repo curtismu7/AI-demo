@@ -622,13 +622,14 @@ Plans:
 
 ### Phase 51: Auth rules audit tests and demo config section for login OTP and high-value transaction gates
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Enforce session-required auth gate on all MCP tool calls and banking write routes; add client-side intent block in BankingAgent; add pre-login guest chip group; add Home page session banner; add SecuritySettings auth gate summary.
+**Requirements**: AUTH-GATE-01, AUTH-GATE-02, AUTH-GATE-03, AUTH-GATE-04, AUTH-GATE-05
 **Depends on:** Phase 50
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 51 to break down)
+- [ ] 51-01-PLAN.md — requireSession middleware + BankingAgent client-side auth gate + pre-login chips
+- [ ] 51-02-PLAN.md — Home page session banner + SecuritySettings auth gate summary section
 
 ### Phase 52: PingOne MFA step-up research and implementation — OTP FIDO TOTP full MFA capability
 
