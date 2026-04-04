@@ -1262,3 +1262,36 @@
   transition: opacity 0.15s, background 0.15s;
 }
 .landing-demo-reveal-btn:hover { opacity: 1; background: rgba(255,255,255,0.12); color: #fff; }
+
+/* Session banner — shown when logged-in user visits landing page */
+.landing-session-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  padding: 6px 16px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 13px;
+  backdrop-filter: blur(4px);
+}
+.landing-session-banner__sep {
+  opacity: 0.4;
+}
+.landing-session-banner__link {
+  background: none;
+  border: none;
+  color: #4fa3e0;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  text-decoration: underline;
+}
+.landing-session-banner__link:hover {
+  color: #7ec0f5;
+}

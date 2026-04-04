@@ -410,7 +410,7 @@ function AppWithAuth() {
                 ) : (
                   <main className="main-content">
                     <EducationBar />
-                    <LandingPage />
+                    <LandingPage user={user} />
                   </main>
                 )
               }

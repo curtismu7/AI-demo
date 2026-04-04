@@ -6,10 +6,12 @@ import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import BrandLogo from './BrandLogo';
 import './LandingPage.css';
 
-const LandingPage = () => {
+const LandingPage = ({ user = null }) => {
   const { preset } = useIndustryBranding();
   const navigate = useNavigate();
   const location = useLocation();
+  const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+  const firstName = user?.name?.split(' ')[0] || user?.given_name || user?.sub || 'there';
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [scrollY, setScrollY] = React.useState(0);
   const [marketingCfg, setMarketingCfg] = React.useState({
@@ -141,6 +143,20 @@ const LandingPage = () => {
 
   return (
     <div className="landing-page landing-page--light">
+      {/* Session banner — non-intrusive indicator when user visits landing while logged in */}
+      {user && (
+        <div className="landing-session-banner" role="status">
+          <span>Welcome back, {firstName}</span>
+          <span className="landing-session-banner__sep" aria-hidden="true">·</span>
+          <button
+            type="button"
+            className="landing-session-banner__link"
+            onClick={() => navigate(dashboardPath)}
+          >
+            Go to Dashboard →
+          </button>
+        </div>
+      )}
       {/* Navigation */}
       <nav className={`navbar ${scrollY > 50 ? 'scrolled' : ''}`}>
         <div className="nav-container">

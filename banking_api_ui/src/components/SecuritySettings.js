@@ -380,6 +380,59 @@ const SecuritySettings = ({ user, onLogout }) => {
           </div>
         </div>
       </div>
+      {/* Auth Gate Summary — read-only audit view of active enforcement rules */}
+      {settings && (
+        <div style={{ marginTop: '32px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6' }}>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '600', color: '#111827' }}>Auth Gate Summary</h3>
+            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+              Current enforcement rules — live values from runtime settings above.
+            </p>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+            <tbody>
+              <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <th style={{ padding: '10px 20px', textAlign: 'left', color: '#374151', fontWeight: '600', width: '45%' }}>Login / Step-up MFA</th>
+                <td style={{ padding: '10px 20px', color: '#374151' }}>
+                  {settings.stepUpEnabled
+                    ? `✅ Enabled — method: ${settings.stepUpMethod || 'email'}`
+                    : '❌ Disabled'}
+                </td>
+              </tr>
+              <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <th style={{ padding: '10px 20px', textAlign: 'left', color: '#374151', fontWeight: '600' }}>Step-up threshold</th>
+                <td style={{ padding: '10px 20px', color: '#374151' }}>
+                  {settings.stepUpWithdrawalsAlways
+                    ? '⚡ All withdrawals (stepUpWithdrawalsAlways)'
+                    : settings.stepUpAmountThreshold > 0
+                      ? `$${settings.stepUpAmountThreshold}+ transactions`
+                      : 'All amounts ($0 threshold)'}
+                </td>
+              </tr>
+              <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <th style={{ padding: '10px 20px', textAlign: 'left', color: '#374151', fontWeight: '600' }}>Step-up transaction types</th>
+                <td style={{ padding: '10px 20px', color: '#374151' }}>
+                  {Array.isArray(settings.stepUpTransactionTypes) && settings.stepUpTransactionTypes.length > 0
+                    ? settings.stepUpTransactionTypes.join(', ')
+                    : '—'}
+                </td>
+              </tr>
+              <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <th style={{ padding: '10px 20px', textAlign: 'left', color: '#374151', fontWeight: '600' }}>PingOne Authorize gate</th>
+                <td style={{ padding: '10px 20px', color: '#374151' }}>
+                  {settings.authorizeEnabled
+                    ? `✅ Enabled (policy: ${settings.authorizePolicyId || 'not set'})`
+                    : '❌ Disabled'}
+                </td>
+              </tr>
+              <tr>
+                <th style={{ padding: '10px 20px', textAlign: 'left', color: '#374151', fontWeight: '600' }}>Session required for tool calls</th>
+                <td style={{ padding: '10px 20px', color: '#374151' }}>✅ Always (requireSession middleware)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
     </AdminSubPageShell>
   );
 };
