@@ -86,8 +86,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [cibaStatus, setCibaStatus] = useState('idle'); // 'idle' | 'pending' | 'completed' | 'error'
   const [agentTriggeredStepUp, setAgentTriggeredStepUp] = useState(false);
   const [agentCountdown, setAgentCountdown] = useState(0);
+  // Email OTP step-up modal state
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpDaId, setOtpDaId] = useState(null);
+  const [otpDeviceId, setOtpDeviceId] = useState(null);
   const autoInitiateTimerRef = useRef(null);    // [t1, t2, t3] setTimeout IDs
   const handleCibaStepUpRef  = useRef(null);    // stays current — avoids stale closure
+  const handleInitiateOtpRef = useRef(null);    // stays current — avoids stale closure
   const stepUpVerifyHrefRef  = useRef(null);    // stays current — avoids stale closure
   const fetchingRef = React.useRef(false);
   /** Holds the agent HITL detail (actionId, form) while the consent modal is open so we can fire the confirmed event. */
@@ -389,8 +398,57 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     []
   );
 
+  /** Initiate PingOne MFA challenge, auto-select EMAIL device, open OTP modal. */
+  const handleInitiateOtp = useCallback(async () => {
+    try {
+      const { data } = await apiClient.post('/api/auth/mfa/challenge');
+      const emailDevice = data.devices?.find(d => d.type === 'EMAIL' || d.type === 'SMS');
+      if (!emailDevice) {
+        notifyError('No email MFA device enrolled. Please enroll an email device in PingOne.');
+        return;
+      }
+      await apiClient.put(`/api/auth/mfa/challenge/${data.daId}`, { deviceId: emailDevice.id });
+      setOtpDaId(data.daId);
+      setOtpDeviceId(emailDevice.id);
+      setOtpEmail(user?.email || emailDevice.nickname || '');
+      setOtpCode('');
+      setOtpError('');
+      setOtpModalOpen(true);
+      setStepUpRequired(false);
+      toast.dismiss('customer-step-up');
+    } catch (err) {
+      notifyError('Could not send OTP: ' + (err.response?.data?.message || err.message));
+    }
+  }, [user]);
+
+  /** Verify the OTP code via PingOne MFA; on success resume the pending agent action. */
+  const handleVerifyOtp = useCallback(async () => {
+    setOtpSubmitting(true);
+    setOtpError('');
+    try {
+      const { data } = await apiClient.put(`/api/auth/mfa/challenge/${otpDaId}`, {
+        deviceId: otpDeviceId,
+        otp: otpCode,
+      });
+      if (!data.completed) {
+        setOtpError('Incorrect code. Please try again.');
+        return;
+      }
+      setOtpModalOpen(false);
+      setOtpCode('');
+      setAgentTriggeredStepUp(false);
+      notifySuccess('Identity verified — resuming agent request…');
+      window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
+    } catch (err) {
+      setOtpError(err.response?.data?.message || 'Incorrect code. Please try again.');
+    } finally {
+      setOtpSubmitting(false);
+    }
+  }, [otpCode, otpDaId, otpDeviceId]);
+
   // Keep refs current so stale closures (timers, event listeners) can call latest functions
   useEffect(() => { handleCibaStepUpRef.current = handleCibaStepUp; }, [handleCibaStepUp]);
+  useEffect(() => { handleInitiateOtpRef.current = handleInitiateOtp; }, [handleInitiateOtp]);
   useEffect(() => { stepUpVerifyHrefRef.current = stepUpVerifyHref; }, [stepUpVerifyHref]);
 
   /** Clears step-up gate state and dismisses the persistent step-up toast. */
@@ -441,23 +499,25 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   useEffect(() => {
     const onAgentStepUp = (e) => {
       const method = (e && e.detail && e.detail.step_up_method) || 'email';
-      setAgentTriggeredStepUp(true);
-      setStepUpRequired(true);
-      setStepUpMethod(method);
-      // 3-second countdown: schedules 3 timeouts and auto-initiates on the last
-      setAgentCountdown(3);
-      const t1 = setTimeout(() => setAgentCountdown(2), 1000);
-      const t2 = setTimeout(() => setAgentCountdown(1), 2000);
-      const t3 = setTimeout(() => {
-        setAgentCountdown(0);
-        autoInitiateTimerRef.current = null;
-        if (method === 'ciba') {
+      if (method === 'ciba') {
+        setAgentTriggeredStepUp(true);
+        setStepUpRequired(true);
+        setStepUpMethod('ciba');
+        // 3-second countdown then auto-initiate CIBA
+        setAgentCountdown(3);
+        const t1 = setTimeout(() => setAgentCountdown(2), 1000);
+        const t2 = setTimeout(() => setAgentCountdown(1), 2000);
+        const t3 = setTimeout(() => {
+          setAgentCountdown(0);
+          autoInitiateTimerRef.current = null;
           handleCibaStepUpRef.current && handleCibaStepUpRef.current();
-        } else {
-          window.location.href = stepUpVerifyHrefRef.current || '/api/auth/oauth/user/stepup';
-        }
-      }, 3000);
-      autoInitiateTimerRef.current = [t1, t2, t3];
+        }, 3000);
+        autoInitiateTimerRef.current = [t1, t2, t3];
+      } else {
+        // Email OTP: generate code server-side and show inline modal (no PingOne redirect)
+        setAgentTriggeredStepUp(true);
+        handleInitiateOtpRef.current && handleInitiateOtpRef.current();
+      }
     };
     window.addEventListener('agentStepUpRequested', onAgentStepUp);
     return () => window.removeEventListener('agentStepUpRequested', onAgentStepUp);
@@ -1493,6 +1553,61 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             );
           }}
         />
+      )}
+
+      {/* Email OTP Step-Up Modal */}
+      {otpModalOpen && (
+        <div className="otp-step-up-overlay" onClick={() => { setOtpModalOpen(false); setOtpCode(''); setOtpError(''); }}>
+          <div className="otp-step-up-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="otp-step-up-modal__header">
+              <h3 className="otp-step-up-modal__title">🔐 Verify Your Identity</h3>
+              <button
+                className="otp-step-up-modal__close"
+                onClick={() => { setOtpModalOpen(false); setOtpCode(''); setOtpError(''); }}
+                aria-label="Close"
+              >✕</button>
+            </div>
+            <div className="otp-step-up-modal__body">
+              <p className="otp-step-up-modal__lead">
+                A 6-digit verification code was sent to <strong>{otpEmail}</strong>.
+                Enter it below to authorise your transaction.
+              </p>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, '')); setOtpError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && otpCode.length === 6 && !otpSubmitting) handleVerifyOtp(); }}
+                placeholder="000000"
+                autoFocus
+                className={`otp-step-up-modal__input${otpError ? ' otp-step-up-modal__input--error' : ''}`}
+              />
+              {otpError && (
+                <p className="otp-step-up-modal__error">{otpError}</p>
+              )}
+              <p className="otp-step-up-modal__hint">Code expires in 5 minutes.</p>
+              <div className="otp-step-up-modal__actions">
+                <button
+                  type="button"
+                  className="otp-step-up-modal__btn-primary"
+                  disabled={otpCode.length !== 6 || otpSubmitting}
+                  onClick={handleVerifyOtp}
+                >
+                  {otpSubmitting ? 'Verifying…' : 'Verify'}
+                </button>
+                <button
+                  type="button"
+                  className="otp-step-up-modal__btn-ghost"
+                  onClick={() => handleInitiateOtp()}
+                >
+                  Resend code
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* OAuth Token Info Modal */}
