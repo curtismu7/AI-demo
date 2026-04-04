@@ -638,12 +638,12 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 52-01-PLAN.md — BFF mfaService.js + MFA routes (deviceAuthentications wrapper)
-- [ ] 52-02-PLAN.md — Config quick-fixes: threshold default $0, CIBA stepUpVerified, email unmask
-- [ ] 52-03-PLAN.md — OTP modal enterprise restyle + wire to PingOne MFA service
-- [ ] 52-04-PLAN.md — TOTP + push challenge UI + device picker
-- [ ] 52-05-PLAN.md — FIDO2 WebAuthn relay UI (Fido2Challenge component)
-- [ ] 52-06-PLAN.md — MCP tools load MFA gate + stepUpMethod config in SecuritySettings
+- [x] 52-01-PLAN.md — BFF mfaService.js + MFA routes (deviceAuthentications wrapper)
+- [x] 52-02-PLAN.md — Config quick-fixes: threshold default $0, CIBA stepUpVerified, email unmask
+- [x] 52-03-PLAN.md — OTP modal enterprise restyle + wire to PingOne MFA service
+- [x] 52-04-PLAN.md — TOTP + push challenge UI + device picker
+- [x] 52-05-PLAN.md — FIDO2 WebAuthn relay UI (Fido2Challenge component)
+- [x] 52-06-PLAN.md — MCP tools load MFA gate + stepUpMethod config in SecuritySettings
 
 ### Phase 53: debug testing and bug fixes for phase 52 MFA step-up
 
@@ -653,10 +653,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 53-01-PLAN.md — BFF session TTL + error codes (D-01, D-02, D-03 server)
-- [ ] 53-02-PLAN.md — stepUpWithdrawalsAlways toggle (D-05)
-- [ ] 53-03-PLAN.md — Device enrollment BFF endpoints (D-04 server)
-- [ ] 53-04-PLAN.md — UserDashboard error handling + enrollment panel UI (D-02, D-03, D-04 UI)
+- [x] 53-01-PLAN.md — BFF session TTL + error codes (D-01, D-02, D-03 server)
+- [x] 53-02-PLAN.md — stepUpWithdrawalsAlways toggle (D-05)
+- [x] 53-03-PLAN.md — Device enrollment BFF endpoints (D-04 server)
+- [x] 53-04-PLAN.md — UserDashboard error handling + enrollment panel UI (D-02, D-03, D-04 UI)
 
 ---
 
