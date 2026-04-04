@@ -1057,6 +1057,7 @@ export default function BankingAgent({
   // Auto-retry after CIBA step-up approval
   useEffect(() => {
     const onStepUpApproved = () => {
+      agentFlowDiagram.completeMfaChallenge(true);
       if (!pendingStepUpActionRef.current) return;
       const { actionId, form, method } = pendingStepUpActionRef.current;
       pendingStepUpActionRef.current = null;
@@ -1065,8 +1066,13 @@ export default function BankingAgent({
       addMessage('assistant', `✅ ${methodLabel} approved — continuing your request (${ts})`, actionId);
       runAction(actionId, form);
     };
+    const onStepUpCancelled = () => agentFlowDiagram.completeMfaChallenge(false);
     window.addEventListener('cibaStepUpApproved', onStepUpApproved);
-    return () => window.removeEventListener('cibaStepUpApproved', onStepUpApproved);
+    window.addEventListener('cibaStepUpCancelled', onStepUpCancelled);
+    return () => {
+      window.removeEventListener('cibaStepUpApproved', onStepUpApproved);
+      window.removeEventListener('cibaStepUpCancelled', onStepUpCancelled);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-retry after login (auth challenge path)

@@ -114,6 +114,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [fido2ModalOpen, setFido2ModalOpen] = useState(false);
   const [fido2DaId, setFido2DaId] = useState(null);
   const [fido2DeviceId, setFido2DeviceId] = useState(null);
+  // MFA error states
+  const [mfaChallengeExpired, setMfaChallengeExpired] = useState(false);
+  const [enrollModalOpen, setEnrollModalOpen] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollError, setEnrollError] = useState('');
   const autoInitiateTimerRef = useRef(null);    // [t1, t2, t3] setTimeout IDs
   const handleCibaStepUpRef  = useRef(null);    // stays current — avoids stale closure
   const handleInitiateOtpRef = useRef(null);    // stays current — avoids stale closure
@@ -420,11 +425,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   /** Initiate PingOne MFA challenge and route to correct modal by device type. */
   const handleInitiateOtp = useCallback(async () => {
+    setMfaChallengeExpired(false);
     try {
       const { data } = await apiClient.post('/api/auth/mfa/challenge');
       const devices = data.devices || [];
       if (!devices.length) {
-        notifyError('No MFA devices enrolled. Please enroll a device in PingOne.');
+        setEnrollModalOpen(true);
         return;
       }
       setStepUpRequired(false);
@@ -458,6 +464,19 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setDevicePickerOpen(true);
       }
     } catch (err) {
+      if (err.response?.status === 422 && err.response?.data?.error === 'no_devices_enrolled') {
+        setEnrollModalOpen(true);
+        return;
+      }
+      if (err.response?.status === 401 && err.response?.data?.error === 'session_expired') {
+        notifyError('Session expired — please sign in again.');
+        setTimeout(() => { window.location.replace('/'); }, 2000);
+        return;
+      }
+      if (err.response?.status === 410 || err.response?.data?.error === 'challenge_expired') {
+        setMfaChallengeExpired(true);
+        return;
+      }
       notifyError('Could not initiate MFA: ' + (err.response?.data?.message || err.message));
     }
   }, [user]);
@@ -497,9 +516,67 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         setDevicePickerOpen(false);
       })
       .catch((err) => {
+        if (err.response?.status === 401 && err.response?.data?.error === 'session_expired') {
+          notifyError('Session expired — please sign in again.');
+          setTimeout(() => { window.location.replace('/'); }, 2000);
+          return;
+        }
+        if (err.response?.status === 410 || err.response?.data?.error === 'challenge_expired') {
+          setMfaChallengeExpired(true);
+          return;
+        }
         notifyError(err.response?.data?.message || 'Failed to initiate passkey challenge.');
       });
   };
+
+  /** Enroll an email OTP device, then auto-initiate MFA challenge. */
+  const handleEnrollEmail = useCallback(async () => {
+    setEnrolling(true);
+    setEnrollError('');
+    try {
+      await apiClient.post('/api/auth/mfa/enroll/email');
+      setEnrollModalOpen(false);
+      setEnrolling(false);
+      notifySuccess('Email OTP device enrolled — starting MFA challenge...');
+      handleInitiateOtpRef.current && handleInitiateOtpRef.current();
+    } catch (err) {
+      setEnrollError(err.response?.data?.message || 'Enrollment failed. Please try again.');
+      setEnrolling(false);
+    }
+  }, []);
+
+  /** Enroll a FIDO2 passkey, then auto-initiate MFA challenge. */
+  const handleEnrollFido2 = useCallback(async () => {
+    setEnrolling(true);
+    setEnrollError('');
+    try {
+      const { data: initData } = await apiClient.post('/api/auth/mfa/enroll/fido2-init');
+      const credential = await navigator.credentials.create({
+        publicKey: initData.publicKeyCredentialCreationOptions,
+      });
+      if (!credential) throw new Error('Passkey creation was cancelled.');
+      const attestation = {
+        id: credential.id,
+        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+        type: credential.type,
+        response: {
+          attestationObject: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
+          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
+        },
+      };
+      await apiClient.post('/api/auth/mfa/enroll/fido2-complete', {
+        deviceId: initData.deviceId,
+        attestation,
+      });
+      setEnrollModalOpen(false);
+      setEnrolling(false);
+      notifySuccess('Passkey registered — starting MFA challenge...');
+      handleInitiateOtpRef.current && handleInitiateOtpRef.current();
+    } catch (err) {
+      setEnrollError(err.response?.data?.message || err.message || 'Passkey enrollment failed. Please try again.');
+      setEnrolling(false);
+    }
+  }, []);
 
   const handleTotpChallengeRef = useRef(null);
   const handlePushChallengeRef  = useRef(null);
@@ -540,6 +617,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
       }
     } catch (err) {
+      if (err.response?.status === 401 && err.response?.data?.error === 'session_expired') {
+        notifyError('Session expired — please sign in again.');
+        setTimeout(() => { window.location.replace('/'); }, 2000);
+        return;
+      }
+      if (err.response?.status === 410 || err.response?.data?.error === 'challenge_expired') {
+        setTotpModalOpen(false);
+        setMfaChallengeExpired(true);
+        return;
+      }
       setTotpError(err.response?.data?.message || 'Incorrect code. Please try again.');
     } finally {
       setTotpSubmitting(false);
@@ -577,6 +664,16 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       notifySuccess('Identity verified — resuming agent request…');
       window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
     } catch (err) {
+      if (err.response?.status === 401 && err.response?.data?.error === 'session_expired') {
+        notifyError('Session expired — please sign in again.');
+        setTimeout(() => { window.location.replace('/'); }, 2000);
+        return;
+      }
+      if (err.response?.status === 410 || err.response?.data?.error === 'challenge_expired') {
+        setOtpModalOpen(false);
+        setMfaChallengeExpired(true);
+        return;
+      }
       setOtpError(err.response?.data?.message || 'Incorrect code. Please try again.');
     } finally {
       setOtpSubmitting(false);
@@ -1721,13 +1818,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
       {/* Email OTP Step-Up Modal */}
       {otpModalOpen && (
-        <div className="otp-step-up-overlay" onClick={() => { setOtpModalOpen(false); setOtpCode(''); setOtpError(''); }}>
+        <div className="otp-step-up-overlay" onClick={() => { setOtpModalOpen(false); setOtpCode(''); setOtpError(''); window.dispatchEvent(new CustomEvent('cibaStepUpCancelled')); }}>
           <div className="otp-step-up-modal" onClick={(e) => e.stopPropagation()}>
             <div className="otp-step-up-modal__header">
               <h3 className="otp-step-up-modal__title">🔐 Verify Your Identity</h3>
               <button
                 className="otp-step-up-modal__close"
-                onClick={() => { setOtpModalOpen(false); setOtpCode(''); setOtpError(''); }}
+                onClick={() => { setOtpModalOpen(false); setOtpCode(''); setOtpError(''); window.dispatchEvent(new CustomEvent('cibaStepUpCancelled')); }}
                 aria-label="Close"
               >✕</button>
             </div>
@@ -1750,6 +1847,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               />
               {otpError && (
                 <p className="otp-step-up-modal__error">{otpError}</p>
+              )}
+              {mfaChallengeExpired && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <p className="otp-step-up-modal__error">MFA session expired.</p>
+                  <button
+                    type="button"
+                    className="otp-step-up-modal__btn-ghost"
+                    style={{ marginTop: '0.5rem' }}
+                    onClick={() => { setMfaChallengeExpired(false); setOtpModalOpen(false); handleInitiateOtpRef.current && handleInitiateOtpRef.current(); }}
+                  >Try Again</button>
+                </div>
               )}
               <p className="otp-step-up-modal__hint">Code expires in 5 minutes.</p>
               <div className="otp-step-up-modal__actions">
@@ -1780,7 +1888,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <div className="otp-step-up-modal otp-step-up-modal--totp" onClick={(e) => e.stopPropagation()}>
             <div className="otp-step-up-modal__header">
               <h3 className="otp-step-up-modal__title">🔐 Verify Your Identity</h3>
-              <button className="otp-step-up-modal__close" onClick={() => setTotpModalOpen(false)} aria-label="Close">✕</button>
+              <button className="otp-step-up-modal__close" onClick={() => { setTotpModalOpen(false); window.dispatchEvent(new CustomEvent('cibaStepUpCancelled')); }} aria-label="Close">✕</button>
             </div>
             <div className="otp-step-up-modal__body">
               <p className="otp-step-up-modal__lead">
@@ -1886,9 +1994,67 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
             }
           }}
-          onCancel={() => setFido2ModalOpen(false)}
+          onCancel={() => { setFido2ModalOpen(false); window.dispatchEvent(new CustomEvent('cibaStepUpCancelled')); }}
           onError={(msg) => { setFido2ModalOpen(false); notifyError(msg); }}
         />
+      )}
+
+      {/* MFA Challenge Expired — Try Again bubble (shown outside modals) */}
+      {mfaChallengeExpired && !otpModalOpen && !totpModalOpen && !pushModalOpen && !fido2ModalOpen && (
+        <div className="otp-step-up-overlay" onClick={() => setMfaChallengeExpired(false)}>
+          <div className="otp-step-up-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="otp-step-up-modal__header">
+              <h3 className="otp-step-up-modal__title">🔐 MFA Session Expired</h3>
+              <button className="otp-step-up-modal__close" onClick={() => setMfaChallengeExpired(false)} aria-label="Close">✕</button>
+            </div>
+            <div className="otp-step-up-modal__body">
+              <p className="otp-step-up-modal__lead">Your MFA session has expired. Click below to start a new challenge.</p>
+              <div className="otp-step-up-modal__actions">
+                <button
+                  type="button"
+                  className="otp-step-up-modal__btn-primary"
+                  onClick={() => { setMfaChallengeExpired(false); handleInitiateOtpRef.current && handleInitiateOtpRef.current(); }}
+                >Try Again</button>
+                <button type="button" className="otp-step-up-modal__btn-ghost" onClick={() => setMfaChallengeExpired(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MFA Device Enrollment — shown when no devices enrolled */}
+      {enrollModalOpen && (
+        <div className="otp-step-up-overlay" onClick={() => { if (!enrolling) setEnrollModalOpen(false); }}>
+          <div className="otp-step-up-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="otp-step-up-modal__header">
+              <h3 className="otp-step-up-modal__title">🔑 Set Up MFA</h3>
+              <button className="otp-step-up-modal__close" onClick={() => setEnrollModalOpen(false)} aria-label="Close" disabled={enrolling}>✕</button>
+            </div>
+            <div className="otp-step-up-modal__body">
+              <p className="otp-step-up-modal__lead">No MFA devices are enrolled on your account. Set one up to continue.</p>
+              {enrollError && <p className="otp-step-up-modal__error">{enrollError}</p>}
+              <div className="otp-step-up-modal__actions" style={{ flexDirection: 'column', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="otp-step-up-modal__btn-primary"
+                  disabled={enrolling}
+                  onClick={handleEnrollEmail}
+                >
+                  {enrolling ? 'Setting up…' : '📧 Set up Email OTP'}
+                </button>
+                <button
+                  type="button"
+                  className="otp-step-up-modal__btn-ghost"
+                  disabled={enrolling}
+                  onClick={handleEnrollFido2}
+                >
+                  {enrolling ? 'Setting up…' : '🔐 Register a Passkey'}
+                </button>
+              </div>
+              <p className="otp-step-up-modal__hint">Email OTP is easiest for demos. Passkeys require a compatible device.</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* OAuth Token Info Modal */}

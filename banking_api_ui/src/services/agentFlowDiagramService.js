@@ -42,6 +42,10 @@ const PHASE_LABELS = {
   mcp_remote_unreachable: 'MCP server unreachable',
   local_fallback_blocked_no_user: 'Local fallback blocked — no user',
   stream_end: 'Stream closed',
+  mfa_challenge_initiated: 'MFA challenge initiated — awaiting device selection',
+  mfa_challenge_completed: 'MFA step-up verified',
+  mfa_challenge_failed: 'MFA challenge failed or expired',
+  mfa_challenge_skipped: 'MFA step-up not required',
 };
 
 /** @type {{ visible: boolean, phase: string, toolName: string|null, steps: Array<{id: string, title: string, detail: string, status: FlowStepStatus}>, serverEvents: Array<{ phase: string, label: string, detail: string, t?: number }>, hint: string|null, updatedAt: number }} */
@@ -322,6 +326,7 @@ export const agentFlowDiagram = {
   completeInspectorToolsList({ ok, source = 'mcp_server', errorMessage = null }) {
     state.phase = ok ? 'done' : 'error';
     state.toolName = 'tools/list';
+    const isMfaGate = !ok && errorMessage === 'mfa_required';
     state.steps = [
       {
         id: 'as',
@@ -338,16 +343,50 @@ export const agentFlowDiagram = {
       {
         id: 'bff',
         title: 'BFF — MCP Inspector',
-        detail: ok ? `Discovery OK (${source})` : errorMessage || 'Discovery failed',
-        status: ok ? 'done' : 'error',
+        detail: ok ? `Discovery OK (${source})` : isMfaGate ? 'MFA step-up required before tools load' : errorMessage || 'Discovery failed',
+        status: ok ? 'done' : isMfaGate ? 'active' : 'error',
       },
       {
         id: 'mcp',
         title: 'MCP Server',
-        detail: ok ? 'tools/list JSON-RPC completed' : errorMessage || 'Unreachable or error',
-        status: ok ? 'done' : 'error',
+        detail: ok ? 'tools/list JSON-RPC completed' : isMfaGate ? 'Waiting for MFA verification' : errorMessage || 'Unreachable or error',
+        status: ok ? 'done' : isMfaGate ? 'pending' : 'error',
       },
+      ...(isMfaGate ? [{
+        id: 'mfa',
+        title: 'MFA Step-up (PingOne deviceAuthentications)',
+        detail: 'User must verify identity — OTP, TOTP, passkey, or push',
+        status: 'active',
+      }] : []),
     ];
+    state.updatedAt = Date.now();
+    emit();
+  },
+
+  /** Call when MFA challenge modal opens (user is completing step-up for tools/list gate). */
+  startMfaChallenge() {
+    const mfaStep = state.steps.find((s) => s.id === 'mfa');
+    if (mfaStep) {
+      mfaStep.status = 'active';
+      mfaStep.detail = 'Verifying identity via PingOne deviceAuthentications...';
+    } else {
+      state.steps = [
+        ...state.steps,
+        { id: 'mfa', title: 'MFA Step-up (PingOne)', detail: 'Verifying identity...', status: 'active' },
+      ];
+    }
+    state.updatedAt = Date.now();
+    emit();
+  },
+
+  /** Call when MFA challenge resolves. ok=true means tools/list will retry. */
+  completeMfaChallenge(ok) {
+    const mfaStep = state.steps.find((s) => s.id === 'mfa');
+    if (mfaStep) {
+      mfaStep.status = ok ? 'done' : 'error';
+      mfaStep.detail = ok ? 'MFA verified — session step-up granted' : 'MFA failed or cancelled';
+    }
+    state.phase = ok ? 'running' : 'error';
     state.updatedAt = Date.now();
     emit();
   },
