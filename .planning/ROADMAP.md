@@ -182,7 +182,7 @@ Plans:
 **Requirements**: CIBA-01, CIBA-02, CIBA-03, CIBA-04
 
 **Depends on:** Phase 8
-**Plans:** 5 plans
+**Plans:** 6 plans
 
 Plans:
 - [ ] 09-01-PLAN.md — UserDashboard: auto-initiate countown + cancel + stale toast fix (CIBA-01)
@@ -635,7 +635,7 @@ Plans:
 **Goal:** Full PingOne MFA step-up capability using the deviceAuthentications API directly — email OTP, TOTP, FIDO2/passkey, and push notification — always-on (default threshold $0) for all write operations, with CIBA auto-submit, enterprise OTP modal styling, and full email display.
 **Requirements**: MFA-01, MFA-02, MFA-03, MFA-04, MFA-05, MFA-06, MFA-07, MFA-08, MFA-09
 **Depends on:** Phase 51
-**Plans:** 5 plans
+**Plans:** 6 plans
 
 Plans:
 - [ ] 52-01-PLAN.md — BFF mfaService.js + MFA routes (deviceAuthentications wrapper)
@@ -643,6 +643,7 @@ Plans:
 - [ ] 52-03-PLAN.md — OTP modal enterprise restyle + wire to PingOne MFA service
 - [ ] 52-04-PLAN.md — TOTP + push challenge UI + device picker
 - [ ] 52-05-PLAN.md — FIDO2 WebAuthn relay UI (Fido2Challenge component)
+- [ ] 52-06-PLAN.md — MCP tools load MFA gate + stepUpMethod config in SecuritySettings
 
 ---
 
