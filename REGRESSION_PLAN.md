@@ -78,6 +78,24 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-04 — Vercel production: MCP tool 401 "Token exchange failed: Unsupported authentication method"
+
+- **Root cause (Issue 1 — MCP tool 401):** When PingOne's token-exchange endpoint returns HTTP **401** (not 400) for "Request denied: Unsupported authentication method" (e.g. PKCE Web app client used as exchanger without token-exchange grant or wrong auth method), `server.js` POST `/api/mcp/tool` only treated `httpStatus === 400` as a "soft" exchange failure eligible for local fallback. A 401 bypassed `isExchangeScopeError`, so the local handler never ran and the BFF propagated a raw 401 to the UI. Toast showed "Token exchange failed: Request denied: Unsupported authentication method". Session was present — this was NOT a session/Redis issue.
+- **Root cause (Issue 2 — refresh 401):** Vercel serverless session problem (separate, pre-existing): different Lambda instances don't share in-memory session; without Redis (KV_REST_API_URL + KV_REST_API_TOKEN), every Lambda starts empty → `/refresh` returns 401 `no_refresh_token`.
+- **Fix (Issue 1):** Extended `isExchangeScopeError` in `server.js` to also catch PingOne-origin 401s: `(err.httpStatus === 401 && Boolean(err.pingoneError))`. `err.pingoneError` is only set when the 401 body was parsed from the PingOne token endpoint, distinguishing it from a session/auth guard 401. Local fallback now runs for both 400 and 401 exchange policy rejects.
+- **Fix (Issue 2):** Ensure `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_*`) are set in Vercel env. After adding, redeploy and sign out/in again.
+- **Long-term PingOne fix:** Enable "Token Exchange" grant on the admin client (`14cefa5b-...`) in PingOne and confirm "Token endpoint authentication method" = CLIENT_SECRET_BASIC; or set `PINGONE_ADMIN_TOKEN_ENDPOINT_AUTH=post` to match PingOne app config.
+- **Files changed:** `banking_api_server/server.js`
+- **Do not break:** Session-guard 401s (no `err.pingoneError`) and MCP-server-side token rejections are NOT affected — they still propagate as errors.
+
+### 2026-04-04 — Phase 09 UAT: step-up redirect rejected by PingOne — invalid acr_values
+
+- **Root cause:** `banking_api_server/routes/oauthUser.js` `/stepup` route hardcoded the fallback `process.env.STEP_UP_ACR_VALUE || 'Multi_factor'`. `Multi_factor` must exactly match a Sign-On Policy name in PingOne; if the tenant uses any other name (or no policy override is needed), PingOne returns `invalid_request: Invalid sign-on policy provided in acr_values parameter` and the step-up redirect fails immediately.
+- **Symptom:** Triggering email step-up from the agent showed a PingOne `invalid_request` error toast instead of navigating to the re-auth flow.
+- **Fix:** Changed fallback default from `'Multi_factor'` to `''` (empty string). `oauthUserService.generateAuthorizationUrl` already skips `acr_values` when the value is falsy, so PingOne now uses the app's default sign-on policy. Also cleared `STEP_UP_ACR_VALUE` in `.env` and updated `.env.example` to document the field as optional.
+- **Files changed:** `banking_api_server/routes/oauthUser.js`, `banking_api_server/.env.example`, `banking_api_server/.env`
+- **Do not break:** If `STEP_UP_ACR_VALUE` IS set to a valid PingOne policy name, it is still forwarded — behaviour unchanged for correctly configured environments.
+
 ### 2026-04-03 — Phase 32: Render Docker deploy failed — prestart:prod hook rebuilt dist as non-root
 
 - **Root cause:** `banking_mcp_server/package.json` had `"prestart:prod": "npm run build:prod"` and `"prestart": "npm run build"`. In the Render Docker container the `dist/` directory is owned by `root` (built in the builder stage before the runtime stage switches to `appuser`). When `npm start:prod` triggers the prestart hook, `npm run build:prod` → `rm -rf dist` fails with `Permission denied`, crashing every deploy attempt.

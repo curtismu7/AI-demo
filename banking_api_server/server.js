@@ -1076,8 +1076,19 @@ app.post('/api/mcp/tool', express.json(), async (req, res) => {
     // In that case, fall back to the local tool handler so the operation still
     // completes — the UI receives _exchangeFailed:true so it can show a soft
     // informational message instead of an error toast.
+    //
+    // PingOne also returns 401 for token-exchange policy rejections such as
+    // "Request denied: Unsupported authentication method" — this happens when the
+    // exchanger client (admin OAuth app) is a PKCE Web app whose token-exchange
+    // grant or auth method is not configured correctly in PingOne.  These are
+    // server-side config errors, not invalid user tokens, so local fallback is safe.
+    // We distinguish PingOne-origin 401s from session-guard 401s via err.pingoneError
+    // (only set when the 401 response body was parsed from the PingOne token endpoint).
     const sessionUser = req.session?.user;
-    const isExchangeScopeError = err.httpStatus === 400 || err.code === 'token_exchange_failed';
+    const isExchangeScopeError =
+      err.httpStatus === 400 ||
+      err.code === 'token_exchange_failed' ||
+      (err.httpStatus === 401 && Boolean(err.pingoneError));
     if (sessionUser?.id && isExchangeScopeError) {
       const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
       console.log(`[MCP Local] ${tool} — exchange failed (${err.code}), falling back to local handler`);
