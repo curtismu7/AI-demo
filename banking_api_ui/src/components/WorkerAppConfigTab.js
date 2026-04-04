@@ -7,7 +7,7 @@ const WORKER_FIELDS = [
 ];
 
 export default function WorkerAppConfigTab() {
-  const [values, setValues]   = useState({ pingone_environment_id: '', pingone_mgmt_client_id: '', pingone_mgmt_client_secret: '' });
+  const [values, setValues]   = useState({ pingone_environment_id: '', pingone_mgmt_client_id: '', pingone_mgmt_client_secret: '', pingone_mgmt_token_auth_method: 'basic' });
   const [saving, setSaving]   = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [testing, setTesting] = useState(false);
@@ -24,6 +24,7 @@ export default function WorkerAppConfigTab() {
           pingone_mgmt_client_id:    cfg.pingone_mgmt_client_id || '',
           // Secret is masked — keep blank so user can re-enter if needed
           pingone_mgmt_client_secret: '',
+          pingone_mgmt_token_auth_method: cfg.pingone_mgmt_token_auth_method || 'basic',
         }));
       })
       .catch(() => {}); // silent — config may not be set yet
@@ -97,6 +98,28 @@ export default function WorkerAppConfigTab() {
           />
         </div>
       ))}
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+          Token Endpoint Auth Method
+        </label>
+        <select
+          value={values.pingone_mgmt_token_auth_method}
+          onChange={e => handleChange('pingone_mgmt_token_auth_method', e.target.value)}
+          aria-label="Token Endpoint Auth Method"
+          style={{
+            width: '100%', maxWidth: 480, padding: '8px 12px',
+            border: '1px solid #d1d5db', borderRadius: 6,
+            fontSize: 13, background: '#fff', boxSizing: 'border-box',
+          }}
+        >
+          <option value="basic">client_secret_basic (Authorization header)</option>
+          <option value="post">client_secret_post (request body)</option>
+        </select>
+        <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+          Match the Token Endpoint Authentication setting in your PingOne worker app.
+        </p>
+      </div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 20 }}>
         <button

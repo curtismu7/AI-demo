@@ -27,14 +27,16 @@ async function getManagementToken() {
   }
 
   const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
-  const response = await axios.post(
-    tokenUrl,
-    'grant_type=client_credentials',
-    {
-      auth: { username: clientId, password: clientSecret },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    }
-  );
+  const authMethod = configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic';
+  const isPost = authMethod === 'post';
+  const body = isPost
+    ? `grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`
+    : 'grant_type=client_credentials';
+  const axiosConfig = {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  };
+  if (!isPost) axiosConfig.auth = { username: clientId, password: clientSecret };
+  const response = await axios.post(tokenUrl, body, axiosConfig);
   return response.data.access_token;
 }
 
