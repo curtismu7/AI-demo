@@ -610,6 +610,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 49 to break down)
 
+### Phase 50: update docs setup script and fix logout URLs on PingOne apps using worker token
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 49
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 50 to break down)
+
 ---
 
 ## Dependency Order

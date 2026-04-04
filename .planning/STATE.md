@@ -43,6 +43,7 @@ Phase: 48 (remove-invalid-spel-act-expression) — COMPLETE
 - Phase 29 (use-case-c-sensitive-data-access) — complete (commit: 3ca82da)
 - Phase 48 (remove-invalid-spel-act-expression) — complete (commits: d4c0a7a, fc86d8d)
 - Phase 49 added: Setup wizard — credential input page that creates .env, provisions Vercel env vars, creates PingOne apps and resource servers, and attaches scopes via Management API worker token
+- Phase 50 added: Update docs, setup script, and fix logout URLs on PingOne apps using worker token — audit all PingOne config documentation and ensure logout URLs are correct everywhere
 
 ---
 
