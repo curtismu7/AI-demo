@@ -630,6 +630,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 51 to break down)
 
+### Phase 52: PingOne MFA step-up research and implementation — OTP FIDO TOTP full MFA capability
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 51
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 52 to break down)
+
 ---
 
 ## Dependency Order

@@ -123,3 +123,4 @@ Phase: 48 (remove-invalid-spel-act-expression) — COMPLETE
 - Phase 41 added: C4 top-down architecture diagram (draw.io) for the banking demo
 - Phase 42 added: Persist demo accounts across server restarts using env file on Vercel and SQLite on local
 - Phase 51 added: Auth rules audit tests and demo config section for login OTP and high-value transaction gates
+- Phase 52 added: PingOne MFA step-up research and implementation — OTP FIDO TOTP full MFA capability
