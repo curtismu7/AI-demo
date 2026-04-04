@@ -632,13 +632,17 @@ Plans:
 
 ### Phase 52: PingOne MFA step-up research and implementation — OTP FIDO TOTP full MFA capability
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Full PingOne MFA step-up capability using the deviceAuthentications API directly — email OTP, TOTP, FIDO2/passkey, and push notification — always-on (default threshold $0) for all write operations, with CIBA auto-submit, enterprise OTP modal styling, and full email display.
+**Requirements**: MFA-01, MFA-02, MFA-03, MFA-04, MFA-05, MFA-06, MFA-07, MFA-08, MFA-09
 **Depends on:** Phase 51
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 52 to break down)
+- [ ] 52-01-PLAN.md — BFF mfaService.js + MFA routes (deviceAuthentications wrapper)
+- [ ] 52-02-PLAN.md — Config quick-fixes: threshold default $0, CIBA stepUpVerified, email unmask
+- [ ] 52-03-PLAN.md — OTP modal enterprise restyle + wire to PingOne MFA service
+- [ ] 52-04-PLAN.md — TOTP + push challenge UI + device picker
+- [ ] 52-05-PLAN.md — FIDO2 WebAuthn relay UI (Fido2Challenge component)
 
 ---
 
