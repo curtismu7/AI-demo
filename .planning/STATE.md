@@ -106,6 +106,7 @@ Plan: 1 of 6
 - Phase 24 added: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 - Phase 25 added: LLM landscape — commercial and open-source models, capabilities overview, and comparison
 - Phase 45 added: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
+- Phase 53 added: debug testing and bug fixes for phase 52 MFA step-up
 - Phase 43 added: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
 - Phase 48 added: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF/PAZ layer instead — update docs
 - Phase 44 added: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)

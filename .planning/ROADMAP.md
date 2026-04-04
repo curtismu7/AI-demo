@@ -645,6 +645,16 @@ Plans:
 - [ ] 52-05-PLAN.md — FIDO2 WebAuthn relay UI (Fido2Challenge component)
 - [ ] 52-06-PLAN.md — MCP tools load MFA gate + stepUpMethod config in SecuritySettings
 
+### Phase 53: debug testing and bug fixes for phase 52 MFA step-up
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 52
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 53 to break down)
+
 ---
 
 ## Dependency Order
