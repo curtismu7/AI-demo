@@ -1,7 +1,8 @@
 # Phase 52 — Research Findings
 
 **Date:** 2026-04-04  
-**Sources:** PingOne MFA API Reference (live docs), codebase audit
+**Sources:** PingOne API docs at `https://developer.pingidentity.com/pingone-api/mfa/`, codebase audit  
+**Canonical URL:** `https://developer.pingidentity.com/pingone-api/` (use instead of `apidocs.pingidentity.com`)
 
 ---
 

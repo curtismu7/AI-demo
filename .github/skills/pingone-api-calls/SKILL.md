@@ -249,6 +249,11 @@ router.post('/my-route', authenticateToken, async (req, res) => {
 
 ## PingOne API Reference
 
+> **Canonical docs:** `https://developer.pingidentity.com/pingone-api/`
+> MFA-specific: `https://developer.pingidentity.com/pingone-api/mfa/`
+> Auth APIs: `https://developer.pingidentity.com/pingone-api/auth/`
+> Platform SSO APIs: `https://developer.pingidentity.com/pingone-api/platform/`
+
 ### Auth Server (AS) — `https://auth.pingone.{region}/{envId}/as/`
 
 | Endpoint | Use |
