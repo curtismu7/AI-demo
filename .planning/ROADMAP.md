@@ -193,13 +193,15 @@ Plans:
 
 ### Phase 10: Enterprise-grade HITL — high-value transaction warnings, CIBA or OTP step-up based on configuration, and polished approval UX
 
-**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Goal:** Enterprise-grade HITL approval UX: amber high-value warning in consent UI (≥$500), surface-adaptive HITL card (inline for middle/dock, modal for FAB), and toolbar anatomy consistency across all 3 agent surfaces.
+**Requirements**: HITL-01, HITL-02, HITL-03
 **Depends on:** Phase 9
-**Plans:** 1 plan
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 10 to break down)
+- [ ] 10-01-PLAN.md — AgentConsentModal: high-value amber warning + z-index fix + spec-compliant labels (HITL-01)
+- [ ] 10-02-PLAN.md — Inline HITL card for middle/dock surfaces; modal kept for FAB (HITL-02)
+- [ ] 10-03-PLAN.md — EmbeddedAgentDock toolbar: chevron icons + 44px height (HITL-03)
 
 ### Phase 11: Education content review and accuracy audit — OAuth RFCs MCP PingOne AI completeness check
 
