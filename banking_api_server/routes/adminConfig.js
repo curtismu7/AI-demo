@@ -26,6 +26,7 @@ const { FIELD_DEFS } = require('../services/configStore');
 const { getOAuthRedirectDebugInfo } = require('../services/oauthRedirectUris');
 const { blockInDemoMode } = require('../middleware/demoMode');
 const hosting = require('../config/hosting');
+const { probeManagementApiAccess } = require('../services/pingoneBootstrapService');
 
 const rateLimitDisabled = ['1', 'true', 'yes'].includes(
   String(process.env.DISABLE_RATE_LIMIT || '').toLowerCase()
@@ -221,6 +222,25 @@ router.post('/reset', blockInDemoMode('config reset'), requireAdminOrUnconfigure
     res.json({ ok: true, message: 'Configuration cleared.' });
   } catch (err) {
     res.status(500).json({ error: 'reset_failed', message: err.message });
+  }
+});
+
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/config/worker-test — probe PingOne Management API connection
+// ---------------------------------------------------------------------------
+router.get('/worker-test', configReadLimiter, async (req, res) => {
+  try {
+    const result = await probeManagementApiAccess();
+    if (result.ok) {
+      const envId = configStore.getEffective('pingone_environment_id') || '';
+      const appName = result.sample?.[0]?.name || 'Connected';
+      return res.json({ ok: true, environmentId: envId, appName, applicationCount: result.applicationCount });
+    }
+    return res.status(200).json({ ok: false, error: result.error, hint: result.hint });
+  } catch (err) {
+    console.error('[adminConfig] worker-test error:', err.message);
+    res.status(200).json({ ok: false, error: err.message });
   }
 });
 

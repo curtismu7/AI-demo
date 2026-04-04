@@ -14,6 +14,7 @@ import {
 import AgentUiModeToggle from './AgentUiModeToggle';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
 import VercelConfigTab from './VercelConfigTab';
+import WorkerAppConfigTab from './WorkerAppConfigTab';
 import '../styles/appShellPages.css';
 import './Config.css';
 
@@ -699,8 +700,8 @@ export default function Config() {
       <div className="app-page-shell__body">
       <div className="config-page__main">
 
-        {/* Vercel Env tab bar — only visible when hosted on Vercel */}
-        {hostedOn === 'vercel' && (
+        {/* Tab bar — always visible */}
+        {
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0' }}>
             <button
               type="button"
@@ -736,16 +737,38 @@ export default function Config() {
             >
               Vercel Env
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('worker')}
+              style={{
+                padding: '0.5rem 1.25rem',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontWeight: activeTab === 'worker' ? 700 : 400,
+                borderBottom: activeTab === 'worker' ? '2px solid #2563eb' : '2px solid transparent',
+                color: activeTab === 'worker' ? '#2563eb' : '#6b7280',
+                marginBottom: '-1px',
+                fontSize: '0.9rem',
+              }}
+            >
+              Worker App
+            </button>
           </div>
-        )}
+        }
 
         {/* Vercel Env tab content */}
         {activeTab === 'vercel' && hostedOn === 'vercel' && (
           <VercelConfigTab />
         )}
 
-        {/* Setup tab — hidden when Vercel tab is active */}
-        {(hostedOn !== 'vercel' || activeTab === 'setup') && (
+        {/* Worker App tab content */}
+        {activeTab === 'worker' && (
+          <WorkerAppConfigTab />
+        )}
+
+        {/* Setup tab — hidden when Vercel or Worker App tab is active */}
+        {activeTab === 'setup' && (
           <React.Fragment>
 
         {/* Read-only banner (hosted serverless, no KV) */}
