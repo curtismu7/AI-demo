@@ -17,6 +17,7 @@ const {
   mcpCallTool,
 } = require('../services/mcpWebSocketClient');
 const { callToolLocal, listLocalInspectorTools } = require('../services/mcpLocalTools');
+const runtimeSettings = require('../config/runtimeSettings');
 
 const MCP_SESSION_NEEDED_MSG =
   'MCP discovery needs a real OAuth access token in your Backend-for-Frontend (BFF) session. If you see this after a cold open, sign out and sign in again. Cookie-only restored sessions cannot call the MCP server.';
@@ -120,6 +121,10 @@ router.get('/context', async (req, res) => {
 
 // GET /api/mcp/inspector/tools — live tools/list from MCP server, or local catalog when no MCP bearer / MCP down
 router.get('/tools', async (req, res) => {
+  // MFA gate: require step-up verification before listing tools.
+  if (runtimeSettings.get('stepUpEnabled') && !req.session?.stepUpVerified) {
+    return res.json({ tools: [], mfa_required: true, step_up_method: runtimeSettings.get('stepUpMethod') || 'email', _source: 'mfa_gate' });
+  }
   const effectiveUserId = req.session?.user?.id || req.user?.id || null;
   const mcpUrl = getMcpServerUrl();
   const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
@@ -146,6 +151,21 @@ router.get('/tools', async (req, res) => {
     try {
       ({ token: agentToken, userSub } = await sessionTokenForDiscovery(req));
     } catch (err) {
+      // Mirror the isExchangeScopeError fallback from POST /api/mcp/tool (same fix as e2324b7):
+      // PingOne returns 400 ("At least one scope must be granted") or 401 ("Unsupported
+      // authentication method" / policy reject) during token exchange. For discovery, fall
+      // back to local catalog so the agent UI stays functional instead of showing
+      // "Banking Agent is unavailable". err.pingoneError is only set when the response body
+      // was parsed from PingOne's token endpoint, safely distinguishing exchange-policy
+      // rejections from genuine session/auth-guard errors.
+      const isExchangeScopeError =
+        err.httpStatus === 400 ||
+        err.code === 'token_exchange_failed' ||
+        (err.httpStatus === 401 && Boolean(err.pingoneError));
+      if (isExchangeScopeError) {
+        console.warn('[MCP Inspector] token exchange failed (%s HTTP %s), using local catalog', err.code, err.httpStatus);
+        return respondLocalCatalog(`exchange_failed_${err.httpStatus || err.code}`);
+      }
       return res.status(502).json({ error: 'token_resolution_failed', message: err.message });
     }
     if (!agentToken) {

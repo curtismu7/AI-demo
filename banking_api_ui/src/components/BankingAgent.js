@@ -1438,6 +1438,22 @@ export default function BankingAgent({
             });
             throw parseErr;
           }
+          // MFA gate: server requires step-up before listing tools.
+          if (data.mfa_required) {
+            agentFlowDiagram.completeInspectorToolsList({ ok: false, errorMessage: 'mfa_required' });
+            toast.update(toastId, {
+              render: '🔐 MFA verification required to load tools — verify your identity below',
+              type: 'warning',
+              isLoading: false,
+              autoClose: 6000,
+            });
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            window.dispatchEvent(new CustomEvent('agentStepUpRequested', {
+              detail: { step_up_method: data.step_up_method || 'email' },
+            }));
+            return;
+          }
           const tools = data.tools || [];
           agentFlowDiagram.completeInspectorToolsList({
             ok: true,
