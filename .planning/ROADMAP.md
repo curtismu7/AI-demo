@@ -482,13 +482,14 @@ Plans:
 
 ### Phase 37: Public-facing MCP server for external agents — read-only tool surface, scoped credentials, and access controls so external agents have limited safe access
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add `readOnly` tool tiers to MCP server + `/.well-known/mcp-server` manifest v2 with access tiers + education panel discovery tab + README AI client discovery section
+**Requirements**: MCP-PUB-01, MCP-PUB-02, MCP-PUB-03, MCP-PUB-04, MCP-PUB-05
 **Depends on:** Phase 36
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 37 to break down)
+- [ ] 37-01-PLAN.md — `readOnly` metadata in BankingToolRegistry + `tools/list` filter + `/.well-known/mcp-server` manifest v2 (tool access tiers)
+- [ ] 37-02-PLAN.md — McpProtocolPanel discovery tab + TOOLS catalog `readOnly` column + README Server Discovery section
 
 ### Phase 38: Family delegation — delegate account access to other family members with scoped permissions (view accounts, balances, deposits, withdrawals, transfers), delegation history, email notification, PingOne user provisioning, and worker app config tab
 
