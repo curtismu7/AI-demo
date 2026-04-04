@@ -49,8 +49,8 @@ function checkLocalStepUp(type, amount, req) {
   const sessionUser = req?.session?.user;
   if (sessionUser?.role === 'admin') return null;
   // Email OTP step-up: if the user completed OTP verification in this session, allow once.
-  if (req.session?.stepUpVerified === true) {
-    req.session.stepUpVerified = false; // consume — single-use per tool call
+  if (req.session?.stepUpVerified > Date.now()) {
+    req.session.stepUpVerified = 0; // consume — single-use; 0 fails the > Date.now() check
     return null;
   }
   const stepUpAcr = runtimeSettings.get('stepUpAcrValue') || 'Multi_factor';

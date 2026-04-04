@@ -122,7 +122,7 @@ router.get('/context', async (req, res) => {
 // GET /api/mcp/inspector/tools — live tools/list from MCP server, or local catalog when no MCP bearer / MCP down
 router.get('/tools', async (req, res) => {
   // MFA gate: require step-up verification before listing tools.
-  if (runtimeSettings.get('stepUpEnabled') && !req.session?.stepUpVerified) {
+  if (runtimeSettings.get('stepUpEnabled') && !(req.session?.stepUpVerified > Date.now())) {
     return res.json({ tools: [], mfa_required: true, step_up_method: runtimeSettings.get('stepUpMethod') || 'email', _source: 'mfa_gate' });
   }
   const effectiveUserId = req.session?.user?.id || req.user?.id || null;

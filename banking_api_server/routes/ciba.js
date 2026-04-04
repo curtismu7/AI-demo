@@ -31,6 +31,8 @@ const { authenticateToken } = require('../middleware/auth');
 const configStore = require('../services/configStore');
 const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
 
+const STEP_UP_TTL_MS = 5 * 60 * 1000; // 5 min step-up validity
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -188,7 +190,7 @@ router.get('/poll/:authReqId', authenticateToken, async (req, res) => {
     };
 
     delete req.session.cibaRequests[authReqId];
-    req.session.stepUpVerified = true;
+    req.session.stepUpVerified = Date.now() + STEP_UP_TTL_MS;
 
     req.session.save((saveErr) => {
       if (saveErr) console.error('[CIBA] session save error on approval:', saveErr);

@@ -12,6 +12,8 @@ const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
 const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 
+const STEP_UP_TTL_MS = 5 * 60 * 1000; // 5 min step-up validity
+
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
 /**
@@ -874,8 +876,8 @@ router.post('/verify-otp', (req, res) => {
     return res.status(400).json({ error: 'invalid_code', message: 'Incorrect code. Please try again.' });
   }
 
-  // Mark session as step-up verified (single-use — consumed by checkLocalStepUp)
-  req.session.stepUpVerified = true;
+  // Mark session as step-up verified with TTL (consumed by checkLocalStepUp)
+  req.session.stepUpVerified = Date.now() + STEP_UP_TTL_MS;
   delete req.session.pendingStepUpOtp;
 
   req.session.save((err) => {

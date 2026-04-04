@@ -35,6 +35,10 @@ function _wrapError(fnName, err) {
   const e = new Error(pingErr?.message || pingErr?.detail || 'MFA operation failed');
   e.status = err.response?.status || 500;
   e.pingError = pingErr;
+  // Attach semantic code for challenge lifecycle errors
+  const status = err.response?.status;
+  if (status === 401) e.code = 'token_expired';
+  else if (status === 404 || status === 410) e.code = 'challenge_expired';
   return e;
 }
 
