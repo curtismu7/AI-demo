@@ -647,13 +647,16 @@ Plans:
 
 ### Phase 53: debug testing and bug fixes for phase 52 MFA step-up
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Fix five edge-case gaps from Phase 52 MFA step-up: TTL on stepUpVerified (D-01), challenge-expiry recovery (D-02), token-expiry mid-MFA with silent refresh (D-03), no-devices enrollment flow (D-04), and always-require-step-up for withdrawals toggle (D-05).
+**Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05
 **Depends on:** Phase 52
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 53 to break down)
+- [ ] 53-01-PLAN.md — BFF session TTL + error codes (D-01, D-02, D-03 server)
+- [ ] 53-02-PLAN.md — stepUpWithdrawalsAlways toggle (D-05)
+- [ ] 53-03-PLAN.md — Device enrollment BFF endpoints (D-04 server)
+- [ ] 53-04-PLAN.md — UserDashboard error handling + enrollment panel UI (D-02, D-03, D-04 UI)
 
 ---
 
