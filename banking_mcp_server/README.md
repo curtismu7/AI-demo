@@ -109,6 +109,43 @@ Connect your AI client to the BX Finance Banking MCP server for tool-assisted ba
 2. Start the MCP server: `npm run start` in `banking_mcp_server/`
 3. The MCP server runs at `http://localhost:8080` by default.
 
+### Server Discovery
+
+Before connecting your AI client manually, you can inspect the server's published tool surface via the
+well-known discovery endpoint:
+
+```bash
+curl http://localhost:8080/.well-known/mcp-server
+```
+
+The response lists all tools and groups them by access tier:
+
+```json
+{
+  "publicAccess": {
+    "readOnlyTools": [
+      "get_my_accounts",
+      "get_account_balance",
+      "get_my_transactions",
+      "sequential_think"
+    ]
+  },
+  "restrictedAccess": {
+    "authenticatedTools": [
+      "get_sensitive_account_details",
+      "create_deposit",
+      "create_withdrawal",
+      "create_transfer",
+      "query_user_by_email"
+    ]
+  }
+}
+```
+
+**Read-only tools** can be called without write scopes — useful for external agents that need to inspect
+account state before requesting elevated permissions. **Restricted tools** require full OAuth authentication
+and appropriate scopes.
+
 ### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:

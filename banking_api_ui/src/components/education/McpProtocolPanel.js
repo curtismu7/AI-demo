@@ -6,13 +6,15 @@ import { McpProtocolContent, OAuthApiCheatsheet } from './educationContent';
 import { EduImplIntro, SNIP_MCP_BROWSER, SNIP_MCP_BFF } from './educationImplementationSnippets';
 
 const TOOLS = [
-  { name: 'get_my_accounts', scopes: 'banking read', returns: 'List of accounts for the user' },
-  { name: 'get_account_balance', scopes: 'banking read', returns: 'Balance for one account' },
-  { name: 'get_my_transactions', scopes: 'banking read', returns: 'Recent transactions' },
-  { name: 'create_transfer', scopes: 'banking write', returns: 'Transfer confirmation / ids' },
-  { name: 'create_deposit', scopes: 'banking write', returns: 'Deposit confirmation' },
-  { name: 'create_withdrawal', scopes: 'banking write', returns: 'Withdrawal confirmation' },
-  { name: 'query_user_by_email', scopes: 'admin', returns: 'User lookup (admin scenarios)' },
+  { name: 'get_my_accounts', scopes: 'banking read', returns: 'List of accounts for the user', readOnly: true },
+  { name: 'get_account_balance', scopes: 'banking read', returns: 'Balance for one account', readOnly: true },
+  { name: 'get_my_transactions', scopes: 'banking read', returns: 'Recent transactions', readOnly: true },
+  { name: 'sequential_think', scopes: 'none', returns: 'Step-by-step reasoning chain', readOnly: true },
+  { name: 'get_sensitive_account_details', scopes: 'banking:sensitive:read', returns: 'Full account / routing numbers (PII)', readOnly: false },
+  { name: 'create_deposit', scopes: 'banking write', returns: 'Deposit confirmation', readOnly: false },
+  { name: 'create_withdrawal', scopes: 'banking write', returns: 'Withdrawal confirmation', readOnly: false },
+  { name: 'create_transfer', scopes: 'banking write', returns: 'Transfer confirmation / ids', readOnly: false },
+  { name: 'query_user_by_email', scopes: 'admin', returns: 'User lookup (admin scenarios)', readOnly: false },
 ];
 
 export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
@@ -34,6 +36,7 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
                 <th style={{ padding: '0.35rem' }}>What the AI can do</th>
                 <th style={{ padding: '0.35rem' }}>Access needed</th>
                 <th style={{ padding: '0.35rem' }}>Returns</th>
+                <th style={{ padding: '0.35rem', textAlign: 'center' }}>Read-only?</th>
               </tr>
             </thead>
             <tbody>
@@ -42,12 +45,77 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
                   <td style={{ padding: '0.35rem' }}><code>{t.name}</code></td>
                   <td style={{ padding: '0.35rem' }}>{t.scopes}</td>
                   <td style={{ padding: '0.35rem' }}>{t.returns}</td>
+                  <td style={{ padding: '0.35rem', textAlign: 'center' }}>{t.readOnly ? '✓' : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 8 }}>
             Every tool call is checked against your permissions. The AI can only use tools that your access allows.
+          </p>
+          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 4 }}>
+            <strong>Read-only tools</strong> (✓) are safe for external agents to call without write permissions.
+            Non-read-only tools require explicit write scopes or handle sensitive PII.
+          </p>
+        </>
+      ),
+    },
+    {
+      id: 'discovery',
+      label: 'Server discovery',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>How external agents find this server</h3>
+          <p>
+            The <code>/.well-known/mcp-server</code> endpoint is a public discovery manifest that lists all
+            available tools and their auth requirements. External MCP clients — Claude Desktop, Cursor, Windsurf —
+            can query it <em>before</em> connecting to understand what the server offers and which tools require
+            authentication.
+          </p>
+
+          <h4>Discovery endpoint</h4>
+          <pre className="edu-code" style={{ fontSize: '0.82rem' }}>{'GET {MCP_SERVER_URL}/.well-known/mcp-server'}</pre>
+
+          <h4>Example response (tool access tiers)</h4>
+          <pre className="edu-code" style={{ fontSize: '0.75rem', lineHeight: 1.55, overflowX: 'auto' }}>{`{
+  "name": "bx-finance-banking",
+  "tools": [
+    { "name": "get_my_accounts", "readOnly": true, ... },
+    { "name": "create_transfer", "readOnly": false, ... }
+  ],
+  "publicAccess": {
+    "readOnlyTools": [
+      "get_my_accounts",
+      "get_account_balance",
+      "get_my_transactions",
+      "sequential_think"
+    ]
+  },
+  "restrictedAccess": {
+    "authenticatedTools": [
+      "get_sensitive_account_details",
+      "create_deposit",
+      "create_withdrawal",
+      "create_transfer",
+      "query_user_by_email"
+    ]
+  },
+  "auth": {
+    "type": "oauth2",
+    "authorizationUrl": "https://auth.pingone.com/.../authorize",
+    "tokenUrl": "https://auth.pingone.com/.../token"
+  }
+}`}</pre>
+
+          <p style={{ fontSize: '0.82rem', color: '#374151', marginTop: 8 }}>
+            The <code>publicAccess.readOnlyTools</code> list is what model-context–aware AI clients use to offer
+            a preview of capabilities before asking the user to authenticate.
+          </p>
+          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 4 }}>
+            Reference:{' '}
+            <a href="https://modelcontextprotocol.io/specification" target="_blank" rel="noopener noreferrer">
+              Model Context Protocol specification
+            </a>
           </p>
         </>
       ),

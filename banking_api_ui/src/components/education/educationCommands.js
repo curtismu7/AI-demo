@@ -12,6 +12,7 @@ export const EDUCATION_COMMANDS = [
   { id: 'pkce', label: 'PKCE deep dive', panel: EDU.LOGIN_FLOW, tab: 'pkce' },
   { id: 'may-act', label: 'may_act / act claims', panel: EDU.MAY_ACT, tab: 'what' },
   { id: 'mcp', label: 'MCP protocol', panel: EDU.MCP_PROTOCOL, tab: 'what' },
+  { id: 'mcp-discovery', label: 'MCP server discovery', panel: EDU.MCP_PROTOCOL, tab: 'discovery' },
   { id: 'introspect', label: 'Token introspection (RFC 7662)', panel: EDU.INTROSPECTION, tab: 'why' },
   { id: 'gateway', label: 'Agent Gateway (8707 / 9728)', panel: EDU.AGENT_GATEWAY, tab: 'overview' },
   { id: 'rfc', label: 'RFC & spec index', panel: EDU.RFC_INDEX, tab: 'index' },
