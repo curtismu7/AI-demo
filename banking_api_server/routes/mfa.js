@@ -176,4 +176,65 @@ router.get('/challenge/:daId/status', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/auth/mfa/enroll/email
+// Enroll an email OTP device for the logged-in user.
+// Email is taken from the session user object.
+// Returns { deviceId, type, email }
+router.post('/enroll/email', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.id;
+    const email = req.session.user?.email;
+    if (!userId || !email) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    const device = await mfaService.enrollEmailDevice(userId, email);
+    res.json({ deviceId: device.id, type: device.type, email: device.email });
+  } catch (err) {
+    console.error('[MFA route] POST /enroll/email failed:', err.message);
+    res.status(err.status || 500).json({ error: 'enroll_failed', message: err.message, pingError: err.pingError });
+  }
+});
+
+// POST /api/auth/mfa/enroll/fido2-init
+// Initiate FIDO2/passkey device registration.
+// Returns { deviceId, publicKeyCredentialCreationOptions }
+// Browser calls navigator.credentials.create(publicKeyCredentialCreationOptions)
+// then sends result to /enroll/fido2-complete.
+router.post('/enroll/fido2-init', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    const result = await mfaService.initFido2Registration(userId);
+    res.json(result);
+  } catch (err) {
+    console.error('[MFA route] POST /enroll/fido2-init failed:', err.message);
+    res.status(err.status || 500).json({ error: 'enroll_fido2_init_failed', message: err.message, pingError: err.pingError });
+  }
+});
+
+// POST /api/auth/mfa/enroll/fido2-complete
+// Complete FIDO2/passkey registration by submitting the WebAuthn attestation.
+// Body: { deviceId, attestation }
+// Returns { deviceId, status }
+router.post('/enroll/fido2-complete', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.id;
+    const { deviceId, attestation } = req.body;
+    if (!userId) {
+      return res.status(401).json({ error: 'no_session', message: 'Not authenticated.' });
+    }
+    if (!deviceId || !attestation) {
+      return res.status(400).json({ error: 'invalid_body', message: 'Provide deviceId and attestation.' });
+    }
+    const result = await mfaService.completeFido2Registration(userId, deviceId, attestation);
+    res.json({ deviceId: result.id, status: result.status });
+  } catch (err) {
+    console.error('[MFA route] POST /enroll/fido2-complete failed:', err.message);
+    res.status(err.status || 500).json({ error: 'enroll_fido2_complete_failed', message: err.message, pingError: err.pingError });
+  }
+});
+
+
 module.exports = router;

@@ -187,6 +187,72 @@ async function listMfaDevices(userId) {
   }
 }
 
+
+/**
+ * Enroll an email OTP device for a user via Management API (worker token).
+ * @param {string} userId
+ * @param {string} email   - User's email address to enroll
+ * Returns { id, type, email, status }
+ */
+async function enrollEmailDevice(userId, email) {
+  try {
+    const workerToken = await _getWorkerToken();
+    const url = `${_apiBaseUrl()}/users/${userId}/mfaDevices`;
+    const { data } = await axios.post(
+      url,
+      { type: 'EMAIL', email },
+      { headers: { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
+    );
+    console.log('[MFA] enrolled email device userId=%s deviceId=%s', userId, data.id);
+    return data;
+  } catch (err) {
+    throw _wrapError('enrollEmailDevice', err);
+  }
+}
+
+/**
+ * Initiate FIDO2/passkey device registration for a user via Management API.
+ * Returns { deviceId, publicKeyCredentialCreationOptions }
+ */
+async function initFido2Registration(userId) {
+  try {
+    const workerToken = await _getWorkerToken();
+    const url = `${_apiBaseUrl()}/users/${userId}/fido2Devices`;
+    const { data } = await axios.post(
+      url,
+      {},
+      { headers: { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
+    );
+    console.log('[MFA] initiated FIDO2 registration userId=%s deviceId=%s', userId, data.id);
+    return { deviceId: data.id, publicKeyCredentialCreationOptions: data.publicKeyCredentialCreationOptions };
+  } catch (err) {
+    throw _wrapError('initFido2Registration', err);
+  }
+}
+
+/**
+ * Complete FIDO2/passkey device registration by sending the WebAuthn attestation.
+ * @param {string} userId
+ * @param {string} deviceId  - from initFido2Registration
+ * @param {object} attestation - base64-encoded fields from navigator.credentials.create()
+ * Returns { id, status }
+ */
+async function completeFido2Registration(userId, deviceId, attestation) {
+  try {
+    const workerToken = await _getWorkerToken();
+    const url = `${_apiBaseUrl()}/users/${userId}/fido2Devices/${deviceId}`;
+    const { data } = await axios.put(
+      url,
+      { attestation },
+      { headers: { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' }, timeout: 15000 }
+    );
+    console.log('[MFA] completed FIDO2 registration userId=%s deviceId=%s status=%s', userId, deviceId, data.status);
+    return data;
+  } catch (err) {
+    throw _wrapError('completeFido2Registration', err);
+  }
+}
+
 module.exports = {
   initiateDeviceAuth,
   selectDevice,
@@ -194,4 +260,7 @@ module.exports = {
   getDeviceAuthStatus,
   submitFido2Assertion,
   listMfaDevices,
+  enrollEmailDevice,
+  initFido2Registration,
+  completeFido2Registration,
 };
