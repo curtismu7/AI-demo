@@ -77,7 +77,7 @@ Phase: 48 (remove-invalid-spel-act-expression) — COMPLETE
 
 ---
 
-## Pending Todos (30)
+## Pending Todos (38)
 
 - **[TODO -> auth]** Reorganize PingOne apps — OIDC agents to AI Agents group, OIDC user apps to Applications group
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
