@@ -953,3 +953,8 @@ html[data-theme='dark'] .App--marketing-page .main-content {
 .otp-step-up-modal--push .otp-step-up-modal__actions {
   justify-content: center;
 }
+
+/* FIDO2 passkey modal variant */
+.otp-step-up-modal--fido2 .otp-step-up-modal__actions {
+  justify-content: center;
+}

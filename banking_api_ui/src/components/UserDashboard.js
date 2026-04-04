@@ -19,6 +19,7 @@ import DashboardLayoutToggle from './DashboardLayoutToggle';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import Fido2Challenge from './Fido2Challenge';
 import './UserDashboard.css';
 
 /** Format a number as USD currency — $1,234.56 */
@@ -109,6 +110,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [devicePickerOpen, setDevicePickerOpen] = useState(false);
   const [devicePickerDevices, setDevicePickerDevices] = useState([]);
   const [devicePickerDaId, setDevicePickerDaId] = useState(null);
+  // FIDO2 passkey step-up state
+  const [fido2ModalOpen, setFido2ModalOpen] = useState(false);
+  const [fido2DaId, setFido2DaId] = useState(null);
+  const [fido2DeviceId, setFido2DeviceId] = useState(null);
   const autoInitiateTimerRef = useRef(null);    // [t1, t2, t3] setTimeout IDs
   const handleCibaStepUpRef  = useRef(null);    // stays current — avoids stale closure
   const handleInitiateOtpRef = useRef(null);    // stays current — avoids stale closure
@@ -444,8 +449,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         await handleTotpChallengeRef.current(data.daId, device);
       } else if (device.type === 'MOBILE') {
         await handlePushChallengeRef.current(data.daId, device);
+      } else if (device.type === 'FIDO2') {
+        handleFido2Challenge(data.daId, device);
       } else {
-        // FIDO2 handled in 52-05; for now show picker
+        // Unknown device type: show picker
         setDevicePickerDevices(devices);
         setDevicePickerDaId(data.daId);
         setDevicePickerOpen(true);
@@ -473,13 +480,26 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (device.type === 'MOBILE') {
         await handlePushChallengeRef.current(daId, device);
       } else if (device.type === 'FIDO2') {
-        // FIDO2 handled in 52-05 — fall back to message
-        notifyError('FIDO2 step-up is not yet implemented. Please enroll an email or TOTP device.');
+        handleFido2Challenge(daId, device);
       }
     } catch (err) {
       notifyError('Could not select device: ' + (err.response?.data?.message || err.message));
     }
   }, [devicePickerDaId, user]);
+
+  /** Select FIDO2 device, set ASSERTION_REQUIRED, then open Fido2Challenge overlay. */
+  const handleFido2Challenge = (daId, device) => {
+    axios.put(`/api/auth/mfa/challenge/${daId}`, { deviceId: device.id })
+      .then(() => {
+        setFido2DaId(daId);
+        setFido2DeviceId(device.id);
+        setFido2ModalOpen(true);
+        setDevicePickerOpen(false);
+      })
+      .catch((err) => {
+        notifyError(err.response?.data?.message || 'Failed to initiate passkey challenge.');
+      });
+  };
 
   const handleTotpChallengeRef = useRef(null);
   const handlePushChallengeRef  = useRef(null);
@@ -1848,6 +1868,27 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* FIDO2 Passkey Step-Up */}
+      {fido2ModalOpen && (
+        <Fido2Challenge
+          daId={fido2DaId}
+          deviceId={fido2DeviceId}
+          onSuccess={() => {
+            setFido2ModalOpen(false);
+            setStepUpRequired(false);
+            notifySuccess(agentTriggeredStepUp
+              ? 'Identity verified — resuming agent request…'
+              : 'Identity verified — please retry your transaction.');
+            if (agentTriggeredStepUp) {
+              setAgentTriggeredStepUp(false);
+              window.dispatchEvent(new CustomEvent('cibaStepUpApproved'));
+            }
+          }}
+          onCancel={() => setFido2ModalOpen(false)}
+          onError={(msg) => { setFido2ModalOpen(false); notifyError(msg); }}
+        />
       )}
 
       {/* OAuth Token Info Modal */}
