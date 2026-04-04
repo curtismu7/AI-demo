@@ -182,14 +182,22 @@ export class HttpMCPTransport {
   // -------------------------------------------------------------------------
 
   private handleMcpDiscovery(res: ServerResponse): void {
-    const tools = BankingToolRegistry.getMCPToolDefinitions();
+    const allTools = BankingToolRegistry.getAllTools();
+    const readOnlyToolNames = allTools.filter(t => t.readOnly).map(t => t.name);
+    const authenticatedToolNames = allTools.filter(t => !t.readOnly).map(t => t.name);
     const manifest = {
       name: 'BX Finance Banking MCP Server',
       description:
         'MCP server providing banking tools for AI agents — account access, transactions, transfers, ' +
         'and balance queries. Implements MCP 2025-11-05 with OAuth 2.0 / PingOne authorization.',
       version: pkg.version,
-      tools: tools.map((t) => ({ name: t.name, description: t.description })),
+      tools: allTools.map((t) => ({ name: t.name, description: t.description, readOnly: t.readOnly })),
+      publicAccess: {
+        readOnlyTools: readOnlyToolNames,
+      },
+      restrictedAccess: {
+        authenticatedTools: authenticatedToolNames,
+      },
       auth: {
         type: 'oauth2',
         required: true,

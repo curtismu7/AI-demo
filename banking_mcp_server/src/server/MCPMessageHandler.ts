@@ -215,7 +215,8 @@ export class MCPMessageHandler {
         description: tool.description,
         inputSchema: tool.inputSchema,
         requiresUserAuth: tool.requiresUserAuth,
-        requiredScopes: tool.requiredScopes
+        requiredScopes: tool.requiredScopes,
+        readOnly: tool.readOnly,
       }));
 
       return {

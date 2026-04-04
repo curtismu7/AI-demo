@@ -649,18 +649,28 @@ export class BankingMCPServer extends EventEmitter {
    */
   private async handleWellKnownMcpServer(_req: any, res: any): Promise<void> {
     const { BankingToolRegistry } = await import('../tools/BankingToolRegistry');
-    const tools = BankingToolRegistry.getAllTools().map(t => ({
+    const allTools = BankingToolRegistry.getAllTools();
+    const tools = allTools.map(t => ({
       name: t.name,
       description: t.description,
       requiresUserAuth: t.requiresUserAuth,
       requiredScopes: t.requiredScopes,
+      readOnly: t.readOnly,
     }));
+    const readOnlyTools = allTools.filter(t => t.readOnly).map(t => t.name);
+    const authenticatedTools = allTools.filter(t => !t.readOnly).map(t => t.name);
     const manifest = {
       name: 'Banking MCP Server',
       version: '1.0.0',
       description: 'Secure banking operations MCP server with PingOne authentication',
       protocolVersion: '2024-11-05',
       tools,
+      publicAccess: {
+        readOnlyTools,
+      },
+      restrictedAccess: {
+        authenticatedTools,
+      },
       auth: {
         type: 'oauth2',
         authorizationUrl: process.env.PINGONE_AUTH_URL

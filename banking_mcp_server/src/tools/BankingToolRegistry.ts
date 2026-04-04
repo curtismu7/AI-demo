@@ -12,6 +12,7 @@ export interface BankingToolDefinition extends ToolDefinition {
   requiresUserAuth: boolean;
   requiredScopes: string[];
   handler: string; // Method name in BankingToolProvider
+  readOnly: boolean; // true = safe read-only; false = writes data or accesses PII
 }
 
 /**
@@ -21,10 +22,11 @@ export class BankingToolRegistry {
   private static readonly TOOLS: Record<string, BankingToolDefinition> = {
     get_my_accounts: {
       name: 'get_my_accounts',
-      description: 'Retrieve user\'s bank accounts',
+      description: 'Retrieve the user\'s bank accounts with full account details including account type, name, masked account number, balance, currency, holder name, SWIFT/BIC code, IBAN, branch, and opening date. Use this for any request about account information, account details, or account overview.',
       requiresUserAuth: true,
       requiredScopes: ['banking:accounts:read'],
       handler: 'executeGetMyAccounts',
+      readOnly: true,
       inputSchema: {
         type: 'object',
         properties: {},
@@ -39,6 +41,7 @@ export class BankingToolRegistry {
       requiresUserAuth: true,
       requiredScopes: ['banking:accounts:read'],
       handler: 'executeGetAccountBalance',
+      readOnly: true,
       inputSchema: {
         type: 'object',
         properties: {
@@ -60,6 +63,7 @@ export class BankingToolRegistry {
       requiresUserAuth: true,
       requiredScopes: ['banking:sensitive:read'],
       handler: 'executeGetSensitiveAccountDetails',
+      readOnly: false,
       inputSchema: {
         type: 'object',
         properties: {},
@@ -74,6 +78,7 @@ export class BankingToolRegistry {
       requiresUserAuth: true,
       requiredScopes: ['banking:transactions:read'],
       handler: 'executeGetMyTransactions',
+      readOnly: true,
       inputSchema: {
         type: 'object',
         properties: {},
@@ -88,6 +93,7 @@ export class BankingToolRegistry {
       requiresUserAuth: true,
       requiredScopes: ['banking:transactions:write'],
       handler: 'executeCreateDeposit',
+      readOnly: false,
       inputSchema: {
         type: 'object',
         properties: {
@@ -119,6 +125,7 @@ export class BankingToolRegistry {
       requiresUserAuth: true,
       requiredScopes: ['banking:transactions:write'],
       handler: 'executeCreateWithdrawal',
+      readOnly: false,
       inputSchema: {
         type: 'object',
         properties: {
@@ -150,6 +157,7 @@ export class BankingToolRegistry {
       requiresUserAuth: true,
       requiredScopes: ['banking:transactions:write'],
       handler: 'executeCreateTransfer',
+      readOnly: false,
       inputSchema: {
         type: 'object',
         properties: {
@@ -186,6 +194,7 @@ export class BankingToolRegistry {
       requiresUserAuth: false,
       requiredScopes: [],
       handler: 'executeQueryUserByEmail',
+      readOnly: false,
       inputSchema: {
         type: 'object',
         properties: {
@@ -209,6 +218,7 @@ export class BankingToolRegistry {
       requiresUserAuth: false,
       requiredScopes: [],
       handler: 'executeSequentialThink',
+      readOnly: true,
       inputSchema: {
         type: 'object',
         properties: {
@@ -265,6 +275,20 @@ export class BankingToolRegistry {
     return Object.values(this.TOOLS).filter(tool => 
       tool.requiredScopes.includes(scope)
     );
+  }
+
+  /**
+   * Get read-only tools (safe for external agents without write scopes)
+   */
+  public static getReadOnlyTools(): BankingToolDefinition[] {
+    return Object.values(this.TOOLS).filter(t => t.readOnly);
+  }
+
+  /**
+   * Get authenticated/write tools (require user auth and write scopes)
+   */
+  public static getAuthenticatedTools(): BankingToolDefinition[] {
+    return Object.values(this.TOOLS).filter(t => !t.readOnly);
   }
 
   /**
