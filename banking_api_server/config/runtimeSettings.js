@@ -11,7 +11,7 @@
 
 const settings = {
   // Step-up MFA
-  stepUpAmountThreshold: parseFloat(process.env.STEP_UP_AMOUNT_THRESHOLD) || 250,
+  stepUpAmountThreshold: parseFloat(process.env.STEP_UP_AMOUNT_THRESHOLD) || 0,
   stepUpAcrValue: process.env.STEP_UP_ACR_VALUE || 'Multi_factor',
   stepUpEnabled: true,
   // Step-up method: 'ciba' (back-channel challenge) or 'email' (OIDC re-auth redirect)
@@ -23,6 +23,7 @@ const settings = {
   // Future: PingOne Authorize integration
   authorizeEnabled: false,
   authorizePolicyId: process.env.PINGONE_AUTHORIZE_POLICY_ID || '',
+  pingonesMfaPolicyId: process.env.PINGONE_MFA_POLICY_ID || '',
 };
 
 // Change history kept in-memory for the admin UI audit trail

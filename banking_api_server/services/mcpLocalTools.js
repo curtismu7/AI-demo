@@ -31,6 +31,41 @@ function hitlBlocksLocalWrite(userId, amount, type) {
 const HITL_LOCAL_AGENT_MESSAGE =
   'Transfers, deposits, and withdrawals over $500 require human approval in the browser. Use the main dashboard to start the transaction and complete the consent screen. The banking assistant cannot complete this amount without that flow.';
 
+/**
+ * Mirrors the step-up MFA gate in routes/transactions.js for the local MCP tool path.
+ * Returns a step_up_required result object if step-up is needed, null otherwise.
+ *
+ * @param {string} type   - Transaction type ('transfer' | 'withdrawal')
+ * @param {number} amount - Rounded transaction amount
+ * @param {object} req    - Express request (may be undefined in degraded paths)
+ */
+function checkLocalStepUp(type, amount, req) {
+  if (!req) return null; // No session context (direct test call) — skip step-up check
+  if (!runtimeSettings.get('stepUpEnabled')) return null;
+  const types = runtimeSettings.get('stepUpTransactionTypes');
+  if (!Array.isArray(types) || !types.includes(type)) return null;
+  const threshold = runtimeSettings.get('stepUpAmountThreshold') ?? 0;
+  if (parseFloat(amount) < threshold) return null;
+  const sessionUser = req?.session?.user;
+  if (sessionUser?.role === 'admin') return null;
+  // Email OTP step-up: if the user completed OTP verification in this session, allow once.
+  if (req.session?.stepUpVerified === true) {
+    req.session.stepUpVerified = false; // consume — single-use per tool call
+    return null;
+  }
+  const stepUpAcr = runtimeSettings.get('stepUpAcrValue') || 'Multi_factor';
+  const userAcr = String(sessionUser?.acr || '');
+  const elevated = userAcr === stepUpAcr || userAcr.split(' ').includes(stepUpAcr);
+  if (elevated) return null;
+  return {
+    ok: false,
+    step_up_required: true,
+    error: 'step_up_required',
+    step_up_method: runtimeSettings.get('stepUpMethod') || 'email',
+    amount_threshold: threshold,
+  };
+}
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 // Return structured data objects directly so BankingAgent.js result panel
 // (formatResult / setResultPanel) can find result.accounts, result.transactions, etc.
@@ -255,7 +290,7 @@ async function create_deposit(params, userId) {
   };
 }
 
-async function create_withdrawal(params, userId) {
+async function create_withdrawal(params, userId, req) {
   const accounts = await ensureAccounts(userId);
   const account_id = resolveAccountId(params.account_id || params.from_account_id, accounts);
   const { amount, description } = params;
@@ -290,6 +325,9 @@ async function create_withdrawal(params, userId) {
     };
   }
 
+  const withdrawalStepUp = checkLocalStepUp('withdrawal', rounded, req);
+  if (withdrawalStepUp) return withdrawalStepUp;
+
   await dataStore.updateAccountBalance(targetAccountId, -rounded);
 
   const txn = await dataStore.createTransaction({
@@ -313,7 +351,7 @@ async function create_withdrawal(params, userId) {
   };
 }
 
-async function create_transfer(params, userId) {
+async function create_transfer(params, userId, req) {
   const accounts = await ensureAccounts(userId);
   const from_account_id = resolveAccountId(params.from_account_id || params.fromId, accounts);
   const to_account_id   = resolveAccountId(params.to_account_id   || params.toId,   accounts);
@@ -346,6 +384,9 @@ async function create_transfer(params, userId) {
       hitl_threshold_usd: txConsent.HIGH_VALUE_CONSENT_USD,
     };
   }
+
+  const transferStepUp = checkLocalStepUp('transfer', rounded, req);
+  if (transferStepUp) return transferStepUp;
 
   await dataStore.updateAccountBalance(from_account_id, -rounded);
   await dataStore.updateAccountBalance(to_account_id,   rounded);

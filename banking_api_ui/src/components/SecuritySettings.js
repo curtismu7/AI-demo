@@ -17,9 +17,9 @@ const FIELD_META = {
   stepUpAmountThreshold: {
     label: 'Step-up Threshold ($)',
     type: 'number',
-    min: 1,
+    min: 0,
     max: 100000,
-    description: 'Transfers and withdrawals at or above this amount require MFA re-authentication.',
+    description: 'Transfers and withdrawals at or above this amount require MFA re-authentication. Set to 0 to require step-up on ALL transactions.',
   },
   stepUpAcrValue: {
     label: 'Required ACR Value',
@@ -31,6 +31,16 @@ const FIELD_META = {
     type: 'multiselect',
     options: ['transfer', 'withdrawal', 'deposit'],
     description: 'Only selected types will trigger step-up for high-value amounts.',
+  },
+  stepUpMethod: {
+    label: 'Step-up MFA Method',
+    type: 'select',
+    options: [
+      { value: 'email', label: 'Email OTP (built-in)' },
+      { value: 'pingone-mfa', label: 'PingOne MFA (deviceAuthentications)' },
+      { value: 'ciba', label: 'CIBA Push Approval' },
+    ],
+    description: 'Authentication method used for step-up challenges. "PingOne MFA" uses the deviceAuthentications API and requires PINGONE_MFA_POLICY_ID.',
   },
   authorizeEnabled: {
     label: 'PingOne Authorize Integration',
@@ -198,6 +208,7 @@ const SecuritySettings = ({ user, onLogout }) => {
     'stepUpAmountThreshold',
     'stepUpAcrValue',
     'stepUpTransactionTypes',
+    'stepUpMethod',
     'authorizeEnabled',
     'authorizePolicyId',
   ];
@@ -293,6 +304,19 @@ const SecuritySettings = ({ user, onLogout }) => {
                       onChange={(v) => set(key, v)}
                       disabled={meta.disabled}
                     />
+                  )}
+
+                  {meta.type === 'select' && (
+                    <select
+                      value={form[key] || ''}
+                      disabled={meta.disabled}
+                      onChange={(e) => set(key, e.target.value)}
+                      style={{ width: '100%', maxWidth: '400px', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', color: '#111827', background: 'white', opacity: meta.disabled ? 0.5 : 1 }}
+                    >
+                      {(meta.options || []).map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
                   )}
                 </div>
               );

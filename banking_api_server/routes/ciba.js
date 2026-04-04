@@ -188,6 +188,7 @@ router.get('/poll/:authReqId', authenticateToken, async (req, res) => {
     };
 
     delete req.session.cibaRequests[authReqId];
+    req.session.stepUpVerified = true;
 
     req.session.save((saveErr) => {
       if (saveErr) console.error('[CIBA] session save error on approval:', saveErr);

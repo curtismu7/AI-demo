@@ -575,7 +575,11 @@ router.get('/callback', async (req, res) => {
  */
 router.get('/stepup', (req, res) => {
   try {
-    const acrValue = process.env.STEP_UP_ACR_VALUE || 'Multi_factor';
+    // Honor empty STEP_UP_ACR_VALUE (blank = omit acr_values, rely on app's default sign-on policy).
+    // `|| 'Multi_Factor'` would swallow '' (falsy) so we use an explicit undefined check instead.
+    const acrValue = process.env.STEP_UP_ACR_VALUE !== undefined
+      ? process.env.STEP_UP_ACR_VALUE.trim()
+      : 'Multi_Factor';
     const returnTo = req.query.return_to || `${getFrontendOrigin(req)}/dashboard`;
 
     const state = oauthService.generateState();
@@ -792,6 +796,96 @@ router.post('/refresh', async (req, res) => {
  */
 router.get('/consent-url', (req, res) => {
   return res.json({ deprecated: true, useInAppConsent: true });
+});
+
+/**
+ * POST /api/auth/oauth/user/initiate-otp
+ *
+ * Email OTP step-up: generate a 6-digit code, store it in the session with a
+ * 5-minute TTL, and send it to the user via the PingOne Notifications API.
+ * Returns { otpSent, expiresIn, maskedEmail } — no PingOne redirect required.
+ */
+router.post('/initiate-otp', async (req, res) => {
+  const token = req.session.oauthTokens?.accessToken;
+  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
+  if (!isAuthenticated) {
+    return res.status(401).json({ error: 'not_authenticated', message: 'Must be logged in to initiate step-up.' });
+  }
+
+  const code = String(crypto.randomInt(100000, 999999));
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+  req.session.pendingStepUpOtp = { code, expiresAt };
+
+  req.session.save(async (err) => {
+    if (err) {
+      console.error('[OTP] Session save error:', err);
+      return res.status(500).json({ error: 'session_error' });
+    }
+
+    const user = req.session.user;
+    console.log(`[OTP] Generated step-up OTP for user ${user?.id} — code=${code}`);
+
+    // Send email (non-fatal if PingOne Notifications not configured)
+    try {
+      const { sendOtpEmail } = require('../services/emailService');
+      await sendOtpEmail(user.id, {
+        otpCode: code,
+        amount: 0,
+        transactionType: 'transaction',
+        userName: user.firstName || user.username || 'Customer',
+        expiresInMin: 5,
+      });
+    } catch (emailErr) {
+      console.error('[OTP] Email send failed (non-fatal):', emailErr.message);
+    }
+
+    res.json({ otpSent: true, expiresIn: 300, email: user.email || '' });
+  });
+});
+
+/**
+ * POST /api/auth/oauth/user/verify-otp
+ *
+ * Verify the 6-digit code submitted by the user. On success, marks the session
+ * as step-up verified so the next tool-call attempt can proceed without
+ * re-challenging (single-use — consumed by checkLocalStepUp on the next call).
+ */
+router.post('/verify-otp', (req, res) => {
+  const token = req.session.oauthTokens?.accessToken;
+  const hasOAuthToken = !!(token && token !== '_cookie_session');
+  const isAuthenticated = !!(req.session.user && hasOAuthToken && req.session.oauthType === 'user');
+  if (!isAuthenticated) {
+    return res.status(401).json({ error: 'not_authenticated', message: 'Must be logged in to verify OTP.' });
+  }
+
+  const { code } = req.body;
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: 'invalid_request', message: 'OTP code is required.' });
+  }
+
+  const pending = req.session.pendingStepUpOtp;
+  if (!pending || Date.now() > pending.expiresAt) {
+    delete req.session.pendingStepUpOtp;
+    return res.status(400).json({ error: 'otp_expired', message: 'OTP has expired. Please request a new one.' });
+  }
+
+  if (code.trim() !== pending.code) {
+    return res.status(400).json({ error: 'invalid_code', message: 'Incorrect code. Please try again.' });
+  }
+
+  // Mark session as step-up verified (single-use — consumed by checkLocalStepUp)
+  req.session.stepUpVerified = true;
+  delete req.session.pendingStepUpOtp;
+
+  req.session.save((err) => {
+    if (err) {
+      console.error('[OTP] Session save error after verify:', err);
+      return res.status(500).json({ error: 'session_error' });
+    }
+    console.log(`[OTP] Step-up verified for user ${req.session.user?.id}`);
+    res.json({ verified: true });
+  });
 });
 
 module.exports = router;
