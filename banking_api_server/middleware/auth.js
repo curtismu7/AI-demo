@@ -928,8 +928,25 @@ const hashPassword = (password) => {
   return bcrypt.hashSync(password, 10);
 };
 
+
+/**
+ * Require an active session (req.session.user present).
+ * Used on routes that need a logged-in browser session but may not carry a Bearer token.
+ * Returns 401 { error: 'unauthenticated', message: '...' } if no session.
+ */
+const requireSession = (req, res, next) => {
+  if (!req.session?.user) {
+    return res.status(401).json({
+      error: 'unauthenticated',
+      message: 'A valid session is required. Please sign in.',
+    });
+  }
+  next();
+};
+
 module.exports = {
   authenticateToken,
+  requireSession,
   requireAdmin,
   requireOwnershipOrAdmin,
   requireEndUser,

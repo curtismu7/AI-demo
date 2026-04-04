@@ -189,7 +189,7 @@ const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oau
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
 
 // Import middleware
-const { authenticateToken } = require('./middleware/auth');
+const { authenticateToken, requireSession } = require('./middleware/auth');
 const { logActivity } = require('./middleware/activityLogger');
 const { correlationIdMiddleware } = require('./middleware/correlationId');
 const { delegationAuditMiddleware } = require('./middleware/delegationAuditLogger');
@@ -848,7 +848,7 @@ app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/accounts', authenticateToken, sensitiveBankingRoutes);
-app.use('/api/transactions', authenticateToken, transactionRoutes);
+app.use('/api/transactions', requireSession, authenticateToken, transactionRoutes);
 // GET /api/demo-scenario — return empty defaults when unauthenticated so the public
 // /demo-data page never triggers a 401 console error.  All mutating methods (PUT, PATCH)
 // still hit authenticateToken via the router below.
@@ -997,7 +997,7 @@ app.get('/api/mcp/tool/events', (req, res) => {
 });
 
 // POST /api/mcp/tool — call a banking MCP tool
-app.post('/api/mcp/tool', express.json(), async (req, res) => {
+app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
   // Defensive re-parse: on Vercel serverless the global express.json() may not have
   // buffered the body by the time this route handler runs (cold-start / middleware race).
   // Re-applying express.json() inline (already declared above) handles the route-level
