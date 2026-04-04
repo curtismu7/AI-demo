@@ -183,6 +183,7 @@ const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const langchainConfigRoutes = require('./routes/langchainConfig');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
+const delegationRoutes = require('./routes/delegation');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
 const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetadata');
 const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
@@ -859,6 +860,7 @@ app.get('/api/demo-scenario', (req, res, next) => {
 app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
+app.use('/api/delegation', authenticateToken, delegationRoutes);
 app.use('/api/logs', logsRoutes);
 
 // PATCH /api/demo/may-act — set/clear mayAct attribute on the signed-in PingOne user
