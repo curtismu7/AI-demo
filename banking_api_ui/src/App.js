@@ -57,6 +57,7 @@ import {
   isMarketingEmbeddedDockSurface,
   isPublicMarketingAgentPath,
 } from './utils/embeddedAgentFabVisibility';
+
 import { useDemoMode } from './hooks/useDemoMode';
 import SessionReauthBanner from './components/SessionReauthBanner';
 import AgentFlowDiagramPanel from './components/AgentFlowDiagramPanel';
@@ -64,6 +65,41 @@ import { SESSION_REAUTH_EVENT } from './utils/authUi';
 import { showEndUserOAuthErrorToast, stripEndUserOAuthErrorParamsFromUrl } from './utils/endUserOAuthErrorToast';
 import { notifyWarning, notifyInfo } from './utils/appToast';
 import './App.css';
+
+// Browser extension interference detection and handling
+const setupBrowserExtensionHandling = () => {
+  // Monitor for extension-related errors
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    // Check for browser extension errors
+    const message = args.join(' ');
+    if (message.includes('bootstrap-autofill-overlay.js') || 
+        message.includes('Cannot read properties of null (reading \'includes\')')) {
+      console.warn('[Browser Extension] Detected extension interference:', message);
+      // Don't let extension errors break our app
+      return;
+    }
+    originalConsoleError.apply(console, args);
+  };
+
+  // Add global error handler for extension interference
+  const handleGlobalError = (event) => {
+    if (event.error && event.error.message && 
+        event.error.message.includes('bootstrap-autofill-overlay.js')) {
+      console.warn('[Browser Extension] Prevented extension error from crashing app');
+      event.preventDefault();
+      return false;
+    }
+  };
+
+  window.addEventListener('error', handleGlobalError);
+  
+  // Cleanup function
+  return () => {
+    console.error = originalConsoleError;
+    window.removeEventListener('error', handleGlobalError);
+  };
+};
 
 /**
  * Renders children for admin users.
@@ -137,7 +173,13 @@ function AppWithAuth() {
   const [sessionReauth, setSessionReauth] = useState(null);
   const pendingUserEmailRef = useRef(null);
   /** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
-  const sessionEstablishedRef = useRef(false);
+  const sessionEstablishedRef = useRef(null);
+
+  // Setup browser extension interference handling
+  useEffect(() => {
+    const cleanup = setupBrowserExtensionHandling();
+    return cleanup;
+  }, []);
 
   const injectEmailIntoNextSessionInit = useCallback((email) => {
     pendingUserEmailRef.current = email;

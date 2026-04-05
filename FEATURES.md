@@ -92,7 +92,6 @@ git checkout <last-version-tag> -- <key-file>
 | Demo data reset | active | `banking_api_server/routes/accounts.js`, `banking_api_ui/src/components/DemoDataPage.js` | `s:demoMode.test.js`, `u:components/__tests__/DemoDataPage.test.js` |
 | Client (OAuth app) registration | active | `banking_api_server/routes/clientRegistration.js`, `banking_api_ui/src/components/ClientRegistrationPage.js` | `s:clientRegistration.test.js` |
 | MCP audit trail admin UI — floating/popout table of MCP tool-call events; columns: Time, Event Type, Agent ID, User ID, Tool/Operation, Outcome, Duration; filter by Agent ID, tool/operation, event type, outcome; expandable detail shows scope, tokenType, requestSummary | active | `banking_api_ui/src/components/AuditPage.js`, `banking_api_ui/src/components/AuditPage.css` | — |
-| MCP audit trail admin UI — floating/popout table of MCP tool-call events; columns: Time, Event Type, Agent ID, User ID, Tool/Operation, Outcome, Duration; filter by Agent ID, tool/operation, event type, outcome; expandable detail shows scope, tokenType, requestSummary | active | `banking_api_ui/src/components/AuditPage.js`, `banking_api_ui/src/components/AuditPage.css` | — |
 
 ---
 
@@ -118,10 +117,6 @@ git checkout <last-version-tag> -- <key-file>
 | Right-dock layout — collapsible right sidebar, width-resizable | active | `banking_api_ui/src/context/AgentUiModeContext.js`, `banking_api_ui/src/components/SideAgentDock.js`, `banking_api_ui/src/components/SideAgentDock.css` | `u:context/__tests__/AgentUiModeContext.test.js` |
 | Sensitive data consent banner — in-UI prompt before `get_sensitive_account_details` releases full account/routing numbers; user must approve before agent receives the data | active | `banking_api_ui/src/components/SensitiveConsentBanner.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
 | Token chain history persistence — `localStorage` write-through (debounced 300ms); hydrated on mount; cleared on logout; survives page refresh | active | `banking_api_ui/src/context/TokenChainContext.js` | — |
-| Left-dock layout — collapsible left sidebar, width-resizable | active | `banking_api_ui/src/context/AgentUiModeContext.js`, `banking_api_ui/src/components/SideAgentDock.js`, `banking_api_ui/src/components/SideAgentDock.css` | `u:context/__tests__/AgentUiModeContext.test.js` |
-| Right-dock layout — collapsible right sidebar, width-resizable | active | `banking_api_ui/src/context/AgentUiModeContext.js`, `banking_api_ui/src/components/SideAgentDock.js`, `banking_api_ui/src/components/SideAgentDock.css` | `u:context/__tests__/AgentUiModeContext.test.js` |
-| Sensitive data consent banner — in-UI prompt before `get_sensitive_account_details` releases full account/routing numbers; user must approve before agent receives the data | active | `banking_api_ui/src/components/SensitiveConsentBanner.js`, `banking_api_ui/src/components/BankingAgent.js` | — |
-| Token chain history persistence — `localStorage` write-through (debounced 300ms); hydrated on mount; cleared on logout; survives page refresh | active | `banking_api_ui/src/context/TokenChainContext.js` | — |
 
 ---
 
@@ -135,12 +130,6 @@ git checkout <last-version-tag> -- <key-file>
 | Agent MCP token service (RFC 8693 — requires `mcp_resource_uri`, min user scopes; no user-token passthrough) | active | `banking_api_server/services/agentMcpTokenService.js` | `s:agentMcpTokenService.test.js` |
 | BFF session gating (MCP no-bearer response) | active | `banking_api_server/services/bffSessionGating.js` | `s:bffSessionGating.test.js` |
 | CIMD simulator panel | active | `banking_api_ui/src/components/CimdSimPanel.js` | `u:components/__tests__/CimdSimPanel.test.js` |
-| `GET /.well-known/mcp-server` — public MCP server discovery manifest (capabilities, tools list, OAuth metadata location); consumed by agents during handshake | active | `banking_mcp_server/src/server/HttpMCPTransport.ts` | — |
-| `sequential_think` MCP tool — step-by-step chain-of-thought reasoning for complex banking decisions (transfer eligibility, loan assessment); returns titled reasoning steps + conclusion | active | `banking_mcp_server/src/tools/BankingToolRegistry.ts`, `banking_mcp_server/src/tools/BankingToolProvider.ts` | — |
-| `get_sensitive_account_details` MCP tool — full account and routing numbers; requires `banking:sensitive:read` scope and explicit user consent via `SensitiveConsentBanner` before data is released | active | `banking_mcp_server/src/tools/BankingToolRegistry.ts`, `banking_mcp_server/src/tools/BankingToolProvider.ts` | — |
-| MCP audit trail — `GET /audit` on MCP server returns recent tool-call audit events; supports `agentId`, `operation`, `outcome`, `eventType` filters | active | `banking_mcp_server/src/server/HttpMCPTransport.ts`, `banking_mcp_server/src/utils/AuditLogger.ts` | — |
-| MCP AuditLogger — Redis-backed (Upstash) persistence for every MCP tool-call audit event; LPUSH + LTRIM (500 max); 7-day TTL; records `agentId`, `scope`, `tokenType`, `requestSummary`, `responseSummary`; fire-and-forget (non-fatal on Redis failure) | active | `banking_mcp_server/src/utils/AuditLogger.ts` | — |
-| BFF audit proxy `GET /api/mcp/audit` — proxies to MCP server `/audit`; passes `agentId`, `operation`, `eventType`, `outcome`, `limit` filters; returns empty fallback when MCP unreachable | active | `banking_api_server/routes/mcpAudit.js` | — |
 | `GET /.well-known/mcp-server` — public MCP server discovery manifest (capabilities, tools list, OAuth metadata location); consumed by agents during handshake | active | `banking_mcp_server/src/server/HttpMCPTransport.ts` | — |
 | `sequential_think` MCP tool — step-by-step chain-of-thought reasoning for complex banking decisions (transfer eligibility, loan assessment); returns titled reasoning steps + conclusion | active | `banking_mcp_server/src/tools/BankingToolRegistry.ts`, `banking_mcp_server/src/tools/BankingToolProvider.ts` | — |
 | `get_sensitive_account_details` MCP tool — full account and routing numbers; requires `banking:sensitive:read` scope and explicit user consent via `SensitiveConsentBanner` before data is released | active | `banking_mcp_server/src/tools/BankingToolRegistry.ts`, `banking_mcp_server/src/tools/BankingToolProvider.ts` | — |
@@ -171,7 +160,6 @@ git checkout <last-version-tag> -- <key-file>
 | Human-in-the-loop (HITL) / consent education | active | `banking_api_ui/src/components/education/HumanInLoopPanel.js` | — |
 | AI Agent Best Practices guide (Ping Identity 5 practices) | active | `banking_api_ui/src/components/education/BestPracticesPanel.js` | — |
 | SPIFFE implementation plan | plan | `docs/SPIFFE_PLAN.md` | — |
-| Sensitive data access guide — explains `banking:sensitive:read` scope, why explicit consent is required, and the PingOne Authorize + scope enforcement model | active | `banking_api_ui/src/components/education/SensitiveDataPanel.js` | — |
 | Sensitive data access guide — explains `banking:sensitive:read` scope, why explicit consent is required, and the PingOne Authorize + scope enforcement model | active | `banking_api_ui/src/components/education/SensitiveDataPanel.js` | — |
 
 ---

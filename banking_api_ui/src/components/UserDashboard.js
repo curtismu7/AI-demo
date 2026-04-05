@@ -204,7 +204,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setDashboardLayoutState('classic');
       setDashboardLayout('classic');
     }
-  }, [agentPlacement]);
+    
+    // Fix: Ensure account data is refreshed when layout changes to prevent account loss
+    // This addresses the issue where switching to middle layout loses car payment and investment accounts
+    if (user) {
+      fetchUserData(true); // silent refresh to ensure accounts are loaded
+    }
+  }, [agentPlacement, user, fetchUserData]);
 
   const handleDashThemeToggle = useCallback(() => {
     setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
@@ -323,7 +329,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     }
   }, [location.state, location.pathname, location.search, navigate]);
 
-  const loadDemoFallback = (reason) => {
+  const loadDemoFallback = useCallback((reason) => {
     // Guard: do not overwrite real account data if the user is already authenticated.
     // This prevents a race condition where a momentary session blip on layout-switch
     // reload causes DEMO_ACCOUNTS to replace real accounts (todo #11).
@@ -336,9 +342,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       autoClose: 6000,
       icon: '🏦',
     });
-  };
+  }, [user, setAccounts, setTransactions]);
 
-  const fetchUserData = async (silent = false) => {
+  const fetchUserData = useCallback(async (silent = false) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
@@ -414,7 +420,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       if (!silent) setLoading(false);
       fetchingRef.current = false;
     }
-  };
+  }, [loadDemoFallback]);
 
   // ── CIBA step-up: initiate back-channel authentication ──
   const handleCibaStepUp = useCallback(async () => {

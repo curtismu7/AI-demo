@@ -6,6 +6,8 @@ import { setAgentBlockedByConsentDecline } from '../services/agentAccessConsent'
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import { useDraggablePanel } from '../hooks/useDraggablePanel';
+import '../styles/draggablePanel.css';
 import './TransactionConsentPage.css';
 
 /**
@@ -204,9 +206,9 @@ export default function TransactionConsentModal({
     return lines;
   }, [snapshot, accounts]);
 
-  const handleCancelClick = () => {
+  const handleCancelClick = useCallback(() => {
     setDenialOpen(true);
-  };
+  }, []);
 
   const handleDenialDismiss = () => {
     setDenialOpen(false);
@@ -222,7 +224,17 @@ export default function TransactionConsentModal({
     (e) => {
       if (e.target === e.currentTarget && !submitting && !otpVerifying) handleCancelClick();
     },
-    [submitting, otpVerifying] // eslint-disable-line react-hooks/exhaustive-deps
+    [submitting, otpVerifying, handleCancelClick] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  // Add draggable panel functionality
+  const { pos, size, handleDragStart, createResizeHandler } = useDraggablePanel(
+    () => ({
+      x: Math.max(20, (window.innerWidth  - 500) / 2),
+      y: Math.max(20, (window.innerHeight - 600) / 2),
+    }),
+    { w: 500, h: 600 },
+    { storageKey: 'transaction-consent-modal' }
   );
 
   /**
@@ -325,15 +337,35 @@ export default function TransactionConsentModal({
       onClick={handleBackdropPointer}
     >
       <div
-        className="transaction-consent-popup"
+        className="drp-panel transaction-consent-popup"
+        style={{
+          position: 'fixed',
+          left: `${pos.x}px`,
+          top: `${pos.y}px`,
+          width: `${size.w}px`,
+          height: `${size.h}px`,
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="transaction-consent-popup-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="transaction-consent-popup-title" className="transaction-consent-popup__title">
-          {otpStep ? '🔒 Enter verification code' : 'Approve high-value transaction'}
-        </h2>
+        {/* Draggable header */}
+        <div 
+          className="drp-header" 
+          onMouseDown={handleDragStart}
+          style={{ 
+            padding: '1rem', 
+            cursor: 'move', 
+            borderBottom: '1px solid #e2e8f0',
+            backgroundColor: '#f8fafc',
+            borderRadius: '0.5rem 0.5rem 0 0'
+          }}
+        >
+          <h2 id="transaction-consent-popup-title" className="transaction-consent-popup__title" style={{ margin: 0 }}>
+            {otpStep ? '🔒 Enter verification code' : 'Approve high-value transaction'}
+          </h2>
+        </div>
 
         {/* ── OTP step ──────────────────────────────────────────────────── */}
         {otpStep ? (
@@ -519,6 +551,21 @@ export default function TransactionConsentModal({
           </div>
         </div>
       )}
+
+      {/* 8-direction resize handles */}
+      <div className="drp-resize-handles">
+        {/* Corner handles */}
+        <div className="drp-resize-handle drp-resize-handle--nw" onMouseDown={createResizeHandler('nw')} aria-hidden title="Resize from top-left" />
+        <div className="drp-resize-handle drp-resize-handle--ne" onMouseDown={createResizeHandler('ne')} aria-hidden title="Resize from top-right" />
+        <div className="drp-resize-handle drp-resize-handle--sw" onMouseDown={createResizeHandler('sw')} aria-hidden title="Resize from bottom-left" />
+        <div className="drp-resize-handle drp-resize-handle--se" onMouseDown={createResizeHandler('se')} aria-hidden title="Resize from bottom-right" />
+        
+        {/* Edge handles */}
+        <div className="drp-resize-handle drp-resize-handle--n" onMouseDown={createResizeHandler('n')} aria-hidden title="Resize from top" />
+        <div className="drp-resize-handle drp-resize-handle--s" onMouseDown={createResizeHandler('s')} aria-hidden title="Resize from bottom" />
+        <div className="drp-resize-handle drp-resize-handle--e" onMouseDown={createResizeHandler('e')} aria-hidden title="Resize from right" />
+        <div className="drp-resize-handle drp-resize-handle--w" onMouseDown={createResizeHandler('w')} aria-hidden title="Resize from left" />
+      </div>
     </div>
   );
 }

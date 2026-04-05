@@ -1,0 +1,162 @@
+---
+description: GSD Add Todo - Capture ideas and tasks as structured todos
+---
+
+# GSD Add Todo Workflow
+
+## Purpose
+Capture an idea, task, or issue that surfaces during a GSD session as a structured todo for later work. Enables "thought → capture → continue" flow without losing context.
+
+## When to Use
+- During development when you discover a bug or improvement
+- When discussing features that should be implemented later
+- When you want to capture technical debt or refactoring opportunities
+- When you identify missing documentation or testing
+
+## Steps
+
+### 1. Initialize Todo Context
+// turbo
+Load todo context:
+
+```bash
+INIT=$(node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" init todos)
+if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
+```
+
+Extract from init JSON: `commit_docs`, `date`, `timestamp`, `todo_count`, `todos`, `pending_dir`, `todos_dir_exists`.
+
+Ensure directories exist:
+```bash
+mkdir -p .planning/todos/pending .planning/todos/done
+```
+
+Note existing areas from the todos array for consistency in infer_area step.
+
+### 2. Extract Content
+**With arguments:** Use as the title/focus.
+- `/gsd-add-todo Add auth token refresh` → title = "Add auth token refresh"
+
+**Without arguments:** Analyze recent conversation to extract:
+- The specific problem, idea, or task discussed
+- Relevant file paths mentioned
+- Technical details (error messages, line numbers, constraints)
+
+Formulate:
+- `title`: 3-10 word descriptive title (action verb preferred)
+- `problem`: What's wrong or why this is needed
+- `solution`: Approach hints or "TBD" if just an idea
+- `files`: Relevant paths with line numbers from conversation
+
+### 3. Infer Area
+Infer area from file paths:
+
+| Path pattern | Area |
+|--------------|------|
+| `src/api/*`, `api/*` | `api` |
+| `src/components/*`, `src/ui/*` | `ui` |
+| `src/auth/*`, `auth/*` | `auth` |
+| `src/db/*`, `database/*` | `database` |
+| `tests/*`, `__tests__/*` | `testing` |
+| `docs/*` | `docs` |
+| `.planning/*` | `planning` |
+| `scripts/*`, `bin/*` | `tooling` |
+| No files or unclear | `general` |
+
+Use existing area from step 2 if similar match exists.
+
+### 4. Check Duplicates
+```bash
+# Search for key words from title in existing todos
+grep -l -i "[key words from title]" .planning/todos/pending/*.md 2>/dev/null || true
+```
+
+If potential duplicate found:
+1. Read the existing todo
+2. Compare scope
+
+If overlapping, use AskUserQuestion:
+- header: "Duplicate?"
+- question: "Similar todo exists: [title]. What would you like to do?"
+- options:
+  - "Skip" — keep existing todo
+  - "Replace" — update existing with new context
+  - "Add anyway" — create as separate todo
+
+### 5. Create File
+Use values from init context: `timestamp` and `date` are already available.
+
+Generate slug for the title:
+```bash
+slug=$(node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" generate-slug "$title" --raw)
+```
+
+Write to `.planning/todos/pending/${date}-${slug}.md`:
+
+```markdown
+---
+created: [timestamp]
+title: [title]
+area: [area]
+files:
+  - [file:lines]
+---
+
+## Problem
+
+[problem description - enough context for future the agent to understand weeks later]
+
+## Solution
+
+[approach hints or "TBD"]
+```
+
+### 6. Update State
+If `.planning/STATE.md` exists:
+
+1. Use `todo_count` from init context (or re-run `init todos` if count changed)
+2. Update "### Pending Todos" under "## Accumulated Context"
+
+### 7. Git Commit
+Commit the todo and any updated state:
+
+```bash
+node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" commit "docs: capture todo - [title]" --files .planning/todos/pending/[filename] .planning/STATE.md
+```
+
+Tool respects `commit_docs` config and gitignore automatically.
+
+Confirm: "Committed: docs: capture todo - [title]"
+
+### 8. Confirm
+```
+Todo saved: .planning/todos/pending/[filename]
+
+  [title]
+  Area: [area]
+  Files: [count] referenced
+
+---
+
+Would you like to:
+
+1. Continue with current work
+2. Add another todo
+3. View all todos (/gsd-check-todos)
+```
+
+## Expected Outcome
+- Directory structure exists
+- Todo file created with valid frontmatter
+- Problem section has enough context for future the agent
+- No duplicates (checked and resolved)
+- Area consistent with existing todos
+- STATE.md updated if exists
+- Todo and state committed to git
+
+## Notes
+- This workflow integrates with the GSD rules in `.cursor/rules/gsd-*.mdc`
+- Auto-approval is enabled for the init todos command
+- Always check `REGRESSION_PLAN.md` before making changes to protected areas
+- Todo files are stored in `.planning/todos/pending/` and `.planning/todos/done/`
+- Todos are created with frontmatter containing created timestamp, title, area, and files

@@ -49,7 +49,24 @@ export async function refreshOAuthSession() {
  * @returns {Promise<{ result: any, tokenEvents: Array }>}
  */
 export async function callMcpTool(tool, params = {}) {
-  agentFlowDiagram.startMcpToolCall(tool);
+  // Client-side validation to prevent 400 errors and improve debugging
+  if (!tool || typeof tool !== 'string') {
+    console.error('[callMcpTool] Invalid tool parameter:', { tool, toolType: typeof tool, params });
+    throw new Error(`Invalid tool name: ${tool} (type: ${typeof tool}). Expected non-empty string.`);
+  }
+
+  // Defensive check for browser extension interference
+  try {
+    console.log('[callMcpTool] Calling MCP tool:', { tool, paramsKeys: Object.keys(params || {}) });
+  } catch (err) {
+    console.warn('[callMcpTool] Console logging failed (possible extension interference):', err);
+  }
+  
+  try {
+    agentFlowDiagram.startMcpToolCall(tool);
+  } catch (err) {
+    console.warn('[callMcpTool] Flow diagram initialization failed:', err);
+  }
 
   const flowTraceId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -57,10 +74,28 @@ export async function callMcpTool(tool, params = {}) {
       : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
   const closeSse = openMcpFlowSse(flowTraceId, (data) => {
-    agentFlowDiagram.applyServerEvent(data);
+    try {
+      agentFlowDiagram.applyServerEvent(data);
+    } catch (err) {
+      console.warn('[callMcpTool] Failed to apply server event:', err);
+    }
   });
 
-  const body = JSON.stringify({ tool, params, flowTraceId });
+  // Defensive body construction with validation
+  let body;
+  try {
+    const requestBody = { tool, params: params || {}, flowTraceId };
+    body = JSON.stringify(requestBody);
+    
+    // Validate the body was created successfully
+    if (!body || typeof body !== 'string') {
+      throw new Error('Failed to serialize request body');
+    }
+  } catch (err) {
+    console.error('[callMcpTool] Failed to construct request body:', { tool, params, err });
+    throw new Error(`Request body construction failed: ${err.message}`);
+  }
+
   const fetchOpts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -71,6 +106,44 @@ export async function callMcpTool(tool, params = {}) {
   const t0 = Date.now();
   try {
     let response = await fetch('/api/mcp/tool', fetchOpts);
+    
+    // Enhanced 400 error handling
+    if (response.status === 400) {
+      const err400 = await response.clone().json().catch(() => ({ 
+        error: 'unknown_400',
+        message: 'Bad request - invalid tool parameters',
+        debug: { status: 400, body: body.substring(0, 200) }
+      }));
+      
+      console.error('[callMcpTool] 400 error from server:', {
+        error: err400,
+        requestBody: { tool, params, flowTraceId },
+        bodyLength: body.length
+      });
+      
+      const tokenEvents = err400.tokenEvents || [];
+      appendMcpCall(tool, 400, Date.now() - t0, null, err400.message);
+      appendTokenEvents(tool, tokenEvents);
+      
+      try {
+        agentFlowDiagram.completeMcpToolCall({
+          toolName: tool,
+          tokenEvents,
+          ok: false,
+          errorMessage: `400 Error: ${err400.message}`,
+        });
+      } catch (flowErr) {
+        console.warn('[callMcpTool] Failed to complete flow diagram:', flowErr);
+      }
+      
+      throw Object.assign(new Error(`MCP 400 Error: ${err400.message}`), {
+        tokenEvents,
+        statusCode: 400,
+        code: err400.error,
+        isClientError: true
+      });
+    }
+    
     if (response.status === 401) {
       const err401 = await response.clone().json().catch(() => ({}));
       // Cookie-only / empty Redis session: refresh cannot add tokens — avoid spamming refresh endpoints.
