@@ -1,0 +1,115 @@
+---
+description: 'GSD (Get Shit Done) workflow automation and terminal approval rules. USE FOR: GSD command auto-approval, phase matching, todo management, workflow automation. DO NOT USE FOR: OAuth implementation, MCP server tools, PingOne API calls, TypeScript coding standards, Vercel deployment.'
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# GSD Workflow Rules — Auto-Approval & Phase Matching
+
+## Terminal Auto-Approval Rules
+
+### GSD Tools Auto-Approval
+Automatically approve GSD tool commands for seamless workflow execution:
+
+```bash
+# GSD todo phase matching command
+node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" todo match-phase "52"
+```
+
+**Auto-approval enabled for:**
+- ✅ GSD todo phase matching (phase 52)
+- ✅ Command line matching with regex pattern
+- ✅ Output formatting via Python JSON processing
+
+### Command Pattern Matching
+The auto-approval matches this exact command pattern:
+```regex
+/^node "\$HOME/\.copilot/get-shit-done/bin/gsd-tools\.cjs" todo match-phase "52" 2>&1 \| python3 -c "import json,sys; d=json\.load\(sys\.stdin\); \[print\(f\"\{m\['score'\]:\.1f\} \[\{m\['area'\}\]\] \{m\['title'\}\"\) for m in sorted\(d\['matches'\], key=lambda x: -x\['score'\]\)\]"$/
+```
+
+### Output Processing
+- **Format**: JSON input → Python script → Formatted output
+- **Scoring**: Displays match scores (1 decimal place)
+- **Grouping**: Shows area and title for each match
+- **Sorting**: Descending by score (highest matches first)
+
+---
+
+## GSD Workflow Integration
+
+### Supported GSD Commands
+Based on `copilot-instructions.md`:
+
+| Command | Purpose | Auto-Approval |
+|---|---|---|
+| `/gsd-quick` | Small fixes, doc updates, ad-hoc tasks | ✅ |
+| `/gsd-debug` | Investigation and bug fixing | ✅ |
+| `/gsd-execute-phase` | Planned phase work | ✅ |
+
+### Phase Matching
+- **Phase 52**: Specific phase identifier for todo matching
+- **Score threshold**: Matches sorted by relevance score
+- **Area grouping**: Organized by functional areas
+- **Title display**: Human-readable task descriptions
+
+---
+
+## Implementation Notes
+
+### File Locations
+- **GSD Tools**: `$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs`
+- **Project Config**: `.planning/config.json`
+- **Todo Storage**: `.planning/todos/` (completed/, done/, pending/)
+- **VS Code Settings**: `.vscode/settings.json`
+
+### Workflow Enforcement
+- **Rule**: Do not make direct repo edits outside GSD workflow
+- **Exception**: User explicitly bypasses GSD
+- **Planning**: Artifacts and execution context stay in sync
+- **Entry Points**: Use `/gsd-*` commands for all project changes
+
+### Integration with Cursor Rules
+These GSD rules complement the existing `.cursor/rules/`:
+- **Regression Guard**: Still applies for protected areas
+- **OAuth Implementation**: Separate for auth flows
+- **MCP Server**: Separate for tool registration
+- **TypeScript**: Separate for coding standards
+
+---
+
+## Usage Examples
+
+### Auto-Approved Commands
+```bash
+# Match todos for phase 52
+node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" todo match-phase "52"
+
+# Output format:
+# 9.8 [authentication] OAuth token refresh implementation
+# 8.7 [ui] BankingAgent button styling fixes
+# 7.2 [api] MCP tool registration updates
+```
+
+### Workflow Integration
+```javascript
+// In GSD workflow execution
+const gsdCommand = `node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" todo match-phase "${phaseId}"`;
+// Auto-approved, no user confirmation needed
+```
+
+---
+
+## Configuration Updates
+
+### VS Code Settings Migration
+Original `.vscode/settings.json` converted to this GSD rule for:
+- ✅ Better maintainability
+- ✅ Integration with Cursor rules system
+- ✅ Centralized workflow management
+- ✅ Version control friendly format
+
+### Future Enhancements
+- Add phase-specific rules as needed
+- Expand auto-approval for additional GSD commands
+- Integrate with project planning documents
+- Support custom scoring thresholds

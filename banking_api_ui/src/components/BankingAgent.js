@@ -1773,6 +1773,13 @@ export default function BankingAgent({
         // The panel may display 'transactions' (history after the write), but the dashboard
         // must know a write occurred.
         const eventType = isWriteAction ? 'confirm' : resultType;
+        console.log('[BankingAgent] Dispatching banking-agent-result event:', { 
+          eventType, 
+          isWriteAction, 
+          actionId, 
+          label,
+          resultData 
+        });
         window.dispatchEvent(new CustomEvent('banking-agent-result', {
           detail: { type: eventType, data: resultData, label },
         }));

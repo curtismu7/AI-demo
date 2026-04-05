@@ -302,7 +302,7 @@ function TokenExchangeSimulator({ delegate, onClose }) {
         {/* ── Header (drag handle) ── */}
         <div
           className="da-sim__header"
-          onMouseDown={simDragStart}
+          onPointerDown={simDragStart}
           style={{ cursor: 'grab' }}
         >
           <div className="da-sim__title">
@@ -450,7 +450,7 @@ function AddDelegateModal({ onClose, onSave }) {
       >
         <div
           className="da-modal__header"
-          onMouseDown={handleDragStart}
+          onPointerDown={handleDragStart}
           style={{ cursor: 'grab' }}
         >
           <h2 className="da-modal__title">Grant account access</h2>

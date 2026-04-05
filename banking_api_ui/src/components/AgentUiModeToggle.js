@@ -47,7 +47,7 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
       if (p === placement) return;
       if (p === 'middle') {
         setDashboardLayout('split3');
-        await applyAndReload({ placement: 'middle', fab }, { reload: true });
+        await applyAndReload({ placement: 'middle', fab }, { reload: false });
         return;
       }
       if (p === 'bottom') {

@@ -7,9 +7,17 @@ export interface Account {
   id: string;
   userId: string;
   accountType: string;
+  name?: string;
   accountNumber: string;
   balance: number;
+  currency?: string;
   status: string;
+  accountHolderName?: string;
+  swiftCode?: string;
+  iban?: string;
+  branchName?: string;
+  branchCode?: string;
+  openedDate?: string;
   createdAt: string;
   updatedAt: string;
 }

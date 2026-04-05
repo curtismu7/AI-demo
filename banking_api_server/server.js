@@ -1000,6 +1000,29 @@ app.get('/api/mcp/tool/events', (req, res) => {
 
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
+  // Log incoming request details for debugging 400 errors
+  const startTime = Date.now();
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const contentType = req.headers['content-type'] || 'unknown';
+  const contentLength = req.headers['content-length'] || 'unknown';
+  
+  console.log('[/api/mcp/tool] REQUEST: userAgent=%s contentType=%s contentLength=%s sessionID=%s', 
+    userAgent, contentType, contentLength, req.sessionID);
+  
+  // Log request body (safely) for debugging
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('[/api/mcp/tool] REQUEST BODY: %j', {
+      keys: Object.keys(req.body),
+      hasTool: 'tool' in req.body,
+      toolType: typeof req.body.tool,
+      toolValue: req.body.tool,
+      hasParams: 'params' in req.body,
+      paramsKeys: req.body.params ? Object.keys(req.body.params) : null,
+      hasFlowTraceId: 'flowTraceId' in req.body
+    });
+  } else {
+    console.log('[/api/mcp/tool] REQUEST BODY: empty or undefined');
+  }
   // Defensive re-parse: on Vercel serverless the global express.json() may not have
   // buffered the body by the time this route handler runs (cold-start / middleware race).
   // Re-applying express.json() inline (already declared above) handles the route-level
@@ -1019,10 +1042,22 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
 
   if (!tool || typeof tool !== 'string') {
     const bodyKeys = Object.keys(parsedBody);
-    console.warn('[/api/mcp/tool] 400: body keys=[%s] readableLength=%d', bodyKeys.join(','), req.readableLength);
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const contentType = req.headers['content-type'] || 'unknown';
+    console.error('[/api/mcp/tool] 400: tool_name_required - body keys=[%s] readableLength=%d contentType=%s userAgent=%s', 
+      bodyKeys.join(','), req.readableLength, contentType, userAgent);
+    console.error('[/api/mcp/tool] 400: parsedBody=%j', parsedBody);
     return res.status(400).json({
       error: 'tool_name_required',
       message: `tool name is required. Received body keys: [${bodyKeys.join(', ') || 'none'}]`,
+      debug: {
+        receivedKeys: bodyKeys,
+        readableLength: req.readableLength,
+        contentType,
+        hasTool: 'tool' in parsedBody,
+        toolType: typeof parsedBody.tool,
+        toolValue: parsedBody.tool
+      }
     });
   }
 

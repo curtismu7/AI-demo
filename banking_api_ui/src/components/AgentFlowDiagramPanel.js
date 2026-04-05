@@ -70,7 +70,7 @@ export default function AgentFlowDiagramPanel() {
       aria-modal="false"
       aria-labelledby="afd-title"
     >
-      <div className="afd-header" onMouseDown={handleDragStart}>
+      <div className="afd-header" onPointerDown={handleDragStart}>
         <span className="afd-header-icon" aria-hidden>
           🔀
         </span>

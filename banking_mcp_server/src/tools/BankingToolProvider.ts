@@ -286,10 +286,19 @@ export class BankingToolProvider {
       count: accounts.length,
       accounts: accounts.map(account => ({
         id: account.id,
-        type: account.accountType,
-        number: account.accountNumber,
+        accountType: account.accountType,
+        name: account.name || null,
+        accountNumber: account.accountNumber,
         balance: account.balance,
-        status: account.status || 'active'
+        currency: account.currency || 'USD',
+        status: account.status || 'active',
+        accountHolderName: account.accountHolderName || null,
+        swiftCode: account.swiftCode || null,
+        iban: account.iban || null,
+        branchName: account.branchName || null,
+        branchCode: account.branchCode || null,
+        openedDate: account.openedDate || null,
+        createdAt: account.createdAt,
       }))
     };
 

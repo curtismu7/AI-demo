@@ -1,0 +1,167 @@
+---
+description: 'GSD (Get Shit Done) project configuration and planning system. USE FOR: project setup, phase management, todo organization, workflow configuration. DO NOT USE FOR: OAuth implementation, MCP server tools, PingOne API calls, TypeScript coding standards, Vercel deployment.'
+globs: [".planning/**/*", ".windsurf/workflows/*"]
+alwaysApply: false
+---
+
+# GSD Project Configuration Rules
+
+## Planning System Structure
+
+### Directory Organization
+```
+.planning/
+├── config.json              # GSD workflow configuration
+├── PROJECT.md               # Project overview and goals
+├── REQUIREMENTS.md          # Detailed requirements
+├── ROADMAP.md              # Project phases and milestones
+├── STATE.md                # Current project state
+├── ALL-PHASES-UI-REVIEW.md  # UI review across phases
+├── todos/                  # Todo management
+│   ├── completed/          # Completed tasks
+│   ├── done/              # Done tasks
+│   └── pending/           # Pending tasks
+├── codebase/              # Codebase analysis
+├── debug/                 # Debug information
+├── notes/                 # Project notes
+├── phases/               # Phase-specific planning
+└── quick/                # Quick task planning
+```
+
+### Configuration Schema
+**`.planning/config.json`** defines:
+- **Model profile**: Quality-focused execution
+- **Branching strategy**: GSD-specific branch templates
+- **Workflow phases**: Research, plan check, verifier, UI phase
+- **Hooks**: Context warnings and validation
+- **Granularity**: Standard task sizing
+
+### Branch Templates
+```javascript
+// Phase branches
+"gsd/phase-{phase}-{slug}"
+
+// Milestone branches  
+"gsd/{milestone}-{slug}"
+
+// Quick tasks (no template)
+null
+```
+
+---
+
+## Workflow Configuration
+
+### Enabled Workflow Features
+- ✅ **Research**: Pre-change investigation
+- ✅ **Plan Check**: Validation before execution
+- ✅ **Verifier**: Post-change verification
+- ✅ **UI Phase**: UI-specific safety gates
+- ✅ **Auto Advance**: Automatic phase progression
+- ✅ **Node Repair**: Self-healing capability (budget: 2)
+- ✅ **UI Safety Gate**: UI change protection
+
+### Discussion Mode
+- **Mode**: "discuss" - collaborative decision making
+- **Skip Discuss**: false - always discuss when needed
+- **Research Before Questions**: false - direct interaction allowed
+
+### Agent Skills
+- Empty object `{}` - no custom agent skills configured
+- **Resolve Model IDs**: "omit" - exclude model identifiers
+- **Mode**: "yolo" - aggressive execution
+- **Granularity**: "standard" - normal task sizing
+
+---
+
+## Todo Management System
+
+### Todo Categories
+```
+.planning/todos/
+├── completed/    # Successfully completed tasks
+├── done/        # Tasks marked as done
+└── pending/     # Tasks awaiting execution
+```
+
+### Todo Lifecycle
+1. **Creation**: Tasks added to `pending/`
+2. **Assignment**: GSD assigns tasks during phase matching
+3. **Execution**: Tasks moved to appropriate phase
+4. **Completion**: Tasks moved to `completed/` or `done/`
+
+### Phase Matching
+- **Command**: `gsd-tools.cjs todo match-phase "52"`
+- **Scoring**: Tasks scored by relevance to current phase
+- **Output**: Formatted with score, area, and title
+- **Sorting**: Descending by score (highest relevance first)
+
+---
+
+## Integration with Cursor Rules
+
+### Rule Coordination
+GSD planning rules coordinate with:
+- **gsd-workflow.mdc**: Auto-approval and terminal commands
+- **regression-guard.mdc**: Protected area enforcement
+- **oauth-implementation.mdc**: Authentication flows
+- **mcp-server.mdc**: MCP tool management
+- **typescript-write.mdc**: Code quality standards
+- **vercel-deployment.mdc**: Deployment patterns
+
+### Workflow Enforcement
+- **GSD Commands**: `/gsd-quick`, `/gsd-debug`, `/gsd-execute-phase`
+- **Direct Edits**: Discouraged unless explicitly bypassed
+- **Planning Sync**: Artifacts and execution context aligned
+- **Phase Progression**: Automatic advancement through workflow stages
+
+---
+
+## Project Planning Documents
+
+### Core Documents
+- **PROJECT.md**: Project overview, constraints, core value
+- **REQUIREMENTS.md**: Detailed functional requirements
+- **ROADMAP.md**: Phase-by-phase project roadmap
+- **STATE.md**: Current project state and status
+- **ALL-PHASES-UI-REVIEW.md**: Cross-phase UI consistency
+
+### GSD Markers
+Documents use GSD markers for structured content:
+```html
+<!-- GSD:project-start source:PROJECT.md -->
+<!-- GSD:stack-start source:codebase/STACK.md -->
+<!-- GSD:conventions-start source:CONVENTIONS.md -->
+<!-- GSD:architecture-start source:ARCHITECTURE.md -->
+<!-- GSD:workflow-start source:GSD defaults -->
+<!-- GSD:profile-start -->
+```
+
+### Developer Profile
+- **Status**: Not yet configured
+- **Command**: `/gsd-profile-user` to generate profile
+- **Management**: Automated by `generate-claude-profile`
+- **Warning**: Do not edit manually
+
+---
+
+## Usage Guidelines
+
+### Before Making Changes
+1. **Start GSD Workflow**: Use `/gsd-*` command
+2. **Check Protected Areas**: Review regression-guard.mdc
+3. **Validate Planning**: Ensure artifacts are current
+4. **Execute Phase**: Follow GSD workflow progression
+
+### Configuration Updates
+When updating GSD configuration:
+1. **Backup Current**: Save existing config.json
+2. **Update Schema**: Follow established patterns
+3. **Test Workflow**: Verify GSD commands work
+4. **Sync Rules**: Update related Cursor rules
+
+### Integration Testing
+- **Phase Matching**: Test todo match-phase commands
+- **Auto-Approval**: Verify terminal command approval
+- **Workflow Progression**: Test phase advancement
+- **Rule Coordination**: Ensure no conflicts with other rules

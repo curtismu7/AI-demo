@@ -28,7 +28,9 @@ result: pass
 ### 2. Agent triggers countdown toast (email method)
 expected: |
   With the banking agent open and step-up method set to email (now the default): ask the agent to transfer $300 or more. The agent calls the BFF, gets a 428 step_up_required back, and fires agentStepUpRequested. The dashboard warning toast should appear showing "Redirecting in 3s…" with a Cancel button — NOT the old static "Verify now" link.
-result: [pending]
+result: issue
+reported: "PingOne returned: invalid_request. Invalid sign-on policy provided in acr_values parameter (Correlation ID: 0263106a-b3ba-4859-b1dd-e9cfeeb0380e)"
+severity: blocker
 
 ### 3. Cancel stops countdown
 expected: |

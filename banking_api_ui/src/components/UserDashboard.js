@@ -77,6 +77,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [autoRefresh, setAutoRefresh] = useState(false);
   /** Server-issued id for high-value HITL — opens TransactionConsentModal on the dashboard. */
   const [consentChallengeId, setConsentChallengeId] = useState(null);
+  /** Track which account cards have expanded profile details */
+  const [expandedAccounts, setExpandedAccounts] = useState(new Set());
   /** True when the HITL was triggered via AgentConsentModal — skip consent step, go straight to OTP. */
   const [agentHitlAutoConfirm, setAgentHitlAutoConfirm] = useState(false);
   const [stepUpRequired, setStepUpRequired] = useState(false);
@@ -177,11 +179,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   /** Refresh balances silently after any agent write action (deposit/withdraw/transfer). */
   useEffect(() => {
-    const onAgentResult = (e) => {
-      const type = e?.detail?.type;
+    const onAgentResult = ({ detail }) => {
+      const { type, data, label } = detail;
+      console.log('[UserDashboard] banking-agent-result event received:', { type, data, label });
       // 'confirm' covers deposit, withdraw, and transfer success responses.
       // 'accounts' and 'transactions' are read-only — no balance change.
       if (type === 'confirm') {
+        console.log('[UserDashboard] Triggering fetchUserData for transaction history refresh');
         fetchUserData(true);
       }
     };
@@ -204,6 +208,19 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   const handleDashThemeToggle = useCallback(() => {
     setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
+  }, []);
+
+  /** Toggle expanded state for account profile details */
+  const toggleAccountProfile = useCallback((accountId) => {
+    setExpandedAccounts(prev => {
+      const next = new Set(prev);
+      if (next.has(accountId)) {
+        next.delete(accountId);
+      } else {
+        next.add(accountId);
+      }
+      return next;
+    });
   }, []);
 
   // Initialize chat widget (configuration is handled in index.html)
@@ -1272,41 +1289,129 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </p>
           )}
           <div className="accounts-grid">
-            {accounts.map(account => (
-              <div key={account.id} className="account-card" style={account._demo ? { opacity: 0.65 } : {}}>
-                <div className="account-header">
-                  <h3>{account.name}</h3>
-                  <span className={`account-type-badge ${(account.accountType || account.type || 'unknown').toLowerCase()}`}>
-                    {(account.accountType || account.type) ?
-                      (account.accountType || account.type).charAt(0).toUpperCase() + (account.accountType || account.type).slice(1) :
-                      'Unknown'}
-                  </span>
-                  {account._demo && <span style={{ marginLeft: 6, fontSize: '0.7rem', background: '#e5e7eb', color: '#6b7280', borderRadius: 4, padding: '1px 5px' }}>demo</span>}
+            {accounts.map(account => {
+              const isExpanded = expandedAccounts.has(account.id);
+              const hasRichProfile = account.routingNumber || account.swiftCode || account.iban || account.branchName;
+              
+              return (
+                <div key={account.id} className="account-card" style={account._demo ? { opacity: 0.65 } : {}}>
+                  <div className="account-header">
+                    <h3>{account.name}</h3>
+                    <span className={`account-type-badge ${(account.accountType || account.type || 'unknown').toLowerCase()}`}>
+                      {(account.accountType || account.type) ?
+                        (account.accountType || account.type).charAt(0).toUpperCase() + (account.accountType || account.type).slice(1) :
+                        'Unknown'}
+                    </span>
+                    {account._demo && <span style={{ marginLeft: 6, fontSize: '0.7rem', background: '#e5e7eb', color: '#6b7280', borderRadius: 4, padding: '1px 5px' }}>demo</span>}
+                  </div>
+                  <p className="account-number">Account: {account.accountNumber}</p>
+                  <p className="balance">Balance: {fmt(account.balance)}</p>
+                  
+                  {/* Rich profile details toggle */}
+                  {hasRichProfile && (
+                    <button
+                      type="button"
+                      className="account-profile-toggle"
+                      onClick={() => toggleAccountProfile(account.id)}
+                      style={{
+                        background: 'none',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        padding: '4px 8px',
+                        fontSize: '0.75rem',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        marginTop: '8px',
+                        width: '100%'
+                      }}
+                    >
+                      {isExpanded ? '▼' : '▶'} Account Details
+                    </button>
+                  )}
+                  
+                  {/* Rich profile details */}
+                  {isExpanded && hasRichProfile && (
+                    <div className="account-profile-details" style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f9fafb',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem'
+                    }}>
+                      <div style={{ display: 'grid', gap: '8px' }}>
+                        {account.routingNumber && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280', fontWeight: 500 }}>Routing Number:</span>
+                            <span style={{ fontFamily: 'monospace' }}>{account.routingNumber}</span>
+                          </div>
+                        )}
+                        {account.swiftCode && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280', fontWeight: 500 }}>SWIFT Code:</span>
+                            <span style={{ fontFamily: 'monospace' }}>{account.swiftCode}</span>
+                          </div>
+                        )}
+                        {account.iban && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280', fontWeight: 500 }}>IBAN:</span>
+                            <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{account.iban}</span>
+                          </div>
+                        )}
+                        {account.branchName && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280', fontWeight: 500 }}>Branch:</span>
+                            <span>{account.branchName}</span>
+                          </div>
+                        )}
+                        {account.branchCode && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280', fontWeight: 500 }}>Branch Code:</span>
+                            <span>{account.branchCode}</span>
+                          </div>
+                        )}
+                        {account.openedDate && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280', fontWeight: 500 }}>Opened:</span>
+                            <span>{new Date(account.openedDate).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        {account.accountHolderName && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280', fontWeight: 500 }}>Account Holder:</span>
+                            <span>{account.accountHolderName}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="account-actions">
+                    <button
+                      type="button"
+                      className="select-account-btn"
+                      onClick={() => setSelectedAccount(account)}
+                    >
+                      Select for Transfer
+                    </button>
+                    <button
+                      type="button"
+                      className="deposit-btn"
+                      onClick={() => setDepositAccount(account)}
+                    >
+                      Deposit
+                    </button>
+                    <button
+                      type="button"
+                      className="withdraw-btn"
+                      onClick={() => setWithdrawAccount(account)}
+                    >
+                      Withdraw
+                    </button>
+                  </div>
                 </div>
-                <p className="account-number">Account: {account.accountNumber}</p>
-                <p className="balance">Balance: {fmt(account.balance)}</p>
-                <div className="account-actions">
-                  <button
-                    className="select-account-btn"
-                    onClick={() => setSelectedAccount(account)}
-                  >
-                    Select for Transfer
-                  </button>
-                  <button
-                    className="deposit-btn"
-                    onClick={() => setDepositAccount(account)}
-                  >
-                    Deposit
-                  </button>
-                  <button
-                    className="withdraw-btn"
-                    onClick={() => setWithdrawAccount(account)}
-                  >
-                    Withdraw
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

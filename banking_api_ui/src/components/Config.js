@@ -700,62 +700,42 @@ export default function Config() {
       <div className="app-page-shell__body">
       <div className="config-page__main">
 
-        {/* Tab bar — always visible */}
-        {
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0' }}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('setup')}
-              style={{
-                padding: '0.5rem 1.25rem',
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                fontWeight: activeTab === 'setup' ? 700 : 400,
-                borderBottom: activeTab === 'setup' ? '2px solid #2563eb' : '2px solid transparent',
-                color: activeTab === 'setup' ? '#2563eb' : '#6b7280',
-                marginBottom: '-1px',
-                fontSize: '0.9rem',
-              }}
-            >
-              Setup
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('vercel')}
-              style={{
-                padding: '0.5rem 1.25rem',
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                fontWeight: activeTab === 'vercel' ? 700 : 400,
-                borderBottom: activeTab === 'vercel' ? '2px solid #2563eb' : '2px solid transparent',
-                color: activeTab === 'vercel' ? '#2563eb' : '#6b7280',
-                marginBottom: '-1px',
-                fontSize: '0.9rem',
-              }}
-            >
-              Vercel Env
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('worker')}
-              style={{
-                padding: '0.5rem 1.25rem',
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                fontWeight: activeTab === 'worker' ? 700 : 400,
-                borderBottom: activeTab === 'worker' ? '2px solid #2563eb' : '2px solid transparent',
-                color: activeTab === 'worker' ? '#2563eb' : '#6b7280',
-                marginBottom: '-1px',
-                fontSize: '0.9rem',
-              }}
-            >
-              Worker App
-            </button>
-          </div>
-        }
+        {/* Tab bar */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
+          {[
+            { key: 'setup',  label: '⚙️ Setup Config' },
+            { key: 'vercel', label: '▲ Vercel Env' },
+            { key: 'worker', label: '🔑 Worker App' },
+          ].map(({ key, label }) => {
+            const isActive = activeTab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveTab(key)}
+                style={{
+                  padding: '10px 22px',
+                  border: '2px solid transparent',
+                  borderBottom: isActive ? '2px solid #fff' : '2px solid transparent',
+                  borderTop: isActive ? '2px solid #2563eb' : '2px solid transparent',
+                  borderLeft: isActive ? '2px solid #e5e7eb' : '2px solid transparent',
+                  borderRight: isActive ? '2px solid #e5e7eb' : '2px solid transparent',
+                  background: isActive ? '#fff' : '#f9fafb',
+                  cursor: 'pointer',
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? '#1e40af' : '#6b7280',
+                  fontSize: '0.875rem',
+                  marginBottom: '-2px',
+                  borderRadius: isActive ? '6px 6px 0 0' : '6px 6px 0 0',
+                  transition: 'color 0.15s, background 0.15s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
 
         {/* Vercel Env tab content */}
         {activeTab === 'vercel' && hostedOn === 'vercel' && (

@@ -42,16 +42,26 @@ export function useDraggablePanel(initialPos, initialSize, options = {}) {
   posRef.current  = pos;
   sizeRef.current = size;
 
-  /** Drag from any element that calls this on mousedown. */
+  /** Drag from any element that calls this on pointerdown.
+   *  Uses setPointerCapture so pointermove events continue even when the
+   *  cursor exits the browser viewport, removing the hard viewport wall. */
   const handleDragStart = useCallback((e) => {
     if (e.button !== 0) return;
+    // Don't steal pointer from interactive children (buttons, inputs, links, …)
+    if (e.target.closest('button, input, textarea, select, a')) return;
     e.preventDefault();
     const offX = e.clientX - posRef.current.x;
     const offY = e.clientY - posRef.current.y;
+    const target = e.currentTarget;
+    // Capture pointer so drag continues when cursor exits the viewport
+    if (target.setPointerCapture && e.pointerId != null) {
+      target.setPointerCapture(e.pointerId);
+    }
     const onMove = (ev) => setPos({ x: ev.clientX - offX, y: ev.clientY - offY });
     const onUp   = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup',   onUp);
+      target.removeEventListener('pointermove', onMove);
+      target.removeEventListener('pointerup',   onUp);
+      target.removeEventListener('pointercancel', onUp);
       document.body.style.userSelect = '';
       if (storageKey) {
         try {
@@ -60,21 +70,46 @@ export function useDraggablePanel(initialPos, initialSize, options = {}) {
       }
     };
     document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
+    target.addEventListener('pointermove', onMove);
+    target.addEventListener('pointerup',   onUp);
+    target.addEventListener('pointercancel', onUp);
   }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** Resize from the bottom-right grip. */
-  const handleResizeStart = useCallback((e) => {
+  /** 8-direction resize - supports resizing from any edge or corner. */
+  const handleResizeStart = useCallback((e, direction = 'se') => {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX, startY = e.clientY;
     const startW = sizeRef.current.w, startH = sizeRef.current.h;
-    const onMove = (ev) => setSize({
-      w: Math.max(resolvedMinW, startW + ev.clientX - startX),
-      h: Math.max(resolvedMinH, startH + ev.clientY - startY),
-    });
+    const startL = posRef.current.x, startT = posRef.current.y;
+    
+    const onMove = (ev) => {
+      const deltaX = ev.clientX - startX;
+      const deltaY = ev.clientY - startY;
+      
+      let newW = startW, newH = startH, newL = startL, newT = startT;
+      
+      // Handle each resize direction
+      if (direction.includes('e')) {
+        newW = Math.max(resolvedMinW, startW + deltaX);
+      }
+      if (direction.includes('w')) {
+        newW = Math.max(resolvedMinW, startW - deltaX);
+        newL = startL + (startW - newW);
+      }
+      if (direction.includes('s')) {
+        newH = Math.max(resolvedMinH, startH + deltaY);
+      }
+      if (direction.includes('n')) {
+        newH = Math.max(resolvedMinH, startH - deltaY);
+        newT = startT + (startH - newH);
+      }
+      
+      setSize({ w: newW, h: newH });
+      setPos({ x: newL, y: newT });
+    };
+    
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup',   onUp);
@@ -86,11 +121,20 @@ export function useDraggablePanel(initialPos, initialSize, options = {}) {
         } catch {}
       }
     };
-    document.body.style.cursor     = 'se-resize';
+    
+    // Set cursor based on direction
+    const cursorMap = {
+      'n': 'n-resize', 's': 's-resize', 'e': 'e-resize', 'w': 'w-resize',
+      'ne': 'ne-resize', 'nw': 'nw-resize', 'se': 'se-resize', 'sw': 'sw-resize'
+    };
+    document.body.style.cursor = cursorMap[direction] || 'se-resize';
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
   }, [resolvedMinW, resolvedMinH, storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { pos, size, handleDragStart, handleResizeStart };
+  /** Create resize handlers for each direction */
+  const createResizeHandler = useCallback((direction) => (e) => handleResizeStart(e, direction), [handleResizeStart]);
+
+  return { pos, size, handleDragStart, handleResizeStart, createResizeHandler };
 }

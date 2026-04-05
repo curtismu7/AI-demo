@@ -1,0 +1,213 @@
+---
+description: 'GSD (Get Shit Done) commands and workflow entry points. USE FOR: command execution, phase management, todo operations, workflow automation. DO NOT USE FOR: OAuth implementation, MCP server tools, PingOne API calls, TypeScript coding standards, Vercel deployment.'
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# GSD Commands Reference
+
+## Primary GSD Commands
+
+### `/gsd-quick` - Quick Tasks
+**Purpose**: Small fixes, documentation updates, ad-hoc tasks
+
+**Usage**:
+```
+/gsd-quick
+```
+
+**When to Use**:
+- Minor bug fixes
+- Documentation updates
+- Small UI adjustments
+- Configuration tweaks
+- One-off tasks
+
+**Auto-Approval**: ✅ Enabled
+**Workflow**: Minimal planning, direct execution
+
+---
+
+### `/gsd-debug` - Investigation & Bug Fixing
+**Purpose**: Investigation, debugging, and systematic bug resolution
+
+**Usage**:
+```
+/gsd-debug
+```
+
+**When to Use**:
+- Complex bug investigation
+- Performance issues
+- Integration problems
+- Systematic debugging
+- Root cause analysis
+
+**Auto-Approval**: ✅ Enabled
+**Workflow**: Investigation → Analysis → Fix → Verification
+
+---
+
+### `/gsd-execute-phase` - Planned Phase Work
+**Purpose**: Execute planned development phases
+
+**Usage**:
+```
+/gsd-execute-phase
+```
+
+**When to Use**:
+- Feature development
+- Major refactoring
+- Architecture changes
+- Multi-step tasks
+- Planned milestones
+
+**Auto-Approval**: ✅ Enabled
+**Workflow**: Research → Plan → Execute → Verify
+
+---
+
+## Supporting GSD Commands
+
+### `/gsd-profile-user` - Developer Profile
+**Purpose**: Generate or update developer profile
+
+**Usage**:
+```
+/gsd-profile-user
+```
+
+**Function**:
+- Creates developer profile in copilot-instructions.md
+- Captures coding preferences and expertise
+- Personalizes GSD workflow
+- Updates profile section automatically
+
+**Management**: Handled by `generate-claude-profile` script
+
+---
+
+## GSD Tools Integration
+
+### GSD Tools Location
+```
+$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs
+```
+
+### Available Tools
+
+#### `todo match-phase` - Phase Matching
+**Purpose**: Match todos to current development phase
+
+**Command**:
+```bash
+node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" todo match-phase "52"
+```
+
+**Output Format**:
+```
+9.8 [authentication] OAuth token refresh implementation
+8.7 [ui] BankingAgent button styling fixes
+7.2 [api] MCP tool registration updates
+```
+
+**Features**:
+- **Scoring**: Relevance score (1 decimal place)
+- **Area Grouping**: Functional area classification
+- **Title Display**: Human-readable descriptions
+- **Sorting**: Descending by relevance
+
+**Auto-Approval**: ✅ Enabled via regex pattern matching
+
+---
+
+## Workflow Integration
+
+### Command Selection Guide
+
+| Task Type | Recommended Command | Reason |
+|---|---|---|
+| Small fixes | `/gsd-quick` | Minimal overhead, direct execution |
+| Bug investigation | `/gsd-debug` | Systematic approach, verification |
+| Feature development | `/gsd-execute-phase` | Full workflow, planning included |
+| Profile setup | `/gsd-profile-user` | One-time configuration |
+| Todo matching | GSD tools command | Phase-specific task assignment |
+
+### Workflow Progression
+
+#### Quick Tasks (`/gsd-quick`)
+1. **Task Identification**: Small, well-defined task
+2. **Direct Execution**: Minimal planning required
+3. **Immediate Fix**: Apply solution directly
+4. **Basic Verification**: Ensure fix works
+
+#### Debug Tasks (`/gsd-debug`)
+1. **Investigation**: Systematic problem analysis
+2. **Root Cause**: Identify underlying issue
+3. **Solution Design**: Plan fix approach
+4. **Implementation**: Apply systematic fix
+5. **Verification**: Test and validate resolution
+
+#### Phase Execution (`/gsd-execute-phase`)
+1. **Research**: Investigate requirements and constraints
+2. **Planning**: Create detailed execution plan
+3. **Plan Check**: Validate approach before execution
+4. **Implementation**: Execute planned changes
+5. **Verification**: Comprehensive testing and validation
+6. **UI Phase**: UI-specific safety gates if applicable
+
+---
+
+## Configuration Integration
+
+### VS Code Settings
+Original auto-approval configuration converted to GSD rules:
+- **File**: `.vscode/settings.json` → `.cursor/rules/gsd-workflow.mdc`
+- **Pattern**: Regex matching for GSD tools commands
+- **Approval**: Automatic for phase matching commands
+- **Output**: Formatted JSON processing via Python
+
+### Planning System
+- **Config**: `.planning/config.json` - Workflow settings
+- **Todos**: `.planning/todos/` - Task management
+- **Documents**: `.planning/*.md` - Project documentation
+- **Phases**: Structured progression through development stages
+
+---
+
+## Best Practices
+
+### Command Usage
+1. **Start with GSD**: Always use `/gsd-*` commands for project changes
+2. **Choose Appropriately**: Select command based on task complexity
+3. **Follow Workflow**: Respect the defined progression steps
+4. **Update Planning**: Keep planning documents current
+
+### Phase Matching
+1. **Regular Matching**: Use todo matching to identify relevant tasks
+2. **Score Threshold**: Focus on high-scoring, relevant matches
+3. **Area Focus**: Group tasks by functional area
+4. **Title Clarity**: Ensure task titles are descriptive
+
+### Workflow Integration
+1. **Rule Coordination**: Work with other Cursor rules
+2. **Regression Guard**: Respect protected areas
+3. **OAuth Separation**: Use oauth-implementation.mdc for auth tasks
+4. **MCP Separation**: Use mcp-server.mdc for MCP tasks
+
+---
+
+## Troubleshooting
+
+### Common Issues
+- **Command Not Found**: Verify GSD tools installation at `$HOME/.copilot/get-shit-done/`
+- **Auto-Approval Fails**: Check regex pattern in gsd-workflow.mdc
+- **Phase Matching Empty**: Verify todos exist in `.planning/todos/`
+- **Workflow Stuck**: Check `.planning/config.json` settings
+
+### Resolution Steps
+1. **Verify Installation**: Confirm GSD tools are installed
+2. **Check Configuration**: Validate planning system setup
+3. **Review Rules**: Ensure Cursor rules are properly formatted
+4. **Test Commands**: Run simple GSD command to verify functionality

@@ -298,7 +298,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
 
   const inner = (
     <div className={standalone ? 'log-viewer-standalone' : 'log-viewer-float__body'}>
-        <div className="log-viewer-header" onMouseDown={!standalone ? handleDragStart : undefined}>
+        <div className="log-viewer-header" onPointerDown={!standalone ? handleDragStart : undefined}>
           <h2>📊 Log Viewer</h2>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {!standalone && (

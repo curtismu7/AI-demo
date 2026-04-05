@@ -508,7 +508,7 @@ function TokenInspectorPanel({ event, initialPos, onClose }) {
       aria-label="OAuth Token Inspector"
     >
       {/* Header — drag handle */}
-      <div className="tci-header" onMouseDown={handleDragStart}>
+      <div className="tci-header" onPointerDown={handleDragStart}>
         <span className="tci-header-icon" aria-hidden>⊕</span>
         <div className="tci-header-text">
           <span className="tci-title">OAuth Token Inspector</span>
