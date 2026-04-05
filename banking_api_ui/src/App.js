@@ -33,6 +33,7 @@ import DelegatedAccessPage from './components/DelegatedAccessPage';
 import DelegationPage from './components/DelegationPage';
 import FeatureFlagsPage from './components/FeatureFlagsPage';
 import LangChainPage from './pages/LangChainPage';
+import PostmanCollectionsPage from './components/PostmanCollectionsPage';
 
 import { savePublicConfig } from './services/configService';
 import { SpinnerProvider } from './context/SpinnerContext';
@@ -454,6 +455,7 @@ function AppWithAuth() {
                     <Route path="/client-registration"
                       element={<AdminRoute user={user}><ClientRegistrationPage /></AdminRoute>}
                     />
+                    <Route path="/postman" element={<PostmanCollectionsPage user={user} onLogout={logout} />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                   {backgroundLocation && fullLocation.pathname === '/audit' && (

@@ -89,6 +89,12 @@ const Header = ({ user, onLogout }) => {
                 >
                   ⚙️ Config
                 </NavLink>
+                <NavLink 
+                  to="/postman" 
+                  className={`nav-link ${location.pathname === '/postman' ? 'active' : ''}`}
+                >
+                  📮 Postman
+                </NavLink>
               </>
             ) : (
               <NavLink 

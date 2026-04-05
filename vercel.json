@@ -12,9 +12,15 @@
   "installCommand": "npm install --prefix banking_api_server && npm install --prefix banking_api_ui",
   "buildCommand": "cd banking_api_ui && npm run build",
   "outputDirectory": "banking_api_ui/build",
+  "functions": {
+    "api/handler.js": {
+      "maxDuration": 30
+    }
+  },
 
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/handler" },
+    { "src": "/docs/(.*)", "dest": "/docs/$1" },
     { "handle": "filesystem" },
     { "src": "/.*", "dest": "/index.html" }
   ],

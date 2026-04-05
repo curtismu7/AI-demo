@@ -1332,7 +1332,15 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
 // On Replit and localhost, Express serves the React build directly.
 if (!process.env.VERCEL) {
   const buildPath = path.join(__dirname, '..', 'banking_api_ui', 'build');
+  const docsPath = path.join(__dirname, '..', 'docs');
   const fs = require('fs');
+  
+  // Serve docs directory for Postman collections and documentation
+  if (fs.existsSync(docsPath)) {
+    app.use('/docs', express.static(docsPath));
+    console.log('[static] Serving docs from', docsPath);
+  }
+  
   if (fs.existsSync(buildPath)) {
     app.use(express.static(buildPath));
     // SPA fallback — serve index.html for all non-API routes.
