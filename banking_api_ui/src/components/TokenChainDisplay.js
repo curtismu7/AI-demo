@@ -661,6 +661,10 @@ function EventRow({ event, isLast, onInspect }) {
     onInspect(event, inspectBtnRef.current);
   };
 
+  // Extract user ID and agent ID for prominent display
+  const userId = event.claims?.sub;
+  const agentId = event.claims?.act?.sub || (typeof event.claims?.act === 'string' ? event.claims.act : null);
+  
   // Compact hints shown on the row — click inspect for full educational detail
   const triggerHint =
     event.trigger === 'high_risk' ? { text: '⚡ High-Risk Transaction', cls: 'warn' }
@@ -708,6 +712,23 @@ function EventRow({ event, isLast, onInspect }) {
               </button>
             )}
           </div>
+          
+          {/* Prominent User ID and Agent ID display */}
+          {(userId || agentId) && (
+            <div className="tcd-event-ids-row">
+              {userId && (
+                <span className="tcd-event-id tcd-event-id--user" title="User ID (sub claim)">
+                  👤 {userId.length > 16 ? userId.slice(0, 14) + '…' : userId}
+                </span>
+              )}
+              {agentId && (
+                <span className="tcd-event-id tcd-event-id--agent" title="Agent ID (act claim)">
+                  🤖 {agentId.length > 16 ? agentId.slice(0, 14) + '…' : agentId}
+                </span>
+              )}
+            </div>
+          )}
+          
           <div className={`tcd-event-meta-row${event.rfc ? '' : ' tcd-event-meta-row--no-rfc'}`}>
             {event.rfc ? <span className="tcd-event-rfc">{event.rfc}</span> : null}
             <StatusBadge status={event.status} />

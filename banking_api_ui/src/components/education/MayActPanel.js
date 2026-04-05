@@ -21,11 +21,13 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
           </p>
           <p>
             Later, when the AI actually makes a request on your behalf, it gets a fresh pass of its own that includes
-            an <code>act</code> claim. That claim says: <strong>"I am the AI assistant, and I am acting right now for [your name]
+            an <code>act</code> claim. That claim says: <strong>"I am the AI assistant, and I am acting right now for [your User ID]
             on this specific request."</strong>
           </p>
           <p>
-            Together, these two claims create a complete, auditable chain: <em>who approved the delegation</em> (<code>may_act</code>)
+            <strong>User ID (sub claim)</strong> — Identifies who the action benefits (you, the account holder).<br />
+            <strong>Agent ID (act.sub claim)</strong> — Identifies who is performing the action (the AI assistant).<br />
+            Together, these create a complete, auditable chain: <em>who approved the delegation</em> (<code>may_act</code>)
             and <em>who is executing it right now</em> (<code>act</code>).
           </p>
         </>
@@ -49,8 +51,9 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
             </li>
             <li>
               <strong>PingOne issues the AI&apos;s pass</strong> — it includes:
-              <pre className="edu-code">{`"sub": "your-user-id"       ← the action benefits you
-"act": { "sub": "ai-banking-agent" }  ← the AI is doing it`}</pre>
+              <pre className="edu-code">{`"sub": "your-user-id"              ← User ID (who benefits)
+"act": { "sub": "ai-banking-agent" }  ← Agent ID (who acts)`}</pre>
+              The Token Chain display now shows these prominently as 👤 User ID and 🤖 Agent ID.
             </li>
             <li>
               <strong>The AI uses that pass</strong> — every banking tool call is signed with this pass,
