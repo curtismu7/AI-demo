@@ -22,6 +22,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 5 | user-documentation | Setup guide and architecture docs for learners | Complete    | 2026-04-01 |
 | 6 | token-exchange-fix | RFC 8693 token exchange works end-to-end for both exchange paths | TOKEN-FIX-01, TOKEN-FIX-02 | 2 plans |
 | 56 | token-exchange-audit-and-compliance | Comprehensive RFC 8693 compliance audit against architectural diagrams | AUDIT-01, AUDIT-02, AUDIT-03, AUDIT-04, AUDIT-05, AUDIT-06 | 1 plan |
+| 57 | oauth-client-credentials-security-hardening | Replace PATs with OAuth 2.0 client credentials for AI integrations (80% security value, 20% complexity) | SECURE-01, SECURE-02, SECURE-03, SECURE-04, SECURE-05, SECURE-06 | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -732,4 +733,25 @@ Phases 3, 4, and 5 can partially overlap after Phase 1 is complete:
 
 Phase 55 (docker-kubernetes-deployment) depends on all core functionality being complete and stable.
 Phase 56 (token-exchange-audit-and-compliance) depends on Phase 6 (token-exchange-fix) being complete.
+Phase 57 (oauth-client-credentials-security-hardening) depends on Phase 56 (token-exchange-audit) being complete.
 - Phase 5 depends on all prior phases being stable
+
+---
+
+### Phase 57: oauth-client-credentials-security-hardening
+
+**Goal:** Replace long-lived Personal Access Tokens with OAuth 2.0 client credentials for AI integrations, implementing scoped, short-lived tokens to reduce credential blast radius by 80% while adding only 20% architectural complexity.
+
+**Requirements:** SECURE-01, SECURE-02, SECURE-03, SECURE-04, SECURE-05, SECURE-06
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 57-01-PLAN.md — OAuth client credentials security hardening implementation (SECURE-01 through SECURE-06)
+
+**Success criteria:**
+1. 80% reduction in credential blast radius through scoped, time-limited tokens
+2. 100% of MCP servers register as OAuth clients with proper credentials  
+3. All API calls validated against defined scopes with least-privilege access
+4. 30-minute token TTL with automatic rotation and secure credential management
+5. Seamless transition from PATs with zero service disruption and backward compatibility
