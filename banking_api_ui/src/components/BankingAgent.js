@@ -2573,36 +2573,30 @@ export default function BankingAgent({
                     {[
                       { id: 'guest_oauth', label: 'What is OAuth?' },
                       { id: 'guest_pkce',  label: 'Explain PKCE' },
-                      { id: 'guest_mcp',   label: 'What is MCP?' },
-                      { id: 'guest_ciba',  label: 'What is CIBA?' },
+                      { id: 'guest_mcp',   label: 'Explain MCP' },
+                      { id: 'guest_signin', label: 'Sign in →' },
                     ].map(chip => (
                       <button
                         key={chip.id}
                         type="button"
                         className="ba-action-item"
                         onClick={() => {
-                          setNlInput('');
-                          addMessage('user', chip.label);
-                          setNlLoading(true);
-                          parseNaturalLanguage(chip.label)
-                            .then(({ source, result }) => dispatchNlResult(result, source, chip.label))
-                            .catch(err => reportNlFailure(err))
-                            .finally(() => setNlLoading(false));
+                          if (chip.id === 'guest_signin') {
+                            handleLoginAction('login_user');
+                          } else {
+                            setNlInput('');
+                            addMessage('user', chip.label);
+                            setNlLoading(true);
+                            parseNaturalLanguage(chip.label)
+                              .then(({ source, result }) => dispatchNlResult(result, source, chip.label))
+                              .catch(err => reportNlFailure(err))
+                              .finally(() => setNlLoading(false));
+                          }
                         }}
                       >
                         {chip.label}
                       </button>
                     ))}
-                    <div className="ba-left-divider" />
-                    <button
-                      type="button"
-                      className="ba-action-item ba-action-item--signin-cta"
-                      onClick={() => handleLoginAction('login_user')}
-                      disabled={!oauthConfig?.user}
-                      title={oauthConfig?.user ? 'Sign in as a bank customer' : 'Configure credentials first'}
-                    >
-                      🔑 Sign in to your account →
-                    </button>
                   </div>
                   <div className="ba-left-auth">
                   <div className="ba-left-auth-notice">
