@@ -30,6 +30,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 62 | token-exchange-critical-fixes-and-enhancements | Address critical audit issues: may_act format, RFC 8707, scope simplification, test coverage, documentation | CRITICAL-01, CRITICAL-02, CRITICAL-03, CRITICAL-04, CRITICAL-05 | 1 plan |
 | 63 | documentation-and-integration-critical-fixes | Fix critical documentation gaps: operations guides, developer integration, API docs, architecture, configuration | DOC-01, DOC-02, DOC-03, DOC-04 | 1 plan |
 | 64 | unified-configuration-page | Merge config and demo-data into one unified configuration page with complete audit and seamless migration | UNIFIED-01, UNIFIED-02, UNIFIED-03, UNIFIED-04 | 1 plan |
+| 65 | api-configuration-and-management-enhancements | Address critical API configuration issues, improve management worker authentication, and fix Vercel environment variable handling | API-01, API-02, API-03, API-04 | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -898,10 +899,31 @@ Plans:
 - [ ] 64-01-PLAN.md — Unified configuration page implementation (UNIFIED-01 through UNIFIED-04)
 
 **Success criteria:**
-1. Single page experience with all configuration settings accessible from one well-organized interface
-2. 100% audit coverage of configStore keys with corresponding UI controls and proper validation
-3. Seamless migration from existing pages with no data loss and proper redirects
-4. Improved user experience with logical section grouping and consistent validation across all settings
-5. Updated documentation reflecting the new unified configuration structure
+1. Complete audit of all configStore keys and UI coverage
+2. Consolidated backend API endpoints for configuration management
+3. Unified frontend configuration page with logical sections
+4. Advanced features like JWT key generation and migration tools
+5. Seamless migration from old routes with proper redirects
+
+---
+
+### Phase 65: api-configuration-and-management-enhancements
+
+**Goal:** Address critical API configuration and management issues that have accumulated from recent development work, focusing on improving backend API infrastructure, enhancing authentication methods for management workers, and fixing Vercel environment variable handling for better deployment reliability.
+
+**Requirements:** API-01, API-02, API-03, API-04
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 65-01-PLAN.md — API configuration and management enhancements implementation (API-01 through API-04)
+
+**Success criteria:**
+1. Zero configuration-related 500 errors in production deployment
+2. All 2-exchange delegation flows work reliably with proper Vercel environment variables
+3. PingOne Management API can automate resource server and scope setup
+4. All 4 PingOne token authentication methods supported for management workers including JWT generation
+5. Configuration persistence works across browser refreshes and server restarts
+6. MCP Token Exchanger works with updated credentials and validation
 
 ---
