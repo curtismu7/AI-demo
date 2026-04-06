@@ -14,7 +14,7 @@ Phase 44: Admin mode token exchange
 Lower Priority:
 
 Phase 11: Education content review and audit
-Phase 13: Dashboard first impression overhaul
+*Phase 13: Dashboard first impression overhaul
 Phase 14: Agent window polish
 Phase 15: Unified configuration page
 Phase 16: Education content refresh
