@@ -262,7 +262,12 @@ class ConfigStore {
     if (USE_KV) {
       await this._loadFromKV();
     } else {
-      this._loadFromSQLite();
+      try {
+        this._loadFromSQLite();
+      } catch (err) {
+        console.warn('[ConfigStore] SQLite initialization failed, using in-memory fallback:', err.message);
+        // Continue with empty cache - config will be in-memory only
+      }
     }
   }
 
@@ -340,16 +345,21 @@ class ConfigStore {
       const kv = createClient({ url: KV_URL, token: KV_TOKEN });
       await kv.hset(KV_HASH_KEY, updates);
     } else {
-      const db = _getSQLite();
-      const upsert = db.prepare(
-        'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
-      );
-      const now = new Date().toISOString();
-      db.transaction(() => {
-        for (const [key, value] of Object.entries(updates)) {
-          upsert.run(key, value, now);
-        }
-      })();
+      try {
+        const db = _getSQLite();
+        const upsert = db.prepare(
+          'INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)'
+        );
+        const now = new Date().toISOString();
+        db.transaction(() => {
+          for (const [key, value] of Object.entries(updates)) {
+            upsert.run(key, value, now);
+          }
+        })();
+      } catch (err) {
+        console.warn('[ConfigStore] SQLite write failed, config will be in-memory only:', err.message);
+        // Continue - config stays in memory only
+      }
     }
 
     // Update cache last, so failures above leave cache consistent
