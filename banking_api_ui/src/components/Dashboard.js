@@ -353,20 +353,6 @@ const Dashboard = ({ user, onLogout }) => {
           className={`ud-shell ${agentPlacement === 'bottom' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
         >
         <div className="app-page-toolbar" role="toolbar" aria-label="Admin actions">
-          <button
-            type="button"
-            className="app-page-toolbar-btn"
-            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-          >
-            How does login work?
-          </button>
-          <button
-            type="button"
-            className="app-page-toolbar-btn"
-            onClick={() => open(EDU.MAY_ACT, 'what')}
-          >
-            What is may_act?
-          </button>
           <Link
             to="/feature-flags"
             className="app-page-toolbar-btn app-page-toolbar-btn--accent"

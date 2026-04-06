@@ -1711,20 +1711,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             <AgentUiModeToggle variant="eduBar" />
             <DashboardLayoutToggle />
           </div>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-          >
-            How does login work?
-          </button>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.MAY_ACT, 'what')}
-          >
-            What is may_act?
-          </button>
           <Link
             to="/mcp-inspector"
             className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"

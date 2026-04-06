@@ -621,20 +621,6 @@ export default function DemoDataPage({ user, onLogout }) {
           <Link to={dashboardPath} className="dashboard-toolbar-btn">
             ⌂ {dashboardCrumbLabel}
           </Link>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.LOGIN_FLOW, 'what')}
-          >
-            How does login work?
-          </button>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() => open(EDU.MAY_ACT, 'what')}
-          >
-            What is may_act?
-          </button>
           <Link
             to="/mcp-inspector"
             className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
