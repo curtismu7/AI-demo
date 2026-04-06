@@ -36,6 +36,7 @@ Plan: 1 of 3
 - Phase 7 (rfc-9728-protected-resource-metadata) — complete
 - Phase 8 (banking-transaction-integrity) — complete
 - Phase 12 (ui-button-consistency) — complete
+- Phase 13 (dashboard-first-impression-overhaul) — complete (commit: 358ed1f)
 - Phase 19 (demo-config-page-audit) — complete
 - Phase 20 (postman-collections) — complete (commits: 1c4f75f, 56df684, a549287, af3a767)
 - Phase 52 (pingone-mfa-step-up) — complete (commits: a4477e1, a867fb6, a3c3b0d, 02bf0d8)
@@ -82,7 +83,7 @@ Plan: 1 of 3
 
 ---
 
-## Pending Todos (55)
+## Pending Todos (56)
 
 - **[TODO -> auth]** Reorganize PingOne apps — OIDC agents to AI Agents group, OIDC user apps to Applications group
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
