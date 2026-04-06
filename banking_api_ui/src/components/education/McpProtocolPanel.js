@@ -78,7 +78,7 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
 
           <h4>Example response (tool access tiers)</h4>
           <pre className="edu-code" style={{ fontSize: '0.75rem', lineHeight: 1.55, overflowX: 'auto' }}>{`{
-  "name": "bx-finance-banking",
+  "name": "super-banking",
   "tools": [
     { "name": "get_my_accounts", "readOnly": true, ... },
     { "name": "create_transfer", "readOnly": false, ... }

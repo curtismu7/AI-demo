@@ -14,8 +14,8 @@ export const INDUSTRY_PRESETS = [
     shortName: 'Super Banking',
     tagline: 'PingOne AI IAM Core',
     description:
-      'Default demo branding: crimson primary actions and blue dashboard header. Matches the stock logo at /logo.svg.',
-    logoPath: '/logo.svg',
+      'Default demo branding: crimson primary actions and blue dashboard header. Uses the new Super Banking logo.',
+    logoPath: '/logo.png',
     cssVars: {
       '--app-primary-red': '#b91c1c',
       '--app-primary-red-hover': '#991b1b',
