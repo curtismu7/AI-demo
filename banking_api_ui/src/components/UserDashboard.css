@@ -105,8 +105,8 @@
 /* Two-class selector beats ud-body--2026 single-class override */
 .ud-body.ud-body--dashboard-split3 {
   display: grid;
-  /* Token rail | Agent | Banking — equal 1fr columns */
-  grid-template-columns: 1fr 1fr 1fr;
+  /* Token rail | Banking | Agent — give agent more space */
+  grid-template-columns: minmax(240px, 260px) 1fr minmax(360px, 420px);
   grid-template-rows: 1fr;
   gap: 0;
   align-items: stretch;
@@ -116,7 +116,6 @@
   min-height: 400px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  overflow: hidden;
 }
 
 /* In split3 page-mode the grid fills the flex remainder — no fixed height needed */
@@ -1963,7 +1962,7 @@
 /* 2026 layout — token left · customer center · reserve for floating agent (right) */
 .ud-body.ud-body--2026 {
   display: grid;
-  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr) minmax(160px, min(28vw, 280px));
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr) minmax(360px, 420px);
   gap: 0;
   align-items: stretch;
   overflow: visible;
@@ -1993,7 +1992,7 @@
 /* Token Chain + future sidebar widgets — wide enough for RFC labels and flow text */
 .ud-left {
   width: min(480px, 100%);
-  min-width: min(300px, 34vw);
+  min-width: min(240px, 34vw);
   flex-shrink: 0;
   background: #fff;
   border-right: 1px solid #e2e8f0;

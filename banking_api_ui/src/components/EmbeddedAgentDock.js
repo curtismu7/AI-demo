@@ -7,7 +7,7 @@ import { isEmbeddedAgentDockRoute, isMarketingEmbeddedDockSurface } from '../uti
 
 const HEIGHT_KEY = 'embedded_agent_dock_height_px';
 const COLLAPSE_KEY = 'embedded_agent_dock_collapsed';
-const DEFAULT_HEIGHT = 320;
+const DEFAULT_HEIGHT = 380;
 const MIN_HEIGHT = 200;
 const MAX_HEIGHT_RATIO = 0.85;
 
