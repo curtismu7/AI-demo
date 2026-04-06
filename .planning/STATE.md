@@ -83,7 +83,7 @@ Plan: 1 of 3
 
 ---
 
-## Pending Todos (56)
+## Pending Todos (55)
 
 - **[TODO -> auth]** Reorganize PingOne apps — OIDC agents to AI Agents group, OIDC user apps to Applications group
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
