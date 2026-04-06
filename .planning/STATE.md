@@ -141,3 +141,4 @@ Plan: 1 of 3
 - Phase 61 added: MCP specification error code compliance audit — comprehensive audit of MCP error handling to ensure 403→"invalid scopes" and 401→auth flow per MCP spec
 - Phase 62 added: Token exchange critical fixes and enhancements — address critical audit issues: may_act format, RFC 8707, scope simplification, test coverage, documentation
 - Phase 63 added: Documentation and integration critical fixes — fix critical documentation gaps: operations guides, developer integration, API docs, architecture, configuration
+- Phase 64 added: Unified configuration page — merge config and demo-data into one unified configuration page with complete audit and seamless migration

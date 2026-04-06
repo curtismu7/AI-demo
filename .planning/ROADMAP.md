@@ -29,6 +29,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 61 | mcp-spec-error-code-compliance-audit | Comprehensive audit of MCP error handling to ensure 403→"invalid scopes" and 401→auth flow per MCP spec | MCPERR-01, MCPERR-02, MCPERR-03, MCPERR-04, MCPERR-05, MCPERR-06 | 1 plan |
 | 62 | token-exchange-critical-fixes-and-enhancements | Address critical audit issues: may_act format, RFC 8707, scope simplification, test coverage, documentation | CRITICAL-01, CRITICAL-02, CRITICAL-03, CRITICAL-04, CRITICAL-05 | 1 plan |
 | 63 | documentation-and-integration-critical-fixes | Fix critical documentation gaps: operations guides, developer integration, API docs, architecture, configuration | DOC-01, DOC-02, DOC-03, DOC-04 | 1 plan |
+| 64 | unified-configuration-page | Merge config and demo-data into one unified configuration page with complete audit and seamless migration | UNIFIED-01, UNIFIED-02, UNIFIED-03, UNIFIED-04 | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -882,5 +883,25 @@ Plans:
 3. 100% API coverage with consistent format, usage examples, and version alignment
 4. Complete system architecture, security architecture, and scaling documentation
 5. Enhanced configuration guides with validation, troubleshooting, and best practices
+
+---
+
+### Phase 64: unified-configuration-page
+
+**Goal:** Create a single, comprehensive configuration page that consolidates all demo settings from the current `/demo-data` and `/config` pages, providing users with a unified interface for managing the entire application configuration.
+
+**Requirements:** UNIFIED-01, UNIFIED-02, UNIFIED-03, UNIFIED-04
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 64-01-PLAN.md — Unified configuration page implementation (UNIFIED-01 through UNIFIED-04)
+
+**Success criteria:**
+1. Single page experience with all configuration settings accessible from one well-organized interface
+2. 100% audit coverage of configStore keys with corresponding UI controls and proper validation
+3. Seamless migration from existing pages with no data loss and proper redirects
+4. Improved user experience with logical section grouping and consistent validation across all settings
+5. Updated documentation reflecting the new unified configuration structure
 
 ---
