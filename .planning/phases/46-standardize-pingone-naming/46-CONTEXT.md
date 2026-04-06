@@ -48,6 +48,40 @@ Comprehensive audit and standardization of PingOne terminology throughout the ba
 ### Low Priority Changes
 1. **File Names** — Consider renaming files with inconsistent naming
 2. **Variable Names** — Update internal variable names where appropriate
+
+## PingOne Application Organization Best Practices
+
+### AI Agents vs Applications Group Organization
+
+PingOne provides distinct application groups for better organization and management:
+
+#### **AI Agents Group**
+Applications that represent AI agents, MCP services, and automated systems should be organized under the **AI Agents** group:
+
+**Applications to place in AI Agents group:**
+- `BX Finance AI Agent App` (`80145519`) - OIDC application for AI agent identity
+- `BX Finance MCP Service` (`d98f4336`) - MCP service application  
+- `BX Finance MCP ServiceV1` (`bdf0fa76`) - Introspection service application
+
+#### **Applications Group**
+User-facing OIDC applications should remain under the standard **Applications** group:
+
+**Applications to keep in Applications group:**
+- `BX Finance User` (`5df1fbdb`) - End-user authentication application
+- `BX Finance Banking App` (`949a748e`) - Banking web application
+- `Super Banking User App` - User authentication application
+- `Super Banking Admin App` - Admin authentication application
+
+#### **Organizational Benefits**
+- **Clear Separation**: Distinguishes between human users and AI agents
+- **Demo Clarity**: Makes console organization easier to explain to stakeholders
+- **Management**: Easier to apply policies and manage permissions by group
+- **Audit Trail**: Clear distinction in logs and monitoring between user and agent activities
+
+#### **Implementation Notes**
+- Groups are organizational only - moving apps between groups doesn't affect token behavior
+- This organization should be reflected in documentation and setup guides
+- Consider this grouping when creating new applications for AI vs human use cases
 3. **Function Names** — Update function names that expose inconsistent naming
 4. **Test Files** — Update test descriptions and assertions
 5. **Migration Scripts** — Update database migration scripts
