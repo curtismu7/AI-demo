@@ -714,21 +714,34 @@ export default function Config() {
                 type="button"
                 onClick={() => setActiveTab(key)}
                 style={{
-                  padding: '10px 22px',
+                  padding: '12px 24px',
                   border: '2px solid transparent',
                   borderBottom: isActive ? '2px solid #fff' : '2px solid transparent',
                   borderTop: isActive ? '2px solid #2563eb' : '2px solid transparent',
-                  borderLeft: isActive ? '2px solid #e5e7eb' : '2px solid transparent',
-                  borderRight: isActive ? '2px solid #e5e7eb' : '2px solid transparent',
-                  background: isActive ? '#fff' : '#f9fafb',
+                  borderLeft: isActive ? '2px solid #e5e7eb' : '2px solid #e5e7eb',
+                  borderRight: isActive ? '2px solid #e5e7eb' : '2px solid #e5e7eb',
+                  background: isActive ? '#fff' : '#e5e7eb',
                   cursor: 'pointer',
-                  fontWeight: isActive ? 700 : 400,
-                  color: isActive ? '#1e40af' : '#6b7280',
-                  fontSize: '0.875rem',
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#1e40af' : '#4b5563',
+                  fontSize: '0.9rem',
                   marginBottom: '-2px',
                   borderRadius: isActive ? '6px 6px 0 0' : '6px 6px 0 0',
-                  transition: 'color 0.15s, background 0.15s',
+                  transition: 'color 0.15s, background 0.15s, border-color 0.15s',
                   whiteSpace: 'nowrap',
+                  boxShadow: isActive ? '0 -1px 2px rgba(0,0,0,0.05)' : 'none',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.target.style.background = '#d1d5db';
+                    e.target.style.color = '#374151';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.target.style.background = '#e5e7eb';
+                    e.target.style.color = '#4b5563';
+                  }
                 }}
               >
                 {label}

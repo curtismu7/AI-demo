@@ -468,7 +468,7 @@ Open the existing end-user OIDC application. Verify or update:
 
 **Resources tab → Allowed scopes — enable:**
 
-- ✅ `banking:agent:invoke` from **Super Banking AI Agent Service**
+- ✅ `banking:agent:invoke` from **Super Banking AI Agent Service` *(this is the scope requested at user login — distinct from `agent:invoke` which is the AI Agent's CC actor token scope)*
 - ✅ `profile`, `email`, `offline_access` *(standard — already present)*
 - ❌ Do **NOT** enable or request `openid` — it causes PingOne to reject the authorize request when `resource=https://ai-agent.pingdemo.com` is present
 
