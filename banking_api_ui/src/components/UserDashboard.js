@@ -126,6 +126,100 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const handleInitiateOtpRef = useRef(null);    // stays current — avoids stale closure
   const stepUpVerifyHrefRef  = useRef(null);    // stays current — avoids stale closure
   const fetchingRef = React.useRef(false);
+  
+  const loadDemoFallback = useCallback((reason) => {
+    // Guard: do not overwrite real account data if the user is already authenticated.
+    // This prevents a race condition where a momentary session blip on layout-switch
+    // reload causes DEMO_ACCOUNTS to replace real accounts (todo #11).
+    if (!user) {
+      setAccounts(DEMO_ACCOUNTS);
+      setTransactions(DEMO_TRANSACTIONS);
+    }
+    notifyInfo(`Demo mode — ${reason}. Sign in to see your real accounts.`, {
+      toastId: 'demo-mode',   // deduplicate across refreshes
+      autoClose: 6000,
+      icon: '🏦',
+    });
+  }, [user, setAccounts, setTransactions]);
+  
+  const fetchUserData = useCallback(async (silent = false) => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    try {
+      if (!silent) setLoading(true);
+
+      // ── 1. Resolve session ────────────────────────────────────────────────
+      let sessionUser = null;
+      try {
+        const userRes = await axios.get('/api/auth/oauth/user/status');
+        if (userRes.data.authenticated) {
+          sessionUser = userRes.data.user;
+        } else {
+          const adminRes = await axios.get('/api/auth/oauth/status');
+          if (adminRes.data.authenticated) sessionUser = adminRes.data.user;
+        }
+      } catch (sessionErr) {
+        console.warn('Session check failed:', sessionErr.message);
+      }
+
+      if (!sessionUser) {
+        // Not logged in — show demo data, no error banner
+        if (!silent) loadDemoFallback('no active session');
+        return;
+      }
+
+      setUser(sessionUser);
+
+      // ── 2. Fetch real account + transaction data ──────────────────────────
+      const REAUTH_KEY = 'bx-dashboard-reauth';
+      try {
+        const [acctRes, txRes] = await Promise.all([
+          apiClient.get('/api/accounts/my'),
+          apiClient.get('/api/transactions/my'),
+        ]);
+        // Successful fetch — clear any pending reauth guard
+        sessionStorage.removeItem(REAUTH_KEY);
+        setAccounts(acctRes.data.accounts || []);
+        setTransactions(txRes.data.transactions || []);
+      } catch (dataErr) {
+        if (dataErr.response?.status === 401) {
+          // Log the server-side reason for easier diagnosis — visible in browser console
+          const serverReason = dataErr.response?.data?.error_description
+            || dataErr.response?.data?.message
+            || dataErr.response?.data?.error
+            || '(no body)';
+          console.warn('Data fetch 401 — server reason:', serverReason, '| REAUTH_KEY:', sessionStorage.getItem(REAUTH_KEY));
+          if (!silent) {
+            // Token expired or cold-start stub. Redirect to re-auth.
+            // PingOne's SSO session usually makes this seamless (no credentials needed).
+            // Guard: only auto-redirect once — if a redirect already happened and we still
+            // get 401, clear the guard and fall back to the banner so the user can act.
+            if (!sessionStorage.getItem(REAUTH_KEY)) {
+              sessionStorage.setItem(REAUTH_KEY, '1');
+              navigateToCustomerOAuthLogin();
+              return;
+            }
+            sessionStorage.removeItem(REAUTH_KEY);
+            toastCustomerError(
+              'Session could not be restored after sign-in. Please try signing in again.',
+              navigateToCustomerOAuthLogin,
+            );
+          }
+          // silent refresh 401 — ignore; next explicit load will handle it
+        } else if (dataErr.response?.status === 403) {
+          notifyError('You do not have permission to access this information.');
+        } else if (!silent) {
+          // API unreachable or 5xx — fall back to demo without blocking the user
+          loadDemoFallback('could not reach banking API');
+        }
+      }
+
+    } finally {
+      if (!silent) setLoading(false);
+      fetchingRef.current = false;
+    }
+  }, [loadDemoFallback]);
+
   /** Holds the agent HITL detail (actionId, form) while the consent modal is open so we can fire the confirmed event. */
   const agentHitlDetailRef = React.useRef(null);
 
@@ -329,99 +423,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     }
   }, [location.state, location.pathname, location.search, navigate]);
 
-  const loadDemoFallback = useCallback((reason) => {
-    // Guard: do not overwrite real account data if the user is already authenticated.
-    // This prevents a race condition where a momentary session blip on layout-switch
-    // reload causes DEMO_ACCOUNTS to replace real accounts (todo #11).
-    if (!user) {
-      setAccounts(DEMO_ACCOUNTS);
-      setTransactions(DEMO_TRANSACTIONS);
-    }
-    notifyInfo(`Demo mode — ${reason}. Sign in to see your real accounts.`, {
-      toastId: 'demo-mode',   // deduplicate across refreshes
-      autoClose: 6000,
-      icon: '🏦',
-    });
-  }, [user, setAccounts, setTransactions]);
-
-  const fetchUserData = useCallback(async (silent = false) => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-    try {
-      if (!silent) setLoading(true);
-
-      // ── 1. Resolve session ────────────────────────────────────────────────
-      let sessionUser = null;
-      try {
-        const userRes = await axios.get('/api/auth/oauth/user/status');
-        if (userRes.data.authenticated) {
-          sessionUser = userRes.data.user;
-        } else {
-          const adminRes = await axios.get('/api/auth/oauth/status');
-          if (adminRes.data.authenticated) sessionUser = adminRes.data.user;
-        }
-      } catch (sessionErr) {
-        console.warn('Session check failed:', sessionErr.message);
-      }
-
-      if (!sessionUser) {
-        // Not logged in — show demo data, no error banner
-        if (!silent) loadDemoFallback('no active session');
-        return;
-      }
-
-      setUser(sessionUser);
-
-      // ── 2. Fetch real account + transaction data ──────────────────────────
-      const REAUTH_KEY = 'bx-dashboard-reauth';
-      try {
-        const [acctRes, txRes] = await Promise.all([
-          apiClient.get('/api/accounts/my'),
-          apiClient.get('/api/transactions/my'),
-        ]);
-        // Successful fetch — clear any pending reauth guard
-        sessionStorage.removeItem(REAUTH_KEY);
-        setAccounts(acctRes.data.accounts || []);
-        setTransactions(txRes.data.transactions || []);
-      } catch (dataErr) {
-        if (dataErr.response?.status === 401) {
-          // Log the server-side reason for easier diagnosis — visible in browser console
-          const serverReason = dataErr.response?.data?.error_description
-            || dataErr.response?.data?.message
-            || dataErr.response?.data?.error
-            || '(no body)';
-          console.warn('Data fetch 401 — server reason:', serverReason, '| REAUTH_KEY:', sessionStorage.getItem(REAUTH_KEY));
-          if (!silent) {
-            // Token expired or cold-start stub. Redirect to re-auth.
-            // PingOne's SSO session usually makes this seamless (no credentials needed).
-            // Guard: only auto-redirect once — if a redirect already happened and we still
-            // get 401, clear the guard and fall back to the banner so the user can act.
-            if (!sessionStorage.getItem(REAUTH_KEY)) {
-              sessionStorage.setItem(REAUTH_KEY, '1');
-              navigateToCustomerOAuthLogin();
-              return;
-            }
-            sessionStorage.removeItem(REAUTH_KEY);
-            toastCustomerError(
-              'Session could not be restored after sign-in. Please try signing in again.',
-              navigateToCustomerOAuthLogin,
-            );
-          }
-          // silent refresh 401 — ignore; next explicit load will handle it
-        } else if (dataErr.response?.status === 403) {
-          notifyError('You do not have permission to access this information.');
-        } else if (!silent) {
-          // API unreachable or 5xx — fall back to demo without blocking the user
-          loadDemoFallback('could not reach banking API');
-        }
-      }
-
-    } finally {
-      if (!silent) setLoading(false);
-      fetchingRef.current = false;
-    }
-  }, [loadDemoFallback]);
-
+  
   // ── CIBA step-up: initiate back-channel authentication ──
   const handleCibaStepUp = useCallback(async () => {
     if (!user?.email) { notifyError('Cannot initiate CIBA: no email on session.'); return; }
