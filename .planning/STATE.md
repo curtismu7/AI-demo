@@ -138,3 +138,4 @@ Plan: 1 of 3
 - Phase 58 added: RFC 8693 delegation claims compliance — ensure proper may_act and act claim structures for delegation patterns
 - Phase 59 added: RFC 9728 compliance and education audit — comprehensive audit of Protected Resource Metadata implementation and educational coverage
 - Phase 60 added: Agent showcase and integration storytelling — transform demonstration to showcase established banking platform embracing AI augmentation
+- Phase 61 added: MCP specification error code compliance audit — comprehensive audit of MCP error handling to ensure 403→"invalid scopes" and 401→auth flow per MCP spec

@@ -26,6 +26,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 58 | rfc8693-delegation-claims-compliance | Ensure RFC 8693 delegation pattern with correct may_act and act claim structures | DELEGATION-01, DELEGATION-02, DELEGATION-03, DELEGATION-04, DELEGATION-05, DELEGATION-06 | 1 plan |
 | 59 | rfc9728-compliance-and-education-audit | Comprehensive audit of RFC 9728 Protected Resource Metadata implementation and educational coverage | RFC9728-01, RFC9728-02, RFC9728-03, RFC9728-04, RFC9728-05, RFC9728-06 | 1 plan |
 | 60 | agent-showcase-and-integration-storytelling | Transform demonstration to showcase established banking platform embracing AI augmentation | SHOWCASE-01, SHOWCASE-02, SHOWCASE-03, SHOWCASE-04, SHOWCASE-05, SHOWCASE-06 | 1 plan |
+| 61 | mcp-spec-error-code-compliance-audit | Comprehensive audit of MCP error handling to ensure 403→"invalid scopes" and 401→auth flow per MCP spec | MCPERR-01, MCPERR-02, MCPERR-03, MCPERR-04, MCPERR-05, MCPERR-06 | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -819,3 +820,25 @@ Plans:
 3. Clear business value demonstration showing practical benefits for banking operations
 4. Natural user journey for existing users to discover and adopt agent capabilities
 5. Technical sophistication showcase without overwhelming complexity
+
+---
+
+### Phase 61: mcp-spec-error-code-compliance-audit
+
+**Goal:** Comprehensive audit of MCP (Model Context Protocol) error handling to ensure full compliance with MCP specification error code requirements, particularly 403 → "invalid scopes" and 401 → authentication request flow.
+
+**Requirements:** MCPERR-01, MCPERR-02, MCPERR-03, MCPERR-04, MCPERR-05, MCPERR-06
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 61-01-PLAN.md — MCP specification error code compliance audit implementation (MCPERR-01 through MCPERR-06)
+
+**Success criteria:**
+1. 100% MCP specification error code compliance with all required mappings
+2. Proper "invalid scopes" response for all 403 status codes per MCP spec
+3. Correct authentication request flow for all 401 status codes per MCP spec
+4. All MCP protocol errors use correct error code ranges (-32000 to -32099)
+5. All error responses follow MCP specification JSON-RPC format
+
+---
