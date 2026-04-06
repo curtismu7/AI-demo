@@ -1,0 +1,34 @@
+{
+  "id": "workforce",
+  "displayName": "WX Workforce",
+  "tagline": "AI-Powered HR & Workforce Demo",
+  "theme": {
+    "primary": "#4c1d95",
+    "accent": "#7c3aed",
+    "gradient": "linear-gradient(135deg, #4c1d95 0%, #7c3aed 55%, #a78bfa 100%)"
+  },
+  "terminology": {
+    "account": "Account",
+    "accounts": "Accounts",
+    "accountTypes": ["PTO Balance", "Benefits Allowance", "Expense Budget"],
+    "transaction": "Request",
+    "transactions": "Requests",
+    "transactionTypes": ["Time Off Request", "Expense Report", "Benefits Claim", "Reimbursement"],
+    "balance": "Balance",
+    "agent": "HR Assistant",
+    "agentGreeting": "Hi! I'm your HR Assistant. I can help you check PTO balance, submit expense reports, or review benefits.",
+    "dashboard": "My Workspace",
+    "highValueAction": "Expense Approval",
+    "highValueLabel": "High-value expense"
+  },
+  "scopes": {
+    "read": "banking:read",
+    "write": "banking:write",
+    "transfer": "banking:transfer",
+    "admin": "banking:admin"
+  },
+  "demoUsers": {
+    "customer": { "hint": "bankuser", "passwordHint": "Tigers7&" },
+    "admin": { "hint": "bankadmin", "passwordHint": "Tigers7&" }
+  }
+}

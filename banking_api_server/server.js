@@ -184,10 +184,14 @@ const langchainConfigRoutes = require('./routes/langchainConfig');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
 const delegationRoutes = require('./routes/delegation');
+const tokenChainRoutes = require('./routes/tokenChain');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
 const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetadata');
 const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
+const { migrateAccounts } = require('./services/demoDataService');
+const appConfigRoutes = require('./routes/appConfig');
+const verticalConfigRoutes = require('./routes/verticalConfig');
 
 // Import middleware
 const { authenticateToken, requireSession } = require('./middleware/auth');
@@ -403,6 +407,11 @@ app.use(delegationAuditMiddleware);
 // The promise is memoised — this is a no-op after the first request.
 app.use((req, res, next) => {
   configStore.ensureInitialized().then(() => next()).catch(next);
+});
+
+// Migrate demo accounts to persistent storage on startup
+migrateAccounts().catch(err => {
+  console.error('[server] Demo accounts migration failed:', err.message);
 });
 
 // Restore session user from signed _auth cookie when in-memory session is empty.
@@ -861,6 +870,10 @@ app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
 app.use('/api/delegation', authenticateToken, delegationRoutes);
+app.use('/api/token-chain', authenticateToken, tokenChainRoutes);
+app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
+app.use('/api/config/vertical', verticalConfigRoutes);
+app.use('/api/config/verticals', verticalConfigRoutes);
 app.use('/api/logs', logsRoutes);
 
 // PATCH /api/demo/may-act — set/clear mayAct attribute on the signed-in PingOne user

@@ -14,6 +14,7 @@ const demoScenarioStore = require('../services/demoScenarioStore');
 const accountsRouter = require('./accounts');
 const { getManagementToken } = require('../services/pingOneClientService');
 const configStore = require('../services/configStore');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -738,3 +739,66 @@ async function diagnoseMayAct(req, res) {
 }
 
 module.exports.diagnoseMayAct = diagnoseMayAct;
+
+// ── Demo Account Management (Persistent Storage) ───────────────────────────────
+
+const { getDemoAccounts, createDemoAccount, deleteDemoAccount, getBackendInfo } = require('../services/demoDataService');
+
+// GET /api/demo/accounts — list demo accounts for user
+router.get('/accounts', authenticateToken, async (req, res) => {
+  try {
+    const accounts = await getDemoAccounts(req.user.id);
+    const backendInfo = getBackendInfo();
+    
+    res.json({ 
+      accounts,
+      backend: backendInfo.backend,
+      accountCount: accounts.length,
+      lastMigration: null // TODO: Track migration timestamp
+    });
+  } catch (err) {
+    console.error('[demo] GET accounts error:', err.message);
+    res.status(500).json({ error: 'internal_error', message: err.message });
+  }
+});
+
+// POST /api/demo/account — create new demo account
+router.post('/account', authenticateToken, async (req, res) => {
+  try {
+    const { accountType, accountNumber, routingNumber, balance, currency = 'USD', status = 'active' } = req.body || {};
+    
+    // Validate required fields
+    if (!accountType || !accountNumber || !routingNumber || balance === undefined) {
+      return res.status(400).json({ error: 'validation_error', message: 'Missing required fields' });
+    }
+    
+    const account = await createDemoAccount({
+      userId: req.user.id,
+      accountType,
+      accountNumber,
+      routingNumber,
+      balance: parseFloat(balance),
+      currency,
+      status
+    });
+    
+    res.status(201).json({ account });
+  } catch (err) {
+    console.error('[demo] POST account error:', err.message);
+    res.status(500).json({ error: 'internal_error', message: err.message });
+  }
+});
+
+// DELETE /api/demo/account/:id — delete demo account
+router.delete('/account/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await deleteDemoAccount(req.params.id, req.user.id);
+    if (!result.ok) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('[demo] DELETE account error:', err.message);
+    res.status(500).json({ error: 'internal_error', message: err.message });
+  }
+});

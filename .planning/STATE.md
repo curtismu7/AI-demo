@@ -5,10 +5,10 @@ milestone_name: milestone
 status: executing
 last_updated: "2026-04-04T20:49:12.535Z"
 progress:
-  total_phases: 54
+  total_phases: 55
   completed_phases: 34
-  total_plans: 90
-  completed_plans: 88
+  total_plans: 99
+  completed_plans: 95
 ---
 
 # State — Super Banking AI Banking Demo
@@ -47,6 +47,7 @@ Plan: 1 of 3
 - Phase 48 (remove-invalid-spel-act-expression) — complete (commits: d4c0a7a, fc86d8d)
 - Phase 49 added: Setup wizard — credential input page that creates .env, provisions Vercel env vars, creates PingOne apps and resource servers, and attaches scopes via Management API worker token
 - Phase 50 added: Update docs, setup script, and fix logout URLs on PingOne apps using worker token — audit all PingOne config documentation and ensure logout URLs are correct everywhere
+- Phase 54 added: Self-service user provisioning — create customer and admin logins with profile data (email, phone, address) and mayAct custom JSON attribute setup
 
 ---
 

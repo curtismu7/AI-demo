@@ -42,6 +42,7 @@ import { EducationUIProvider } from './context/EducationUIContext';
 import { TokenChainProvider } from './context/TokenChainContext';
 import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
 import { IndustryBrandingProvider } from './context/IndustryBrandingContext';
+import { VerticalProvider } from './context/VerticalContext';
 import EducationBar from './components/EducationBar';
 import { DemoTourProvider } from './context/DemoTourContext';
 import DemoTourModal from './components/tour/DemoTourModal';
@@ -554,7 +555,9 @@ export default function App() {
       <AgentUiModeProvider>
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <IndustryBrandingProvider>
-            <AppWithAuth />
+            <VerticalProvider>
+              <AppWithAuth />
+            </VerticalProvider>
           </IndustryBrandingProvider>
         </Router>
       </AgentUiModeProvider>

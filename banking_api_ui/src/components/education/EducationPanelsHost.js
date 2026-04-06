@@ -24,6 +24,9 @@ import AgentBuilderLandscapePanel from './AgentBuilderLandscapePanel';
 import LlmLandscapePanel from './LlmLandscapePanel';
 import AiPlatformLandscapePanel from './AiPlatformLandscapePanel';
 import SensitiveDataPanel from './SensitiveDataPanel';
+import PingGatewayMcpPanel from './PingGatewayMcpPanel';
+import ArchitectureDiagramPanel from './ArchitectureDiagramPanel';
+import TokenChainEducationPanel from './TokenChainEducationPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -55,6 +58,9 @@ export default function EducationPanelsHost() {
       <LlmLandscapePanel isOpen={panel === EDU.LLM_LANDSCAPE} onClose={close} initialTabId={tab} />
       <AiPlatformLandscapePanel isOpen={panel === EDU.AI_PLATFORM_LANDSCAPE} onClose={close} initialTabId={tab} />
       <SensitiveDataPanel isOpen={panel === EDU.SENSITIVE_DATA} onClose={close} initialTabId={tab} />
+      <PingGatewayMcpPanel isOpen={panel === EDU.PINGGATEWAY_MCP} onClose={close} initialTabId={tab} />
+      <ArchitectureDiagramPanel isOpen={panel === EDU.ARCHITECTURE_DIAGRAM} onClose={close} initialTabId={tab} />
+      <TokenChainEducationPanel isOpen={panel === EDU.TOKEN_CHAIN} onClose={close} initialTabId={tab} />
     </>
   );
 }

@@ -136,6 +136,12 @@ const FIELD_DEFS = {
   // audience before forwarding to the MCP server (act claim identifies the Backend-for-Frontend (BFF)).
   mcp_resource_uri:           { public: true,  default: '' },
 
+  // Demo Data — persistent demo accounts (JSON string for Vercel, ignored for local SQLite)
+  demo_accounts:              { public: false, default: '' },
+
+  // Vertical — active demo vertical (banking, retail, workforce)
+  active_vertical:            { public: true,  default: 'banking' },
+
   // CIBA — Client-Initiated Backchannel Authentication
   ciba_enabled:               { public: true,  default: 'false' },
   ciba_token_delivery_mode:   { public: true,  default: 'poll' },
@@ -304,10 +310,19 @@ class ConfigStore {
     if (process.env.VERCEL && !USE_KV) return;
     await this.ensureInitialized();
 
+    // Validate DEMO_ACCOUNTS if present
+    if (data.demo_accounts) {
+      try {
+        JSON.parse(data.demo_accounts);
+      } catch (e) {
+        throw new Error('DEMO_ACCOUNTS must be valid JSON string');
+      }
+    }
+
     const updates = {};        // what goes into storage (encrypted secrets)
     const cacheUpdates = {};   // what goes into the in-memory cache (plaintext)
 
-    const allowEmptyStringKeys = new Set(['marketing_demo_username_hint', 'marketing_demo_password_hint']);
+    const allowEmptyStringKeys = new Set(['marketing_demo_username_hint', 'marketing_demo_password_hint', 'demo_accounts']);
     for (const [key, value] of Object.entries(data)) {
       if (!(key in FIELD_DEFS)) continue;          // ignore unknown keys
       if (value === null || value === undefined) continue;

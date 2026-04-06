@@ -517,23 +517,23 @@ Plans:
 
 ### Phase 40: PingGateway MCP security: education panel on securing MCP with PingGateway plus feasibility analysis of building a custom gateway vs installing PingGateway
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Education panel explaining how to secure MCP servers with PingGateway, plus a feasibility comparison between custom gateway vs PingGateway deployment.
+**Requirements**: PGMCP-01, PGMCP-02
 **Depends on:** Phase 39
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 40 to break down)
+- [x] 40-01-PLAN.md — PingGatewayMcpPanel.js education component (4 tabs: Overview, Architecture, Custom vs PingGateway, Configuration)
 
 ### Phase 41: C4 top-down architecture diagram (draw.io) for the banking demo
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Comprehensive C4 architecture diagram (draw.io) covering all four levels (Context, Container, Component, Code) with an education panel for interactive viewing.
+**Requirements**: C4-01, C4-02, C4-03
 **Depends on:** Phase 40
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 41 to break down)
+- [x] 41-01-PLAN.md — C4 draw.io diagram (4 levels) + ArchitectureDiagramPanel.js education component
 
 ### Phase 42: Persist demo accounts across server restarts using env file on Vercel and SQLite on local
 
@@ -547,13 +547,14 @@ Plans:
 
 ### Phase 43: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Config-driven vertical switching between Banking, Retail, and Workforce (HR) modes — reusing the same OAuth flows, MCP server, and agent infrastructure with swapped terminology, theme, and account types.
+**Requirements**: VERT-01, VERT-02, VERT-03, VERT-04, VERT-05
 **Depends on:** Phase 42
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 43 to break down)
+- [x] 43-01-PLAN.md — verticalConfigService.js + vertical JSON configs (banking/retail/workforce) + REST API
+- [x] 43-02-PLAN.md — VerticalContext.js + VerticalSwitcher.js UI + App.js integration
 
 ### Phase 44: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
 
@@ -607,23 +608,24 @@ Plans:
 
 ### Phase 49: Setup wizard — credential input page that creates .env, provisions Vercel env vars, creates PingOne apps and resource servers, and attaches scopes via Management API worker token
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** A "PingOne Setup" tab in the Config page that accepts worker credentials, provisions all PingOne resources (apps, resource server, scopes, demo users) via Management API with SSE streaming progress, and writes .env or Vercel env vars automatically.
+**Requirements**: SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05
 **Depends on:** Phase 48
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 49 to break down)
+- [ ] 49-01-PLAN.md — pingoneProvisionService.js + setupWizard.js SSE streaming route (BFF provisioning)
+- [ ] 49-02-PLAN.md — SetupWizardTab.js two-panel UI (form + live SSE log) + Config.js tab integration
 
 ### Phase 50: update docs setup script and fix logout URLs on PingOne apps using worker token
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Fix logout URLs on PingOne apps programmatically via Management API, audit app configurations, and write comprehensive setup documentation (SETUP.md, PINGONE_APP_CONFIG.md, README quick-start).
+**Requirements**: DOCS-01, DOCS-02, LOGOUT-01
 **Depends on:** Phase 49
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 50 to break down)
+- [x] 50-01-PLAN.md — pingoneAppConfigService.js + fix-logout-urls API + docs/SETUP.md + docs/PINGONE_APP_CONFIG.md + README updates
 
 ### Phase 51: Auth rules audit tests and demo config section for login OTP and high-value transaction gates
 
@@ -641,7 +643,7 @@ Plans:
 **Goal:** Full PingOne MFA step-up capability using the deviceAuthentications API directly — email OTP, TOTP, FIDO2/passkey, and push notification — always-on (default threshold $0) for all write operations, with CIBA auto-submit, enterprise OTP modal styling, and full email display.
 **Requirements**: MFA-01, MFA-02, MFA-03, MFA-04, MFA-05, MFA-06, MFA-07, MFA-08, MFA-09
 **Depends on:** Phase 51
-**Plans:** 6 plans
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 52-01-PLAN.md — BFF mfaService.js + MFA routes (deviceAuthentications wrapper)
@@ -663,6 +665,17 @@ Plans:
 - [x] 53-02-PLAN.md — stepUpWithdrawalsAlways toggle (D-05)
 - [x] 53-03-PLAN.md — Device enrollment BFF endpoints (D-04 server)
 - [x] 53-04-PLAN.md — UserDashboard error handling + enrollment panel UI (D-02, D-03, D-04 UI)
+
+### Phase 54: Self-service user provisioning — create customer and admin logins with profile data and mayAct setup
+
+**Goal:** A self-service page where anyone can create their own PingOne customer or admin user, fill in profile data (email, phone, address), set a password, and configure the mayAct custom JSON attribute needed for RFC 8693 token exchange delegation — all without touching the PingOne Console.
+**Requirements**: SSU-01, SSU-02, SSU-03, SSU-04, SSU-05, SSU-06
+**Depends on:** None (standalone)
+**Plans:** 2 plans
+
+Plans:
+- [ ] 54-01-PLAN.md — pingOneUserService.js + selfServiceUsers.js REST API (PingOne Management API user CRUD, password set, mayAct attribute)
+- [ ] 54-02-PLAN.md — SelfServicePage.js React UI (create form, profile view, mayAct config, diagnostic panel, /self-service route)
 
 ---
 

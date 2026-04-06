@@ -13,6 +13,7 @@ import { useEducationUI } from '../context/EducationUIContext';
 import { useTheme } from '../context/ThemeContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import VerticalSwitcher from './VerticalSwitcher';
 import './UserDashboard.css';
 import './DemoDataPage.css';
 
@@ -90,6 +91,7 @@ export default function DemoDataPage({ user, onLogout }) {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [storageBackend, setStorageBackend] = useState(null);
   // One slot per account type — keyed by accountType string.
   const [typeSlots, setTypeSlots] = useState(defaultTypeSlots);
   const [accountProfiles, setAccountProfiles] = useState({});
@@ -420,6 +422,17 @@ export default function DemoDataPage({ user, onLogout }) {
       });
       setDefaults(data.defaults || null);
       setPersistenceNote(data.persistenceNote || null);
+      // Fetch storage backend info
+      try {
+        const backendRes = await fetch('/api/demo-scenario/accounts', { credentials: 'include' });
+        if (backendRes.ok) {
+          const backendData = await backendRes.json();
+          setStorageBackend({
+            backend: backendData.backend || 'unknown',
+            accountCount: backendData.accountCount || 0,
+          });
+        }
+      } catch { /* non-critical */ }
     } catch (e) {
       if (e.status === 401) {
         // Not logged in — demo config flags still work, account section needs a session
@@ -678,6 +691,36 @@ export default function DemoDataPage({ user, onLogout }) {
               {persistenceNote}
             </div>
           )}
+
+          {storageBackend && (
+            <section className="section demo-data-section" aria-labelledby="demo-data-storage-heading">
+              <h2 id="demo-data-storage-heading">Storage backend</h2>
+              <div className="demo-data-readonly-meta">
+                <span><strong>Backend:</strong>{' '}
+                  {storageBackend.backend === 'sqlite' && '🗄️ SQLite (local)'}
+                  {storageBackend.backend === 'env_var' && '☁️ Vercel environment variable'}
+                  {storageBackend.backend === 'unknown' && '❓ Unknown'}
+                </span>
+                <span><strong>Persisted accounts:</strong> <code>{storageBackend.accountCount}</code></span>
+              </div>
+              <p className="demo-data-hint">
+                {storageBackend.backend === 'sqlite'
+                  ? 'Demo accounts are stored in a local SQLite database (data/persistent/). They survive server restarts but not Vercel deploys.'
+                  : storageBackend.backend === 'env_var'
+                  ? 'Demo accounts are stored in the DEMO_ACCOUNTS environment variable on Vercel. They persist across deploys.'
+                  : 'Storage backend could not be determined.'}
+              </p>
+            </section>
+          )}
+
+          <section className="section demo-data-section" aria-labelledby="demo-data-vertical-heading">
+            <h2 id="demo-data-vertical-heading">Demo vertical</h2>
+            <p className="demo-data-hint">
+              Switch the demo between Banking, Retail, and Workforce (HR) modes. The same PingOne + MCP architecture
+              is reused — only terminology, theme, and account types change.
+            </p>
+            <VerticalSwitcher variant="config" />
+          </section>
 
           <section className="section demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
             <h2 id="demo-data-agent-layout-heading">AI banking assistant (layout)</h2>

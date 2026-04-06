@@ -34,4 +34,10 @@ export const EDU = {
   SENSITIVE_DATA: 'sensitive-data',
   /** AI platform landscape — AWS, Microsoft, Google, IBM, Anthropic, OpenAI tools overview and vendor comparison */
   AI_PLATFORM_LANDSCAPE: 'ai-platform-landscape',
+  /** PingGateway MCP security — securing MCP servers with PingGateway, custom vs PingGateway comparison */
+  PINGGATEWAY_MCP: 'pinggateway-mcp',
+  /** C4 architecture diagram — top-down architecture of the banking demo at 4 levels */
+  ARCHITECTURE_DIAGRAM: 'architecture-diagram',
+  /** Token chain — delegation tracking through OAuth token exchanges */
+  TOKEN_CHAIN: 'token-chain',
 };

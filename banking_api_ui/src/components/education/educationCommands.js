@@ -37,4 +37,11 @@ export const EDUCATION_COMMANDS = [
   { id: 'ai-platform-compare', label: '📊 AI Platform Comparison', panel: EDU.AI_PLATFORM_LANDSCAPE, tab: 'comparison' },
   { id: 'sensitive-data', label: '🔒 Sensitive Data & Selective Disclosure', panel: EDU.SENSITIVE_DATA, tab: 'least-data' },
   { id: 'sensitive-data-rar', label: '🔒 Selective Disclosure: RAR / RFC 9396', panel: EDU.SENSITIVE_DATA, tab: 'rar-selective' },
+  { id: 'pinggateway', label: '🛡️ PingGateway MCP Security', panel: EDU.PINGGATEWAY_MCP, tab: 'overview' },
+  { id: 'pinggateway-compare', label: '🛡️ Custom vs PingGateway', panel: EDU.PINGGATEWAY_MCP, tab: 'comparison' },
+  { id: 'architecture', label: '🏗️ C4 Architecture Diagram', panel: EDU.ARCHITECTURE_DIAGRAM, tab: 'context' },
+  { id: 'architecture-bff', label: '🏗️ BFF Component Diagram', panel: EDU.ARCHITECTURE_DIAGRAM, tab: 'component' },
+  { id: 'token-chain', label: '🔗 Token Chain', panel: EDU.TOKEN_CHAIN, tab: 'overview' },
+  { id: 'token-chain-jwt', label: '🔗 Token Chain: JWT Claims', panel: EDU.TOKEN_CHAIN, tab: 'jwt-claims' },
+  { id: 'token-chain-exchange', label: '🔗 Token Chain: Exchange Paths', panel: EDU.TOKEN_CHAIN, tab: 'exchange-paths' },
 ];

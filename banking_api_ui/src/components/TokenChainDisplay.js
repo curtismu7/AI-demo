@@ -731,6 +731,11 @@ function EventRow({ event, isLast, onInspect }) {
           
           <div className={`tcd-event-meta-row${event.rfc ? '' : ' tcd-event-meta-row--no-rfc'}`}>
             {event.rfc ? <span className="tcd-event-rfc">{event.rfc}</span> : null}
+            {event.tokenType && (
+              <span className={`tcd-token-type tcd-token-type--${event.tokenType}`}>
+                {event.tokenType.replace('_', ' ').toUpperCase()}
+              </span>
+            )}
             <StatusBadge status={event.status} />
           </div>
           {(triggerHint || mayActHint || actHint || audHint) && (
@@ -843,11 +848,26 @@ const TokenChainDisplay = () => {
   const fetchSessionPreview = useCallback(async () => {
     if (ctx && ctx.events.length > 0) return; // live data present — skip
     try {
-      const res = await fetch('/api/tokens/session-preview', { credentials: 'include' });
+      // Use new token-chain API
+      const res = await fetch('/api/token-chain', { credentials: 'include' });
       if (!res.ok) return;
       const data = await res.json();
-      if (Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
-        setSessionPreviewEvents(data.tokenEvents);
+      if (Array.isArray(data.tokenChain) && data.tokenChain.length > 0) {
+        // Transform tokenChain events to match expected format
+        const transformedEvents = data.tokenChain.map(event => ({
+          ...event,
+          claims: {
+            sub: event.tokenSub,
+            act: event.tokenAct,
+            scope: event.scopes?.join(' ') || '',
+            aud: event.audience,
+            iss: event.issuer,
+            exp: event.expiry ? Math.floor(new Date(event.expiry).getTime() / 1000) : undefined
+          },
+          tokenType: event.tokenType,
+          description: event.description
+        }));
+        setSessionPreviewEvents(transformedEvents);
       }
     } catch (_err) {
       /* non-fatal — keep placeholder */

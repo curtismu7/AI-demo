@@ -254,3 +254,37 @@ Key points compared to local:
 
 **Cause:** Token exchange is not enabled on the admin PingOne app, or `REACT_APP_AI_AGENT_AUDIENCE` doesn't match the MCP resource audience.  
 **Fix:** Enable Token Exchange on the admin OIDC app (§2.2). Verify `REACT_APP_AI_AGENT_AUDIENCE` matches the audience configured in the MCP server's `PINGONE_BASE_URL` environment. See [docs/PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md](./PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md) for the 1-exchange delegated chain setup.
+
+### Logout doesn't redirect / silently fails
+
+**Cause:** PingOne OIDC app is missing `postLogoutRedirectUris`.  
+**Fix:** Use the automatic fix endpoint:
+```bash
+curl -X POST http://localhost:3001/api/admin/app-config/fix-logout-urls \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <your-session-cookie>" \
+  -d '{"publicAppUrl": "http://localhost:3000"}'
+```
+Or manually add logout URIs in PingOne Console → Applications → your app → Settings → Sign-Off URLs.
+
+### Audit PingOne app configuration
+
+Run the built-in audit to check both apps for common issues:
+```bash
+curl http://localhost:3001/api/admin/app-config/audit/all \
+  -H "Cookie: <your-session-cookie>"
+```
+Returns structured report with issues (missing logout URIs, PKCE not enforced, missing localhost URIs, etc.) and passes.
+
+---
+
+## 8. API Reference — Admin App Config
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/app-config/admin` | GET | Get Admin OIDC app PingOne config |
+| `/api/admin/app-config/user` | GET | Get User OIDC app PingOne config |
+| `/api/admin/app-config/fix-logout-urls` | POST | Fix logout URLs on both apps |
+| `/api/admin/app-config/audit/all` | GET | Audit both apps for issues |
+
+All endpoints require authentication (session cookie or Bearer token).
