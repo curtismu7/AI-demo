@@ -443,6 +443,11 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     ? toolScopes
     : (fallbackScopes && fallbackScopes.length > 0 ? fallbackScopes : toolCandidateScopes);
 
+  // Safety check: ensure we have at least one valid scope for token exchange
+  // If all scopes are delegation-only, use a minimal banking:read scope to avoid "At least one scope must be granted"
+  const validExchangeScopes = effectiveToolScopes.filter(scope => !DELEGATION_ONLY_SCOPES.has(scope));
+  const finalScopes = validExchangeScopes.length > 0 ? validExchangeScopes : ['banking:read'];
+
   // ── 2-Exchange delegation path ──────────────────────────────────────────────────
   // ff_two_exchange_delegation: Subject Token → (AI Agent) → Agent Exchanged Token → (MCP) → Final Token
   // Produces nested act claim: act.sub=MCP_CLIENT_ID, act.act.sub=AI_AGENT_CLIENT_ID
@@ -455,7 +460,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     ));
   if (ffTwoExchange) {
     return await _performTwoExchangeDelegation(
-      tokenEvents, userToken, userAccessTokenClaims, effectiveToolScopes, userSub, toolTrigger, mcpResourceUri
+      tokenEvents, userToken, userAccessTokenClaims, finalScopes, userSub, toolTrigger, mcpResourceUri
     );
   }
   // ────────────────────────────────────────────────────────────────────
@@ -596,7 +601,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     'acquiring',
     null,
     `Backend-for-Frontend (BFF) is exchanging the user access token for a delegated MCP access token scoped to audience=${mcpResourceUri}, ` +
-    `scope="${effectiveToolScopes.join(' ')}". ` +
+    `scope="${finalScopes.join(' ')}". ` +
     (userAccessTokenClaims?.may_act
       ? `PingOne will validate may_act.client_id="${userAccessTokenClaims.may_act.client_id}" against the authenticated Backend-for-Frontend (BFF) client.`
       : 'PingOne will check exchange policy (may_act not present on user access token — exchange may be rejected).'),
@@ -607,7 +612,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
         subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
         audience: mcpResourceUri,
-        scope: effectiveToolScopes.join(' '),
+        scope: finalScopes.join(' '),
         has_actor_token: !!actorToken,
       },
     }
@@ -620,12 +625,12 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   try {
     if (actorToken) {
       exchangedToken = await oauthService.performTokenExchangeWithActor(
-        userToken, actorToken, mcpResourceUri, effectiveToolScopes
+        userToken, actorToken, mcpResourceUri, finalScopes
       );
       exchangeMethod = 'with-actor';
     } else {
       exchangedToken = await oauthService.performTokenExchange(
-        userToken, mcpResourceUri, effectiveToolScopes
+        userToken, mcpResourceUri, finalScopes
       );
     }
 
