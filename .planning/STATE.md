@@ -83,11 +83,12 @@ Plan: 1 of 3
 
 ---
 
-## Pending Todos (56)
+## Pending Todos (57)
 
 - **[TODO -> auth]** Reorganize PingOne apps — OIDC agents to AI Agents group, OIDC user apps to Applications group
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
 - **[TODO -> ui]** Add self-service button to side menu on main page and dashboards
+- **[TODO -> docs]** Add RFC 8707 resource indicators to educational panels and verify PingOne support
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
 - Redeploy to Vercel (commits since last deploy include Phase 29: 3ca82da)
 - ~~When merged to main: update raw doc links~~ *(merged to main 2026-04-03)*
