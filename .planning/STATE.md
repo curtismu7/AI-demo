@@ -134,3 +134,4 @@ Plan: 1 of 3
 - Phase 55 added: Docker Kubernetes deployment — containerize all components for Kubernetes deployment with production-ready Docker images and orchestration manifests
 - Phase 56 added: Token exchange audit and compliance — comprehensive RFC 8693 compliance audit against architectural diagrams
 - Phase 57 added: OAuth client credentials security hardening — replace PATs with OAuth 2.0 client credentials for AI integrations (80% security value, 20% complexity)
+- Phase 58 added: RFC 8693 delegation claims compliance — ensure proper may_act and act claim structures for delegation patterns

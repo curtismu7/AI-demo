@@ -23,6 +23,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 6 | token-exchange-fix | RFC 8693 token exchange works end-to-end for both exchange paths | TOKEN-FIX-01, TOKEN-FIX-02 | 2 plans |
 | 56 | token-exchange-audit-and-compliance | Comprehensive RFC 8693 compliance audit against architectural diagrams | AUDIT-01, AUDIT-02, AUDIT-03, AUDIT-04, AUDIT-05, AUDIT-06 | 1 plan |
 | 57 | oauth-client-credentials-security-hardening | Replace PATs with OAuth 2.0 client credentials for AI integrations (80% security value, 20% complexity) | SECURE-01, SECURE-02, SECURE-03, SECURE-04, SECURE-05, SECURE-06 | 1 plan |
+| 58 | rfc8693-delegation-claims-compliance | Ensure RFC 8693 delegation pattern with correct may_act and act claim structures | DELEGATION-01, DELEGATION-02, DELEGATION-03, DELEGATION-04, DELEGATION-05, DELEGATION-06 | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -734,6 +735,7 @@ Phases 3, 4, and 5 can partially overlap after Phase 1 is complete:
 Phase 55 (docker-kubernetes-deployment) depends on all core functionality being complete and stable.
 Phase 56 (token-exchange-audit-and-compliance) depends on Phase 6 (token-exchange-fix) being complete.
 Phase 57 (oauth-client-credentials-security-hardening) depends on Phase 56 (token-exchange-audit) being complete.
+Phase 58 (rfc8693-delegation-claims-compliance) depends on Phase 57 (oauth-client-credentials) being complete.
 - Phase 5 depends on all prior phases being stable
 
 ---
@@ -755,3 +757,23 @@ Plans:
 3. All API calls validated against defined scopes with least-privilege access
 4. 30-minute token TTL with automatic rotation and secure credential management
 5. Seamless transition from PATs with zero service disruption and backward compatibility
+
+---
+
+### Phase 58: rfc8693-delegation-claims-compliance
+
+**Goal:** Ensure RFC 8693 token exchange implementation properly follows delegation pattern with correct `may_act` and `act` claim structures, where user tokens contain authorized agent identifiers and exchanged tokens contain complete delegation chains preserving user subject identity.
+
+**Requirements:** DELEGATION-01, DELEGATION-02, DELEGATION-03, DELEGATION-04, DELEGATION-05, DELEGATION-06
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 58-01-PLAN.md — RFC 8693 delegation claims compliance implementation (DELEGATION-01 through DELEGATION-06)
+
+**Success criteria:**
+1. 100% of user tokens contain proper `may_act` claims with authorized agent identifiers
+2. 100% of exchanged tokens preserve user `sub` claim and contain correct nested `act` claims
+3. Complete delegation chain (user → agent → MCP server) verified in all exchanged tokens
+4. All agent and MCP server identifiers use consistent URI format
+5. Comprehensive validation and error responses for malformed claims
