@@ -25,6 +25,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 57 | oauth-client-credentials-security-hardening | Replace PATs with OAuth 2.0 client credentials for AI integrations (80% security value, 20% complexity) | SECURE-01, SECURE-02, SECURE-03, SECURE-04, SECURE-05, SECURE-06 | 1 plan |
 | 58 | rfc8693-delegation-claims-compliance | Ensure RFC 8693 delegation pattern with correct may_act and act claim structures | DELEGATION-01, DELEGATION-02, DELEGATION-03, DELEGATION-04, DELEGATION-05, DELEGATION-06 | 1 plan |
 | 59 | rfc9728-compliance-and-education-audit | Comprehensive audit of RFC 9728 Protected Resource Metadata implementation and educational coverage | RFC9728-01, RFC9728-02, RFC9728-03, RFC9728-04, RFC9728-05, RFC9728-06 | 1 plan |
+| 60 | agent-showcase-and-integration-storytelling | Transform demonstration to showcase established banking platform embracing AI augmentation | SHOWCASE-01, SHOWCASE-02, SHOWCASE-03, SHOWCASE-04, SHOWCASE-05, SHOWCASE-06 | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -798,3 +799,23 @@ Plans:
 3. Live demo works correctly in all environments and shows real metadata
 4. Seamless integration with existing education flow and no breaking changes
 5. Comprehensive documentation covering implementation, usage, and troubleshooting
+
+---
+
+### Phase 60: agent-showcase-and-integration-storytelling
+
+**Goal:** Transform demonstration approach to showcase established banking application embracing AI Agent capabilities, telling compelling story of existing platform enhancement rather than new app development.
+
+**Requirements:** SHOWCASE-01, SHOWCASE-02, SHOWCASE-03, SHOWCASE-04, SHOWCASE-05, SHOWCASE-06
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 60-01-PLAN.md — Agent showcase and integration storytelling implementation (SHOWCASE-01 through SHOWCASE-06)
+
+**Success criteria:**
+1. Compelling integration narrative that resonates with technical and business audiences
+2. Seamless user experience where agent features feel natural within existing banking workflows
+3. Clear business value demonstration showing practical benefits for banking operations
+4. Natural user journey for existing users to discover and adopt agent capabilities
+5. Technical sophistication showcase without overwhelming complexity
