@@ -24,7 +24,7 @@
     "test:scope-assignments": "node test-scope-assignments.js",
     "test:oauth-provider-scopes": "node test-oauth-provider-scopes.js",
     "data:export-bootstrap": "node scripts/exportBootstrapData.js",
-    "build": "cd ../banking_api_ui && npm run build",
+    "build": "echo 'API server - no build required'",
     "install-client": "cd ../banking_api_ui && npm install",
     "heroku-postbuild": "npm run install-client && npm run build"
   },
