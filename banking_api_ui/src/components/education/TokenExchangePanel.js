@@ -363,6 +363,46 @@ fetch(MCP_SERVER_URL, {
               </tr>
             </tbody>
           </table>
+          
+          {/* Educational callout about sub and act claims */}
+          <div style={{
+            background: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            margin: '16px 0',
+          }}>
+            <div style={{
+              color: '#0c4a6e',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}>
+              <span aria-hidden>🔍</span>
+              Identity Chain in Delegated Tokens
+            </div>
+            <div style={{
+              color: '#0c4a6e',
+              fontSize: '0.78rem',
+              lineHeight: '1.5',
+            }}>
+              <p style={{ margin: '0 0 8px 0' }}>
+                In a delegated token, the identity chain follows this pattern:
+              </p>
+              <ul style={{ margin: '0 0 8px 0', paddingLeft: '16px' }}>
+                <li><strong>sub</strong> = the human user (who the token is for)</li>
+                <li><strong>act.sub</strong> = the AI agent (who is acting on behalf of the user)</li>
+                <li><strong>act.act.sub</strong> = the MCP server (2-exchange only)</li>
+              </ul>
+              <p style={{ margin: 0, fontStyle: 'italic' }}>
+                This creates a verifiable audit trail showing exactly who authorized whom to act on their behalf.
+              </p>
+            </div>
+          </div>
+          
           <h3>PingOne validation steps</h3>
           <ol>
             <li>Verify User Token signature and expiry.</li>

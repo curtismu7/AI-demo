@@ -713,18 +713,57 @@ function EventRow({ event, isLast, onInspect }) {
             )}
           </div>
           
-          {/* Prominent User ID and Agent ID display */}
+          {/* Prominent User ID and Agent ID display with enhanced visual treatment */}
           {(userId || agentId) && (
             <div className="tcd-event-ids-row">
               {userId && (
-                <span className="tcd-event-id tcd-event-id--user" title="User ID (sub claim)">
-                  👤 {userId.length > 16 ? userId.slice(0, 14) + '…' : userId}
-                </span>
+                <button 
+                  className="tcd-event-id tcd-event-id--user" 
+                  title={`User ID (sub claim): ${userId}`}
+                  onClick={() => navigator.clipboard?.writeText(userId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigator.clipboard?.writeText(userId);
+                    }
+                  }}
+                  type="button"
+                >
+                  👤 User: {userId.length > 16 ? userId.slice(0, 14) + '…' : userId}
+                </button>
               )}
               {agentId && (
-                <span className="tcd-event-id tcd-event-id--agent" title="Agent ID (act claim)">
-                  🤖 {agentId.length > 16 ? agentId.slice(0, 14) + '…' : agentId}
-                </span>
+                <button 
+                  className="tcd-event-id tcd-event-id--agent" 
+                  title={`Agent ID (act claim): ${agentId}`}
+                  onClick={() => navigator.clipboard?.writeText(agentId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigator.clipboard?.writeText(agentId);
+                    }
+                  }}
+                  type="button"
+                >
+                  🤖 Agent: {agentId.length > 16 ? agentId.slice(0, 14) + '…' : agentId}
+                </button>
+              )}
+              {/* Show nested MCP server ID for 2-exchange tokens */}
+              {event.claims?.act?.act?.sub && (
+                <button 
+                  className="tcd-event-id tcd-event-id--mcp" 
+                  title={`MCP Server ID (act.act.sub claim): ${event.claims.act.act.sub}`}
+                  onClick={() => navigator.clipboard?.writeText(event.claims.act.act.sub)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigator.clipboard?.writeText(event.claims.act.act.sub);
+                    }
+                  }}
+                  type="button"
+                >
+                  🔗 MCP: {event.claims.act.act.sub.length > 16 ? event.claims.act.act.sub.slice(0, 14) + '…' : event.claims.act.act.sub}
+                </button>
               )}
             </div>
           )}

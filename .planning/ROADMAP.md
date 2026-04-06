@@ -27,6 +27,8 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 59 | rfc9728-compliance-and-education-audit | Comprehensive audit of RFC 9728 Protected Resource Metadata implementation and educational coverage | RFC9728-01, RFC9728-02, RFC9728-03, RFC9728-04, RFC9728-05, RFC9728-06 | 1 plan |
 | 60 | agent-showcase-and-integration-storytelling | Transform demonstration to showcase established banking platform embracing AI augmentation | SHOWCASE-01, SHOWCASE-02, SHOWCASE-03, SHOWCASE-04, SHOWCASE-05, SHOWCASE-06 | 1 plan |
 | 61 | mcp-spec-error-code-compliance-audit | Comprehensive audit of MCP error handling to ensure 403→"invalid scopes" and 401→auth flow per MCP spec | MCPERR-01, MCPERR-02, MCPERR-03, MCPERR-04, MCPERR-05, MCPERR-06 | 1 plan |
+| 62 | token-exchange-critical-fixes-and-enhancements | Address critical audit issues: may_act format, RFC 8707, scope simplification, test coverage, documentation | CRITICAL-01, CRITICAL-02, CRITICAL-03, CRITICAL-04, CRITICAL-05 | 1 plan |
+| 63 | documentation-and-integration-critical-fixes | Fix critical documentation gaps: operations guides, developer integration, API docs, architecture, configuration | DOC-01, DOC-02, DOC-03, DOC-04 | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -840,5 +842,45 @@ Plans:
 3. Correct authentication request flow for all 401 status codes per MCP spec
 4. All MCP protocol errors use correct error code ranges (-32000 to -32099)
 5. All error responses follow MCP specification JSON-RPC format
+
+---
+
+### Phase 62: token-exchange-critical-fixes-and-enhancements
+
+**Goal:** Address critical issues identified in Phase 56 audit: may_act format standardization, RFC 8707 resource indicators implementation, scope narrowing simplification, comprehensive test coverage, and operational documentation enhancement.
+
+**Requirements:** CRITICAL-01, CRITICAL-02, CRITICAL-03, CRITICAL-04, CRITICAL-05
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 62-01-PLAN.md — Token exchange critical fixes and enhancements implementation (CRITICAL-01 through CRITICAL-05)
+
+**Success criteria:**
+1. 100% consistent may_act claim format using URI standard across all tokens
+2. Full RFC 8707 resource indicator support in authorization flows and token validation
+3. 50% reduction in scope validation complexity while maintaining security
+4. 95% test coverage for all token exchange scenarios and error conditions
+5. 100% operational and developer documentation coverage with practical guides
+
+---
+
+### Phase 63: documentation-and-integration-critical-fixes
+
+**Goal:** Fix critical documentation gaps identified in Phase 56 AUDIT-06: operational documentation, developer integration guides, API documentation, architecture documentation, and configuration documentation enhancement.
+
+**Requirements:** DOC-01, DOC-02, DOC-03, DOC-04
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 63-01-PLAN.md — Documentation and integration critical fixes implementation (DOC-01 through DOC-04)
+
+**Success criteria:**
+1. 100% production deployment and operations guide coverage with monitoring, troubleshooting, and security procedures
+2. 95% developer satisfaction with comprehensive integration guides, API reference, and practical examples
+3. 100% API coverage with consistent format, usage examples, and version alignment
+4. Complete system architecture, security architecture, and scaling documentation
+5. Enhanced configuration guides with validation, troubleshooting, and best practices
 
 ---
