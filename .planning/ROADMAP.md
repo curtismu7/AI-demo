@@ -24,6 +24,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 56 | token-exchange-audit-and-compliance | Comprehensive RFC 8693 compliance audit against architectural diagrams | AUDIT-01, AUDIT-02, AUDIT-03, AUDIT-04, AUDIT-05, AUDIT-06 | 1 plan |
 | 57 | oauth-client-credentials-security-hardening | Replace PATs with OAuth 2.0 client credentials for AI integrations (80% security value, 20% complexity) | SECURE-01, SECURE-02, SECURE-03, SECURE-04, SECURE-05, SECURE-06 | 1 plan |
 | 58 | rfc8693-delegation-claims-compliance | Ensure RFC 8693 delegation pattern with correct may_act and act claim structures | DELEGATION-01, DELEGATION-02, DELEGATION-03, DELEGATION-04, DELEGATION-05, DELEGATION-06 | 1 plan |
+| 59 | rfc9728-compliance-and-education-audit | Comprehensive audit of RFC 9728 Protected Resource Metadata implementation and educational coverage | RFC9728-01, RFC9728-02, RFC9728-03, RFC9728-04, RFC9728-05, RFC9728-06 | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -777,3 +778,23 @@ Plans:
 3. Complete delegation chain (user → agent → MCP server) verified in all exchanged tokens
 4. All agent and MCP server identifiers use consistent URI format
 5. Comprehensive validation and error responses for malformed claims
+
+---
+
+### Phase 59: rfc9728-compliance-and-education-audit
+
+**Goal:** Conduct comprehensive audit of RFC 9728 Protected Resource Metadata implementation and educational coverage to ensure full specification compliance and accurate educational content.
+
+**Requirements:** RFC9728-01, RFC9728-02, RFC9728-03, RFC9728-04, RFC9728-05, RFC9728-06
+
+**Plans:** 1/1 plan
+
+Plans:
+- [ ] 59-01-PLAN.md — RFC 9728 compliance and education audit implementation (RFC9728-01 through RFC9728-06)
+
+**Success criteria:**
+1. 100% RFC 9728 specification compliance with all mandatory and recommended requirements
+2. All educational panels technically accurate and up-to-date with current implementation
+3. Live demo works correctly in all environments and shows real metadata
+4. Seamless integration with existing education flow and no breaking changes
+5. Comprehensive documentation covering implementation, usage, and troubleshooting
