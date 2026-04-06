@@ -8,6 +8,26 @@ Step-by-step setup for a **human → AI Agent → MCP → PingOne API** fully-de
 
 ---
 
+## Important: PingOne Resource-Scope Mental Model
+
+**⚠️ Critical Understanding**: In PingOne, **Resources are created separately** from applications. The correct mental model is:
+
+1. **Resources are pre-created** under `Connections → Resources` with a defined audience URI and scopes
+2. **Applications only select scopes** from existing resources on their Resources tab
+3. **You do NOT "Add Resource" on an app's Resources tab** - you only enable scopes from resources that already exist
+
+**Correct Language**:
+- ✅ "On the app's Resources tab, find `Resource Name` and select the scopes you want to grant"
+- ❌ "Add Resource → select Resource Name"
+
+If a resource doesn't appear on an app's Resources tab, it means:
+- The resource wasn't created yet in `Connections → Resources`, OR
+- The resource wasn't added to the environment's resource list
+
+**Create resources first** (under `Connections → Resources`), then **select scopes on apps**.
+
+---
+
 ## When to use this pattern
 
 Use 2 exchanges when:
