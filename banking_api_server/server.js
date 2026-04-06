@@ -174,6 +174,7 @@ const cibaRoutes        = require('./routes/ciba');
 const mfaRoutes         = require('./routes/mfa');
 const authorizeRoutes   = require('./routes/authorize');
 const setupRoutes       = require('./routes/setup');
+const selfServiceUsersRoutes = require('./routes/selfServiceUsers');
 const { router: featureFlagsRoutes } = require('./routes/featureFlags');
 const vercelConfigRoutes = require('./routes/vercelConfig');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
@@ -856,6 +857,7 @@ app.get('/api/tokens/session-preview', (req, res) => {
 });
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
+app.use('/api/self-service/users', authenticateToken, selfServiceUsersRoutes);
 app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/accounts', authenticateToken, sensitiveBankingRoutes);
 app.use('/api/transactions', requireSession, authenticateToken, transactionRoutes);
