@@ -1,0 +1,61 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: super-banking
+  labels:
+    app: super-banking
+    environment: production
+  annotations:
+    description: "Super Banking AI Demo - Complete banking platform with AI agent integration"
+    contact: "super-banking-team@example.com"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: super-banking-quota
+  namespace: super-banking
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.cpu: "4"
+    limits.memory: 8Gi
+    persistentvolumeclaims: "10"
+    services: "10"
+    secrets: "20"
+    configmaps: "20"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: super-banking-network-policy
+  namespace: super-banking
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: super-banking
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: super-banking
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53

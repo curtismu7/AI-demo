@@ -17,6 +17,7 @@
 const configStore = require('./configStore');
 const oauthService = require('./oauthService');
 const { writeExchangeEvent } = require('./exchangeAuditStore');
+const { createTokenExchangeError, RFC8693_ERRORS } = require('./rfcCompliantErrorHandler');
 const {
   parseAllowedScopesFromConfig,
   isToolPermittedByAgentPolicy,
@@ -924,12 +925,13 @@ async function _performTwoExchangeDelegation(
         'Set these env vars and re-deploy. See docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md for setup guide.',
       { missingVars, rfc: 'RFC 8693' }
     ));
-    throwTokenResolutionError(
-      tokenEvents,
-      'two_exchange_not_configured',
-      `2-exchange delegation requires: ${missingVars.join(', ')}`,
-      503
-    );
+    throw createTokenExchangeError('exchange_not_configured', {
+      exchangeType: 'double',
+      exchangeStep: 'configuration',
+      actorPresent: false,
+      missingVars,
+      rfc: 'RFC 8693'
+    });
   }
 
   // ─ Step 1: AI Agent Actor Token (Client Credentials) ───────────────────────────
@@ -969,7 +971,13 @@ async function _performTwoExchangeDelegation(
       `AI Agent client credentials failed: ${err.message}. Check AI_AGENT_CLIENT_ID and AI_AGENT_CLIENT_SECRET.`,
       { error: err.message, exchangeStep: '1-actor' }
     ));
-    throwTokenResolutionError(tokenEvents, 'two_exchange_agent_actor_failed', err.message, err.httpStatus || 502);
+    throw createTokenExchangeError('actor_token_invalid', {
+      exchangeType: 'double',
+      exchangeStep: '1-actor',
+      actorPresent: false,
+      audience: agentGatewayAud,
+      originalError: err
+    }, err);
   }
 
   // ─ Step 2: Exchange #1 — Subject Token + Agent Actor Token → Agent Exchanged Token ─────
@@ -1023,7 +1031,14 @@ async function _performTwoExchangeDelegation(
     ));
     void writeExchangeEvent({ type: 'exchange-failed', level: 'error',
       message: `[2-Exchange#1] Failed — ${err.message}`, exchangeStep: '1', pingoneError: err.pingoneError });
-    throwTokenResolutionError(tokenEvents, 'two_exchange_step1_failed', err.message, err.httpStatus || 502);
+    throw createTokenExchangeError('invalid_grant', {
+      exchangeType: 'double',
+      exchangeStep: '1-exchange',
+      actorPresent: true,
+      audience: intermediateAud,
+      scopes: effectiveToolScopes,
+      originalError: err
+    }, err);
   }
 
   // ─ Step 3: MCP Actor Token (Client Credentials) ──────────────────────────────
@@ -1063,7 +1078,13 @@ async function _performTwoExchangeDelegation(
       `MCP Service client credentials failed: ${err.message}. Check AGENT_OAUTH_CLIENT_ID and AGENT_OAUTH_CLIENT_SECRET.`,
       { error: err.message, exchangeStep: '2-actor' }
     ));
-    throwTokenResolutionError(tokenEvents, 'two_exchange_mcp_actor_failed', err.message, err.httpStatus || 502);
+    throw createTokenExchangeError('actor_token_invalid', {
+      exchangeType: 'double',
+      exchangeStep: '2-actor',
+      actorPresent: false,
+      audience: mcpGatewayAud,
+      originalError: err
+    }, err);
   }
 
   // ─ Step 4: Exchange #2 — Agent Exchanged Token + MCP Actor Token → Final Token ────
@@ -1141,7 +1162,14 @@ async function _performTwoExchangeDelegation(
     ));
     void writeExchangeEvent({ type: 'exchange-failed', level: 'error',
       message: `[2-Exchange#2] Failed — ${err.message}`, pingoneError: err.pingoneError });
-    throwTokenResolutionError(tokenEvents, 'two_exchange_step2_failed', err.message, err.httpStatus || 502);
+    throw createTokenExchangeError('delegation_chain_broken', {
+      exchangeType: 'double',
+      exchangeStep: '2-exchange',
+      actorPresent: true,
+      audience: twoExFinalAud,
+      scopes: effectiveToolScopes,
+      originalError: err
+    }, err);
   }
 }
 

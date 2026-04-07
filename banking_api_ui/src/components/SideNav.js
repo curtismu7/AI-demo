@@ -34,6 +34,12 @@ const ADMIN_NAV = [
     ],
   },
   {
+    group: 'User Management',
+    items: [
+      { to: '/self-service',       label: 'Create Account',   icon: '👤' },
+    ],
+  },
+  {
     group: 'Developer Tools',
     items: [
       { to: '/mcp-inspector',      label: 'MCP Inspector',    icon: '🔌' },
@@ -55,6 +61,7 @@ const USER_NAV = [
   {
     group: 'Self Service',
     items: [
+      { to: '/self-service', label: 'Create Account',   icon: '👤' },
       { to: '/accounts',     label: 'My Accounts',     icon: '🏦' },
       { to: '/transactions', label: 'Transfer Money', icon: '💸' },
       { to: '/profile',      label: 'Profile Settings', icon: '👤' },

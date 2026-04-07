@@ -2361,6 +2361,27 @@ export default function BankingAgent({
                     {isExpanded ? '⊟' : '⊞'}
                   </button>
                 )}
+                {/* Popout window only available in float mode */}
+                {!isInline && (
+                  <button
+                    type="button"
+                    className="ba-icon-btn"
+                    onClick={() => {
+                      const width = panelSize.width || 400;
+                      const height = panelSize.height || 480;
+                      const left = window.screenX + 100;
+                      const top = window.screenY + 100;
+                      window.open(
+                        '/agent',
+                        'BankingAgent',
+                        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`
+                      );
+                    }}
+                    title="Open agent in new window"
+                  >
+                    ⧉
+                  </button>
+                )}
                 <select
                   className="ba-agent-appearance-select"
                   value={agentAppearance}

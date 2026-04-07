@@ -793,7 +793,7 @@ class PingOneProvisionService {
 
       // Step 17: Grant scopes to MCP Server Application
       steps.push({ step: 'mcp-grants', icon: '🔑', message: 'Granting scopes to MCP Server application...' });
-      onStep(steps[steps.length - 1);
+      onStep(steps[steps.length - 1]);
       
       // Grant scopes for client credentials (Step 6 in documentation)
       const mcpAppGrantResult = await this.grantScopesToApplication(
@@ -807,11 +807,11 @@ class PingOneProvisionService {
       } else {
         steps.push({ step: 'mcp-grants', icon: '⚠️', message: 'Failed to grant MCP Server scopes' });
       }
-      onStep(steps[steps.length - 1);
+      onStep(steps[steps.length - 1]);
 
       // Step 18: Create Worker Application
       steps.push({ step: 'worker-app', icon: '🔧', message: 'Creating Worker application...' });
-      onStep(steps[steps.length - 1);
+      onStep(steps[steps.length - 1]);
       
       const workerAppResult = await this.createApplication(
         'Super Banking Worker',
@@ -830,7 +830,7 @@ class PingOneProvisionService {
       } else {
         steps.push({ step: 'worker-app', icon: '✅', message: 'Worker application created' });
       }
-      onStep(steps[steps.length - 1);
+      onStep(steps[steps.length - 1]);
       provisioned.workerApp = workerAppResult.application;
 
       // Step 19: Configure Worker Application
@@ -843,12 +843,12 @@ class PingOneProvisionService {
         });
         
         steps.push({ step: 'worker-config', icon: '✅', message: 'Worker application configured' });
-        onStep(steps[steps.length - 1);
+        onStep(steps[steps.length - 1]);
       }
 
       // Step 20: Grant scopes to Worker Application
       steps.push({ step: 'worker-grants', icon: '🔑', message: 'Granting scopes to Worker application...' });
-      onStep(steps[steps.length - 1);
+      onStep(steps[steps.length - 1]);
       
       // Grant PingOne Management API scopes (Step 6 in documentation)
       const workerAppGrantResult = await this.grantScopesToApplication(
@@ -862,7 +862,7 @@ class PingOneProvisionService {
       } else {
         steps.push({ step: 'worker-grants', icon: '⚠️', message: 'Failed to grant Worker scopes' });
       }
-      onStep(steps[steps.length - 1);
+      onStep(steps[steps.length - 1]);
 
       // Step 21: Write configuration
       steps.push({ step: 'config', icon: '📝', message: config.isVercel ? 'Setting Vercel environment variables...' : 'Writing .env file...' });

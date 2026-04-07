@@ -38,6 +38,7 @@ import Profile from './components/Profile';
 import SecurityCenter from './components/SecurityCenter';
 import UserAccounts from './components/UserAccounts';
 import UserTransactions from './components/UserTransactions';
+import SelfServicePage from './components/SelfServicePage';
 
 import { savePublicConfig } from './services/configService';
 import { SpinnerProvider } from './context/SpinnerContext';
@@ -442,6 +443,13 @@ function AppWithAuth() {
               <main className="main-content">
                 <EducationBar />
                 <DemoDataPage user={user} onLogout={logout} />
+              </main>
+            } />
+            {/* Self-service user provisioning — accessible without login */}
+            <Route path="/self-service" element={
+              <main className="main-content">
+                <EducationBar />
+                <SelfServicePage />
               </main>
             } />
             <Route

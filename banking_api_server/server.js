@@ -190,6 +190,8 @@ const delegationRoutes = require('./routes/delegation');
 const tokenChainRoutes = require('./routes/tokenChain');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
 const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetadata');
+const migrationRoutes = require('./routes/migration');
+const securityMonitoringRoutes = require('./routes/securityMonitoring');
 const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
 const { migrateAccounts } = require('./services/demoDataService');
@@ -881,6 +883,12 @@ app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
 app.use('/api/config/vertical', verticalConfigRoutes);
 app.use('/api/config/verticals', verticalConfigRoutes);
 app.use('/api/logs', logsRoutes);
+
+// Migration API routes - mixed authentication (some public, some admin-only)
+app.use('/api/migration', migrationRoutes);
+
+// Security monitoring API routes - admin-only
+app.use('/api/security', securityMonitoringRoutes);
 
 // PATCH /api/demo/may-act — set/clear mayAct attribute on the signed-in PingOne user
 app.patch('/api/demo/may-act', express.json(), authenticateToken, demoScenarioRoutes.patchMayAct);

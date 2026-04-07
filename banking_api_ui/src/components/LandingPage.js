@@ -224,6 +224,10 @@ const LandingPage = ({ user = null }) => {
         
         <div className="hero-content">
           <div className="hero-text">
+            <div className="page-indicator">
+              <span className="page-indicator-text">🏠 Main Page</span>
+              <span className="page-indicator-description">Banking Dashboard Home</span>
+            </div>
             <h1 className="hero-title">
               Banking Reimagined with 
               <span className="gradient-text"> AI Agents</span>

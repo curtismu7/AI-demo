@@ -1,0 +1,139 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: banking-mcp-server
+  namespace: super-banking
+  labels:
+    app: super-banking
+    component: mcp-server
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: super-banking
+      component: mcp-server
+  template:
+    metadata:
+      labels:
+        app: super-banking
+        component: mcp-server
+        version: v1.0.0
+    spec:
+      containers:
+      - name: mcp-server
+        image: banking-mcp-server:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: super-banking-config
+              key: NODE_ENV
+        - name: MCP_SERVER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: super-banking-config
+              key: MCP_SERVER_HOST
+        - name: MCP_SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: super-banking-config
+              key: MCP_SERVER_PORT
+        - name: MCP_SERVER_LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: super-banking-config
+              key: MCP_SERVER_LOG_LEVEL
+        - name: MCP_SERVER_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: super-banking-secrets
+              key: mcp-server-secret
+        - name: PINGONE_WORKER_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: super-banking-secrets
+              key: pingone-worker-client-id
+        - name: PINGONE_WORKER_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: super-banking-secrets
+              key: pingone-worker-client-secret
+        - name: PINGONE_ENVIRONMENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: super-banking-secrets
+              key: pingone-environment-id
+        - name: PINGONE_REGION
+          valueFrom:
+            secretKeyRef:
+              name: super-banking-secrets
+              key: pingone-region
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /.well-known/mcp-server
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /.well-known/mcp-server
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: logs-volume
+          mountPath: /app/logs
+      volumes:
+      - name: data-volume
+        emptyDir: {}
+      - name: logs-volume
+        emptyDir: {}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: banking-mcp-server-service
+  namespace: super-banking
+  labels:
+    app: super-banking
+    component: mcp-server
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: super-banking
+    component: mcp-server
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600

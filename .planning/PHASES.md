@@ -74,12 +74,12 @@
 | 51 | Auth rules audit — session-required gate, login OTP, HITL gates | ✅ Complete | 2/2 |
 | 52 | PingOne MFA step-up — OTP, FIDO, TOTP, full MFA capability | ✅ Complete | 6/6 |
 | 53 | Debug testing and bug fixes for phase 52 MFA step-up | ✅ Complete | 4/4 |
-| 54 | Self-service user provisioning — create PingOne users with mayAct setup | 📋 Planned | 2/2 |
-| 55 | Docker / Kubernetes deployment — containerize all components | 📋 Planned | 1/1 |
+| 54 | Self-service user provisioning — create PingOne users with mayAct setup | ✅ Complete | 2/2 |
+| 55 | Docker / Kubernetes deployment — containerize all components | ✅ Complete | 1/1 |
 | 56 | Flow diagrams with RFC annotations — MFA, consent, agent request flows | ✅ Complete | 4/4 |
 | 57 | Self-service side menu — user-friendly navigation and UI components | ✅ Complete | 4/4 |
-| 56 | Token exchange audit and compliance — RFC 8693 comprehensive audit | 📋 Planned | 1/1 |
-| 57 | OAuth client credentials security hardening — replace PATs | 📋 Planned | 1/1 |
+| 56 | Token exchange audit and compliance — RFC 8693 comprehensive audit | ✅ Complete | 1/1 |
+| 57 | OAuth client credentials security hardening — replace PATs | ✅ Complete | 6/6 |
 | 58 | RFC 8693 delegation claims compliance — may_act and act claim correctness | 📋 Planned | 1/1 |
 | 59 | RFC 9728 compliance and education audit — full spec compliance | 📋 Planned | 1/1 |
 | 60 | Agent showcase and integration storytelling — banking platform AI narrative | 📋 Planned | 1/1 |
@@ -103,9 +103,9 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Complete | 49 |
+| ✅ Complete | 50 |
 | 🔄 In Progress | 0 |
-| 📋 Planned | 26 |
+| 📋 Planned | 25 |
 | ⬜ Unplanned | 0 |
 | **Total** | **75** | (filesystem is source of truth — verified 2026-04-06)
 
