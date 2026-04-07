@@ -368,6 +368,14 @@ class PingOneProvisionService {
       '# Resource Server',
       `ENDUSER_AUDIENCE=${provisioned.resourceServer.audience[0]}`,
       '',
+      '# MCP Resource Server',
+      `MCP_RESOURCE_URI=${provisioned.mcpResourceServer?.audience?.[0] || 'https://mcp-server.pingdemo.com'}`,
+      '',
+      '# Admin Token Exchange',
+      `ff_admin_token_exchange=true`,
+      `ADMIN_TOKEN_LIFETIME=7200`,
+      `ADMIN_REFRESH_TOKEN_LIFETIME=86400`,
+      '',
       '# Demo Users',
       `DEMO_USER_USERNAME=bankuser`,
       `DEMO_USER_PASSWORD=${provisioned.bankUser.password}`,
@@ -396,6 +404,10 @@ class PingOneProvisionService {
       PINGONE_CORE_CLIENT_SECRET: provisioned.userApp.clientSecret || '<set-in-pingone-console>',
       PINGONE_CORE_REDIRECT_URI: `${config.publicAppUrl}/api/auth/oauth/callback`,
       ENDUSER_AUDIENCE: provisioned.resourceServer.audience[0],
+      MCP_RESOURCE_URI: provisioned.mcpResourceServer?.audience?.[0] || 'https://mcp-server.pingdemo.com',
+      ff_admin_token_exchange: 'true',
+      ADMIN_TOKEN_LIFETIME: '7200',
+      ADMIN_REFRESH_TOKEN_LIFETIME: '86400',
       PINGONE_WORKER_CLIENT_ID: config.workerClientId,
       PINGONE_WORKER_CLIENT_SECRET: config.workerClientSecret,
     };
@@ -445,16 +457,79 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       provisioned.resourceServer = resourceResult.resource;
 
-      // Step 4: Create scopes
+      // Step 4.5: Create MCP Resource Server for Admin Operations
+      steps.push({ step: 'mcp-resource-server', icon: '🔧', message: 'Creating MCP resource server for admin operations...' });
+      onStep(steps[steps.length - 1]);
+      
+      const mcpResourceResult = await this.createResourceServer(
+        'Super Banking MCP Server',
+        'https://mcp-server.pingdemo.com',
+        'MCP server for admin tool execution and privileged operations'
+      );
+      
+      if (mcpResourceResult.exists) {
+        steps.push({ 
+          step: 'mcp-resource-server', 
+          icon: '⚠️', 
+          message: 'MCP resource server already exists',
+          resourceKey: mcpResourceResult.resourceKey
+        });
+      } else {
+        steps.push({ step: 'mcp-resource-server', icon: '✅', message: 'MCP resource server created' });
+      }
+      onStep(steps[steps.length - 1]);
+      provisioned.mcpResourceServer = mcpResourceResult.resource;
+
+      // Step 4.6: Create MCP-specific scopes
+      steps.push({ step: 'mcp-scopes', icon: '🎯', message: 'Creating MCP-specific scopes...' });
+      onStep(steps[steps.length - 1]);
+      
+      const mcpScopes = [
+        { name: 'admin:read', description: 'Read administrative data and system status' },
+        { name: 'admin:write', description: 'Modify administrative settings and configurations' },
+        { name: 'admin:delete', description: 'Delete users and administrative resources' },
+        { name: 'users:read', description: 'Read user profiles and account information' },
+        { name: 'users:manage', description: 'Manage user accounts and permissions' },
+        { name: 'banking:read', description: 'Read banking data and transaction history' },
+        { name: 'banking:write', description: 'Perform banking operations and transfers' }
+      ];
+      
+      const mcpScopeResults = await this.createScopes(mcpResourceResult.resource.id, mcpScopes);
+      const createdMcpScopes = mcpScopeResults.filter(r => r.success).length;
+      const failedMcpScopes = mcpScopeResults.filter(r => !r.success).length;
+      
+      if (failedMcpScopes > 0) {
+        steps.push({ 
+          step: 'mcp-scopes', 
+          icon: '⚠️', 
+          message: `Created ${createdMcpScopes} MCP scopes, ${failedMcpScopes} failed` 
+        });
+      } else {
+        steps.push({ step: 'mcp-scopes', icon: '✅', message: `Created ${createdMcpScopes} MCP scopes` });
+      }
+      onStep(steps[steps.length - 1]);
+
+      // Step 5: Create scopes
       steps.push({ step: 'scopes', icon: '🎯', message: 'Creating banking scopes...' });
       onStep(steps[steps.length - 1]);
       
       const scopes = [
         { name: 'banking:read', description: 'Read access to banking data' },
         { name: 'banking:write', description: 'Write access to banking operations' },
+        { name: 'banking:accounts:read', description: 'Read account information and balances' },
+        { name: 'banking:transactions:read', description: 'Read transaction history and details' },
+        { name: 'banking:accounts', description: 'Account access and management' },
         { name: 'banking:admin', description: 'Administrative access' },
-        { name: 'banking:transactions', description: 'Transaction operations' },
-        { name: 'banking:accounts', description: 'Account management' }
+        { name: 'banking:agent:invoke', description: 'Agent invocation permission' },
+        { name: 'p1:read:user', description: 'Read user profile data' },
+        { name: 'p1:update:user', description: 'Update user profile data' },
+        { name: 'ai_agent', description: 'AI agent identity' },
+        // Admin-specific scopes
+        { name: 'admin:read', description: 'Read administrative data and system status' },
+        { name: 'admin:write', description: 'Modify administrative settings and configurations' },
+        { name: 'admin:delete', description: 'Delete users and administrative resources' },
+        { name: 'users:read', description: 'Read user profiles and account information' },
+        { name: 'users:manage', description: 'Manage user accounts and permissions' }
       ];
       
       const scopeResults = await this.createScopes(resourceResult.resource.id, scopes);
@@ -504,10 +579,21 @@ class PingOneProvisionService {
         await this.updateApplication(adminAppResult.application.id, {
           redirectUris: [`${config.publicAppUrl}/api/auth/oauth/callback`],
           pkceMethod: 'S256',
-          tokenEndpointAuthMethod: 'client_secret_post'
+          tokenEndpointAuthMethod: 'client_secret_post',
+          grantTypes: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:token-exchange'],
+          tokenLifetime: 7200, // 2 hours for admin sessions
+          refreshTokenLifetime: 86400 // 24 hours
         });
         
-        steps.push({ step: 'admin-config', icon: '✅', message: 'Admin application configured' });
+        // Enable token customization for may_act claim
+        await this.enableTokenCustomization(adminAppResult.application.id);
+        
+        // Add may_act claim for token exchange
+        await this.addTokenClaim(adminAppResult.application.id, 'may_act', 'JSON', {
+          sub: "{{PINGONE_ADMIN_CLIENT_ID}}"
+        });
+        
+        steps.push({ step: 'admin-config', icon: '✅', message: 'Admin application configured with token exchange' });
         onStep(steps[steps.length - 1]);
       }
 
@@ -515,16 +601,24 @@ class PingOneProvisionService {
       steps.push({ step: 'admin-grants', icon: '🔑', message: 'Granting scopes to admin application...' });
       onStep(steps[steps.length - 1]);
       
+      // Grant scopes from main resource server
       const adminGrantResult = await this.grantScopesToApplication(
         adminAppResult.application.id,
         resourceResult.resource.id,
         scopes.map(s => s.name)
       );
       
-      if (adminGrantResult.success) {
-        steps.push({ step: 'admin-grants', icon: '✅', message: 'Admin scopes granted' });
+      // Grant admin-specific scopes from MCP resource server
+      const adminMcpGrantResult = await this.grantScopesToApplication(
+        adminAppResult.application.id,
+        mcpResourceResult.resource.id,
+        mcpScopes.map(s => s.name)
+      );
+      
+      if (adminGrantResult.success && adminMcpGrantResult.success) {
+        steps.push({ step: 'admin-grants', icon: '✅', message: 'Admin scopes granted from both resource servers' });
       } else {
-        steps.push({ step: 'admin-grants', icon: '⚠️', message: 'Failed to grant admin scopes' });
+        steps.push({ step: 'admin-grants', icon: '⚠️', message: 'Failed to grant some admin scopes' });
       }
       onStep(steps[steps.length - 1]);
 
@@ -574,7 +668,7 @@ class PingOneProvisionService {
       const userGrantResult = await this.grantScopesToApplication(
         userAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:read', 'banking:write', 'banking:transactions', 'banking:accounts']
+        ['banking:agent:invoke', 'banking:read', 'banking:write']
       );
       
       if (userGrantResult.success) {
@@ -660,7 +754,117 @@ class PingOneProvisionService {
         provisioned.bankAdmin = { ...bankAdminResult.user, password: 'BankAdmin123!' };
       }
 
-      // Step 15: Write configuration
+      // Step 15: Create MCP Server Application
+      steps.push({ step: 'mcp-app', icon: '🤖', message: 'Creating MCP Server application...' });
+      onStep(steps[steps.length - 1]);
+      
+      const mcpAppResult = await this.createApplication(
+        'Super Banking MCP Server',
+        'MCP server for client credentials and PingOne API access',
+        'WORKER',
+        ['client_credentials']
+      );
+      
+      if (mcpAppResult.exists) {
+        steps.push({ 
+          step: 'mcp-app', 
+          icon: '⚠️', 
+          message: 'MCP Server application already exists',
+          resourceKey: mcpAppResult.resourceKey
+        });
+      } else {
+        steps.push({ step: 'mcp-app', icon: '✅', message: 'MCP Server application created' });
+      }
+      onStep(steps[steps.length - 1]);
+      provisioned.mcpApp = mcpAppResult.application;
+
+      // Step 16: Configure MCP Server Application
+      if (!mcpAppResult.exists) {
+        steps.push({ step: 'mcp-config', icon: '⚙️', message: 'Configuring MCP Server application...' });
+        onStep(steps[steps.length - 1]);
+        
+        await this.updateApplication(mcpAppResult.application.id, {
+          tokenEndpointAuthMethod: 'client_secret_basic'
+        });
+        
+        steps.push({ step: 'mcp-config', icon: '✅', message: 'MCP Server application configured' });
+        onStep(steps[steps.length - 1]);
+      }
+
+      // Step 17: Grant scopes to MCP Server Application
+      steps.push({ step: 'mcp-grants', icon: '🔑', message: 'Granting scopes to MCP Server application...' });
+      onStep(steps[steps.length - 1);
+      
+      // Grant scopes for client credentials (Step 6 in documentation)
+      const mcpAppGrantResult = await this.grantScopesToApplication(
+        mcpAppResult.application.id,
+        resourceResult.resource.id,
+        ['banking:read', 'banking:agent:invoke']
+      );
+      
+      if (mcpAppGrantResult.success) {
+        steps.push({ step: 'mcp-grants', icon: '✅', message: 'MCP Server scopes granted' });
+      } else {
+        steps.push({ step: 'mcp-grants', icon: '⚠️', message: 'Failed to grant MCP Server scopes' });
+      }
+      onStep(steps[steps.length - 1);
+
+      // Step 18: Create Worker Application
+      steps.push({ step: 'worker-app', icon: '🔧', message: 'Creating Worker application...' });
+      onStep(steps[steps.length - 1);
+      
+      const workerAppResult = await this.createApplication(
+        'Super Banking Worker',
+        'Worker application for PingOne Management API operations',
+        'WORKER',
+        ['client_credentials']
+      );
+      
+      if (workerAppResult.exists) {
+        steps.push({ 
+          step: 'worker-app', 
+          icon: '⚠️', 
+          message: 'Worker application already exists',
+          resourceKey: workerAppResult.resourceKey
+        });
+      } else {
+        steps.push({ step: 'worker-app', icon: '✅', message: 'Worker application created' });
+      }
+      onStep(steps[steps.length - 1);
+      provisioned.workerApp = workerAppResult.application;
+
+      // Step 19: Configure Worker Application
+      if (!workerAppResult.exists) {
+        steps.push({ step: 'worker-config', icon: '⚙️', message: 'Configuring Worker application...' });
+        onStep(steps[steps.length - 1]);
+        
+        await this.updateApplication(workerAppResult.application.id, {
+          tokenEndpointAuthMethod: 'client_secret_basic'
+        });
+        
+        steps.push({ step: 'worker-config', icon: '✅', message: 'Worker application configured' });
+        onStep(steps[steps.length - 1);
+      }
+
+      // Step 20: Grant scopes to Worker Application
+      steps.push({ step: 'worker-grants', icon: '🔑', message: 'Granting scopes to Worker application...' });
+      onStep(steps[steps.length - 1);
+      
+      // Grant PingOne Management API scopes (Step 6 in documentation)
+      const workerAppGrantResult = await this.grantScopesToApplication(
+        workerAppResult.application.id,
+        resourceResult.resource.id,
+        ['p1:read:user', 'p1:update:user']
+      );
+      
+      if (workerAppGrantResult.success) {
+        steps.push({ step: 'worker-grants', icon: '✅', message: 'Worker scopes granted' });
+      } else {
+        steps.push({ step: 'worker-grants', icon: '⚠️', message: 'Failed to grant Worker scopes' });
+      }
+      onStep(steps[steps.length - 1);
+
+      // Step 21: Write configuration
       steps.push({ step: 'config', icon: '📝', message: config.isVercel ? 'Setting Vercel environment variables...' : 'Writing .env file...' });
       onStep(steps[steps.length - 1]);
       
@@ -702,6 +906,36 @@ class PingOneProvisionService {
       onStep(steps[steps.length - 1]);
       
       throw error;
+    }
+  }
+
+  /**
+   * Enable token customization for an application
+   */
+  async enableTokenCustomization(appId) {
+    try {
+      const response = await this.makeRequest('PUT', `/applications/${appId}/tokenCustomization`, {
+        enabled: true
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to enable token customization: ${error.response?.data?.error_description || error.message}`);
+    }
+  }
+
+  /**
+   * Add token claim to an application
+   */
+  async addTokenClaim(appId, claimName, claimType, value) {
+    try {
+      const response = await this.makeRequest('POST', `/applications/${appId}/tokenClaims`, {
+        name: claimName,
+        type: claimType,
+        value: typeof value === 'string' ? value : JSON.stringify(value)
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to add token claim: ${error.response?.data?.error_description || error.message}`);
     }
   }
 

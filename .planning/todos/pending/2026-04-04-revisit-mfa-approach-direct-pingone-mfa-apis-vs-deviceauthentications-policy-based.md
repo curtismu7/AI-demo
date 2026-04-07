@@ -44,7 +44,7 @@ The question raised: **should we be using the direct PingOne MFA Management APIs
 
 ## Solution / Decision needed
 
-1. **Research**: Confirm whether a `POST /mfaChallenge` or equivalent direct Management API endpoint exists that doesn't require a policy ID. Check PingOne developer docs at `https://developer.pingidentity.com/pingone-api/mfa/`.
+1. **Research**: Confirm whether a `POST /mfaChallenge` or equivalent direct Management API endpoint exists that doesn't require a policy ID. Check PingOne developer docs at `https://developer.pingone.com/pingone-api/mfa/`.
 2. **Evaluate**: If a no-policy-ID path exists, consider migrating `mfaService.js` away from `deviceAuthentications` to remove the `PINGONE_MFA_POLICY_ID` hard requirement.
 3. **SDK check**: Search npm for official PingOne MFA SDK. If stable, evaluate as an alternative to raw `axios` calls in `mfaService.js`.
 4. **Decision**: Document the chosen approach in `52-RESEARCH.md` / `REGRESSION_PLAN.md` so future agents don't accidentally re-introduce the policy dependency if we move away from it.

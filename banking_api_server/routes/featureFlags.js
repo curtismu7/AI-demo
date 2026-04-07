@@ -39,7 +39,7 @@ const FLAG_REGISTRY = [
       'ON + not simulated → calls PingOne (requires worker app + endpoint or policy ID). OFF → no Authorize gate.',
     type:         'boolean',
     defaultValue: false,
-    docsUrl:      'https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
+    docsUrl:      'https://docs.PingOneentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
   },
   {
     id:           'ff_authorize_simulated',
@@ -85,7 +85,7 @@ const FLAG_REGISTRY = [
       'OFF = no extra Authorize round-trip for MCP (MCP server still introspects tokens). ON = first tool may return 403/428 from policy.',
     type:         'boolean',
     defaultValue: false,
-    docsUrl:      'https://docs.pingidentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
+    docsUrl:      'https://docs.PingOneentity.com/pingone/authorization_using_pingone_authorize/p1az_overview.html',
   },
 
   // ── Step-Up Auth ───────────────────────────────────────────────────────────

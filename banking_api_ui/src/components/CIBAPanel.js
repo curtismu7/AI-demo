@@ -84,7 +84,7 @@ const PINGONE_STEPS = [
     step: '4',
     title: 'Optional — push approval instead of email',
     detail:
-      'If your DaVinci flow delivers CIBA via push to a device, enable Push Notification in your MFA policy and register PingID / MS Authenticator (or your IdP’s device MFA). Email vs push is chosen in PingOne, not in this app.',
+      'If your DaVinci flow delivers CIBA via push to a device, enable Push Notification in your MFA policy and register PingOne / MS Authenticator (or your IdP’s device MFA). Email vs push is chosen in PingOne, not in this app.',
   },
   {
     step: '5',

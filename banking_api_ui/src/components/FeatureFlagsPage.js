@@ -59,7 +59,7 @@ function FlagCard({ flag, onToggle, saving }) {
           rel="noopener noreferrer"
           className="ff-card__docs-link"
         >
-          Ping Identity docs ↗
+          PingOne docs ↗
         </a>
       )}
 

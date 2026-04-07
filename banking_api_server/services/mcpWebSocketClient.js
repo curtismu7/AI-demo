@@ -38,6 +38,15 @@ const MCP_TOOL_SCOPES = {
   create_withdrawal:           ['banking:transactions:write', 'banking:write'],
   // Query tool — agent identity lookup scope
   query_user_by_email:         ['ai_agent'],
+  
+  // Admin-only tools — require admin scopes
+  admin_list_all_users:        ['admin:read', 'users:read'],
+  admin_get_user_details:       ['admin:read', 'users:read'],
+  admin_delete_user:           ['admin:write', 'admin:delete', 'users:manage'],
+  admin_manage_accounts:        ['admin:write', 'users:manage'],
+  admin_view_audit_logs:        ['admin:read'],
+  admin_system_status:          ['admin:read'],
+  
   // Legacy aliases (if still used anywhere)
   list_accounts:               ['banking:accounts:read', 'banking:read'],
   list_transactions:           ['banking:transactions:read', 'banking:read'],

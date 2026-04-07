@@ -62,7 +62,7 @@ function EduLink({ label, panelId, tabId, onClick }) {
   );
 }
 
-// ─── Overview grid (mirrors the Ping Identity slide) ─────────────────────────
+// ─── Overview grid (mirrors the PingOne slide) ─────────────────────────
 
 const PRACTICES = [
   {
@@ -154,13 +154,13 @@ export default function BestPracticesPanel({ isOpen, onClose, initialTabId }) {
       content: (
         <>
           <p>
-            Ping Identity defines five best practices for deploying AI agents securely. This demo
+            PingOne defines five best practices for deploying AI agents securely. This demo
             implements all five — the tabs on this panel show exactly how each one maps to code,
             tokens, and UX in Super Banking.
           </p>
           <OverviewGrid />
           <p style={{ fontSize: '0.82rem', color: '#6b7280', borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
-            Source: <em>Securing Digital Assistants with PingOne and PingGateway</em> — Ping Identity 2025.
+            Source: <em>Securing Digital Assistants with PingOne and PingGateway</em> — PingOne 2025.
             Each practice links to a deeper guide in the Learn menu.
           </p>
         </>
@@ -494,7 +494,7 @@ POST /token { grant_type: urn:openid:params:grant-type:ciba, auth_req_id }
     <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Ping Identity — AI Agent Best Practices"
+      title="PingOne — AI Agent Best Practices"
       tabs={tabs}
       initialTabId={initialTabId}
     />

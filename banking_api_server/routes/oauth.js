@@ -5,6 +5,7 @@ const oauthService = require('../services/oauthService');
 const configStore = require('../services/configStore');
 const dataStore = require('../data/store');
 const { determineClientType } = require('../middleware/auth');
+const resourceIndicatorService = require('../services/resourceIndicatorService');
 const {
   getFrontendOrigin,
   getAdminRedirectUri,
@@ -76,11 +77,48 @@ router.get('/login', (req, res) => {
     const nonce = crypto.randomBytes(16).toString('hex');
     req.session.oauthNonce = nonce;
 
+    // Handle RFC 9728 resource indicators
+    let selectedResources = [];
+    if (resourceIndicatorService.isResourceIndicatorsEnabled()) {
+      // Get resources from query parameters or use defaults
+      const queryResources = req.query.resource ? 
+        (Array.isArray(req.query.resource) ? req.query.resource : [req.query.resource]) : 
+        [];
+      
+      // Validate resource selection
+      const validation = resourceIndicatorService.validateResourceSelection(_clientId, queryResources);
+      
+      if (!validation.valid) {
+        console.warn('[oauth] Resource validation failed:', validation.errors);
+        return res.status(400).json({ 
+          error: 'invalid_resource_selection', 
+          message: validation.errors.join(', ')
+        });
+      }
+      
+      selectedResources = validation.allowedResources;
+      
+      // Store resources in session for callback validation
+      req.session.oauthResources = selectedResources;
+      
+      console.log('[oauth] RFC 9728 resources selected:', selectedResources);
+    }
+
     // Generate authorization URL (includes code_challenge derived from verifier)
-    const resourceParam = buildPingOneAuthorizeResourceQueryParam(
-      process.env.ENDUSER_AUDIENCE,
-      oauthConfig.scopes,
-    );
+    let resourceParam = '';
+    if (selectedResources.length > 0) {
+      // Use RFC 9728 resource indicators
+      resourceParam = selectedResources.map(resource => 
+        `&resource=${encodeURIComponent(resource)}`
+      ).join('');
+    } else {
+      // Fallback to legacy resource parameter
+      resourceParam = buildPingOneAuthorizeResourceQueryParam(
+        process.env.ENDUSER_AUDIENCE,
+        oauthConfig.scopes,
+      );
+    }
+    
     const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce) + resourceParam;
 
     const cfg = oauthService.config || {};
@@ -151,14 +189,18 @@ router.get('/callback', async (req, res) => {
     const codeVerifier = req.session.oauthCodeVerifier || pkceCookie?.codeVerifier;
     const redirectUri   = req.session.oauthRedirectUri  || pkceCookie?.redirectUri;
     const expectedNonce = req.session.oauthNonce         || pkceCookie?.nonce;
+    
+    // Get RFC 9728 resources from session
+    const sessionResources = req.session.oauthResources || [];
     delete req.session.oauthState;
     delete req.session.oauthCodeVerifier;
     delete req.session.oauthRedirectUri;
     delete req.session.oauthNonce;
+    delete req.session.oauthResources;
     clearPkceCookie(res, _isProd());
 
-    // Exchange authorization code for access token (with PKCE verifier)
-    const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri);
+    // Exchange authorization code for access token (with PKCE verifier and resource indicators)
+    const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri, sessionResources);
 
     // Verify nonce in ID token to prevent ID token replay attacks (OIDC Core §3.1.2.7)
     if (expectedNonce && tokenData.id_token) {

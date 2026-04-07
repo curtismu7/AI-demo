@@ -16,7 +16,7 @@ function ContextTab() {
                                │ uses
                                ▼
                     ┌─────────────────────┐
-                    │  BX Finance Banking  │
+                    │  Super Banking      │
                     │      Demo           │
                     │                     │
                     │  AI-powered banking  │
@@ -226,7 +226,7 @@ export default function ArchitectureDiagramPanel({ isOpen, onClose, initialTabId
     <EducationDrawer
       isOpen={isOpen}
       onClose={onClose}
-      title="C4 Architecture — BX Finance Banking Demo"
+      title="C4 Architecture — Super Banking Demo"
       tabs={tabs}
       initialTabId={initialTabId}
       width="min(720px, 100vw)"

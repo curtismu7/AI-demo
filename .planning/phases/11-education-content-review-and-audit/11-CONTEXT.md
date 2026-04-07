@@ -98,7 +98,7 @@ Comprehensive review and audit of all education content across the banking demo 
 
 ### Related Work
 - Phase 16 (Education Content Refresh) — Follow-up improvements
-- Phase 17 (Ping Identity for AI Principles) — New content addition
+- Phase 17 (PingOne for AI Principles) — New content addition
 
 ## Deliverables
 

@@ -105,7 +105,7 @@ This phase does NOT include DaVinci flows, setup-wizard env var additions, or ch
 - `banking_api_server/.env.example` — env var naming conventions
 
 ### PingOne MFA API (external — researcher must fetch current docs)
-- PingOne MFA APIs: `https://developer.pingidentity.com/pingone-api/mfa/` — device list, authentication initiate/verify endpoints (new canonical URL; old: apidocs.pingidentity.com)
+- PingOne MFA APIs: `https://developer.pingone.com/pingone-api/mfa/` — device list, authentication initiate/verify endpoints (new canonical URL; old: apidocs.pingidentity.com)
 - FIDO2 Web Authentication spec: `navigator.credentials.get()` → assertion relay pattern
 
 </canonical_refs>

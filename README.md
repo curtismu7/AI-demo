@@ -1,6 +1,6 @@
 # Banking Demo — PingOne Edition
 
-> ⚠️ **Disclaimer:** This is an independent community demo project. It is **not** created, endorsed, or supported by Ping Identity or ForgeRock. Use at your own risk. No warranty is provided, express or implied.
+> ⚠️ **Disclaimer:** This is an independent community demo project. It is **not** created, endorsed, or supported by PingOne or ForgeRock. Use at your own risk. No warranty is provided, express or implied.
 
 Standalone AI-powered banking demo using PingOne for authentication and **RFC 8693 Token Exchange** so the AI agent can securely access banking data on behalf of users.
 
@@ -60,7 +60,7 @@ See **[docs/SETUP.md](docs/SETUP.md)** (§ 2 — PingOne Application Configurati
 | AS endpoints | `openam-*.forgeblocks.com/am/oauth2/...` | `auth.pingone.com/{envId}/as/...` |
 | Token validation | PingOne AI IAM Core introspection (HTTP call) | PingOne JWKS (JWT signature) |
 | Token Exchange | Not implemented | Implemented — `banking_api_server/services/agentMcpTokenService.js` performs RFC 8693 exchange on every `POST /api/mcp/tool` when `MCP_RESOURCE_URI` is set |
-| MCP server config | `PINGONE_BASE_URL=*.pingidentity.com` | `PINGONE_BASE_URL=https://auth.pingone.com/{envId}/as` |
+| MCP server config | `PINGONE_BASE_URL=*.PingOneentity.com` | `PINGONE_BASE_URL=https://auth.pingone.com/{envId}/as` |
 
 ## Services
 
@@ -148,7 +148,7 @@ In your PingOne environment (`b9817c16-9910-4415-b67e-4ac687da74d9`), you need:
 ## MCP Security Gateway — Potential Architecture
 
 > **Note:** This is not how the app is currently set up. It illustrates how an **MCP Security Gateway** 
-> (as defined by Ping Identity) could be introduced to centralize identity enforcement between the 
+> (as defined by PingOne) could be introduced to centralize identity enforcement between the 
 > Banking Agent and the Banking MCP Server — without changing either endpoint's code.
 
 ```mermaid
@@ -160,7 +160,7 @@ flowchart LR
     end
 
     subgraph PingCloud["☁️ Ping"]
-        PING["Ping Identity Platform\n(PingOne)\n• token validation\n• policy evaluation\n• step-up MFA decisions"]
+        PING["PingOne Platform\n(PingOne)\n• token validation\n• policy evaluation\n• step-up MFA decisions"]
     end
 
     BANKING_AGENT["🤖 Banking Agent\n(LangChain FAB)\n:8888"]

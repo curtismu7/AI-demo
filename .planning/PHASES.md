@@ -64,10 +64,10 @@
 | 41 | C4 top-down architecture diagram (draw.io) | ✅ Complete | 1/1 |
 | 42 | Persist demo accounts across server restarts — env file / SQLite | ✅ Complete | 2/2 |
 | 43 | Multi-vertical demo mode — retail and workforce HR variants | ✅ Complete | 2/2 |
-| 44 | Admin mode token exchange — admin token for MCP tool calls | 📋 Planned | 1/1 |
-| 45 | Support RFC 9728 (OAuth 2.0 Protected Resource Metadata) | 📋 Planned | 1/1 |
-| 46 | Standardize PingOne app, resource, and scope naming | 📋 Planned | 1/1 |
-| 47 | Super Banking rename verification — confirm no regressions | 📋 Planned | 1/1 |
+| 44 | Admin mode token exchange — admin token service, MCP tools, setup wizard, documentation | ✅ Complete | 4/4 |
+| 45 | Support RFC 9728 (OAuth 2.0 Protected Resource Metadata) | ✅ Complete | 1/1 |
+| 46 | Standardize PingOne app, resource, and scope naming | ✅ Complete | 1/1 |
+| 47 | Super Banking rename verification — confirm no regressions | ✅ Complete | 1/1 |
 | 48 | Remove invalid SpEL act expression — enforce act chain at BFF PAZ layer | ✅ Complete | 1/1 |
 | 49 | Setup wizard — provision PingOne env via Management API worker token | ✅ Complete | 2/2 |
 | 50 | Update docs, setup script, fix logout URLs on PingOne apps | ✅ Complete | 1/1 |
@@ -95,6 +95,7 @@
 | 70 | Super Banking rename verification — confirm no regressions across all layers | 📋 Planned | 1/1 |
 | 71 | Feature & sales documentation — what the app does, demo scenarios, pitch doc | 📋 Planned | 1/1 |
 | 72 | RFC & standards reference documentation — every RFC implemented, how, and gaps | 📋 Planned | 1/1 |
+| 444 | Admin token exchange and elevated privileges — admin MCP tools, setup wizard updates, documentation | ✅ Complete | 4/4 |
 
 ---
 
@@ -102,11 +103,11 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Complete | 47 |
+| ✅ Complete | 49 |
 | 🔄 In Progress | 0 |
-| 📋 Planned | 27 |
+| 📋 Planned | 26 |
 | ⬜ Unplanned | 0 |
-| **Total** | **74** | (filesystem is source of truth — verified 2026-04-06)
+| **Total** | **75** | (filesystem is source of truth — verified 2026-04-06)
 
 ---
 

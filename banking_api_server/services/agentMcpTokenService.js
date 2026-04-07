@@ -24,6 +24,7 @@ const {
   scopesAreCatalogOnly,
 } = require('./agentMcpScopePolicy');
 const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
+const adminTokenService = require('./adminTokenService');
 
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
 const MIN_USER_SCOPES_FOR_MCP = Math.max(
@@ -297,11 +298,50 @@ function buildSessionPreviewTokenEvents(req) {
  */
 async function resolveMcpAccessTokenWithEvents(req, tool) {
   const tokenEvents = [];
-  const userToken = getSessionBearerForMcp(req);
+  let userToken = getSessionBearerForMcp(req);
 
   if (!userToken) {
     return { token: null, tokenEvents, userSub: null };
   }
+
+  // ── Admin Token Detection ────────────────────────────────────────────────
+  // Check if this is an admin session and use admin token as subject token
+  const shouldUseAdmin = adminTokenService.shouldUseAdminTokenForTool(req, tool);
+  
+  if (shouldUseAdmin) {
+    const adminToken = adminTokenService.getAdminTokenFromSession(req.session);
+    if (adminToken) {
+      tokenEvents.push(buildTokenEvent(
+        'admin-token-detected',
+        'Admin Token — Using admin token as subject',
+        'active',
+        null,
+        'Admin session detected. Admin token will be used as subject token for MCP exchange.',
+        { adminClientId: adminToken.clientId, adminScopes: adminToken.scopes }
+      ));
+
+      // Replace userToken with adminToken for the rest of the standard flow
+      userToken = adminToken.accessToken;
+      tokenEvents.push(buildTokenEvent(
+        'admin-token-substituted',
+        'Admin Token — Substituted admin token for user token',
+        'success',
+        null,
+        'Admin token substituted for user token in standard token exchange flow.',
+        { adminClientId: adminToken.clientId }
+      ));
+    } else {
+      tokenEvents.push(buildTokenEvent(
+        'admin-token-not-found',
+        'Admin Token — Admin session but no admin token',
+        'warning',
+        null,
+        'Admin session detected but no admin token found in session. Using user token.',
+        null
+      ));
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const { userSub, userAccessTokenClaims: _rawUserClaims } = appendUserTokenEvent(tokenEvents, userToken, req);
 

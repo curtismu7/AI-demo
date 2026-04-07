@@ -8,7 +8,7 @@ Comprehensive refresh and enhancement of all education content based on findings
 ### Critical Issues Identified
 1. **Technical Inaccuracies** — 15+ code examples with outdated API endpoints
 2. **Content Gaps** — Missing coverage of newer OAuth 2.1 features
-3. **Inconsistent Terminology** — Mixed use of PingOne vs Ping Identity naming
+3. **Inconsistent Terminology** — Mixed use of PingOne naming conventions
 4. **Visual Issues** — 8+ diagrams needing updates for current architecture
 5. **Learning Progression** — Gaps in logical flow between basic and advanced topics
 

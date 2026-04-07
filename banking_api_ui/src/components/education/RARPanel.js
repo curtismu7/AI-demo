@@ -108,7 +108,7 @@ export default function RARPanel({ isOpen, onClose, initialTabId }) {
             <strong>AI agent angle:</strong> when the Super Banking Banking Agent initiates a transfer,
             a RAR-aware integration would encode the exact amount and accounts into the
             authorization request, giving the user and the AS a precise picture of what is being
-            authorized — aligning with Ping Identity's "Enforce Least Privilege" best practice.
+            authorized — aligning with PingOne's "Enforce Least Privilege" best practice.
           </p>
         </>
       ),

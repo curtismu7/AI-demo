@@ -46,6 +46,6 @@ Create a setup script (e.g. `scripts/setup-pingone-resources.sh` or `scripts/set
 - `p1:read:resourceScope`
 
 **Key API reference:**
-- `https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-resource`
-- `https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-resource-scope`
-- `https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-resource-attribute`
+- `https://apidocs.pingone.com/pingone/platform/v1/api/#post-create-resource`
+- `https://apidocs.pingone.com/pingone/platform/v1/api/#post-create-resource-scope`
+- `https://apidocs.pingone.com/pingone/platform/v1/api/#post-create-resource-attribute`

@@ -217,11 +217,11 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await openFloatingAgentPanel(page);
   });
 
-  test('panel shows "BX Finance AI Agent" title on /dashboard', async ({ page }) => {
+  test('panel shows "Super Banking AI Agent" title on /dashboard', async ({ page }) => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
     await openFloatingAgentPanel(page);
-    await expect(page.locator('.ba-title')).toHaveText('BX Finance AI Agent');
+    await expect(page.locator('.ba-title')).toHaveText('Super Banking AI Agent');
   });
 
   test('subtitle shows customer role badge when logged in', async ({ page }) => {

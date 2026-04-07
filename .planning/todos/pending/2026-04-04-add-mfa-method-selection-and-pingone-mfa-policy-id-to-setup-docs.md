@@ -24,4 +24,4 @@ Update `docs/SETUP.md` (or equivalent setup guide) to add a "MFA Step-Up" sectio
 - Enrolling a demo user with EMAIL device (minimum requirement)
 - Optional: TOTP enrollment, FIDO2 registration
 - Runtime setting: `stepUpMethod = pingone-mfa` in Admin → Security Settings
-- Link to canonical API docs: https://developer.pingidentity.com/pingone-api/mfa/
+- Link to canonical API docs: https://developer.pingone.com/pingone-api/mfa/

@@ -40,12 +40,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Marketing landing (unauthenticated)', () => {
-  test('shows BX Finance brand and AI-Powered Banking section', async ({ page }) => {
+  test('shows Super Banking brand and AI-Powered Banking section', async ({ page }) => {
     await mockUnauthenticatedLanding(page);
     await page.goto('/');
 
     await expect(page.locator('.landing-page')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('.brand-name').first()).toHaveText('BX Finance');
+    await expect(page.locator('.brand-name').first()).toHaveText('Super Banking');
     await expect(page.getByText('AI-Powered Banking')).toBeVisible();
   });
 

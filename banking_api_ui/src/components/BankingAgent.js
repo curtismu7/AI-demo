@@ -2533,7 +2533,7 @@ export default function BankingAgent({
                   <ol style={{ margin: '0 0 20px', paddingLeft: '20px', fontSize: '13px', lineHeight: 1.8 }}>
                     <li>
                       Open your <strong>PingOne Admin Console</strong> and find your user-facing
-                      OAuth app (BX Finance User App).
+                      OAuth app (Super Banking User App).
                     </li>
                     <li>
                       Add <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:write</code>{' '}

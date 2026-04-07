@@ -73,7 +73,7 @@ function LevelCard({ level, emoji, title, subtitle, color, children }) {
 }
 
 // ─── ASCII/HTML diagram ───────────────────────────────────────────────────────
-//  Recreates the Ping Identity "Agentic Maturity Model" slide structure
+//  Recreates the PingOne "Agentic Maturity Model" slide structure
 //  in pure HTML so no external image is required.
 
 function MaturityDiagram() {
@@ -201,7 +201,7 @@ function MaturityDiagram() {
       </div>
 
       <p style={{ color: '#9ca3af', fontSize: '0.7rem', textAlign: 'right', margin: 0 }}>
-        Based on: Ping Identity — Agentic Maturity Model
+        Based on: PingOne — Agentic Maturity Model
       </p>
     </div>
   );
@@ -219,7 +219,7 @@ const tabs = [
         <MaturityDiagram />
 
         <p>
-          The <strong>Agentic Maturity Model</strong> (Ping Identity) describes three levels of AI agent
+          The <strong>Agentic Maturity Model</strong> (PingOne) describes three levels of AI agent
           capability—each with progressively stricter identity and access requirements. As you move from
           Level 1 to Level 3, the data is more sensitive, the chain of agents is longer, and the identity
           questions multiply.

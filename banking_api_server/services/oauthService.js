@@ -145,8 +145,9 @@ class OAuthService {
   /**
    * Exchange authorization code for access token.
    * codeVerifier must match the code_challenge sent during /authorize (PKCE S256).
+   * Enhanced to support RFC 9728 resource indicators.
    */
-  async exchangeCodeForToken(code, codeVerifier, redirectUri) {
+  async exchangeCodeForToken(code, codeVerifier, redirectUri, resources = null) {
     try {
       const body = new URLSearchParams({
         grant_type: 'authorization_code',
@@ -154,10 +155,29 @@ class OAuthService {
         redirect_uri: redirectUri || this.config.redirectUri,
         client_id: this.config.clientId,
       });
+      
       // PKCE code_verifier goes in the body regardless of client type (RFC 7636).
       if (codeVerifier) {
         body.set('code_verifier', codeVerifier);
       }
+      
+      // Add RFC 9728 resource indicators if provided
+      if (resources && Array.isArray(resources) && resources.length > 0) {
+        // Validate resource format
+        const resourceIndicatorService = require('./resourceIndicatorService');
+        const validResources = resources.filter(resource => 
+          resourceIndicatorService.validateResourceFormat(resource)
+        );
+        
+        if (validResources.length > 0) {
+          // Add each resource as a separate parameter (RFC 9728)
+          validResources.forEach(resource => {
+            body.append('resource', resource);
+          });
+          console.log('[exchangeCodeForToken] RFC 9728 resources:', validResources);
+        }
+      }
+      
       const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
       applyAdminTokenEndpointClientAuth(this.config, body, headers);
       const tokenResponse = await axios.post(this.config.tokenEndpoint, body.toString(), {
@@ -167,6 +187,18 @@ class OAuthService {
       // Log the received access token information
       if (tokenResponse.data.access_token) {
         logTokenInfo(tokenResponse.data.access_token, 'OAuth Token Exchange');
+        
+        // Add resource binding validation if resources were requested
+        if (resources && resources.length > 0) {
+          const resourceIndicatorService = require('./resourceIndicatorService');
+          try {
+            const decoded = JSON.parse(Buffer.from(tokenResponse.data.access_token.split('.')[1], 'base64').toString());
+            const hasResourceBinding = decoded.resource || decoded.aud;
+            console.log('[exchangeCodeForToken] Resource binding in token:', !!hasResourceBinding);
+          } catch (decodeError) {
+            console.warn('[exchangeCodeForToken] Could not decode token for resource binding validation');
+          }
+        }
       }
 
       return tokenResponse.data;
