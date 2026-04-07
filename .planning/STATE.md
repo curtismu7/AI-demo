@@ -79,6 +79,8 @@ Plan: 2 of 3
 | 260403-ibs | Rename BX Finance → Super Banking across docs, source, and UI | 04fa9c7 | 2026-04-03 |
 | 260403-ief | Rename PingOne apps and resources BX Finance → Super Banking (manual console) | 9a7fe9e | 2026-04-03 |
 | 260403-igq | Fix PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md to canonical Super Banking naming | b08495e | 2026-04-03 |
+| 260407-vsc | Verify agent:invoke scope configuration for token exchange — confirmed app b2752071-2d03-4927-b865-089dc40b9c85 properly configured | verification-only | 2026-04-07 |
+| 260407-nzk | Document all API calls, token exchanges, and their scopes — comprehensive mapping with auth requirements and flow diagrams | 9c2b3f8 | 2026-04-07 |
 
 ---
 
