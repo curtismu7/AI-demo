@@ -16,9 +16,41 @@ export interface MCPResponse {
 }
 
 export interface MCPError {
-  code: number;
+  code: MCPErrorCode;
   message: string;
-  data?: any;
+  data?: {
+    type?: string;
+    details?: any;
+    stack?: string;
+    timestamp?: string;
+    requestId?: string;
+  };
+}
+
+export enum MCPErrorCode {
+  // JSON-RPC Standard Errors
+  PARSE_ERROR = -32700,
+  INVALID_REQUEST = -32600,
+  METHOD_NOT_FOUND = -32601,
+  INVALID_PARAMS = -32602,
+  INTERNAL_ERROR = -32603,
+  
+  // MCP-Specific Errors
+  UNAUTHORIZED = -32001,
+  FORBIDDEN = -32002,
+  INVALID_TOKEN = -32003,
+  TOKEN_EXPIRED = -32004,
+  INSUFFICIENT_SCOPE = -32005,
+  TOOL_NOT_FOUND = -32006,
+  TOOL_EXECUTION_ERROR = -32007,
+  RATE_LIMITED = -32008,
+  
+  // Banking-Specific Errors
+  ACCOUNT_NOT_FOUND = -32050,
+  INSUFFICIENT_FUNDS = -32051,
+  TRANSACTION_FAILED = -32052,
+  INVALID_AMOUNT = -32053,
+  ACCOUNT_LOCKED = -32054
 }
 
 export interface HandshakeMessage extends MCPMessage {

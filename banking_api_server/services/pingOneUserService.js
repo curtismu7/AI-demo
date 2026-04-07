@@ -24,8 +24,8 @@ class PingOneUserService {
    * Initialize the service with configuration
    */
   initialize() {
-    const region = configStore.getEffective('pingone_region') || 'com';
-    const environmentId = configStore.getEffective('pingone_environment_id');
+    const region = configStore.getEffective('PINGONE_REGION') || 'com';
+    const environmentId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
     const workerAppClientId = process.env.PINGONE_WORKER_CLIENT_ID;
     const workerAppClientSecret = process.env.PINGONE_WORKER_CLIENT_SECRET;
     const adminPopulationId = configStore.getEffective('admin_population_id');

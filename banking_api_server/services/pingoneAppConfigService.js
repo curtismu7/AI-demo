@@ -3,9 +3,9 @@ const configStore = require('./configStore');
 const { getManagementToken } = require('./pingOneClientService');
 
 function getBaseUrl() {
-  const region = configStore.getEffective('pingone_region') || 'com';
-  const envId = configStore.getEffective('pingone_environment_id');
-  if (!envId) throw new Error('pingone_environment_id not configured');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  if (!envId) throw new Error('PINGONE_ENVIRONMENT_ID not configured');
   return `https://api.pingone.${region}/v1/environments/${envId}`;
 }
 

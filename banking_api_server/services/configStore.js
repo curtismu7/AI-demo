@@ -34,47 +34,49 @@ const KV_HASH_KEY = 'banking:config';
 
 // Fields that must be encrypted at rest
 const SECRET_KEYS = new Set([
-  'admin_client_secret',
-  'user_client_secret',
-  'session_secret',
-  'authorize_worker_client_secret',
-  'pingone_client_secret',
+  'PINGONE_ADMIN_CLIENT_SECRET',
+  'PINGONE_USER_CLIENT_SECRET',
+  'PINGONE_SESSION_SECRET',
+  'PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET',
+  'PINGONE_MANAGEMENT_CLIENT_SECRET',
+  'PINGONE_AGENT_CLIENT_SECRET',
+  'PINGONE_AI_AGENT_CLIENT_SECRET',
 ]);
 
 // All known config keys with their defaults and whether they are public
 const FIELD_DEFS = {
   // PingOne environment
-  pingone_environment_id: { public: true,  default: '' },
-  pingone_region:         { public: true,  default: 'com' },
+  PINGONE_ENVIRONMENT_ID: { public: true,  default: '' },
+  PINGONE_REGION:         { public: true,  default: 'com' },
 
   // Admin OAuth app
-  admin_client_id:        { public: true,  default: '' },
-  admin_client_secret:    { public: false, default: '' },
-  admin_redirect_uri:     { public: true,  default: '' },
+  PINGONE_ADMIN_CLIENT_ID:        { public: true,  default: '' },
+  PINGONE_ADMIN_CLIENT_SECRET:    { public: false, default: '' },
+  PINGONE_ADMIN_REDIRECT_URI:     { public: true,  default: '' },
   // 'basic' = client_secret via Authorization header; 'post' = client_secret in form body (match PingOne app).
-  admin_token_endpoint_auth_method: { public: true, default: 'basic' },
+  PINGONE_ADMIN_TOKEN_ENDPOINT_AUTH_METHOD: { public: true, default: 'basic' },
 
   // End-user OAuth app
-  user_client_id:         { public: true,  default: '' },
-  user_client_secret:     { public: false, default: '' },
-  user_redirect_uri:      { public: true,  default: '' },
+  PINGONE_USER_CLIENT_ID:         { public: true,  default: '' },
+  PINGONE_USER_CLIENT_SECRET:     { public: false, default: '' },
+  PINGONE_USER_REDIRECT_URI:      { public: true,  default: '' },
 
   // Management API worker (client_credentials) — CIMD registration, email, bootstrap run.
   // Not the admin sign-in app. Env: PINGONE_MANAGEMENT_CLIENT_ID / PINGONE_MANAGEMENT_CLIENT_SECRET.
-  pingone_client_id:     { public: true,  default: '' },
-  pingone_client_secret: { public: false, default: '' },
+  PINGONE_MANAGEMENT_CLIENT_ID:     { public: true,  default: '' },
+  PINGONE_MANAGEMENT_CLIENT_SECRET: { public: false, default: '' },
 
   // Dedicated management API worker credentials — used by WorkerAppConfigTab and delegationService.
-  // Preferred over pingone_client_id when set. Env: PINGONE_MGMT_CLIENT_ID / PINGONE_MGMT_CLIENT_SECRET.
-  pingone_mgmt_client_id:          { public: true,  default: '' },
-  pingone_mgmt_client_secret:      { public: false, default: '' },
+  // Preferred over PINGONE_MANAGEMENT_CLIENT_ID when set. Env: PINGONE_MGMT_CLIENT_ID / PINGONE_MGMT_CLIENT_SECRET.
+  PINGONE_MGMT_CLIENT_ID:          { public: true,  default: '' },
+  PINGONE_MGMT_CLIENT_SECRET:      { public: false, default: '' },
   // Token endpoint auth method for the management worker: 'basic' (default) or 'post'.
-  pingone_mgmt_token_auth_method:  { public: true,  default: 'basic' },
+  PINGONE_MGMT_TOKEN_AUTH_METHOD:  { public: true,  default: 'basic' },
 
   // PingOne authorize: pi.flow + response_mode=pi.flow for apps that support it (e.g. DaVinci flow policies).
   // See https://developer.pingidentity.com/pingone-api/auth/auth-config-options/browserless-authentication-flow-options.html
-  admin_pingone_authorize_pi_flow: { public: true, default: 'false' },
-  user_pingone_authorize_pi_flow:  { public: true, default: 'false' },
+  PINGONE_ADMIN_AUTHORIZE_PI_FLOW: { public: true, default: 'false' },
+  PINGONE_USER_AUTHORIZE_PI_FLOW:  { public: true, default: 'false' },
   /** Marketing home: redirect (standard code+PKCE) vs slide-over panel + authorize with use_pi_flow=1 */
   marketing_customer_login_mode:   { public: true, default: 'redirect' },
   marketing_demo_username_hint:    { public: true, default: '' },
@@ -88,24 +90,24 @@ const FIELD_DEFS = {
   // PingOne population ID whose members are treated as admin (no schema changes needed)
   admin_population_id:    { public: true,  default: '' },
   // PingOne userinfo/ID-token claim whose value is compared against admin_role (e.g. a custom attribute)
-  admin_role_claim:       { public: true,  default: '' },
+  PINGONE_ADMIN_ROLE_CLAIM:       { public: true,  default: '' },
 
   // Server / misc
-  session_secret:         { public: false, default: '' },
-  frontend_url:           { public: true,  default: '' },
-  mcp_server_url:         { public: true,  default: 'http://localhost:8000' },
-  debug_oauth:            { public: true,  default: 'false' },
+  PINGONE_SESSION_SECRET:         { public: false, default: '' },
+  FRONTEND_URL:           { public: true,  default: '' },
+  PINGONE_MCP_SERVER_URL:         { public: true,  default: 'http://localhost:8000' },
+  PINGONE_DEBUG_OAUTH:            { public: true,  default: 'false' },
 
   // PingOne Authorize (policy decision point for transfers/withdrawals)
-  authorize_enabled:                { public: true,  default: 'false' },
+  PINGONE_AUTHORIZE_ENABLED:                { public: true,  default: 'false' },
   // Phase 2: Decision Endpoints API — preferred path (set this in PingOne Authorize → Decision Endpoints)
-  authorize_decision_endpoint_id:   { public: true,  default: '' },
+  PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID:   { public: true,  default: '' },
   // Optional: second decision endpoint for MCP first-tool delegation (DecisionContext=McpFirstTool in TF params)
-  authorize_mcp_decision_endpoint_id: { public: true, default: '' },
+  PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID: { public: true, default: '' },
   // Phase 1: Legacy PDP path — fallback when decision endpoint ID is not set
-  authorize_policy_id:              { public: true,  default: '' },
-  authorize_worker_client_id:       { public: true,  default: '' },
-  authorize_worker_client_secret:   { public: false, default: '' },
+  PINGONE_AUTHORIZE_POLICY_ID:              { public: true,  default: '' },
+  PINGONE_AUTHORIZE_WORKER_CLIENT_ID:       { public: true,  default: '' },
+  PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET:   { public: false, default: '' },
 
   // Feature flags — granular toggles for in-development features
   // Each maps to a runtime behaviour controlled via /api/admin/feature-flags.
@@ -124,17 +126,17 @@ const FIELD_DEFS = {
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
 
   // 2-Exchange delegated chain — audiences and AI Agent App credentials
-  // Required only when ff_two_exchange_delegation is ON
-  ai_agent_client_id:             { public: true,  default: '' }, // Super Banking AI Agent App client ID — performs Exchange #1
-  agent_gateway_audience:         { public: true,  default: 'https://agent-gateway.pingdemo.com' }, // Actor CC audience for Exchange #1
-  ai_agent_intermediate_audience: { public: true,  default: '' }, // Exchange #1 result audience (Exchange #2 subject_token aud); defaults to mcp-server.pingdemo.com
-  mcp_gateway_audience:           { public: true,  default: 'https://mcp-gateway.pingdemo.com' },   // Actor CC audience for Exchange #2
-  mcp_resource_uri_two_exchange:  { public: true,  default: 'https://resource-server.pingdemo.com' }, // Exchange #2 output audience (Super Banking Resource Server); must differ from mcp_resource_uri (1-exchange)
+  // Required only when FF_TWO_EXCHANGE_DELEGATION is ON
+  PINGONE_AI_AGENT_CLIENT_ID:             { public: true,  default: '' }, // Super Banking AI Agent App client ID — performs Exchange #1
+  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: 'https://banking-agent-gateway.banking-demo.com' }, // Actor CC audience for Exchange #1
+  AI_AGENT_INTERMEDIATE_AUDIENCE:         { public: true,  default: '' }, // Exchange #1 result audience (Exchange #2 subject_token aud); defaults to banking-mcp-server.banking-demo.com
+  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: 'https://banking-mcp-gateway.banking-demo.com' },   // Actor CC audience for Exchange #2
+  PINGONE_RESOURCE_TWO_EXCHANGE_URI:       { public: true,  default: 'https://banking-resource-server.banking-demo.com' }, // Exchange #2 output audience (Super Banking Resource Server); must differ from PINGONE_RESOURCE_MCP_SERVER_URI (1-exchange)
 
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
   // audience before forwarding to the MCP server (act claim identifies the Backend-for-Frontend (BFF)).
-  mcp_resource_uri:           { public: true,  default: '' },
+  PINGONE_RESOURCE_MCP_SERVER_URI:        { public: true,  default: '' },
 
   // Demo Data — persistent demo accounts (JSON string for Vercel, ignored for local SQLite)
   demo_accounts:              { public: false, default: '' },
@@ -143,21 +145,21 @@ const FIELD_DEFS = {
   active_vertical:            { public: true,  default: 'banking' },
 
   // CIBA — Client-Initiated Backchannel Authentication
-  ciba_enabled:               { public: true,  default: 'false' },
-  ciba_token_delivery_mode:   { public: true,  default: 'poll' },
-  ciba_binding_message:       { public: true,  default: 'Banking App Authentication' },
-  ciba_notification_endpoint: { public: true,  default: '' },
-  ciba_poll_interval_ms:      { public: true,  default: '5000' },
-  ciba_auth_request_expiry:   { public: true,  default: '300' },
+  CIBA_ENABLED:               { public: true,  default: 'false' },
+  CIBA_TOKEN_DELIVERY_MODE:   { public: true,  default: 'poll' },
+  CIBA_BINDING_MESSAGE:       { public: true,  default: 'Banking App Authentication' },
+  CIBA_NOTIFICATION_ENDPOINT: { public: true,  default: '' },
+  CIBA_POLL_INTERVAL_MS:      { public: true,  default: '5000' },
+  CIBA_AUTH_REQUEST_EXPIRY:   { public: true,  default: '300' },
 
   // Step-up authentication method for large transfers / withdrawals
   // 'ciba'  → back-channel (CIBA) challenge shown inline on the dashboard
   // 'email' → OIDC re-authentication redirect (PingOne email / OTP MFA)
-  step_up_method: { public: true, default: 'email' },
-  step_up_amount_threshold: { public: true, default: 250 },
+  STEP_UP_METHOD: { public: true, default: 'email' },
+  STEP_UP_AMOUNT_THRESHOLD: { public: true, default: 250 },
 
   /** UI industry / white-label preset (client applies colors + logo). See banking_api_ui/src/config/industryPresets.js */
-  ui_industry_preset: { public: true, default: 'bx_finance' },
+  UI_INDUSTRY_PRESET: { public: true, default: 'bx_finance' },
 
   /**
    * Space-separated OAuth scopes allowed for RFC 8693 exchange to MCP (agent capability).
@@ -451,7 +453,7 @@ class ConfigStore {
       session_secret:         ['SESSION_SECRET'],
       frontend_url:           ['REACT_APP_CLIENT_URL', 'FRONTEND_ADMIN_URL'],
       mcp_server_url:                   ['MCP_SERVER_URL'],
-      mcp_resource_uri:                 ['MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
+      pingone_resource_mcp_server_uri:  ['PINGONE_RESOURCE_MCP_SERVER_URI', 'MCP_RESOURCE_URI', 'MCP_SERVER_RESOURCE_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
       authorize_mcp_decision_endpoint_id: ['PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID'],
       debug_oauth:                      ['DEBUG_OAUTH'],
@@ -460,11 +462,11 @@ class ConfigStore {
       step_up_amount_threshold: ['STEP_UP_AMOUNT_THRESHOLD'],
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
       ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],
-      ai_agent_client_id:              ['AI_AGENT_CLIENT_ID'],
-      agent_gateway_audience:          ['AGENT_GATEWAY_AUDIENCE'],
+      pingone_ai_agent_client_id:       ['PINGONE_AI_AGENT_CLIENT_ID', 'AI_AGENT_CLIENT_ID'],
+      pingone_resource_agent_gateway_uri: ['PINGONE_RESOURCE_AGENT_GATEWAY_URI', 'AGENT_GATEWAY_AUDIENCE'],
       ai_agent_intermediate_audience:  ['AI_AGENT_INTERMEDIATE_AUDIENCE'],
-      mcp_gateway_audience:            ['MCP_GATEWAY_AUDIENCE'],
-      mcp_resource_uri_two_exchange:  ['MCP_RESOURCE_URI_TWO_EXCHANGE'],
+      pingone_resource_mcp_gateway_uri: ['PINGONE_RESOURCE_MCP_GATEWAY_URI', 'MCP_GATEWAY_AUDIENCE'],
+      pingone_resource_two_exchange_uri: ['PINGONE_RESOURCE_TWO_EXCHANGE_URI', 'MCP_RESOURCE_URI_TWO_EXCHANGE'],
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
       marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],
       marketing_demo_password_hint: ['MARKETING_DEMO_PASSWORD_HINT'],

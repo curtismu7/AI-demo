@@ -57,7 +57,7 @@ const SelfServicePage = () => {
     if (activeTab === 'profile') {
       loadUserProfile();
     }
-  }, [activeTab]);
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUserProfile = async () => {
     setProfileLoading(true);

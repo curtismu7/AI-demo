@@ -170,7 +170,7 @@ describe('Delegation Validation Middleware', () => {
       const validToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMzQ1In0.SflKxwRJSMeQ98PjmYQhQjFzLhOA-7h5aYFFI';
       mockReq.headers.authorization = `Bearer ${validToken}`;
       
-      // Mock validation failure
+      // Mock validation failure - set up before creating middleware
       const { validateDelegationClaims } = require('../../services/delegationClaimsService');
       validateDelegationClaims.mockReturnValue({
         valid: false,
@@ -178,10 +178,21 @@ describe('Delegation Validation Middleware', () => {
         warnings: []
       });
 
-      const middlewareFn = middleware.validateDelegationClaims('user');
-      await middlewareFn(mockReq, mockRes, mockNext);
+      // Create fresh middleware instance with mocks in place
+      const freshMiddleware = new DelegationValidationMiddleware();
+      const middlewareFn = freshMiddleware.validateDelegationClaims('user');
+      try {
+        await middlewareFn(mockReq, mockRes, mockNext);
+      } catch (e) {
+        console.log('DEBUG: Caught exception:', e);
+      }
 
       expect(mockNext).not.toHaveBeenCalled();
+      
+      // Debug: check what was actually called
+      console.log('DEBUG: status calls:', mockRes.status.mock.calls);
+      console.log('DEBUG: json calls:', mockRes.json.mock.calls);
+      
       expect(mockRes.status).toHaveBeenCalledWith(403);
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({

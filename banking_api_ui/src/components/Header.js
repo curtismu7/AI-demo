@@ -1,7 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
 import './Header.css';
+
+/** Session expiry countdown shown in the top header. */
+function HeaderSessionTimer({ user }) {
+  const [timeRemaining, setTimeRemaining] = useState(null);
+
+  useEffect(() => {
+    if (!user?.expiresAt) return;
+    const calc = () => {
+      const remaining = Math.max(0, new Date(user.expiresAt).getTime() - Date.now());
+      setTimeRemaining(remaining);
+    };
+    calc();
+    const id = setInterval(calc, 1000);
+    return () => clearInterval(id);
+  }, [user?.expiresAt]);
+
+  if (!timeRemaining || timeRemaining <= 0) return null;
+
+  const minutes = Math.floor(timeRemaining / 60000);
+  const seconds = Math.floor((timeRemaining % 60000) / 1000);
+  const label = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const expiringSoon = timeRemaining < 5 * 60 * 1000;
+
+  return (
+    <span
+      className={`header-session-timer${expiringSoon ? ' header-session-timer--expiring' : ''}`}
+      title={`Session expires in ${label}`}
+    >
+      ⏰ {label}
+    </span>
+  );
+}
 
 /**
  * Calls POST /api/auth/switch then navigates to the returned login URL.
@@ -105,6 +137,7 @@ const Header = ({ user, onLogout }) => {
               </NavLink>
             )}
             <div className="app-top-header__user">
+              <HeaderSessionTimer user={user} />
               <span>Welcome, {user.firstName} {user.lastName}</span>
               <button
                 type="button"

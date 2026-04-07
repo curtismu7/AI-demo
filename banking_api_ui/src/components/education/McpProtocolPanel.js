@@ -29,6 +29,10 @@ export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
       label: 'Available tools',
       content: (
         <>
+          <p>
+            <strong>🔐 MFA Gate:</strong> For security, some tools require MFA verification before they can be listed or executed.
+            When you see an MFA prompt, you'll need to verify your identity using OTP, push notification, or other MFA methods.
+          </p>
           <p>These are the banking actions the AI assistant can perform on your behalf:</p>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
             <thead>

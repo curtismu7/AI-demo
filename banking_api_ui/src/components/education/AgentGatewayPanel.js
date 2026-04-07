@@ -1,7 +1,9 @@
 // banking_api_ui/src/components/education/AgentGatewayPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
-import { AgentGatewayContent, RFC9728Content } from './educationContent';
+import { AgentGatewayContent } from './educationContent';
+import { RFC9728Content } from './enhancedRFC9728Content';
+import { RFC8707Content } from './RFC8707Content';
 import { EduImplIntro, SNIP_AGENT_GATEWAY } from './educationImplementationSnippets';
 
 export default function AgentGatewayPanel({ isOpen, onClose, initialTabId }) {
@@ -23,6 +25,11 @@ export default function AgentGatewayPanel({ isOpen, onClose, initialTabId }) {
           <pre className="edu-code">{SNIP_AGENT_GATEWAY}</pre>
         </>
       ),
+    },
+    {
+      id: 'rfc8707',
+      label: 'RFC 8707',
+      content: <RFC8707Content />,
     },
     {
       id: 'rfc9728',

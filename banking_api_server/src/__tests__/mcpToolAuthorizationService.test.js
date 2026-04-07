@@ -101,7 +101,7 @@ describe('mcpToolAuthorizationService', () => {
     it('runs simulated path and permits', async () => {
       configStore.get.mockImplementation((k) => {
         if (k === 'ff_authorize_mcp_first_tool') return 'true';
-        if (k === 'mcp_resource_uri') return 'https://mcp.example';
+        if (k === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp.example';
         return null;
       });
       simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(true);
@@ -167,7 +167,7 @@ describe('mcpToolAuthorizationService', () => {
         if (k === 'ff_authorize_mcp_first_tool') return 'true';
         if (k === 'ff_authorize_fail_open') return 'false';
         if (k === 'authorize_mcp_decision_endpoint_id') return 'mcp-endpoint-uuid';
-        if (k === 'mcp_resource_uri') return 'https://mcp';
+        if (k === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp';
         return null;
       });
       simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(false);

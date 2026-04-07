@@ -452,39 +452,69 @@ export class HttpMCPTransport {
     return auth.slice(7).trim() || null;
   }
 
-  private sendUnauthorized(res: ServerResponse, detail: string, requiredScopes?: string[]): void {
+  private sendUnauthorized(res: ServerResponse, detail: string, options?: {
+    authorizationUrl?: string;
+    requiredScopes?: string[];
+    requestId?: string;
+  }): void {
     const base = this.resourceBaseUrl();
-    const scopePart = requiredScopes && requiredScopes.length > 0
-      ? `, scope="${requiredScopes.join(' ')}"`
+    const scopePart = options?.requiredScopes && options.requiredScopes.length > 0
+      ? `, scope="${options.requiredScopes.join(' ')}"`
       : '';
+    
+    const errorResponse = {
+      error: 'unauthorized',
+      error_description: detail,
+      error_code: -32001, // MCPErrorCode.UNAUTHORIZED
+      resource_metadata: `${base}/.well-known/oauth-protected-resource`,
+      timestamp: new Date().toISOString(),
+      request_id: options?.requestId
+    };
+    
     res.writeHead(401, {
       'Content-Type': 'application/json',
-      'WWW-Authenticate':
+      'WWW-Authenticate': 
         `Bearer realm="BX Finance Banking MCP Server"${scopePart}, ` +
-        `resource_metadata="${base}/.well-known/oauth-protected-resource"`,
+        `error="unauthorized", ` +
+        `error_description="${detail}", ` +
+        `resource_metadata="${base}/.well-known/oauth-protected-resource"`
     });
-    res.end(JSON.stringify({ error: 'unauthorized', error_description: detail }));
+    
+    res.end(JSON.stringify(errorResponse, null, 2));
   }
 
   /**
    * 403 Insufficient Scope — SHOULD per spec §Authorization when token is valid but lacks scope.
    * Returns structured WWW-Authenticate with the missing scope so clients can request it.
    */
-  private sendInsufficientScope(res: ServerResponse, requiredScopes: string[]): void {
+  private sendInsufficientScope(
+    res: ServerResponse, 
+    requiredScopes: string[], 
+    options?: { requestId?: string }
+  ): void {
     const base = this.resourceBaseUrl();
+    
+    const errorResponse = {
+      error: 'insufficient_scope',
+      error_description: `Token is missing required scope(s): ${requiredScopes.join(', ')}`,
+      error_code: -32005, // MCPErrorCode.INSUFFICIENT_SCOPE
+      required_scope: requiredScopes.join(' '),
+      resource_metadata: `${base}/.well-known/oauth-protected-resource`,
+      timestamp: new Date().toISOString(),
+      request_id: options?.requestId
+    };
+    
     res.writeHead(403, {
       'Content-Type': 'application/json',
-      'WWW-Authenticate':
+      'WWW-Authenticate': 
         `Bearer realm="BX Finance Banking MCP Server", ` +
         `error="insufficient_scope", ` +
         `scope="${requiredScopes.join(' ')}", ` +
-        `resource_metadata="${base}/.well-known/oauth-protected-resource"`,
+        `error_description="Token is missing required scope(s): ${requiredScopes.join(', ')}", ` +
+        `resource_metadata="${base}/.well-known/oauth-protected-resource"`
     });
-    res.end(JSON.stringify({
-      error: 'insufficient_scope',
-      error_description: `Token is missing required scope(s): ${requiredScopes.join(', ')}`,
-      required_scope: requiredScopes.join(' ')
-    }));
+    
+    res.end(JSON.stringify(errorResponse, null, 2));
   }
 
   private sendHttpError(res: ServerResponse, status: number, message: string): void {
@@ -496,10 +526,53 @@ export class HttpMCPTransport {
     res: ServerResponse,
     id: string | number | null,
     code: number,
-    message: string
+    message: string,
+    data?: any
   ): void {
-    res.writeHead(400, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } }));
+    const errorResponse = {
+      jsonrpc: '2.0',
+      id,
+      error: {
+        code,
+        message,
+        data: {
+          type: 'json_rpc',
+          details: data,
+          timestamp: new Date().toISOString(),
+          request_id: typeof id === 'string' ? id : undefined,
+          server: 'BX Finance Banking MCP Server',
+          version: process.env.npm_package_version || '1.0.0'
+        }
+      }
+    };
+    
+    const httpStatus = this.mapErrorCodeToHttpStatus(code);
+    res.writeHead(httpStatus, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(errorResponse, null, 2));
+  }
+
+  private mapErrorCodeToHttpStatus(code: number): number {
+    switch (code) {
+      case -32700: // PARSE_ERROR
+      case -32600: // INVALID_REQUEST
+      case -32602: // INVALID_PARAMS
+        return 400;
+      case -32001: // UNAUTHORIZED
+        return 401;
+      case -32005: // INSUFFICIENT_SCOPE
+      case -32002: // FORBIDDEN
+        return 403;
+      case -32601: // METHOD_NOT_FOUND
+      case -32006: // TOOL_NOT_FOUND
+        return 404;
+      case -32008: // RATE_LIMITED
+        return 429;
+      case -32603: // INTERNAL_ERROR
+      case -32007: // TOOL_EXECUTION_ERROR
+        return 500;
+      default:
+        return 500;
+    }
   }
 
   private isOriginAllowed(req: IncomingMessage): boolean {

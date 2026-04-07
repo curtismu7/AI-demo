@@ -41,25 +41,42 @@ export default function MayActPanel({ isOpen, onClose, initialTabId }) {
           <h3>From sign-in to action</h3>
           <ol>
             <li>
-              <strong>You sign in</strong> — PingOne issues a security pass that may include a note:
-              <pre className="edu-code">{`"may_act": { "client_id": "ai-banking-agent", ... }
+              <strong>You sign in</strong> — PingOne issues a security pass that may include a pre-approval note
+              (RFC 8693 §4.1 uses <code>sub</code>, not <code>client_id</code>):
+              <pre className="edu-code">{`"may_act": { "sub": "<agent-client-id>" }
   ↑ "this specific AI app is allowed to act on your behalf"`}</pre>
             </li>
             <li>
-              <strong>You ask the AI to do something</strong> — the app requests a new, restricted pass
-              specifically for the AI banking tools.
+              <strong>You ask the AI to do something</strong> — the BFF performs a token exchange.
+              There are two common patterns:
+              <ul style={{ marginTop: 6, marginBottom: 6 }}>
+                <li>
+                  <strong>1-exchange:</strong> user token → agent token in one step.
+                  The resulting token carries <code>act.sub</code> (agent ID) and
+                  an <code>aud</code> claim scoped to the target MCP server.
+                </li>
+                <li>
+                  <strong>2-exchange (on_behalf_of):</strong> user token → delegated intermediate token →
+                  resource-specific service token. Useful when different scopes are needed per resource.
+                </li>
+              </ul>
             </li>
             <li>
               <strong>PingOne issues the AI&apos;s pass</strong> — it includes:
-              <pre className="edu-code">{`"sub": "your-user-id"              ← User ID (who benefits)
-"act": { "sub": "ai-banking-agent" }  ← Agent ID (who acts)`}</pre>
-              The Token Chain display now shows these prominently as 👤 User ID and 🤖 Agent ID.
+              <pre className="edu-code">{`"sub": "your-user-id"                 ← User ID (who benefits)
+"act": { "sub": "<agent-client-id>" }  ← Agent ID (who acts)
+"aud": "https://mcp.bxfinance.io"      ← Target resource (MCP server)`}</pre>
+              The Token Chain display shows these as 👤 User ID and 🤖 Agent ID.
             </li>
             <li>
               <strong>The AI uses that pass</strong> — every banking tool call is signed with this pass,
               creating an audit trail showing exactly who did what on whose behalf.
             </li>
           </ol>
+          <p style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: 8 }}>
+            The <code>act.sub</code> value is the application&apos;s subject (client ID or user ID returned by PingOne),
+            not a human-readable label. Actual values come from your PingOne environment config.
+          </p>
         </>
       ),
     },

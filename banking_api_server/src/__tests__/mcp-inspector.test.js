@@ -91,7 +91,7 @@ describe('MCP Inspector routes', () => {
     });
     origGetEffective = configStore.getEffective.bind(configStore);
     getEffectiveSpy = jest.spyOn(configStore, 'getEffective').mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return '';
+      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return '';
       return origGetEffective(key);
     });
   });
@@ -176,9 +176,9 @@ describe('MCP Inspector routes', () => {
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
-  it('POST /api/mcp/inspector/invoke uses RFC 8693 exchange when mcp_resource_uri is set', async () => {
+  it('POST /api/mcp/inspector/invoke uses RFC 8693 exchange when PINGONE_RESOURCE_MCP_SERVER_URI is set', async () => {
     getEffectiveSpy.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp-resource.example/aud';
+      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp-resource.example/aud';
       return origGetEffective(key);
     });
 

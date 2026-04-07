@@ -2,10 +2,10 @@
  * @file agentMcpTokenService.test.js
  *
  * Tests for resolveMcpAccessTokenWithEvents — verifying that:
- * 1. Agent client_credentials (actor token) are always used when AGENT_OAUTH_CLIENT_ID is set.
- * 2. Without MCP_RESOURCE_URI, resolution returns null token (user access token not forwarded to MCP).
+ * 1. Agent client_credentials (actor token) are always used when PINGONE_AGENT_CLIENT_ID is set.
+ * 2. Without PINGONE_RESOURCE_MCP_SERVER_URI, resolution returns null token (user access token not forwarded to MCP).
  * 3. User token must have ≥ MIN_USER_SCOPES_FOR_MCP distinct scopes before exchange.
- * 4. RFC 8693 exchange path works when MCP_RESOURCE_URI is set and scopes are sufficient.
+ * 4. RFC 8693 exchange path works when PINGONE_RESOURCE_MCP_SERVER_URI is set and scopes are sufficient.
  * 5. Subject-only fallback emits an on-behalf-of-warning event when no agent client is configured.
  */
 
@@ -101,7 +101,7 @@ jest.mock('../../services/mcpWebSocketClient', () => ({
 
 jest.mock('../../services/configStore', () => ({
   getEffective: jest.fn((key) => {
-    if (key === 'mcp_resource_uri') return '';
+    if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return '';
     return null;
   }),
 }));
@@ -125,28 +125,28 @@ describe('resolveMcpAccessTokenWithEvents — no session token', () => {
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
-  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
-  const origSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
+describe('resolveMcpAccessTokenWithEvents — PINGONE_RESOURCE_MCP_SERVER_URI unset', () => {
+  const origClientId = process.env.PINGONE_AGENT_CLIENT_ID;
+  const origSecret = process.env.PINGONE_AGENT_CLIENT_SECRET;
 
   beforeEach(() => {
-    process.env.AGENT_OAUTH_CLIENT_ID = 'agent-client-id';
-    process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
+    process.env.PINGONE_AGENT_CLIENT_ID = 'agent-client-id';
+    process.env.PINGONE_AGENT_CLIENT_SECRET = 'agent-secret';
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return '';
+      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return '';
       return null;
     });
     mockGetAgentClientCredentialsToken.mockResolvedValue(sampleJwtAgentAccessToken);
   });
 
   afterEach(() => {
-    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
-    else delete process.env.AGENT_OAUTH_CLIENT_ID;
-    if (origSecret !== undefined) process.env.AGENT_OAUTH_CLIENT_SECRET = origSecret;
-    else delete process.env.AGENT_OAUTH_CLIENT_SECRET;
+    if (origClientId !== undefined) process.env.PINGONE_AGENT_CLIENT_ID = origClientId;
+    else delete process.env.PINGONE_AGENT_CLIENT_ID;
+    if (origSecret !== undefined) process.env.PINGONE_AGENT_CLIENT_SECRET = origSecret;
+    else delete process.env.PINGONE_AGENT_CLIENT_SECRET;
   });
 
-  it('returns null token (not throw) when MCP_RESOURCE_URI is unset — local fallback path', async () => {
+  it('returns null token (not throw) when PINGONE_RESOURCE_MCP_SERVER_URI is unset — local fallback path', async () => {
     const { token } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
     expect(token).toBeNull();
   });
@@ -159,14 +159,14 @@ describe('resolveMcpAccessTokenWithEvents — MCP_RESOURCE_URI unset', () => {
     expect(ev.status).toBe('skipped');
   });
 
-  it('does not call performTokenExchange when MCP_RESOURCE_URI is unset', async () => {
+  it('does not call performTokenExchange when PINGONE_RESOURCE_MCP_SERVER_URI is unset', async () => {
     await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
 
-  it('does not call getAgentClientCredentialsToken when MCP_RESOURCE_URI is unset (returns before actor step)', async () => {
+  it('does not call getAgentClientCredentialsToken when PINGONE_RESOURCE_MCP_SERVER_URI is unset (returns before actor step)', async () => {
     await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
-    // mcp_resource_uri check returns early before the actor token step
+    // pingone_resource_mcp_server_uri check returns early before the actor token step
     expect(mockGetAgentClientCredentialsToken).not.toHaveBeenCalled();
   });
 });
@@ -175,8 +175,8 @@ describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
-      if (key === 'agent_mcp_allowed_scopes') {
+      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp.example.com/api';
+      if (key === 'PINGONE_AGENT_MCP_ALLOWED_SCOPES') {
         return 'banking:accounts:read banking:transactions:read';
       }
       return null;
@@ -202,10 +202,10 @@ describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (MCP_RESOURCE_URI set)', () => {
+describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (PINGONE_RESOURCE_MCP_SERVER_URI set)', () => {
   beforeEach(() => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp.example.com/api';
       return null;
     });
   });
@@ -229,25 +229,25 @@ describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (MCP_RESO
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (AGENT_OAUTH_CLIENT_ID unset)', () => {
-  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
-  const origUri = process.env.MCP_RESOURCE_URI;
+describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (PINGONE_AGENT_CLIENT_ID unset)', () => {
+  const origClientId = process.env.PINGONE_AGENT_CLIENT_ID;
+  const origUri = process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
 
   beforeEach(() => {
-    delete process.env.AGENT_OAUTH_CLIENT_ID;
-    process.env.MCP_RESOURCE_URI = 'https://mcp.example.com/api';
+    delete process.env.PINGONE_AGENT_CLIENT_ID;
+    process.env.PINGONE_RESOURCE_MCP_SERVER_URI = 'https://mcp.example.com/api';
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp.example.com/api';
       return null;
     });
     mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
   });
 
   afterEach(() => {
-    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
-    else delete process.env.AGENT_OAUTH_CLIENT_ID;
-    if (origUri !== undefined) process.env.MCP_RESOURCE_URI = origUri;
-    else delete process.env.MCP_RESOURCE_URI;
+    if (origClientId !== undefined) process.env.PINGONE_AGENT_CLIENT_ID = origClientId;
+    else delete process.env.PINGONE_AGENT_CLIENT_ID;
+    if (origUri !== undefined) process.env.PINGONE_RESOURCE_MCP_SERVER_URI = origUri;
+    else delete process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
   });
 
   it('returns the exchanged MCP token, not the User token', async () => {

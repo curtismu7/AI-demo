@@ -50,8 +50,8 @@ function normalizePingOneUser(raw) {
  * GET /environments/{envId}/users/{userId}
  */
 async function fetchPingOneUserById(userId) {
-  const envId = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
   if (!envId || !userId) {
     return { user: null, error: 'not_configured' };
   }
@@ -77,8 +77,8 @@ async function fetchPingOneUserById(userId) {
  * GET /environments/{envId}/users?filter=username eq "..."
  */
 async function fetchPingOneUserByUsername(username) {
-  const envId = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
   if (!envId || !username) {
     return { user: null, error: 'not_configured' };
   }

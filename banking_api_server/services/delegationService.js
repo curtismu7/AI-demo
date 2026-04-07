@@ -70,8 +70,8 @@ async function _sendDelegationEmail(delegateUserId, type, delegatorEmail) {
   if (!delegateUserId) return;
   try {
     const token  = await getManagementToken();
-    const envId  = configStore.getEffective('pingone_environment_id') || '';
-    const region = configStore.getEffective('pingone_region') || 'com';
+    const envId  = configStore.getEffective('PINGONE_ENVIRONMENT_ID') || '';
+    const region = configStore.getEffective('PINGONE_REGION') || 'com';
     if (!envId) return;
 
     const subject = type === 'grant'
@@ -161,8 +161,8 @@ async function grantDelegation({ delegatorUserId, delegatorEmail, delegateEmail,
     // Provision new user via Management API
     try {
       const token   = await getManagementToken();
-      const envId   = configStore.getEffective('pingone_environment_id') || '';
-      const region  = configStore.getEffective('pingone_region') || 'com';
+      const envId   = configStore.getEffective('PINGONE_ENVIRONMENT_ID') || '';
+      const region  = configStore.getEffective('PINGONE_REGION') || 'com';
       const apiRoot = `https://api.pingone.${region}/v1/environments/${envId}`;
       const popId   = await fetchFirstPopulationId(token, apiRoot);
 

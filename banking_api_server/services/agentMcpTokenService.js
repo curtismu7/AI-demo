@@ -514,47 +514,54 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // local tool fallback in server.js without surfacing a confusing error to the user.
   //
   // Exception: if ff_skip_token_exchange is ON we never reach this point (returned above).
+  // Exception: if user token carries banking:agent:invoke — the delegation scope that authorises
+  //            the agent to invoke the MCP server.  PingOne's token exchange policy on the MCP
+  //            resource decides whether to grant banking scopes from this delegation scope, so
+  //            we must NOT pre-block the exchange.  Pass through and let PingOne adjudicate.
   // Exception: if PingOne has a cross-scope grant policy for banking:agent:invoke → banking:write,
-  //            set ALLOW_AGENT_INVOKE_EXCHANGE=true to bypass this early-exit.
+  //            set ALLOW_AGENT_INVOKE_EXCHANGE=true to bypass this early-exit (legacy env override).
   const allowAgentInvokeExchange = process.env.ALLOW_AGENT_INVOKE_EXCHANGE === 'true';
+  // Auto-bypass: user holds the agent delegation scope — PingOne token-exchange policy decides.
+  const userHasAgentInvokeScope = userTokenScopes.has('banking:agent:invoke') || userTokenScopes.has('agent:invoke');
   const scopesMissingFromUserToken = finalScopes.every(s => !userTokenScopes.has(s));
-  if (scopesMissingFromUserToken && !allowAgentInvokeExchange) {
+  if (scopesMissingFromUserToken && !allowAgentInvokeExchange && !userHasAgentInvokeScope) {
     const userScopesStr = [...userTokenScopes].join(' ') || '(none)';
-    const requiredStr   = finalScopes.join(' ');
+    // The pre-condition for the agent/MCP path is agent:invoke, not the downstream banking scopes.
+    // Showing banking scopes here would misdirect the user — they need to obtain agent:invoke first.
+    const requiredStr = 'agent:invoke';
     console.warn(
-      '[TokenExchange:BLOCKED] tool=%s — all finalScopes [%s] absent from user token [%s]. ' +
-      'Token exchange cannot narrow to scopes the subject does not carry (RFC 8693 §2.1). ' +
-      'Fix: add banking:write + banking:read to PingOne user app scopes and re-login. ' +
+      '[TokenExchange:BLOCKED] tool=%s — user token [%s] lacks agent:invoke and has none of finalScopes [%s]. ' +
+      'The agent/MCP path requires agent:invoke on the user token. ' +
+      'Fix: add agent:invoke (banking:agent:invoke) to PingOne user app scopes and re-login. ' +
       'Or enable ff_skip_token_exchange. ' +
-      'Or set ALLOW_AGENT_INVOKE_EXCHANGE=true if PingOne grants banking:write from banking:agent:invoke.',
-      tool, requiredStr, userScopesStr
+      'Or set ALLOW_AGENT_INVOKE_EXCHANGE=true if PingOne grants banking scopes from banking:agent:invoke.',
+      tool, userScopesStr, finalScopes.join(',')
     );
     tokenEvents.push(buildTokenEvent(
       'exchange-blocked',
-      'Token Exchange (RFC 8693) — Blocked: required scopes not on user token',
+      'Token Exchange (RFC 8693) — Blocked: agent:invoke scope not on user token',
       'failed',
       null,
-      `User access token does not carry any of the required scopes [${requiredStr}]. ` +
-      `RFC 8693 token exchange can only narrow scopes — it cannot grant scopes the subject token does not have. ` +
+      `User access token does not carry agent:invoke (banking:agent:invoke) — the scope that authorises the agent to call the MCP server. ` +
       `User token scopes: [${userScopesStr}]. ` +
-      `Fix: add banking:write and banking:read to the PingOne user app allowed scopes and re-login.`,
+      `Fix: add agent:invoke to the PingOne user app allowed scopes and sign in again.`,
       {
         rfc: 'RFC 8693 §2.1',
         trigger: toolTrigger,
         userScopes: userScopesStr,
         requiredScopes: requiredStr,
-        blockReason: 'scope_not_on_subject_token',
+        blockReason: 'agent_invoke_scope_not_on_subject_token',
         enduserAudience: process.env.ENDUSER_AUDIENCE || null,
       }
     ));
     const scopeErr = new Error(
-      `Token exchange blocked: your access token has [${userScopesStr}] but this operation requires [${requiredStr}]. ` +
-      `Add banking:write and banking:read to the PingOne user app, then sign out and sign back in.`
+      `Token exchange blocked: your access token has [${userScopesStr}] but the agent/MCP path requires [${requiredStr}]. ` +
+      `Add agent:invoke (banking:agent:invoke) to the PingOne user app, then sign out and sign back in.`
     );
     scopeErr.code        = 'missing_exchange_scopes';
     scopeErr.httpStatus  = 403;
     scopeErr.tokenEvents = tokenEvents;
-    scopeErr.missingScopes   = finalScopes.filter(s => !userTokenScopes.has(s));
+    scopeErr.missingScopes   = ['agent:invoke'];
     scopeErr.userScopes      = userScopesStr;
     scopeErr.requiredScopes  = requiredStr;
     throw scopeErr;

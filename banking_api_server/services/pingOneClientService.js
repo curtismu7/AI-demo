@@ -16,11 +16,11 @@ const configStore = require('./configStore');
 
 // ── Internal: obtain a Management-API access token ────────────────────────────
 async function getManagementToken() {
-  const envId   = configStore.getEffective('pingone_environment_id');
-  const region  = configStore.getEffective('pingone_region') || 'com';
-  // Prefer dedicated management worker credentials; fall back to shared pingone_client_id/secret.
-  const clientId     = configStore.getEffective('pingone_mgmt_client_id') || configStore.getEffective('pingone_client_id');
-  const clientSecret = configStore.getEffective('pingone_mgmt_client_secret') || configStore.getEffective('pingone_client_secret');
+  const envId   = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region  = configStore.getEffective('PINGONE_REGION') || 'com';
+  // Prefer dedicated management worker credentials; fall back to shared PINGONE_MANAGEMENT_CLIENT_ID/secret.
+  const clientId     = configStore.getEffective('PINGONE_MGMT_CLIENT_ID') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
+  const clientSecret = configStore.getEffective('PINGONE_MGMT_CLIENT_SECRET') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
 
   if (!envId || !clientId || !clientSecret) {
     throw new Error('PingOne management worker credentials not configured. Set pingone_mgmt_client_id + pingone_mgmt_client_secret (or pingone_client_id + pingone_client_secret) via the Worker App tab at /config.');
@@ -73,8 +73,8 @@ function mapTokenAuthMethod(method) {
  * @returns {object}  PingOne application object including id, clientId, clientSecret
  */
 async function createApplication(metadata) {
-  const envId  = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
+  const envId  = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
   const token  = await getManagementToken();
 
   const grantTypes   = mapGrantTypes(metadata.grant_types);
@@ -131,8 +131,8 @@ async function createApplication(metadata) {
  * @returns {Promise<object[]>}
  */
 async function listOidcApplicationsRaw() {
-  const envId  = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
+  const envId  = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
   const token  = await getManagementToken();
 
   const url = `https://api.pingone.${region}/v1/environments/${envId}/applications?filter=protocol%20eq%20%22OPENID_CONNECT%22`;

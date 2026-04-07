@@ -1139,4 +1139,17 @@ Plans:
 Plans:
 - [ ] 83-01-PLAN.md - Design and implement AI tokens education panel with interactive diagrams and terminology glossary
 
+### Phase 84: review all syntax errors code failures looping best practices for all code
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 83
+**Plans:** 0 plans
+
+**Accumulated todos (to include in plan):**
+- Enterprise-grade `run.sh` startup script: consolidate 5+ shell scripts into single entry point with pre-flight checks, subcommands (start/stop/restart/logs/test/status), post-start summary banner, PID-file process management, shellcheck-clean
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 84 to break down)
+
 ---

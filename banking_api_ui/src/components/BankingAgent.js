@@ -32,11 +32,54 @@ import { isBankingAgentFloatingDefaultOpen } from '../utils/bankingAgentFloating
 import { isPublicMarketingAgentPath } from '../utils/embeddedAgentFabVisibility';
 import AgentConsentModal from './AgentConsentModal';
 import TransactionConsentModal from './TransactionConsentModal';
+import AgentFlowDiagramPanel from './AgentFlowDiagramPanel';
 import bffAxios from '../services/bffAxios';
 import './BankingAgent.css';
 
 /** NL message to replay after customer OAuth redirect from marketing agent (sessionStorage). */
 const BX_AGENT_PENDING_NL_KEY = 'bx_agent_pending_nl';
+
+/** Session expiry countdown timer component */
+function SessionExpiryTimer({ sessionInfo, className = '' }) {
+  const [timeRemaining, setTimeRemaining] = useState(null);
+  const [isExpiringSoon, setIsExpiringSoon] = useState(false);
+
+  useEffect(() => {
+    if (!sessionInfo?.expiresAt) return;
+
+    const calculateTimeRemaining = () => {
+      const now = Date.now();
+      const expiresAt = new Date(sessionInfo.expiresAt).getTime();
+      const remaining = Math.max(0, expiresAt - now);
+      
+      setTimeRemaining(remaining);
+      setIsExpiringSoon(remaining > 0 && remaining < 5 * 60 * 1000); // Less than 5 minutes
+    };
+
+    calculateTimeRemaining();
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionInfo?.expiresAt]);
+
+  if (!timeRemaining || timeRemaining <= 0) return null;
+
+  const formatTime = (ms) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div 
+      className={`ba-session-timer ${isExpiringSoon ? 'ba-session-timer--expiring' : ''} ${className}`}
+      title={`Session expires in ${formatTime(timeRemaining)}`}
+    >
+      <span className="ba-session-timer-icon">{'\u23f0'}</span>
+      <span className="ba-session-timer-text">{formatTime(timeRemaining)}</span>
+    </div>
+  );
+}
 
 // ─── Action definitions ────────────────────────────────────────────────────────
 
@@ -291,11 +334,33 @@ function formatResult(result) {
   // Accounts list
   if (r.accounts) {
     return r.accounts.map(a => {
-      const shortId = (a.account_number || a.id || '').slice(0, 10);
-      const label = a.name
-        ? `${a.name} (${shortId}…)`
-        : `${a.account_type || a.type || 'Account'}: ${a.account_number || a.id}`;
-      return `${label}\n  Balance: ${formatCurrency(a.balance)}`;
+      // Generate friendly account name
+      const getFriendlyAccountName = (account) => {
+        if (account.name && account.name !== account.id) {
+          return account.name;
+        }
+        
+        const accountType = (account.account_type || account.type || '').toLowerCase();
+        const accountNumber = account.account_number || account.id || '';
+        
+        // Create friendly name based on type and number
+        if (accountType === 'checking' || accountType.includes('chk')) {
+          return accountNumber ? `Checking Account (${accountNumber.slice(-4)})` : 'Checking Account';
+        } else if (accountType === 'savings' || accountType.includes('sav')) {
+          return accountNumber ? `Savings Account (${accountNumber.slice(-4)})` : 'Savings Account';
+        } else if (accountType === 'credit' || accountType.includes('crd')) {
+          return accountNumber ? `Credit Card (${accountNumber.slice(-4)})` : 'Credit Card';
+        } else if (accountType === 'investment' || accountType.includes('inv')) {
+          return accountNumber ? `Investment Account (${accountNumber.slice(-4)})` : 'Investment Account';
+        } else {
+          return accountNumber ? `Account (${accountNumber.slice(-4)})` : 'Account';
+        }
+      };
+      
+      const friendlyName = getFriendlyAccountName(a);
+      const balance = formatCurrency(a.balance);
+      
+      return `${friendlyName}\n  Balance: ${balance}`;
     }).join('\n\n');
   }
   // Transactions list
@@ -431,14 +496,38 @@ function ActionForm({ action, onSubmit, onCancel, loading, effectiveUser, liveAc
 
 function AccountsTable({ accounts }) {
   if (!accounts?.length) return <p className="bar-rp-empty">No accounts found.</p>;
+  
+  // Helper function to generate friendly account names
+  const getFriendlyAccountName = (account) => {
+    if (account.name && account.name !== account.id) {
+      return account.name;
+    }
+    
+    const accountType = (account.account_type || account.type || '').toLowerCase();
+    const accountNumber = account.account_number || account.id || '';
+    
+    // Create friendly name based on type and number
+    if (accountType === 'checking' || accountType.includes('chk')) {
+      return accountNumber ? `Checking Account (${accountNumber.slice(-4)})` : 'Checking Account';
+    } else if (accountType === 'savings' || accountType.includes('sav')) {
+      return accountNumber ? `Savings Account (${accountNumber.slice(-4)})` : 'Savings Account';
+    } else if (accountType === 'credit' || accountType.includes('crd')) {
+      return accountNumber ? `Credit Card (${accountNumber.slice(-4)})` : 'Credit Card';
+    } else if (accountType === 'investment' || accountType.includes('inv')) {
+      return accountNumber ? `Investment Account (${accountNumber.slice(-4)})` : 'Investment Account';
+    } else {
+      return accountNumber ? `Account (${accountNumber.slice(-4)})` : 'Account';
+    }
+  };
+  
   return (
     <table className="bar-rp-table">
-      <thead><tr><th>Type</th><th>Account #</th><th>Balance</th></tr></thead>
+      <thead><tr><th>Type</th><th>Account Name</th><th>Balance</th></tr></thead>
       <tbody>
         {accounts.map((a, i) => (
           <tr key={a.account_number || a.id || i}>
             <td>{a.account_type || a.type || 'Account'}</td>
-            <td><code>{a.account_number || a.id}</code></td>
+            <td><code>{getFriendlyAccountName(a)}</code></td>
             <td className="bar-rp-amount">{formatCurrency(a.balance)}</td>
           </tr>
         ))}
@@ -751,6 +840,8 @@ export default function BankingAgent({
   const sessionUserRef = useRef(null);
   sessionUserRef.current = sessionUser;
   const [sessionRefreshing, setSessionRefreshing] = useState(false);
+  /** Controls the "Learn more" collapsed toggle in the left rail. */
+  const [showLearnMore, setShowLearnMore] = useState(false);
   /** True when identity came from _auth cookie / stub token — MCP and NL need a Redis-backed session. */
   const [cookieOnlyBffSession, setCookieOnlyBffSession] = useState(false);
   /** True while the 2s reconnect poll is actively running (shows "Reconnecting…" banner). */
@@ -2345,8 +2436,14 @@ export default function BankingAgent({
                 </div>
               </div>
               {splitChrome && isLoggedIn && (effectiveUser?.id || effectiveUser?.username) && (
-                <div className="ba-header-session" title="PingOne user id">
-                  {effectiveUser?.id || effectiveUser?.username}
+                <div className="ba-header-session">
+                  <div title="PingOne user id">
+                    {effectiveUser?.id || effectiveUser?.username}
+                  </div>
+                  <SessionExpiryTimer 
+                    sessionInfo={effectiveUser} 
+                    className="ba-header-session-timer" 
+                  />
                 </div>
               )}
               <div className="ba-header-tools">
@@ -2367,19 +2464,43 @@ export default function BankingAgent({
                     type="button"
                     className="ba-icon-btn"
                     onClick={() => {
-                      const width = panelSize.width || 400;
-                      const height = panelSize.height || 480;
-                      const left = window.screenX + 100;
-                      const top = window.screenY + 100;
+                      // Calculate optimal window size based on content and screen
+                      const calculateOptimalSize = () => {
+                        const screenWidth = window.screen.width;
+                        const screenHeight = window.screen.height;
+                        const minWidth = 420;
+                        const minHeight = 500;
+                        const maxWidth = Math.min(800, screenWidth * 0.8);
+                        const maxHeight = Math.min(900, screenHeight * 0.8);
+                        
+                        // Base size on current panel size but ensure it fits screen
+                        let width = Math.max(minWidth, Math.min(maxWidth, panelSize.width || 420));
+                        let height = Math.max(minHeight, Math.min(maxHeight, panelSize.height || 500));
+                        
+                        // Adjust height based on content length
+                        const messageCount = messages.length;
+                        if (messageCount > 10) {
+                          height = Math.min(maxHeight, height + (messageCount - 10) * 30);
+                        }
+                        
+                        // Ensure window fits on screen with some margin
+                        const left = Math.max(50, Math.min(screenWidth - width - 50, window.screenX + 100));
+                        const top = Math.max(50, Math.min(screenHeight - height - 50, window.screenY + 100));
+                        
+                        return { width, height, left, top };
+                      };
+                      
+                      const { width, height, left, top } = calculateOptimalSize();
+                      
                       window.open(
                         '/agent',
                         'BankingAgent',
-                        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`
+                        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=yes`
                       );
                     }}
-                    title="Open agent in new window"
+                    title="Open agent in properly sized window"
                   >
-                    ⧉
+                    &#8929;
                   </button>
                 )}
                 <select
@@ -2518,9 +2639,8 @@ export default function BankingAgent({
                   </div>
 
                   <p style={{ margin: '0 0 12px', lineHeight: 1.6, fontSize: '14px' }}>
-                    This banking operation requires a narrowly-scoped MCP token, but RFC 8693 token
-                    exchange can only <strong>narrow</strong> — it cannot grant scopes your access
-                    token does not already carry.
+                    The AI agent path requires the <code style={{ background: 'rgba(255,80,80,0.12)', padding: '1px 6px', borderRadius: '4px' }}>agent:invoke</code> scope
+                    on your access token to authorise the agent to call the MCP server.
                   </p>
 
                   <div style={{
@@ -2557,14 +2677,14 @@ export default function BankingAgent({
                       OAuth app (Super Banking User App).
                     </li>
                     <li>
-                      Add <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:write</code>{' '}
-                      and <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:read</code>{' '}
+                      Add <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>agent:invoke</code>{' '}
+                      (<code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:agent:invoke</code>)
                       to the app&apos;s allowed scopes (or enable <strong>ff_skip_token_exchange</strong> in
-                      Admin → Config to bypass exchange entirely).
+                      Admin → Config to bypass the exchange entirely).
                     </li>
                     <li>
                       <strong>Sign out and sign back in</strong> to obtain a new access token that
-                      carries those scopes.
+                      carries the <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>agent:invoke</code> scope.
                     </li>
                   </ol>
 
@@ -2611,11 +2731,13 @@ export default function BankingAgent({
               />
             )}
 
+            {/* Agent Flow Diagram Panel - floating draggable panel */}
+            <AgentFlowDiagramPanel />
+
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">
               {isLoggedIn && (
-                <>
-                  <div className="ba-left-label">Session</div>
+                <div className="ba-session-row">
                   <button
                     type="button"
                     className="ba-action-item"
@@ -2623,7 +2745,7 @@ export default function BankingAgent({
                     disabled={sessionRefreshing || loading || consentBlocked}
                     title="Refresh your access token using PingOne refresh token (no logout)"
                   >
-                    {sessionRefreshing ? 'Refreshing…' : '🔄 Refresh access token'}
+                    {sessionRefreshing ? 'Refreshing…' : '🔄 Refresh'}
                   </button>
                   <button
                     type="button"
@@ -2632,12 +2754,11 @@ export default function BankingAgent({
                     disabled={loading || consentBlocked}
                     title="Sign in again if refresh fails"
                   >
-                    🔐 Sign in again
+                    🔐 Sign in
                   </button>
-                </>
+                </div>
               )}
 
-              <div className="ba-left-label">Try asking:</div>
               {suggestionList.map(s => (
                 <button
                   key={s}
@@ -2669,7 +2790,6 @@ export default function BankingAgent({
 
               {isLoggedIn ? (
                 <>
-                  <div className="ba-left-label">Actions:</div>
                   {actionsList.map(a => (
                     <button
                       key={a.id}
@@ -2685,8 +2805,15 @@ export default function BankingAgent({
 
                   <div className="ba-left-divider" />
 
-                  <div className="ba-left-label">Learn &amp; Explore:</div>
-                  {EDUCATION_COMMANDS.map(cmd => (
+                  <button
+                    type="button"
+                    className="ba-action-item ba-learn-more-toggle"
+                    onClick={() => setShowLearnMore(v => !v)}
+                    disabled={consentBlocked}
+                  >
+                    {showLearnMore ? '▴' : '▾'} Learn more
+                  </button>
+                  {showLearnMore && EDUCATION_COMMANDS.map(cmd => (
                     <button
                       key={cmd.id}
                       type="button"
@@ -2701,23 +2828,39 @@ export default function BankingAgent({
                 </>
               ) : (
                 <>
-                  {/* Pre-login explore chips — educational queries that don't need a session */}
+                  {/* Enhanced unauthenticated agent chip group with login prompt */}
                   <div className="ba-left-guest-chips">
-                    <div className="ba-left-label">Explore without signing in:</div>
-                    {[
-                      { id: 'guest_oauth', label: 'What is OAuth?' },
-                      { id: 'guest_pkce',  label: 'Explain PKCE' },
-                      { id: 'guest_mcp',   label: 'Explain MCP' },
-                      { id: 'guest_signin', label: 'Sign in →' },
-                    ].map(chip => (
-                      <button
-                        key={chip.id}
-                        type="button"
-                        className="ba-action-item"
-                        onClick={() => {
-                          if (chip.id === 'guest_signin') {
-                            handleLoginAction('login_user');
-                          } else {
+                    <div className="ba-left-label">Get started with AI Banking:</div>
+                    
+                    {/* Primary login chip - more prominent */}
+                    <button
+                      type="button"
+                      className="ba-action-item ba-action-item--login"
+                      onClick={() => handleLoginAction('login_user')}
+                    >
+                      <span className="ba-action-item-icon">&#128274;</span>
+                      <span className="ba-action-item-text">
+                        <span className="ba-action-item-title">Sign in to access banking features</span>
+                        <span className="ba-action-item-desc">Secure login with PingOne</span>
+                      </span>
+                      <span className="ba-action-item-arrow">&#8594;</span>
+                    </button>
+                    
+                    <div className="ba-left-label-secondary">Or explore these topics:</div>
+                    
+                    {/* Educational chips */}
+                    <div className="ba-guest-chips-grid">
+                      {[
+                        { id: 'guest_oauth', label: 'What is OAuth?', icon: '&#128273;' },
+                        { id: 'guest_pkce',  label: 'Explain PKCE', icon: '&#128271;' },
+                        { id: 'guest_mcp',   label: 'Explain MCP', icon: '&#129504;' },
+                        { id: 'guest_agent', label: 'How AI agents work', icon: '&#129302;' },
+                      ].map(chip => (
+                        <button
+                          key={chip.id}
+                          type="button"
+                          className="ba-action-item ba-action-item--guest"
+                          onClick={() => {
                             setNlInput('');
                             addMessage('user', chip.label);
                             setNlLoading(true);
@@ -2725,12 +2868,13 @@ export default function BankingAgent({
                               .then(({ source, result }) => dispatchNlResult(result, source, chip.label))
                               .catch(err => reportNlFailure(err))
                               .finally(() => setNlLoading(false));
-                          }
-                        }}
-                      >
-                        {chip.label}
-                      </button>
-                    ))}
+                          }}
+                        >
+                          <span className="ba-action-item-icon">{chip.icon}</span>
+                          <span className="ba-action-item-text">{chip.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="ba-left-auth">
                   <div className="ba-left-auth-notice">

@@ -3,22 +3,22 @@ const axios = require('axios');
 const configStore = require('./configStore');
 
 function _authBaseUrl() {
-  const region = configStore.getEffective('pingone_region') || 'com';
-  const envId = configStore.getEffective('pingone_environment_id');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
   return `https://auth.pingone.${region}/${envId}`;
 }
 
 function _apiBaseUrl() {
-  const region = configStore.getEffective('pingone_region') || 'com';
-  const envId = configStore.getEffective('pingone_environment_id');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
   return `https://api.pingone.${region}/v1/environments/${envId}`;
 }
 
 async function _getWorkerToken() {
-  const region = configStore.getEffective('pingone_region') || 'com';
-  const envId = configStore.getEffective('pingone_environment_id');
-  const clientId = configStore.getEffective('pingone_client_id');
-  const clientSecret = configStore.getEffective('pingone_client_secret');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const clientId = configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
+  const clientSecret = configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
   if (!envId || !clientId || !clientSecret) throw new Error('PingOne worker credentials not configured');
   const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
   const resp = await axios.post(tokenUrl, 'grant_type=client_credentials', {

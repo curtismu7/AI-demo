@@ -315,13 +315,13 @@ describe('RFC 8693 Token Exchange Compliance', () => {
 
     test('double exchange specific configuration', () => {
       const doubleExchangeVars = [
-        'AI_AGENT_CLIENT_ID',
-        'AI_AGENT_CLIENT_SECRET',
-        'AGENT_OAUTH_CLIENT_ID',
-        'AGENT_OAUTH_CLIENT_SECRET',
-        'AGENT_GATEWAY_AUDIENCE',
-        'MCP_GATEWAY_AUDIENCE',
-        'MCP_RESOURCE_URI_TWO_EXCHANGE'
+        'PINGONE_AI_AGENT_CLIENT_ID',
+        'PINGONE_AI_AGENT_CLIENT_SECRET',
+        'PINGONE_AGENT_CLIENT_ID',
+        'PINGONE_AGENT_CLIENT_SECRET',
+        'PINGONE_RESOURCE_AGENT_GATEWAY_URI',
+        'PINGONE_RESOURCE_MCP_GATEWAY_URI',
+        'PINGONE_RESOURCE_TWO_EXCHANGE_URI'
       ];
       
       doubleExchangeVars.forEach(varName => {
@@ -428,10 +428,10 @@ describe('RFC 8693 Token Exchange Compliance', () => {
     test('complete double exchange flow', async () => {
       // Mock double exchange configuration
       process.env.ff_two_exchange_delegation = 'true';
-      process.env.AI_AGENT_CLIENT_ID = 'agent-client-id';
-      process.env.AI_AGENT_CLIENT_SECRET = 'agent-secret';
-      process.env.AGENT_OAUTH_CLIENT_ID = 'mcp-client-id';
-      process.env.AGENT_OAUTH_CLIENT_SECRET = 'mcp-secret';
+      process.env.PINGONE_AI_AGENT_CLIENT_ID = 'agent-client-id';
+      process.env.PINGONE_AI_AGENT_CLIENT_SECRET = 'agent-secret';
+      process.env.PINGONE_AGENT_CLIENT_ID = 'mcp-client-id';
+      process.env.PINGONE_AGENT_CLIENT_SECRET = 'mcp-secret';
       
       // Verify configuration validation works
       const validation = validateTokenExchangeConfig();

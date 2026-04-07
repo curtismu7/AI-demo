@@ -3,6 +3,8 @@
  * Core interfaces for PingOne authentication and token management
  */
 
+import { MCPErrorCode } from './mcp';
+
 export interface AgentTokenInfo {
   tokenHash: string;
   clientId: string;
@@ -96,12 +98,11 @@ export interface AuthorizationRequest {
 }
 
 export enum AuthErrorCodes {
-  INVALID_AGENT_TOKEN = 'INVALID_AGENT_TOKEN',
-  USER_AUTHORIZATION_REQUIRED = 'USER_AUTHORIZATION_REQUIRED',
-  TOKEN_EXPIRED = 'TOKEN_EXPIRED',
-  INSUFFICIENT_SCOPE = 'INSUFFICIENT_SCOPE',
-  INVALID_AUTHORIZATION_CODE = 'INVALID_AUTHORIZATION_CODE',
-  TOKEN_REFRESH_FAILED = 'TOKEN_REFRESH_FAILED'
+  INVALID_AGENT_TOKEN = MCPErrorCode.INVALID_TOKEN,
+  USER_AUTHORIZATION_REQUIRED = MCPErrorCode.UNAUTHORIZED,
+  TOKEN_EXPIRED = MCPErrorCode.TOKEN_EXPIRED,
+  INSUFFICIENT_SCOPE = MCPErrorCode.INSUFFICIENT_SCOPE,
+  TOKEN_REFRESH_FAILED = MCPErrorCode.INTERNAL_ERROR
 }
 
 export class AuthenticationError extends Error {

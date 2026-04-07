@@ -28,7 +28,7 @@ async function createAgentRepresentativeUser({
     };
   }
 
-  const envId = configStore.getEffective('pingone_environment_id');
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
   if (!envId) {
     return { created: false, reason: 'pingone_environment_id not configured' };
   }

@@ -599,18 +599,18 @@ describe('token exchange — client authentication method', () => {
     let origClientId, origClientSecret, origAuthMethod;
 
     beforeEach(() => {
-      origClientId     = process.env.AGENT_OAUTH_CLIENT_ID;
-      origClientSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
-      origAuthMethod   = process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD;
-      process.env.AGENT_OAUTH_CLIENT_ID     = 'agent-client-id';
-      process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-client-secret';
+      origClientId     = process.env.PINGONE_AGENT_CLIENT_ID;
+      origClientSecret = process.env.PINGONE_AGENT_CLIENT_SECRET;
+      origAuthMethod   = process.env.PINGONE_AGENT_TOKEN_ENDPOINT_AUTH_METHOD;
+      process.env.PINGONE_AGENT_CLIENT_ID     = 'agent-client-id';
+      process.env.PINGONE_AGENT_CLIENT_SECRET = 'agent-client-secret';
     });
 
     afterEach(() => {
-      if (origClientId === undefined) delete process.env.AGENT_OAUTH_CLIENT_ID;
-      else process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
-      if (origClientSecret === undefined) delete process.env.AGENT_OAUTH_CLIENT_SECRET;
-      else process.env.AGENT_OAUTH_CLIENT_SECRET = origClientSecret;
+      if (origClientId === undefined) delete process.env.PINGONE_AGENT_CLIENT_ID;
+      else process.env.PINGONE_AGENT_CLIENT_ID = origClientId;
+      if (origClientSecret === undefined) delete process.env.PINGONE_AGENT_CLIENT_SECRET;
+      else process.env.PINGONE_AGENT_CLIENT_SECRET = origClientSecret;
       if (origAuthMethod === undefined) delete process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD;
       else process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD = origAuthMethod;
     });

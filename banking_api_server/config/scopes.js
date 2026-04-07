@@ -11,17 +11,30 @@ const BANKING_SCOPES = {
   // Read scopes
   ACCOUNTS_READ: 'banking:accounts:read',
   TRANSACTIONS_READ: 'banking:transactions:read',
-  BANKING_READ: 'banking:read',
+  BANKING_READ: 'banking:general:read',
   
   // Write scopes
   TRANSACTIONS_WRITE: 'banking:transactions:write',
-  BANKING_WRITE: 'banking:write',
+  BANKING_WRITE: 'banking:general:write',
   
   // Administrative scopes
-  ADMIN: 'banking:admin',
+  ADMIN: 'banking:admin:full',
   
   // AI Agent scope
-  AI_AGENT: 'ai_agent'
+  AI_AGENT: 'banking:ai:agent:read',
+  
+  // Additional AI Agent scopes for full standardization
+  AI_AGENT_WRITE: 'banking:ai:agent:write',
+  AI_AGENT_ADMIN: 'banking:ai:agent:admin',
+  
+  // Sensitive data access scopes
+  SENSITIVE_READ: 'banking:sensitive:read',
+  SENSITIVE_WRITE: 'banking:sensitive:write',
+  
+  // Administrative operation scopes
+  ADMIN_READ: 'banking:admin:read',
+  ADMIN_WRITE: 'banking:admin:write',
+  ADMIN_FULL: 'banking:admin:full'
 };
 
 // User type to scope mappings

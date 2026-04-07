@@ -113,9 +113,9 @@ async function probeManagementApiAccess() {
  * @returns {{ managementWorkerReady: boolean, environmentIdSet: boolean, hint: string }}
  */
 function getManagementWorkerConfigStatus() {
-  const envId = String(configStore.getEffective('pingone_environment_id') || '').trim();
-  const cid = String(configStore.getEffective('pingone_client_id') || '').trim();
-  const csec = String(configStore.getEffective('pingone_client_secret') || '').trim();
+  const envId = String(configStore.getEffective('PINGONE_ENVIRONMENT_ID') || '').trim();
+  const cid = String(configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID') || '').trim();
+  const csec = String(configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET') || '').trim();
   const ready = !!(envId && cid && csec);
   return {
     managementWorkerReady: ready,
@@ -215,8 +215,8 @@ async function runPingOneBootstrap(options = {}) {
     return result;
   }
 
-  const envId = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
   const apiRoot = `https://api.pingone.${region}/v1/environments/${envId}`;
 
   let existingApps = [];

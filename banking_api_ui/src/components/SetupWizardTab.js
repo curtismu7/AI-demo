@@ -17,7 +17,8 @@ const SetupWizardTab = () => {
     region: 'com',
     publicAppUrl: window.location.origin,
     vercelToken: '',
-    vercelProjectId: ''
+    vercelProjectId: '',
+    stepUpAcrValue: 'Multi_factor'
   });
 
   // UI state
@@ -197,6 +198,10 @@ const SetupWizardTab = () => {
       '# Worker Credentials',
       `PINGONE_WORKER_CLIENT_ID=${formData.workerClientId}`,
       `PINGONE_WORKER_CLIENT_SECRET=${formData.workerClientSecret}`,
+      '',
+      '# MFA Step-up Configuration',
+      `PINGONE_STEP_UP_ACR_VALUE=${formData.stepUpAcrValue}`,
+      '',
     ];
     
     return lines.join('\n');
@@ -417,6 +422,25 @@ const SetupWizardTab = () => {
               </div>
             </div>
           )}
+
+          {/* STEP_UP_ACR_VALUE */}
+          <div className="swt-input-group">
+            <label htmlFor="stepUpAcrValue">Step-up ACR Value</label>
+            <input
+              id="stepUpAcrValue"
+              name="stepUpAcrValue"
+              type="text"
+              value={formData.stepUpAcrValue}
+              onChange={handleInputChange}
+              placeholder="Multi_factor"
+              className={errors.stepUpAcrValue ? 'error' : ''}
+              disabled={running}
+            />
+            <small className="swt-help">
+              PingOne Sign-On Policy name for MFA step-up (e.g., Multi_factor)
+            </small>
+            {errors.stepUpAcrValue && <span className="swt-error">{errors.stepUpAcrValue}</span>}
+          </div>
 
           {/* Action Buttons */}
           <div className="swt-actions">

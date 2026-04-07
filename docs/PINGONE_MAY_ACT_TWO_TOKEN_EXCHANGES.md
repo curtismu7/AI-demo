@@ -75,52 +75,159 @@ In this pattern every hop performs a full RFC 8693 exchange. Each exchanger firs
 
 ```
 Human User (Banking App Login)
-  │
-  │  PKCE Authorization Code login — user authenticates normally
-  ▼
-Subject Token  [TOKEN 1 — user's session token]
+  |
+  |  PKCE Authorization Code login - user authenticates normally
+  |
+Subject Token  [TOKEN 1 - user's session token]
   { sub: "<user-id>",
     aud: ["https://ai-agent.pingdemo.com"],
     scope: "profile email banking:agent:invoke",
     may_act: { "sub": "<AI_AGENT_CLIENT_ID>" } }
-              ↑ permits the AI Agent to exchange this token
-  │
-  │  Token Exchange #1 (RFC 8693)
-  │  AI Agent gets its own Actor Token via Client Credentials (aud: https://agent-gateway.pingdemo.com)
-  │  Exchanges: subject_token=Subject Token + actor_token=Agent Actor Token
-  │  Exchanger: Super Banking AI Agent App (AI_AGENT_CLIENT_ID)
-  ▼
-Agent Exchanged Token  [TOKEN 2 — agent-delegated token]
+              - permits the AI Agent to exchange this token
+  |
+  |  Token Exchange #1 (RFC 8693)
+  |  AI Agent gets its own Actor Token via Client Credentials (aud: https://agent-gateway.pingdemo.com)
+  |  Exchanges: subject_token=Subject Token + actor_token=Agent Actor Token
+  |  Exchanger: Super Banking AI Agent App (AI_AGENT_CLIENT_ID)
+  |
+Agent Exchanged Token  [TOKEN 2 - agent-delegated token]
   { sub: "<user-id>",
     aud: ["https://mcp-server.pingdemo.com"],
     act: { "sub": "<AI_AGENT_CLIENT_ID>" } }
-          ↑ records that the AI Agent performed Exchange #1
-  │
-  │  Token Exchange #2 (RFC 8693)
-  │  MCP Server gets its own Actor Token via Client Credentials (aud: https://mcp-gateway.pingdemo.com)
-  │  Exchanges: subject_token=Agent Exchanged Token + actor_token=MCP Actor Token
-  │  Exchanger: Super Banking MCP Token Exchanger App (MCP_CLIENT_ID)
-  ▼
-MCP Exchanged Token  [TOKEN 3 — fully delegated tool-call token]
+          - records that the AI Agent performed Exchange #1
+  |
+  |  Token Exchange #2 (RFC 8693)
+  |  MCP Server gets its own Actor Token via Client Credentials (aud: https://mcp-gateway.pingdemo.com)
+  |  Exchanges: subject_token=Agent Exchanged Token + actor_token=MCP Actor Token
+  |  Exchanger: Super Banking MCP Token Exchanger App (MCP_CLIENT_ID)
+  |
+MCP Exchanged Token  [TOKEN 3 - fully delegated tool-call token]
   { sub: "<user-id>",
     aud: ["https://resource-server.pingdemo.com"],
     scope: "banking:accounts:read banking:transactions:read banking:transactions:write",
     act: {
-      "sub": "<MCP_CLIENT_ID>",         ← outer act: MCP App performed Exchange #2
+      "sub": "<MCP_CLIENT_ID>",         - outer act: MCP App performed Exchange #2
       "act": {
-        "sub": "<AI_AGENT_CLIENT_ID>"   ← inner act: AI Agent performed Exchange #1
+        "sub": "<AI_AGENT_CLIENT_ID>"   - inner act: AI Agent performed Exchange #1
       }
     }
   }
-  │
-  │  PAZ (PingOne Authorize) introspects the MCP Exchanged Token:
-  │    ✓ sub is a known user
-  │    ✓ aud == resource server URL
-  │    ✓ act.sub == MCP_CLIENT_ID
-  │    ✓ act.act.sub == AI_AGENT_CLIENT_ID
-  │  → DENY if any check fails
-  ▼
-PERMIT → Banking Tools → PingOne Management API → Resource
+  |
+  |  PAZ (PingOne Authorize) introspects the MCP Exchanged Token:
+  |    - sub is a known user
+  |    - aud == resource server URL
+  |    - act.sub == MCP_CLIENT_ID
+  |    - act.act.sub == AI_AGENT_CLIENT_ID
+  |  - DENY if any check fails
+  |
+PERMIT - Banking Tools - PingOne Management API - Resource
+```
+
+### ASCII Flow Diagram - 2-Exchange Token Chain
+
+```
+    Human User
+        |
+        | 1. PKCE Login (Authorization Code)
+        v
+    Super Banking User App
+        |
+        | 2. Subject Token (TOKEN 1)
+        |    aud: https://ai-agent.pingdemo.com
+        |    may_act: { sub: "AI_AGENT_CLIENT_ID" }
+        v
+    Super Banking AI Agent App
+        |
+        | 3. Client Credentials (Actor Token)
+        |    aud: https://agent-gateway.pingdemo.com
+        v
+    PingOne Token Endpoint
+        |
+        | 4. RFC 8693 Exchange #1
+        |    subject_token: TOKEN 1
+        |    actor_token: AI Agent CC token
+        v
+    PingOne Token Endpoint
+        |
+        | 5. Agent Exchanged Token (TOKEN 2)
+        |    aud: https://mcp-server.pingdemo.com
+        |    act: { sub: "AI_AGENT_CLIENT_ID" }
+        v
+    Super Banking MCP Token Exchanger
+        |
+        | 6. Client Credentials (Actor Token)
+        |    aud: https://mcp-gateway.pingdemo.com
+        v
+    PingOne Token Endpoint
+        |
+        | 7. RFC 8693 Exchange #2
+        |    subject_token: TOKEN 2
+        |    actor_token: MCP Server CC token
+        v
+    PingOne Token Endpoint
+        |
+        | 8. MCP Exchanged Token (TOKEN 3)
+        |    aud: https://resource-server.pingdemo.com
+        |    act: { 
+        |           sub: "MCP_CLIENT_ID",
+        |           act: { sub: "AI_AGENT_CLIENT_ID" }
+        |         }
+        v
+    PingOne Authorize (PAZ)
+        |
+        | 9. Policy Validation
+        |    - Validate nested act claims
+        |    - Enforce per-actor policies
+        v
+    Banking Tools (MCP)
+        |
+        | 10. PingOne Management API Calls
+        v
+    PingOne Management API
+```
+
+### ASCII Flow Diagram - Nested Delegation Chain
+
+```
+TOKEN 1: Subject Token (User Session)
+=====================================
+iss: https://auth.pingone.com/{envId}/as
+aud: ["https://ai-agent.pingdemo.com"]
+sub: "<user-id>"
+scope: "profile email banking:agent:invoke"
+may_act: { sub: "<AI_AGENT_CLIENT_ID>" }
+          |
+          | Validated by: AI Agent Service
+          | Purpose: User authentication + AI Agent delegation permission
+          v
+
+TOKEN 2: Agent Exchanged Token (AI Agent Delegation)
+===================================================
+iss: https://auth.pingone.com/{envId}/as
+aud: ["https://mcp-server.pingdemo.com"]
+sub: "<user-id>"
+act: { sub: "<AI_AGENT_CLIENT_ID>" }
+          |
+          | Validated by: MCP Server
+          | Purpose: AI Agent identity delegation proof
+          v
+
+TOKEN 3: MCP Exchanged Token (Full Delegation)
+=============================================
+iss: https://auth.pingone.com/{envId}/as
+aud: ["https://resource-server.pingdemo.com"]
+sub: "<user-id>"
+scope: "banking:accounts:read banking:transactions:read banking:transactions:write"
+act: {
+  sub: "<MCP_CLIENT_ID>",           - Outer: MCP Server performed Exchange #2
+  act: {
+    sub: "<AI_AGENT_CLIENT_ID>"     - Inner: AI Agent performed Exchange #1
+  }
+}
+          |
+          | Validated by: PingOne Authorize (PAZ)
+          | Purpose: Full delegation audit trail + tool access
+          v
 ```
 
 | Token | Audience | How issued | Exchanger |

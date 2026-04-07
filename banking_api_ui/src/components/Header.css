@@ -96,3 +96,22 @@
   opacity: 0.6;
   cursor: wait;
 }
+
+/* Session expiry countdown timer in the top header */
+.header-session-timer {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.header-session-timer--expiring {
+  color: #b91c1c;
+  animation: header-timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes header-timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}

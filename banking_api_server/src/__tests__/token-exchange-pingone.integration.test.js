@@ -46,7 +46,7 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
     const oauthService = require('../../services/oauthService');
     const configStore = require('../../services/configStore');
     const subject = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
-    const mcpUri = configStore.getEffective('mcp_resource_uri');
+    const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write')
       .trim()
@@ -82,7 +82,7 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
       console.warn('[SKIP] INTEGRATION_AGENT_ACCESS_TOKEN not set — skipping performTokenExchangeWithActor live test');
       return;
     }
-    const mcpUri = configStore.getEffective('mcp_resource_uri');
+    const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
     const mcpToken = await oauthService.performTokenExchangeWithActor(subject, actor, mcpUri, scopes);
@@ -96,15 +96,15 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
   });
 
   /**
-   * Fetches an agent client-credentials token using AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET.
+   * Fetches an agent client-credentials token using PINGONE_AGENT_CLIENT_ID / PINGONE_AGENT_CLIENT_SECRET.
    * Validates it is a properly-formed JWT.
    */
   it('getAgentClientCredentialsToken returns a 3-part JWT with a non-null aud', async () => {
     const oauthService = require('../../services/oauthService');
-    const clientId = process.env.AGENT_OAUTH_CLIENT_ID;
-    const clientSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const clientId = process.env.PINGONE_AGENT_CLIENT_ID;
+    const clientSecret = process.env.PINGONE_AGENT_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      console.warn('[SKIP] AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET not set — skipping live test');
+      console.warn('[SKIP] PINGONE_AGENT_CLIENT_ID / PINGONE_AGENT_CLIENT_SECRET not set — skipping live test');
       return;
     }
     const agentToken = await oauthService.getAgentClientCredentialsToken();

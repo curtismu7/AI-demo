@@ -21,12 +21,12 @@ const configStore = require('./configStore');
 
 // ── Management token (reuses the worker client credentials) ──────────────────
 async function getManagementToken() {
-  const envId        = configStore.getEffective('pingone_environment_id');
-  const region       = configStore.getEffective('pingone_region') || 'com';
-  // Use admin_client_id / admin_client_secret — the keys that map to PINGONE_*_CLIENT_ID env vars.
-  // 'pingone_client_id' is not in the configStore env-fallback map and always returns null.
-  const clientId     = configStore.getEffective('admin_client_id');
-  const clientSecret = configStore.getEffective('admin_client_secret');
+  const envId        = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region       = configStore.getEffective('PINGONE_REGION') || 'com';
+  // Use PINGONE_ADMIN_CLIENT_ID / PINGONE_ADMIN_CLIENT_SECRET — the keys that map to PINGONE_*_CLIENT_ID env vars.
+  // 'PINGONE_MANAGEMENT_CLIENT_ID' is not in the configStore env-fallback map and always returns null.
+  const clientId     = configStore.getEffective('PINGONE_ADMIN_CLIENT_ID');
+  const clientSecret = configStore.getEffective('PINGONE_ADMIN_CLIENT_SECRET');
 
   if (!envId || !clientId || !clientSecret) return null;
 
@@ -116,8 +116,8 @@ function buildEmailHtml({ type, amount, fromAccount, toAccount, newBalance, tran
  * @param {string}  opts.userName
  */
 async function sendTransactionConfirmation(userId, opts) {
-  const envId  = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
+  const envId  = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
 
   if (!envId || !userId) return; // not configured — silently skip
 
@@ -171,8 +171,8 @@ async function sendTransactionConfirmation(userId, opts) {
  * @returns {Promise<void>}
  */
 async function sendOtpEmail(userId, opts) {
-  const envId  = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
+  const envId  = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
 
   if (!envId || !userId) return;
 

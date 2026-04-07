@@ -27,7 +27,8 @@ router.post('/run', requireAdmin, async (req, res) => {
     publicAppUrl, 
     vercelToken, 
     vercelProjectId,
-    audience 
+    audience,
+    stepUpAcrValue
   } = req.body;
 
   // Validate required fields
@@ -73,6 +74,7 @@ router.post('/run', requireAdmin, async (req, res) => {
       vercelToken,
       vercelProjectId,
       audience: audience || 'banking_api_enduser',
+      stepUpAcrValue: stepUpAcrValue || 'Multi_factor',
       isVercel: !!process.env.VERCEL
     };
 

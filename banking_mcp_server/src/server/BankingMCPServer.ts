@@ -637,6 +637,8 @@ export class BankingMCPServer extends EventEmitter {
       await this.handleOAuthCallback(req, res, url);
     } else if (pathname === '/auth/status') {
       await this.handleAuthStatus(req, res, url);
+    } else if (pathname === '/auth/token-exchange') {
+      await this.handleTokenExchange(req, res, url);
     } else {
       // Default response for other paths
       res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -814,6 +816,114 @@ export class BankingMCPServer extends EventEmitter {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Internal server error' }));
     }
+  }
+
+  /**
+   * RFC 8693 Token Exchange endpoint
+   */
+  private async handleTokenExchange(req: any, res: any, url: URL): Promise<void> {
+    try {
+      if (req.method !== 'POST') {
+        res.writeHead(405, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Method not allowed' }));
+        return;
+      }
+
+      // Parse request body
+      const body = await this.parseRequestBody(req);
+      
+      // Validate token exchange request
+      const tokenExchangeRequest = {
+        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+        subject_token: body.subject_token,
+        subject_token_type: body.subject_token_type || 'urn:ietf:params:oauth:token-type:access_token',
+        actor_token: body.actor_token,
+        actor_token_type: body.actor_token_type,
+        requested_token_type: body.requested_token_type,
+        resource: body.resource,
+        audience: body.audience,
+        scope: body.scope
+      };
+
+      // Import TokenExchangeService
+      const { TokenExchangeService } = await import('../auth/TokenExchangeService');
+      const { loadConfiguration } = await import('../config');
+      
+      const config = loadConfiguration();
+      const tokenExchangeConfig = {
+        pingoneBaseUrl: config.pingone.baseUrl,
+        environmentId: config.pingone.environmentId,
+        clientId: config.pingone.clientId,
+        clientSecret: config.pingone.clientSecret,
+        requireMayAct: config.requireMayAct === 'true',
+        bffClientId: config.bffClientId,
+        expectedActClientId: config.expectedActClientId,
+        expectedActSub: config.expectedActSub,
+        resourceUri: config.resourceUri
+      };
+
+      const tokenExchangeService = new TokenExchangeService(tokenExchangeConfig);
+      
+      // Perform token exchange
+      const tokenResponse = await tokenExchangeService.exchangeToken(tokenExchangeRequest);
+      
+      // Return successful response
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(tokenResponse));
+
+    } catch (error) {
+      console.error('[BankingMCPServer] Token exchange error:', error);
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid token exchange request')) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            error: 'invalid_request',
+            error_description: error.message
+          }));
+        } else if (error.message.includes('Invalid client credentials')) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            error: 'invalid_client',
+            error_description: error.message
+          }));
+        } else if (error.message.includes('Insufficient permissions')) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            error: 'insufficient_scope',
+            error_description: error.message
+          }));
+        } else {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            error: 'server_error',
+            error_description: 'Internal server error'
+          }));
+        }
+      } else {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal server error' }));
+      }
+    }
+  }
+
+  private async parseRequestBody(req: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+      req.on('end', () => {
+        try {
+          const parsed = body ? JSON.parse(body) : {};
+          resolve(parsed);
+        } catch (error) {
+          reject(new Error('Invalid JSON in request body'));
+        }
+      });
+      req.on('error', reject);
+    });
   }
 
   /**

@@ -14,7 +14,6 @@ import Users from './components/Users';
 import Accounts from './components/Accounts';
 import Transactions from './components/Transactions';
 import SecuritySettings from './components/SecuritySettings';
-import Config from './components/Config';
 import Onboarding from './components/Onboarding';
 import SetupPage from './components/SetupPage';
 import PingOneSetupGuidePage from './components/PingOneSetupGuidePage';
@@ -26,6 +25,7 @@ import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
 import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
+import UnifiedConfigurationPage from './components/Configuration/UnifiedConfigurationPage';
 import ApiTrafficPage from './components/ApiTrafficPage';
 import BankingAdminOps from './components/BankingAdminOps';
 import TransactionConsentPage from './components/TransactionConsentPage';
@@ -438,7 +438,13 @@ function AppWithAuth() {
           <Routes>
             <Route path="/setup/pingone" element={<PingOneSetupGuidePage />} />
             <Route path="/setup" element={<SetupPage />} />
-            {/* Demo config accessible without login — needed to configure flags before PingOne is set up */}
+            {/* Demo config accessible without login - needed to configure flags before PingOne is set up */}
+            <Route path="/configure" element={
+              <main className="main-content">
+                <EducationBar />
+                <UnifiedConfigurationPage user={user} onLogout={logout} />
+              </main>
+            } />
             <Route path="/demo-data" element={
               <main className="main-content">
                 <EducationBar />
@@ -482,7 +488,7 @@ function AppWithAuth() {
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
-                    <Route path="/config"      element={user ? <Config /> : <Navigate to="/" replace />} />
+                    <Route path="/config"      element={<Navigate to="/configure?tab=pingone-config" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
                     <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />

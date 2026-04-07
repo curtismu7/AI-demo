@@ -73,39 +73,121 @@ Adding `openid` anywhere in this flow breaks things in two different ways depend
 
 ```
 Human User (Banking App Login)
-  │
-  │  PKCE Authorization Code login — user authenticates normally
-  ▼
-Subject Token  [TOKEN 1 — user's session token]
+  |
+  |  PKCE Authorization Code login - user authenticates normally
+  |
+Subject Token  [TOKEN 1 - user's session token]
   { sub: "<user-id>",
-    aud: ["https://ai-agent.pingdemo.com"],      ← AI Agent service validates this token
+    aud: ["https://ai-agent.pingdemo.com"],      - AI Agent service validates this token
     scope: "profile email banking:agent:invoke",
     may_act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }
-              ↑ the client ID UUID of Super Banking Admin App — permits it to exchange this token
-  │
-  │  Token Exchange #1 (RFC 8693)
-  │  Banking app server POSTs the Subject Token to PingOne's /token endpoint.
-  │  PingOne checks: may_act.sub == actorToken.aud[0]? → issues MCP Token.
-  │  Exchanger: Super Banking Admin App (PINGONE_CORE_CLIENT_ID)
-  ▼
-MCP Token  [TOKEN 2 — delegated tool-call token]
+              - the client ID UUID of Super Banking Admin App - permits it to exchange this token
+  |
+  |  Token Exchange #1 (RFC 8693)
+  |  Banking app server POSTs the Subject Token to PingOne's /token endpoint.
+  |  PingOne checks: may_act.sub == actorToken.aud[0]? - issues MCP Token.
+  |  Exchanger: Super Banking Admin App (PINGONE_CORE_CLIENT_ID)
+  |
+MCP Token  [TOKEN 2 - delegated tool-call token]
   { sub: "<user-id>",
-    aud: ["https://mcp-server.pingdemo.com"],   ← MCP Server validates this token
+    aud: ["https://mcp-server.pingdemo.com"],   - MCP Server validates this token
     scope: "banking:accounts:read banking:transactions:read banking:transactions:write",
     act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }
-          ↑ the client ID UUID of the Admin App — verifiable delegation audit trail
-  │
-  │  Client Credentials grant (NOT a token exchange)
-  │  MCP server POSTs its own client_id + client_secret to PingOne.
-  │  PingOne issues a scoped PingOne API token (p1:read:user, p1:update:user).
-  │  Caller: Super Banking MCP Token Exchanger (MCP_CLIENT_ID)
-  ▼
-PingOne API Token  [TOKEN 3 — scoped PingOne Management API token]
+          - the client ID UUID of the Admin App - verifiable delegation audit trail
+  |
+  |  Client Credentials grant (NOT a token exchange)
+  |  MCP server POSTs its own client_id + client_secret to PingOne.
+  |  PingOne issues a scoped PingOne API token (p1:read:user, p1:update:user).
+  |  Caller: Super Banking MCP Token Exchanger (MCP_CLIENT_ID)
+  |
+PingOne API Token  [TOKEN 3 - scoped PingOne Management API token]
   { aud: ["https://api.pingone.com"],
     scope: "p1:read:user p1:update:user" }
-  │
-  ▼
+  |
+  |
 PingOne Management API  (/v1/environments/{envId}/users/{userId})
+```
+
+### ASCII Flow Diagram - 1-Exchange Token Chain
+
+```
+    Human User
+        |
+        | 1. PKCE Login (Authorization Code)
+        v
+    Super Banking User App
+        |
+        | 2. Subject Token (TOKEN 1)
+        |    aud: https://ai-agent.pingdemo.com
+        |    may_act: { sub: "PINGONE_CORE_CLIENT_ID" }
+        v
+    Super Banking Admin App (BFF)
+        |
+        | 3. RFC 8693 Token Exchange
+        |    subject_token: TOKEN 1
+        |    actor_token: BFF client credentials
+        v
+    PingOne Token Endpoint
+        |
+        | 4. MCP Token (TOKEN 2)
+        |    aud: https://mcp-server.pingdemo.com
+        |    act: { sub: "PINGONE_CORE_CLIENT_ID" }
+        v
+    MCP Server
+        |
+        | 5. Client Credentials Grant
+        |    scope: p1:read:user p1:update:user
+        v
+    PingOne Token Endpoint
+        |
+        | 6. PingOne API Token (TOKEN 3)
+        |    aud: https://api.pingone.com
+        v
+    MCP Server
+        |
+        | 7. PingOne Management API Call
+        |    Uses TOKEN 2 (user identity + delegation)
+        |    Uses TOKEN 3 (API access)
+        v
+    PingOne Management API
+```
+
+### ASCII Flow Diagram - Token Validation Chain
+
+```
+TOKEN 1: Subject Token (User Session)
+=====================================
+iss: https://auth.pingone.com/{envId}/as
+aud: ["https://ai-agent.pingdemo.com"]
+sub: "<user-id>"
+scope: "profile email banking:agent:invoke"
+may_act: { sub: "<PINGONE_CORE_CLIENT_ID>" }
+          |
+          | Validated by: AI Agent Service
+          | Purpose: User authentication + delegation permission
+          v
+
+TOKEN 2: MCP Token (Delegated Tool Access)
+=========================================
+iss: https://auth.pingone.com/{envId}/as
+aud: ["https://mcp-server.pingdemo.com"]
+sub: "<user-id>"
+scope: "banking:accounts:read banking:transactions:read banking:transactions:write"
+act: { sub: "<PINGONE_CORE_CLIENT_ID>" }
+          |
+          | Validated by: MCP Server
+          | Purpose: Tool invocation with delegation audit trail
+          v
+
+TOKEN 3: PingOne API Token (Management Access)
+=============================================
+iss: https://auth.pingone.com/{envId}/as
+aud: ["https://api.pingone.com"]
+scope: "p1:read:user p1:update:user"
+          |
+          | Validated by: PingOne Management API
+          | Purpose: API access for user data operations
+          v
 ```
 
 > **Every `aud` is different** — each token is scoped to exactly one service. That service's resource server validates the token; all others reject it. This is the core of RFC 8693 audience restriction.

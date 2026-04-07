@@ -2,6 +2,10 @@
   "version": 2,
   "routes": [
     {
+      "src": "/.well-known/oauth-protected-resource",
+      "dest": "/server.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server.js"
     },

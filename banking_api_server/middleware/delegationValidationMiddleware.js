@@ -8,10 +8,10 @@
 
 'use strict';
 
-const { writeExchangeEvent } = require('./exchangeAuditStore');
-const { validateDelegationClaims } = require('./delegationClaimsService');
-const { IdentityFormatStandardizationService } = require('./identityFormatStandardizationService');
-const { DelegationChainValidationService } = require('./delegationChainValidationService');
+const { writeExchangeEvent } = require('../services/exchangeAuditStore');
+const { validateDelegationClaims } = require('../services/delegationClaimsService');
+const { IdentityFormatStandardizationService } = require('../services/identityFormatStandardizationService');
+const { DelegationChainValidationService } = require('../services/delegationChainValidationService');
 
 /**
  * Error response codes for delegation claims validation
