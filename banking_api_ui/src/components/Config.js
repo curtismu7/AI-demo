@@ -706,7 +706,7 @@ export default function Config() {
           {[
             { key: 'setup',  label: '⚙️ Setup Config' },
             { key: 'pingone-setup', label: '🔧 PingOne Setup' },
-            { key: 'vercel', label: '▲ Vercel Env' },
+            ...(hostedOn === 'vercel' ? [{ key: 'vercel', label: '▲ Vercel Env' }] : []),
             { key: 'worker', label: '🔑 Worker App' },
           ].map(({ key, label }) => {
             const isActive = activeTab === key;
