@@ -192,6 +192,7 @@ const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes
 const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetadata');
 const migrationRoutes = require('./routes/migration');
 const securityMonitoringRoutes = require('./routes/securityMonitoring');
+const oauthClientsRoutes = require('./routes/oauthClients');
 const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
 const { migrateAccounts } = require('./services/demoDataService');
@@ -877,6 +878,8 @@ app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/admin/management', adminManagementRoutes);
 app.use('/api/admin/setup', setupWizardRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
+app.use('/api/oauth/clients', authenticateToken, oauthClientsRoutes);
+app.use('/api/oauth/token', oauthTokenRoutes);
 app.use('/api/delegation', authenticateToken, delegationRoutes);
 app.use('/api/token-chain', authenticateToken, tokenChainRoutes);
 app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
