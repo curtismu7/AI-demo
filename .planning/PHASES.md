@@ -98,7 +98,7 @@
 | 73 | Environment variable consistency — unified .env.example, PUBLIC_APP_URL-driven redirects, startup validator | ✅ Complete | 1/1 |
 | 83 | AI Tokens Education - actor tokens, subject tokens, and AI-related tokens education page | ✅ Complete | 1/1 |
 | 84 | Code quality sweep — syntax, errors, failures, looping, best practices across all code | 📋 Planned | 3/3 |
-| 85 | Chase dashboard styling — make dashboards match the color scheme and general look of chase.com main page | ⬜ Unplanned | 0/0 |
+| 85 | Chase dashboard styling — make dashboards match the color scheme and general look of chase.com main page | 📋 Planned | 3/3 |
 | 444 | Admin token exchange and elevated privileges — admin MCP tools, setup wizard updates, documentation | ✅ Complete | 4/4 |
 
 ---
