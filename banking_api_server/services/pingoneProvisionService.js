@@ -491,7 +491,8 @@ class PingOneProvisionService {
         { name: 'users:read', description: 'Read user profiles and account information' },
         { name: 'users:manage', description: 'Manage user accounts and permissions' },
         { name: 'banking:read', description: 'Read banking data and transaction history' },
-        { name: 'banking:write', description: 'Perform banking operations and transfers' }
+        { name: 'banking:write', description: 'Perform banking operations and transfers' },
+        { name: 'banking:agent:invoke', description: 'Agent invocation permission' }
       ];
       
       const mcpScopeResults = await this.createScopes(mcpResourceResult.resource.id, mcpScopes);

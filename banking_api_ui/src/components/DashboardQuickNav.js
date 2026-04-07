@@ -20,7 +20,10 @@ export default function DashboardQuickNav({ user }) {
     // Home + Dashboard + Agent + [Banking admin] + [Config admin] + API + Logs
     const count = 5 + (isAdmin ? 2 : 0);
     const height = count * 44; // gap: 0, no inter-button spacing
-    document.documentElement.style.setProperty('--quick-nav-stack-height', `${height}px`);
+    // Must target .App directly — CSS declares --quick-nav-stack-height on .App.App--has-quick-nav,
+    // which shadows any value inherited from documentElement.
+    const appEl = document.querySelector('.App');
+    if (appEl) appEl.style.setProperty('--quick-nav-stack-height', `${height}px`);
   }, [isAdmin, user, pathname]);
 
   if (!user || !isDashboardQuickNavRoute(pathname, user)) {
