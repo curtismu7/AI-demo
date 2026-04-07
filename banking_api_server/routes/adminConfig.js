@@ -260,4 +260,36 @@ router.get('/worker-test', configReadLimiter, async (req, res) => {
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/config/generate-keypair — generate RSA 2048 key pair for
+// private_key_jwt authentication. Saves the private key to configStore and
+// returns the public key PEM + JWK so the user can register it in PingOne.
+// ---------------------------------------------------------------------------
+router.post('/generate-keypair', requireAdminOrUnconfigured, async (req, res) => {
+  try {
+    const { generateKeyPairSync, createPublicKey } = require('crypto');
+    const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding:  { type: 'spki',  format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    });
+
+    // Build JWK from public key
+    const pubKeyObj = createPublicKey(publicKey);
+    const jwk = pubKeyObj.export({ format: 'jwk' });
+    jwk.use = 'sig';
+    jwk.alg = 'RS256';
+    jwk.kid = require('crypto').randomUUID();
+
+    // Persist private key to config store
+    configStore.setConfig({ pingone_mgmt_private_key: privateKey });
+
+    res.json({ ok: true, publicKeyPem: publicKey, jwk });
+  } catch (err) {
+    console.error('[adminConfig] generate-keypair error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;

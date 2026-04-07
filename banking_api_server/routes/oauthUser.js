@@ -549,7 +549,7 @@ router.get('/callback', async (req, res) => {
         } else if (postLoginReturnToPath) {
           res.redirect(`${origin}${postLoginReturnToPath}?oauth=success${ssoParam}`);
         } else {
-          res.redirect(`${origin}/dashboard?oauth=success${ssoParam}`);
+          res.redirect(`${origin}/?oauth=success${ssoParam}`);
         }
       });
     });
@@ -582,7 +582,7 @@ router.get('/stepup', (req, res) => {
     const acrValue = process.env.STEP_UP_ACR_VALUE !== undefined
       ? process.env.STEP_UP_ACR_VALUE.trim()
       : 'Multi_Factor';
-    const returnTo = req.query.return_to || `${getFrontendOrigin(req)}/dashboard`;
+    const returnTo = req.query.return_to || `${getFrontendOrigin(req)}/`;
 
     const state = oauthService.generateState();
     const codeVerifier = oauthService.generateCodeVerifier();
@@ -605,13 +605,13 @@ router.get('/stepup', (req, res) => {
     req.session.save((err) => {
       if (err) {
         console.error('[StepUp] Session save error:', err);
-        return res.redirect(`${getFrontendOrigin(req)}/dashboard?error=stepup_init_failed`);
+        return res.redirect(`${getFrontendOrigin(req)}/?error=stepup_init_failed`);
       }
       res.redirect(url);
     });
   } catch (error) {
     console.error('[StepUp] Error initiating step-up:', error);
-    res.redirect(`${getFrontendOrigin(req)}/dashboard?error=stepup_init_failed`);
+    res.redirect(`${getFrontendOrigin(req)}/?error=stepup_init_failed`);
   }
 });
 

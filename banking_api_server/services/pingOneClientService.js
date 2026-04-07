@@ -12,7 +12,29 @@
  *   Banking tools are not intended to re-implement full Management API; keep worker credentials on the BFF.
  */
 const axios = require('axios');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const configStore = require('./configStore');
+
+// ── Internal: build a client_assertion JWT (client_secret_jwt or private_key_jwt) ──
+function buildClientAssertion(clientId, tokenUrl, authMethod, clientSecret, privateKeyPem) {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: clientId,
+    sub: clientId,
+    aud: tokenUrl,
+    jti: crypto.randomUUID(),
+    iat: now,
+    exp: now + 300,
+  };
+  if (authMethod === 'client_secret_jwt') {
+    return jwt.sign(payload, clientSecret, { algorithm: 'HS256' });
+  }
+  // private_key_jwt — RS256 or ES256 depending on key type
+  const keyObj = crypto.createPrivateKey(privateKeyPem);
+  const alg = keyObj.asymmetricKeyType === 'ec' ? 'ES256' : 'RS256';
+  return jwt.sign(payload, privateKeyPem, { algorithm: alg });
+}
 
 // ── Internal: obtain a Management-API access token ────────────────────────────
 async function getManagementToken() {
@@ -21,21 +43,36 @@ async function getManagementToken() {
   // Prefer dedicated management worker credentials; fall back to shared PINGONE_MANAGEMENT_CLIENT_ID/secret.
   const clientId     = configStore.getEffective('PINGONE_MGMT_CLIENT_ID') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
   const clientSecret = configStore.getEffective('PINGONE_MGMT_CLIENT_SECRET') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
+  const authMethod   = (configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic').toLowerCase();
 
-  if (!envId || !clientId || !clientSecret) {
+  const needsSecret = authMethod !== 'none' && authMethod !== 'private_key_jwt';
+  if (!envId || !clientId || (needsSecret && !clientSecret)) {
     throw new Error('PingOne management worker credentials not configured. Set pingone_mgmt_client_id + pingone_mgmt_client_secret (or pingone_client_id + pingone_client_secret) via the Worker App tab at /config.');
   }
 
   const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
-  const authMethod = configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic';
-  const isPost = authMethod === 'post';
-  const body = isPost
-    ? `grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`
-    : 'grant_type=client_credentials';
-  const axiosConfig = {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  };
-  if (!isPost) axiosConfig.auth = { username: clientId, password: clientSecret };
+
+  let body = 'grant_type=client_credentials';
+  const axiosConfig = { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } };
+
+  if (authMethod === 'none') {
+    body += `&client_id=${encodeURIComponent(clientId)}`;
+  } else if (authMethod === 'post') {
+    body += `&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`;
+  } else if (authMethod === 'client_secret_jwt' || authMethod === 'private_key_jwt') {
+    const privateKeyPem = authMethod === 'private_key_jwt'
+      ? configStore.getEffective('pingone_mgmt_private_key')
+      : null;
+    if (authMethod === 'private_key_jwt' && !privateKeyPem) {
+      throw new Error('private_key_jwt selected but no private key configured. Generate or paste a PEM key in the Worker App config tab.');
+    }
+    const assertion = buildClientAssertion(clientId, tokenUrl, authMethod, clientSecret, privateKeyPem);
+    body += `&client_id=${encodeURIComponent(clientId)}&client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer&client_assertion=${encodeURIComponent(assertion)}`;
+  } else {
+    // default: basic
+    axiosConfig.auth = { username: clientId, password: clientSecret };
+  }
+
   const response = await axios.post(tokenUrl, body, axiosConfig);
   return response.data.access_token;
 }
