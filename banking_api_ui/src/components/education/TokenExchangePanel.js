@@ -103,7 +103,7 @@ function TokenFlowDiagram() {
           claims={[
             { key: 'aud', val: 'Backend-for-Frontend (BFF) / PingOne client', note: 'broad' },
             { key: 'scope', val: 'openid email banking:*', note: 'broad' },
-            { key: 'may_act', val: '{ client_id: "bff" }', note: 'prospective permission' },
+            { key: 'may_act', val: '{ "sub": "bff-client-id" }', note: 'prospective permission' },
             { key: 'act', val: '(absent)', note: '' },
             { key: 'stays in', val: 'Backend-for-Frontend (BFF) session only', note: '🔒 never forwarded' },
           ]}
@@ -117,7 +117,7 @@ function TokenFlowDiagram() {
             { key: 'aud', val: 'mcp-server-resource-uri', note: 'narrowed ✓' },
             { key: 'scope', val: 'banking:read banking:write', note: 'narrowed ✓' },
             { key: 'may_act', val: '(removed)', note: '' },
-            { key: 'act', val: '{ client_id: "bff" }', note: 'delegation fact ✓' },
+            { key: 'act', val: '{ "sub": "bff-client-id" }', note: 'delegation fact ✓' },
             { key: 'sent to', val: 'MCP Server + Banking API', note: '✅' },
           ]}
         />
@@ -324,7 +324,7 @@ actor_token_type=urn:ietf:params:oauth:token-type:access_token`}</pre>
           <ul>
             <li><code>aud</code> = MCP Server Resource URI</li>
             <li><code>scope</code> = narrowed to tool scopes</li>
-            <li><code>act</code> = <code>{'{ "client_id": "bff-client-id" }'}</code> (delegation fact)</li>
+            <li><code>act</code> = <code>{'{ "sub": "bff-client-id" }'}</code> (delegation fact)</li>
             <li><code>may_act</code> = removed (no longer needed)</li>
           </ul>
           <pre className="edu-code">{`// ✅ CORRECT — forward only the MCP Token
@@ -354,12 +354,12 @@ fetch(MCP_SERVER_URL, {
               <tr>
                 <td style={{ padding: '8px 10px', borderBottom: '1px solid #334155' }}><code>may_act</code></td>
                 <td style={{ padding: '8px 10px', borderBottom: '1px solid #334155' }}>User Token</td>
-                <td style={{ padding: '8px 10px', borderBottom: '1px solid #334155' }}><em>Prospective</em> — "this client_id is allowed to exchange this token"</td>
+                <td style={{ padding: '8px 10px', borderBottom: '1px solid #334155' }}><em>Prospective</em> — "this service (<code>sub</code>) is allowed to exchange this token"</td>
               </tr>
               <tr>
                 <td style={{ padding: '8px 10px' }}><code>act</code></td>
                 <td style={{ padding: '8px 10px' }}>MCP Token</td>
-                <td style={{ padding: '8px 10px' }}><em>Fact</em> — "this client_id IS acting right now on behalf of sub"</td>
+                <td style={{ padding: '8px 10px' }}><em>Fact</em> — "this service (<code>sub</code>) IS acting right now on behalf of the user"</td>
               </tr>
             </tbody>
           </table>
