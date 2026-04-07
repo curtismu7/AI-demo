@@ -95,6 +95,7 @@
 | 70 | Super Banking rename verification — confirm no regressions across all layers | 📋 Planned | 1/1 |
 | 71 | Feature & sales documentation — what the app does, demo scenarios, pitch doc | 📋 Planned | 1/1 |
 | 72 | RFC & standards reference documentation — every RFC implemented, how, and gaps | 📋 Planned | 1/1 |
+| 73 | Environment variable consistency — unified .env.example, PUBLIC_APP_URL-driven redirects, startup validator | 📋 Planned | 1/1 |
 | 444 | Admin token exchange and elevated privileges — admin MCP tools, setup wizard updates, documentation | ✅ Complete | 4/4 |
 
 ---
