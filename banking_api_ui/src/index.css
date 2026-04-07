@@ -24,16 +24,52 @@
   --brand-dashboard-header-end: #1e40af;
   --brand-app-shell-hero-start: #1e3a8a;
   --brand-app-shell-hero-end: #2563eb;
+  
+  /* Chase.com Brand Colors (Phase 85: Dashboard Styling) */
+  --chase-navy: #004687;
+  --chase-navy-dark: #003DA5;
+  --chase-navy-light: #005FA3;
+  --chase-blue: #0066CC;
+  --chase-blue-light: #0052A3;
+  
+  /* Chase Neutrals */
+  --chase-white: #FFFFFF;
+  --chase-light-gray: #F5F5F5;
+  --chase-medium-gray: #E0E0E0;
+  --chase-dark-gray: #333333;
+  
+  /* Chase Status Colors */
+  --chase-success: #4CAF50;
+  --chase-warning: #FF9800;
+  --chase-error: #F44336;
+  
+  /* Button Styles (derived from Chase colors) */
+  --btn-primary-bg: var(--chase-navy);
+  --btn-primary-text: var(--chase-white);
+  --btn-primary-bg-hover: #003770;
+  --btn-primary-border-radius: 4px;
+  --btn-primary-padding: 10px 16px;
+  
+  /* Card Styles */
+  --card-padding: 20px;
+  --card-border-radius: 8px;
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+  /* Typography */
+  --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-size-h1: 28px;
+  --font-size-h2: 22px;
+  --font-size-h3: 18px;
+  --font-size-body: 14px;
+  --line-height-body: 1.6;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: var(--chase-light-gray);
+  color: var(--chase-dark-gray);
 }
 
 .container {
@@ -88,10 +124,10 @@ body {
 }
 
 .card {
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  padding: 1.5rem;
+  background: var(--chase-white);
+  border-radius: var(--card-border-radius);
+  box-shadow: var(--card-shadow);
+  padding: var(--card-padding);
   margin-bottom: 1.5rem;
 }
 
@@ -101,13 +137,13 @@ body {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--chase-medium-gray);
 }
 
 .card-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
 }
 
 .stats-grid {
@@ -118,22 +154,22 @@ body {
 }
 
 .stat-card {
-  background: white;
+  background: var(--chase-white);
   border-radius: 0.5rem;
   padding: 1.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  border-left: 4px solid #1e40af;
+  border-left: 4px solid var(--chase-navy);
 }
 
 .stat-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--chase-navy);
   margin-bottom: 0.5rem;
 }
 
 .stat-label {
-  color: #64748b;
+  color: #999999;
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -146,7 +182,7 @@ body {
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--chase-white);
   border-radius: 0.5rem;
   overflow: hidden;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
@@ -156,7 +192,7 @@ body {
 .table td {
   padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--chase-medium-gray);
 }
 
 /* Modal Styles */

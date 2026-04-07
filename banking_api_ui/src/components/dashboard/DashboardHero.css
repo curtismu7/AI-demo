@@ -4,8 +4,8 @@
 .dashboard-hero {
   position: relative;
   min-height: var(--dashboard-hero-height);
-  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));
-  color: var(--color-text-inverse);
+  background: var(--chase-navy);
+  color: var(--chase-white);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -61,13 +61,13 @@
 .dashboard-hero__greeting {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-medium);
-  color: var(--color-primary-200);
+  color: rgba(255, 255, 255, 0.8);
   text-transform: capitalize;
 }
 
 .dashboard-hero__clock {
   font-size: var(--font-size-sm);
-  color: var(--color-primary-300);
+  color: rgba(255, 255, 255, 0.6);
   font-family: var(--font-family-mono);
 }
 
@@ -76,7 +76,7 @@
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
   margin: 0 0 var(--space-4) 0;
-  color: var(--color-text-inverse);
+  color: var(--chase-white);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -97,7 +97,7 @@
   font-size: var(--font-size-lg);
   line-height: var(--line-height-relaxed);
   margin: 0 0 var(--space-6) 0;
-  color: var(--color-primary-100);
+  color: rgba(255, 255, 255, 0.9);
   max-width: 600px;
 }
 
@@ -116,7 +116,7 @@
 
 .dashboard-hero__stat-label {
   font-size: var(--font-size-sm);
-  color: var(--color-primary-300);
+  color: rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -124,7 +124,7 @@
 .dashboard-hero__stat-value {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-inverse);
+  color: var(--chase-white);
 }
 
 /* Actions */
