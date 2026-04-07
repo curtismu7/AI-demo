@@ -34,6 +34,10 @@ import DelegationPage from './components/DelegationPage';
 import FeatureFlagsPage from './components/FeatureFlagsPage';
 import LangChainPage from './pages/LangChainPage';
 import PostmanCollectionsPage from './components/PostmanCollectionsPage';
+import Profile from './components/Profile';
+import SecurityCenter from './components/SecurityCenter';
+import UserAccounts from './components/UserAccounts';
+import UserTransactions from './components/UserTransactions';
 
 import { savePublicConfig } from './services/configService';
 import { SpinnerProvider } from './context/SpinnerContext';
@@ -499,6 +503,11 @@ function AppWithAuth() {
                       element={<AdminRoute user={user}><ClientRegistrationPage /></AdminRoute>}
                     />
                     <Route path="/postman" element={<PostmanCollectionsPage user={user} onLogout={logout} />} />
+                    {/* User-friendly self-service routes */}
+                    <Route path="/accounts" element={<UserAccounts user={user} />} />
+                    <Route path="/transactions" element={<UserTransactions user={user} />} />
+                    <Route path="/profile" element={<Profile user={user} />} />
+                    <Route path="/security" element={<SecurityCenter user={user} />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                   {backgroundLocation && fullLocation.pathname === '/audit' && (

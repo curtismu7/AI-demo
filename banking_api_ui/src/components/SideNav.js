@@ -52,6 +52,15 @@ const USER_NAV = [
       { to: '/demo-data', label: 'Demo config',   icon: '⚙️' },
     ],
   },
+  {
+    group: 'Self Service',
+    items: [
+      { to: '/accounts',     label: 'My Accounts',     icon: '🏦' },
+      { to: '/transactions', label: 'Transfer Money', icon: '💸' },
+      { to: '/profile',      label: 'Profile Settings', icon: '👤' },
+      { to: '/security',     label: 'Security Center', icon: '🔐' },
+    ],
+  },
 ];
 
 export default function SideNav({ user, onLogout }) {

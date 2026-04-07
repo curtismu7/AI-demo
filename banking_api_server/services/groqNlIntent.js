@@ -11,7 +11,7 @@ const MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown, no explanation) with one of:
-{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|langchain","tab":"what"}}
+{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|langchain|rfc-8693|flow-diagrams","tab":"what"}}
 {"kind":"education","ciba":true,"tab":"what"}
 {"kind":"banking","banking":{"action":"balance","params":{}}}
 {"kind":"banking","banking":{"action":"accounts","params":{}}}

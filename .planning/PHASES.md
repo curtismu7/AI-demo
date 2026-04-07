@@ -1,7 +1,8 @@
 # Phase Status — BX Finance AI Banking Demo
 
 **Milestone:** v1.0 — Complete Demo + Educational Content  
-**Generated:** 2026-04-06
+**Generated:** 2026-04-06  
+**Recent Progress:** Added comprehensive flow diagrams with RFC annotations and self-service UI components
 
 ---
 
@@ -46,8 +47,8 @@
 | 24 | Agent builder landscape — LangChain, open-source and commercial frameworks | ✅ Complete | 2/2 |
 | 25 | LLM landscape — commercial and open-source models, capabilities overview | ✅ Complete | 2/2 |
 | 26 | AI platform landscape — AWS Bedrock, Azure AI, Vertex AI, watsonx | ✅ Complete | 2/2 |
-| 27 | PingOne Authorize PAZ setup — transaction limit policy, AUD validation | 📋 Planned | 2/2 |
-| 28 | Vercel config tab — read/write env vars via Vercel API | 📋 Planned | 2/2 |
+| 27 | PingOne Authorize PAZ setup — transaction limit policy, AUD validation | ✅ Complete | 2/2 |
+| 28 | Vercel config tab — read/write env vars via Vercel API | ✅ Complete | 2/2 |
 | 29 | Use-case C sensitive data access — explicit authz, least-data-necessary | ✅ Complete | 6/6 |
 | 30 | Agent layout modes — float, left-dock, right-dock, bottom-dock | ✅ Complete | 3/3 |
 | 31 | Floating draggable resizable windows — unified drag-resize system | ✅ Complete | 2/2 |
@@ -55,10 +56,10 @@
 | 33 | Token chain history persistence — restore across page refreshes | ✅ Complete | 1/1 |
 | 34 | Agent action logging — log agent, action, rights, each step | ✅ Complete | 2/2 |
 | 35 | User-facing feature documentation — update FEATURES.md + CHANGELOG.md | ✅ Complete | 1/1 |
-| 36 | Postman collections and environments audit — update all collections | 📋 Planned | 3/3 |
+| 36 | Postman collections and environments audit — update all collections | ✅ Complete | 3/3 |
 | 37 | Public-facing MCP server — read-only tool surface, scoped credentials | ✅ Complete | 2/2 |
 | 38 | Family delegation — delegate account access with scoped permissions | ✅ Complete | 3/3 |
-| 39 | Architecture diagram — full app architecture draw.io | 📋 Planned | 1/1 |
+| 39 | Architecture diagram — full app architecture draw.io | ✅ Complete | 1/1 |
 | 40 | PingGateway MCP security — education panel, feasibility analysis | ✅ Complete | 1/1 |
 | 41 | C4 top-down architecture diagram (draw.io) | ✅ Complete | 1/1 |
 | 42 | Persist demo accounts across server restarts — env file / SQLite | ✅ Complete | 2/2 |
@@ -75,6 +76,8 @@
 | 53 | Debug testing and bug fixes for phase 52 MFA step-up | ✅ Complete | 4/4 |
 | 54 | Self-service user provisioning — create PingOne users with mayAct setup | 📋 Planned | 2/2 |
 | 55 | Docker / Kubernetes deployment — containerize all components | 📋 Planned | 1/1 |
+| 56 | Flow diagrams with RFC annotations — MFA, consent, agent request flows | ✅ Complete | 4/4 |
+| 57 | Self-service side menu — user-friendly navigation and UI components | ✅ Complete | 4/4 |
 | 56 | Token exchange audit and compliance — RFC 8693 comprehensive audit | 📋 Planned | 1/1 |
 | 57 | OAuth client credentials security hardening — replace PATs | 📋 Planned | 1/1 |
 | 58 | RFC 8693 delegation claims compliance — may_act and act claim correctness | 📋 Planned | 1/1 |
@@ -99,11 +102,11 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Complete | 42 |
+| ✅ Complete | 47 |
 | 🔄 In Progress | 0 |
-| 📋 Planned | 30 |
+| 📋 Planned | 27 |
 | ⬜ Unplanned | 0 |
-| **Total** | **72** | (filesystem is source of truth — verified 2026-04-06)
+| **Total** | **74** | (filesystem is source of truth — verified 2026-04-06)
 
 ---
 

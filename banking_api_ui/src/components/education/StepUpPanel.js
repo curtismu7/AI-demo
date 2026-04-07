@@ -15,13 +15,79 @@ export default function StepUpPanel({ isOpen, onClose, initialTabId }) {
             In this demo, transfers and withdrawals at or above the configured threshold can trigger PingOne step-up (see Security Settings).
           </p>
           <p>
-            To step up <strong>without</strong> sending the user through a full browser redirect, the stack can use <strong>CIBA</strong> when enabled:
-            PingOne delivers approval <strong>out-of-band</strong> — by <strong>email</strong> or <strong>device push</strong> depending on your DaVinci setup
-            (email-only avoids MFA push). See <strong>Learn → Login flow → CIBA (OOB)</strong> or the floating <strong>CIBA guide</strong>.
+            The Super Banking demo supports <strong>two step-up methods</strong>:
           </p>
+          <ul>
+            <li><strong>deviceAuthentication API</strong> - Direct PingOne MFA with OTP, Push, or FIDO2/WebAuthn</li>
+            <li><strong>CIBA (Client-Initiated Backchannel)</strong> - Out-of-band email or push approval</li>
+          </ul>
           <p>
             For <strong>mandatory human approval</strong> before large money movement (separate from MFA), see{' '}
             <strong>Learn → Human-in-the-loop</strong> — it explains how the consent popup and the AI agent interact.
+          </p>
+        </>
+      ),
+    },
+    {
+      id: 'device-auth',
+      label: 'deviceAuthentication API',
+      content: (
+        <>
+          <p>
+            <strong>PingOne deviceAuthentication</strong> provides direct MFA capabilities with multiple authentication methods.
+            This is the default step-up method in the Super Banking demo.
+          </p>
+          <h4>Supported Methods</h4>
+          <ul>
+            <li><strong>OTP (One-Time Password)</strong> - Time-based codes from authenticator apps</li>
+            <li><strong>Push Notifications</strong> - Approval requests to mobile devices</li>
+            <li><strong>FIDO2/WebAuthn</strong> - Biometric or hardware security keys</li>
+          </ul>
+          <h4>How It Works</h4>
+          <ol>
+            <li><strong>Initiate Challenge</strong> - API creates MFA challenge with user's access token</li>
+            <li><strong>Device Selection</strong> - User chooses from registered devices</li>
+            <li><strong>Method Execution</strong> - Complete OTP entry, push approval, or FIDO2 assertion</li>
+            <li><strong>Challenge Completion</strong> - API confirms successful authentication</li>
+          </ol>
+          <p>
+            <strong>Configuration</strong>: Requires <code>PINGONE_MFA_POLICY_ID</code> in environment settings.
+            The policy determines which methods are available and security requirements.
+          </p>
+          <div style={{ marginTop: '16px', padding: '12px', background: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '6px' }}>
+            <h5 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#495057' }}>📊 Flow Diagram</h5>
+            <p style={{ margin: '0', fontSize: '0.85rem', color: '#6c757d' }}>
+              See the complete <strong>MFA deviceAuthentication Flow</strong> diagram in <code>docs/Super-Banking-MFA-DeviceAuthentication-Flow.drawio</code> for a detailed visual representation of the authentication sequence with RFC annotations.
+            </p>
+          </div>
+        </>
+      ),
+    },
+    {
+      id: 'ciba',
+      label: 'CIBA (Backchannel)',
+      content: (
+        <>
+          <p>
+            <strong>CIBA (Client-Initiated Backchannel Authentication)</strong> enables step-up without UI interaction.
+            PingOne delivers approval requests out-of-band via email or push notifications.
+          </p>
+          <h4>When to Use CIBA</h4>
+          <ul>
+            <li><strong>Mobile-First Scenarios</strong> - No need to keep app open during authentication</li>
+            <li><strong>Batch Operations</strong> - Authenticate multiple operations with single approval</li>
+            <li><strong>High-Value Transactions</strong> - Additional security layer without user friction</li>
+          </ul>
+          <h4>CIBA Flow</h4>
+          <ol>
+            <li><strong>Initiate Backchannel</strong> - App sends CIBA request with binding_message</li>
+            <li><strong>User Notification</strong> - PingOne sends email/push to user</li>
+            <li><strong>User Approval</strong> - User clicks approval link or responds to push</li>
+            <li><strong>Token Exchange</strong> - PingOne returns step-up token to application</li>
+          </ol>
+          <p>
+            <strong>Setup</strong>: Enable CIBA grant type and configure DaVinci email/push policies.
+            See <strong>Learn → Login flow → CIBA (OOB)</strong> for detailed setup instructions.
           </p>
         </>
       ),

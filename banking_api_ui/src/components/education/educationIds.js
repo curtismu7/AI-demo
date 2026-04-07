@@ -40,4 +40,8 @@ export const EDU = {
   ARCHITECTURE_DIAGRAM: 'architecture-diagram',
   /** Token chain — delegation tracking through OAuth token exchanges */
   TOKEN_CHAIN: 'token-chain',
+  /** RFC 8693 Token Exchange — OAuth 2.0 Token Exchange standard */
+  RFC_8693: 'rfc-8693',
+  /** Flow Diagrams — Technical architecture diagrams with RFC annotations */
+  FLOW_DIAGRAMS: 'flow-diagrams',
 };

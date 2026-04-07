@@ -27,6 +27,8 @@ import SensitiveDataPanel from './SensitiveDataPanel';
 import PingGatewayMcpPanel from './PingGatewayMcpPanel';
 import ArchitectureDiagramPanel from './ArchitectureDiagramPanel';
 import TokenChainEducationPanel from './TokenChainEducationPanel';
+import RFC8693Panel from './RFC8693Panel';
+import FlowDiagramsPanel from './FlowDiagramsPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -61,6 +63,8 @@ export default function EducationPanelsHost() {
       <PingGatewayMcpPanel isOpen={panel === EDU.PINGGATEWAY_MCP} onClose={close} initialTabId={tab} />
       <ArchitectureDiagramPanel isOpen={panel === EDU.ARCHITECTURE_DIAGRAM} onClose={close} initialTabId={tab} />
       <TokenChainEducationPanel isOpen={panel === EDU.TOKEN_CHAIN} onClose={close} initialTabId={tab} />
+      <RFC8693Panel isOpen={panel === EDU.RFC_8693} onClose={close} initialTabId={tab} />
+      <FlowDiagramsPanel isOpen={panel === EDU.FLOW_DIAGRAMS} onClose={close} initialTabId={tab} />
     </>
   );
 }
