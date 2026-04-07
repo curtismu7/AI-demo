@@ -12,23 +12,25 @@ export default function WorkerAppConfigTab() {
   const [saveMsg, setSaveMsg] = useState('');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null); // null | { ok, environmentId, appName, applicationCount, error, hint }
+  const [readOnly, setReadOnly] = useState(false); // true on Vercel without KV — setConfig is a no-op
 
   useEffect(() => {
     fetch('/api/admin/config')
       .then(r => r.json())
       .then(data => {
         const cfg = data.config || {};
+        if (data.readOnly) setReadOnly(true);
         setValues(v => ({
           ...v,
           pingone_environment_id:    cfg.pingone_environment_id || '',
           pingone_mgmt_client_id:    cfg.pingone_mgmt_client_id || '',
-          // Secret is masked — keep blank so user can re-enter if needed
+          // Secret is masked server-side — keep blank so user must re-enter if changing
           pingone_mgmt_client_secret: '',
           pingone_mgmt_token_auth_method: cfg.pingone_mgmt_token_auth_method || 'basic',
         }));
       })
       .catch(() => {}); // silent — config may not be set yet
-  }, []);
+  }, [])
 
   const handleChange = (key, val) => setValues(v => ({ ...v, [key]: val }));
 
@@ -70,9 +72,17 @@ export default function WorkerAppConfigTab() {
       <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
         PingOne Management API — Worker App
       </h3>
-      <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 20 }}>
+      <p style={{ color: '#6b7280', fontSize: 13, marginBottom: readOnly ? 8 : 20 }}>
         Credentials for the PingOne worker app used for user provisioning, CIMD registration, and bootstrap operations.
       </p>
+      {readOnly && (
+        <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 6, padding: '10px 14px', marginBottom: 20, fontSize: 13, color: '#92400e' }}>
+          ⚠️ <strong>Session-only</strong> — this deployment does not have persistent KV storage.
+          Changes will be lost when the server restarts. Set{' '}
+          <code>PINGONE_MGMT_CLIENT_ID</code>, <code>PINGONE_MGMT_CLIENT_SECRET</code>,
+          and <code>PINGONE_MGMT_TOKEN_AUTH_METHOD</code> as Vercel environment variables for permanent configuration.
+        </div>
+      )}
 
       {WORKER_FIELDS.map(({ key, label, secret, placeholder }) => (
         <div key={key} style={{ marginBottom: 16 }}>

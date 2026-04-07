@@ -290,9 +290,13 @@ function formatResult(result) {
   }
   // Accounts list
   if (r.accounts) {
-    return r.accounts.map(a =>
-      `${a.account_type || a.type || 'Account'}: ${a.account_number || a.id}\n  Balance: ${formatCurrency(a.balance)}`
-    ).join('\n\n');
+    return r.accounts.map(a => {
+      const shortId = (a.account_number || a.id || '').slice(0, 10);
+      const label = a.name
+        ? `${a.name} (${shortId}…)`
+        : `${a.account_type || a.type || 'Account'}: ${a.account_number || a.id}`;
+      return `${label}\n  Balance: ${formatCurrency(a.balance)}`;
+    }).join('\n\n');
   }
   // Transactions list
   if (r.transactions) {
