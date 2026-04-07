@@ -18,7 +18,6 @@ const {
 // Environment configuration
 const SKIP_TOKEN_SIGNATURE_VALIDATION = process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true';
 const DEBUG_TOKENS = process.env.DEBUG_TOKENS === 'true';
-const DEBUG_SCOPES = process.env.DEBUG_SCOPES === 'true';
 // Audience values — read from env only; no hardcoded fallbacks.
 // When not set, audience validation is skipped (tokens are still JWKS-verified).
 // Set ENDUSER_AUDIENCE and AI_AGENT_AUDIENCE in your deployment env to enforce
@@ -384,7 +383,7 @@ const logTokenInfo = (token, context = '') => {
     }
     
     // Determine token type based on claims
-    const isPingOneToken = payload.iss && payload.iss.includes('pingone');
+    const isPingOneToken = payload.iss?.includes('pingone');
     
     const tokenType = isPingOneToken ? 'PINGONE OAUTH' : 'OAUTH';
     
@@ -565,7 +564,7 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader?.split(' ')[1];
 
     logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Starting token authentication', {
       ...requestContext,

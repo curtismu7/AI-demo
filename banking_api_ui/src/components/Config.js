@@ -15,6 +15,7 @@ import AgentUiModeToggle from './AgentUiModeToggle';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
 import VercelConfigTab from './VercelConfigTab';
 import WorkerAppConfigTab from './WorkerAppConfigTab';
+import SetupWizardTab from './SetupWizardTab';
 import '../styles/appShellPages.css';
 import './Config.css';
 
@@ -704,6 +705,7 @@ export default function Config() {
         <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
           {[
             { key: 'setup',  label: '⚙️ Setup Config' },
+            { key: 'pingone-setup', label: '🔧 PingOne Setup' },
             { key: 'vercel', label: '▲ Vercel Env' },
             { key: 'worker', label: '🔑 Worker App' },
           ].map(({ key, label }) => {
@@ -753,6 +755,11 @@ export default function Config() {
         {/* Vercel Env tab content */}
         {activeTab === 'vercel' && hostedOn === 'vercel' && (
           <VercelConfigTab />
+        )}
+
+        {/* PingOne Setup tab content */}
+        {activeTab === 'pingone-setup' && (
+          <SetupWizardTab />
         )}
 
         {/* Worker App tab content */}

@@ -44,4 +44,5 @@ export const EDUCATION_COMMANDS = [
   { id: 'token-chain', label: '🔗 Token Chain', panel: EDU.TOKEN_CHAIN, tab: 'overview' },
   { id: 'token-chain-jwt', label: '🔗 Token Chain: JWT Claims', panel: EDU.TOKEN_CHAIN, tab: 'jwt-claims' },
   { id: 'token-chain-exchange', label: '🔗 Token Chain: Exchange Paths', panel: EDU.TOKEN_CHAIN, tab: 'exchange-paths' },
+  { id: 'agent-flow', label: '🔀 Agent request flow', flowDiagram: true },
 ];
