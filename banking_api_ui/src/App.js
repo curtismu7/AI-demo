@@ -373,12 +373,11 @@ function AppWithAuth() {
   const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
 
   // Routes where UserDashboard is rendered (handles its own middle FAB + split layout and its own bottom dock).
-  // Admin uses Dashboard.js on /admin and / — those routes need the global float/dock from App.
-  // Require a signed-in user: guests on `/` see LandingPage but must not be treated as "on UserDashboard"
-  // (otherwise App-level EmbeddedAgentDock is suppressed and marketing loses the bottom agent).
+  // Admin uses Dashboard.js on /admin — those routes need the global float/dock from App.
+  // / now renders LandingPage for non-admin logged-in users; UserDashboard lives at /dashboard.
   const onUserDashboardRoute =
     Boolean(user) &&
-    (pathname === '/dashboard' || (pathname === '/' && user.role !== 'admin'));
+    pathname === '/dashboard';
 
   // Marketing home (/ or /marketing): show floating agent even when signed out; signed-in /marketing too.
   // Suppress float on signed-in / only when UserDashboard owns middle placement.
@@ -485,9 +484,9 @@ function AppWithAuth() {
                 <main className="main-content">
                   <EducationBar />
                   <Routes location={backgroundLocation || fullLocation}>
-                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <UserDashboard user={user} onLogout={logout} />} />
+                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <LandingPage user={user} />} />
                     <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
-                    <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/config"      element={<Navigate to="/configure?tab=pingone-config" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
