@@ -193,6 +193,7 @@ const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetad
 const migrationRoutes = require('./routes/migration');
 const securityMonitoringRoutes = require('./routes/securityMonitoring');
 const oauthClientsRoutes = require('./routes/oauthClients');
+const oauthTokenRoutes = require('./routes/oauthToken');
 const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
 const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
 const { migrateAccounts } = require('./services/demoDataService');
