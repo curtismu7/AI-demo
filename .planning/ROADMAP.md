@@ -33,6 +33,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 65 | api-configuration-and-management-enhancements | Address critical API configuration issues, improve management worker authentication, and fix Vercel environment variable handling | API-01, API-02, API-03, API-04 | 1 plan |
 | 66 | ui-enhancements-and-user-experience-improvements | Comprehensive UI improvements including agent interface enhancements, education panel updates, authentication flow improvements, and visual design refinements | UI-01, UI-02, UI-03, UI-04, UI-05 | 1 plan |
 | 67 | documentation-enhancement-and-developer-tools | Complete documentation suite with comprehensive technical guides, visual diagrams, educational content, and developer tools for excellent developer experience | DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-05 | 1 plan |
+| 83 | ai-tokens-education | Create comprehensive education page explaining actor tokens, subject tokens, and other AI-related tokens with interactive diagrams and terminology glossary | Complete | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 
 ---
@@ -999,5 +1000,143 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 70 to break down)
+
+### Phase 71: 59.1 RFC 9728 compliance audit - Protected Resource Metadata implementation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 70
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 71 to break down)
+
+### Phase 72: 60.1 Agent showcase and integration storytelling - banking platform AI narrative
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 71
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 72 to break down)
+
+### Phase 73: 61.1 MCP spec error code compliance audit - 403/401 per MCP spec
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 72
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 73 to break down)
+
+### Phase 74: 62.1 Token exchange critical fixes and enhancements - may_act, RFC 8707, scopes
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 73
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 74 to break down)
+
+### Phase 75: 63.1 Documentation and integration critical fixes - ops guides, API docs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 74
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 75 to break down)
+
+### Phase 76: 64.1 Unified configuration page - consolidate /config and /demo-data
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 75
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 76 to break down)
+
+### Phase 77: 65.1 API configuration and management enhancements - auth methods, Vercel vars
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 76
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 77 to break down)
+
+### Phase 78: 66.1 UI enhancements and user experience improvements
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 77
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 78 to break down)
+
+### Phase 79: 67.1 Documentation enhancement and developer tools
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 78
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 79 to break down)
+
+### Phase 80: 68.1 RFC 9728 Support - Protected Resource Metadata implementation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 79
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 80 to break down)
+
+### Phase 81: 69.1 Standardize PingOne app, resource, and scope naming across all use cases
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 80
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 81 to break down)
+
+### Phase 82: 70.1 Super Banking rename verification - confirm no regressions across all layers
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 81
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 82 to break down)
+
+### Phase 83: AI Tokens Education
+
+**Goal:** Create a comprehensive education page explaining actor tokens, subject tokens, and other AI-related tokens used in the banking demo.
+
+**Requirements:** Complete
+**Depends on:** Phase 58, Phase 4
+**Plans:** 1 plan
+
+**Success criteria:**
+1. Users can clearly distinguish between actor tokens and subject tokens
+2. Token exchange flows are visually explained with interactive diagrams
+3. Education panel is accessible from multiple contexts in the app
+4. Content aligns with RFC 8693 token exchange specifications
+5. Token terminology is consistent across all educational materials
+
+Plans:
+- [ ] 83-01-PLAN.md - Design and implement AI tokens education panel with interactive diagrams and terminology glossary
 
 ---
