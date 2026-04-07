@@ -19,7 +19,8 @@
   --stack-fab-gap: 8px;
   --stack-fab-top-home: 16px;
   --stack-fab-top-dash: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
-  --stack-fab-top-base: 12px;
+  /* 72px clears the app header bar (padding ~12px + logo ~40px + padding ~12px + border 1px ≈ 65px) */
+  --stack-fab-top-base: 72px;
   /* Demo config FAB — first slot when quick nav hidden (config, landing, …) */
   --stack-fab-top-demo: var(--stack-fab-top-base);
   /* Keep left-side FABs inside the viewport */
