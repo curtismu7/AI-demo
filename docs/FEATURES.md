@@ -22,12 +22,18 @@ User visits the marketing page, clicks **Log In**, authenticates at PingOne, and
 
 ---
 
-### UC-B — Step-Up MFA on High-Value Transactions (CIBA / OTP)
-The AI agent attempts a transfer over the threshold (default **$500**). PingOne issues a backchannel auth challenge via CIBA — an email OTP is sent to the user. The agent waits. The user enters the code in the approval modal. The agent resumes automatically with an elevated token.
+### UC-B — Step-Up MFA on High-Value Transactions (deviceAuthentications API)
+The AI agent attempts a transfer over the threshold (default **$500**). PingOne issues a deviceAuthentication challenge — users can authenticate via OTP, Push, or FIDO2/WebAuthn. The agent waits. The user completes MFA in the approval modal. The agent resumes automatically with an elevated token.
 
-**What to show:** Ask the agent *"Transfer $600 from Checking to Savings"* → watch the CIBA challenge appear → enter the OTP → transaction completes.
+**What to show:** Ask the agent *"Transfer $600 from Checking to Savings"* → watch the deviceAuthentication challenge appear → select MFA method → authenticate → transaction completes.
 
-> Toggle between CIBA push and email OTP via `STEP_UP_METHOD` in Admin → Config.
+**Supported MFA Methods:**
+- Email OTP
+- SMS OTP  
+- Push Notifications
+- FIDO2/WebAuthn (Biometrics/Passkeys)
+
+> **Implementation Note:** Uses PingOne's deviceAuthentications API approach for optimal flexibility and user experience.
 
 ---
 
