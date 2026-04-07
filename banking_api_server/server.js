@@ -1,6 +1,9 @@
 // Load environment variables from .env file (no-op on Vercel where env vars are injected)
 require('dotenv').config();
 
+// Validate required env vars at startup — exits in production if any are missing
+require('./scripts/check-env');
+
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
 const { resolveRedisWireUrl } = require('./services/redisWireUrl');
