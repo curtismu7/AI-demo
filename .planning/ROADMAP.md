@@ -1141,15 +1141,17 @@ Plans:
 
 ### Phase 84: review all syntax errors code failures looping best practices for all code
 
-**Goal:** [To be planned]
+**Goal:** Remove dead code, clean up debug logging, consolidate shell scripts into enterprise-grade run.sh, and improve code quality across all services
 **Requirements**: TBD
 **Depends on:** Phase 83
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 **Accumulated todos (to include in plan):**
 - Enterprise-grade `run.sh` startup script: consolidate 5+ shell scripts into single entry point with pre-flight checks, subcommands (start/stop/restart/logs/test/status), post-start summary banner, PID-file process management, shellcheck-clean
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 84 to break down)
+- [ ] 84-01-PLAN.md — Audit code quality issues (shell scripts, console logs, dead code, test status)
+- [ ] 84-02-PLAN.md — Create enterprise run.sh with subcommands, pre-flight checks, PID management
+- [ ] 84-03-PLAN.md — Fix high-priority code quality issues (clean logs, remove dead code, fix error handling)
 
 ---
