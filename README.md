@@ -21,6 +21,11 @@ This is a **completely standalone** project — it can be handed to anyone and r
 
 See **[docs/SETUP.md](docs/SETUP.md)** for the complete setup guide — prerequisites, PingOne app configuration, environment variables, local run commands, and verification steps for all three auth flows.
 
+## What This Demo Does
+
+See **[docs/FEATURES.md](docs/FEATURES.md)** — demo scenarios, full feature matrix, 20-minute pitch checklist.  
+See **[docs/RFC-STANDARDS.md](docs/RFC-STANDARDS.md)** — every RFC and standard implemented, compliance level, and known gaps.
+
 ## Configuration
 
 See **[docs/SETUP.md](docs/SETUP.md)** (§ 2 — PingOne Application Configuration and § 3 — Environment Variables) for the full configuration reference, including all required env vars and their PingOne source.

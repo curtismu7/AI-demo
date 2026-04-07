@@ -166,6 +166,17 @@ export async function callMcpTool(tool, params = {}) {
         ok: false,
         errorMessage: err.message || `HTTP ${response.status}`,
       });
+      // Structured scope-error: surface all metadata so the UI can render an actionable modal
+      if (err.error === 'missing_exchange_scopes') {
+        throw Object.assign(new Error(err.message || 'Token exchange blocked: missing required scopes'), {
+          code: 'missing_exchange_scopes',
+          statusCode: 403,
+          missingScopes: err.missingScopes || [],
+          userScopes: err.userScopes || '',
+          requiredScopes: err.requiredScopes || '',
+          tokenEvents,
+        });
+      }
       const e = Object.assign(new Error(err.message || `MCP error: ${response.status}`), {
         tokenEvents,
         statusCode: response.status,

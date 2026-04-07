@@ -1142,22 +1142,59 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
     // server-side config errors, not invalid user tokens, so local fallback is safe.
     // We distinguish PingOne-origin 401s from session-guard 401s via err.pingoneError
     // (only set when the 401 response body was parsed from the PingOne token endpoint).
+    // missing_exchange_scopes: the user's access token doesn't carry the required scopes.
+    // Return a structured 403 so the UI can display an actionable config-fix modal.
+    // Do NOT fall back to local tool execution — that would hide the misconfiguration.
+    if (err.code === 'missing_exchange_scopes') {
+      const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+      return res.status(403).json({
+        error: 'missing_exchange_scopes',
+        message: err.message,
+        missingScopes: err.missingScopes || [],
+        userScopes: err.userScopes || '',
+        requiredScopes: err.requiredScopes || '',
+        tokenEvents: events,
+      });
+    }
+
     const sessionUser = req.session?.user;
     const isExchangeScopeError =
       err.httpStatus === 400 ||
       err.code === 'token_exchange_failed' ||
       (err.httpStatus === 401 && Boolean(err.pingoneError));
+    console.error(
+      '[MCP Fallback:DEBUG] tool=%s httpStatus=%s errCode=%s pingoneError=%s ' +
+      'sessionUser.id=%s sessionUser.oauthId=%s isExchangeScopeError=%s',
+      tool,
+      err.httpStatus ?? '(none)',
+      err.code ?? '(none)',
+      err.pingoneError ?? '(none)',
+      sessionUser?.id ?? '(missing — fallback will NOT fire)',
+      sessionUser?.oauthId ?? '(none)',
+      isExchangeScopeError
+    );
     if (sessionUser?.id && isExchangeScopeError) {
       const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-      console.log(`[MCP Local] ${tool} — exchange failed (${err.code}), falling back to local handler`);
+      const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+      console.log(
+        '[MCP Local] %s — exchange failed (%s), falling back to local handler. effectiveUserId=%s',
+        tool, err.code ?? err.httpStatus, effectiveUserId
+      );
       try {
         emit({ phase: 'local_tool_start', path: 'exchange_failed_fallback' });
-        const effectiveUserId = sessionUser.oauthId || sessionUser.id;
         const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
         emit({ phase: 'local_tool_done', path: 'exchange_failed_fallback' });
+        console.log('[MCP Local] %s — local fallback result keys=%s resultError=%s',
+          tool,
+          result ? Object.keys(result).join(',') : '(null)',
+          result?.error ?? '(none)'
+        );
         return res.json({ result, tokenEvents: fallbackEvents, _localFallback: true, _exchangeFailed: true });
       } catch (localErr) {
-        console.error(`[MCP Local] Error calling ${tool} after exchange failure:`, localErr.message);
+        console.error(
+          '[MCP Local] %s — callToolLocal THREW after exchange failure: %s stack=%s',
+          tool, localErr.message, localErr.stack
+        );
         // Fall through to original error response
       }
     }

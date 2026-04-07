@@ -765,6 +765,9 @@ export default function BankingAgent({
     return false;
   });
   /** True when the user has accepted the in-app agent consent agreement. */
+  /** Missing-scopes error from token exchange — shows config-fix modal. */
+  const [scopeErrorModal, setScopeErrorModal] = useState(null);
+
   /** Pending HITL intent — shows AgentConsentModal (transaction mode) before OTP. */
   const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
 
@@ -1859,6 +1862,13 @@ export default function BankingAgent({
           'Session missing or expired on the server. Try Refresh access token, or Sign in again.',
           { autoClose: 9000 },
         );
+      } else if (err?.code === 'missing_exchange_scopes') {
+        setScopeErrorModal({
+          missingScopes: err.missingScopes || [],
+          userScopes: err.userScopes || '(none)',
+          requiredScopes: err.requiredScopes || '',
+          tokenEvents: err.tokenEvents || [],
+        });
       } else if (err?.code === 'agent_consent_required') {
         // Old server deployment still enforcing startup consent gate.
         // The consent gate has been removed — sign out and sign in to refresh the session,
@@ -2459,6 +2469,100 @@ export default function BankingAgent({
                 />
               );
             })()}
+
+            {/* ── Missing-scopes config-fix modal ── */}
+            {scopeErrorModal && (
+              <div style={{
+                position: 'fixed', inset: 0, zIndex: 9999,
+                background: 'rgba(0,0,0,0.55)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '16px',
+              }}>
+                <div style={{
+                  background: 'var(--color-bg-card, #1a1d27)',
+                  border: '1px solid var(--color-border, #2e3147)',
+                  borderRadius: '12px',
+                  padding: '28px 32px',
+                  maxWidth: '540px',
+                  width: '100%',
+                  boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+                  color: 'var(--color-text, #e2e4ef)',
+                  fontFamily: 'inherit',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '22px' }}>⚠️</span>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>
+                      Token Exchange: Missing Required Scopes
+                    </h3>
+                  </div>
+
+                  <p style={{ margin: '0 0 12px', lineHeight: 1.6, fontSize: '14px' }}>
+                    This banking operation requires a narrowly-scoped MCP token, but RFC 8693 token
+                    exchange can only <strong>narrow</strong> — it cannot grant scopes your access
+                    token does not already carry.
+                  </p>
+
+                  <div style={{
+                    background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.25)',
+                    borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px',
+                  }}>
+                    <div style={{ marginBottom: '6px' }}>
+                      <span style={{ opacity: 0.7 }}>Required scopes:</span>{' '}
+                      {(scopeErrorModal.missingScopes.length
+                        ? scopeErrorModal.missingScopes
+                        : scopeErrorModal.requiredScopes.split(' ').filter(Boolean)
+                      ).map(s => (
+                        <code key={s} style={{
+                          background: 'rgba(255,80,80,0.15)', borderRadius: '4px',
+                          padding: '1px 6px', marginLeft: '4px', fontSize: '12px',
+                        }}>{s}</code>
+                      ))}
+                    </div>
+                    <div>
+                      <span style={{ opacity: 0.7 }}>Your token has:</span>{' '}
+                      {scopeErrorModal.userScopes.split(' ').filter(Boolean).map(s => (
+                        <code key={s} style={{
+                          background: 'rgba(100,100,200,0.15)', borderRadius: '4px',
+                          padding: '1px 6px', marginLeft: '4px', fontSize: '12px',
+                        }}>{s}</code>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 600 }}>How to fix:</p>
+                  <ol style={{ margin: '0 0 20px', paddingLeft: '20px', fontSize: '13px', lineHeight: 1.8 }}>
+                    <li>
+                      Open your <strong>PingOne Admin Console</strong> and find your user-facing
+                      OAuth app (BX Finance User App).
+                    </li>
+                    <li>
+                      Add <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:write</code>{' '}
+                      and <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:read</code>{' '}
+                      to the app&apos;s allowed scopes (or enable <strong>ff_skip_token_exchange</strong> in
+                      Admin → Config to bypass exchange entirely).
+                    </li>
+                    <li>
+                      <strong>Sign out and sign back in</strong> to obtain a new access token that
+                      carries those scopes.
+                    </li>
+                  </ol>
+
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setScopeErrorModal(null)}
+                      style={{
+                        padding: '8px 20px', borderRadius: '8px', border: 'none',
+                        background: 'var(--color-primary, #4f7df3)', color: '#fff',
+                        fontWeight: 600, fontSize: '14px', cursor: 'pointer',
+                      }}
+                    >
+                      Got it
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* OTP + transaction execution — rendered once challenge is created */}
             {hitlChallengeId && (

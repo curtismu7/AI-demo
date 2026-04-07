@@ -208,6 +208,13 @@ class OAuthService {
     });
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     applyAdminTokenEndpointClientAuth(this.config, body, headers);
+    console.log(
+      '[TokenExchange:REQUEST] endpoint=%s client_id=%s audience=%s scope="%s"',
+      this.config.tokenEndpoint,
+      this.config.clientId,
+      audience,
+      scopeStr
+    );
     try {
       const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const exchanged = response.data.access_token;
@@ -217,7 +224,14 @@ class OAuthService {
     } catch (error) {
       const pingoneData = error.response?.data || {};
       const httpStatus  = error.response?.status;
-      console.error('[TokenExchange] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      console.error('[TokenExchange:FAILED] httpStatus=%s error=%s description=%s detail=%s audience=%s scope="%s"',
+        httpStatus,
+        pingoneData.error ?? error.message,
+        pingoneData.error_description ?? '(none)',
+        pingoneData.error_detail ?? pingoneData.details ?? '(none)',
+        audience,
+        scopeStr
+      );
       const richErr = new Error(
         `Token exchange failed: ${pingoneData.error_description || pingoneData.error || error.message}`
       );

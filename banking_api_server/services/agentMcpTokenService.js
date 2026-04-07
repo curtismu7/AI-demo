@@ -448,6 +448,78 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const validExchangeScopes = effectiveToolScopes.filter(scope => !DELEGATION_ONLY_SCOPES.has(scope));
   const finalScopes = validExchangeScopes.length > 0 ? validExchangeScopes : ['banking:read'];
 
+  // ── Comprehensive scope-resolution debug log ──────────────────────────────
+  console.log(
+    '[TokenExchange:DEBUG] tool=%s | userScopes=[%s] | toolCandidateScopes=[%s] | ' +
+    'toolScopes=[%s] | fallbackScopes=[%s] | effectiveToolScopes=[%s] | finalScopes=[%s] | ' +
+    'mcpResourceUri=%s | ENDUSER_AUDIENCE=%s',
+    tool,
+    [...userTokenScopes].join(',') || '(none)',
+    toolCandidateScopes.join(','),
+    toolScopes.join(',') || '(none — no tool scopes in user token)',
+    (fallbackScopes || []).join(',') || '(none)',
+    effectiveToolScopes.join(','),
+    finalScopes.join(','),
+    mcpResourceUri || '(not set)',
+    process.env.ENDUSER_AUDIENCE || '(not set)'
+  );
+
+  // ── Pre-exchange bail-out: skip when exchange is guaranteed to fail ────────
+  // PingOne token exchange can ONLY narrow scopes — it cannot grant a scope that the
+  // subject token does not already carry.  When none of finalScopes appear in the user
+  // token (common when ENDUSER_AUDIENCE is set and login scope is banking:agent:invoke
+  // only), the exchange will always return "At least one scope must be granted" (HTTP 400).
+  // Detecting this upfront avoids the round-trip to PingOne and routes directly to the
+  // local tool fallback in server.js without surfacing a confusing error to the user.
+  //
+  // Exception: if ff_skip_token_exchange is ON we never reach this point (returned above).
+  // Exception: if PingOne has a cross-scope grant policy for banking:agent:invoke → banking:write,
+  //            set ALLOW_AGENT_INVOKE_EXCHANGE=true to bypass this early-exit.
+  const allowAgentInvokeExchange = process.env.ALLOW_AGENT_INVOKE_EXCHANGE === 'true';
+  const scopesMissingFromUserToken = finalScopes.every(s => !userTokenScopes.has(s));
+  if (scopesMissingFromUserToken && !allowAgentInvokeExchange) {
+    const userScopesStr = [...userTokenScopes].join(' ') || '(none)';
+    const requiredStr   = finalScopes.join(' ');
+    console.warn(
+      '[TokenExchange:BLOCKED] tool=%s — all finalScopes [%s] absent from user token [%s]. ' +
+      'Token exchange cannot narrow to scopes the subject does not carry (RFC 8693 §2.1). ' +
+      'Fix: add banking:write + banking:read to PingOne user app scopes and re-login. ' +
+      'Or enable ff_skip_token_exchange. ' +
+      'Or set ALLOW_AGENT_INVOKE_EXCHANGE=true if PingOne grants banking:write from banking:agent:invoke.',
+      tool, requiredStr, userScopesStr
+    );
+    tokenEvents.push(buildTokenEvent(
+      'exchange-blocked',
+      'Token Exchange (RFC 8693) — Blocked: required scopes not on user token',
+      'failed',
+      null,
+      `User access token does not carry any of the required scopes [${requiredStr}]. ` +
+      `RFC 8693 token exchange can only narrow scopes — it cannot grant scopes the subject token does not have. ` +
+      `User token scopes: [${userScopesStr}]. ` +
+      `Fix: add banking:write and banking:read to the PingOne user app allowed scopes and re-login.`,
+      {
+        rfc: 'RFC 8693 §2.1',
+        trigger: toolTrigger,
+        userScopes: userScopesStr,
+        requiredScopes: requiredStr,
+        blockReason: 'scope_not_on_subject_token',
+        enduserAudience: process.env.ENDUSER_AUDIENCE || null,
+      }
+    ));
+    const scopeErr = new Error(
+      `Token exchange blocked: your access token has [${userScopesStr}] but this operation requires [${requiredStr}]. ` +
+      `Add banking:write and banking:read to the PingOne user app, then sign out and sign back in.`
+    );
+    scopeErr.code        = 'missing_exchange_scopes';
+    scopeErr.httpStatus  = 403;
+    scopeErr.tokenEvents = tokenEvents;
+    scopeErr.missingScopes   = finalScopes.filter(s => !userTokenScopes.has(s));
+    scopeErr.userScopes      = userScopesStr;
+    scopeErr.requiredScopes  = requiredStr;
+    throw scopeErr;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // ── 2-Exchange delegation path ──────────────────────────────────────────────────
   // ff_two_exchange_delegation: Subject Token → (AI Agent) → Agent Exchanged Token → (MCP) → Final Token
   // Produces nested act claim: act.sub=MCP_CLIENT_ID, act.act.sub=AI_AGENT_CLIENT_ID
