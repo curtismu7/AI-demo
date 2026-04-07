@@ -3,12 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-04T20:49:12.535Z"
+last_updated: "2026-04-07T19:53:50.889Z"
 progress:
-  total_phases: 55
-  completed_phases: 34
-  total_plans: 99
-  completed_plans: 95
+  total_phases: 96
+  completed_phases: 47
+  total_plans: 136
+  completed_plans: 108
+  percent: 79
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,9 +21,9 @@ progress:
 
 ## Current Position
 
-Phase: 58 (rfc8693-delegation-claims-compliance) — COMPLETE
-**Status:** Ready for next phase
-**Last Completed:** RFC 8693 delegation claims compliance - may_act and act claim structures, delegation chain validation, identity format standardization, comprehensive middleware and error handling (Phase 58)
+Phase: 10 (enterprise-grade-hitl-high-value-transaction-warnings-ciba-or-otp-step-up-based-on-configuration-and-polished-approval-ux) — EXECUTING
+Plan: 2 of 3
+**Status:** Ready to execute
 
 ---
 
@@ -35,9 +36,7 @@ Phase: 58 (rfc8693-delegation-claims-compliance) — COMPLETE
 - Phase 6 (token-exchange-fix) — complete
 - Phase 7 (rfc-9728-protected-resource-metadata) — complete
 - Phase 8 (banking-transaction-integrity) — complete
-- Phase 10 (enterprise-grade-hitl-high-value-transaction-warnings) — complete (commit: eb3ef67)
 - Phase 12 (ui-button-consistency) — complete
-- Phase 13 (dashboard-first-impression-overhaul) — complete (commit: 358ed1f)
 - Phase 19 (demo-config-page-audit) — complete
 - Phase 20 (postman-collections) — complete (commits: 1c4f75f, 56df684, a549287, af3a767)
 - Phase 52 (pingone-mfa-step-up) — complete (commits: a4477e1, a867fb6, a3c3b0d, 02bf0d8)
@@ -46,16 +45,9 @@ Phase: 58 (rfc8693-delegation-claims-compliance) — COMPLETE
 - Phase 22 (agent-capability-audit) — complete (commits: bd866c6, 1448b7a)
 - Phase 23 (langchain-modernization) — complete (commits: f80d934, 343951c, 91789e8, c35b95e)
 - Phase 29 (use-case-c-sensitive-data-access) — complete (commit: 3ca82da)
-- Phase 27 (pingone-authorize-paz-setup) — complete (commits: RFC 8693 compliance, AUD validation)
-- Phase 28 (vercel-config-tab) — complete (commits: Vercel API integration, UI components)
-- Phase 39 (architecture-diagram) — complete (commits: Comprehensive system overview, documentation)
-- Phase 44 (admin-mode-token-exchange) — complete (commits: Admin token exchange, audit logging)
-- Phase 58 (rfc8693-delegation-claims-compliance) — complete (commits: delegation claims service, validation middleware, identity format standardization, comprehensive error handling)
-- Phase 36 (postman-collections-and-environments-audit) — complete (commit: updated)
 - Phase 48 (remove-invalid-spel-act-expression) — complete (commits: d4c0a7a, fc86d8d)
 - Phase 49 added: Setup wizard — credential input page that creates .env, provisions Vercel env vars, creates PingOne apps and resource servers, and attaches scopes via Management API worker token
 - Phase 50 added: Update docs, setup script, and fix logout URLs on PingOne apps using worker token — audit all PingOne config documentation and ensure logout URLs are correct everywhere
-- Phase 54 added: Self-service user provisioning — create customer and admin logins with profile data (email, phone, address) and mayAct custom JSON attribute setup
 
 ---
 
@@ -90,12 +82,10 @@ Phase: 58 (rfc8693-delegation-claims-compliance) — COMPLETE
 
 ---
 
-## Pending Todos (57)
+## Pending Todos (55)
 
 - **[TODO -> auth]** Reorganize PingOne apps — OIDC agents to AI Agents group, OIDC user apps to Applications group
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
-- **[TODO -> ui]** Add self-service button to side menu on main page and dashboards
-- **[TODO -> docs]** Add RFC 8707 resource indicators to educational panels and verify PingOne support
 - ~~Plan Phase 1 (auth-flows)~~ *(complete)*
 - Redeploy to Vercel (commits since last deploy include Phase 29: 3ca82da)
 - ~~When merged to main: update raw doc links~~ *(merged to main 2026-04-03)*
@@ -139,17 +129,3 @@ Phase: 58 (rfc8693-delegation-claims-compliance) — COMPLETE
 - Phase 42 added: Persist demo accounts across server restarts using env file on Vercel and SQLite on local
 - Phase 51 added: Auth rules audit tests and demo config section for login OTP and high-value transaction gates
 - Phase 52 added: PingOne MFA step-up research and implementation — OTP FIDO TOTP full MFA capability
-- Phase 55 added: Docker Kubernetes deployment — containerize all components for Kubernetes deployment with production-ready Docker images and orchestration manifests
-- Phase 56 added: Token exchange audit and compliance — comprehensive RFC 8693 compliance audit against architectural diagrams
-- Phase 57 added: OAuth client credentials security hardening — replace PATs with OAuth 2.0 client credentials for AI integrations (80% security value, 20% complexity)
-- Phase 58 added: RFC 8693 delegation claims compliance — ensure proper may_act and act claim structures for delegation patterns
-- Phase 59 added: RFC 9728 compliance and education audit — comprehensive audit of Protected Resource Metadata implementation and educational coverage
-- Phase 60 added: Agent showcase and integration storytelling — transform demonstration to showcase established banking platform embracing AI augmentation
-- Phase 61 added: MCP specification error code compliance audit — comprehensive audit of MCP error handling to ensure 403→"invalid scopes" and 401→auth flow per MCP spec
-- Phase 62 added: Token exchange critical fixes and enhancements — address critical audit issues: may_act format, RFC 8707, scope simplification, test coverage, documentation
-- Phase 63 added: Documentation and integration critical fixes — fix critical documentation gaps: operations guides, developer integration, API docs, architecture, configuration
-- Phase 64 added: Unified configuration page — merge config and demo-data into one unified configuration page with complete audit and seamless migration
-- Phase 65 added: API configuration and management enhancements — address critical API configuration issues, improve management worker authentication, and fix Vercel environment variable handling
-- Phase 66 added: UI enhancements and user experience improvements — comprehensive UI improvements including agent interface, education panels, authentication flows, and visual design
-- Phase 67 added: Documentation enhancement and developer tools — complete documentation suite with comprehensive technical guides, visual diagrams, educational content, and developer tools
-- Phase 83 added: AI Tokens Education - create comprehensive education page explaining actor tokens, subject tokens, and other AI-related tokens with interactive diagrams and terminology glossary
