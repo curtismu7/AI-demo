@@ -27,6 +27,7 @@ const { getOAuthRedirectDebugInfo } = require('../services/oauthRedirectUris');
 const { blockInDemoMode } = require('../middleware/demoMode');
 const hosting = require('../config/hosting');
 const { probeManagementApiAccess } = require('../services/pingoneBootstrapService');
+const { getConfigurationStatus, getValidationSummary } = require('../services/envValidation');
 
 const rateLimitDisabled = ['1', 'true', 'yes'].includes(
   String(process.env.DISABLE_RATE_LIMIT || '').toLowerCase()
@@ -95,6 +96,11 @@ router.get('/', configReadLimiter, async (req, res) => {
     } catch (e) {
       redirectInfo = { error: e.message };
     }
+
+    // Get environment validation status
+    const configStatus = getConfigurationStatus();
+    const validation = getValidationSummary();
+
     res.json({
       config:       configStore.getMasked(),
       isConfigured: configStore.isConfigured(),
@@ -108,6 +114,16 @@ router.get('/', configReadLimiter, async (req, res) => {
       hostedOn: hosting.isVercel() ? 'vercel' : hosting.isReplit() ? 'replit' : 'local',
       /** Exact redirect URIs to register in PingOne for this deployment (server-computed). */
       redirectInfo,
+      /** Environment validation and configuration status */
+      environment: {
+        valid: validation.valid,
+        scenario: validation.scenario,
+        errorCount: validation.errorCount,
+        warningCount: validation.warningCount,
+        missingVars: validation.missingVars,
+        recommendations: validation.recommendations,
+        ...configStatus
+      }
     });
   } catch (err) {
     console.error('[adminConfig] GET error:', err.message);

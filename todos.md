@@ -23,9 +23,9 @@ Add unauthenticated agent chip group with login prompt chip, keep existing chip 
 Fix floating agent popout window to match agent height and width (ui, 2d ago)
 Add session expiry countdown timer to header (ui, 2d ago)
 Middle agent layout needs scrollbar when window height is short (ui, 2d ago)
-Include PINGONE_MAY_ACT docs in Phase 5 user documentation (docs, 2d ago)
-Merge config and demo-data into one unified configuration page (ui, 2d ago)
-Token Endpoint Auth Method Selector on Demo Data Page (ui, 2d ago)
+*Include PINGONE_MAY_ACT docs in Phase 5 user documentation (docs, 2d ago)
+*Merge config and demo-data into one unified configuration page (ui, 2d ago)
+*Token Endpoint Auth Method Selector on Demo Data Page (ui, 2d ago)*
 Add Vercel env vars for 2-exchange delegation and fix warning message context (api, 2d ago)
 Script PingOne resource server and scope setup via Management API (api, 2d ago)
 Update AGENT_OAUTH credentials in .env for recreated MCP Token Exchanger (api, 2d ago)

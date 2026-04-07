@@ -126,6 +126,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const handleInitiateOtpRef = useRef(null);    // stays current — avoids stale closure
   const stepUpVerifyHrefRef  = useRef(null);    // stays current — avoids stale closure
   const fetchingRef = React.useRef(false);
+  const agentPlacementInitRef = React.useRef(true);
   
   const loadDemoFallback = useCallback((reason) => {
     // Guard: do not overwrite real account data if the user is already authenticated.
@@ -299,10 +300,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       setDashboardLayout('classic');
     }
     
-    // Fix: Ensure account data is refreshed when layout changes to prevent account loss
-    // This addresses the issue where switching to middle layout loses car payment and investment accounts
-    if (user) {
-      fetchUserData(true); // silent refresh to ensure accounts are loaded
+    // Refresh account data on layout change to prevent account loss (todo #11).
+    // Skip the very first mount — the dedicated mount-only useEffect owns the initial
+    // non-silent fetch. Calling fetchUserData(true) here on mount steals fetchingRef
+    // before the mount effect runs (effects fire in declaration order), leaving
+    // loading=true forever because the non-silent call hits the guard and returns early.
+    if (agentPlacementInitRef.current) {
+      agentPlacementInitRef.current = false;
+    } else if (user) {
+      fetchUserData(true);
     }
   }, [agentPlacement, user, fetchUserData]);
 

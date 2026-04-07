@@ -970,4 +970,34 @@ Plans:
 5. Developer tools improved with enhanced Postman collections for both audiences and comprehensive phase planning tools
 6. Quality assurance processes established with automated validation and maintenance procedures for ongoing documentation excellence
 
+### Phase 68: RFC 9728 Support - Protected Resource Metadata implementation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 67
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 68 to break down)
+
+### Phase 69: Standardize PingOne app, resource, and scope naming across all use cases
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 68
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 69 to break down)
+
+### Phase 70: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 69
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 70 to break down)
+
 ---

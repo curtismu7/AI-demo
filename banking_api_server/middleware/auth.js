@@ -4,10 +4,8 @@ const configStore = require('../services/configStore');
 const { validateToken: validatePingOneToken } = require('../services/tokenValidationService');
 const { 
   BANKING_SCOPES, 
-  USER_TYPE_SCOPES, 
   ROUTE_SCOPE_MAP,
   getCurrentEnvironmentConfig,
-  getScopesForUserType,
   isValidScope
 } = require('../config/scopes');
 const { logger, LOG_CATEGORIES } = require('../utils/logger');
@@ -581,18 +579,38 @@ const authenticateToken = async (req, res, next) => {
       // This prevents token relay — the token never needs to leave the backend.
       const sessionToken = req.session?.oauthTokens?.accessToken;
       if (sessionToken) {
-        // Short-circuit the _cookie_session stub — it is a placeholder set by
-        // restoreSessionFromCookie when no real OAuth token is in the session
-        // (typically Upstash is unavailable).  There is no point running JWKS
-        // validation on it; return 401 immediately with a clear code.
+        // Handle _cookie_session stub - allow for demo purposes when Redis/KV unavailable
         if (sessionToken === '_cookie_session') {
-          logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Session token is _cookie_session stub — re-authentication required', requestContext);
-          throw new OAuthError(
-            OAUTH_ERROR_TYPES.AUTHENTICATION_REQUIRED,
-            'Session requires re-authentication (session not persisted to Redis)',
-            401,
-            { hint: 'Sign in again to refresh the session' },
-          );
+          // Check if we have a valid user session (from cookie restore)
+          if (req.session && req.session.user && req.session._restoredFromCookie) {
+            logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Accepting _cookie_session stub with valid user session (demo mode)', requestContext);
+            
+            // Set minimal user info from session for downstream routes
+            req.user = {
+              id: req.session.user.id,
+              username: req.session.user.username || req.session.user.email,
+              email: req.session.user.email,
+              role: req.session.user.role || 'customer',
+              // Mark as cookie session for audit purposes
+              _cookieSession: true,
+              _restoredFromCookie: true
+            };
+            
+            // Set empty scopes for demo mode
+            req.user.scopes = [];
+            req.user.clientType = 'web';
+            req.user.userType = 'customer';
+            
+            return next();
+          } else {
+            logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Session token is _cookie_session stub — re-authentication required', requestContext);
+            throw new OAuthError(
+              OAUTH_ERROR_TYPES.AUTHENTICATION_REQUIRED,
+              'Session requires re-authentication (session not persisted to Redis)',
+              401,
+              { hint: 'Sign in again to refresh the session' },
+            );
+          }
         }
 
         logger.debug(LOG_CATEGORIES.AUTHENTICATION, 'Using session token as fallback (no Authorization header)', requestContext);
