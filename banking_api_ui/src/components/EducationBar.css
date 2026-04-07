@@ -3,7 +3,7 @@
 
 .edu-bar--dock {
   position: fixed;
-  top: max(10px, env(safe-area-inset-top, 0px));
+  top: max(36px, calc(env(safe-area-inset-top, 0px) + 36px));
   right: max(12px, env(safe-area-inset-right, 0px));
   z-index: 10055;
   width: auto;

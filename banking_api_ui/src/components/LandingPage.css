@@ -1317,24 +1317,28 @@
   align-items: center;
   gap: 8px;
   justify-content: center;
-  padding: 6px 16px;
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
-  font-size: 13px;
+  padding: 5px 16px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #374151;
+  font-size: 12px;
+  border-bottom: 1px solid #e5e7eb;
   backdrop-filter: blur(4px);
 }
 .landing-session-banner__sep {
-  opacity: 0.4;
+  opacity: 0.35;
+  color: #6b7280;
 }
 .landing-session-banner__link {
   background: none;
   border: none;
-  color: #4fa3e0;
+  color: #2563eb;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   padding: 0;
-  text-decoration: underline;
+  font-weight: 600;
+  text-decoration: none;
 }
 .landing-session-banner__link:hover {
-  color: #7ec0f5;
+  color: #1d4ed8;
+  text-decoration: underline;
 }
