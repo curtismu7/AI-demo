@@ -230,10 +230,10 @@ function shouldUseAdminTokenForTool(req, toolName) {
   // 3. Tool requires admin privileges OR admin is explicitly requested
   
   const adminEnabled = shouldUseAdminToken(req);
-  const isAdminSession = isAdminSession(req.session);
+  const isAdmin = isAdminSession(req.session);
   const toolRequiresAdmin = toolRequiresAdminPrivileges(toolName);
 
-  return adminEnabled && isAdminSession && (toolRequiresAdmin || (req.useAdminToken === true));
+  return adminEnabled && isAdmin && (toolRequiresAdmin || (req.useAdminToken === true));
 }
 
 module.exports = {
