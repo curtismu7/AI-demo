@@ -19,7 +19,7 @@ export default function DashboardQuickNav({ user }) {
     if (!user || !isDashboardQuickNavRoute(pathname, user)) return;
     // Home + Dashboard + Agent + [Banking admin] + [Config admin] + API + Logs
     const count = 5 + (isAdmin ? 2 : 0);
-    const height = count * 44 + (count - 1) * 8;
+    const height = count * 44; // gap: 0, no inter-button spacing
     document.documentElement.style.setProperty('--quick-nav-stack-height', `${height}px`);
   }, [isAdmin, user, pathname]);
 

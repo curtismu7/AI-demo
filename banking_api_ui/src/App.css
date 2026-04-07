@@ -16,7 +16,7 @@
   /* Left-side rail (top → bottom): Quick nav (when present) → Demo config — CIBA/CIMD FABs removed */
   --stack-fab-width: 220px;
   --stack-fab-height: 44px;
-  --stack-fab-gap: 8px;
+  --stack-fab-gap: 0px;
   --stack-fab-top-home: 16px;
   --stack-fab-top-dash: calc(var(--stack-fab-top-home) + var(--stack-fab-height) + var(--stack-fab-gap));
   /* 72px clears the app header bar (padding ~12px + logo ~40px + padding ~12px + border 1px ≈ 65px) */
@@ -38,8 +38,8 @@
 .App.App--has-quick-nav {
   --float-edge: 12px;
   --stack-fab-top-quick-nav: var(--stack-fab-top-base);
-  --quick-nav-stack-height: calc(7 * var(--stack-fab-height) + 6 * var(--stack-fab-gap)); /* overridden by DashboardQuickNav.js */
-  --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height) + var(--stack-fab-gap));
+  --quick-nav-stack-height: calc(7 * var(--stack-fab-height)); /* overridden by DashboardQuickNav.js; gap:0 so no gap term */
+  --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height));
   /* Page content clears quick nav + demo */
   --rail-content-gap: 16px;
   --left-rail-inset: calc(
@@ -406,8 +406,8 @@ html[data-theme='dark'] .App--marketing-page .main-content {
   }
   .App.App--has-quick-nav {
     --stack-fab-top-quick-nav: var(--stack-fab-top-base);
-    --quick-nav-stack-height: calc(7 * var(--stack-fab-height) + 6 * var(--stack-fab-gap));
-    --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height) + var(--stack-fab-gap));
+    --quick-nav-stack-height: calc(7 * var(--stack-fab-height));
+    --stack-fab-top-demo: calc(var(--stack-fab-top-quick-nav) + var(--quick-nav-stack-height));
   }
   .App.App--has-nav-dash {
     --stack-fab-top-base: calc(var(--stack-fab-top-dash) + var(--stack-fab-height) + var(--stack-fab-gap));
@@ -431,9 +431,10 @@ html[data-theme='dark'] .App--marketing-page .main-content {
   height: var(--stack-fab-height, 44px);
   min-height: var(--stack-fab-height, 44px);
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
   color: #fff;
   -webkit-text-fill-color: #fff;
   font-size: 0.8125rem;
