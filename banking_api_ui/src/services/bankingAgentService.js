@@ -59,12 +59,34 @@ export async function callMcpTool(tool, params = {}) {
   try {
     console.log('[callMcpTool] Calling MCP tool:', { tool, paramsKeys: Object.keys(params || {}) });
   } catch (err) {
+    // Timeout or connection error
+    if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
+      console.warn('[callMcpTool] Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
+      throw Object.assign(new Error('Connection timeout - server may be restarting'), {
+        statusCode: 504,
+        code: 'connection_timeout',
+        isNetworkError: true
+      });
+    }
+    
+    // Re-throw other errors
     console.warn('[callMcpTool] Console logging failed (possible extension interference):', err);
   }
   
   try {
     agentFlowDiagram.startMcpToolCall(tool);
   } catch (err) {
+    // Timeout or connection error
+    if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
+      console.warn('[callMcpTool] Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
+      throw Object.assign(new Error('Connection timeout - server may be restarting'), {
+        statusCode: 504,
+        code: 'connection_timeout',
+        isNetworkError: true
+      });
+    }
+    
+    // Re-throw other errors
     console.warn('[callMcpTool] Flow diagram initialization failed:', err);
   }
 
@@ -77,6 +99,17 @@ export async function callMcpTool(tool, params = {}) {
     try {
       agentFlowDiagram.applyServerEvent(data);
     } catch (err) {
+    // Timeout or connection error
+    if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
+      console.warn('[callMcpTool] Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
+      throw Object.assign(new Error('Connection timeout - server may be restarting'), {
+        statusCode: 504,
+        code: 'connection_timeout',
+        isNetworkError: true
+      });
+    }
+    
+    // Re-throw other errors
       console.warn('[callMcpTool] Failed to apply server event:', err);
     }
   });
@@ -92,6 +125,17 @@ export async function callMcpTool(tool, params = {}) {
       throw new Error('Failed to serialize request body');
     }
   } catch (err) {
+    // Timeout or connection error
+    if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
+      console.warn('[callMcpTool] Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
+      throw Object.assign(new Error('Connection timeout - server may be restarting'), {
+        statusCode: 504,
+        code: 'connection_timeout',
+        isNetworkError: true
+      });
+    }
+    
+    // Re-throw other errors
     console.error('[callMcpTool] Failed to construct request body:', { tool, params, err });
     throw new Error(`Request body construction failed: ${err.message}`);
   }
@@ -106,6 +150,22 @@ export async function callMcpTool(tool, params = {}) {
   const t0 = Date.now();
   try {
     let response = await fetch('/api/mcp/tool', fetchOpts);
+    
+    // 504 Server Unavailable — server is restarting
+    if (response.status === 504) {
+      console.warn('[callMcpTool] 504 Server Unavailable - server may be restarting');
+      const error504 = {
+        error: 'server_unavailable',
+        message: 'Server is temporarily unavailable (504)',
+        statusCode: 504
+      };
+      appendMcpCall(tool, 504, Date.now() - t0, null, 'Server Unavailable (504)');
+      throw Object.assign(new Error('Server is restarting (504)'), {
+        statusCode: 504,
+        code: 'server_unavailable',
+        isServerError: true
+      });
+    }
     
     // Enhanced 400 error handling
     if (response.status === 400) {
