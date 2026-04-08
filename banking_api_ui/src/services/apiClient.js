@@ -189,11 +189,11 @@ class ApiClient {
       try {
         const userRefreshResponse = await axios.post('/api/auth/oauth/user/refresh');
         if (userRefreshResponse.data.accessToken) {
-          console.log('Successfully refreshed end user token');
+          console.debug('Successfully refreshed end user token');
           return userRefreshResponse.data.accessToken;
         }
       } catch (userRefreshError) {
-        console.log('End user token refresh failed:', userRefreshError.response?.data?.error || userRefreshError.message);
+        console.warn('End user token refresh failed:', userRefreshError.response?.data?.error || userRefreshError.message);
         // If refresh is not implemented (501) or no refresh token (401), don't try admin refresh
         if (userRefreshError.response?.status === 501 || userRefreshError.response?.status === 401) {
           throw userRefreshError;
@@ -204,11 +204,11 @@ class ApiClient {
       try {
         const adminRefreshResponse = await axios.post('/api/auth/oauth/refresh');
         if (adminRefreshResponse.data.accessToken) {
-          console.log('Successfully refreshed admin token');
+          console.debug('Successfully refreshed admin token');
           return adminRefreshResponse.data.accessToken;
         }
       } catch (adminRefreshError) {
-        console.log('Admin token refresh failed:', adminRefreshError.response?.data?.error || adminRefreshError.message);
+        console.warn('Admin token refresh failed:', adminRefreshError.response?.data?.error || adminRefreshError.message);
         throw adminRefreshError;
       }
 
@@ -216,16 +216,14 @@ class ApiClient {
     } catch (error) {
       console.error('Token refresh failed:', error);
       if (error.response?.status === 501) {
-        console.log('Token refresh not implemented');
       } else if (error.response?.status === 401) {
-        console.log('No refresh token available');
       }
       throw error;
     }
   }
 
   handleAuthFailure() {
-    console.log('Authentication failed, redirecting to login');
+    console.warn('Authentication failed, redirecting to login');
     localStorage.setItem('userLoggedOut', 'true');
     delete axios.defaults.headers.common['Authorization'];
     window.dispatchEvent(new CustomEvent('userLoggedOut'));

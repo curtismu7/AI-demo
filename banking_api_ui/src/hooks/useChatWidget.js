@@ -45,21 +45,12 @@ const useChatWidget = () => {
   // Return widget control methods that use the global widget
   return {
     open: () => {
-      console.log('Attempting to open chat widget...');
-      console.log('window.bankingWidget:', window.bankingWidget);
-      console.log('window.initBankingChatWidget:', window.initBankingChatWidget);
       
       if (window.bankingWidget) {
         try {
           // Check DOM before opening
-          console.log('🔍 DOM elements before open:', {
-            chatWidgets: document.querySelectorAll('[id*="chat"]'),
-            bankingWidgets: document.querySelectorAll('[id*="banking"]'),
-            allWidgets: document.querySelectorAll('[class*="widget"], [id*="widget"]')
-          });
           
           window.bankingWidget.open();
-          console.log('Chat widget opened successfully');
           
           // Check DOM after opening
           setTimeout(() => {
@@ -67,40 +58,12 @@ const useChatWidget = () => {
             const bankingWidgets = document.querySelectorAll('[id*="banking"]');
             const allWidgets = document.querySelectorAll('[class*="widget"], [id*="widget"]');
             
-            console.log('🔍 DOM elements after open:', {
-              chatWidgets,
-              bankingWidgets,
-              allWidgets,
-              hiddenElements: document.querySelectorAll('[style*="display: none"], [style*="visibility: hidden"]')
-            });
-            
             // Inspect each widget element in detail
             [...chatWidgets, ...bankingWidgets, ...allWidgets].forEach((el, index) => {
               const styles = window.getComputedStyle(el);
-              console.log(`🔍 Widget element ${index}:`, {
-                element: el,
-                id: el.id,
-                className: el.className,
-                innerHTML: el.innerHTML.substring(0, 200) + '...',
-                styles: {
-                  display: styles.display,
-                  visibility: styles.visibility,
-                  opacity: styles.opacity,
-                  position: styles.position,
-                  zIndex: styles.zIndex,
-                  top: styles.top,
-                  right: styles.right,
-                  bottom: styles.bottom,
-                  left: styles.left,
-                  width: styles.width,
-                  height: styles.height,
-                  transform: styles.transform
-                }
-              });
               
               // Try to make it visible and positioned
               if (el.id.includes('banking') || el.id.includes('chat')) {
-                console.log(`🔧 Attempting to fix widget ${index}...`);
                 el.style.position = 'fixed';
                 el.style.bottom = '20px';
                 el.style.right = '20px';
@@ -114,7 +77,6 @@ const useChatWidget = () => {
                 el.style.border = '2px solid #007bff';
                 el.style.borderRadius = '12px';
                 el.style.boxShadow = '0 8px 32px rgba(0,0,0,0.2)';
-                console.log(`✅ Applied fixes to widget ${index}`);
               }
             });
             
@@ -123,11 +85,9 @@ const useChatWidget = () => {
               const zIndex = window.getComputedStyle(el).zIndex;
               return zIndex && parseInt(zIndex) > 1000;
             });
-            console.log('🔍 High z-index elements:', highZElements);
             
             // Look for any elements that might be the chat widget
             const possibleWidgets = document.querySelectorAll('div[style*="position: fixed"], div[style*="position: absolute"]');
-            console.log('🔍 Fixed/absolute positioned elements:', possibleWidgets);
           }, 100);
           
         } catch (error) {
@@ -137,7 +97,6 @@ const useChatWidget = () => {
         console.warn('Banking chat widget not available');
         // Try to initialize if the function exists but widget wasn't created
         if (window.initBankingChatWidget) {
-          console.log('Attempting to initialize widget now...');
           try {
             const widget = window.initBankingChatWidget({
               apiUrl: 'ws://localhost:8082/ws',

@@ -31,7 +31,7 @@ router.get('/login', (req, res) => {
   try {
     const _clientId = configStore.getEffective('PINGONE_ADMIN_CLIENT_ID');
     const _envId    = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
-    console.log('[oauth/login] HIT client_id=%s env_id=%s configured=%s',
+    console.debug('[oauth/login] HIT client_id=%s env_id=%s configured=%s',
       _clientId ? _clientId.slice(0, 8) + '...' : 'MISSING',
       _envId    ? _envId.slice(0, 8)    + '...' : 'MISSING',
       configStore.isConfigured()
@@ -101,7 +101,7 @@ router.get('/login', (req, res) => {
       // Store resources in session for callback validation
       req.session.oauthResources = selectedResources;
       
-      console.log('[oauth] RFC 9728 resources selected:', selectedResources);
+      console.debug('[oauth] RFC 9728 resources selected:', selectedResources);
     }
 
     // Generate authorization URL (includes code_challenge derived from verifier)
@@ -122,7 +122,7 @@ router.get('/login', (req, res) => {
     const authUrl = oauthService.generateAuthorizationUrl(state, codeVerifier, redirectUri, nonce) + resourceParam;
 
     const cfg = oauthService.config || {};
-    console.log('[oauth/login] client_id=%s redirect_uri=%s env_id=%s authorize_pi.flow=%s',
+    console.debug('[oauth/login] client_id=%s redirect_uri=%s env_id=%s authorize_pi.flow=%s',
       cfg.clientId ? cfg.clientId.slice(0, 8) + '...' : 'MISSING',
       redirectUri,
       cfg.tokenEndpoint ? cfg.tokenEndpoint.split('/')[4] : 'MISSING',
@@ -217,23 +217,18 @@ router.get('/callback', async (req, res) => {
       }
     }
     const userInfo = await oauthService.getUserInfo(tokenData.access_token);
-    console.log('User info from PingOne Core:', JSON.stringify(userInfo, null, 2));
     
     // Create user object from OAuth data
     const oauthUser = oauthService.createUserFromOAuth(userInfo);
     
     // Check if user already exists in our system
     let user = dataStore.getUserByUsername(oauthUser.username);
-    console.log('Looking for existing user:', oauthUser.username);
-    console.log('Found user:', user);
     
     if (!user) {
       // For OAuth users, we'll create them as admin by default
       // In production, you might want to check a whitelist or specific PingOne Core attributes
-      console.log('Creating new OAuth user as admin:', oauthUser.username);
       oauthUser.role = 'admin'; // Make OAuth users admin by default
     } else {
-      console.log('Found existing user:', user.username, 'with role:', user.role);
       // This flow is the Admin PingOne app only — always grant admin in the demo store so
       // users who previously signed in as Customer can switch to Admin without staying "customer".
       // Do not downgrade an existing admin.
@@ -242,22 +237,12 @@ router.get('/callback', async (req, res) => {
     
     if (!user) {
       // Create new user from OAuth data
-      console.log('Creating new user with data:', oauthUser);
       user = await dataStore.createUser({
         ...oauthUser,
         password: null // OAuth users don't have passwords
       });
-      console.log('Created user:', user);
     } else {
       // Update existing user with OAuth data
-      console.log('Updating existing user with data:', {
-        email: oauthUser.email,
-        firstName: oauthUser.firstName,
-        lastName: oauthUser.lastName,
-        role: oauthUser.role,
-        oauthProvider: oauthUser.oauthProvider,
-        oauthId: oauthUser.oauthId
-      });
       user = await dataStore.updateUser(user.id, {
         email: oauthUser.email,
         firstName: oauthUser.firstName,
@@ -266,7 +251,6 @@ router.get('/callback', async (req, res) => {
         oauthProvider: oauthUser.oauthProvider,
         oauthId: oauthUser.oauthId
       });
-      console.log('Updated user:', user);
     }
 
     // Regenerate session ID before storing OAuth tokens to prevent session fixation.
@@ -314,7 +298,7 @@ router.get('/callback', async (req, res) => {
             return res.redirect(`${redirectOrigin}/login?error=session_persist_failed`);
           });
         }
-        console.log('[oauth/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
+        console.debug('[oauth/callback] Session saved OK sid=' + (req.session?.id || '').slice(0, 8) + '…');
         // Set a signed auth-state cookie so the session-restore middleware can
         // answer /status and /nl requests even when the session hits a different
         // serverless instance on Vercel.

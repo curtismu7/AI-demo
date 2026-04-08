@@ -239,7 +239,7 @@ function AppWithAuth() {
       setLoading(false);
       return false;
     } catch (error) {
-      console.log('❌ Error checking OAuth sessions:', error.message);
+      console.error('Error checking OAuth sessions:', error.message);
       setLoading(false);
       return false;
     }
@@ -402,7 +402,7 @@ function AppWithAuth() {
     !user && isPublicMarketingAgentPath(pathname) ? 12000 : 4000;
 
   const logout = () => {
-    console.log('🚪 Starting logout — navigating to /api/auth/logout');
+    console.info('Starting logout — navigating to /api/auth/logout');
 
     localStorage.setItem('userLoggedOut', 'true');
 

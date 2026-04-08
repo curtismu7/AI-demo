@@ -276,11 +276,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   useEffect(() => {
     const onAgentResult = ({ detail }) => {
       const { type, data, label } = detail;
-      console.log('[UserDashboard] banking-agent-result event received:', { type, data, label });
       // 'confirm' covers deposit, withdraw, and transfer success responses.
       // 'accounts' and 'transactions' are read-only — no balance change.
       if (type === 'confirm') {
-        console.log('[UserDashboard] Triggering fetchUserData for transaction history refresh');
         fetchUserData(true);
       }
     };

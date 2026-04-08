@@ -147,7 +147,7 @@ async function createSampleDataForCustomer(userId, firstName, lastName) {
       await dataStore.createTransaction(transaction);
     }
 
-    console.log(`Created sample data for customer ${firstName} ${lastName}: 2 accounts, ${transactions.length} transactions`);
+    console.debug(`Created sample data for customer ${firstName} ${lastName}: 2 accounts, ${transactions.length} transactions`);
     return { checkingAccount, savingsAccount, transactions };
   } catch (error) {
     console.error('Error creating sample data for customer:', error);
@@ -307,7 +307,7 @@ router.get('/callback', async (req, res) => {
 
     // Exchange code for token (with PKCE verifier)
     const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri);
-    console.log('Token received for end user');
+    console.debug('Token received for end user');
 
     // Decode ID token claims — used for nonce verification and as a fallback for userinfo gaps.
     let idTokenClaims = {};
@@ -331,7 +331,6 @@ router.get('/callback', async (req, res) => {
 
     // Get user information from PingOne Core
     const userInfo = await oauthService.getUserInfo(tokenData.access_token);
-    console.log('User info from PingOne Core:', JSON.stringify(userInfo, null, 2));
 
     // Merge ID token claims as fallback for any userinfo gaps (e.g. email not in userinfo response).
     // userinfo takes priority; idTokenClaims fills only missing fields.
@@ -342,8 +341,6 @@ router.get('/callback', async (req, res) => {
     
     // Check if user already exists in our system
     let user = dataStore.getUserByUsername(oauthUser.username);
-    console.log('Looking for existing user:', oauthUser.username);
-    console.log('Found user:', user);
     
     // Resolve admin role using four signals (any one is sufficient):
     //  1. admin_username allowlist  — permanent override (bankadmin, service accounts)
@@ -389,12 +386,10 @@ router.get('/callback', async (req, res) => {
     
     if (!user) {
       // Create new user from OAuth data
-      console.log('Creating new user with data:', oauthUser);
       user = await dataStore.createUser({
         ...oauthUser,
         password: null // OAuth users don't have passwords
       });
-      console.log('Created user:', user);
       
       // Create sample data for new customers (only if they have no accounts yet)
       if (user.role === 'customer') {
@@ -403,7 +398,6 @@ router.get('/callback', async (req, res) => {
           if (existingAccounts.length === 0) {
             await createSampleDataForCustomer(user.id, user.firstName, user.lastName);
           } else {
-            console.log(`User ${user.username} already has ${existingAccounts.length} account(s), skipping sample data creation`);
           }
         } catch (error) {
           console.error('Failed to create sample data for new customer:', error);
@@ -412,16 +406,6 @@ router.get('/callback', async (req, res) => {
       }
     } else {
       // Update existing user with OAuth data
-      console.log('Updating existing user with data:', {
-        email: oauthUser.email,
-        firstName: oauthUser.firstName,
-        lastName: oauthUser.lastName,
-        role: oauthUser.role,
-        oauthProvider: oauthUser.oauthProvider,
-        oauthId: oauthUser.oauthId
-      });
-      console.log('Attempting to update user with ID:', user.id);
-      console.log('Current user object:', user);
       
       // Check if user exists in data store
       const existingUser = dataStore.getUserById(user.id);

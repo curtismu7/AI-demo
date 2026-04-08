@@ -265,23 +265,19 @@ const Dashboard = ({ user, onLogout }) => {
   // Function to fetch current OAuth tokens
   const fetchTokenData = async () => {
     try {
-      console.log('🔍 Fetching current OAuth token data...');
       
       // Try both admin and user status endpoints using axios directly
       let response;
       try {
-        console.log('🔍 Trying admin OAuth status endpoint...');
         response = await axios.get('/api/auth/oauth/status');
-        console.log('👑 Admin OAuth response:', response.data);
+        console.debug('Admin OAuth response:', response.data);
         if (!response.data.authenticated) {
-          console.log('🔍 Admin not authenticated, trying user OAuth status endpoint...');
           response = await axios.get('/api/auth/oauth/user/status');
-          console.log('👤 User OAuth response:', response.data);
+          console.debug('User OAuth response:', response.data);
         }
       } catch (error) {
-        console.log('❌ Admin OAuth failed, trying user OAuth status endpoint...', error.message);
         response = await axios.get('/api/auth/oauth/user/status');
-        console.log('👤 User OAuth response:', response.data);
+        console.debug('User OAuth response:', response.data);
       }
       
       if (response.data.authenticated && response.data.accessToken) {
@@ -296,10 +292,8 @@ const Dashboard = ({ user, onLogout }) => {
           user: response.data.user
         };
         
-        console.log('✅ Token data fetched:', tokenInfo);
         setTokenData(tokenInfo);
       } else {
-        console.log('❌ No authenticated session found');
         setTokenData(null);
       }
     } catch (error) {

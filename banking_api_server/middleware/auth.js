@@ -208,7 +208,6 @@ const parseTokenScopes = (token, requestContext = {}) => {
 const hasRequiredScopes = (userScopes, requiredScopes, requireAll = false) => {
   if (!Array.isArray(userScopes) || !Array.isArray(requiredScopes)) {
     if (DEBUG_TOKENS) {
-      console.log(`🔍 [Scope Check] Invalid input - userScopes: ${Array.isArray(userScopes) ? 'array' : typeof userScopes}, requiredScopes: ${Array.isArray(requiredScopes) ? 'array' : typeof requiredScopes}`);
     }
     return false;
   }
@@ -216,14 +215,12 @@ const hasRequiredScopes = (userScopes, requiredScopes, requireAll = false) => {
   // Check for banking:admin scope - grants access to all endpoints
   if (userScopes.includes(BANKING_SCOPES.ADMIN)) {
     if (DEBUG_TOKENS) {
-      console.log(`🔍 [Scope Check] ✅ User has banking:admin scope - access granted to all endpoints`);
     }
     return true;
   }
   
   if (requiredScopes.length === 0) {
     if (DEBUG_TOKENS) {
-      console.log(`🔍 [Scope Check] No scopes required - access granted`);
     }
     return true; // No scopes required
   }
@@ -234,11 +231,8 @@ const hasRequiredScopes = (userScopes, requiredScopes, requireAll = false) => {
     const hasAllScopes = missingScopes.length === 0;
     
     if (DEBUG_TOKENS) {
-      console.log(`🔍 [Scope Check] AND logic - checking if user has ALL required scopes`);
       if (hasAllScopes) {
-        console.log(`🔍 [Scope Check] ✅ User has all required scopes`);
       } else {
-        console.log(`🔍 [Scope Check] ❌ User missing scopes: [${missingScopes.join(', ')}]`);
       }
     }
     
@@ -249,11 +243,8 @@ const hasRequiredScopes = (userScopes, requiredScopes, requireAll = false) => {
     const hasAnyScope = matchingScopes.length > 0;
     
     if (DEBUG_TOKENS) {
-      console.log(`🔍 [Scope Check] OR logic - checking if user has ANY required scope`);
       if (hasAnyScope) {
-        console.log(`🔍 [Scope Check] ✅ User has matching scopes: [${matchingScopes.join(', ')}]`);
       } else {
-        console.log(`🔍 [Scope Check] ❌ User has no matching scopes`);
       }
     }
     
@@ -370,7 +361,7 @@ const logTokenInfo = (token, context = '') => {
     // Parse JWT without verification (just for reading claims)
     const parts = token.split('.');
     if (parts.length !== 3) {
-      console.log(`🔐 [${context}] Invalid token format`);
+      console.debug(`🔐 [${context}] Invalid token format`);
       return;
     }
     
@@ -378,7 +369,7 @@ const logTokenInfo = (token, context = '') => {
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
     
     if (!header || !payload) {
-      console.log(`🔐 [${context}] Failed to decode token`);
+      console.debug(`🔐 [${context}] Failed to decode token`);
       return;
     }
     
@@ -408,18 +399,18 @@ const logTokenInfo = (token, context = '') => {
       }
     }
     
-    console.log(`🔐 [${context}] ${tokenType} Token Information:`);
-    console.log(`   Algorithm: ${header.alg}`);
-    console.log(`   Type: ${header.typ}`);
-    if (header.kid) console.log(`   Key ID: ${header.kid}`);
+    console.debug(`🔐 [${context}] ${tokenType} Token Information:`);
+    console.debug(`   Algorithm: ${header.alg}`);
+    console.debug(`   Type: ${header.typ}`);
+    if (header.kid) console.debug(`   Key ID: ${header.kid}`);
     
     // OAuth token format
-    console.log(`   Subject: ${payload.sub || 'N/A'}`);
-    console.log(`   Issuer: ${payload.iss || 'N/A'}`);
-    console.log(`   Audience: ${Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud || 'N/A'}`);
-    console.log(`   Client Type: ${clientTypeFromToken}`);
+    console.debug(`   Subject: ${payload.sub || 'N/A'}`);
+    console.debug(`   Issuer: ${payload.iss || 'N/A'}`);
+    console.debug(`   Audience: ${Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud || 'N/A'}`);
+    console.debug(`   Client Type: ${clientTypeFromToken}`);
     
-    if (payload.preferred_username) console.log(`   Username: ${payload.preferred_username}`);
+    if (payload.preferred_username) console.debug(`   Username: ${payload.preferred_username}`);
     if (payload.email) console.log(`   Email: ${payload.email}`);
     if (payload.given_name) console.log(`   First Name: ${payload.given_name}`);
     if (payload.family_name) console.log(`   Last Name: ${payload.family_name}`);
@@ -459,7 +450,7 @@ const logTokenInfo = (token, context = '') => {
     }
     
   } catch (error) {
-    console.log(`🔐 [${context}] Error decoding token: ${error.message}`);
+    console.debug(`🔐 [${context}] Error decoding token: ${error.message}`);
   }
 };
 
