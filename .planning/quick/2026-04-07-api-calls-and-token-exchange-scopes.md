@@ -285,6 +285,109 @@ Includes:
 
 ---
 
+## Actual Scopes in Code — PingOne App Mapping
+
+**Source:** `banking_api_server/config/scopes.js`
+
+This table maps the actual OAuth scope constants defined in the code to which PingOne applications require them and how they're validated.
+
+### Scope Constants & App Requirements
+
+| Scope Constant | Actual Scope Value | Resource Server | Required In PingOne Apps | User Type(s) | Validation Method | Required For |
+|---|---|---|---|---|---|---|
+| `ACCOUNTS_READ` | `banking:accounts:read` | Main Banking | Admin App, User App, MCP Exchanger | customer, admin, ai_agent | `requireScopes()` middleware | GET /api/accounts, GET /api/accounts/:id |
+| `TRANSACTIONS_READ` | `banking:transactions:read` | Main Banking | Admin App, User App, MCP Exchanger | customer, admin, ai_agent | `requireScopes()` middleware | GET /api/transactions, GET /api/transactions/:id |
+| `BANKING_READ` | `banking:general:read` | Main Banking | Admin App, User App, MCP Exchanger | customer, admin, ai_agent | `requireScopes()` middleware | Any banking read operation (fallback) |
+| `TRANSACTIONS_WRITE` | `banking:transactions:write` | Main Banking | Admin App, MCP Exchanger | admin, ai_agent | `requireScopes()` middleware | POST /api/transactions, POST /api/transactions/transfer |
+| `BANKING_WRITE` | `banking:general:write` | Main Banking | Admin App, MCP Exchanger | admin, ai_agent | `requireScopes()` middleware | Any banking write operation (fallback) |
+| `ADMIN` | `banking:admin:full` | Main Banking | Admin App ONLY | admin | `requireScopes()` middleware | GET/POST/PUT /api/admin/* |
+| `AI_AGENT` | `banking:ai:agent:read` | Main Banking | AI Agent App (if configured) | ai_agent | `requireScopes()` middleware | Agent tool invocation |
+| `AI_AGENT_WRITE` | `banking:ai:agent:write` | Main Banking | AI Agent App (if configured) | ai_agent | `requireScopes()` middleware | Agent write operations |
+| `AI_AGENT_ADMIN` | `banking:ai:agent:admin` | Main Banking | AI Agent App (if configured) | ai_agent | `requireScopes()` middleware | Agent admin operations |
+| `SENSITIVE_READ` | `banking:sensitive:read` | Main Banking | Admin App + custom routes | admin | `requireScopes()` middleware | PII endpoints (SSN, routing numbers) |
+| `SENSITIVE_WRITE` | `banking:sensitive:write` | Main Banking | Admin App + custom routes | admin | `requireScopes()` middleware | PII write operations |
+| `ADMIN_READ` | `banking:admin:read` | Main Banking | Admin App | admin | `requireScopes()` middleware | Admin read-only operations |
+| `ADMIN_WRITE` | `banking:admin:write` | Main Banking | Admin App | admin | `requireScopes()` middleware | Admin write operations |
+| `ADMIN_FULL` | `banking:admin:full` | Main Banking | Admin App ONLY | admin | `requireScopes()` middleware | Full admin access |
+| (None) | `p1:read:user` | PingOne API | Admin App, MCP Exchanger | admin | Manual validation | User management endpoints |
+| (None) | `p1:update:user` | PingOne API | Admin App, MCP Exchanger | admin | Manual validation | User attribute updates (mayAct) |
+| (None) | `p1:delete:user` | PingOne API | Admin App (if enabled) | admin | Manual validation | User deletion |
+
+---
+
+## PingOne App → Scope Mapping
+
+This table shows what each PingOne application requires in configuration to grant the necessary scopes to users and agents.
+
+| PingOne App | App Type | OAuth Grant Type | Scopes to Grant on Authorization | Resource Servers Needed | Token Audience |
+|---|---|---|---|---|---|
+| **Super Banking Admin** | WEB_APP | authorization_code + PKCE | `openid profile email offline_access banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write p1:read:user p1:update:user` | Main Banking + PingOne API | User audience (not specified in demo) |
+| **Super Banking User (Customer)** | WEB_APP | authorization_code + PKCE | `profile email offline_access banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke` | Main Banking | User audience (if RFC 8707 Resource Indicator used) |
+| **Super Banking AI Agent (2-Exchange Only)** | WORKER | client_credentials | `banking:agent:invoke` | Main Banking | Agent audience |
+| **Super Banking MCP Token Exchanger** | WORKER | client_credentials (+ token-exchange for 2-exchange) | `banking:accounts:read banking:transactions:read banking:general:read banking:admin:read admin:read users:read p1:read:user p1:update:user` | Main Banking + PingOne API + MCP Resource Server | MCP Resource Server audience |
+
+---
+
+## Scope Validation Flow in Code
+
+**File:** `banking_api_server/middleware/auth.js`
+
+The `requireScopes()` middleware validates token scopes against route requirements:
+
+```javascript
+// Example from accounts.js:
+router.get('/', authenticateToken, requireScopes(['banking:accounts:read', 'banking:read']), async (req, res) => {
+  // Route requires EITHER banking:accounts:read OR banking:read
+  // Middleware checks token.scope contains at least one of these
+  ...
+});
+```
+
+**Validation Logic:**
+1. Extract scopes from token: `token.scope.split(' ')` (space-separated)
+2. Compare against required scopes: `requiredScopes.some(scope => tokenScopes.includes(scope))`
+3. If any required scope matches → ✅ Allow
+4. If NO required scope matches → ❌ 403 Forbidden
+
+**Current Scope Validation Levels:**
+- **Development:** Relaxed validation, debug logging enabled
+- **Staging/Production:** Strict validation, caching enabled (300-600s TTL)
+
+---
+
+## User Type → Scope Mapping (Code Definition)
+
+**File:** `banking_api_server/config/scopes.js`
+
+The `USER_TYPE_SCOPES` constant maps user types to their allowed scopes:
+
+| User Type | Assigned Scopes | Typical Access | Determined By |
+|---|---|---|---|
+| **admin** | `banking:admin:full` + `banking:general:read` + `banking:general:write` + `banking:accounts:read` + `banking:transactions:read` + `banking:transactions:write` | Full access to all banking operations except agent:invoke | Token contains `banking:admin:full` OR user role = 'admin' |
+| **customer** | `banking:general:read` + `banking:general:write` + `banking:accounts:read` + `banking:transactions:read` + `banking:transactions:write` | Read/write banking, no admin, no agent invoke (unless delegating) | Default for end-users; token lacks admin scope |
+| **readonly** | `banking:general:read` + `banking:accounts:read` + `banking:transactions:read` | Read-only access (audit, reporting) | Token has read scopes but no write scopes |
+| **ai_agent** | `banking:ai:agent:read` + `banking:ai:agent:write` + `banking:general:read` + `banking:general:write` + `banking:accounts:read` + `banking:transactions:read` + `banking:transactions:write` | Full banking + agent operations | Token contains `banking:ai:agent:read` OR `ai_agent` scope (user type in token) |
+
+---
+
+## Endpoint Scope Requirements (Full Map)
+
+**File:** `banking_api_server/config/scopes.js` - `ROUTE_SCOPE_MAP`
+
+| HTTP Method | Route Pattern | Valid Alternative Scopes | User Type | Example Authorization |
+|---|---|---|---|---|
+| **GET** | `/api/accounts*` | [`banking:accounts:read`, `banking:general:read`] | customer, admin | `banking:accounts:read` OR `banking:general:read` |
+| **POST** | `/api/accounts` | [`banking:general:write`] | admin | `banking:general:write` |
+| **PUT** | `/api/accounts/:id` | [`banking:general:write`] | admin | `banking:general:write` |
+| **DELETE** | `/api/accounts/:id` | [`banking:general:write`] | admin | `banking:general:write` |
+| **GET** | `/api/transactions*` | [`banking:transactions:read`, `banking:general:read`] | customer, admin, ai_agent | `banking:transactions:read` OR `banking:general:read` |
+| **POST** | `/api/transactions*` (all write ops) | [`banking:transactions:write`, `banking:general:write`] | admin, ai_agent | `banking:transactions:write` OR `banking:general:write` |
+| **GET** | `/api/admin*` | [`banking:admin:full`] | admin | MUST have `banking:admin:full` |
+| **POST/PUT/DELETE** | `/api/admin*` | [`banking:admin:full`] | admin | MUST have `banking:admin:full` |
+| **POST** | `/mcp/tools/call` | [`banking:agent:invoke`] + banking read/write | ai_agent, user (via delegation) | `banking:agent:invoke` + `banking:general:read` or `banking:general:write` |
+
+---
+
 ## Token Exchange Flow Diagrams
 
 ### 1-Exchange Path (User → MCP)
