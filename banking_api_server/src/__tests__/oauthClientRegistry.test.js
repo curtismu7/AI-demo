@@ -14,14 +14,14 @@ const {
   rotateClientSecret,
   listClients,
   validateClientCredentials,
-  getClientStatistics
+  getClientStatistics,
+  clearRegistry
 } = require('../../services/oauthClientRegistry');
 
 describe('OAuth Client Registry Service', () => {
   beforeEach(() => {
     // Clear registry before each test
-    const clientRegistry = require('../../services/oauthClientRegistry');
-    // Reset the internal registry (would need to expose this for testing)
+    clearRegistry();
   });
 
   describe('Client Registration', () => {

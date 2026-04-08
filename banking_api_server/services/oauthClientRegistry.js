@@ -148,7 +148,7 @@ function validateRedirectUris(uris) {
 
     try {
       const url = new URL(uri);
-      if (!['http', 'https'].includes(url.protocol)) {
+      if (!['http:', 'https:'].includes(url.protocol)) {
         errors.push(`Invalid protocol in URI: ${uri}`);
       }
     } catch (err) {
@@ -170,9 +170,14 @@ function validateClientRegistration(request) {
   const validated = {};
 
   Object.entries(CLIENT_VALIDATION_RULES).forEach(([field, rule]) => {
-    const value = request[field];
+    const rawValue = request[field];
 
-    // Check required fields
+    // Apply default value if field is missing and rule has a default
+    const value = (rawValue === undefined || rawValue === null || rawValue === '') && rule.default !== undefined
+      ? rule.default
+      : rawValue;
+
+    // Check required fields (after applying defaults)
     if (rule.required && (value === undefined || value === null || value === '')) {
       errors.push(`${field} is required`);
       return;
@@ -184,9 +189,14 @@ function validateClientRegistration(request) {
     }
 
     // Apply validation rules
-    if (rule.allowed && !rule.allowed.includes(value)) {
-      errors.push(`${field} must be one of: ${rule.allowed.join(', ')}`);
-      return;
+    if (rule.allowed) {
+      // Support both array and scalar values (e.g., grant_types is an array per RFC 7591)
+      const values = Array.isArray(value) ? value : [value];
+      const invalid = values.filter(v => !rule.allowed.includes(v));
+      if (invalid.length > 0) {
+        errors.push(`${field} must be one of: ${rule.allowed.join(', ')}`);
+        return;
+      }
     }
 
     if (rule.minLength && value.length < rule.minLength) {
@@ -323,7 +333,11 @@ function getClient(clientId, includeSecret = false) {
     status: client.status,
     registration_metadata: client.registration_metadata,
     last_used: client.last_used,
-    usage_count: client.usage_count
+    usage_count: client.usage_count,
+    updated_at: client.updated_at,
+    updated_by: client.updated_by,
+    client_secret_rotated_at: client.client_secret_rotated_at,
+    client_secret_rotation_count: client.client_secret_rotation_count
   };
 
   if (includeSecret) {
@@ -344,8 +358,14 @@ function updateClient(clientId, updates, metadata = {}) {
     throw error;
   }
 
+  // Normalize scope: parse string to array if needed (e.g. 'a b' -> ['a', 'b'])
+  const normalizedUpdates = { ...updates };
+  if (typeof normalizedUpdates.scope === 'string') {
+    normalizedUpdates.scope = normalizedUpdates.scope.trim().split(/\s+/).filter(Boolean);
+  }
+
   // Validate updates
-  const validation = validateClientRegistration({ ...client, ...updates });
+  const validation = validateClientRegistration({ ...client, ...normalizedUpdates });
   if (!validation.valid) {
     const error = new Error('Client update validation failed');
     error.errors = validation.errors;
@@ -548,6 +568,14 @@ function getClientStatistics() {
   return stats;
 }
 
+/**
+ * Clear the client registry (for testing purposes only)
+ */
+function clearRegistry() {
+  clientRegistry.clear();
+  clientRotation.clear();
+}
+
 module.exports = {
   registerOAuthClient,
   getClient,
@@ -556,5 +584,6 @@ module.exports = {
   rotateClientSecret,
   listClients,
   validateClientCredentials,
-  getClientStatistics
+  getClientStatistics,
+  clearRegistry
 };

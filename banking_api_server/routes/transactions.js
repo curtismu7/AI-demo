@@ -310,9 +310,12 @@ router.post('/', authenticateToken, async (req, res) => {
     // ── Step-up MFA gate ─────────────────────────────────────────────────────
     // Transfers and withdrawals above the threshold require a fresh MFA token.
     // All values are read from runtimeSettings (configurable via admin UI at /settings).
-    const STEP_UP_THRESHOLD = parseFloat(configStore.getEffective('step_up_amount_threshold'))
-      || runtimeSettings.get('stepUpAmountThreshold')
-      || 250;
+    // runtimeSettings is the live admin-controllable value; configStore is the deployment default.
+    // Prefer runtimeSettings when it has been set to a positive value, fall back to configStore, then hardcoded default.
+    const _rtThreshold = runtimeSettings.get('stepUpAmountThreshold');
+    const STEP_UP_THRESHOLD = (_rtThreshold > 0)
+      ? _rtThreshold
+      : (parseFloat(configStore.getEffective('step_up_amount_threshold')) || 250);
     const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue');
     const STEP_UP_TYPES = runtimeSettings.get('stepUpTransactionTypes');
     const STEP_UP_ENABLED = runtimeSettings.get('stepUpEnabled');

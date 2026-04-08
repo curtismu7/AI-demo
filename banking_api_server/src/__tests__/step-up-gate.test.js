@@ -61,6 +61,7 @@ jest.mock('../../middleware/auth', () => ({
     if (paramId && req.user.id !== paramId) return res.status(403).json({ error: 'insufficient_scope' });
     return next();
   },
+    requireSession: (req, res, next) => next(),
   hashPassword: (p) => p,
 }));
 
@@ -167,8 +168,8 @@ async function postTransactionAfterConsent(agent, body) {
 let originalSettings;
 beforeAll(() => {
   originalSettings = runtimeSettings.getAll();
-  // Ensure authorize gate is off so it doesn't interfere
-  runtimeSettings.update({ authorizeEnabled: false });
+  // Ensure authorize gate is off and withdrawalsAlways is off so threshold-based tests work correctly
+  runtimeSettings.update({ authorizeEnabled: false, stepUpWithdrawalsAlways: false });
 });
 
 afterEach(() => {
@@ -177,6 +178,7 @@ afterEach(() => {
     stepUpAmountThreshold: originalSettings.stepUpAmountThreshold,
     stepUpAcrValue: originalSettings.stepUpAcrValue,
     stepUpTransactionTypes: originalSettings.stepUpTransactionTypes,
+    stepUpWithdrawalsAlways: false,
     authorizeEnabled: false,
   }, 'test-cleanup');
 });
@@ -210,7 +212,7 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
   // ── Amount below threshold ────────────────────────────────────────────────────
   describe('when amount is below the threshold', () => {
     it('should allow a small withdrawal without MFA', async () => {
-      runtimeSettings.update({ stepUpEnabled: true, stepUpAmountThreshold: 250 }, 'test');
+      runtimeSettings.update({ stepUpEnabled: true, stepUpAmountThreshold: 250, stepUpWithdrawalsAlways: false }, 'test');
 
       const res = await request(app)
         .post('/api/transactions')
@@ -321,6 +323,7 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
         stepUpAmountThreshold: 500,
         stepUpAcrValue: 'Multi_factor',
         stepUpTransactionTypes: ['withdrawal'],
+        stepUpWithdrawalsAlways: false,
       }, 'test');
 
       const res = await request(app)
@@ -336,7 +339,7 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
   describe('runtime threshold update takes effect immediately', () => {
     it('should reflect a new threshold without a restart', async () => {
       // First set threshold to $1000 — $500 should pass
-      runtimeSettings.update({ stepUpEnabled: true, stepUpAmountThreshold: 1000 }, 'test');
+      runtimeSettings.update({ stepUpEnabled: true, stepUpAmountThreshold: 1000, stepUpWithdrawalsAlways: false }, 'test');
 
       const pass = await request(app)
         .post('/api/transactions')
