@@ -1477,4 +1477,14 @@ Plans:
 Plans:
 - [x] 97-01-PLAN.md — Configuration and validation mode toggle, health check endpoint, UI component, documentation
 
+### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 97
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 98 to break down)
+
 ---

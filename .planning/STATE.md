@@ -123,6 +123,7 @@ Plan: 1 of 1 — (Pending /gsd-plan-phase 97)
 - Phase 25 added: LLM landscape — commercial and open-source models, capabilities overview, and comparison
 - Phase 45 added: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
 - Phase 53 added: debug testing and bug fixes for phase 52 MFA step-up
+- Phase 98 added: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 - Phase 43 added: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
 - Phase 88 added: Audit and align all documentation and code to PingOne app names, rename apps where needed, update Vercel and localhost env vars, validate setup and creation code
 - Phase 89 added: Audit and update all documentation to match standardized PingOne app names
