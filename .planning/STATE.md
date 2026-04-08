@@ -51,6 +51,7 @@ Plan: 1 of 1
 - Phase 85 (chase-dashboard-styling) — complete (commits: 7980dc5, 2891f33, 272d01a, 13d4676, ddc5895, fc6f87a)
 - Phase 49 added: Setup wizard — credential input page that creates .env, provisions Vercel env vars, creates PingOne apps and resource servers, and attaches scopes via Management API worker token
 - Phase 50 added: Update docs, setup script, and fix logout URLs on PingOne apps using worker token — audit all PingOne config documentation and ensure logout URLs are correct everywhere
+- Phase 93 added: Surface agent-on-behalf-of-user actions in UI and education — make visible in dashboard what the AI agent is doing on the user's behalf, with explanatory education panels describing the agent-on-behalf pattern
 
 ---
 
@@ -146,3 +147,7 @@ Plan: 1 of 1
 - Phase 42 added: Persist demo accounts across server restarts using env file on Vercel and SQLite on local
 - Phase 51 added: Auth rules audit tests and demo config section for login OTP and high-value transaction gates
 - Phase 52 added: PingOne MFA step-up research and implementation — OTP FIDO TOTP full MFA capability
+- Phase 90 added: Scope/resource check — OIDC app scope spelling validation, resource URL validation, and fix capability
+- Phase 91 added: External MCP client access — public MCP server with PingOne-protected auth, restrict to @pingidentity.com Google login, per-client authorization, and Claude/ChatGPT integration planning
+- Phase 92 added: User custom attribute validation — verify user has required PingOne custom attributes configured correctly, report and fix capability, integrate into existing scope/resource check tooling
+- Phase 93 added: Surface agent-on-behalf-of-user actions in UI and education — make visible in dashboard what the AI agent is doing on the user's behalf, with explanatory education panels describing the pattern
