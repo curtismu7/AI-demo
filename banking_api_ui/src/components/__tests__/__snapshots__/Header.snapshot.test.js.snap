@@ -65,6 +65,12 @@ exports[`Header snapshot renders admin nav without change 1`] = `
         >
           ⚙️ Config
         </a>
+        <a
+          class="nav-link "
+          href="/postman"
+        >
+          📮 Postman
+        </a>
         <div
           class="app-top-header__user"
         >

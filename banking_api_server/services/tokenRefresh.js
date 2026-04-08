@@ -4,7 +4,8 @@
  */
 
 const axios = require('axios');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
+
 
 /**
  * Refresh an access token using a refresh token

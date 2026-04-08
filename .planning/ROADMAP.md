@@ -1498,4 +1498,34 @@ Plans:
 - [ ] 99-01-PLAN.md — Automated checks: UI build, server unit tests, UI unit tests
 - [ ] 99-02-PLAN.md — Human verification: server startup, OAuth flows, Phase 95-98 features
 
+### Phase 100: configurable step-up MFA threshold and agent transaction stop limit
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 99
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 100 to break down)
+
+### Phase 101: token exchange flow diagram UI - single and double exchange with AI agent bubble on responses
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 100
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 101 to break down)
+
+### Phase 102: redesign app UI to match Ping Operations Fabric style - split-pane layout with architecture diagram panel and chat agent panel, PingIdentity branding, red accents, solution architecture section with token flow steps
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 101
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 102 to break down)
+
 ---

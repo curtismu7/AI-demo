@@ -6,7 +6,8 @@
  */
 
 const jwt = require('jsonwebtoken');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
+
 
 /**
  * Validate act claim structure per RFC 8693

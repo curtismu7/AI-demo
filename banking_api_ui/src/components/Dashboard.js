@@ -13,6 +13,8 @@ import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import SplitPaneLayout from './SplitPaneLayout';
+import ArchitectureTabsPanel from './ArchitectureTabsPanel';
 
 const Dashboard = ({ user, onLogout }) => {
   const location = useLocation();
@@ -346,6 +348,7 @@ const Dashboard = ({ user, onLogout }) => {
         <div
           className={`ud-shell ${agentPlacement === 'bottom' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
         >
+        <SplitPaneLayout archPanel={<ArchitectureTabsPanel />}>
         <div className="app-page-toolbar" role="toolbar" aria-label="Admin actions">
           <Link
             to="/feature-flags"
@@ -819,6 +822,9 @@ const Dashboard = ({ user, onLogout }) => {
       </div>
 
       </main>
+
+        </SplitPaneLayout>
+
 
         </div>
 

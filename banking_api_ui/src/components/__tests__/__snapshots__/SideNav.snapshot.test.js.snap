@@ -189,11 +189,11 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
         <div
           class="sidenav-group-label"
         >
-          Developer Tools
+          Configuration
         </div>
         <a
           class="sidenav-link"
-          href="/demo-data"
+          href="/config"
         >
           <span
             class="sidenav-link-icon"
@@ -203,9 +203,102 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
           <span
             class="sidenav-link-label"
           >
-            Demo config
+            App Config
           </span>
         </a>
+        <a
+          class="sidenav-link"
+          href="/settings"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🔐
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Security
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/demo-data"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🗄️
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Demo Data
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/onboarding"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🚀
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Setup Guide
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/setup/pingone"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            📘
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            PingOne Ref.
+          </span>
+        </a>
+      </div>
+      <div
+        class="sidenav-group"
+      >
+        <div
+          class="sidenav-group-label"
+        >
+          User Management
+        </div>
+        <a
+          class="sidenav-link"
+          href="/self-service"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            👤
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Create Account
+          </span>
+        </a>
+      </div>
+      <div
+        class="sidenav-group"
+      >
+        <div
+          class="sidenav-group-label"
+        >
+          Developer Tools
+        </div>
         <a
           class="sidenav-link"
           href="/mcp-inspector"
@@ -249,75 +342,6 @@ exports[`SideNav snapshot renders admin nav without change 1`] = `
             class="sidenav-link-label"
           >
             Client Reg.
-          </span>
-        </a>
-      </div>
-      <div
-        class="sidenav-group"
-      >
-        <div
-          class="sidenav-group-label"
-        >
-          System
-        </div>
-        <a
-          class="sidenav-link"
-          href="/onboarding"
-        >
-          <span
-            class="sidenav-link-icon"
-          >
-            🚀
-          </span>
-          <span
-            class="sidenav-link-label"
-          >
-            Setup Guide
-          </span>
-        </a>
-        <a
-          class="sidenav-link"
-          href="/setup/pingone"
-        >
-          <span
-            class="sidenav-link-icon"
-          >
-            📘
-          </span>
-          <span
-            class="sidenav-link-label"
-          >
-            PingOne ref.
-          </span>
-        </a>
-        <a
-          class="sidenav-link"
-          href="/config"
-        >
-          <span
-            class="sidenav-link-icon"
-          >
-            ⚙️
-          </span>
-          <span
-            class="sidenav-link-label"
-          >
-            Config
-          </span>
-        </a>
-        <a
-          class="sidenav-link"
-          href="/settings"
-        >
-          <span
-            class="sidenav-link-icon"
-          >
-            🔐
-          </span>
-          <span
-            class="sidenav-link-label"
-          >
-            Security
           </span>
         </a>
       </div>
@@ -624,6 +648,90 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
             class="sidenav-link-label"
           >
             Demo config
+          </span>
+        </a>
+      </div>
+      <div
+        class="sidenav-group"
+      >
+        <div
+          class="sidenav-group-label"
+        >
+          Self Service
+        </div>
+        <a
+          class="sidenav-link"
+          href="/self-service"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            👤
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Create Account
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/accounts"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🏦
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            My Accounts
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/transactions"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            💸
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Transfer Money
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/profile"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            👤
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Profile Settings
+          </span>
+        </a>
+        <a
+          class="sidenav-link"
+          href="/security"
+        >
+          <span
+            class="sidenav-link-icon"
+          >
+            🔐
+          </span>
+          <span
+            class="sidenav-link-label"
+          >
+            Security Center
           </span>
         </a>
       </div>

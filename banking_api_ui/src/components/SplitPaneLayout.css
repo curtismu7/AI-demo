@@ -1,0 +1,87 @@
+.split-pane-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  padding: 16px;
+  height: 100vh;
+  width: 100%;
+  background: var(--app-bg-color, #ffffff);
+}
+
+.split-pane-agent-pane {
+  flex: 0 0 60%;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-radius: 4px;
+}
+
+.split-pane-architecture-pane {
+  flex: 0 0 40%;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--app-bg-color, #ffffff);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Tablet: 768px - 1023px */
+@media (max-width: 1024px) {
+  .split-pane-agent-pane {
+    flex-basis: 55%;
+  }
+
+  .split-pane-architecture-pane {
+    flex-basis: 45%;
+  }
+
+  .split-pane-layout {
+    padding: 12px;
+    gap: 12px;
+  }
+}
+
+/* Mobile: 360px - 767px */
+@media (max-width: 768px) {
+  .split-pane-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .split-pane-agent-pane {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: auto;
+    max-height: none;
+  }
+
+  .split-pane-architecture-pane {
+    position: static;
+    flex: 0 0 auto;
+    width: 100%;
+    max-height: none;
+    display: none;
+  }
+
+  .split-pane-architecture-pane.active {
+    display: block;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .split-pane-layout {
+    background: var(--app-bg-color, #1a1a1a);
+  }
+
+  .split-pane-architecture-pane {
+    background: var(--app-bg-color, #1a1a1a);
+    box-shadow: 0 1px 3px rgba(255, 255, 255, 0.05);
+  }
+}

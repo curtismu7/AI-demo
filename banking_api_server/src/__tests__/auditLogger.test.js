@@ -14,12 +14,10 @@ const {
 } = require('../../services/auditLogger');
 
 jest.mock('jsonwebtoken');
-jest.mock('../../utils/logger', () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn()
-}));
+jest.mock('../../utils/logger', () => {
+  const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+  return { logger: mockLogger, LOG_LEVELS: {}, LOG_CATEGORIES: {} };
+});
 jest.mock('../../middleware/actClaimValidator', () => ({
   extractDelegationChain: jest.fn()
 }));

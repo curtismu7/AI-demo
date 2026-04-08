@@ -4,7 +4,8 @@
  */
 
 const cibaService = require('./cibaService');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
+
 const { PINGONE_OIDC_DEFAULT_SCOPES_SPACE } = require('../config/scopes');
 
 /**

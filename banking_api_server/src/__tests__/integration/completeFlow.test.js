@@ -19,12 +19,10 @@ const { requireScopes, Scopes } = require('../../../middleware/scopeEnforcement'
 
 jest.mock('axios');
 jest.mock('jsonwebtoken');
-jest.mock('../../../utils/logger', () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn()
-}));
+jest.mock('../../../utils/logger', () => {
+  const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+  return { logger: mockLogger, LOG_LEVELS: {}, LOG_CATEGORIES: {} };
+});
 
 describe('Complete Flow Integration Tests', () => {
   let app;

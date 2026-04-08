@@ -23,8 +23,10 @@ jest.mock('axios');
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function openPanel() {
-  const btn = screen.getByRole('button', { name: /open cimd guide/i });
-  fireEvent.click(btn);
+  // FAB removed; panel opens via CustomEvent (as dispatched by BankingAgent / EducationBar)
+  act(() => {
+    window.dispatchEvent(new CustomEvent('education-open-cimd', { detail: {} }));
+  });
 }
 
 function clickTab(name) {
@@ -37,14 +39,15 @@ function clickTab(name) {
 describe('CimdSimPanel — FAB button', () => {
   afterEach(() => jest.clearAllMocks());
 
-  it('renders the CIMD Simulator FAB button', () => {
+  it('does not render a FAB button (FAB removed in favour of CustomEvent)', () => {
     render(<CimdSimPanel />);
-    expect(screen.getByRole('button', { name: /open cimd guide/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /open cimd guide/i })).not.toBeInTheDocument();
   });
 
-  it('shows "CIMD Simulator" label in the button', () => {
+  it('drawer is closed and has no visible text before openPanel()', () => {
     render(<CimdSimPanel />);
-    expect(screen.getByText('CIMD Simulator')).toBeInTheDocument();
+    // The FAB label "CIMD Simulator" is no longer in the DOM — test that it is absent
+    expect(screen.queryByText('CIMD Simulator')).not.toBeInTheDocument();
   });
 
   it('drawer is hidden on initial render', () => {
@@ -59,10 +62,10 @@ describe('CimdSimPanel — FAB button', () => {
     expect(screen.getByRole('dialog')).toHaveAttribute('aria-hidden', 'false');
   });
 
-  it('closes the drawer when FAB is clicked again', () => {
+  it('closes the drawer using ESC key (FAB toggle removed)', () => {
     render(<CimdSimPanel />);
     openPanel();
-    openPanel();
+    act(() => { fireEvent.keyDown(document, { key: 'Escape' }); });
     expect(screen.getByRole('dialog', { hidden: true })).toHaveAttribute('aria-hidden', 'true');
   });
 

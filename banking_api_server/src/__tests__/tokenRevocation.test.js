@@ -6,12 +6,10 @@ const axios = require('axios');
 const { revokeToken, revokeTokens, revokeSessionTokens } = require('../../services/tokenRevocation');
 
 jest.mock('axios');
-jest.mock('../../utils/logger', () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn()
-}));
+jest.mock('../../utils/logger', () => {
+  const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+  return { logger: mockLogger, LOG_LEVELS: {}, LOG_CATEGORIES: {} };
+});
 
 describe('Token Revocation Service', () => {
   const mockClientId = 'test-client-id';

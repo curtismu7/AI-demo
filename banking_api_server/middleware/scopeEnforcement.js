@@ -5,7 +5,8 @@
  */
 
 const jwt = require('jsonwebtoken');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
+
 
 /**
  * Parse scope string into array

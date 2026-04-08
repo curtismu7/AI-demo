@@ -24,7 +24,8 @@
 'use strict';
 
 const audService = require('../services/audValidationService');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
+
 
 /**
  * Middleware function: Validate audience (aud) claim in incoming OAuth tokens

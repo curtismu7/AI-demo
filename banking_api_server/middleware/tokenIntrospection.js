@@ -7,7 +7,8 @@
  */
 
 const axios = require('axios');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
+
 
 // Cache for introspection results to reduce PingOne load
 const introspectionCache = new Map();

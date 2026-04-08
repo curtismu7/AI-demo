@@ -47,6 +47,14 @@ jest.mock('../../services/oauthService', () => {
   };
 });
 
+// Mock runtimeSettings to disable step-up MFA gate in tests (enabled by default in config).
+// Individual tests that want to exercise the MFA gate can override mockRtGet directly.
+const mockRtGet = jest.fn((key) => {
+  if (key === 'stepUpEnabled') return false;
+  return undefined;
+});
+jest.mock('../../config/runtimeSettings', () => ({ get: (...args) => mockRtGet(...args) }));
+
 const app = require('../../server');
 const configStore = require('../../services/configStore');
 

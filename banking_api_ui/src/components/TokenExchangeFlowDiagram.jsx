@@ -192,7 +192,7 @@ export default function TokenExchangeFlowDiagram({ mode = 'single', className = 
         <rect x="750" y="200" width="190" height="140" rx="4" fill="#fffacd" stroke="#daa520" strokeWidth="2" />
         <text x="845" y="220" textAnchor="middle" className="tefd-details-title">MCP Token + Delegation</text>
         <text x="765" y="245" className="tefd-details-claim">sub: user_id</text>
-        <text x="765" y="265" className="tefd-details-claim" fill="#d9534f">act: {</text>
+        <text x="765" y="265" className="tefd-details-claim" fill="#d9534f">act: {'{'}{'}'}}</text>
         <text x="785" y="285" className="tefd-details-claim" fill="#d9534f">  client_id: agent_id</text>
         <text x="765" y="305" className="tefd-details-claim" fill="#d9534f">}</text>
         <text x="765" y="330" className="tefd-details-claim">aud: mcp_server</text>

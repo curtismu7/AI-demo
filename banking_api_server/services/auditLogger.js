@@ -3,7 +3,8 @@
  * Provides comprehensive audit trail for compliance and security analysis
  */
 
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
+
 const { extractDelegationChain } = require('../middleware/actClaimValidator');
 const jwt = require('jsonwebtoken');
 

@@ -14,7 +14,7 @@
  * - RFC 8693 §4.3 defines the 'may_act' claim (actor permissions)
  */
 
-const logger = require('../utils/logger');
+const { logger } = require("../utils/logger");
 
 /**
  * Validate that a token is a valid agent (actor) token
