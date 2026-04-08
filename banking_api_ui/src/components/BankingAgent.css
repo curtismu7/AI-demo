@@ -2885,3 +2885,23 @@ html[data-theme='dark'] .App--marketing-page .embedded-agent-dock[data-agent-the
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+
+/* ─── Split-Pane Container Context ─────────────────────────────── */
+/* When agent is embedded in a split-pane (60% flex container), switch from fixed to relative positioning */
+.split-pane-agent-pane .banking-agent-float-root .banking-agent-panel {
+  position: relative !important;
+  bottom: auto !important;
+  right: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: calc(100vh - 200px) !important;
+  margin: 16px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Panel FAB should remain fixed globally, not inside split-pane */
+.split-pane-agent-pane .banking-agent-float-root .banking-agent-fab {
+  position: fixed !important; /* Keep FAB fixed globally */
+}
