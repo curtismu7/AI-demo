@@ -20,23 +20,10 @@ progress:
 
 ## Current Position
 
-Phase: 91 (external-mcp-client-access) — EXECUTING
-Plan: 1 of 2 — ✅ COMPLETE (Wave 1)
-**Active:** Preparing Wave 2 (MCP Gateway Integration)
-**Previous:** Phase 85 (chase-dashboard-styling) — ✅ COMPLETE (all 3 plans done)
-**Status:** Wave 1 Complete; Ready for Wave 2 execution
-
-### Phase 91 Progress
-- ✅ Wave 1 (Plan 01): RFC 7662 Token Introspection Endpoint
-  - Task 1: tokenIntrospectionService.js (180 LOC, 6 functions, caching)
-  - Task 2: introspect.js route handler (100 LOC, RFC 7662 compliant)
-  - Task 3: Comprehensive test suite (20 tests, all passing)
-  - Integration: server.js route mounting, .env.example documentation
-  - Test Results: 20/20 ✅ PASS (0.21s execution)
-  
-- ⏳ Wave 2 (Plan 02): MCP Gateway Token Validation
-  - 4 tasks planned: mcpGateway.js, WebSocket integration, client registration, tests
-  - Depends on: Wave 1 ✅ complete
+Phase: 96 (audience-aud-claim-validation) — READY FOR PLANNING
+Plan: 1 of 1 — (Pending /gsd-plan-phase 96)
+**Previous:** Phase 95 (actor-token-agent-token-education) — ✅ COMPLETE (1/1 plans executed 2026-04-08)
+**Status:** Actor/Agent terminology foundation complete; ready for audience (aud) claim validation phase
 
 ---
 
@@ -60,9 +47,7 @@ Plan: 1 of 2 — ✅ COMPLETE (Wave 1)
 - Phase 29 (use-case-c-sensitive-data-access) — complete (commit: 3ca82da)
 - Phase 48 (remove-invalid-spel-act-expression) — complete (commits: d4c0a7a, fc86d8d)
 - Phase 85 (chase-dashboard-styling) — complete (commits: 7980dc5, 2891f33, 272d01a, 13d4676, ddc5895, fc6f87a)
-- Phase 49 added: Setup wizard — credential input page that creates .env, provisions Vercel env vars, creates PingOne apps and resource servers, and attaches scopes via Management API worker token
-- Phase 50 added: Update docs, setup script, and fix logout URLs on PingOne apps using worker token — audit all PingOne config documentation and ensure logout URLs are correct everywhere
-- Phase 93 added: Surface agent-on-behalf-of-user actions in UI and education — make visible in dashboard what the AI agent is doing on the user's behalf, with explanatory education panels describing the agent-on-behalf pattern
+- Phase 95 (actor-token-agent-token-education) — complete (commits: 900ea2d, 0a9a8cc) [2026-04-08]
 
 ---
 

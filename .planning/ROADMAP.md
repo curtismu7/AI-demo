@@ -39,7 +39,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 86 | test-everything-you-can-for-production-run | Comprehensive testing and verification for production launch | TBD | 0 plans |
 | 87 | comprehensive-token-validation-at-every-step | Verify tokens at every step: Agent (MCP client) → App Host (BFF) → MCP Server (Gateway); document authz server vs local JWT validation | TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03 | 0 plans |
 | 94 | explicit-hitl-for-agent-consent | Explicit HITL for user approval before agent performs actions on user behalf | HITL-01, HITL-02 | 0 plans |
-| 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01, ACTOR-02 | 0 plans |
+| 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01 | ✅ Complete (1/1) |
 | 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01, AUD-02, AUD-03 | 1 plan |
 
 ---
@@ -1342,9 +1342,10 @@ Plans:
 
 **Goal:** Document and teach that the Actor token is the Agent token (they are the same thing with different names in different contexts). Establish consistent terminology across all code, documentation, and education UI. Clarify when to use "actor", "agent", "act claim", and "agent actor" to eliminate confusion.
 
+**Status:** ✅ COMPLETE (1/1 plans executed)
 **Requirements**: ACTOR-01, ACTOR-02
 **Depends on:** Phase 94 (Explicit HITL for agent consent)
-**Plans:** 0 plans (run /gsd-plan-phase 95 to break down)
+**Executed:** 2026-04-08 — Plan 01 complete (commits: 900ea2d, 0a9a8cc)
 
 **Key Focus Areas:**
 
