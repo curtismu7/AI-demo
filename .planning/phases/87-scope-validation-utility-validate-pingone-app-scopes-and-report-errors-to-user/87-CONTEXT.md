@@ -6,16 +6,40 @@
 
 ## Phase Boundary
 
-Build an interactive utility that validates PingOne resource server scope configurations against the canonical expected values documented in PINGONE_MAY_ACT_SETUP.md. The utility should:
+Build an interactive utility that validates PingOne resource server configurations against the canonical expected values documented in PINGONE_MAY_ACT_SETUP.md. The utility should:
 
-1. **Audit Mode:** Compare live PingOne resource scopes against the reference table
-2. **Report:** Display which resources are correctly configured vs misconfigured
-3. **Suggest Fixes:** 
+1. **Resource Existence Check:** Verify all 5 required resources exist by name and ID
+2. **Resource Attribute Validation:** Check resource audiences (URIs) and basic attributes
+3. **Scope Validation:** Compare live PingOne resource scopes against the reference table
+4. **Report:** Display which resources are correctly configured, misconfigured, or missing
+5. **Suggest Fixes:** 
    - For simple scope mismatches, propose the correct scope list
-   - For resource audiences, verify correct URI format
-4. **User-Initiated Fixes:** Allow users to auto-apply corrections if desired (stretch goal)
+   - For missing/incorrect resource names, audiences, propose the canonical values
+6. **User-Initiated Fixes:** Allow users to auto-apply corrections if desired (stretch goal)
 
 ## Locked Decisions
+
+### Resource Validation Rules
+
+**Required Resources:** All 5 of these must exist in the PingOne environment
+
+| Resource Name | Expected Audience | Expected Attr | Purpose |
+|---|---|---|---|
+| **Super Banking AI Agent** | `https://ai-agent.pingdemo.com` | TTL 3600s, auth: `Client Secret Basic` | Subject Token audience |
+| **Super Banking MCP Server** | `https://mcp-server.pingdemo.com` | TTL 3600s, auth: `Client Secret Basic` | MCP Token audience, delegation expression |
+| **Super Banking Agent Gateway** | `https://agent-gateway.pingdemo.com` | TTL 3600s, auth: `Client Secret Basic` | Actor token audience (no scopes) |
+| **Super Banking Banking API** | `https://banking-api.pingdemo.com` | Resource server (standard) | 2-exchange output audience |
+| **PingOne API** | `https://api.pingone.com` | Built-in (do not modify) | Management API access |
+
+**Validation Steps:**
+1. List all resource servers via PingOne Management API
+2. For each expected resource, check:
+   - ✅ Resource exists by name
+   - ✅ Resource has correct audience URI (exact match)
+   - ✅ Token introspection endpoint auth method is `Client Secret Basic` (if applicable)
+3. Mark as **MISSING** if resource not found
+4. Mark as **CONFIG_ERROR** if audience URI doesn't match
+5. Mark as **AUDIT_WARNING** if auth method differs from expected
 
 ### Scope Validation Rules
 
