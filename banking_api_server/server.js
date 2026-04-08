@@ -193,6 +193,7 @@ const delegationRoutes = require('./routes/delegation');
 const tokenChainRoutes = require('./routes/tokenChain');
 const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
 const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetadata');
+const introspectRoutes = require('./routes/introspect');
 const migrationRoutes = require('./routes/migration');
 const securityMonitoringRoutes = require('./routes/securityMonitoring');
 const oauthClientsRoutes = require('./routes/oauthClients');
@@ -841,6 +842,7 @@ app.use('/api/agent', agentIdentityRoutes);
 app.use('/api/banking-agent', bankingAgentNlRoutes);
 app.use('/api/langchain', langchainConfigRoutes);
 app.use('/api/authorize', authorizeRoutes);
+app.use('/api/introspect', introspectRoutes);
 app.use('/api/setup', setupRoutes);
 // MCP Inspector: no auth gate at the router level — tools/list returns local catalog for
 // unauthenticated visitors; tools/call and context check auth inside each handler.

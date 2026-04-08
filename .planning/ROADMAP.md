@@ -1221,4 +1221,44 @@ Plans:
 - [ ] 89-01-PLAN.md — Update core docs: README, env.example, ENVIRONMENT_MAPPING.md, PINGONE_APP_CONFIG.md, PINGONE_ACTUAL_ENVIRONMENT.md
 - [ ] 89-02-PLAN.md — Update MAY_ACT docs, PINGONE_NAMING_STANDARDIZATION_AUDIT.md, SETUP.md
 
+### Phase 90: Scope/resource check: OIDC app OIDC scope spelling validation, resource URL validation, and fix capability
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 89
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 90 to break down)
+
+### Phase 91: External MCP client access — public MCP server with PingOne-protected auth, restrict to @pingidentity.com Google login, per-client authorization, and Claude/ChatGPT integration planning
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 90
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 91 to break down)
+
+### Phase 92: User custom attribute validation — verify user has required PingOne custom attributes configured correctly, report and fix capability, integrate into existing scope/resource check tooling
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 91
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 92 to break down)
+
+### Phase 93: Surface agent-on-behalf-of-user actions in UI and education
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 92
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 93 to break down)
+
 ---

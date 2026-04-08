@@ -19,6 +19,7 @@ jest.mock('../../middleware/auth', () => ({
       return res.status(401).json({ error: 'invalid_token' });
     }
   },
+  requireSession: (req, res, next) => next(),
   requireScopes: () => (req, res, next) => next(),
 }));
 

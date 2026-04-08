@@ -35,6 +35,7 @@ jest.mock('../../middleware/auth', () => ({
     return res.status(403).json({ error: 'insufficient_scope', required_access: 'admin role or banking:admin scope' });
   },
   hasRequiredScopes: () => true,
+    requireSession: (req, res, next) => next(),
   parseTokenScopes: () => [],
 }));
 

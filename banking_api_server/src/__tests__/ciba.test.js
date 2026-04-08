@@ -53,6 +53,7 @@ jest.mock('../../middleware/auth', () => ({
   requireScopes: () => (_req, _res, next) => next(),
   requireAdmin:  () => (_req, _res, next) => next(),
   hasRequiredScopes: () => true,
+    requireSession: (req, res, next) => next(),
   parseTokenScopes:  () => [],
 }));
 

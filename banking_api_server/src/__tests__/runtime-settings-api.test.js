@@ -58,6 +58,7 @@ jest.mock('../../middleware/auth', () => ({
     if (paramId && req.user.id !== paramId) return res.status(403).json({ error: 'insufficient_scope' });
     return next();
   },
+    requireSession: (req, res, next) => next(),
   hashPassword: (p) => p,
 }));
 

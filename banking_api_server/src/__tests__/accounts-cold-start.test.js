@@ -47,6 +47,7 @@ jest.mock('../../services/demoScenarioStore', () => ({
 // ─── Mock: middleware/auth — bypass token verification ───────────────────────
 jest.mock('../../middleware/auth', () => ({
   authenticateToken: (req, res, next) => next(),
+  requireSession: (req, res, next) => next(),
   requireScopes: () => (req, res, next) => next(),
 }));
 

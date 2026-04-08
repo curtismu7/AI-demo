@@ -34,14 +34,14 @@ const IDENTITY_FORMATS = {
   
   // Legacy formats for backward compatibility
   legacy_agent: {
-    standard: /^[a-zA-Z0-9-]+$/,
-    pattern: '{agent-id}',
-    examples: ['test-agent', 'banking-agent-123']
+    standard: /^legacy-[a-zA-Z0-9-]+$/,
+    pattern: 'legacy-{agent-id}',
+    examples: ['legacy-agent', 'legacy-banking-agent']
   },
   legacy_mcp: {
-    standard: /^[a-zA-Z0-9-]+$/,
-    pattern: '{mcp-id}',
-    examples: ['test-mcp', 'banking-mcp-456']
+    standard: /^legacy-[a-zA-Z0-9-]+$/,
+    pattern: 'legacy-{mcp-id}',
+    examples: ['legacy-mcp', 'legacy-banking-mcp']
   }
 };
 
@@ -49,6 +49,12 @@ const IDENTITY_FORMATS = {
  * Domain mappings for standardization
  */
 const DOMAIN_MAPPINGS = {
+  mcp: {
+    'mcp-server': 'mcp-server',
+    'banking-mcp': 'mcp-server',
+    'ai-mcp': 'ai-mcp',
+    'default': 'mcp-server'
+  },
   agent: {
     'banking-agent': 'banking-agent',
     'ai-agent': 'ai-agent',
@@ -108,11 +114,18 @@ class IdentityFormatStandardizationService {
       }
 
       // Check legacy format
-      const legacyFormat = this.formats[`legacy_${type}`];
+      const legacyTypeKey = type === 'mcp_server' ? 'legacy_mcp' : `legacy_${type}`;
+      const legacyFormat = this.formats[legacyTypeKey];
       if (legacyFormat && legacyFormat.standard.test(identifier)) {
         validation.format = 'legacy';
         validation.warnings.push(`Using legacy ${type} identifier format: ${identifier}`);
-        validation.standardized = this.standardizeIdentifier(identifier, type);
+        // Use mapLegacyToStandard directly to avoid mutual recursion with standardizeIdentifier
+        try {
+          validation.standardized = this.mapLegacyToStandard(identifier, type, null);
+        } catch (mapErr) {
+          validation.standardized = null;
+          validation.warnings.push(`Could not map legacy identifier to standard form: ${mapErr.message}`);
+        }
         return validation;
       }
 
@@ -166,7 +179,10 @@ class IdentityFormatStandardizationService {
     const domain = preferredDomain || this.getDefaultDomain(type);
     const standardDomain = this.domainMappings[type][domain] || this.domainMappings[type].default;
     
-    return `https://${standardDomain}.pingdemo.com/${type}/${identifier}`;
+    // Map type names to URL path segments (mcp_server → mcp, agent → agent)
+    const pathSegments = { agent: 'agent', mcp_server: 'mcp' };
+    const pathSegment = pathSegments[type] || type;
+    return `https://${standardDomain}.pingdemo.com/${pathSegment}/${identifier}`;
   }
 
   /**
@@ -196,7 +212,11 @@ class IdentityFormatStandardizationService {
       const pattern = this.formats[type].standard;
       if (!pattern.test(standardizedIdentifier)) {
         components.valid = false;
-        components.errors.push('Not a standardized identifier');
+        if (standardizedIdentifier.startsWith('http://') || standardizedIdentifier.startsWith('https://')) {
+          components.errors.push('Invalid URI structure');
+        } else {
+          components.errors.push('Not a standardized identifier');
+        }
         return components;
       }
 
@@ -338,14 +358,19 @@ class IdentityFormatStandardizationService {
       standardized: null
     };
 
-    try {
-      if (typeof mayAct !== 'object' || mayAct === null) {
+    if (typeof mayAct !== 'object' || mayAct === null) {
         validation.valid = false;
         validation.errors.push('may_act must be an object');
         return validation;
       }
 
-      // Validate sub field (agent identifier)
+      // Validate sub field (agent identifier) — required
+      if (!mayAct.sub) {
+        validation.valid = false;
+        validation.errors.push('Missing required field in may_act: sub');
+        return validation;
+      }
+
       if (mayAct.sub) {
         const subValidation = this.validateIdentifierFormat(mayAct.sub, 'agent');
         
@@ -382,10 +407,6 @@ class IdentityFormatStandardizationService {
         }
       }
 
-    } catch (error) {
-      validation.valid = false;
-      validation.errors.push(`may_act validation failed: ${error.message}`);
-    }
 
     return validation;
   }
@@ -408,7 +429,13 @@ class IdentityFormatStandardizationService {
         return validation;
       }
 
-      // Validate sub field (MCP server identifier)
+      // Validate sub field (MCP server identifier) — required
+      if (!act.sub) {
+        validation.valid = false;
+        validation.errors.push('Missing required field in act: sub');
+        return validation;
+      }
+
       if (act.sub) {
         const subValidation = this.validateIdentifierFormat(act.sub, 'mcp_server');
         
@@ -436,7 +463,12 @@ class IdentityFormatStandardizationService {
           validation.errors.push(...nestedSubValidation.errors);
         }
         
-        validation.warnings.push(...nestedSubValidation.warnings);
+        // Use custom message for nested act.act.sub to indicate context
+        if (nestedSubValidation.format === 'legacy') {
+          validation.warnings.push(`Using legacy agent identifier in act.act.sub: ${act.act.sub}`);
+        } else {
+          validation.warnings.push(...nestedSubValidation.warnings);
+        }
         
         if (nestedSubValidation.standardized) {
           validation.standardized = validation.standardized || { ...act };
