@@ -24,23 +24,27 @@ const IDENTIFIER_FORMATS = {
  * Delegation claim validation rules
  */
 const DELEGATION_RULES = {
-  // User token must have may_act claim for delegation
+  // User token must have may_act claim for delegation (RFC 8693 §4.1)
+  // may_act identifies which client is authorized to act on user's behalf
   user_token: {
     required_claims: ['sub', 'may_act'],
     optional_claims: ['aud', 'iss', 'exp', 'iat', 'scope'],
     may_act_structure: {
-      required_fields: ['sub'],
-      optional_fields: ['client_id', 'actor', 'may_act']
+      // RFC 8693 §4.1: may_act.client_id identifies the authorized actor (BFF client)
+      required_fields: ['client_id'],
+      optional_fields: ['sub', 'aud', 'actor', 'may_act']
     }
   },
   
-  // Exchanged token must have act claim preserving subject
+  // Exchanged token must have act claim preserving subject (RFC 8693 §4.1-4.4)
+  // act proves that a specific actor is performing the action on behalf of user
   exchanged_token: {
     required_claims: ['sub', 'act'],
     optional_claims: ['aud', 'iss', 'exp', 'iat', 'scope'],
     act_structure: {
+      // RFC 8693 §4.1: act.sub identifies the actor; act.act allows nested delegation chains §4.4
       required_fields: ['sub'],
-      optional_fields: ['act']
+      optional_fields: ['client_id', 'act', 'aud']
     }
   }
 };
@@ -163,7 +167,18 @@ function validateMayActStructure(mayAct) {
       }
     }
 
-    // Check sub field (agent identifier)
+    // Check client_id field (BFF client identifier - RFC 8693 §4.1)
+    if (mayAct.client_id) {
+      if (typeof mayAct.client_id !== 'string') {
+        validation.valid = false;
+        validation.errors.push(`Invalid type for may_act.client_id: must be string, got ${typeof mayAct.client_id}`);
+      } else if (!mayAct.client_id.trim()) {
+        validation.valid = false;
+        validation.errors.push('may_act.client_id must not be empty string');
+      }
+    }
+
+    // Also check optional sub field (agent identifier, for backward compat)
     if (mayAct.sub) {
       try {
         const agentValidation = validateIdentifierFormat(mayAct.sub, 'agent');
