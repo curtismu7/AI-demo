@@ -631,11 +631,11 @@ Plans:
 **Goal:** A "PingOne Setup" tab in the Config page that accepts worker credentials, provisions all PingOne resources (apps, resource server, scopes, demo users) via Management API with SSE streaming progress, and writes .env or Vercel env vars automatically.
 **Requirements**: SETUP-01, SETUP-02, SETUP-03, SETUP-04, SETUP-05
 **Depends on:** Phase 48
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 49-01-PLAN.md — pingoneProvisionService.js + setupWizard.js SSE streaming route (BFF provisioning)
-- [ ] 49-02-PLAN.md — SetupWizardTab.js two-panel UI (form + live SSE log) + Config.js tab integration
+- [x] 49-01-PLAN.md — pingoneProvisionService.js + setupWizard.js SSE streaming route (BFF provisioning)
+- [x] 49-02-PLAN.md — SetupWizardTab.js two-panel UI (form + live SSE log) + Config.js tab integration
 
 ### Phase 50: update docs setup script and fix logout URLs on PingOne apps using worker token
 
