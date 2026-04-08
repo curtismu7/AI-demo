@@ -111,6 +111,7 @@ Plan: Not started
 ## Accumulated Context
 
 ### Roadmap Evolution
+- Phase 99 added: test local server and make sure it all works
 
 - Phase 7 added: RFC 9728 Protected Resource Metadata — education panel and demo integration
 - Phase 8 added: Banking transaction integrity — fix balance updates, validate all actions, and ensure enterprise-grade correctness

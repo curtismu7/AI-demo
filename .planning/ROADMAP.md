@@ -1487,4 +1487,14 @@ Plans:
 Plans:
 - [x] TBD (run /gsd-plan-phase 98 to break down) (completed 2026-04-08)
 
+### Phase 99: test local server and make sure it all works
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 98
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 99 to break down)
+
 ---
