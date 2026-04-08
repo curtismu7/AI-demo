@@ -4,6 +4,7 @@ import axios from 'axios';
 import apiClient from '../services/apiClient';
 import { notifySuccess, notifyError } from '../utils/appToast';
 import { savePublicConfig, loadPublicConfig } from '../services/configService';
+import { getHostname, setHostname } from '../services/configService';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { INDUSTRY_PRESETS, DEFAULT_INDUSTRY_ID } from '../config/industryPresets';
@@ -32,6 +33,48 @@ const REGION_OPTIONS = [
 // ─── Collapsible section card ─────────────────────────────────────────────────
 function CollapsibleCard({ title, subtitle, defaultOpen = true, className = '', passthrough = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
+
+  // ── Load hostname configuration ──  
+  useEffect(() => {
+    (async () => {
+      setHostnameLoading(true);
+      setHostnameError('');
+      try {
+        const hostname = await getHostname();
+        setHostnameState(hostname);
+        setHostnameInput(hostname);
+      } catch (error) {
+        setHostnameError(error.message);
+        notifyError('Failed to load hostname');
+      } finally {
+        setHostnameLoading(false);
+      }
+    })();
+  }, []);
+
+  // ── Handle hostname save ──
+  const handleSaveHostname = async () => {
+    if (!hostnameInput.trim()) {
+      setHostnameError('Hostname cannot be empty');
+      return;
+    }
+
+    setHostnameLoading(true);
+    setHostnameError('');
+    try {
+      const updated = await setHostname(hostnameInput);
+      setHostnameState(updated);
+      setHostnameInput(updated);
+      notifySuccess('Hostname updated successfully');
+    } catch (error) {
+      setHostnameError(error.message);
+      notifyError('Failed to update hostname');
+    } finally {
+      setHostnameLoading(false);
+    }
+  };
+
+
   return (
     <div className={`card config-page__section ${className}`}>
       <button
@@ -520,6 +563,10 @@ export default function Config() {
   const [redirectInfo, setRedirectInfo] = useState(null);
   /** Deployment platform: 'vercel' | 'replit' | 'local' */
   const [hostedOn, setHostedOn] = useState(null);
+  const [hostname, setHostnameState] = useState('');
+  const [hostnameInput, setHostnameInput] = useState('');
+  const [hostnameLoading, setHostnameLoading] = useState(false);
+  const [hostnameError, setHostnameError] = useState('');
   /** Active tab: 'setup' | 'vercel' */
   const [activeTab, setActiveTab] = useState('setup');
 
@@ -1758,7 +1805,86 @@ export default function Config() {
         )}
 
           </React.Fragment>
+        )
+
+        {/* Hostname Configuration Card */}
+        {activeTab === 'setup' && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <CollapsibleCard title="🌐 Hostname Configuration" subtitle="Runtime BFF hostname" defaultOpen={true}>
+              <div style={{ padding: '1rem 0' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                    Current Hostname:
+                  </label>
+                  <div style={{
+                    padding: '0.75rem',
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                  }}>
+                    {hostname || 'Loading...'}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="hostname-input" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                    New Hostname:
+                  </label>
+                  <input
+                    id="hostname-input"
+                    type="text"
+                    value={hostnameInput}
+                    onChange={(e) => setHostnameInput(e.target.value)}
+                    placeholder="https://api.pingdemo.com:4000"
+                    disabled={hostnameLoading}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid ' + (hostnameError ? '#ef4444' : '#d1d5db'),
+                      borderRadius: '0.375rem',
+                      fontSize: '0.9rem',
+                      fontFamily: 'monospace',
+                      opacity: hostnameLoading ? 0.5 : 1,
+                    }}
+                  />
+                  {hostnameError && (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      padding: '0.5rem',
+                      background: '#fee2e2',
+                      color: '#991b1b',
+                      borderRadius: '0.375rem',
+                      fontSize: '0.875rem',
+                    }}>
+                      ⚠️ {hostnameError}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleSaveHostname}
+                  disabled={hostnameLoading}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: hostnameLoading ? '#9ca3af' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontWeight: 500,
+                    cursor: hostnameLoading ? 'default' : 'pointer',
+                    opacity: hostnameLoading ? 0.6 : 1,
+                  }}
+                >
+                  {hostnameLoading ? 'Saving...' : 'Save Hostname'}
+                </button>
+              </div>
+            </CollapsibleCard>
+          </div>
         )}
+
+}
 
       </div>
       </div>

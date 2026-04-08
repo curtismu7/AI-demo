@@ -8,6 +8,9 @@
  * The server remains the source of truth; this is purely a convenience cache.
  */
 
+import bffAxios from './bffAxios';
+
+
 const DB_NAME    = 'banking-assistant-config';
 const STORE_NAME = 'config';
 const DB_VERSION = 1;
@@ -102,3 +105,89 @@ export async function clearConfig() {
     // ignore
   }
 }
+
+/**
+ * Hostname Configuration API — manages runtime BFF hostname
+ */
+
+/**
+ * Hostname validation regex
+ * Matches: https?://domain(:port)?
+ */
+const HOSTNAME_REGEX = /^https?:\/\/[a-zA-Z0-9.-]+(:\d{1,5})?$/;
+
+/**
+ * Validates hostname format on the client side
+ * @param {string} hostname - hostname to validate
+ * @throws {Error} if validation fails
+ */
+function validateHostnameFormat(hostname) {
+  if (typeof hostname !== 'string' || !hostname.trim()) {
+    throw new Error('Hostname cannot be empty');
+  }
+
+  if (!hostname.includes('://')) {
+    throw new Error('Hostname must include protocol (https:// or http://)');
+  }
+
+  if (!HOSTNAME_REGEX.test(hostname)) {
+    throw new Error(
+      'Invalid hostname format. Expected: https://domain.com or https://localhost:4000'
+    );
+  }
+
+  // Validate port if present
+  const portMatch = hostname.match(/:(\d+)$/);
+  if (portMatch) {
+    const port = parseInt(portMatch[1], 10);
+    if (port < 1 || port > 65535) {
+      throw new Error(`Port must be between 1 and 65535, got ${port}`);
+    }
+  }
+}
+
+/**
+ * Fetch currently configured hostname from backend
+ * @returns {Promise<string>} hostname (e.g., 'https://api.pingdemo.com:4000')
+ * @throws {Error} if API request fails
+ */
+export const getHostname = async () => {
+  try {
+    const response = await bffAxios.get('/api/admin/config/hostname');
+    return response.data.hostname;
+  } catch (error) {
+    const message = error.response?.data?.error || error.message;
+    throw new Error(`Failed to fetch hostname: ${message}`);
+  }
+};
+
+/**
+ * Update configured hostname on backend
+ * Validates hostname format locally before sending to server
+ * @param {string} hostname - new hostname with protocol and optional port
+ * @returns {Promise<string>} updated hostname
+ * @throws {Error} if hostname validation fails or API error occurs
+ */
+export const setHostname = async (hostname) => {
+  // Validate locally first
+  validateHostnameFormat(hostname);
+
+  try {
+    const response = await bffAxios.put('/api/admin/config/hostname', { hostname });
+    return response.data.hostname;
+  } catch (error) {
+    // Handle API validation errors (400 responses)
+    if (error.response?.status === 400) {
+      const apiError = error.response.data?.error || 'Invalid hostname format';
+      throw new Error(apiError);
+    }
+    // Handle other API errors
+    if (error.response?.status === 500) {
+      throw new Error('Server error while updating hostname. Please try again.');
+    }
+    // Handle network errors
+    throw new Error(`Failed to update hostname: ${error.message}`);
+  }
+};
+
+export const validateHostname = validateHostnameFormat;
