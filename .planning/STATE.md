@@ -144,7 +144,7 @@ Plan: 1 of 2 — ✅ COMPLETE (Wave 1)
 - Phase 46 added: Standardize PingOne app, resource, and scope naming across all use cases
 - Phase 47 added: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 - Phase 26 added: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
-- Phase 87 added: Scope validation utility — validate PingOne app scopes and report errors to user
+- Phase 87 added: Comprehensive token validation at every step — document and audit token validation patterns for Agent (MCP client), App Host (BFF), and MCP Server (Gateway); decide when to validate with authz server vs local JWT
 - Phase 27 added: PingOne Authorize PAZ setup — transaction limit policy, AUD validation, act chain introspection to match RFC 8693 token exchange implementation
 - Phase 28 added: Vercel config tab — read environment variables via Vercel API, display editable fields in UI, write non-secret vars back to Vercel, secrets entered by user and stored server-side only
 - Phase 29 added: Use-case C — agent accessing sensitive or regulated data; explicit authorization, least-data-necessary controls, optional HITL for elevated actions
@@ -162,3 +162,4 @@ Plan: 1 of 2 — ✅ COMPLETE (Wave 1)
 - Phase 91 added: External MCP client access — public MCP server with PingOne-protected auth, restrict to @pingidentity.com Google login, per-client authorization, and Claude/ChatGPT integration planning
 - Phase 92 added: User custom attribute validation — verify user has required PingOne custom attributes configured correctly, report and fix capability, integrate into existing scope/resource check tooling
 - Phase 93 added: Surface agent-on-behalf-of-user actions in UI and education — make visible in dashboard what the AI agent is doing on the user's behalf, with explanatory education panels describing the pattern
+- Phase 91 (Plan 01): RFC 7662 Token Introspection Endpoint — Wave 1 COMPLETE (tokenIntrospectionService, /api/introspect route, 20 test cases, all passing)

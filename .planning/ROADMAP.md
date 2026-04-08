@@ -37,6 +37,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
 | 85 | chase-dashboard-styling | Dashboard styling to match Chase.com design language | Complete | 3/3 plans |
 | 86 | test-everything-you-can-for-production-run | Comprehensive testing and verification for production launch | TBD | 0 plans |
+| 87 | comprehensive-token-validation-at-every-step | Verify tokens at every step: Agent (MCP client) → App Host (BFF) → MCP Server (Gateway); document authz server vs local JWT validation | TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03 | 0 plans |
 
 ---
 
@@ -1188,15 +1189,44 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 86 to break down)
 
-### Phase 87: Scope validation utility - validate PingOne app scopes and report errors to user
+### Phase 87: Comprehensive token validation at every step
 
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 86
-**Plans:** 0 plans
+**Goal:** Implement and document comprehensive token validation across all three components of the system: Agent (MCP client), App Host (BFF/Express server), and MCP Server (Gateway). For each component, determine whether to validate tokens with PingOne's authorization server or locally if JWT, document the decision pattern, and ensure consistent implementation.
+
+**Requirements**: TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03
+**Depends on:** Phase 91 (token introspection endpoint completed)
+**Plans:** 0 plans (run /gsd-plan-phase 87 to break down)
+
+**Key Focus Areas:**
+1. **Agent (MCP Client) — Token Validation**
+   - External AI clients (Claude, ChatGPT) authenticate and obtain Bearer tokens
+   - Before invoking MCP tools, validate token with /api/introspect endpoint (Phase 91)
+   - Document: When to call /api/introspect vs cache locally
+
+2. **App Host (BFF/Express Server) — Token Validation**
+   - All incoming requests checked for valid Bearer token
+   - Token validated either with PingOne authorization server OR locally if JWT + RS256
+   - Scope validation: extract scopes from token and enforce per-route
+   - Document: Validation chain for OAuth flows, agent delegation, and user actions
+
+3. **MCP Server (Gateway) — Token Validation**
+   - WebSocket upgrade validates Bearer token from client
+   - Token must be active + have mcp:read scope (at minimum)
+   - Client identity (sub + act claims) tracked for audit and authorization
+   - Document: MCP-specific token validation vs traditional REST API validation
+
+**Success Criteria:**
+- Token validation patterns documented for each component with clear decision trees
+- Every API endpoint has explicit token validation (remote or local)
+- MCP gateway WebSocket handshake includes token validation
+- Test coverage for each pattern (valid, expired, invalid, missing scopes)
+- Architecture diagram showing token flow with validation points
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 87 to break down)
+- [ ] 87-01-PLAN.md — Document and audit Agent token validation patterns (when to call /api/introspect)
+- [ ] 87-02-PLAN.md — Document and audit App Host token validation patterns (BFF/Express validation chain)
+- [ ] 87-03-PLAN.md — Document and audit MCP Server token validation patterns (WebSocket + tool calls)
+- [ ] 87-04-PLAN.md — Create architecture diagrams and decision trees; verify consistency across docs
 
 ### Phase 88: Audit and align all documentation and code to PingOne app names, rename apps where needed, update Vercel and localhost env vars, validate setup and creation code
 
