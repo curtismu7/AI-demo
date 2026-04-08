@@ -1489,12 +1489,13 @@ Plans:
 
 ### Phase 99: test local server and make sure it all works
 
-**Goal:** [To be planned]
+**Goal:** Verify that the local server starts cleanly, all OAuth flows work end-to-end, and features from phases 95-98 (actor token terminology, aud validation, introspection/JWT config toggle) function correctly without regressions.
 **Requirements**: TBD
 **Depends on:** Phase 98
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 99 to break down)
+- [ ] 99-01-PLAN.md — Automated checks: UI build, server unit tests, UI unit tests
+- [ ] 99-02-PLAN.md — Human verification: server startup, OAuth flows, Phase 95-98 features
 
 ---
