@@ -1198,4 +1198,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 87 to break down)
 
+### Phase 88: Audit and align all documentation and code to PingOne app names, rename apps where needed, update Vercel and localhost env vars, validate setup and creation code
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 87
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 88 to break down)
+
 ---
