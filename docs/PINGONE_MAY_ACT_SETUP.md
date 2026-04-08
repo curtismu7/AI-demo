@@ -30,7 +30,7 @@ Adding `openid` anywhere in this flow breaks things in two different ways depend
 2. Find `scope` → current value must be `profile email banking:ai:agent:read` (no `openid`)
 3. Open **Step 6** → **Body tab** → find the `scope` row → must be `p1:read:user p1:update:user` (no `openid`)
 
-> **Why no ID token?** The Super Banking User app has `Response Type: Code` only — **ID Token is unchecked** in PingOne OIDC Settings. `openid` is the scope that triggers ID token issuance. Since there is no ID token in this flow and the access token audience is a custom resource server, `openid` must be absent.
+| **Why no ID token?** The Super Banking User App has `Response Type: Code` only — **ID Token is unchecked** in PingOne OIDC Settings. `openid` is the scope that triggers ID token issuance. Since there is no ID token in this flow and the access token audience is a custom resource server, `openid` must be absent.
 
 ---
 
@@ -41,7 +41,7 @@ Adding `openid` anywhere in this flow breaks things in two different ways depend
 > **Design rule:** Keep chains to **3 exchanges or fewer**. Each exchange is a synchronous round-trip to PingOne.
 >
 > This document covers two patterns — choose the one that matches your architecture:
-> - **Demo (1 exchange):** Subject Token → MCP Token via one RFC 8693 exchange, then a separate Client Credentials call for the PingOne API token. Simpler to configure; ideal for learning the `may_act` → `act` delegation model. This is what the Super Banking demo implements.
+> - **Demo (1 exchange):** Subject Token → MCP Token via one RFC 8693 exchange, then a separate Client Credentials call for the PingOne API token. Simpler to configure; ideal for learning the `may_act` → `act` delegation model. This is what the Super Banking Admin App implements.
 > - **Production (2 exchanges):** Subject Token → Agent Exchanged Token → MCP Exchanged Token via two chained RFC 8693 exchanges. Each hop adds a nested `act` layer, producing `act.act.sub` provenance. Required when the AI Agent itself must be an accountable identity in the delegation chain, and when PingOne Authorize (PAZ) must verify every hop as a policy attribute.
 
 ### Demo pattern (1 exchange)
@@ -87,8 +87,8 @@ PingOne Management API  (/v1/environments/{envId}/users/{userId})
 | Token | Audience URL | How issued | Issuer | Scope |
 |-------|-------------|------------|--------|-------|
 | **Subject Token** | `https://ai-agent.pingdemo.com` | PKCE login | PingOne (user auth) | `profile email banking:ai:agent:read` |
-| **MCP Token** | `https://mcp-server.pingdemo.com` | RFC 8693 Token Exchange #1 | Super Banking BFF | `banking:accounts:read banking:transactions:read banking:transactions:write` (narrowed) |
-| **PingOne API Token** | `https://api.pingone.com` | Client Credentials | Super Banking MCP Service | `p1:read:user p1:update:user` |
+| **MCP Token** | `https://mcp-server.pingdemo.com` | RFC 8693 Token Exchange #1 | Super Banking Admin App | `banking:accounts:read banking:transactions:read banking:transactions:write` (narrowed) |
+| **PingOne API Token** | `https://api.pingone.com` | Client Credentials | Super Banking MCP Token Exchanger | `p1:read:user p1:update:user` |
 | *(actor token)* | `https://agent-gateway.pingdemo.com` | *(internal — proves BFF identity for Exchange #1)* | (N/A) | `banking:ai:agent:read` |
 
 >  **Two Key Requirements for 2-Exchange Delegation:**
@@ -176,7 +176,7 @@ This section shows the **actual `may_act` and `act` claim structures** used by t
 
 ```json
 {
-  "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1",  // REQUIRED: Super Banking BFF client UUID authorized to act
+  "client_id": "14cefa5b-d9d6-4e51-8749-e938d4edd1c0",  // REQUIRED: Super Banking Admin App (BFF) client UUID authorized to act
   "sub": "https://banking-agent.pingdemo.com/agent/banka-agent-01"  // OPTIONAL: The agent identifier (for reverse lookups)
 }
 ```
@@ -185,25 +185,25 @@ This section shows the **actual `may_act` and `act` claim structures** used by t
 
 ```json
 {
-  "sub": "5C9A2E8F-B3D1-42A8-8637-C2A9F7B5D8E3",  // User ID (PingOne GUID from Super Banking User population)
+  "sub": "5C9A2E8F-B3D1-42A8-8637-C2A9F7B5D8E3",  // User ID (PingOne GUID from Super Banking User App population)
   "aud": ["https://ai-agent.pingdemo.com"],
   "iss": "https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as",  // Real-looking PingOne environment
   "scope": "profile email banking:ai:agent:read banking:accounts:read banking:transactions:read",
   "exp": 1712595600,
   "iat": 1712594000,
   "may_act": {
-    "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1",  // Super Banking BFF client ID in PingOne (must match actor)
+    "client_id": "14cefa5b-d9d6-4e51-8749-e938d4edd1c0",  // Super Banking Admin App (BFF) client ID in PingOne (must match actor)
     "sub": "https://banking-agent.pingdemo.com/agent/banka-agent-01"  // Optional: which agent
   }
 }
 ```
 
 **How it's Validated (Code Path):**
-1. User logs into Super Banking User app via `/api/auth/oauth/authorize`
+1. User logs into Super Banking User App via `/api/auth/oauth/authorize`
 2. PingOne (issuer: `https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as`) issues Subject Token with `may_act` from user's `myAct` attribute
-3. BFF (Super Banking BFF, client ID: `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1`) receives token, decodes it
+3. BFF (Super Banking Admin App, client ID: `14cefa5b-d9d6-4e51-8749-e938d4edd1c0`) receives token, decodes it
 4. `delegationClaimsService.validateMayActStructure()` (line 143–230) checks:
-   - ✅ `client_id` field is present and equals `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1` (required)
+   - ✅ `client_id` field is present and equals `14cefa5b-d9d6-4e51-8749-e938d4edd1c0` (required)
    - ✅ `client_id` is a non-empty string
    - ✅ `sub` field format is valid (optional field)
 5. If valid: BFF can use this token for token exchange
@@ -211,13 +211,13 @@ This section shows the **actual `may_act` and `act` claim structures** used by t
 
 **Setting `may_act` in PingOne (Part 3c):**
 
-On the Super Banking User app, when a user logs in, PingOne reads their `mayAct` attribute and includes it in the access token.
+On the Super Banking User App, when a user logs in, PingOne reads their `mayAct` attribute and includes it in the access token.
 
 Set user attribute (`myAct`) to:
 ```json
 {
   "mayAct": {
-    "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1",  // Super Banking BFF Client ID (PINGONE_CORE_CLIENT_ID)
+    "client_id": "14cefa5b-d9d6-4e51-8749-e938d4edd1c0",  // Super Banking Admin App Client ID (PINGONE_CORE_CLIENT_ID)
     "sub": "https://banking-agent.pingdemo.com/agent/banka-agent-01"  // Optional: agent identifier
   }
 }
@@ -227,7 +227,7 @@ Or simpler (PingOne will infer agent from context):
 ```json
 {
   "mayAct": {
-    "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1"
+    "client_id": "14cefa5b-d9d6-4e51-8749-e938d4edd1c0"
   }
 }
 ```
@@ -255,7 +255,7 @@ user.mayAct
   "exp": 1712595600,
   "iat": 1712594000,
   "act": {
-    "sub": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1"  // Super Banking BFF that performed the exchange (PINGONE_CORE_CLIENT_ID)
+    "sub": "14cefa5b-d9d6-4e51-8749-e938d4edd1c0"  // Super Banking Admin App that performed the exchange (PINGONE_CORE_CLIENT_ID)
   }
 }
 ```
@@ -270,9 +270,9 @@ user.mayAct
   "exp": 1712595600,
   "iat": 1712594000,
   "act": {
-    "sub": "D2E4F1A3-B6C9-4E2D-9C7F-1A8B5D3E6F2C",  // Super Banking MCP Service (outermost actor, Exchange #2)
+    "sub": "630b065f-0c28-41c2-81ed-1daee811285",  // Super Banking MCP Token Exchanger (outermost actor, Exchange #2)
     "act": {
-      "sub": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1"  // Super Banking BFF (intermediate actor, Exchange #1)
+      "sub": "2533a611-fcb6-4ab9-82cc-9ab407f1dbda"  // Super Banking AI Agent App (intermediate actor, Exchange #1)
     }
   }
 }
@@ -280,10 +280,10 @@ user.mayAct
 
 **How it's Created (RFC 8693 Token Exchange):**
 
-**BFF (Super Banking BFF) performs Exchange #1** (1-exchange or start of 2-exchange):
+**BFF (Super Banking Admin App) performs Exchange #1** (1-exchange or start of 2-exchange):
 ```bash
 curl -X POST https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as/token \
-  -H "Authorization: Basic $(echo -n '8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1:your-bff-client-secret' | base64)" \
+  -H "Authorization: Basic $(echo -n '14cefa5b-d9d6-4e51-8749-e938d4edd1c0:your-bff-client-secret' | base64)" \
   -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
   -d "subject_token=<user-access-token-with-may_act>" \
   -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
@@ -294,17 +294,17 @@ curl -X POST https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as/to
 
 **Environment values:**
 - `c249f73b-cdc8-45ff-a651-e4a55b456f3f` = PINGONE_ENVIRONMENT_ID
-- `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1` = PINGONE_CORE_CLIENT_ID (Super Banking BFF client)
+- `14cefa5b-d9d6-4e51-8749-e938d4edd1c0` = PINGONE_CORE_CLIENT_ID (Super Banking Admin App)
 - `your-bff-client-secret` = PINGONE_CORE_CLIENT_SECRET
 
 PingOne (issuer: `https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as`):
-1. Decodes subject token from Super Banking User app
-2. Finds `may_act.client_id` = `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1` → validates it matches the requesting BFF client
+1. Decodes subject token from Super Banking User App
+2. Finds `may_act.client_id` = `14cefa5b-d9d6-4e51-8749-e938d4edd1c0` → validates it matches the requesting BFF client
 3. Checks the MCP Resource Server's attribute mapping expression (Part 1b—the `act` expression)
 4. Evaluates: `may_act.client_id == actor_token.client_id`?  (is the permitted actor the one asking?)
 5. If YES: promotes `may_act` to `act` in output token
 6. If NO: returns `act = null` and exchange fails (because `act` is required)
-7. Returns MCP Token with: `act: { sub: "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1" }`
+7. Returns MCP Token with: `act: { sub: "14cefa5b-d9d6-4e51-8749-e938d4edd1c0" }`
 
 **How it's Validated in Code (Code Path):**
 - `banking_api_server/services/delegationClaimsService.js` lines 247–290: `validateExchangedTokenAct()`
@@ -316,11 +316,11 @@ PingOne (issuer: `https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/
 
 ### PingOne Configuration Checklist
 
-- ☑️ **User Attribute:** `myAct` (JSON type) on Super Banking User population with value `{ "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1" }`
+- ☑️ **User Attribute:** `myAct` (JSON type) on Super Banking User population with value `{ "client_id": "14cefa5b-d9d6-4e51-8749-e938d4edd1c0" }`
 - ☑️ **Resource Server Attribute (1a):** Super Banking AI Agent — map `may_act` expression to `user.mayAct`
 - ☑️ **Resource Server Attribute (1b):** Super Banking MCP Server — map `act` expression with the ternary logic shown in Part 1b
-- ☑️ **Subject Token contains:** `may_act` with the user's PingOne `myAct` attribute (client_id = `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1`)
-- ☑️ **MCP/Exchanged Token contains:** `act` with BFF client ID `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1` (1-exchange) or nested chain with MCP client `D2E4F1A3-B6C9-4E2D-9C7F-1A8B5D3E6F2C` (2-exchange)
+- ☑️ **Subject Token contains:** `may_act` with the user's PingOne `myAct` attribute (client_id = `14cefa5b-d9d6-4e51-8749-e938d4edd1c0`)
+- ☑️ **MCP/Exchanged Token contains:** `act` with BFF client ID `14cefa5b-d9d6-4e51-8749-e938d4edd1c0` (1-exchange) or nested chain with MCP client `630b065f-0c28-41c2-81ed-1daee811285` (2-exchange)
 
 ---
 
@@ -364,10 +364,10 @@ Use this table as your single source of truth when filling in PingOne forms and 
 | MCP Resource Server | Scope 3 | `banking:transactions:write` |
 | Agent Gateway Resource Server | Name | `Super Banking Agent Gateway` |
 | Agent Gateway Resource Server | Audience | `https://agent-gateway.pingdemo.com` |
-| User OIDC App | Name | `Super Banking User` |
-| Banking App (exchanger app) | Name | `Super Banking Banking App` |
-| MCP Service App | Name | `Super Banking MCP Service` |
-| `mayAct.sub` value on user records | equals | `PINGONE_CORE_CLIENT_ID` — the client ID UUID of Super Banking Banking App |
+| User OIDC App | Name | `Super Banking User App` |
+| Banking App (exchanger app) | Name | `Super Banking Admin App` |
+| MCP Service App | Name | `Super Banking MCP Token Exchanger` |
+| `mayAct.sub` value on user records | equals | `PINGONE_CORE_CLIENT_ID` — the client ID UUID of Super Banking Admin App |
 | User Schema Attribute | Attribute name | `mayAct` |
 | User Schema Attribute | Type | `JSON` |
 | Token Claim — `act` on MCP Token | Where configured | **Super Banking MCP Server resource Attributes tab** (Step 1b) — NOT the application |
@@ -625,7 +625,7 @@ Open the existing end-user OIDC application. Verify or update:
 
 | Field | Type in |
 |-------|---------|
-| **Application name** | `Super Banking User` |
+| **Application name** | `Super Banking User App` |
 | **Description** | `End user web application for Super Banking banking customers Issues Subject Tokens via Authorization Code and PKCE The Subject Token carries may_act authorizing the Banking App to perform token exchange` |
 | **Icon** | *(optional — leave blank or upload a logo)* |
 | **Home Page URL** | `https://banking-demo-puce.vercel.app` |
@@ -673,7 +673,7 @@ Open the existing application. Verify or update:
 
 | Field | Type in |
 |-------|---------|
-| **Application name** | `Super Banking Banking App` |
+| **Application name** | `Super Banking Admin App` |
 | **Description** | `Banking app server Authenticates users and performs Token Exchange 1 to get an MCP-scoped token on behalf of the authenticated user The Client ID of this app must be set as the mayAct sub value on all user profiles that use the AI agent` |
 | **Icon** | *(optional — leave blank or upload a logo)* |
 | **Home Page URL** | `https://banking-demo-puce.vercel.app` |
@@ -721,7 +721,7 @@ Click **Add Application**:
 
 | Field | Type in |
 |-------|---------|
-| **Application name** | `Super Banking MCP Service` |
+| **Application name** | `Super Banking MCP Token Exchanger` |
 | **Description** | `Machine to machine application for the Super Banking MCP server Uses Client Credentials to obtain a scoped PingOne API token for user lookup The MCP Token carrying the delegation context is validated separately` |
 | **Icon** | *(optional — leave blank)* |
 | **Home Page URL** | *(leave blank — no UI)* |
@@ -765,7 +765,7 @@ Click **Save**, then copy the **Client ID** and **Client Secret** — these beco
 |-------|---------|
 | **Attribute name** | `mayAct` |
 | **Display name** | `May Act` |
-| **Description** | `JSON object identifying the OAuth client authorized to exchange this users Subject Token Must match the client ID UUID of Super Banking Banking App PingOne validates this on every token exchange request` |
+| **Description** | `JSON object identifying the OAuth client authorized to exchange this users Subject Token Must match the client ID UUID of Super Banking Admin App PingOne validates this on every token exchange request` |
 | **Type** | `JSON` |
 | **Required** | `No` |
 | **Unique** | `No` |
@@ -784,7 +784,7 @@ After completing Steps 1–3a, log in as the test user from a browser and inspec
   "may_act": { "sub": "<PINGONE_CORE_CLIENT_ID>" }
 }
 ```
-`may_act.sub` is the **client ID UUID** of Super Banking Banking App, not a URL.
+`may_act.sub` is the **client ID UUID** of Super Banking Admin App, not a URL.
 
 If `may_act` is absent:
 - Confirm the `mayAct` attribute was set on the user record (Step 3c)
@@ -800,7 +800,7 @@ The value must be the **client ID UUID of Super Banking Banking App** (`PINGONE_
 **Option A — PingOne Admin Console:**
 1. **Directory → Users** → open the user
 2. Find **Custom Attributes → mayAct**
-3. Enter the UUID of Super Banking Banking App:
+3. Enter the UUID of Super Banking Admin App:
 ```json
 { "sub": "<client-id-uuid-of-BX-Finance-Banking-App>" }
 ```
@@ -811,7 +811,7 @@ PATCH https://api.pingone.com/v1/environments/{envId}/users/{userId}
 Authorization: Bearer <token with p1:update:user>
 Content-Type: application/json
 
-{ "mayAct": { "sub": "<client-id-uuid-of-BX-Finance-Banking-App>" } }
+{ "mayAct": { "sub": "<client-id-uuid-of-Super-Banking-Admin-App>" } }
 ```
 
 **Option C — Super Banking Demo App (recommended):**
@@ -847,13 +847,13 @@ These toggles map to the `ff_inject_may_act` and `ff_inject_audience` feature fl
 PINGONE_ENVIRONMENT_ID=<your-pingone-environment-id>
 PINGONE_REGION=com
 
-# ── Super Banking User app (issues Subject Token) ────────────────────────────────
-PINGONE_CORE_USER_CLIENT_ID=<Client ID of "Super Banking User">
-PINGONE_CORE_USER_CLIENT_SECRET=<Client Secret of "Super Banking User">
+# ── Super Banking User App (issues Subject Token) ────────────────────────────────
+PINGONE_CORE_USER_CLIENT_ID=<Client ID of "Super Banking User App">
+PINGONE_CORE_USER_CLIENT_SECRET=<Client Secret of "Super Banking User App">
 
-# ── Super Banking Banking App (exchanges Subject Token → MCP Token) ──────────────
-PINGONE_CORE_CLIENT_ID=<Client ID of "Super Banking Banking App">
-PINGONE_CORE_CLIENT_SECRET=<Client Secret of "Super Banking Banking App">
+# ── Super Banking Admin App (exchanges Subject Token → MCP Token) ──────────────
+PINGONE_CORE_CLIENT_ID=<Client ID of "Super Banking Admin App">
+PINGONE_CORE_CLIENT_SECRET=<Client Secret of "Super Banking Admin App">
 
 # ── Subject Token audience  (must exactly match "Super Banking AI Agent" Audience)
 ENDUSER_AUDIENCE=https://ai-agent.pingdemo.com
@@ -868,9 +868,9 @@ MCP_RESOURCE_URI=https://mcp-server.pingdemo.com
 ### `banking_mcp_server/.env`  (on the MCP server)
 
 ```env
-# ── Super Banking MCP Service app (Client Credentials → PingOne API Token) ───────
-MCP_CLIENT_ID=<Client ID of "Super Banking MCP Service">
-MCP_CLIENT_SECRET=<Client Secret of "Super Banking MCP Service">
+# ── Super Banking MCP Token Exchanger (Client Credentials → PingOne API Token) ───────
+MCP_CLIENT_ID=<Client ID of "Super Banking MCP Token Exchanger">
+MCP_CLIENT_SECRET=<Client Secret of "Super Banking MCP Token Exchanger">
 
 # ── PingOne API Token audience ─────────────────────────────────────────────────
 PINGONE_API_AUDIENCE=https://api.pingone.com
@@ -886,7 +886,7 @@ PINGONE_REGION=com
 
 ### Subject Token → MCP Token  (Token Exchange #1)
 
-Performed by: **Super Banking Banking App** using `PINGONE_CORE_CLIENT_ID` / `PINGONE_CORE_CLIENT_SECRET`
+Performed by: **Super Banking Admin App** using `PINGONE_CORE_CLIENT_ID` / `PINGONE_CORE_CLIENT_SECRET`
 
 The banking app server calls PingOne's token endpoint, presenting the user's Subject Token as the `subject_token` and its own access token (audience `https://agent-gateway.pingdemo.com`) as the `actor_token`. PingOne checks that `subject_token.may_act.sub` matches `actor_token.aud[0]` before issuing the MCP Token.
 
@@ -910,7 +910,7 @@ PingOne validates: `subject_token.may_act.sub` === `actor_token.aud[0]` — both
 
 ### MCP Service → PingOne API Token  (Client Credentials — Token 3)
 
-Performed by: **Super Banking MCP Service** using `MCP_CLIENT_ID` / `MCP_CLIENT_SECRET`
+Performed by: **Super Banking MCP Token Exchanger** using `MCP_CLIENT_ID` / `MCP_CLIENT_SECRET`
 
 The MCP server requests a scoped PingOne API token using Client Credentials. This is **not** a token exchange — it is a separate, independent credential grant that gives the MCP server permission to call the PingOne Management API.
 
