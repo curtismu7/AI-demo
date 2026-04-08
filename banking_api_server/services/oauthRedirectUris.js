@@ -7,6 +7,7 @@
 
 const configStore = require('./configStore');
 const { getCanonicalPublicOrigin, OFFICIAL_DEMO_ORIGIN } = require('./vercelPublicUrl');
+const configHostnameService = require('./configHostnameService');
 
 /** Public hostname for this request (Vercel often sets x-forwarded-host). */
 function getPublicHost(req) {
@@ -19,6 +20,19 @@ function getPublicHost(req) {
 /** Strip trailing slashes, whitespace, and newlines from a URL. */
 function _sanitizeUrl(url) {
   return (url || '').trim().replace(/[\/\r\n]+$/, '');
+}
+
+/**
+ * Get base hostname from runtime configuration.
+ * Returns hostname (with protocol and optional port) or null if not configured.
+ */
+function getConfiguredHostnameOrNull() {
+  try {
+    return configHostnameService.getConfiguredHostname();
+  } catch (err) {
+    // configHostnameService may not be initialized or hostname not set
+    return null;
+  }
 }
 
 /**
@@ -61,23 +75,36 @@ function getFrontendOrigin(req) {
 
 /**
  * Admin OAuth redirect_uri (must match PingOne Web app allowlist).
+ * Priority: configured hostname > direct configStore > canonical origin > Vercel > request-based
  * @param {{ silent?: boolean }} [opts] — if silent, no console.warn (e.g. GET /redirect-info)
  */
 function getAdminRedirectUri(req, opts = {}) {
+  // 1. Try configured hostname (set at runtime via admin UI)
+  const configuredHostname = getConfiguredHostnameOrNull();
+  if (configuredHostname) {
+    return `${configuredHostname}/api/auth/oauth/callback`;
+  }
+
+  // 2. Try legacy configStore direct value
   const fromStore = configStore.getEffective('admin_redirect_uri');
   if (fromStore) return _sanitizeUrl(fromStore);
+
+  // 3. Try canonical origin from environment
   const base = getCanonicalPublicOrigin();
   if (base) return `${base}/api/auth/oauth/callback`;
+
+  // 4. Try Vercel deployment
   if (process.env.VERCEL) {
     if (!opts.silent) {
       console.warn(
-        '[OAuth admin] No PUBLIC_APP_URL / REACT_APP_CLIENT_URL / VERCEL_PROJECT_PRODUCTION_URL; using request host for redirect_uri — set PUBLIC_APP_URL to your stable production domain (e.g. banking-demo-puce.vercel.app) and register that URI in PingOne.'
+        '[OAuth admin] No configured hostname / PUBLIC_APP_URL / REACT_APP_CLIENT_URL / VERCEL_PROJECT_PRODUCTION_URL; using request host for redirect_uri — configure hostname via admin UI or set PUBLIC_APP_URL to your stable production domain (e.g. banking-demo-puce.vercel.app) and register that URI in PingOne.'
       );
     }
     const proto = req.protocol === 'http' ? 'http' : 'https';
     return `${proto}://${getPublicHost(req)}/api/auth/oauth/callback`;
   }
-  // Local dev or Replit — derive from request
+
+  // 5. Fall back to request-derived URL (local dev or Replit)
   const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
   const host  = getPublicHost(req);
   return `${proto}://${host}/api/auth/oauth/callback`;
@@ -85,23 +112,36 @@ function getAdminRedirectUri(req, opts = {}) {
 
 /**
  * End-user OAuth redirect_uri (must match PingOne app allowlist).
+ * Priority: configured hostname > direct configStore > canonical origin > Vercel > request-based
  * @param {{ silent?: boolean }} [opts]
  */
 function getUserRedirectUri(req, opts = {}) {
+  // 1. Try configured hostname (set at runtime via admin UI)
+  const configuredHostname = getConfiguredHostnameOrNull();
+  if (configuredHostname) {
+    return `${configuredHostname}/api/auth/oauth/user/callback`;
+  }
+
+  // 2. Try legacy configStore direct value
   const fromStore = configStore.getEffective('user_redirect_uri');
   if (fromStore) return _sanitizeUrl(fromStore);
+
+  // 3. Try canonical origin from environment
   const base = getCanonicalPublicOrigin();
   if (base) return `${base}/api/auth/oauth/user/callback`;
+
+  // 4. Try Vercel deployment
   if (process.env.VERCEL) {
     if (!opts.silent) {
       console.warn(
-        '[OAuth user] No canonical PUBLIC_APP_URL — using request host for redirect_uri; set PUBLIC_APP_URL and register the same URIs in PingOne.'
+        '[OAuth user] No configured hostname / canonical PUBLIC_APP_URL — using request host for redirect_uri; configure hostname via admin UI or set PUBLIC_APP_URL and register the same URIs in PingOne.'
       );
     }
     const proto = req.protocol === 'http' ? 'http' : 'https';
     return `${proto}://${getPublicHost(req)}/api/auth/oauth/user/callback`;
   }
-  // Local dev or Replit — derive from request
+
+  // 5. Fall back to request-derived URL (local dev or Replit)
   const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
   const host  = getPublicHost(req);
   return `${proto}://${host}/api/auth/oauth/user/callback`;
@@ -111,18 +151,24 @@ function getUserRedirectUri(req, opts = {}) {
  * JSON for GET /api/auth/oauth/redirect-info — copy values into PingOne redirect URI lists.
  */
 function getOAuthRedirectDebugInfo(req) {
+  const configuredHostname = getConfiguredHostnameOrNull();
   const canonical = getCanonicalPublicOrigin();
   const admin = getAdminRedirectUri(req, { silent: true });
   const user = getUserRedirectUri(req, { silent: true });
   const frontendOrigin = getFrontendOrigin(req);
   const postLogoutUri = `${frontendOrigin}/logout`;
   const warnings = [];
-  if (process.env.VERCEL && !canonical) {
+  if (configuredHostname) {
+    warnings.push(
+      `Using configured hostname: ${configuredHostname}. Ensure this hostname is registered in PingOne OAuth applications.`
+    );
+  } else if (process.env.VERCEL && !canonical) {
     warnings.push(
       'Set PUBLIC_APP_URL (or REACT_APP_CLIENT_URL / VERCEL_PROJECT_PRODUCTION_URL) to your stable production URL (e.g. https://banking-demo-puce.vercel.app) so redirect_uri does not change when deployment hostnames change. Register adminRedirectUri and userRedirectUri below in PingOne exactly.'
     );
   }
   return {
+    configuredHostname: configuredHostname || null,
     canonicalOrigin: canonical,
     adminRedirectUri: admin,
     userRedirectUri: user,
@@ -210,5 +256,6 @@ module.exports = {
   getOAuthRedirectDebugInfo,
   validateRedirectUriOrigin,
   getExpectedFrontendOrigin,
+  getConfiguredHostnameOrNull,
   REFERENCE_REDIRECT_SETS,
 };
