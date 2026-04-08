@@ -40,7 +40,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 87 | comprehensive-token-validation-at-every-step | Verify tokens at every step: Agent (MCP client) → App Host (BFF) → MCP Server (Gateway); document authz server vs local JWT validation | TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03 | 0 plans |
 | 94 | explicit-hitl-for-agent-consent | Explicit HITL for user approval before agent performs actions on user behalf | HITL-01, HITL-02 | 0 plans |
 | 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01 | ✅ Complete (1/1) |
-| 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01, AUD-02, AUD-03 | 1 plan |
+| 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01 | ✅ Complete (1/1) |
 
 ---
 
@@ -1401,9 +1401,10 @@ Plans:
 
 **Goal:** Implement comprehensive audience (aud) claims validation across all OAuth tokens and APIs. Ensure every token includes a correct aud claim identifying the intended recipient (resource server, API, or service). Configure aud values in PingOne applications, validate on every incoming request, and audit aud mismatches to prevent token confusion and delegation attacks.
 
+**Status:** ✅ COMPLETE (1/1 plans executed)
 **Requirements**: AUD-01, AUD-02, AUD-03
 **Depends on:** Phase 95 (Actor token = Agent token education)
-**Plans:** 1 plan
+**Executed:** 2026-04-08 — Plan 01 complete (commits: 2b24f38, c2b696d)
 
 **Key Focus Areas:**
 

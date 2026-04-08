@@ -20,10 +20,10 @@ progress:
 
 ## Current Position
 
-Phase: 96 (audience-aud-claim-validation) — READY FOR PLANNING
-Plan: 1 of 1 — (Pending /gsd-plan-phase 96)
-**Previous:** Phase 95 (actor-token-agent-token-education) — ✅ COMPLETE (1/1 plans executed 2026-04-08)
-**Status:** Actor/Agent terminology foundation complete; ready for audience (aud) claim validation phase
+Phase: 97 (demo-config-with-introspection-and-jwt-validation-options-verify-apis-working-to-pingone-endpoint) — READY FOR PLANNING
+Plan: 1 of 1 — (Pending /gsd-plan-phase 97)
+**Previous:** Phase 96 (audience-aud-claim-validation) — ✅ COMPLETE (1/1 plans executed 2026-04-08)
+**Status:** Aud validation foundation complete; ready for demo config introspection phase
 
 ---
 
@@ -48,6 +48,7 @@ Plan: 1 of 1 — (Pending /gsd-plan-phase 96)
 - Phase 48 (remove-invalid-spel-act-expression) — complete (commits: d4c0a7a, fc86d8d)
 - Phase 85 (chase-dashboard-styling) — complete (commits: 7980dc5, 2891f33, 272d01a, 13d4676, ddc5895, fc6f87a)
 - Phase 95 (actor-token-agent-token-education) — complete (commits: 900ea2d, 0a9a8cc) [2026-04-08]
+- Phase 96 (audience-aud-claim-validation) — complete (commits: 2b24f38, c2b696d) [2026-04-08]
 
 ---
 
