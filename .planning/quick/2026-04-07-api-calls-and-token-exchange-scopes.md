@@ -278,12 +278,88 @@ Includes:
 | `admin:write` | Main Resource Server | Admin | Admin routes | Write admin configuration |
 | `admin:delete` | Main Resource Server | Admin | Admin routes | Delete admin configuration |
 
-**Delegation Claims (RFC 8693 §4.4 - Nested act for Delegation Chains):**
-| Claim | Token | Structure | Purpose | Examples |
-|-------|-------|-----------|---------|----------|
-| `may_act` | User Token (before exchange) | `{ client_id: "..." }` | User authorization: permission for this client to act on user's behalf | `may_act: { client_id: "bff-admin-client-id" }` |
-| `act` (1-exchange) | MCP Token (after exchange) | `{ sub: "..." }` | Proof: Actor (identified by sub) is acting on behalf of user. Audit trail. | `act: { sub: "agent-client-id" }` |
-| `act` (2-exchange) | MCP Token (after exchange) | Nested: `{ sub: "...", act: { sub: "..." } }` | Proof: Full delegation chain (MCP client acting, who is delegated by agent, who is delegated by user). Per RFC 8693 §4.4. | `act: { sub: "mcp-client-id", act: { sub: "agent-client-id" } }`
+**Real Delegation Claims — As Implemented in Code (RFC 8693 §4.4)**
+
+#### `may_act` Claim (User Token)
+
+**Where:** PingOne User Access Token (before token exchange)  
+**Required:** YES  
+**Structure:** Object with required `client_id` field (per `delegationClaimsService.js`)
+
+```json
+{
+  "client_id": "12345678-1234-1234-1234-123456789abc",  // REQUIRED: BFF client UUID authorized to act
+  "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // OPTIONAL: Agent identifier
+}
+```
+
+**Real Example from Test Suite:**
+```json
+{
+  "sub": "user-12345",  // User who grants permission
+  "may_act": {
+    "client_id": "bff-admin-client-id",  // BFF is authorized to delegate
+    "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // Optional: which agent
+  },
+  "scope": "profile email banking:ai:agent:read",
+  "aud": ["https://ai-agent.pingdemo.com"],
+  "iss": "https://auth.pingone.com/123456/as",
+  "exp": 1712595600,
+  "iat": 1712594000
+}
+```
+
+**Purpose:** Declares user's authorization. `client_id` is the BFF client that user permits to act on their behalf. Validated by: `banking_api_server/services/delegationClaimsService.js` lines 160-177.
+
+---
+
+#### `act` Claim (Exchanged Tokens)
+
+**Where:** MCP Token (output of RFC 8693 token exchange)  
+**Required:** YES (for 2-exchange)  
+
+**Exchange #1 Output (Simple):**
+```json
+{
+  "sub": "user-12345",  // Original user preserved
+  "act": {
+    "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // Agent is acting
+  },
+  "aud": ["https://agent-gateway.pingdemo.com"],
+  "scope": "banking:ai:agent:read",
+  "exp": 1712595600,
+  "iat": 1712594000
+}
+```
+
+**Exchange #2 Output (Nested per RFC 8693 §4.4):**
+```json
+{
+  "sub": "user-12345",  // Original user preserved through chain
+  "act": {
+    "sub": "mcp-client-id",  // MCP is the outermost actor (final service)
+    "act": {
+      "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // Agent delegated by user
+    }
+  },
+  "aud": ["https://mcp-server.pingdemo.com"],
+  "scope": "banking:accounts:read banking:transactions:read",  // Narrowed
+  "exp": 1712595600,
+  "iat": 1712594000
+}
+```
+
+**Validation Path:**
+1. BFF receives user token with `may_act.client_id`
+2. BFF validates: `may_act.client_id == BFF's own client_id` (via `validateMayActStructure` in delegationClaimsService.js)
+3. BFF performs Exchange #1 → outputs token with `act: { sub: agent-id }`
+4. BFF performs Exchange #2 → outputs token with nested `act: { sub: mcp-id, act: { sub: agent-id } }`
+5. MCP Service validates final token using `validateExchangedTokenAct`
+
+**Code Location:** RFC 8693 validation in `banking_api_server/services/delegationClaimsService.js`
+- Lines 27-50: DELEGATION_RULES (defines required/optional structure)
+- Lines 143-230: `validateMayActStructure()` function
+- Lines 247-290: `validateExchangedTokenAct()` function
 
 ---
 
