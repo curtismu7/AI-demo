@@ -39,6 +39,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 86 | test-everything-you-can-for-production-run | Comprehensive testing and verification for production launch | TBD | 0 plans |
 | 87 | comprehensive-token-validation-at-every-step | Verify tokens at every step: Agent (MCP client) → App Host (BFF) → MCP Server (Gateway); document authz server vs local JWT validation | TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03 | 0 plans |
 | 94 | explicit-hitl-for-agent-consent | Explicit HITL for user approval before agent performs actions on user behalf | HITL-01, HITL-02 | 0 plans |
+| 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01, ACTOR-02 | 0 plans |
 
 ---
 
@@ -1334,5 +1335,63 @@ Plans:
 - [ ] 94-02-PLAN.md — Implement interceptor middleware in BFF for agent actions
 - [ ] 94-03-PLAN.md — Add approval evidence to token exchange (RFC 8693 delegation context)
 - [ ] 94-04-PLAN.md — Admin configuration UI and audit logging for HITL decisions
+
+
+### Phase 95: Actor token = Agent token education and terminology
+
+**Goal:** Document and teach that the Actor token is the Agent token (they are the same thing with different names in different contexts). Establish consistent terminology across all code, documentation, and education UI. Clarify when to use "actor", "agent", "act claim", and "agent actor" to eliminate confusion.
+
+**Requirements**: ACTOR-01, ACTOR-02
+**Depends on:** Phase 94 (Explicit HITL for agent consent)
+**Plans:** 0 plans (run /gsd-plan-phase 95 to break down)
+
+**Key Focus Areas:**
+
+1. **Terminology Clarification**
+   - **Actor Token** = Token identifying the entity performing actions (usually an AI agent)
+   - **Agent Token** = Same token, used when discussing the banking agent specifically
+   - **Agent Actor** = RFC 8693 terminology: agent acting on behalf of user
+   - **Act Claim** = JWT claim containing subject being acted upon (user) and actor (agent)
+   - Use consistently: prefer "Agent" in UI, "Actor" in RFC/technical docs, "Agent Actor" in architecture
+
+2. **Documentation Audit & Updates**
+   - Scan all `.md` files for inconsistent use of "actor" vs "agent"
+   - Create definitive terminology guide (ACTOR_TOKEN_TERMINOLOGY.md)
+   - Update README, API docs, OAuth docs, RFC 8693 guides
+   - Update PingOne configuration docs (show which apps are agent apps, actor apps)
+   - Update architecture diagrams (annotate tokens with "Agent/Actor" labels)
+
+3. **Education Panels & UI**
+   - Add education panel: "What is the Actor Token?"
+   - Explain: Actor = Agent Acting on User Behalf (RFC 8693 pattern)
+   - Show diagram: User Token → Agent Actor → Modified Token with Act Claim
+   - In token inspector: label claims clearly (act=agent, sub=user, etc.)
+   - In MCP server logs: show which agent (actor) invoked which tool
+
+4. **Code & Comments**
+   - Add JSDoc comments explaining actor/agent terminology
+   - Variable naming: use `agentActorToken` or `agentToken` consistently
+   - Comments: "Agent (Actor) validation" instead of ambiguous terms
+   - Test names: "agent-as-actor-token-exchange" format
+
+5. **Compliance & Cross-reference**
+   - RFC 8693 Section 4.2: act claim (actor's identity)
+   - RFC 8693 Section 4.3: may_act claim (permissions to act on behalf)
+   - Reference these sections in docs when explaining agent/actor pattern
+   - MCP spec: clarify "client credentials" vs "agent actor delegation"
+
+**Success Criteria:**
+- Consistent terminology used across codebase (actor vs agent vs agent-actor)
+- Education panel explaining Actor Token = Agent Token relationship
+- All documentation updated with clear terminology definitions
+- Token inspector shows actor/agent labels on relevant claims
+- No ambiguous use of "actor" or "agent" in new code
+- Terminology guide (ACTOR_TOKEN_TERMINOLOGY.md) comprehensive and linked from README
+
+Plans:
+- [ ] 95-01-PLAN.md — Terminology audit: scan docs and code, create ACTOR_TOKEN_TERMINOLOGY.md
+- [ ] 95-02-PLAN.md — Update all documentation: README, API docs, RFC guides, architecture
+- [ ] 95-03-PLAN.md — Add education panels and token inspector labels for actor/agent
+- [ ] 95-04-PLAN.md — Update code comments and variable naming for consistency; verify RFC 8693 references
 
 ---
