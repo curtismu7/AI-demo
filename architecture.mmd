@@ -15,6 +15,7 @@ flowchart TB
         SecuritySettings["Security Settings\n/settings — Step-up + Authorize config"]
         ChatWidget["AI Chat Widget\nWebSocket → LangChain chat\n(stream_event + reply)"]
         McpInspector["MCP Inspector\n/mcp-inspector\nBFF tools/list · invoke"]
+        ConfigPage["Config Page\ntabs: OAuth · Verticals · 🔍 Token Validation\n/api/config/validation-mode"]
     end
 
     %% ── API Server ────────────────────────────────────────────────────────────
@@ -28,6 +29,12 @@ flowchart TB
         UserRoutes["/api/users"]
         AccountRoutes["/api/accounts"]
         Health["/api/healthz  /health"]
+        ValidationRoutes["GET /api/config/validation-mode
+POST /api/config/validation-mode
+(session auth required)"]
+        IntrospectionHealth["GET /api/health/introspection
+RFC 7662 connectivity probe
+→ 200 connected | 503 failed"]
 
         subgraph Middleware["Middleware Stack"]
             AuthMW["authenticateToken\nJWT validation / SKIP_TOKEN_SIGNATURE_VALIDATION"]
@@ -44,6 +51,10 @@ flowchart TB
         end
 
         subgraph RuntimeSettings["runtimeSettings.js  (in-memory singleton)"]
+            ValidationMode["validationModeConfig.js
+mode: introspection | jwt
+env: VALIDATION_MODE
+runtime switchable"]
             RSFields["stepUpEnabled · stepUpAmountThreshold\nstepUpAcrValue · stepUpTransactionTypes\nauthorizeEnabled · authorizePolicyId"]
             RSHistory["Change history  (last 50 entries)"]
         end
@@ -140,6 +151,14 @@ flowchart TB
     OAuthMonitor -->|"OIDC discovery ping"| OIDC_AS
     Health --> OAuthMonitor
 
+    %% ── Connections: Token Validation Config ─────────────────────────────────
+    ConfigPage -->|"GET/POST /api/config/validation-mode"| ValidationRoutes
+    ValidationRoutes --> ValidationMode
+    IntrospectionHealth -->|"POST dummy token
+RFC 7662 probe"| OIDC_AS
+    AuthMW -->|"introspection mode:
+POST /as/introspect RFC 7662"| OIDC_AS
+
     %% ── Standards Legend ──────────────────────────────────────────────────────
     subgraph Standards["Standards & Protocols"]
         direction TB
@@ -153,6 +172,9 @@ flowchart TB
         S8["OIDC Core + CIBA"]
         S9["JSON-RPC 2.0 + MCP 2024-11-05"]
         S10["RFC 7591 — Dynamic Client Reg"]
+        S11["Phase 97: Configurable Validation
+introspection (RFC 7662) | jwt (RFC 7519)
+env: VALIDATION_MODE · runtime switchable"]
     end
 
     %% ── Styling ───────────────────────────────────────────────────────────────
@@ -164,8 +186,8 @@ flowchart TB
     classDef standard fill:#f2f3f4,stroke:#95a5a6,color:#566573
 
     class PingOneCloud,PingOneAuthorize,OpenAI external
-    class UI,Login,Dashboard,UserDash,SecuritySettings,ChatWidget,McpInspector frontend
-    class API,AuthRoutes,CibaRoutes,McpInspectorRoutes,TxRoutes,AdminRoutes,UserRoutes,AccountRoutes,Health,Middleware,Gates,RuntimeSettings,DataStore,AuthorizeService,OAuthMonitor backend
+    class UI,Login,Dashboard,UserDash,SecuritySettings,ChatWidget,McpInspector,ConfigPage frontend
+    class API,AuthRoutes,CibaRoutes,McpInspectorRoutes,TxRoutes,AdminRoutes,UserRoutes,AccountRoutes,Health,Middleware,Gates,RuntimeSettings,DataStore,AuthorizeService,OAuthMonitor,ValidationMode,ValidationRoutes,IntrospectionHealth backend
     class MCP,MCPProtocol,MCPTools,MCPAuth mcp
     class Agent,FastAPI,HealthInsp,LangChain,MCPClientPy agent
-    class Standards,S1,S2,S3,S4,S5,S6,S7,S8,S9,S10 standard
+    class Standards,S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11 standard

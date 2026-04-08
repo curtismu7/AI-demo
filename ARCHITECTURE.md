@@ -54,11 +54,31 @@ Use this list for compliance slides and diagram legends.
 | Backend-for-Frontend (BFF) session pattern | ✅ Done |
 | MCP Protocol (`2024-11-05`) + JSON-RPC 2.0 | ✅ Done |
 | Scope enforcement (API + MCP) | ✅ Done |
+| Token Introspection (RFC 7662) — BFF runtime mode | ✅ Done — set `VALIDATION_MODE=introspection` (default) or toggle via Config UI |
+| Local JWT Validation (RFC 7519 + JWKS) — BFF runtime mode | ✅ Done — set `VALIDATION_MODE=jwt` or toggle via Config UI |
 | Token Introspection (RFC 7662) on MCP server | ✅ Done |
 | RFC 8693 Token Exchange | ✅ When `mcp_resource_uri` / `MCP_SERVER_RESOURCE_URI` is set on Backend-for-Frontend (BFF); PingOne must allow grant + policies |
 | `act` / `may_act` on exchanged tokens | ⚠️ Depends on PingOne token issuance / policy (app supports consuming delegated tokens) |
 | Token Revocation (RFC 7009) on logout | ❌ Target; unified logout clears session |
 | Token Refresh | ❌ Routes exist; refresh logic incomplete |
+
+---
+
+### 1b. Configurable Token Validation Modes (Phase 97)
+
+The BFF (`banking_api_server`) supports **runtime-switchable** token validation. Demo operators can change the mode without restarting the server via the Config UI (Token Validation tab) or `POST /api/config/validation-mode`.
+
+| Mode | Mechanism | Detects Revoked Tokens | Latency | Offline |
+|------|-----------|----------------------|---------|---------|
+| `introspection` (default) | RFC 7662 — calls PingOne `/as/introspect` per request | ✅ Yes (within cache TTL) | ~50ms cold / ~2ms cached | ❌ No |
+| `jwt` | RFC 7519 + JWKS — local RS256 signature verify | ❌ No (until token expires) | ~1ms | ✅ Yes |
+
+**Key files:**
+- `banking_api_server/config/validationModeConfig.js` — in-memory mode store; seeds from `VALIDATION_MODE` env var
+- `GET /api/health/introspection` — tests PingOne connectivity (RFC 7662 probe)
+- `GET/POST /api/config/validation-mode` — read/change mode at runtime (session auth required)
+
+**Full tradeoff guide:** See `docs/INTROSPECTION_VALIDATION_GUIDE.md`
 
 ---
 
