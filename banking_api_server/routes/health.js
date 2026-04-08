@@ -233,6 +233,129 @@ router.get('/', async (_req, res) => {
 });
 
 /**
+ * GET /introspection
+ * Tests whether the BFF can reach the PingOne introspection endpoint.
+ * Useful for demo operators to verify connectivity before live operations.
+ *
+ * Response:
+ *   200: { status: 'connected', endpoint, timestamp, details: { responseTime, mode, message } }
+ *   503: { status: 'failed',    endpoint, timestamp, details: { error, hint } }
+ */
+router.get('/introspection', async (req, res) => {
+  const introspectionEndpoint = process.env.PINGONE_INTROSPECTION_ENDPOINT;
+
+  if (!introspectionEndpoint) {
+    return res.status(503).json({
+      status: 'not_configured',
+      endpoint: null,
+      timestamp: new Date().toISOString(),
+      details: {
+        error: 'PINGONE_INTROSPECTION_ENDPOINT is not set',
+        hint: 'Set PINGONE_INTROSPECTION_ENDPOINT in your .env file (e.g., https://auth.pingone.com/{env-id}/oauth2/introspect)',
+      },
+    });
+  }
+
+  const startTime = Date.now();
+
+  try {
+    // Test connectivity by calling introspection with a dummy token.
+    // PingOne returns 200 { active: false } for invalid tokens — this proves the endpoint is
+    // reachable and accepting requests without needing to supply a real token.
+    const workerClientId = process.env.WORKER_CLIENT_ID || process.env.PINGONE_WORKER_CLIENT_ID;
+    const workerSecret  = process.env.WORKER_CLIENT_SECRET || process.env.PINGONE_WORKER_CLIENT_SECRET;
+
+    if (!workerClientId || !workerSecret) {
+      return res.status(503).json({
+        status: 'not_configured',
+        endpoint: introspectionEndpoint,
+        timestamp: new Date().toISOString(),
+        details: {
+          error: 'Worker credentials not configured (WORKER_CLIENT_ID / WORKER_CLIENT_SECRET)',
+          hint: 'Set WORKER_CLIENT_ID and WORKER_CLIENT_SECRET to enable introspection health checks',
+        },
+      });
+    }
+
+    // POST to introspection endpoint with a test token (will return active:false — that's fine)
+    const credentials = Buffer.from(`${workerClientId}:${workerSecret}`).toString('base64');
+    const response = await axios.post(
+      introspectionEndpoint,
+      'token=health_check_probe_token',
+      {
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        timeout: 5000,
+        validateStatus: () => true, // Accept any status — we only care if it's reachable
+      }
+    );
+
+    const responseTime = Date.now() - startTime;
+
+    // 200 means endpoint is reachable (token was just rejected as inactive)
+    // 401 means endpoint is reachable but credentials are wrong
+    // 5xx or timeout means endpoint is unreachable
+    if (response.status >= 500) {
+      return res.status(503).json({
+        status: 'failed',
+        endpoint: introspectionEndpoint,
+        timestamp: new Date().toISOString(),
+        details: {
+          responseTime,
+          error: `PingOne returned HTTP ${response.status}`,
+          hint: 'PingOne introspection endpoint returned a server error. Check PingOne status.',
+        },
+      });
+    }
+
+    if (response.status === 401) {
+      return res.status(503).json({
+        status: 'auth_failed',
+        endpoint: introspectionEndpoint,
+        timestamp: new Date().toISOString(),
+        details: {
+          responseTime,
+          error: 'Worker credentials rejected by PingOne (401 Unauthorized)',
+          hint: 'Verify WORKER_CLIENT_ID and WORKER_CLIENT_SECRET are correct in .env',
+        },
+      });
+    }
+
+    // Endpoint is reachable and returned a valid response (200 with active:false is expected)
+    const validationModeConfig = (() => {
+      try { return require('../config/validationModeConfig'); } catch { return null; }
+    })();
+
+    return res.status(200).json({
+      status: 'connected',
+      endpoint: introspectionEndpoint,
+      timestamp: new Date().toISOString(),
+      details: {
+        responseTime,
+        httpStatus: response.status,
+        mode: validationModeConfig ? validationModeConfig.getValidationMode() : 'unknown',
+        message: 'PingOne introspection endpoint is reachable and responding',
+      },
+    });
+
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    return res.status(503).json({
+      status: 'failed',
+      endpoint: introspectionEndpoint,
+      timestamp: new Date().toISOString(),
+      details: {
+        responseTime,
+        error: error.message || 'Unknown error',
+        hint: 'Check network connectivity to PingOne. Verify PINGONE_INTROSPECTION_ENDPOINT is correct.',
+      },
+    });
+  }
+});
+
+/**
  * Startup probe - checks if application has finished starting up
  */
 router.get('/startup', (_req, res) => {

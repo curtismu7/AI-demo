@@ -899,6 +899,45 @@ app.use('/api/token-chain', authenticateToken, tokenChainRoutes);
 app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
 app.use('/api/config/vertical', verticalConfigRoutes);
 app.use('/api/config/verticals', verticalConfigRoutes);
+
+// Health check endpoints (unauthenticated — used by monitoring + demo config UI)
+const healthRoutes = require('./routes/health');
+app.use('/api/health', healthRoutes);
+
+// Token validation mode config endpoints (admin + ui accessible for demo toggle)
+const validationModeConfig = require('./config/validationModeConfig');
+
+app.get('/api/config/validation-mode', (req, res) => {
+  const mode = validationModeConfig.getValidationMode();
+  res.json({
+    mode,
+    description: validationModeConfig.getModeDescription(mode),
+    metadata: validationModeConfig.getModeMetadata(mode),
+    supported: validationModeConfig.SUPPORTED_MODES,
+  });
+});
+
+app.post('/api/config/validation-mode', (req, res) => {
+  // Require admin session to change validation mode
+  if (!req.session?.user) {
+    return res.status(401).json({ error: 'authentication_required', message: 'Session required to change validation mode' });
+  }
+  const { mode } = req.body || {};
+  if (!mode) {
+    return res.status(400).json({ error: 'missing_mode', message: 'Request body must include "mode" field' });
+  }
+  try {
+    validationModeConfig.setValidationMode(mode);
+    res.json({
+      mode: validationModeConfig.getValidationMode(),
+      description: validationModeConfig.getModeDescription(),
+      message: `Validation mode set to: ${mode}`,
+    });
+  } catch (err) {
+    res.status(400).json({ error: 'invalid_mode', message: err.message, supported: validationModeConfig.SUPPORTED_MODES });
+  }
+});
+
 app.use('/api/logs', logsRoutes);
 
 // PingOne Configuration Audit — admin-accessible endpoint for validating resources and scopes

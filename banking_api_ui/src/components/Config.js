@@ -16,6 +16,7 @@ import McpInspectorSetupWizard from './McpInspectorSetupWizard';
 import VercelConfigTab from './VercelConfigTab';
 import WorkerAppConfigTab from './WorkerAppConfigTab';
 import SetupWizardTab from './SetupWizardTab';
+import ConfigTokenValidation from './ConfigTokenValidation';
 import '../styles/appShellPages.css';
 import './Config.css';
 
@@ -708,6 +709,7 @@ export default function Config() {
             { key: 'pingone-setup', label: '🔧 PingOne Setup' },
             ...(hostedOn === 'vercel' ? [{ key: 'vercel', label: '▲ Vercel Env' }] : []),
             { key: 'worker', label: '🔑 Worker App' },
+            { key: 'token-validation', label: '🔍 Token Validation' },
           ].map(({ key, label }) => {
             const isActive = activeTab === key;
             return (
@@ -765,6 +767,11 @@ export default function Config() {
         {/* Worker App tab content */}
         {activeTab === 'worker' && (
           <WorkerAppConfigTab />
+        )}
+
+        {/* Token Validation tab — toggle between introspection and JWT, test PingOne connectivity */}
+        {activeTab === 'token-validation' && (
+          <ConfigTokenValidation />
         )}
 
         {/* Setup tab — hidden when Vercel or Worker App tab is active */}

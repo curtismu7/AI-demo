@@ -1,0 +1,303 @@
+.container {
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin: 20px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.header {
+  margin-bottom: 20px;
+}
+
+.title {
+  margin: 0 0 6px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Mode selector */
+.modeSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.modeOption {
+  display: block;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.modeOption:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.modeOption.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.modeHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.radio {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modeLabel {
+  font-weight: 600;
+  font-size: 15px;
+  color: #111827;
+  flex: 1;
+}
+
+.activeBadge {
+  display: inline-block;
+  padding: 2px 10px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.modeDescription {
+  margin: 0;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.5;
+  padding-left: 26px;
+}
+
+/* Error + in-progress banners */
+.errorBanner {
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.changingNote {
+  font-size: 13px;
+  color: #6b7280;
+  font-style: italic;
+  margin: 0 0 16px 0;
+}
+
+/* Mode details (pros/cons) */
+.modeDetails {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.detailsTitle {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.prosConsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 500px) {
+  .prosConsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.prosTitle {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #16a34a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.consTitle {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #d97706;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.prosList,
+.consList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.prosList li,
+.consList li {
+  margin-bottom: 4px;
+}
+
+/* Health check section */
+.healthSection {
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+
+.healthTitle {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.healthSubtitle {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.testButton {
+  padding: 9px 18px;
+  background: #1d4ed8;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.testButton:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.testButton:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* Health result card */
+.healthResult {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  border-left: 4px solid;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.healthResult strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.healthResult p {
+  margin: 4px 0;
+}
+
+.healthOk {
+  background: #f0fdf4;
+  border-color: #16a34a;
+  color: #14532d;
+}
+
+.healthOk strong {
+  color: #15803d;
+}
+
+.healthFailed {
+  background: #fef2f2;
+  border-color: #dc2626;
+  color: #7f1d1d;
+}
+
+.healthFailed strong {
+  color: #dc2626;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.code {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.message {
+  color: #166534;
+}
+
+.errorDetail {
+  color: #b91c1c;
+  font-style: italic;
+}
+
+.timestamp {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 8px !important;
+}
+
+/* Footer info links */
+.infoFooter {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.infoFooter a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.infoFooter a:hover {
+  text-decoration: underline;
+}
