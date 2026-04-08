@@ -164,3 +164,4 @@ Plan: 1 of 4
 - Phase 96 added: Audience (aud) claim validation — validate aud in all tokens, ensure aud matches API/resource, configure aud values in PingOne apps, audit aud mismatches, prevent token confusion and delegation attacks
 - Phase 91 (Plan 01): RFC 7662 Token Introspection Endpoint — Wave 1 COMPLETE (tokenIntrospectionService, /api/introspect route, 20 test cases, all passing)
 - Phase 97 added: Demo config with introspection and JWT validation options — ensure introspection and JWT validation are options in demo config, verify APIs working to PingOne endpoint
+- Phase 105 added: make dashboards match the color scheme and general look of chase.com main page
