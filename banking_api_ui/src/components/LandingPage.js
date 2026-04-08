@@ -10,8 +10,8 @@ export default function LandingPage() {
       <header className="landing-header" role="banner">
         <div className="landing-header-content">
           <div className="landing-logo">
-            <h1>BX Finance</h1>
-            <p>AI Banking Demo</p>
+            <h1>Super Banking</h1>
+            <p>AI-Powered Financial Services</p>
           </div>
           <nav className="landing-nav" role="navigation" aria-label="Main navigation">
             <Link to="/admin/login" className="nav-link">
