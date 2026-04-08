@@ -1555,4 +1555,36 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 104 to break down)
 
+### Phase 105: make dashboards match the color scheme and general look of chase.com main page
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 104
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 105 to break down)
+
+### Phase 106: RFC 8693 §4.4 delegation claims - nested act for delegation chains - ensure compliance and implementation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 105
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 106 to break down)
+
+### Phase 107: Make hostname and redirect URI configurable via admin config page
+
+**Goal:** Enable runtime hostname configuration via admin config page, eliminating manual `.env` edits for deployments across localhost, staging, and production domains. All API calls and OAuth redirect URIs automatically use the configured hostname.
+**Requirements**: TBD
+**Depends on:** Phase 106
+**Plans:** 3 plans
+
+Plans:
+- [ ] 107-01-PLAN.md — Backend hostname config API (GET/PUT endpoints + persistence)
+- [ ] 107-02-PLAN.md — Frontend hostname config UI (AdminConfig component + integration)
+- [ ] 107-03-PLAN.md — OAuth redirect URI integration (update OAuth services + verification)
+
 ---
