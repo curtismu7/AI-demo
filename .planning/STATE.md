@@ -46,7 +46,7 @@ Phase: 86 — READY (or current work in progress)
 - Phase 23 (langchain-modernization) — complete (commits: f80d934, 343951c, 91789e8, c35b95e)
 - Phase 29 (use-case-c-sensitive-data-access) — complete (commit: 3ca82da)
 - Phase 48 (remove-invalid-spel-act-expression) — complete (commits: d4c0a7a, fc86d8d)
-- Phase 85 (chase-dashboard-styling) — complete (commits: 7980dc5, 2891f33, 272d01a, 13d4676, ddc5895)
+- Phase 85 (chase-dashboard-styling) — complete (commits: 7980dc5, 2891f33, 272d01a, 13d4676, ddc5895, fc6f87a)
 - Phase 49 added: Setup wizard — credential input page that creates .env, provisions Vercel env vars, creates PingOne apps and resource servers, and attaches scopes via Management API worker token
 - Phase 50 added: Update docs, setup script, and fix logout URLs on PingOne apps using worker token — audit all PingOne config documentation and ensure logout URLs are correct everywhere
 
@@ -85,6 +85,7 @@ Phase: 86 — READY (or current work in progress)
 | 260407-85p1 | **Phase 85 Plan 01: Dashboard Color Audit** — Audit current colors, map to Chase.com navy, create STYLE_AUDIT.md with implementation roadmap | 7980dc5, 2891f33 | 2026-04-07 |
 | 260407-85p2 | **Phase 85 Plan 02: Dashboard Styling** — CSS variables, DashboardHero.css, UserDashboard.css updated with Chase navy colors | 272d01a, 13d4676 | 2026-04-07 |
 | 260407-85p3 | **Phase 85 Plan 03: Mobile & Verification** — Responsive design across 320px–1440px verified, WCAG AAA compliance confirmed, all Wave 3 tests passing | ddc5895 | 2026-04-07 |
+| 260407-p86a | **Phase 86 Added: test-everything-you-can-for-production-run** — Comprehensive testing and verification phase for production launch | (roadmap update commit pending) | 2026-04-07 |
 
 ---
 

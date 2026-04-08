@@ -35,6 +35,8 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 67 | documentation-enhancement-and-developer-tools | Complete documentation suite with comprehensive technical guides, visual diagrams, educational content, and developer tools for excellent developer experience | DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-05 | 1 plan |
 | 83 | ai-tokens-education | Create comprehensive education page explaining actor tokens, subject tokens, and other AI-related tokens with interactive diagrams and terminology glossary | Complete | 1 plan |
 | 55 | docker-kubernetes-deployment | Containerize all components for Kubernetes deployment | DOCKER-01, DOCKER-02 | 1 plan |
+| 85 | chase-dashboard-styling | Dashboard styling to match Chase.com design language | Complete | 3/3 plans |
+| 86 | test-everything-you-can-for-production-run | Comprehensive testing and verification for production launch | TBD | 0 plans |
 
 ---
 
@@ -1153,5 +1155,37 @@ Plans:
 - [ ] 84-01-PLAN.md — Audit code quality issues (shell scripts, console logs, dead code, test status)
 - [ ] 84-02-PLAN.md — Create enterprise run.sh with subcommands, pre-flight checks, PID management
 - [ ] 84-03-PLAN.md — Fix high-priority code quality issues (clean logs, remove dead code, fix error handling)
+
+### Phase 85: chase-dashboard-styling
+
+**Goal:** Update Super Banking dashboards to match Chase.com's visual design language
+**Requirements**: Complete
+**Depends on:** Phase 84
+**Plans:** 3/3 plans complete
+
+**Success criteria:**
+1. Dashboard colors match Chase.com navy (#004687) primary brand color
+2. All buttons have navy background with white text and 4px border radius
+3. All cards have consistent white backgrounds, 20px padding, 8px border radius, and subtle shadows
+4. Typography hierarchy matches Chase standards
+5. Mobile dashboard is responsive and readable at all breakpoints
+6. Color contrast meets WCAG AA accessibility standards
+7. No broken functionality; all interactive elements work
+8. npm run build passes without errors
+
+Plans:
+- [x] 85-01-PLAN.md — Dashboard color audit and Chase.com color mapping (COMPLETE)
+- [x] 85-02-PLAN.md — Styling implementation: CSS variables, hero, dashboard components (COMPLETE)
+- [x] 85-03-PLAN.md — Mobile optimization and responsive verification (COMPLETE)
+
+### Phase 86: test everything you can for production run
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 85
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 86 to break down)
 
 ---
