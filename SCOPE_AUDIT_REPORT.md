@@ -13,9 +13,9 @@ From `PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md`:
 
 | Application | Required Scopes | Purpose | Audience |
 |-------------|----------------|---------|----------|
-| **User App** | `profile email banking:agent:invoke` | User login with delegation permission | `https://ai-agent.pingdemo.com` |
+| **User App** | `profile email banking:ai:agent:read banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write` | User login with delegation permission (2-exchange) | `https://resource.pingdemo.com` (Main Banking Resource Server) |
 | **Admin App** | All resource server scopes | Token exchange and admin operations | `https://banking-api.pingdemo.com` |
-| **MCP Server** | `banking:read banking:agent:invoke` | Client credentials for PingOne API | `https://api.pingone.com` |
+| **MCP Exchanger** | `banking:ai:agent:read banking:accounts:read banking:transactions:read banking:general:read admin:read p1:read:user` | Client credentials for token exchange + PingOne API | `https://api.pingone.com` + `https://resource.pingdemo.com` |
 | **Worker App** | `p1:read:user p1:update:user` | Management API operations | `https://api.pingone.com` |
 
 ---
@@ -24,9 +24,9 @@ From `PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md`:
 
 ### ✅ **User Application** - CORRECTLY ALIGNED
 
-**Documentation**: `profile email banking:agent:invoke`  
-**Implementation**: `['banking:agent:invoke', 'banking:read', 'banking:write']`  
-**Status**: ✅ **MATCHES** - Contains required `banking:agent:invoke` scope
+**Documentation**: `profile email banking:ai:agent:read`  
+**Implementation**: `['banking:ai:agent:read', 'banking:general:read', 'banking:accounts:read', 'banking:transactions:read', 'banking:transactions:write']`  
+**Status**: ✅ **MATCHES** - Contains required `banking:ai:agent:read` scope for 2-exchange delegation
 
 **Notes**: 
 - `profile` and `email` are OIDC scopes handled automatically by PingOne
@@ -54,7 +54,7 @@ From `PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md`:
 ### ❌ **Missing Applications** - CRITICAL GAPS
 
 #### **MCP Server Application** - MISSING
-**Documentation Required**: Client credentials app with `banking:read banking:agent:invoke`  
+**Documentation Required**: Client credentials app with `banking:ai:agent:read banking:accounts:read banking:transactions:read banking:general:read admin:read p1:read:user`  
 **Current Status**: ❌ **NOT CREATED** by provisioning service  
 **Impact**: Step 6 (client credentials) will fail
 
@@ -77,7 +77,9 @@ From `PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md`:
 | `banking:transactions:read` | Read transaction history and details | ✅ Defined |
 | `banking:accounts` | Account access and management | ✅ Defined |
 | `banking:admin` | Administrative access | ✅ Defined |
-| `banking:agent:invoke` | Agent invocation permission | ✅ Defined |
+| `banking:ai:agent:read` | User delegation permission + Agent invocation | ✅ Defined (Main Resource Server) |
+| `banking:ai:agent:write` | Agent write operations | ✅ Defined (Main Resource Server) |
+| `banking:ai:agent:admin` | Agent admin operations | ✅ Defined (Main Resource Server) |
 | `p1:read:user` | Read user profile data | ✅ Defined |
 | `p1:update:user` | Update user profile data | ✅ Defined |
 | `ai_agent` | AI agent identity | ✅ Defined |
@@ -99,8 +101,8 @@ From `PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md`:
 ## Token Exchange Flow Verification
 
 ### ✅ **Step 1 - User Authorization**
-**Required**: `profile email banking:agent:invoke`  
-**Implementation**: ✅ User app has `banking:agent:invoke`  
+**Required**: `profile email banking:ai:agent:read banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write`  
+**Implementation**: ✅ User app has `banking:ai:agent:read` (for 2-exchange delegation)  
 **Status**: ✅ **SHOULD WORK**
 
 ### ✅ **Step 4 - Token Exchange for Code**

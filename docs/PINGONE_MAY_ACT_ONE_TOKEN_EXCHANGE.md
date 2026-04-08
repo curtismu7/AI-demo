@@ -47,14 +47,14 @@ Adding `openid` anywhere in this flow breaks things in two different ways depend
 
 | Postman Step | Scope param | How to set |
 |---|---|---|
-| **Step 1 — `/authorize`** | `profile email banking:agent:invoke` | Collection variable `scope` |
+| **Step 1 — `/authorize`** | `profile email banking:ai:agent:read` | Collection variable `scope` |
 | **Step 4 — token exchange for code** | *(same as Step 1 — uses `{{scope}}`)* | Collection variable `scope` |
 | **Step 5 — RFC 8693 token exchange** | `banking:accounts:read banking:transactions:read banking:transactions:write` | Hardcoded in Step 5 body |
 | **Step 6 — client credentials** | `p1:read:user p1:update:user` | Hardcoded in Step 6 body |
 
 **How to verify in Postman:**
 1. Click the collection name → **Variables tab**
-2. Find `scope` → current value must be `profile email banking:agent:invoke` (no `openid`)
+2. Find `scope` → current value must be `profile email banking:ai:agent:read` (no `openid`)
 3. Open **Step 6** → **Body tab** → find the `scope` row → must be `p1:read:user p1:update:user` (no `openid`)
 
 > **Why no ID token?** The Super Banking User App has `Response Type: Code` only — **ID Token is unchecked** in PingOne OIDC Settings. `openid` is the scope that triggers ID token issuance. Since there is no ID token in this flow and the access token audience is a custom resource server, `openid` must be absent.
@@ -79,7 +79,7 @@ Human User (Banking App Login)
 Subject Token  [TOKEN 1 - user's session token]
   { sub: "<user-id>",
     aud: ["https://ai-agent.pingdemo.com"],      - AI Agent service validates this token
-    scope: "profile email banking:agent:invoke",
+    scope: "profile email banking:ai:agent:read",
     may_act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }
               - the client ID UUID of Super Banking Admin App - permits it to exchange this token
   |

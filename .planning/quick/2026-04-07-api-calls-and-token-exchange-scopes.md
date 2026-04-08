@@ -83,12 +83,14 @@ When you see references to `act` or `may_act` below, remember:
 | Exchange Type | Subject Token | Actor Token | Output Scopes | Process | Requirements |
 |---------------|---------------|-------------|----------------|---------|--------------|
 | **1-Exchange (Legacy)** | User Access Token | (none) | `banking:read`, `banking:write` | Direct exchange: User Token → MCP Token | User has banking scopes on their token |
-| **2-Exchange (Delegation)** | User Access Token (with `may_act`) | Agent Token | `banking:read`, `banking:write` + `act` claim | Chained exchange: User + Agent → MCP Token with `act` claim | User has `banking:agent:invoke` + `may_act` attribute; Agent has `banking:agent:invoke` |
+| **2-Exchange (Delegation)** | User Access Token (with `may_act` + `banking:ai:agent:read`) | Agent Token (with `banking:ai:agent:read`) | `banking:read`, `banking:write` + `act` claim | Chained exchange: User + Agent → MCP Token with nested `act` claim (RFC 8693 §4.4) | User MUST have `banking:ai:agent:read` scope + PingOne `may_act` user attribute; Agent token MUST have `banking:ai:agent:read` scope |
 
 **Scope & Claim Requirements (RFC 8693 §4.4 - Delegation Chains):**
-- **User token MUST have:** `banking:read`, `banking:write`, or `banking:agent:invoke` scope + `may_act` claim if 2-exchange
-- **may_act claim structure:** `{ client_id: "bff-admin-client-id" }` (identifies which BFF client is authorized to act)
-- **Agent token (2-exchange only):** requires `banking:agent:invoke` scope
+- **For 1-exchange (User → MCP):** User token MUST have `banking:general:read`, `banking:general:write`, or `banking:accounts:read` + `banking:transactions:read`
+- **For 2-exchange (User + Agent → MCP):** 
+  - User token MUST have `banking:ai:agent:read` scope (permission to delegate) + PingOne `may_act` user attribute with `{ client_id: "bff-admin-client-id" }`
+  - Agent token MUST have `banking:ai:agent:read` scope from client_credentials grant
+- **may_act claim structure:** `{ client_id: "bff-admin-client-id" }` (identifies which BFF client is authorized to act on user's behalf)
 - **Output token (MCP & all downstream):** receives narrowed scopes + `act` claim showing delegation chain
   - **1-exchange:** `act: { sub: "agent-client-id" }` — caller identified by sub (BFF acting on behalf of user)
   - **2-exchange:** `act: { sub: "mcp-client-id", act: { sub: "agent-client-id" } }` — nested delegation chain per RFC 8693 §4.4 (MCP client acting, delegated by agent, delegated by user)
@@ -221,8 +223,8 @@ When you see references to `act` or `may_act` below, remember:
 
 | Endpoint | Method | Auth Required | Token Type | Scopes Required | Purpose |
 |----------|--------|---|---|---|---------|
-| `/mcp/tools/call` | POST | Yes | MCP Access Token | `banking:agent:invoke` + narrowed banking scopes | Agent calls banking tool (list/read/write) |
-| `/mcp/tools/list` | GET | Yes | MCP Access Token | `banking:agent:invoke` | List available MCP tools |
+| `/mcp/tools/call` | POST | Yes | MCP Access Token (after RFC 8693 exchange) | `banking:general:read` (1-exchange) OR nested `act` claim (2-exchange) | Agent/User calls banking tool via exchanged token |
+| `/mcp/tools/list` | GET | Yes | MCP Access Token (after RFC 8693 exchange) | `banking:general:read` or narrowed banking scopes | List available MCP tools using exchanged token |
 
 **Token Exchange Happens At:**
 - Before `/mcp/tools/call` if user token is provided
@@ -234,7 +236,7 @@ When you see references to `act` or `may_act` below, remember:
 | Status | Scope Issue | Description |
 |--------|---|---|
 | 401 | Missing auth header | No access token provided |
-| 403 | `banking:agent:invoke` missing | User/MCP token lacks agent invocation scope |
+| 403 | Input token insufficient | User token lacks `banking:ai:agent:read` for 2-exchange, or banking:general:read/write for 1-exchange |
 | 403 | Banking scope missing | MCP token lacks `banking:read`/`banking:write` for tool |
 | 429 | (rate limit) | Too many requests |
 
@@ -249,7 +251,7 @@ When you see references to `act` or `may_act` below, remember:
 | GET | None | RFC 9728 metadata | All available scopes defined on resource servers |
 
 Includes:
-- Available scopes: `profile`, `email`, `banking:read`, `banking:write`, `banking:agent:invoke`, `banking:read:sensitive`, `p1:read:user`, `p1:update:user`, `admin:read`, `admin:write`, `admin:delete`
+- Available scopes: `profile`, `email`, `banking:read`, `banking:write`, `banking:ai:agent:read`, `banking:ai:agent:write`, `banking:ai:agent:admin`, `banking:read:sensitive`, `p1:read:user`, `p1:update:user`, `admin:read`, `admin:write`, `admin:delete`
 - Resource server URIs
 - Documentation links
 
@@ -266,9 +268,9 @@ Includes:
 | `banking:write` | Main Resource Server | User/MCP | Token exchange, write operations | Write banking access (deposit/transfer) |
 | `banking:accounts:read` | Main Resource Server | User/MCP | Token exchange, accounts endpoint | Read account details |
 | `banking:transactions:read` | Main Resource Server | User/MCP | Token exchange, transactions endpoint | Read transaction history |
-| `banking:agent:invoke` | Main Resource Server | User & Agent | Token exchange (2-exchange path) | Permission for user to delegate; required on agent token |
+| **banking:ai:agent:read** | Main Banking Resource Server | User & Agent | 2-exchange token exchange path | User token MUST have this to delegate to agent; output token gets narrowed scopes |
 | `banking:read:sensitive` | Main Resource Server | Admin/User | Sensitive data endpoints | Access PII (SSN, account numbers) |
-| `agent:invoke` | MCP Resource Server | MCP Token | /mcp/tools/call | (alias for banking:agent:invoke) |
+| (none) | (N/A) | (N/A) | (N/A) | Agent invocation uses `banking:ai:agent:read` (defined on Main Resource Server, not MCP server) |
 | `p1:read:user` | PingOne Management API | Admin | User management routes | Read PingOne user data |
 | `p1:update:user` | PingOne Management API | Admin | User management routes | Update PingOne users |
 | `p1:delete:user` | PingOne Management API | Admin | User management routes | Delete PingOne users |
@@ -301,9 +303,9 @@ This table maps the actual OAuth scope constants defined in the code to which Pi
 | `TRANSACTIONS_WRITE` | `banking:transactions:write` | Main Banking | Admin App, MCP Exchanger | admin, ai_agent | `requireScopes()` middleware | POST /api/transactions, POST /api/transactions/transfer |
 | `BANKING_WRITE` | `banking:general:write` | Main Banking | Admin App, MCP Exchanger | admin, ai_agent | `requireScopes()` middleware | Any banking write operation (fallback) |
 | `ADMIN` | `banking:admin:full` | Main Banking | Admin App ONLY | admin | `requireScopes()` middleware | GET/POST/PUT /api/admin/* |
-| `AI_AGENT` | `banking:ai:agent:read` | Main Banking | AI Agent App (if configured) | ai_agent | `requireScopes()` middleware | Agent tool invocation |
-| `AI_AGENT_WRITE` | `banking:ai:agent:write` | Main Banking | AI Agent App (if configured) | ai_agent | `requireScopes()` middleware | Agent write operations |
-| `AI_AGENT_ADMIN` | `banking:ai:agent:admin` | Main Banking | AI Agent App (if configured) | ai_agent | `requireScopes()` middleware | Agent admin operations |
+| `AI_AGENT` | `banking:ai:agent:read` | Main Banking | User App + AI Agent App | user, ai_agent | `requireScopes()` middleware | Permission for user to invoke agent (2-exchange) |
+| `AI_AGENT_WRITE` | `banking:ai:agent:write` | Main Banking | AI Agent App | ai_agent | `requireScopes()` middleware | Agent write operations on banking data |
+| `AI_AGENT_ADMIN` | `banking:ai:agent:admin` | Main Banking | AI Agent App | ai_agent | `requireScopes()` middleware | Agent admin operations |
 | `SENSITIVE_READ` | `banking:sensitive:read` | Main Banking | Admin App + custom routes | admin | `requireScopes()` middleware | PII endpoints (SSN, routing numbers) |
 | `SENSITIVE_WRITE` | `banking:sensitive:write` | Main Banking | Admin App + custom routes | admin | `requireScopes()` middleware | PII write operations |
 | `ADMIN_READ` | `banking:admin:read` | Main Banking | Admin App | admin | `requireScopes()` middleware | Admin read-only operations |
@@ -321,10 +323,10 @@ This table shows what each PingOne application requires in configuration to gran
 
 | PingOne App | App Type | OAuth Grant Type | Scopes to Grant on Authorization | Resource Servers Needed | Token Audience |
 |---|---|---|---|---|---|
-| **Super Banking Admin** | WEB_APP | authorization_code + PKCE | `openid profile email offline_access banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write p1:read:user p1:update:user` | Main Banking + PingOne API | User audience (not specified in demo) |
-| **Super Banking User (Customer)** | WEB_APP | authorization_code + PKCE | `profile email offline_access banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke` | Main Banking | User audience (if RFC 8707 Resource Indicator used) |
-| **Super Banking AI Agent (2-Exchange Only)** | WORKER | client_credentials | `banking:agent:invoke` | Main Banking | Agent audience |
-| **Super Banking MCP Token Exchanger** | WORKER | client_credentials (+ token-exchange for 2-exchange) | `banking:accounts:read banking:transactions:read banking:general:read banking:admin:read admin:read users:read p1:read:user p1:update:user` | Main Banking + PingOne API + MCP Resource Server | MCP Resource Server audience |
+| **Super Banking Admin** | WEB_APP | authorization_code + PKCE | `openid profile email offline_access banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write p1:read:user p1:update:user` | Main Banking + PingOne API | User audience (ENDUSER_AUDIENCE env var) |
+| **Super Banking User (Customer)** | WEB_APP | authorization_code + PKCE | `profile email offline_access banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write banking:ai:agent:read` | Main Banking | User audience (ENDUSER_AUDIENCE if RFC 8707 Resource Indicator used) |
+| **Super Banking AI Agent (2-Exchange Only)** | WORKER | client_credentials | `banking:ai:agent:read banking:ai:agent:write` | Main Banking | Agent audience (AI_AGENT_AUDIENCE env var) |
+| **Super Banking MCP Token Exchanger** | WORKER | client_credentials (+ token-exchange for 1-exchange and 2-exchange) | `banking:accounts:read banking:transactions:read banking:general:read banking:admin:read admin:read users:read p1:read:user p1:update:user` | Main Banking + PingOne API + MCP Resource Server | MCP Resource Server audience (MCP_RESOURCE_URI env var) |
 
 ---
 
@@ -366,7 +368,7 @@ The `USER_TYPE_SCOPES` constant maps user types to their allowed scopes:
 | **admin** | `banking:admin:full` + `banking:general:read` + `banking:general:write` + `banking:accounts:read` + `banking:transactions:read` + `banking:transactions:write` | Full access to all banking operations except agent:invoke | Token contains `banking:admin:full` OR user role = 'admin' |
 | **customer** | `banking:general:read` + `banking:general:write` + `banking:accounts:read` + `banking:transactions:read` + `banking:transactions:write` | Read/write banking, no admin, no agent invoke (unless delegating) | Default for end-users; token lacks admin scope |
 | **readonly** | `banking:general:read` + `banking:accounts:read` + `banking:transactions:read` | Read-only access (audit, reporting) | Token has read scopes but no write scopes |
-| **ai_agent** | `banking:ai:agent:read` + `banking:ai:agent:write` + `banking:general:read` + `banking:general:write` + `banking:accounts:read` + `banking:transactions:read` + `banking:transactions:write` | Full banking + agent operations | Token contains `banking:ai:agent:read` OR `ai_agent` scope (user type in token) |
+| **ai_agent** | `banking:ai:agent:read` + `banking:ai:agent:write` + `banking:general:read` + `banking:general:write` + `banking:accounts:read` + `banking:transactions:read` + `banking:transactions:write` | Full banking + agent operations | Token contains `banking:ai:agent:read` scope with client_credentials grant type |
 
 ---
 
@@ -384,7 +386,7 @@ The `USER_TYPE_SCOPES` constant maps user types to their allowed scopes:
 | **POST** | `/api/transactions*` (all write ops) | [`banking:transactions:write`, `banking:general:write`] | admin, ai_agent | `banking:transactions:write` OR `banking:general:write` |
 | **GET** | `/api/admin*` | [`banking:admin:full`] | admin | MUST have `banking:admin:full` |
 | **POST/PUT/DELETE** | `/api/admin*` | [`banking:admin:full`] | admin | MUST have `banking:admin:full` |
-| **POST** | `/mcp/tools/call` | [`banking:agent:invoke`] + banking read/write | ai_agent, user (via delegation) | `banking:agent:invoke` + `banking:general:read` or `banking:general:write` |
+| **POST** | `/mcp/tools/call` | [`banking:ai:agent:read`] + banking read/write scopes | ai_agent, user (via delegation) | **1-exchange:** User token with `banking:general:read`/`write` → exchanges to MCP token; **2-exchange:** User token with `banking:ai:agent:read` + Agent token with `banking:ai:agent:read` → exchanges to MCP token with nested `act` claim |
 
 ---
 
@@ -415,31 +417,32 @@ User clicks "Run Agent"
 Response to Agent
 ```
 
-### 2-Exchange Path (User + Agent → MCP with Act Claim)
+### 2-Exchange Path (User + Agent → MCP with Nested Act Claim - RFC 8693 §4.4)
 
 ```
 User Login
     ↓
 [OAuth Code → User Access Token]
-  Scopes: profile, email, banking:agent:invoke
-  Claims: may_act = true (PingOne user attribute: user authorized to delegate to agents)
+  Scopes: profile, email, banking:ai:agent:read, banking:general:read, ...
+  Claims: may_act: { client_id: "bff-admin-client-id" } (PingOne user attribute: user authorized to delegate to agents)
     ↓
 [Agent obtains own token via Client Credentials]
-  Scopes: banking:agent:invoke
+  Scopes: banking:ai:agent:read, banking:ai:agent:write
     ↓
 User clicks "Run Agent"
     ↓
 [Agent Tool Call] → BFF receives both: User Access Token (with may_act) + Agent Token
     ↓
-[RFC 8693 Token Exchange (Delegation)]
-  Input:  subject_token = User Access Token (has may_act: { client_id: "bff-admin-client-id" })
-          actor_token = Agent Token
-          audience = https://mcp-server.pingdemo.com
+[RFC 8693 §4.2 Token Exchange (Delegation with Actor)]
+  Exchange #1: User Access Token (with may_act + banking:ai:agent:read) + Agent Token (with banking:ai:agent:read)
+              → Intermediate token with act: { sub: agent-id }
+  Exchange #2: Intermediate token + Agent Token
+              → Final MCP Token with nested act: { sub: mcp-id, act: { sub: agent-id } }
   Output: MCP Access Token
     ↓
 [MCP Token includes:]
-  - Scopes: banking:read, banking:write (narrowed)
-  - Claims: act = { sub: <agent-sub>, client_id: <agent-client-id> } (per RFC 8693 §4.1)
+  - Scopes: banking:read, banking:write (narrowed from original)
+  - Claims: act = { sub: "mcp-client-id", act: { sub: "agent-client-id" } } (nested per RFC 8693 §4.4)
     ↓
 [MCP Server GET /banking/accounts]
   ← MCP Token with act claim (shows agent acting on behalf of user)
@@ -486,8 +489,8 @@ ELSE:
 | Application | Type | Client ID | Audience/Resource URI | Scopes Granted |
 |---|---|---|---|---|
 | **Super Banking Admin App** | OAuth Web App | `PINGONE_AI_CORE_CLIENT_ID` | User audience (not specified) | `openid profile email banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write p1:read:user p1:update:user` |
-| **Super Banking User App** | OAuth Web App | `PINGONE_AI_CORE_USER_CLIENT_ID` | `banking_jk_enduser` (RFC 8707 resource) | `profile email banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke` |
-| **Super Banking AI Agent** | OAuth Worker (2-exchange) | `PINGONE_AI_AGENT_CLIENT_ID` | `banking_mcp_01_JK` (agent audience) | `banking:agent:invoke` |
+| **Super Banking User App** | OAuth Web App | `PINGONE_AI_CORE_USER_CLIENT_ID` | `banking_jk_enduser` (RFC 8707 resource) | `profile email banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write banking:ai:agent:read` |
+| **Super Banking AI Agent** | OAuth Worker (2-exchange) | `PINGONE_AI_AGENT_CLIENT_ID` | `banking_mcp_01_JK` (agent audience) | `banking:ai:agent:read banking:ai:agent:write` |
 | **Super Banking MCP Exchanger** | OAuth Worker (1-exchange) | `PINGONE_CORE_CLIENT_ID` | `https://mcp-server.pingdemo.com` | `banking:accounts:read banking:transactions:read banking:general:read admin:read users:read p1:read:user p1:update:user` |
 
 ### Resource Server Audiences
@@ -496,7 +499,7 @@ ELSE:
 |---|---|---|---|
 | **Main Banking** | `https://resource.pingdemo.com` | banking:read, banking:write, banking:accounts:read, banking:transactions:read, banking:admin:full, banking:sensitive:read | User & MCP banking operations |
 | **MCP Server** | `https://mcp-server.pingdemo.com` | admin:read, admin:write, users:read, users:manage, banking:read, banking:write | MCP tool invocation (1-exchange) |
-| **AI Agent Gateway** | `banking_mcp_01_JK` | banking:agent:invoke | AI Agent token (2-exchange) |
+| **AI Agent Gateway** | `banking_mcp_01_JK` | banking:ai:agent:read + banking:ai:agent:write | AI Agent token (2-exchange) |
 | **PingOne Management API** | `https://api.pingone.com` | p1:read:user, p1:update:user, p1:delete:user | PingOne user management |
 
 ---
@@ -511,7 +514,7 @@ GET https://auth.pingone.{region}/auth.pingone.{region}/as/authorize?
   client_id=PINGONE_AI_CORE_USER_CLIENT_ID
   &redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fauth%2Foauth%2Fuser%2Fcallback
   &response_type=code
-  &scope=profile%20email%20offline_access%20banking%3Ageneral%3Aread%20banking%3Aagent%3Ainvoke
+  &scope=profile%20email%20offline_access%20banking%3Ageneral%3Aread%20banking%3Aai%3Aagent%3Aread
   &resource=https%3A%2F%2Fresource.pingdemo.com
   &response_mode=form_post
   &state={random_state_value}
@@ -540,11 +543,21 @@ curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
   -d "code_verifier=<original_code_verifier>"
 
 # Response includes:
+# For 1-exchange (standard user login):
 # {
-#   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",  // User token with scopes + may_act
+#   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
 #   "id_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
 #   "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
-#   "scope": "profile email offline_access banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke",
+#   "scope": "profile email offline_access banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write",
+#   "expires_in": 3600
+# }
+#
+# For 2-exchange (user with delegation permission):
+# {
+#   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",  // Includes may_act claim from PingOne config
+#   "id_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
+#   "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
+#   "scope": "profile email offline_access banking:ai:agent:read banking:accounts:read banking:transactions:read banking:transactions:write",
 #   "expires_in": 3600
 # }
 ```
@@ -697,7 +710,7 @@ MCP_RESOURCE_URI_TWO_EXCHANGE=https://resource-server.pingdemo.com
 
 **Backend Calls PingOne (Exchange #1 + #2):**
 ```bash
-# EXCHANGE #1: User (subject) + Agent (actor) → Intermediate Token
+# EXCHANGE #1: User (subject with banking:ai:agent:read) + Agent (actor with banking:ai:agent:read) → Intermediate Token
 
 curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -709,7 +722,7 @@ curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
   -d "actor_token_type=urn:ietf:params:oauth:token-type:access_token" \
   -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
   -d "audience=https://agent-gateway.pingdemo.com" \
-  -d "scope=banking:agent:invoke" \
+  -d "scope=banking:ai:agent:read" \
   -d "client_id=PINGONE_CORE_CLIENT_ID" \
   -d "client_secret=PINGONE_CORE_CLIENT_SECRET"
 
@@ -717,21 +730,23 @@ curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
 # {
 #   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
 #   "token_type": "Bearer",
-#   "scope": "banking:agent:invoke",
+#   "scope": "banking:ai:agent:read",
 #   "expires_in": 1800
 # }
 #
-# Decoded Payload:
+# Decoded Payload (T2 with act claim showing delegation):
 # {
 #   "sub": "user-guid-12345",
 #   "aud": "https://agent-gateway.pingdemo.com",
-#   "act": { "sub": "PINGONE_AI_AGENT_CLIENT_ID" },  // Agent is delegated by user
+#   "scope": "banking:ai:agent:read",
+#   "act": { "sub": "PINGONE_AI_AGENT_CLIENT_ID" },  // Agent is acting on behalf of user (RFC 8693 §4.2)
 #   "exp": 1712595600,
 #   "iat": 1712594000
 # }
 
 
-# EXCHANGE #2: Intermediate Token + Agent Token → Final MCP Token
+# EXCHANGE #2: Intermediate Token (with act = { sub: agent-id }) → Final MCP Token (with nested act)
+#              This exchange "deepens" the delegation chain by adding MCP client as final actor
 
 curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -739,13 +754,15 @@ curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
   -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
   -d "subject_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
   -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "actor_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -d "actor_token_type=urn:ietf:params:oauth:token-type:access_token" \
   -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
-  -d "audience=https://mcp-gateway.pingdemo.com" \
+  -d "audience=https://mcp-server.pingdemo.com" \
   -d "scope=banking:general:read banking:accounts:read banking:transactions:read" \
   -d "client_id=PINGONE_CORE_CLIENT_ID" \
   -d "client_secret=PINGONE_CORE_CLIENT_SECRET"
 
-# Response (Final MCP Token from Exchange #2 — with NESTED ACT delegation chain):
+# Response (Final MCP Token from Exchange #2 — with NESTED ACT delegation chain per RFC 8693 §4.4):
 # {
 #   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
 #   "token_type": "Bearer",
@@ -753,25 +770,26 @@ curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
 #   "expires_in": 1800
 # }
 #
-# Decoded Payload (RFC 8693 §4.4 NESTED ACT):
+# Decoded Payload (T3 with NESTED ACT showing full delegation chain - RFC 8693 §4.4):
 # {
 #   "sub": "user-guid-12345",
-#   "aud": "https://mcp-gateway.pingdemo.com",
+#   "aud": "https://mcp-server.pingdemo.com",
 #   "scope": "banking:general:read banking:accounts:read banking:transactions:read",
 #   "act": {
-#     "sub": "mcp-client-id",
+#     "sub": "mcp-client-id",           // MCP is final actor
 #     "act": {
-#       "sub": "PINGONE_AI_AGENT_CLIENT_ID"  // Full delegation chain
+#       "sub": "PINGONE_AI_AGENT_CLIENT_ID"  // Agent is intermediate actor (delegated by user)
 #     }
 #   },
 #   "exp": 1712595600,
 #   "iat": 1712594000
 # }
 # 
-# This nested structure shows:
-# - Original user: user-guid-12345
-# - Agent delegated by user: PINGONE_AI_AGENT_CLIENT_ID
-# - MCP (final actor) delegated by agent: mcp-client-id
+# Full Delegation Audit Trail:
+# 1. User (sub: user-guid-12345) authorized Agent via may_act user attribute
+# 2. Agent (sub: PINGONE_AI_AGENT_CLIENT_ID) delegated by User
+# 3. MCP (sub: mcp-client-id) delegated by Agent
+# 4. All scopes narrowed to banking:general:read only (least privilege)
 ```
 
 #### 6. Admin App OAuth (with PingOne Management API Scopes)
@@ -782,7 +800,7 @@ GET https://auth.pingone.{region}/{env-id}/as/authorize?
   client_id=PINGONE_AI_CORE_CLIENT_ID
   &redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fauth%2Foauth%2Fcallback
   &response_type=code
-  &scope=openid%20profile%20email%20banking%3Aadmin%3Afull%20p1%3Aread%3Auser%20p1%3Aupdate%3Auser
+  -d "scope=openid%20profile%20email%20offline_access%20banking%3Aadmin%3Afull%20banking%3Aaccounts%3Aread%20banking%3Atransactions%3Aread%20banking%3Atransactions%3Awrite%20p1%3Aread%3Auser%20p1%3Aupdate%3Auser"
   &code_challenge={base64url(sha256(code_verifier))}
   &code_challenge_method=S256
   &state={random}
@@ -801,7 +819,7 @@ curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
 # Response includes admin + PingOne API scopes:
 # {
 #   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
-#   "scope": "openid profile email banking:admin:full p1:read:user p1:update:user",
+#   "scope": "openid profile email offline_access banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write p1:read:user p1:update:user",
 #   "expires_in": 3600
 # }
 ```

@@ -20,14 +20,14 @@ Adding `openid` anywhere in this flow breaks things in two different ways depend
 
 | Postman Step | Scope param | How to set |
 |---|---|---|
-| **Step 1 — `/authorize`** | `profile email banking:agent:invoke` | Collection variable `scope` |
+| **Step 1 — `/authorize`** | `profile email banking:ai:agent:read` | Collection variable `scope` |
 | **Step 4 — token exchange for code** | *(same as Step 1 — uses `{{scope}}`)* | Collection variable `scope` |
 | **Step 5 — RFC 8693 token exchange** | `banking:accounts:read banking:transactions:read banking:transactions:write` | Hardcoded in Step 5 body |
 | **Step 6 — client credentials** | `p1:read:user p1:update:user` | Hardcoded in Step 6 body |
 
 **How to verify in Postman:**
 1. Click the collection name → **Variables tab**
-2. Find `scope` → current value must be `profile email banking:agent:invoke` (no `openid`)
+2. Find `scope` → current value must be `profile email banking:ai:agent:read` (no `openid`)
 3. Open **Step 6** → **Body tab** → find the `scope` row → must be `p1:read:user p1:update:user` (no `openid`)
 
 > **Why no ID token?** The Super Banking User app has `Response Type: Code` only — **ID Token is unchecked** in PingOne OIDC Settings. `openid` is the scope that triggers ID token issuance. Since there is no ID token in this flow and the access token audience is a custom resource server, `openid` must be absent.
@@ -51,24 +51,23 @@ Human User (Banking App Login)
   │
   │  PKCE Authorization Code login — user authenticates normally
   ▼
-Subject Token  [TOKEN 1 — user's session token]
+Subject Token  [TOKEN 1 — user's session token with banking:ai:agent:read scope + may_act claim]
   { sub: "<user-id>",
     aud: ["https://ai-agent.pingdemo.com"],      ← AI Agent service validates this token
-    scope: "profile email banking:agent:invoke",
+    scope: "profile email banking:ai:agent:read",    ← USER MUST have this scope to delegate
     may_act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }
-              ↑ the client ID UUID of Super Banking Banking App — permits it to exchange this token
+              ↑ PingOne user attribute: claiming this client is authorized to act on user's behalf
   │
   │  Token Exchange #1 (RFC 8693)
   │  Banking app server POSTs the Subject Token to PingOne's /token endpoint.
   │  PingOne checks: may_act.sub == actorToken.aud[0]? → issues MCP Token.
   │  Exchanger: Super Banking Banking App (PINGONE_CORE_CLIENT_ID)
   ▼
-MCP Token  [TOKEN 2 — delegated tool-call token]
+MCP Token  [TOKEN 2 — delegated tool-call token with narrowed scopes + act claim]
   { sub: "<user-id>",
     aud: ["https://mcp-server.pingdemo.com"],   ← MCP Server validates this token
-    scope: "banking:accounts:read banking:transactions:read banking:transactions:write",
-    act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }
-          ↑ the client ID UUID of the Banking App — verifiable delegation audit trail
+    scope: "banking:accounts:read banking:transactions:read banking:transactions:write",  ← NARROWED: least privilege
+    act: { "sub": "<PINGONE_CORE_CLIENT_ID>" } }  ← Audit trail: BFF delegated on user's behalf
   │
   │  Client Credentials grant (NOT a token exchange)
   │  MCP server POSTs its own client_id + client_secret to PingOne.
@@ -85,14 +84,19 @@ PingOne Management API  (/v1/environments/{envId}/users/{userId})
 
 > **Every `aud` is different** — each token is scoped to exactly one service. That service's resource server validates the token; all others reject it. This is the core of RFC 8693 audience restriction.
 
-| Token | Audience URL | How issued | Issuer |
-|-------|-------------|------------|--------|
-| **Subject Token** | `https://ai-agent.pingdemo.com` | PKCE login | PingOne (user auth) |
-| **MCP Token** | `https://mcp-server.pingdemo.com` | RFC 8693 Token Exchange #1 | Super Banking Banking App |
-| **PingOne API Token** | `https://api.pingone.com` | Client Credentials | Super Banking MCP Service |
-| *(actor token)* | `https://agent-gateway.pingdemo.com` | *(internal — proves banking app identity for Exchange #1)* | — |
+| Token | Audience URL | How issued | Issuer | Scope |
+|-------|-------------|------------|--------|-------|
+| **Subject Token** | `https://ai-agent.pingdemo.com` | PKCE login | PingOne (user auth) | `profile email banking:ai:agent:read` |
+| **MCP Token** | `https://mcp-server.pingdemo.com` | RFC 8693 Token Exchange #1 | Super Banking BFF | `banking:accounts:read banking:transactions:read banking:transactions:write` (narrowed) |
+| **PingOne API Token** | `https://api.pingone.com` | Client Credentials | Super Banking MCP Service | `p1:read:user p1:update:user` |
+| *(actor token)* | `https://agent-gateway.pingdemo.com` | *(internal — proves BFF identity for Exchange #1)* | (N/A) | `banking:ai:agent:read` |
 
-> **`may_act` → `act` transition:** `may_act` in the Subject Token declares who is *allowed* to exchange it. After exchange, that identity becomes the `act` claim. Each subsequent exchange nests a new `act` layer, forming a full delegation chain.
+>  **Two Key Requirements for 2-Exchange Delegation:**
+>
+> 1. **Scope Permission:** User token MUST have `banking:ai:agent:read` scope (grants permission to invoke agent)
+> 2. **Claim Authorization:** User MUST have PingOne `may_act` user attribute: `{ "client_id": "<bff-admin-client-id>" }` (proves authorization to delegate)
+>    
+> **Both are required.** Scope alone (without `may_act` claim) is insufficient. Claim alone (without scope) is also insufficient. The combination proves the user both intends and is authorized to delegate.
 
 ---
 

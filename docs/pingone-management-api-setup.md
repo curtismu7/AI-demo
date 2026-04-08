@@ -51,7 +51,9 @@ PINGONE_REGION=<your-region>  # com, eu, ca, asia, com.au
 - Resource Server: `Super Banking AI Agent Service`
 - Audience: `https://ai-agent.pingdemo.com`
 - Scopes:
-  - `banking:agent:invoke` - Allow AI agent to invoke banking operations
+  - `banking:ai:agent:read` - AI agent read banking operations (primary delegation scope)
+  - `banking:ai:agent:write` - AI agent write operations
+  - `banking:ai:agent:admin` - AI agent admin operations
   - `banking:read` - Read access to banking data
   - `banking:write` - Write access to banking operations
 - Application: `BX Finance AI Agent App` (Worker type)
@@ -66,8 +68,9 @@ PINGONE_REGION=<your-region>  # com, eu, ca, asia, com.au
 - Resource Server: `Super Banking AI Agent Service`
 - Audience: `https://resource-server.pingdemo.com`
 - Scopes:
-  - `banking:agent:invoke` - Agent invocation scope for banking operations
-  - `agent:invoke` - Generic agent invocation scope
+  - `banking:ai:agent:read` - AI agent delegation permission (primary scope for 2-exchange)
+  - `banking:ai:agent:write` - AI agent write operations
+  - `banking:ai:agent:admin` - AI agent admin operations
 - Application: `BX Finance AI Agent App` (Worker type)
 
 **Use Case**: Enhanced security with 2-exchange delegation pattern
