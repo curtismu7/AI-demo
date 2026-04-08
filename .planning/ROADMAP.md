@@ -1472,7 +1472,7 @@ Plans:
 **Goal:** Enable demo operators to choose between introspection-based and JWT-based token validation. Provide health check to verify PingOne introspection endpoint connectivity. Document validation tradeoffs and guide proper mode selection. Showcase Phase 91 Wave 1 token introspection in action within the demo.
 **Requirements**: CONFIG-01
 **Depends on:** Phase 96
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [x] 97-01-PLAN.md — Configuration and validation mode toggle, health check endpoint, UI component, documentation

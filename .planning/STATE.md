@@ -2,13 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-08T14:11:11.195Z"
+status: verifying
+last_updated: "2026-04-08T15:37:38.336Z"
 progress:
-  total_phases: 109
-  completed_phases: 48
-  total_plans: 152
-  completed_plans: 113
+  total_phases: 114
+  completed_phases: 51
+  total_plans: 155
+  completed_plans: 117
+  percent: 75
 ---
 
 # State — Super Banking AI Banking Demo
@@ -23,7 +24,7 @@ progress:
 Phase: 97 (demo-config-with-introspection-and-jwt-validation-options-verify-apis-working-to-pingone-endpoint) — READY FOR PLANNING
 Plan: 1 of 1 — (Pending /gsd-plan-phase 97)
 **Previous:** Phase 96 (audience-aud-claim-validation) — ✅ COMPLETE (1/1 plans executed 2026-04-08)
-**Status:** Aud validation foundation complete; ready for demo config introspection phase
+**Status:** Phase complete — ready for verification
 
 ---
 
@@ -67,6 +68,8 @@ Plan: 1 of 1 — (Pending /gsd-plan-phase 97)
 - [Phase 08]: Listen for banking-agent-result event in UserDashboard rather than prop/callback chain — keeps components decoupled
 - [Phase 48]: Removed invalid SpEL act expression from Step 1e — PingOne handles act nesting natively per RFC 8693 §4.4
 - [Phase 87]: Phase 87 planned with 7-task breakdown covering service, API, React component, tests, and Vercel deployment. Scope validation rules derived from live PingOne resources and PINGONE_MAY_ACT_SETUP.md reference table.
+- [Phase 97]: In-memory mode state seeded from VALIDATION_MODE env var (not persisted to disk)
+- [Phase 97]: RFC 7662 health probe: 400 response from PingOne counts as 'connected' (invalid token is expected)
 
 ## Blockers
 
