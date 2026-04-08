@@ -40,6 +40,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 87 | comprehensive-token-validation-at-every-step | Verify tokens at every step: Agent (MCP client) → App Host (BFF) → MCP Server (Gateway); document authz server vs local JWT validation | TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03 | 0 plans |
 | 94 | explicit-hitl-for-agent-consent | Explicit HITL for user approval before agent performs actions on user behalf | HITL-01, HITL-02 | 0 plans |
 | 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01, ACTOR-02 | 0 plans |
+| 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01, AUD-02, AUD-03 | 0 plans |
 
 ---
 
@@ -1393,5 +1394,75 @@ Plans:
 - [ ] 95-02-PLAN.md — Update all documentation: README, API docs, RFC guides, architecture
 - [ ] 95-03-PLAN.md — Add education panels and token inspector labels for actor/agent
 - [ ] 95-04-PLAN.md — Update code comments and variable naming for consistency; verify RFC 8693 references
+
+
+### Phase 96: Audience (aud) claim validation and configuration
+
+**Goal:** Implement comprehensive audience (aud) claims validation across all OAuth tokens and APIs. Ensure every token includes a correct aud claim identifying the intended recipient (resource server, API, or service). Configure aud values in PingOne applications, validate on every incoming request, and audit aud mismatches to prevent token confusion and delegation attacks.
+
+**Requirements**: AUD-01, AUD-02, AUD-03
+**Depends on:** Phase 95 (Actor token = Agent token education)
+**Plans:** 0 plans (run /gsd-plan-phase 96 to break down)
+
+**Key Focus Areas:**
+
+1. **Audience Value Definition**
+   - **BFF API**: aud should include "banking-api" or configured API identifier
+   - **MCP Server**: aud should include "mcp-server" or "mcp.pingdemo.com"
+   - **PingOne Resource Servers**: Each resource has its own aud value (e.g., "https://api.example.com/users")
+   - **Agent Actor Tokens**: aud identifies the target API being accessed on user's behalf
+   - Use HTTPS URLs for aud values (per OAuth spec best practice)
+
+2. **PingOne Configuration Audit**
+   - Review all OAuth applications: what aud values do they request/expect?
+   - Review all resource servers: what aud identifiers are configured?
+   - Ensure consistency: all BFF tokens have matching aud claims
+   - Document aud values per environment (localhost, Vercel, production)
+   - Create PingOne configuration template with aud standardization
+
+3. **Token Validation Implementation**
+   - BFF middleware: validate aud claim on every incoming token
+   - MCP gateway: validate aud claim before processing WebSocket messages
+   - Per-route validation: some routes may require specific aud values
+   - Scope + Aud combination: both scope AND aud must match request
+   - Error handling: reject with 401 if aud doesn't match, log for audit
+
+4. **Audience in Different Token Types**
+   - **User tokens** (from login): aud identifies the app requesting access
+   - **Agent actor tokens** (from token exchange): aud identifies the target API the agent can access
+   - **MCP tokens**: aud identifies the MCP server as intended recipient
+   - **API key / PAT tokens**: aud identifies the service they're valid for
+   - Document aud claim variation per token type
+
+5. **Aud Mismatch Detection & Audit**
+   - Log all aud validation failures (token aud ≠ expected aud)
+   - Audit table: track aud mismatches with timestamp, token type, expected/actual values
+   - Admin dashboard: show aud validation failures and patterns
+   - Alert on suspicious patterns (same client sending many wrong aud values)
+   - Prevent token replay attacks across APIs (same token used for different aud)
+
+6. **Education & Documentation**
+   - Create "Understanding Audience (aud) Claims" education panel
+   - Diagram: How aud prevents token misuse (token intended for API A can't be used for API B)
+   - Update token inspector: show aud claim prominently
+   - Document aud values for each PingOne app in ENVIRONMENT_MAPPING.md
+   - Add aud checks to setup verification script
+
+**Success Criteria:**
+- Every OAuth token request includes correct aud claim
+- BFF validates aud on every incoming request
+- MCP gateway validates aud during WebSocket upgrade
+- All PingOne apps configured with correct aud values
+- Aud validation failures logged and auditable
+- No token acceptance without matching aud (fail closed)
+- Education panel explains what aud does and why it matters
+- Setup script verifies aud configuration in PingOne
+- Architecture diagrams show aud claim in token flows
+
+Plans:
+- [ ] 96-01-PLAN.md — Audit PingOne configuration: identify all aud values, standardize, document
+- [ ] 96-02-PLAN.md — Implement aud validation middleware in BFF and MCP gateway
+- [ ] 96-03-PLAN.md — Add aud claim audit logging and dashboard
+- [ ] 96-04-PLAN.md — Add education panel and update token inspector with aud labels
 
 ---
