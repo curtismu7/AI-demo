@@ -128,6 +128,7 @@ Plan: 84-02 (next - Consolidate shell scripts) | 84-03 (Code quality cleanup)
 - Phase 46 added: Standardize PingOne app, resource, and scope naming across all use cases
 - Phase 47 added: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 - Phase 26 added: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
+- Phase 87 added: Scope validation utility — validate PingOne app scopes and report errors to user
 - Phase 27 added: PingOne Authorize PAZ setup — transaction limit policy, AUD validation, act chain introspection to match RFC 8693 token exchange implementation
 - Phase 28 added: Vercel config tab — read environment variables via Vercel API, display editable fields in UI, write non-secret vars back to Vercel, secrets entered by user and stored server-side only
 - Phase 29 added: Use-case C — agent accessing sensitive or regulated data; explicit authorization, least-data-necessary controls, optional HITL for elevated actions

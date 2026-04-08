@@ -1188,4 +1188,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 86 to break down)
 
+### Phase 87: Scope validation utility - validate PingOne app scopes and report errors to user
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 86
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 87 to break down)
+
 ---
