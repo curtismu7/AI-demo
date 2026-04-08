@@ -1587,4 +1587,19 @@ Plans:
 - [ ] 107-02-PLAN.md — Frontend hostname config UI (AdminConfig component + integration)
 - [ ] 107-03-PLAN.md — OAuth redirect URI integration (update OAuth services + verification)
 
+### Phase 108: Add server restart notification modal with UX polish
+
+**Goal:** When the server returns 504 errors or restarts, show users a clear "Server is restarting" modal instead of silent failures. Include auto-retry with exponential backoff and UX polish (animations, professional styling).
+
+**Requirements**: SERVER-RESTART-01, SERVER-RESTART-02, SERVER-RESTART-03
+
+**Depends on:** Phase 107
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 108-01-PLAN.md — Core service + modal component (504 detection, auto-retry, animations)
+- [ ] 108-02-PLAN.md — Integration (App.js mount, API error handling wiring)
+- [ ] 108-03-PLAN.md — Testing, CSS polish, regression verification
+
 ---
