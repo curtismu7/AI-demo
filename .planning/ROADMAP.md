@@ -188,7 +188,7 @@ Plans:
 ### Phase 8: Banking transaction integrity — fix balance updates, validate all actions, and ensure enterprise-grade correctness
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 7
 **Plans:** 1/1 plans complete
 
@@ -226,7 +226,7 @@ Plans:
 ### Phase 11: Education content review and accuracy audit — OAuth RFCs MCP PingOne AI completeness check
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 10
 **Plans:** 1/1 plans complete
 
@@ -246,7 +246,7 @@ Plans:
 ### Phase 13: Dashboard first impression overhaul — professional clean layout, no duplicate buttons, agent visible above the fold, no sensitive credentials on screen
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 12
 **Plans:** 1 plan
 
@@ -256,7 +256,7 @@ Plans:
 ### Phase 14: Agent window polish — collapse cluttered left rail, prevent agent from covering the dashboard side panel
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 13
 **Plans:** 1 plan
 
@@ -266,7 +266,7 @@ Plans:
 ### Phase 15: Unified configuration + demo-data page — merge into single tabbed UI replacing separate Config and DemoData routes
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 14
 **Plans:** 1 plan
 
@@ -276,7 +276,7 @@ Plans:
 ### Phase 16: Education content refresh — RFCs, AI agent standards, industry guidance
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 15
 **Plans:** 1 plan
 
@@ -286,7 +286,7 @@ Plans:
 ### Phase 17: Ping Identity for AI principles — audit, agent flow badges, education panel
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 16
 **Plans:** 1 plan
 
@@ -296,7 +296,7 @@ Plans:
 ### Phase 18: Token Chain correctness — two-exchange support, robust event descriptions, agent request flow audit
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 17
 **Plans:** 1 plan
 
@@ -306,7 +306,7 @@ Plans:
 ### Phase 19: Demo Config page audit — verify all sections work and are necessary
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 18
 **Plans:** 1/1 plans complete
 
@@ -316,7 +316,7 @@ Plans:
 ### Phase 20: Postman collections — fix 1-exchange utilities and build industry-standard 2-exchange collection
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 19
 **Plans:** 3/3 plans complete
 
@@ -360,7 +360,7 @@ Plans:
 ### Phase 24: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 23
 **Plans:** 0/2 plans executed
 
@@ -370,7 +370,7 @@ Plans:
 ### Phase 25: LLM landscape — commercial and open-source models, capabilities overview, and comparison
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 24
 **Plans:** 0/2 plans executed
 
@@ -380,7 +380,7 @@ Plans:
 ### Phase 26: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 25
 **Plans:** 0/2 plans executed
 
@@ -438,7 +438,7 @@ Plans:
 ### Phase 31: floating draggable resizable windows - agent request flow, agent panel, API viewer, log viewer and all drawers use unified drag-resize system with consistent UX across all windows
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 30
 **Plans:** 0 plans
 
@@ -472,7 +472,7 @@ Plans:
 ### Phase 34: Agent action logging — log what agent, what action, rights used, and each step
 
 **Goal:** Extend the Phase 32 AuditLogger stub into a real, persistent audit pipeline. Every MCP tool invocation logged with full agent identity, rights used, and step detail — visible in the admin audit panel and stored in Upstash Redis.
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 33
 **Plans:** 2/2 plans complete
 
@@ -483,7 +483,7 @@ Plans:
 ### Phase 35: User-facing feature documentation — update docs for each feature explaining what it does and why it was added
 
 **Goal:** Update FEATURES.md and CHANGELOG.md to document all features added in phases 29–34, with what-it-does and why-it-was-added explanations for each.
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 34
 **Plans:** 1/1 plans complete
 
@@ -493,7 +493,7 @@ Plans:
 ### Phase 36: Postman collections and environments audit — update all collections and environments for any missing or changed API routes, auth flows, and MCP endpoints
 
 **Goal:** Full audit and update of all Postman collections and environment files — staleness fixes, 2-exchange audience correction, 3 new env vars, 2 new collections (MCP-Tools + BFF-API), stray files moved to docs/.
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 35
 **Plans:** 0/3 plans executed
 
@@ -528,7 +528,7 @@ Plans:
 ### Phase 39: Architecture diagram — create draw.io diagram of the full app architecture (UI, BFF, MCP server, LangChain agent, PingOne, PingGateway) showing component relationships, auth flows, and token paths
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 38
 **Plans:** 0 plans
 
@@ -558,7 +558,7 @@ Plans:
 ### Phase 42: Persist demo accounts across server restarts using env file on Vercel and SQLite on local
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 41
 **Plans:** 0 plans
 
@@ -579,7 +579,7 @@ Plans:
 ### Phase 44: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 43
 **Plans:** 0 plans
 
@@ -589,7 +589,7 @@ Plans:
 ### Phase 45: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 44
 **Plans:** 0 plans
 
@@ -599,7 +599,7 @@ Plans:
 ### Phase 46: Standardize PingOne app, resource, and scope naming across all use cases
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 45
 **Plans:** 0 plans
 
@@ -609,7 +609,7 @@ Plans:
 ### Phase 47: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 46
 **Plans:** 0 plans
 
@@ -619,7 +619,7 @@ Plans:
 ### Phase 48: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF PAZ layer instead update docs
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 47
 **Plans:** 1/1 plans complete
 
@@ -980,7 +980,7 @@ Plans:
 ### Phase 68: RFC 9728 Support - Protected Resource Metadata implementation
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 67
 **Plans:** 0 plans
 
@@ -990,7 +990,7 @@ Plans:
 ### Phase 69: Standardize PingOne app, resource, and scope naming across all use cases
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 68
 **Plans:** 0 plans
 
@@ -1000,7 +1000,7 @@ Plans:
 ### Phase 70: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 69
 **Plans:** 0 plans
 
@@ -1010,7 +1010,7 @@ Plans:
 ### Phase 71: 59.1 RFC 9728 compliance audit - Protected Resource Metadata implementation
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 70
 **Plans:** 0 plans
 
@@ -1020,7 +1020,7 @@ Plans:
 ### Phase 72: 60.1 Agent showcase and integration storytelling - banking platform AI narrative
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 71
 **Plans:** 0 plans
 
@@ -1030,7 +1030,7 @@ Plans:
 ### Phase 73: 61.1 MCP spec error code compliance audit - 403/401 per MCP spec
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 72
 **Plans:** 0 plans
 
@@ -1040,7 +1040,7 @@ Plans:
 ### Phase 74: 62.1 Token exchange critical fixes and enhancements - may_act, RFC 8707, scopes
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 73
 **Plans:** 0 plans
 
@@ -1050,7 +1050,7 @@ Plans:
 ### Phase 75: 63.1 Documentation and integration critical fixes - ops guides, API docs
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 74
 **Plans:** 0 plans
 
@@ -1060,7 +1060,7 @@ Plans:
 ### Phase 76: 64.1 Unified configuration page - consolidate /config and /demo-data
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 75
 **Plans:** 0 plans
 
@@ -1070,7 +1070,7 @@ Plans:
 ### Phase 77: 65.1 API configuration and management enhancements - auth methods, Vercel vars
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 76
 **Plans:** 0 plans
 
@@ -1080,7 +1080,7 @@ Plans:
 ### Phase 78: 66.1 UI enhancements and user experience improvements
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 77
 **Plans:** 0 plans
 
@@ -1090,7 +1090,7 @@ Plans:
 ### Phase 79: 67.1 Documentation enhancement and developer tools
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 78
 **Plans:** 0 plans
 
@@ -1100,7 +1100,7 @@ Plans:
 ### Phase 80: 68.1 RFC 9728 Support - Protected Resource Metadata implementation
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 79
 **Plans:** 0 plans
 
@@ -1110,7 +1110,7 @@ Plans:
 ### Phase 81: 69.1 Standardize PingOne app, resource, and scope naming across all use cases
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 80
 **Plans:** 0 plans
 
@@ -1120,7 +1120,7 @@ Plans:
 ### Phase 82: 70.1 Super Banking rename verification - confirm no regressions across all layers
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 81
 **Plans:** 0 plans
 
@@ -1148,7 +1148,7 @@ Plans:
 ### Phase 84: review all syntax errors code failures looping best practices for all code
 
 **Goal:** Remove dead code, clean up debug logging, consolidate shell scripts into enterprise-grade run.sh, and improve code quality across all services
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 83
 **Plans:** 3 plans
 
@@ -1185,7 +1185,7 @@ Plans:
 ### Phase 86: test everything you can for production run
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 85
 **Plans:** 0 plans
 
@@ -1234,7 +1234,7 @@ Plans:
 ### Phase 88: Audit and align all documentation and code to PingOne app names, rename apps where needed, update Vercel and localhost env vars, validate setup and creation code
 
 **Goal:** Complete env var alignment to canonical PingOne app names — rename remaining vars (Worker/Admin App/User App), fix services using bare process.env, fix 2-exchange error metadata, create KV migration script, update Vercel env docs.
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 87
 **Plans:** 3 plans
 
@@ -1246,7 +1246,7 @@ Plans:
 ### Phase 89: Audit and update all documentation to match standardized PingOne app names
 
 **Goal:** Update all docs (README, env.example, ENVIRONMENT_MAPPING, MAY_ACT guides, SETUP, NAMING_AUDIT) to use canonical PingOne app names and Phase 88 env var names.
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 88
 **Plans:** 2 plans
 
@@ -1257,7 +1257,7 @@ Plans:
 ### Phase 90: Scope/resource check: OIDC app OIDC scope spelling validation, resource URL validation, and fix capability
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 89
 **Plans:** 0 plans
 
@@ -1267,7 +1267,7 @@ Plans:
 ### Phase 91: External MCP client access — public MCP server with PingOne-protected auth, restrict to @pingidentity.com Google login, per-client authorization, and Claude/ChatGPT integration planning
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 90
 **Plans:** 0 plans
 
@@ -1277,7 +1277,7 @@ Plans:
 ### Phase 92: User custom attribute validation — verify user has required PingOne custom attributes configured correctly, report and fix capability, integrate into existing scope/resource check tooling
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 91
 **Plans:** 0 plans
 
@@ -1287,7 +1287,7 @@ Plans:
 ### Phase 93: Surface agent-on-behalf-of-user actions in UI and education
 
 **Goal:** [To be planned]
-**Requirements**: TBD
+**Requirements**: CONFIG-01
 **Depends on:** Phase 92
 **Plans:** 0 plans
 
@@ -1467,12 +1467,12 @@ Plans:
 
 ### Phase 97: Demo config with introspection and JWT validation options; verify APIs working to PingOne endpoint
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Enable demo operators to choose between introspection-based and JWT-based token validation. Provide health check to verify PingOne introspection endpoint connectivity. Document validation tradeoffs and guide proper mode selection. Showcase Phase 91 Wave 1 token introspection in action within the demo.
+**Requirements**: CONFIG-01
 **Depends on:** Phase 96
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 97 to break down)
+- [x] 97-01-PLAN.md — Configuration and validation mode toggle, health check endpoint, UI component, documentation
 
 ---
