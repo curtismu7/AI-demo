@@ -176,55 +176,58 @@ This section shows the **actual `may_act` and `act` claim structures** used by t
 
 ```json
 {
-  "client_id": "12345678-1234-1234-1234-123456789abc",  // REQUIRED: The BFF client UUID authorized to act
-  "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // OPTIONAL: The agent identifier (for reverse lookups)
+  "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1",  // REQUIRED: Super Banking BFF client UUID authorized to act
+  "sub": "https://banking-agent.pingdemo.com/agent/banka-agent-01"  // OPTIONAL: The agent identifier (for reverse lookups)
 }
 ```
 
-**Real Example**  (full user token—truncated for brevity):
+**Real Example** (full user token from Super Banking User app):
 
 ```json
 {
-  "sub": "425d38ac-adcc-463c-83cb-e9eb88179a79",  // User ID (PingOne GUID)
+  "sub": "5C9A2E8F-B3D1-42A8-8637-C2A9F7B5D8E3",  // User ID (PingOne GUID from Super Banking User population)
   "aud": ["https://ai-agent.pingdemo.com"],
-  "iss": "https://auth.pingone.com/abc123def456/as",
+  "iss": "https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as",  // Real-looking PingOne environment
   "scope": "profile email banking:ai:agent:read banking:accounts:read banking:transactions:read",
   "exp": 1712595600,
   "iat": 1712594000,
   "may_act": {
-    "client_id": "bff-admin-client-id-uuid",  // The Banking App's client ID in PingOne (must match actor)
-    "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // Optional: helps with audit
+    "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1",  // Super Banking BFF client ID in PingOne (must match actor)
+    "sub": "https://banking-agent.pingdemo.com/agent/banka-agent-01"  // Optional: which agent
   }
 }
 ```
 
 **How it's Validated (Code Path):**
-1. User logs in at `/authorize` endpoint
-2. PingOne issues Subject Token with `may_act` from user's `mayAct` attribute (configured in Part 3c)
-3. BFF receives token, decodes it
+1. User logs into Super Banking User app via `/api/auth/oauth/authorize`
+2. PingOne (issuer: `https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as`) issues Subject Token with `may_act` from user's `myAct` attribute
+3. BFF (Super Banking BFF, client ID: `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1`) receives token, decodes it
 4. `delegationClaimsService.validateMayActStructure()` (line 143–230) checks:
-   - ✅ `client_id` field is present (required)
+   - ✅ `client_id` field is present and equals `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1` (required)
    - ✅ `client_id` is a non-empty string
    - ✅ `sub` field format is valid (optional field)
 5. If valid: BFF can use this token for token exchange
 6. If invalid: `DELEGATION_ERROR_CODES.INVALID_MAY_ACT_STRUCTURE` (403 Forbidden)
 
 **Setting `may_act` in PingOne (Part 3c):**
-User *schema* attribute can be set to:
+
+On the Super Banking User app, when a user logs in, PingOne reads their `mayAct` attribute and includes it in the access token.
+
+Set user attribute (`myAct`) to:
 ```json
 {
   "mayAct": {
-    "sub": "<THE-BANKING-APP-CLIENT-ID-UUID>",
-    "aud": "https://agent-gateway.pingdemo.com"  // optional
+    "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1",  // Super Banking BFF Client ID (PINGONE_CORE_CLIENT_ID)
+    "sub": "https://banking-agent.pingdemo.com/agent/banka-agent-01"  // Optional: agent identifier
   }
 }
 ```
 
-Or simpler (PingOne will infer from context):
+Or simpler (PingOne will infer agent from context):
 ```json
 {
   "mayAct": {
-    "sub": "<THE-BANKING-APP-CLIENT-ID-UUID>"
+    "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1"
   }
 }
 ```
@@ -246,13 +249,13 @@ user.mayAct
 
 ```json
 {
-  "sub": "425d38ac-adcc-463c-83cb-e9eb88179a79",  // Original user (preserved)
+  "sub": "5C9A2E8F-B3D1-42A8-8637-C2A9F7B5D8E3",  // Original user (preserved through exchange)
   "aud": ["https://mcp-server.pingdemo.com"],
-  "scope": "banking:accounts:read banking:transactions:read",  // Narrowed
+  "scope": "banking:accounts:read banking:transactions:read",  // Narrowed from original
   "exp": 1712595600,
   "iat": 1712594000,
   "act": {
-    "sub": "bff-admin-client-id-uuid"  // The BFF client that performed the exchange
+    "sub": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1"  // Super Banking BFF that performed the exchange (PINGONE_CORE_CLIENT_ID)
   }
 }
 ```
@@ -261,15 +264,15 @@ user.mayAct
 
 ```json
 {
-  "sub": "425d38ac-adcc-463c-83cb-e9eb88179a79",  // Original user (preserved through chain)
+  "sub": "5C9A2E8F-B3D1-42A8-8637-C2A9F7B5D8E3",  // Original user (preserved through full chain)
   "aud": ["https://mcp-server.pingdemo.com"],
   "scope": "banking:accounts:read banking:transactions:read",  // Narrowed
   "exp": 1712595600,
   "iat": 1712594000,
   "act": {
-    "sub": "mcp-client-id-uuid",  // MCP is the outermost actor (final service)
+    "sub": "D2E4F1A3-B6C9-4E2D-9C7F-1A8B5D3E6F2C",  // Super Banking MCP Service (outermost actor, Exchange #2)
     "act": {
-      "sub": "bff-admin-client-id-uuid"  // BFF is the intermediate actor (delegated by user)
+      "sub": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1"  // Super Banking BFF (intermediate actor, Exchange #1)
     }
   }
 }
@@ -277,10 +280,10 @@ user.mayAct
 
 **How it's Created (RFC 8693 Token Exchange):**
 
-**BFF performs Exchange #1** (1-exchange or start of 2-exchange):
+**BFF (Super Banking BFF) performs Exchange #1** (1-exchange or start of 2-exchange):
 ```bash
-curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
-  -H "Authorization: Basic $(echo -n 'PINGONE_CORE_CLIENT_ID:PINGONE_CORE_CLIENT_SECRET' | base64)" \
+curl -X POST https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as/token \
+  -H "Authorization: Basic $(echo -n '8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1:your-bff-client-secret' | base64)" \
   -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
   -d "subject_token=<user-access-token-with-may_act>" \
   -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
@@ -289,14 +292,19 @@ curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
   -d "scope=banking:accounts:read banking:transactions:read"
 ```
 
-PingOne:
-1. Decodes subject token
-2. Finds `may_act.sub` → validates it matches the BFF's client ID
+**Environment values:**
+- `c249f73b-cdc8-45ff-a651-e4a55b456f3f` = PINGONE_ENVIRONMENT_ID
+- `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1` = PINGONE_CORE_CLIENT_ID (Super Banking BFF client)
+- `your-bff-client-secret` = PINGONE_CORE_CLIENT_SECRET
+
+PingOne (issuer: `https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as`):
+1. Decodes subject token from Super Banking User app
+2. Finds `may_act.client_id` = `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1` → validates it matches the requesting BFF client
 3. Checks the MCP Resource Server's attribute mapping expression (Part 1b—the `act` expression)
-4. Evaluates: `may_act.sub == actor_token.aud[0]`?  (does the permitted actor match who's asking?)
+4. Evaluates: `may_act.client_id == actor_token.client_id`?  (is the permitted actor the one asking?)
 5. If YES: promotes `may_act` to `act` in output token
 6. If NO: returns `act = null` and exchange fails (because `act` is required)
-7. Returns token with: `act: { sub: "<bff-client-id>" }`
+7. Returns MCP Token with: `act: { sub: "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1" }`
 
 **How it's Validated in Code (Code Path):**
 - `banking_api_server/services/delegationClaimsService.js` lines 247–290: `validateExchangedTokenAct()`
@@ -308,11 +316,11 @@ PingOne:
 
 ### PingOne Configuration Checklist
 
-- ☑️ **User Attribute:** `myAct` (JSON type) on user records with value `{ "sub": "<banking-app-uuid>" }`
+- ☑️ **User Attribute:** `myAct` (JSON type) on Super Banking User population with value `{ "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1" }`
 - ☑️ **Resource Server Attribute (1a):** Super Banking AI Agent — map `may_act` expression to `user.mayAct`
 - ☑️ **Resource Server Attribute (1b):** Super Banking MCP Server — map `act` expression with the ternary logic shown in Part 1b
-- ☑️ **Subject Token contains:** `may_act` with the user's PingOne `mayAct` attribute
-- ☑️ **MCP/Exchanged Token contains:** `act` with BFF client ID (1-exchange) or nested chain (2-exchange)
+- ☑️ **Subject Token contains:** `may_act` with the user's PingOne `myAct` attribute (client_id = `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1`)
+- ☑️ **MCP/Exchanged Token contains:** `act` with BFF client ID `8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1` (1-exchange) or nested chain with MCP client `D2E4F1A3-B6C9-4E2D-9C7F-1A8B5D3E6F2C` (2-exchange)
 
 ---
 

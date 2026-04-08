@@ -288,22 +288,22 @@ Includes:
 
 ```json
 {
-  "client_id": "12345678-1234-1234-1234-123456789abc",  // REQUIRED: BFF client UUID authorized to act
-  "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // OPTIONAL: Agent identifier
+  "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1",  // REQUIRED: BFF client UUID authorized to act (Super Banking BFF = PINGONE_CORE_CLIENT_ID)
+  "sub": "https://banking-agent.pingdemo.com/agent/banka-agent-01"  // OPTIONAL: Agent identifier
 }
 ```
 
-**Real Example from Test Suite:**
+**Real Example from Test Suite (Super Banking User app token):**
 ```json
 {
   "sub": "user-12345",  // User who grants permission
   "may_act": {
-    "client_id": "bff-admin-client-id",  // BFF is authorized to delegate
-    "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // Optional: which agent
+    "client_id": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1",  // BFF is authorized to delegate (Super Banking BFF)
+    "sub": "https://banking-agent.pingdemo.com/agent/banka-agent-01"  // Optional: which agent
   },
   "scope": "profile email banking:ai:agent:read",
   "aud": ["https://ai-agent.pingdemo.com"],
-  "iss": "https://auth.pingone.com/123456/as",
+  "iss": "https://auth.pingone.com/c249f73b-cdc8-45ff-a651-e4a55b456f3f/as",
   "exp": 1712595600,
   "iat": 1712594000
 }
@@ -323,7 +323,7 @@ Includes:
 {
   "sub": "user-12345",  // Original user preserved
   "act": {
-    "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // Agent is acting
+    "sub": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1"  // Super Banking BFF is acting
   },
   "aud": ["https://agent-gateway.pingdemo.com"],
   "scope": "banking:ai:agent:read",
@@ -337,9 +337,9 @@ Includes:
 {
   "sub": "user-12345",  // Original user preserved through chain
   "act": {
-    "sub": "mcp-client-id",  // MCP is the outermost actor (final service)
+    "sub": "D2E4F1A3-B6C9-4E2D-9C7F-1A8B5D3E6F2C",  // Super Banking MCP Service is outermost actor (final service)
     "act": {
-      "sub": "https://banking-agent.pingdemo.com/agent/test-agent"  // Agent delegated by user
+      "sub": "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1"  // Super Banking BFF delegated by user
     }
   },
   "aud": ["https://mcp-server.pingdemo.com"],
@@ -350,10 +350,10 @@ Includes:
 ```
 
 **Validation Path:**
-1. BFF receives user token with `may_act.client_id`
-2. BFF validates: `may_act.client_id == BFF's own client_id` (via `validateMayActStructure` in delegationClaimsService.js)
-3. BFF performs Exchange #1 → outputs token with `act: { sub: agent-id }`
-4. BFF performs Exchange #2 → outputs token with nested `act: { sub: mcp-id, act: { sub: agent-id } }`
+1. BFF receives user token with `may_act.client_id = 8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1`
+2. BFF validates: `may_act.client_id == BFF's own client_id (8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1)` ✅ (via `validateMayActStructure` in delegationClaimsService.js)
+3. BFF performs Exchange #1 → outputs token with `act: { sub: "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1" }`
+4. BFF performs Exchange #2 → outputs token with nested `act: { sub: "D2E4F1A3-B6C9-4E2D-9C7F-1A8B5D3E6F2C", act: { sub: "8F7C6B5A-D4E3-401C-9F2E-A7B8C3D9E2F1" } }`
 5. MCP Service validates final token using `validateExchangedTokenAct`
 
 **Code Location:** RFC 8693 validation in `banking_api_server/services/delegationClaimsService.js`
