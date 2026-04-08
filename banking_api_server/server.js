@@ -211,6 +211,7 @@ const { logActivity } = require('./middleware/activityLogger');
 const { correlationIdMiddleware } = require('./middleware/correlationId');
 const { delegationAuditMiddleware } = require('./middleware/delegationAuditLogger');
 const { refreshIfExpiring } = require('./middleware/tokenRefresh');
+const audValidationMiddleware = require('./middleware/audValidationMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -476,6 +477,12 @@ app.use(
   ],
   refreshIfExpiring,
 );
+
+// RFC 6750 §3 — Validate audience (aud) claim on all incoming tokens
+// Prevents token confusion attacks (token for API A cannot be used for API B).
+// Fails closed: if aud doesn't match, return 401 Unauthorized.
+// Applied to all /api/ routes after authentication.
+app.use('/api', audValidationMiddleware);
 
 // Health check endpoint
 app.get('/api/healthz', (req, res) => {
