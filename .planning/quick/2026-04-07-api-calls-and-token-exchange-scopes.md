@@ -12,6 +12,27 @@ Comprehensive mapping of all API endpoints, token exchanges, and their required 
 
 ---
 
+## Scope & Protocol Layer Clarification
+
+**Important distinction:** This document covers the **OAuth/authentication layer** (RFC 6749, RFC 8693, RFC 8707), NOT the **MCP protocol layer**.
+
+| Layer | What we document | What we don't document |
+|-------|------------------|------------------------|
+| **OAuth / Token Scopes** | ✅ `banking:read`, `banking:write`, scope validation, authorization | ❌ JWT signature validation, JWKS endpoints |
+| **RFC 8693 Token Exchange** | ✅ `may_act` attribute (user token), `act` claim (MCP token), delegation chain | ❌ How exchange requests are serialized |
+| **Token Contents** | ✅ What claims appear in tokens (`act`, `may_act`, `scope`, `aud`, `sub`) | ❌ Token encoding/decoding algorithms |
+| **MCP Protocol** | ❌ **NOT covered** | ✓ JSON-RPC, `tools/list`, `tools/call`, lifecycle, error codes |
+| **Bearer Token Usage** | ✅ Bearer tokens sent to MCP server via WebSocket `initialize` or HTTP `Authorization` header | ❌ How MCP validates bearer tokens internally (introspection) |
+
+**Key point:** `may_act` and `act` are **OAuth RFC 8693 concepts**, not MCP protocol concepts. They appear on the **tokens flowing into** the MCP server, not in the MCP messages themselves. The MCP server validates these tokens via introspection (which returns the `act` claim for audit) but the MCP protocol itself just sees `Bearer <token>`.
+
+When you see references to `act` or `may_act` below, remember:
+- They come from **OAuth token exchange** (RFC 8693 §4.4)
+- The **MCP server** validates them via **introspection** (RFC 7662)
+- But **the MCP protocol spec itself** (2025-11-25) does not define these claims
+
+---
+
 ## Authentication Routes
 
 **Path:** `/auth/*`
@@ -355,7 +376,7 @@ ELSE:
 
 ✅ **RFC 8693 Token Exchange Paths:**
 - 1-exchange: Simple user (legacy), no delegation auditing
-- 2-exchange: User + Agent (modern), auditabledelega framework with `act` claim
+- 2-exchange: User + Agent (modern), auditable delegation framework with `act` claim
 
 ✅ **HITL (Human-in-the-Loop):**
 - OTP/CIBA triggers for sensitive operations ($500+)
@@ -379,3 +400,28 @@ ELSE:
 - Scopes on user token: Check login flow + PingOne app configuration
 - MCP token scopes: Check token exchange path (1-exchange vs 2-exchange)
 - Step-up scopes: Check HITL section for transaction thresholds
+
+---
+
+## RFC & Specification Reference
+
+This table clarifies which standards define which concepts used in this document:
+
+| Concept | Standard | Definition | In This Doc? |
+|---------|----------|-----------|-----|
+| **`scope` (OAuth scope)** | RFC 6749 §3.3 | Permission grant on access token; space-separated list | ✅ Yes (banking:read, banking:write, etc.) |
+| **Authorization Code Flow** | RFC 6749 §1.3.1 | OAuth flow: app → user → code → token | ✅ Yes (/auth/login → /auth/callback)  |
+| **PKCE (Code Challenge)** | RFC 7636 | Proof Key for Code Exchange; prevents code interception | ✅ Yes (PKCE protocol overview)  |
+| **Token Introspection** | RFC 7662 | Query token status + claims without signature verification | ✅ Implicitly (MCP server calls PingOne /introspect) |
+| **Token Revocation** | RFC 7009 | Invalidate token on logout | ✅ Yes (/auth/logout section) |
+| **Token Exchange (subject_token, actor_token)** | RFC 8693 | Exchange tokens with optional delegation; defines `act` claim | ✅ Yes (1-exchange & 2-exchange paths) |
+| **Resource Indicators** | RFC 8707 | Bind access token to specific resource audience via `resource` parameter | ✅ Yes (MCP_RESOURCE_URI audience binding) |
+| **Protected Resource Metadata** | RFC 9728 | Server publishes scopes, AS discovery endpoint, bearer methods | ✅ Yes (/.well-known/oauth-protected-resource endpoint) |
+| **Bearer Token Usage** | RFC 6750 | `Authorization: Bearer <token>` header format | ✅ Yes (tokens sent to API/MCP) |
+| **`may_act` attribute**  | RFC 8693 §2.1 (PingOne extension) | User attribute: permission to delegate; appears on user token | ✅ Yes (2-exchange delegation requirement) |
+| **`act` claim** | RFC 8693 §4.2 | Token claim: agent acting on behalf of user; appears on MCP token | ✅ Yes (delegation audit trail) |
+| **OpenID Connect (OIDC)** | OpenID Connect Core 1.0 | Authentication layer on top of OAuth; defines `id_token`, `nonce` | ✅ Implicitly (PingOne OAuth is OIDC-compliant) |
+| **CIBA (Client-Initiated Backchannel Auth)** | OAuth CIBA | Step-up authentication via push notification; defines auth_req_id, poll | ✅ Yes (/auth/ciba section, HITL flow) |
+| **MCP Protocol** | Model Context Protocol 2025-11-25 | JSON-RPC transport, tools/list, tools/call, lifecycle | ❌ No (out of scope; this doc is OAuth layer, not MCP) |
+
+**Takeaway:** `may_act` and `act` are **OAuth RFC 8693 features**, not MCP protocol features. They describe **delegation on the OAuth level**, which MCP validates via bearer token introspection.
