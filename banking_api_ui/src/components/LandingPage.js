@@ -1,9 +1,20 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import EmbeddedAgentDock from './EmbeddedAgentDock';
 import './LandingPage.css';
+import EmbeddedAgentDock from './EmbeddedAgentDock';
 
 export default function LandingPage() {
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    // Redirect to BFF OAuth login endpoint
+    window.location.href = '/api/auth/oauth/login';
+  };
+
+  const handleCustomerLogin = (e) => {
+    e.preventDefault();
+    // Redirect to BFF OAuth user login endpoint
+    window.location.href = '/api/auth/oauth/user/login';
+  };
+
   return (
     <div className="landing-page">
       {/* Header Section */}
@@ -14,20 +25,34 @@ export default function LandingPage() {
             <p>AI-Powered Financial Services</p>
           </div>
           <nav className="landing-nav" role="navigation" aria-label="Main navigation">
-            <Link to="/admin/login" className="nav-link">
+            <button
+              onClick={handleAdminLogin}
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+            >
               Admin Dashboard
-            </Link>
-            <Link to="/login" className="nav-link">
+            </button>
+            <button
+              onClick={handleCustomerLogin}
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+            >
               Customer Dashboard
-            </Link>
+            </button>
           </nav>
           <div className="landing-header-actions">
-            <Link to="/admin/login" className="btn btn-primary">
+            <button
+              onClick={handleAdminLogin}
+              className="btn btn-primary"
+            >
               Sign In as Admin
-            </Link>
-            <Link to="/login" className="btn btn-secondary">
+            </button>
+            <button
+              onClick={handleCustomerLogin}
+              className="btn btn-secondary"
+            >
               Sign In as Customer
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -40,12 +65,18 @@ export default function LandingPage() {
             Explore RFC 8693 token delegation, MCP spec integration, and how AI agents safely access banking APIs on behalf of users.
           </p>
           <div className="landing-hero-actions">
-            <Link to="/admin/login" className="hero-cta hero-cta-primary">
+            <button
+              onClick={handleAdminLogin}
+              className="hero-cta hero-cta-primary"
+            >
               Try as Admin
-            </Link>
-            <Link to="/login" className="hero-cta hero-cta-secondary">
+            </button>
+            <button
+              onClick={handleCustomerLogin}
+              className="hero-cta hero-cta-secondary"
+            >
               Try as Customer
-            </Link>
+            </button>
           </div>
         </div>
       </section>
