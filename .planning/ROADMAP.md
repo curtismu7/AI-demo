@@ -1150,15 +1150,15 @@ Plans:
 **Goal:** Remove dead code, clean up debug logging, consolidate shell scripts into enterprise-grade run.sh, and improve code quality across all services
 **Requirements**: CONFIG-01
 **Depends on:** Phase 83
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 **Accumulated todos (to include in plan):**
 - Enterprise-grade `run.sh` startup script: consolidate 5+ shell scripts into single entry point with pre-flight checks, subcommands (start/stop/restart/logs/test/status), post-start summary banner, PID-file process management, shellcheck-clean
 
 Plans:
-- [ ] 84-01-PLAN.md — Audit code quality issues (shell scripts, console logs, dead code, test status)
-- [ ] 84-02-PLAN.md — Create enterprise run.sh with subcommands, pre-flight checks, PID management
-- [ ] 84-03-PLAN.md — Fix high-priority code quality issues (clean logs, remove dead code, fix error handling)
+- [x] 84-01-PLAN.md — Audit code quality issues (shell scripts, console logs, dead code, test status)
+- [x] 84-02-PLAN.md — Create enterprise run.sh with subcommands, pre-flight checks, PID management
+- [x] 84-03-PLAN.md — Fix high-priority code quality issues (clean logs, remove dead code, fix error handling)
 
 ### Phase 85: chase-dashboard-styling
 
