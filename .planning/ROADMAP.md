@@ -40,7 +40,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 87 | comprehensive-token-validation-at-every-step | Verify tokens at every step: Agent (MCP client) → App Host (BFF) → MCP Server (Gateway); document authz server vs local JWT validation | TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03 | 0 plans |
 | 94 | explicit-hitl-for-agent-consent | Explicit HITL for user approval before agent performs actions on user behalf | HITL-01, HITL-02 | 0 plans |
 | 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01, ACTOR-02 | 0 plans |
-| 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01, AUD-02, AUD-03 | 0 plans |
+| 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01, AUD-02, AUD-03 | 1 plan |
 
 ---
 
@@ -1402,7 +1402,7 @@ Plans:
 
 **Requirements**: AUD-01, AUD-02, AUD-03
 **Depends on:** Phase 95 (Actor token = Agent token education)
-**Plans:** 0 plans (run /gsd-plan-phase 96 to break down)
+**Plans:** 1 plan
 
 **Key Focus Areas:**
 
@@ -1460,7 +1460,7 @@ Plans:
 - Architecture diagrams show aud claim in token flows
 
 Plans:
-- [ ] 96-01-PLAN.md — Audit PingOne configuration: identify all aud values, standardize, document
+- [x] 96-01-PLAN.md — Audit PingOne configuration: identify all aud values, standardize, document
 - [ ] 96-02-PLAN.md — Implement aud validation middleware in BFF and MCP gateway
 - [ ] 96-03-PLAN.md — Add aud claim audit logging and dashboard
 - [ ] 96-04-PLAN.md — Add education panel and update token inspector with aud labels
