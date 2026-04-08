@@ -1528,4 +1528,31 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 102 to break down)
 
+
+### Phase 103: Redesign /marketing landing page — professional layout, clear CTA, and agent integration
+
+**Goal:** Transform the public `/marketing` page into a professional, credible landing experience that clearly communicates the demo's value proposition (RFC 8693 flows, MCP spec, AI-banking integration) and guides visitors to appropriate entry points (admin or customer login).
+
+**Requirements:** MKT-01, MKT-02, MKT-03, MKT-04, MKT-05, MKT-06, MKT-07
+
+**Depends on:** Phase 102 (branding colors, design patterns established)
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 103 to break down)
+
+### Phase 104: Apply light grey backgrounds consistently across all pages
+
+**Goal:** Audit all authenticated, public, and internal pages; apply light grey background (#F5F5F5) consistently for unified visual experience. Establish background color conventions and ensure no visual regressions or accessibility issues.
+
+**Requirements:** BG-01, BG-02, BG-03, BG-04, BG-05, BG-06, BG-07
+
+**Depends on:** Phase 103 (establishes new page templates and branding patterns)
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 104 to break down)
+
 ---
