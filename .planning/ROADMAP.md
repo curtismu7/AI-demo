@@ -1482,7 +1482,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 97
-**Plans:** 0 plans
+**Plans:** 0/2 plans executed
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 98 to break down)
