@@ -124,6 +124,7 @@ Plan: 1 of 1
 - Phase 53 added: debug testing and bug fixes for phase 52 MFA step-up
 - Phase 43 added: Multi-vertical demo mode — retail and workforce HR variants via config, reusing banking infrastructure
 - Phase 88 added: Audit and align all documentation and code to PingOne app names, rename apps where needed, update Vercel and localhost env vars, validate setup and creation code
+- Phase 89 added: Audit and update all documentation to match standardized PingOne app names
 - Phase 48 added: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF/PAZ layer instead — update docs
 - Phase 44 added: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
 - Phase 84 added: review all syntax errors code failures looping best practices for all code
