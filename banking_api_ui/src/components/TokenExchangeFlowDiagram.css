@@ -1,0 +1,483 @@
+/* TokenExchangeFlowDiagram.css — BEM-based styling for token exchange flow visualization */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Root container
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-root {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.tefd-container {
+  margin-bottom: 12px;
+}
+
+/* SVG sizing and responsiveness */
+.tefd-svg {
+  width: 100%;
+  height: auto;
+  min-height: 300px;
+}
+
+.tefd-svg--single {
+  max-height: 350px;
+}
+
+.tefd-svg--double {
+  max-height: 420px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SVG text elements
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-title {
+  font-size: 18px;
+  font-weight: 600;
+  fill: #2c3e50;
+}
+
+.tefd-box-desc {
+  font-size: 10px;
+  fill: #666;
+}
+
+.tefd-label--step {
+  font-size: 12px;
+  font-weight: 600;
+  fill: #333;
+}
+
+.tefd-label--desc {
+  font-size: 11px;
+  fill: #666;
+  font-style: italic;
+}
+
+.tefd-label--rfc {
+  font-size: 10px;
+  fill: #0066cc;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tefd-label--rfc:hover {
+  fill: #0052a3;
+}
+
+.tefd-agent-icon {
+  font-size: 24px;
+}
+
+.tefd-agent-label {
+  font-size: 12px;
+  font-weight: 600;
+  fill: #333;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SVG box elements (actor/participant boxes)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-box rect {
+  fill: #f5f5f5;
+  stroke: #ccc;
+  stroke-width: 1.5;
+  transition: fill 0.2s ease, stroke 0.2s ease;
+}
+
+.tefd-box text {
+  font-size: 12px;
+  fill: #333;
+  font-weight: 500;
+}
+
+/* User (Browser) box */
+.tefd-box--user rect {
+  fill: #e3f2fd;
+  stroke: #1976d2;
+  stroke-width: 2;
+}
+
+/* Backend-for-Frontend (BFF) box */
+.tefd-box--bff rect {
+  fill: #f3e5f5;
+  stroke: #7b1fa2;
+  stroke-width: 2;
+}
+
+/* PingOne OAuth box */
+.tefd-box--pingone rect {
+  fill: #f1f8e9;
+  stroke: #558b2f;
+  stroke-width: 2;
+}
+
+/* MCP Server box */
+.tefd-box--mcp rect {
+  fill: #ffe0b2;
+  stroke: #d84315;
+  stroke-width: 2;
+}
+
+/* Agent box (2-exchange only) - DISTINCT VISUAL */
+.tefd-box--agent rect {
+  fill: #fffacd;
+  stroke: #daa520;
+  stroke-width: 2;
+}
+
+.tefd-box--agent:hover rect {
+  fill: #ffed99;
+  stroke: #b8860b;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Arrow elements (token flows)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-arrow {
+  stroke: #999;
+  stroke-width: 1.5;
+  fill: none;
+  marker-end: url(#tefd-marker-arrow);
+}
+
+/* User token arrow (blue) */
+.tefd-arrow--label {
+  stroke: #0066cc;
+  stroke-width: 2;
+  marker-end: url(#tefd-marker-user);
+}
+
+/* Agent token arrow (yellow/orange) */
+.tefd-arrow--agent-token {
+  stroke: #ff9500;
+  stroke-width: 2;
+  marker-end: url(#tefd-marker-agent);
+}
+
+/* Token exchange request arrow */
+.tefd-arrow--token-request {
+  stroke: #9c27b0;
+  stroke-width: 2;
+  stroke-dasharray: 4,2;
+  marker-end: url(#tefd-marker-request);
+}
+
+.tefd-arrow--token-request-double {
+  stroke: #9c27b0;
+  stroke-width: 2;
+  stroke-dasharray: 4,2;
+  marker-end: url(#tefd-marker-request);
+}
+
+/* MCP token arrow (green) */
+.tefd-arrow--token-mcp {
+  stroke: #22a447;
+  stroke-width: 2;
+  marker-end: url(#tefd-marker-mcp);
+}
+
+.tefd-arrow--token-mcp-double {
+  stroke: #22a447;
+  stroke-width: 2;
+  marker-end: url(#tefd-marker-mcp);
+}
+
+/* Arrowheads */
+.tefd-arrowhead {
+  fill: #0066cc;
+}
+
+.tefd-arrowhead--agent {
+  fill: #ff9500;
+}
+
+.tefd-arrowhead--request {
+  fill: #9c27b0;
+}
+
+.tefd-arrowhead--mcp {
+  fill: #22a447;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Token event circle (showing token acquisition)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-token-event {
+  fill: #e8f5e9;
+  stroke: #4caf50;
+  stroke-width: 1.5;
+}
+
+.tefd-token-event-text {
+  font-size: 11px;
+  font-weight: 600;
+  fill: #2e7d32;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Token details box (claims display)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-token-details {
+  font-family: 'Courier New', monospace;
+}
+
+.tefd-details-title {
+  font-size: 11px;
+  font-weight: 600;
+  fill: #333;
+}
+
+.tefd-details-claim {
+  font-size: 10px;
+  fill: #555;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Success indicator
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-success {
+  font-size: 12px;
+  font-weight: 500;
+  fill: #22a447;
+  text-anchor: middle;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hint text below diagram
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-hint {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #f9f9f9;
+  border-left: 3px solid #0066cc;
+  border-radius: 2px;
+}
+
+.tefd-hint-text {
+  margin: 0;
+  font-size: 12px;
+  color: #555;
+  line-height: 1.5;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Education buttons (added by integration plan)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-education-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.tefd-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+  color: #333;
+}
+
+.tefd-btn:hover {
+  border-color: #999;
+  background: #f9f9f9;
+}
+
+.tefd-btn--primary {
+  background: #0066cc;
+  color: white;
+  border-color: #0066cc;
+}
+
+.tefd-btn--primary:hover {
+  background: #0052a3;
+  border-color: #0052a3;
+}
+
+.tefd-btn--secondary {
+  background: white;
+  color: #333;
+  border-color: #ddd;
+}
+
+.tefd-btn--secondary:hover {
+  background: #f0f0f0;
+  border-color: #999;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Tooltip (added by interactivity plan)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.tefd-tooltip {
+  position: fixed;
+  background: #2c3e50;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  max-width: 250px;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Responsive design
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Tablet (768px and below) */
+@media (max-width: 768px) {
+  .tefd-root {
+    padding: 12px;
+  }
+
+  .tefd-svg {
+    min-height: 250px;
+  }
+
+  .tefd-svg--single {
+    max-height: 300px;
+  }
+
+  .tefd-svg--double {
+    max-height: 350px;
+  }
+
+  .tefd-title {
+    font-size: 14px;
+  }
+
+  .tefd-label--step {
+    font-size: 10px;
+  }
+
+  .tefd-label--desc {
+    font-size: 9px;
+  }
+
+  .tefd-label--rfc {
+    font-size: 9px;
+  }
+
+  .tefd-box text {
+    font-size: 10px;
+  }
+
+  .tefd-box-desc {
+    font-size: 8px;
+  }
+
+  .tefd-hint-text {
+    font-size: 11px;
+  }
+
+  .tefd-education-buttons {
+    gap: 6px;
+  }
+
+  .tefd-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}
+
+/* Mobile (360px and below) */
+@media (max-width: 360px) {
+  .tefd-root {
+    padding: 8px;
+  }
+
+  .tefd-svg {
+    min-height: 200px;
+  }
+
+  .tefd-svg--single {
+    max-height: 250px;
+  }
+
+  .tefd-svg--double {
+    max-height: 300px;
+  }
+
+  .tefd-title {
+    font-size: 12px;
+  }
+
+  .tefd-label--step {
+    font-size: 8px;
+  }
+
+  .tefd-label--desc {
+    font-size: 8px;
+  }
+
+  .tefd-label--rfc {
+    font-size: 8px;
+  }
+
+  .tefd-box text {
+    font-size: 8px;
+  }
+
+  .tefd-box-desc {
+    font-size: 7px;
+  }
+
+  .tefd-token-details rect {
+    width: 130px;
+  }
+
+  .tefd-token-details text {
+    font-size: 8px;
+  }
+
+  .tefd-hint-text {
+    font-size: 10px;
+  }
+
+  .tefd-education-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tefd-btn {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 10px;
+    text-align: center;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Print styles
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media print {
+  .tefd-education-buttons {
+    display: none;
+  }
+
+  .tefd-root {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}
