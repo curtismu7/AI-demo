@@ -477,6 +477,358 @@ ELSE:
 
 ---
 
+## Real Application IDs & API Examples
+
+**Configuration Sources:** `banking_api_server/env.example`, `.env.example`
+
+### Banking Demo Application IDs
+
+| Application | Type | Client ID | Audience/Resource URI | Scopes Granted |
+|---|---|---|---|---|
+| **Super Banking Admin App** | OAuth Web App | `PINGONE_AI_CORE_CLIENT_ID` | User audience (not specified) | `openid profile email banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write p1:read:user p1:update:user` |
+| **Super Banking User App** | OAuth Web App | `PINGONE_AI_CORE_USER_CLIENT_ID` | `banking_jk_enduser` (RFC 8707 resource) | `profile email banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke` |
+| **Super Banking AI Agent** | OAuth Worker (2-exchange) | `PINGONE_AI_AGENT_CLIENT_ID` | `banking_mcp_01_JK` (agent audience) | `banking:agent:invoke` |
+| **Super Banking MCP Exchanger** | OAuth Worker (1-exchange) | `PINGONE_CORE_CLIENT_ID` | `https://mcp-server.pingdemo.com` | `banking:accounts:read banking:transactions:read banking:general:read admin:read users:read p1:read:user p1:update:user` |
+
+### Resource Server Audiences
+
+| Resource Server | Audience URI | Scopes Defined | Used For |
+|---|---|---|---|
+| **Main Banking** | `https://resource.pingdemo.com` | banking:read, banking:write, banking:accounts:read, banking:transactions:read, banking:admin:full, banking:sensitive:read | User & MCP banking operations |
+| **MCP Server** | `https://mcp-server.pingdemo.com` | admin:read, admin:write, users:read, users:manage, banking:read, banking:write | MCP tool invocation (1-exchange) |
+| **AI Agent Gateway** | `banking_mcp_01_JK` | banking:agent:invoke | AI Agent token (2-exchange) |
+| **PingOne Management API** | `https://api.pingone.com` | p1:read:user, p1:update:user, p1:delete:user | PingOne user management |
+
+---
+
+### Actual API Call Examples
+
+#### 1. User Login (Authorization Code + PKCE)
+
+**Request:**
+```
+GET https://auth.pingone.{region}/auth.pingone.{region}/as/authorize?
+  client_id=PINGONE_AI_CORE_USER_CLIENT_ID
+  &redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fauth%2Foauth%2Fuser%2Fcallback
+  &response_type=code
+  &scope=profile%20email%20offline_access%20banking%3Ageneral%3Aread%20banking%3Aagent%3Ainvoke
+  &resource=https%3A%2F%2Fresource.pingdemo.com
+  &response_mode=form_post
+  &state={random_state_value}
+  &nonce={random_nonce_value}
+  &code_challenge={base64url(sha256(code_verifier))}
+  &code_challenge_method=S256
+```
+
+**Response (from PingOne after user authenticates):**
+```
+POST /api/auth/oauth/user/callback
+
+code=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...
+state={same_state_value}
+```
+
+**Backend Exchange (banking_api_server/routes/oauth.js):**
+```bash
+# 1. Exchange code for tokens
+curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Authorization: Basic $(echo -n 'PINGONE_AI_CORE_USER_CLIENT_ID:PINGONE_AI_CORE_USER_CLIENT_SECRET' | base64)" \
+  -d "grant_type=authorization_code" \
+  -d "code=<code_from_callback>" \
+  -d "redirect_uri=http://localhost:3001/api/auth/oauth/user/callback" \
+  -d "code_verifier=<original_code_verifier>"
+
+# Response includes:
+# {
+#   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",  // User token with scopes + may_act
+#   "id_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
+#   "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
+#   "scope": "profile email offline_access banking:general:read banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke",
+#   "expires_in": 3600
+# }
+```
+
+#### 2. Banking API Call (User Token with Scopes)
+
+**Frontend → Backend:**
+```javascript
+// banking_api_ui sends user token in Authorization header
+fetch('http://localhost:3001/api/banking/accounts', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...',  // User access token
+    'Content-Type': 'application/json'
+  }
+})
+```
+
+**Backend Validation (banking_api_server/routes/accounts.js):**
+```javascript
+router.get('/', authenticateToken, requireScopes(['banking:accounts:read', 'banking:general:read']), async (req, res) => {
+  // Middleware checks:
+  // 1. Token signature valid? ✅
+  // 2. Token scopes include banking:accounts:read OR banking:general:read? ✅
+  // 3. Token not expired? ✅
+  // → Proceed with response
+  res.json({ accounts: [...] });
+});
+```
+
+**Backend curl (for testing):**
+```bash
+curl -X GET http://localhost:3001/api/banking/accounts \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -H "Accept: application/json"
+
+# Scope validation:
+# Token must have ONE of: ['banking:accounts:read', 'banking:general:read']
+# Extracted from token.scope = "profile email ... banking:general:read ..."
+# Found: banking:general:read ✅ → 200 OK
+```
+
+#### 3. RFC 8693 Token Exchange (1-Exchange: User → MCP)
+
+**Frontend → Backend (before MCP tool call):**
+```javascript
+// User clicks "Run Agent" → BFF exchanges user token for MCP token
+POST /api/tokens/exchange { userToken: "eyJ0eXA..." }
+```
+
+**Backend Calls PingOne (banking_api_server/services/agentMcpTokenService.js):**
+```bash
+# 1. Admin app gets client credentials token (for permission to exchange)
+curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Authorization: Basic $(echo -n 'PINGONE_CORE_CLIENT_ID:PINGONE_CORE_CLIENT_SECRET' | base64)" \
+  -d "grant_type=client_credentials" \
+  -d "scope=banking:accounts:read banking:transactions:read banking:general:read p1:read:user"
+
+# Response: CC token with aud=https://resource.pingdemo.com
+
+
+# 2. Exchange user token for MCP-scoped token (RFC 8693)
+curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Authorization: Basic $(echo -n 'PINGONE_CORE_CLIENT_ID:PINGONE_CORE_CLIENT_SECRET' | base64)" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "subject_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "audience=https://mcp-server.pingdemo.com" \
+  -d "scope=banking:general:read banking:accounts:read" \
+  -d "client_id=PINGONE_CORE_CLIENT_ID" \
+  -d "client_secret=PINGONE_CORE_CLIENT_SECRET"
+
+# Response (MCP Token with narrowed scopes + act claim):
+# {
+#   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",  // MCP token
+#   "token_type": "Bearer",
+#   "scope": "banking:general:read banking:accounts:read",       // Narrowed!
+#   "expires_in": 1800
+# }
+# 
+# Decoded Payload:
+# {
+#   "sub": "user-guid-12345",
+#   "aud": "https://mcp-server.pingdemo.com",
+#   "iss": "https://auth.pingone.com/env-id",
+#   "scope": "banking:general:read banking:accounts:read",
+#   "act": { "sub": "PINGONE_CORE_CLIENT_ID" },  // BFF is acting on behalf of user (RFC 8693)
+#   "exp": 1712595600,
+#   "iat": 1712594000
+# }
+```
+
+#### 4. MCP Tool Call (with Exchanged Token)
+
+**Backend → MCP Server (banking_api_server/services/agentMcpTokenService.js):**
+```bash
+# Send MCP token to MCP server
+# MCP server validates token via introspection: /oauth/introspect
+
+# 1. MCP server calls PingOne introspection to validate token
+curl -X POST https://auth.pingone.{region}/{env-id}/as/introspect \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Authorization: Basic $(echo -n 'MCP_CLIENT_ID:MCP_CLIENT_SECRET' | base64)" \
+  -d "token=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -d "token_type_hint=access_token"
+
+# Response (introspection):
+# {
+#   "active": true,
+#   "scope": "banking:general:read banking:accounts:read",
+#   "aud": "https://mcp-server.pingdemo.com",
+#   "sub": "user-guid-12345",
+#   "act": { "sub": "PINGONE_CORE_CLIENT_ID" },  // ← Audit trail: BFF delegated
+#   "client_id": "mcp-server-client-id",
+#   "exp": 1712595600,
+#   "iat": 1712594000
+# }
+
+
+# 2. MCP tool invocation (now with valid + scoped token)
+curl -X POST http://localhost:8080/mcp/tools/call \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool": "get_accounts",
+    "arguments": {}
+  }'
+
+# MCP Server validation:
+# 1. Token scope includes "banking:general:read"? ✅
+# 2. act claim shows BFF (not user) is calling? ✅ (audit: delegation proven)
+# 3. Audience matches mcp-server? ✅
+# → Tool execution allowed
+```
+
+#### 5. RFC 8693 Token Exchange (2-Exchange: User + Agent → MCP with Delegation Chain)
+
+**Configuration (Feature Flag Enabled):**
+```
+FF_TWO_EXCHANGE_DELEGATION=true
+AI_AGENT_CLIENT_ID=banking-ai-agent-app-id
+AI_AGENT_CLIENT_SECRET=...
+AGENT_GATEWAY_AUDIENCE=https://agent-gateway.pingdemo.com
+MCP_GATEWAY_AUDIENCE=https://mcp-gateway.pingdemo.com
+MCP_RESOURCE_URI_TWO_EXCHANGE=https://resource-server.pingdemo.com
+```
+
+**Backend Calls PingOne (Exchange #1 + #2):**
+```bash
+# EXCHANGE #1: User (subject) + Agent (actor) → Intermediate Token
+
+curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Authorization: Basic $(echo -n 'PINGONE_CORE_CLIENT_ID:PINGONE_CORE_CLIENT_SECRET' | base64)" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "subject_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "actor_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -d "actor_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "audience=https://agent-gateway.pingdemo.com" \
+  -d "scope=banking:agent:invoke" \
+  -d "client_id=PINGONE_CORE_CLIENT_ID" \
+  -d "client_secret=PINGONE_CORE_CLIENT_SECRET"
+
+# Response (Intermediate Token from Exchange #1):
+# {
+#   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
+#   "token_type": "Bearer",
+#   "scope": "banking:agent:invoke",
+#   "expires_in": 1800
+# }
+#
+# Decoded Payload:
+# {
+#   "sub": "user-guid-12345",
+#   "aud": "https://agent-gateway.pingdemo.com",
+#   "act": { "sub": "PINGONE_AI_AGENT_CLIENT_ID" },  // Agent is delegated by user
+#   "exp": 1712595600,
+#   "iat": 1712594000
+# }
+
+
+# EXCHANGE #2: Intermediate Token + Agent Token → Final MCP Token
+
+curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Authorization: Basic $(echo -n 'PINGONE_CORE_CLIENT_ID:PINGONE_CORE_CLIENT_SECRET' | base64)" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "subject_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "audience=https://mcp-gateway.pingdemo.com" \
+  -d "scope=banking:general:read banking:accounts:read banking:transactions:read" \
+  -d "client_id=PINGONE_CORE_CLIENT_ID" \
+  -d "client_secret=PINGONE_CORE_CLIENT_SECRET"
+
+# Response (Final MCP Token from Exchange #2 — with NESTED ACT delegation chain):
+# {
+#   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
+#   "token_type": "Bearer",
+#   "scope": "banking:general:read banking:accounts:read banking:transactions:read",
+#   "expires_in": 1800
+# }
+#
+# Decoded Payload (RFC 8693 §4.4 NESTED ACT):
+# {
+#   "sub": "user-guid-12345",
+#   "aud": "https://mcp-gateway.pingdemo.com",
+#   "scope": "banking:general:read banking:accounts:read banking:transactions:read",
+#   "act": {
+#     "sub": "mcp-client-id",
+#     "act": {
+#       "sub": "PINGONE_AI_AGENT_CLIENT_ID"  // Full delegation chain
+#     }
+#   },
+#   "exp": 1712595600,
+#   "iat": 1712594000
+# }
+# 
+# This nested structure shows:
+# - Original user: user-guid-12345
+# - Agent delegated by user: PINGONE_AI_AGENT_CLIENT_ID
+# - MCP (final actor) delegated by agent: mcp-client-id
+```
+
+#### 6. Admin App OAuth (with PingOne Management API Scopes)
+
+**Request:**
+```
+GET https://auth.pingone.{region}/{env-id}/as/authorize?
+  client_id=PINGONE_AI_CORE_CLIENT_ID
+  &redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fauth%2Foauth%2Fcallback
+  &response_type=code
+  &scope=openid%20profile%20email%20banking%3Aadmin%3Afull%20p1%3Aread%3Auser%20p1%3Aupdate%3Auser
+  &code_challenge={base64url(sha256(code_verifier))}
+  &code_challenge_method=S256
+  &state={random}
+  &nonce={random}
+```
+
+**Backend Exchange:**
+```bash
+curl -X POST https://auth.pingone.{region}/{env-id}/as/token \
+  -H "Authorization: Basic $(echo -n 'PINGONE_AI_CORE_CLIENT_ID:PINGONE_AI_CORE_CLIENT_SECRET' | base64)" \
+  -d "grant_type=authorization_code" \
+  -d "code=<code>" \
+  -d "redirect_uri=http://localhost:3001/api/auth/oauth/callback" \
+  -d "code_verifier=<verifier>"
+
+# Response includes admin + PingOne API scopes:
+# {
+#   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...",
+#   "scope": "openid profile email banking:admin:full p1:read:user p1:update:user",
+#   "expires_in": 3600
+# }
+```
+
+#### 7. Admin User Management (Using PingOne API Scope)
+
+**Backend Calls PingOne Management API:**
+```bash
+# Admin app calls PingOne API to set may_act attribute on user
+
+curl -X PATCH https://api.pingone.com/v1/environments/{PINGONE_ENVIRONMENT_ID}/users/{user-id} \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customAttributes": {
+      "may_act": {
+        "client_id": "PINGONE_AI_CORE_CLIENT_ID"
+      }
+    }
+  }'
+
+# Scope required: p1:update:user ✅
+# This enables 2-exchange delegation for that user
+```
+
+---
+
 ## Key Findings
 
 ✅ **Comprehensive Scope Coverage:**
