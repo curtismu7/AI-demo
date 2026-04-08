@@ -1465,4 +1465,14 @@ Plans:
 - [ ] 96-03-PLAN.md — Add aud claim audit logging and dashboard
 - [ ] 96-04-PLAN.md — Add education panel and update token inspector with aud labels
 
+### Phase 97: Demo config with introspection and JWT validation options; verify APIs working to PingOne endpoint
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 96
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 97 to break down)
+
 ---
