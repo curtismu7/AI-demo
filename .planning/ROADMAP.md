@@ -1200,22 +1200,25 @@ Plans:
 
 ### Phase 88: Audit and align all documentation and code to PingOne app names, rename apps where needed, update Vercel and localhost env vars, validate setup and creation code
 
-**Goal:** [To be planned]
+**Goal:** Complete env var alignment to canonical PingOne app names — rename remaining vars (Worker/Admin App/User App), fix services using bare process.env, fix 2-exchange error metadata, create KV migration script, update Vercel env docs.
 **Requirements**: TBD
 **Depends on:** Phase 87
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 88 to break down)
+- [ ] 88-01-PLAN.md — Complete remaining env var renames + configStore updates + service code fixes
+- [ ] 88-02-PLAN.md — KV/SQLite migration script + Vercel env var documentation
+- [ ] 88-03-PLAN.md — Fix 2-exchange delegation test failures (Wave 2)
 
 ### Phase 89: Audit and update all documentation to match standardized PingOne app names
 
-**Goal:** [To be planned]
+**Goal:** Update all docs (README, env.example, ENVIRONMENT_MAPPING, MAY_ACT guides, SETUP, NAMING_AUDIT) to use canonical PingOne app names and Phase 88 env var names.
 **Requirements**: TBD
 **Depends on:** Phase 88
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 89 to break down)
+- [ ] 89-01-PLAN.md — Update core docs: README, env.example, ENVIRONMENT_MAPPING.md, PINGONE_APP_CONFIG.md, PINGONE_ACTUAL_ENVIRONMENT.md
+- [ ] 89-02-PLAN.md — Update MAY_ACT docs, PINGONE_NAMING_STANDARDIZATION_AUDIT.md, SETUP.md
 
 ---
