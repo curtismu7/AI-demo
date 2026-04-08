@@ -162,4 +162,5 @@ Plan: 1 of 2 — ✅ COMPLETE (Wave 1)
 - Phase 91 added: External MCP client access — public MCP server with PingOne-protected auth, restrict to @pingidentity.com Google login, per-client authorization, and Claude/ChatGPT integration planning
 - Phase 92 added: User custom attribute validation — verify user has required PingOne custom attributes configured correctly, report and fix capability, integrate into existing scope/resource check tooling
 - Phase 93 added: Surface agent-on-behalf-of-user actions in UI and education — make visible in dashboard what the AI agent is doing on the user's behalf, with explanatory education panels describing the pattern
+- Phase 94 added: Explicit HITL for agent consent — implement user approval UI before agent performs actions on user behalf, clear permission explanations, approval evidence in token exchange
 - Phase 91 (Plan 01): RFC 7662 Token Introspection Endpoint — Wave 1 COMPLETE (tokenIntrospectionService, /api/introspect route, 20 test cases, all passing)

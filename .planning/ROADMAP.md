@@ -38,6 +38,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 85 | chase-dashboard-styling | Dashboard styling to match Chase.com design language | Complete | 3/3 plans |
 | 86 | test-everything-you-can-for-production-run | Comprehensive testing and verification for production launch | TBD | 0 plans |
 | 87 | comprehensive-token-validation-at-every-step | Verify tokens at every step: Agent (MCP client) → App Host (BFF) → MCP Server (Gateway); document authz server vs local JWT validation | TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03 | 0 plans |
+| 94 | explicit-hitl-for-agent-consent | Explicit HITL for user approval before agent performs actions on user behalf | HITL-01, HITL-02 | 0 plans |
 
 ---
 
@@ -1290,5 +1291,48 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 93 to break down)
+
+### Phase 94: Explicit HITL for agent consent
+
+**Goal:** Implement explicit human-in-the-loop (HITL) approval mechanism requiring user consent before the agent performs any action on the user's behalf. Clear presentation of what the agent is about to do, detailed explanation of scope/permissions, and explicit user approval (not silent background action).
+
+**Requirements**: HITL-01, HITL-02
+**Depends on:** Phase 93 (Surface agent-on-behalf-of-user actions)
+**Plans:** 0 plans (run /gsd-plan-phase 94 to break down)
+
+**Key Focus Areas:**
+1. **Agent Action Interceptor**
+   - Before agent executes tool call on user's behalf, pause and present approval dialog
+   - Dialog shows: action description, API endpoint, scopes/permissions required, user confirmation needed
+
+2. **User Consent UI**
+   - Clear explanation: "Agent wants to [action description] on your behalf"
+   - Permission breakdown: "This requires: [scope 1], [scope 2], [scope 3]"
+   - Buttons: "Allow" (one-time) vs "Allow Always" vs "Deny"
+   - Audit trail: log all approvals/denials with timestamp
+
+3. **Delegation Context**
+   - Token exchange includes "user consented to [scope] via [method]" claim
+   - RFC 8693 act claim includes user approval evidence
+   - Server-side enforcement: validates that user actually approved before executing
+
+4. **Configuration & Defaults**
+   - Admin can configure: require HITL for all actions, low/medium/high risk actions, or none
+   - User preference: remember "Allow Always" decisions per agent/action type
+   - Audit: all HITL decisions logged and reviewable
+
+**Success Criteria:**
+- HITL approval UI blocking before sensitive agent actions
+- Clear permission explanations visible to user
+- Approval decisions logged with timestamp and user confirmation
+- Token exchange includes approval evidence in delegation context
+- Configuration options for admins to tune approval requirements
+- Support for "Allow Always" with rate limiting and scope constraints
+
+Plans:
+- [ ] 94-01-PLAN.md — Design HITL approval dialog and user consent flow
+- [ ] 94-02-PLAN.md — Implement interceptor middleware in BFF for agent actions
+- [ ] 94-03-PLAN.md — Add approval evidence to token exchange (RFC 8693 delegation context)
+- [ ] 94-04-PLAN.md — Admin configuration UI and audit logging for HITL decisions
 
 ---
