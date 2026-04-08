@@ -20,6 +20,7 @@
 const express = require('express');
 const axios   = require('axios');
 const router  = express.Router();
+const configHostnameService = require('../services/configHostnameService');
 const rateLimit = require('express-rate-limit');
 const configStore = require('../services/configStore');
 const { FIELD_DEFS } = require('../services/configStore');
@@ -289,6 +290,44 @@ router.post('/generate-keypair', requireAdminOrUnconfigured, async (req, res) =>
   } catch (err) {
     console.error('[adminConfig] generate-keypair error:', err.message);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+/**
+ * GET /config/hostname — retrieve current configured hostname
+ * Public endpoint (no auth required) — returns { hostname: "https://api.pingdemo.com:4000" }
+ */
+router.get('/hostname', (req, res) => {
+  try {
+    const hostname = configHostnameService.getConfiguredHostname();
+    res.json({ hostname });
+  } catch (error) {
+    console.error('Failed to get hostname config:', error);
+    res.status(500).json({ error: 'Failed to get hostname config' });
+  }
+});
+
+/**
+ * PUT /config/hostname — update configured hostname
+ * Admin-gated: requireAdminOrUnconfigured (first-run or valid admin session)
+ * Body: { hostname: "https://staging.app.com:4000" }
+ * Returns: { hostname: "https://staging.app.com:4000", updated: true }
+ */
+router.put('/hostname', requireAdminOrUnconfigured, async (req, res) => {
+  try {
+    const { hostname } = req.body;
+    if (!hostname) {
+      return res.status(400).json({ error: 'hostname is required' });
+    }
+    await configHostnameService.setConfiguredHostname(hostname);
+    res.json({ hostname, updated: true });
+  } catch (error) {
+    if (error instanceof configHostnameService.InvalidHostnameError) {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error('Failed to set hostname config:', error);
+    res.status(500).json({ error: 'Failed to set hostname config' });
   }
 });
 
