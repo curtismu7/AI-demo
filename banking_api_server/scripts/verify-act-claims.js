@@ -51,19 +51,19 @@ async function verifyActClaims() {
   console.log('\n=== PingOne act/may_act Claim Verification ===\n');
 
   // Check environment configuration
-  const mcpResourceUri = process.env.MCP_RESOURCE_URI;
+  const mcpResourceUri = process.env.PINGONE_RESOURCE_MCP_SERVER_URI || process.env.MCP_RESOURCE_URI;
   const useActor = process.env.USE_AGENT_ACTOR_FOR_MCP === 'true';
   const requireMayAct = process.env.REQUIRE_MAY_ACT === 'true';
 
   console.log('Configuration:');
-  console.log(`  MCP_RESOURCE_URI: ${mcpResourceUri || '(not set - exchange will be skipped)'}`);
+  console.log(`  PINGONE_RESOURCE_MCP_SERVER_URI: ${mcpResourceUri || '(not set - exchange will be skipped)'}`);
   console.log(`  USE_AGENT_ACTOR_FOR_MCP: ${useActor}`);
   console.log(`  REQUIRE_MAY_ACT: ${requireMayAct}`);
-  console.log(`  AGENT_OAUTH_CLIENT_ID: ${process.env.AGENT_OAUTH_CLIENT_ID || '(not set)'}\n`);
+  console.log(`  PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID: ${process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID || '(not set)'}\n`);
 
   if (!mcpResourceUri) {
-    console.log('⚠️  MCP_RESOURCE_URI not configured. Token exchange will be skipped.');
-    console.log('   Set MCP_RESOURCE_URI to enable delegation token exchange.\n');
+    console.log('⚠️  PINGONE_RESOURCE_MCP_SERVER_URI not configured. Token exchange will be skipped.');
+    console.log('   Set PINGONE_RESOURCE_MCP_SERVER_URI to the Super Banking MCP Server audience to enable delegation token exchange.\n');
     return;
   }
 

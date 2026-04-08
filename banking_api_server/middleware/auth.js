@@ -22,10 +22,10 @@ const DEBUG_TOKENS = process.env.DEBUG_TOKENS === 'true';
 // When not set, audience validation is skipped (tokens are still JWKS-verified).
 // Set ENDUSER_AUDIENCE and AI_AGENT_AUDIENCE in your deployment env to enforce
 // that tokens were issued for this specific resource server.
-// MCP_RESOURCE_URI is the audience for BFF-exchanged MCP delegated tokens (RFC 8693).
+// PINGONE_RESOURCE_MCP_SERVER_URI is the audience for BFF-exchanged MCP delegated tokens (RFC 8693).
 const ENDUSER_AUDIENCE  = process.env.ENDUSER_AUDIENCE  || null;
 const AI_AGENT_AUDIENCE = process.env.AI_AGENT_AUDIENCE || null;
-const MCP_RESOURCE_URI  = process.env.MCP_RESOURCE_URI  || null;
+const MCP_RESOURCE_URI  = process.env.PINGONE_RESOURCE_MCP_SERVER_URI || process.env.MCP_RESOURCE_URI || null;
 const AI_AGENT_SCOPE = process.env.AI_AGENT_SCOPE || 'ai_agent';
 const DEFAULT_USER_TYPE = process.env.DEFAULT_USER_TYPE || 'customer';
 

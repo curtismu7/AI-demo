@@ -175,8 +175,8 @@ describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp.example.com/api';
-      if (key === 'PINGONE_AGENT_MCP_ALLOWED_SCOPES') {
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'agent_mcp_allowed_scopes') {
         return 'banking:accounts:read banking:transactions:read';
       }
       return null;
@@ -205,7 +205,7 @@ describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
 describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (PINGONE_RESOURCE_MCP_SERVER_URI set)', () => {
   beforeEach(() => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
   });
@@ -214,7 +214,7 @@ describe('resolveMcpAccessTokenWithEvents — insufficient user scopes (PINGONE_
     await expect(
       resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessNoScopes), 'get_my_accounts')
     ).rejects.toMatchObject({
-      code: 'user_token_insufficient_scopes',
+      code: 'missing_exchange_scopes',
       httpStatus: 403,
     });
   });
@@ -237,7 +237,7 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (P
     delete process.env.PINGONE_AGENT_CLIENT_ID;
     process.env.PINGONE_RESOURCE_MCP_SERVER_URI = 'https://mcp.example.com/api';
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
     mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
@@ -288,16 +288,17 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (P
   });
 });
 
-describe('resolveMcpAccessTokenWithEvents — on_behalf_of (AGENT_OAUTH_CLIENT_ID set)', () => {
-  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
-  const origSecret   = process.env.AGENT_OAUTH_CLIENT_SECRET;
+describe('resolveMcpAccessTokenWithEvents — on_behalf_of (PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID set)', () => {
+  const origClientId = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
+  const origSecret   = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.AGENT_OAUTH_CLIENT_ID = 'agent-client-id';
-    process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
+    process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID = 'agent-client-id';
+    process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET = 'agent-secret';
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_mcp_token_exchanger_client_id') return 'agent-client-id';
       return null;
     });
     mockGetAgentClientCredentialsToken.mockResolvedValue(sampleJwtAgentAccessToken);
@@ -305,13 +306,13 @@ describe('resolveMcpAccessTokenWithEvents — on_behalf_of (AGENT_OAUTH_CLIENT_I
   });
 
   afterEach(() => {
-    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
-    else delete process.env.AGENT_OAUTH_CLIENT_ID;
-    if (origSecret !== undefined) process.env.AGENT_OAUTH_CLIENT_SECRET = origSecret;
-    else delete process.env.AGENT_OAUTH_CLIENT_SECRET;
+    if (origClientId !== undefined) process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID = origClientId;
+    else delete process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
+    if (origSecret !== undefined) process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET = origSecret;
+    else delete process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET;
   });
 
-  it('always calls getAgentClientCredentialsToken when AGENT_OAUTH_CLIENT_ID is set', async () => {
+  it('always calls getAgentClientCredentialsToken when PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID is set', async () => {
     await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
     expect(mockGetAgentClientCredentialsToken).toHaveBeenCalledTimes(1);
   });
@@ -348,24 +349,24 @@ describe('resolveMcpAccessTokenWithEvents — on_behalf_of (AGENT_OAUTH_CLIENT_I
 });
 
 describe('resolveMcpAccessTokenWithEvents — subject-only warning when no agent client', () => {
-  const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+  const origClientId = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    delete process.env.AGENT_OAUTH_CLIENT_ID;
+    delete process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
     mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
   });
 
   afterEach(() => {
-    if (origClientId !== undefined) process.env.AGENT_OAUTH_CLIENT_ID = origClientId;
-    else delete process.env.AGENT_OAUTH_CLIENT_ID;
+    if (origClientId !== undefined) process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID = origClientId;
+    else delete process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
   });
 
-  it('emits on-behalf-of-warning event when AGENT_OAUTH_CLIENT_ID is not set', async () => {
+  it('emits on-behalf-of-warning event when PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID is not set', async () => {
     const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
     const warn = tokenEvents.find(e => e.id === 'on-behalf-of-warning');
     expect(warn).toBeDefined();
@@ -393,7 +394,7 @@ describe('buildSessionPreviewTokenEvents', () => {
 
   it('returns user-token plus exchange-required failed when MCP_RESOURCE_URI is unset', () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return '';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return '';
       return null;
     });
     const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessToken));
@@ -408,7 +409,7 @@ describe('buildSessionPreviewTokenEvents', () => {
 
   it('returns user-scopes-insufficient when URI is set but JWT has no scopes', () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
     const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessNoScopes));
@@ -417,7 +418,7 @@ describe('buildSessionPreviewTokenEvents', () => {
 
   it('returns waiting exchange rows when MCP_RESOURCE_URI is set and scopes sufficient — does not call PingOne exchange', () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       return null;
     });
     const { tokenEvents } = buildSessionPreviewTokenEvents(makeReq(sampleJwtUserAccessToken));
@@ -450,7 +451,7 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
     jest.clearAllMocks();
     delete process.env.AGENT_OAUTH_CLIENT_ID;
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       // Allow all scopes including broad ones
       if (key === 'agent_mcp_allowed_scopes')
         return 'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write ai_agent';
@@ -499,7 +500,7 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
     jest.clearAllMocks();
     delete process.env.AGENT_OAUTH_CLIENT_ID;
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       // Admin allows broad scope but NOT the specific scope
       if (key === 'agent_mcp_allowed_scopes') return 'banking:read banking:write ai_agent';
       return null;
@@ -515,7 +516,7 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
 
   it('denies create_transfer when neither banking:write nor banking:transactions:write is allowed', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       if (key === 'agent_mcp_allowed_scopes') return 'banking:read ai_agent'; // write intentionally excluded
       return null;
     });
@@ -549,7 +550,7 @@ describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:agent:inv
     jest.clearAllMocks();
     delete process.env.AGENT_OAUTH_CLIENT_ID;
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       if (key === 'agent_mcp_allowed_scopes')
         return 'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke ai_agent';
       return null;
@@ -611,7 +612,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_may_act', () => {
 
   it('pushes may-act-injected event when flag ON and may_act absent', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_may_act')   return 'true';
       return null;
     });
@@ -624,7 +625,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_may_act', () => {
 
   it('patches user-token event with mayActInjected=true when flag ON and may_act absent', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_may_act')   return 'true';
       return null;
     });
@@ -637,7 +638,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_may_act', () => {
 
   it('does NOT push may-act-injected event when flag ON but may_act already present', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_may_act')   return 'true';
       return null;
     });
@@ -647,7 +648,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_may_act', () => {
 
   it('does NOT push may-act-injected event when flag OFF (default)', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_may_act')   return 'false';
       return null;
     });
@@ -687,7 +688,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_audience', () => {
 
   it('pushes audience-injected event when flag ON and aud missing resource URI', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_audience')  return 'true';
       return null;
     });
@@ -701,7 +702,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_audience', () => {
 
   it('patches user-token event with audInjected=true when flag ON and aud missing', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_audience')  return 'true';
       return null;
     });
@@ -712,7 +713,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_audience', () => {
 
   it('does NOT push audience-injected when flag ON but aud already contains resource URI', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_audience')  return 'true';
       return null;
     });
@@ -722,7 +723,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_audience', () => {
 
   it('does NOT push audience-injected event when flag OFF (default)', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_audience')  return 'false';
       return null;
     });
@@ -732,7 +733,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_audience', () => {
 
   it('still calls performTokenExchange even when audience is injected', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')    return 'https://mcp.example.com/api';
       if (key === 'ff_inject_audience')  return 'true';
       return null;
     });
@@ -765,7 +766,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_skip_token_exchange', () => {
 
   it('returns user token directly when flag ON (no exchange)', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
       if (key === 'ff_skip_token_exchange')   return 'true';
       return null;
     });
@@ -775,7 +776,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_skip_token_exchange', () => {
 
   it('does NOT call performTokenExchange or getAgentClientCredentialsToken when flag ON', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
       if (key === 'ff_skip_token_exchange')   return 'true';
       return null;
     });
@@ -787,7 +788,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_skip_token_exchange', () => {
 
   it('emits exchange-skipped event with status skipped when flag ON', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
       if (key === 'ff_skip_token_exchange')   return 'true';
       return null;
     });
@@ -800,7 +801,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_skip_token_exchange', () => {
 
   it('still returns user-token event in chain when flag ON', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
       if (key === 'ff_skip_token_exchange')   return 'true';
       return null;
     });
@@ -810,7 +811,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_skip_token_exchange', () => {
 
   it('performs full RFC 8693 exchange when flag OFF (default)', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
       if (key === 'ff_skip_token_exchange')   return 'false';
       return null;
     });
@@ -822,7 +823,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_skip_token_exchange', () => {
 
   it('returns userSub even when exchange is skipped', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')         return 'https://mcp.example.com/api';
       if (key === 'ff_skip_token_exchange')   return 'true';
       return null;
     });
@@ -904,7 +905,7 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
 
     // Config: 2-exchange flag on, MCP URI set
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')            return TWO_EX_MCP_RESOURCE;
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')            return TWO_EX_MCP_RESOURCE;
       if (key === 'ff_two_exchange_delegation')   return 'true';
       return null; // agent_gateway_audience / mcp_gateway_audience etc use defaults
     });
@@ -955,7 +956,7 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
     delete process.env.AI_AGENT_CLIENT_ID;
     // Also ensure configStore doesn't provide a fallback
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')           return TWO_EX_MCP_RESOURCE;
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')           return TWO_EX_MCP_RESOURCE;
       if (key === 'ff_two_exchange_delegation')  return 'true';
       if (key === 'ai_agent_client_id')          return null;
       return null;
@@ -975,6 +976,11 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
 
   it('preflight: missing AGENT_OAUTH_CLIENT_SECRET → throws 503', async () => {
     delete process.env.AGENT_OAUTH_CLIENT_SECRET;
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return TWO_EX_MCP_RESOURCE;
+      if (key === 'ff_two_exchange_delegation') return 'true';
+      return null;
+    });
     let err;
     try {
       await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
@@ -1003,7 +1009,7 @@ describe('resolveMcpAccessTokenWithEvents — 2-exchange delegation (ff_two_exch
 
   it('session.mcpExchangeMode=double triggers 2-exchange even when ff_two_exchange_delegation=false', async () => {
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')           return TWO_EX_MCP_RESOURCE;
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')           return TWO_EX_MCP_RESOURCE;
       if (key === 'ff_two_exchange_delegation')  return 'false'; // flag OFF
       return null;
     });
@@ -1043,7 +1049,7 @@ describe('Security properties', () => {
     mockGetAgentClientCredentialsToken.mockResolvedValue(sampleJwtAgentAccessToken);
     mockPerformTokenExchangeWithActor.mockResolvedValue(sampleJwtMcpAccessToken);
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'mcp-resource-uri';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'mcp-resource-uri';
       return null;
     });
   });
@@ -1066,7 +1072,7 @@ describe('Security properties', () => {
   it('exchanged-token event has audMatches=false when issued token aud differs from mcp_resource_uri', async () => {
     // Override mcp_resource_uri to a different value — simulates mis-issued token
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri') return 'https://different-audience.example.com';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://different-audience.example.com';
       return null;
     });
     const { tokenEvents } = await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtUserAccessToken), 'get_my_accounts');
@@ -1088,7 +1094,7 @@ describe('Security properties', () => {
     // Only valid for dev/demo environments where PingOne token exchange is NOT configured.
     // In production with a real MCP resource server, this flag MUST be false.
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'mcp_resource_uri')       return 'mcp-resource-uri';
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri')       return 'mcp-resource-uri';
       if (key === 'ff_skip_token_exchange') return 'true';
       return null;
     });

@@ -324,15 +324,15 @@ class OAuthService {
   /**
    * Client-credentials token for the dedicated "agent actor" OAuth application (PingOne).
    * Used as actor_token when exchanging for an on-behalf-of MCP access token.
-   * Configure via AGENT_OAUTH_CLIENT_ID / AGENT_OAUTH_CLIENT_SECRET.
+   * PingOne App: Super Banking MCP Token Exchanger — configure via PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID / PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET.
    */
   async getAgentClientCredentialsToken() {
-    const clientId = process.env.AGENT_OAUTH_CLIENT_ID;
-    const clientSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const clientId = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET || process.env.AGENT_OAUTH_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      throw new Error('AGENT_OAUTH_CLIENT_ID and AGENT_OAUTH_CLIENT_SECRET must be set for agent actor tokens');
+      throw new Error('PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID and PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET must be set for agent actor tokens (PingOne App: Super Banking MCP Token Exchanger)');
     }
-    const scope = process.env.AGENT_OAUTH_CLIENT_SCOPES || 'openid';
+    const scope = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES || process.env.AGENT_OAUTH_CLIENT_SCOPES || 'openid';
     const agentAuthMethod = (process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
     const body = new URLSearchParams({
       grant_type: 'client_credentials',

@@ -230,7 +230,7 @@ function buildSessionPreviewTokenEvents(req) {
 
   appendUserTokenEvent(tokenEvents, userToken, req);
 
-  const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
+  const mcpResourceUri = configStore.getEffective('pingone_resource_mcp_server_uri');
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
       'exchange-required',
@@ -417,7 +417,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  const mcpResourceUri = configStore.getEffective('mcp_resource_uri');
+  const mcpResourceUri = configStore.getEffective('pingone_resource_mcp_server_uri');
   const toolCandidateScopes = MCP_TOOL_SCOPES[tool] || ['banking:read'];
   const agentAllowedRaw = configStore.getEffective('agent_mcp_allowed_scopes');
   const agentAllowedSet = parseAllowedScopesFromConfig(agentAllowedRaw);
@@ -587,9 +587,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 
   // Always use actor token when agent OAuth client is configured — ensures on_behalf_of semantics
   // (the exchanged MCP token carries act: { client_id: <agent> } proving which client is acting).
-  // Without AGENT_OAUTH_CLIENT_ID the exchange runs subject-only (still RFC 8693; user token
+  // Without PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID the exchange runs subject-only (still RFC 8693; user token
   // is NEVER forwarded to MCP — but the act claim is absent, weakening audit provenance).
-  const useActor = !!process.env.AGENT_OAUTH_CLIENT_ID;
+  const useActor = !!(configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID);
 
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
@@ -670,18 +670,18 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // ── Event 2a: Agent actor client-credentials token (required for on_behalf_of) ─
   if (!useActor) {
     console.warn(
-      '[agentMcpTokenService] AGENT_OAUTH_CLIENT_ID not set — RFC 8693 exchange will run subject-only ' +
-      '(no act claim). Configure AGENT_OAUTH_CLIENT_ID + AGENT_OAUTH_CLIENT_SECRET for full on_behalf_of semantics.'
+      '[agentMcpTokenService] PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID not set — RFC 8693 exchange will run subject-only ' +
+      '(no act claim). Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID + PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET (Super Banking MCP Token Exchanger) for full on_behalf_of semantics.'
     );
     tokenEvents.push(buildTokenEvent(
       'on-behalf-of-warning',
       'On-Behalf-Of — agent client not configured',
       'skipped',
       null,
-      'AGENT_OAUTH_CLIENT_ID is not set. The token exchange will proceed subject-only (RFC 8693 still enforced — ' +
+      'PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID is not set. The token exchange will proceed subject-only (RFC 8693 still enforced — ' +
         'the user access token is never forwarded to MCP). However, the resulting MCP access token will have no act claim, ' +
         'so audit logs and the MCP server cannot distinguish the AI Agent from the user. ' +
-        'Set AGENT_OAUTH_CLIENT_ID + AGENT_OAUTH_CLIENT_SECRET to enable full on-behalf-of delegation.',
+        'Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID + PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET (PingOne: Super Banking MCP Token Exchanger) to enable full on-behalf-of delegation.',
       { rfc: 'RFC 8693 §2.1 (actor_token)' }
     ));
   }

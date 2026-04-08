@@ -65,7 +65,7 @@ function validateCommonConfig(result) {
   
   // Optional but recommended configuration
   const recommendedCommon = [
-    { key: 'mcp_resource_uri', name: 'MCP Resource URI', reason: 'Required for token exchange audience' },
+    { key: 'pingone_resource_mcp_server_uri', name: 'MCP Resource URI (PINGONE_RESOURCE_MCP_SERVER_URI)', reason: 'Required for token exchange audience — maps to Super Banking MCP Server in PingOne' },
     { key: 'mcp_server_url', name: 'MCP Server URL', reason: 'Required for WebSocket connection' }
   ];
   
@@ -78,11 +78,11 @@ function validateCommonConfig(result) {
   });
   
   // Validate MCP resource URI format
-  const mcpResourceUri = configStore.getEffective('mcp_resource_uri') || process.env.MCP_RESOURCE_URI;
+  const mcpResourceUri = configStore.getEffective('pingone_resource_mcp_server_uri');
   if (mcpResourceUri && !isValidUrl(mcpResourceUri)) {
     common.warnings.push({ 
-      key: 'mcp_resource_uri', 
-      name: 'MCP Resource URI', 
+      key: 'pingone_resource_mcp_server_uri', 
+      name: 'MCP Resource URI (PINGONE_RESOURCE_MCP_SERVER_URI)', 
       reason: 'Invalid URL format' 
     });
     result.warnings.push('MCP Resource URI has invalid URL format');
@@ -128,10 +128,10 @@ function validateDoubleExchangeConfig(result) {
   
   // Double exchange specific configuration
   const doubleRequired = [
-    { key: 'ai_agent_client_id', name: 'AI Agent Client ID', critical: true },
-    { key: 'ai_agent_client_secret', name: 'AI Agent Client Secret', critical: true },
-    { key: 'agent_oauth_client_id', name: 'Agent OAuth Client ID', critical: true },
-    { key: 'agent_oauth_client_secret', name: 'Agent OAuth Client Secret', critical: true }
+    { key: 'pingone_ai_agent_client_id', name: 'AI Agent Client ID (PINGONE_AI_AGENT_CLIENT_ID — Super Banking AI Agent App)', critical: true },
+    { key: 'pingone_ai_agent_client_secret', name: 'AI Agent Client Secret (PINGONE_AI_AGENT_CLIENT_SECRET)', critical: true },
+    { key: 'pingone_mcp_token_exchanger_client_id', name: 'MCP Token Exchanger Client ID (PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID — Super Banking MCP Token Exchanger)', critical: true },
+    { key: 'pingone_mcp_token_exchanger_client_secret', name: 'MCP Token Exchanger Client Secret (PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET)', critical: true }
   ];
   
   doubleRequired.forEach(({ key, name, critical }) => {
@@ -225,14 +225,20 @@ function getEnvVarName(configKey) {
     'pingone_core_client_secret': 'PINGONE_CORE_CLIENT_SECRET',
     'admin_client_id': 'ADMIN_CLIENT_ID',
     'admin_client_secret': 'ADMIN_CLIENT_SECRET',
-    'ai_agent_client_id': 'AI_AGENT_CLIENT_ID',
-    'ai_agent_client_secret': 'AI_AGENT_CLIENT_SECRET',
-    'agent_oauth_client_id': 'AGENT_OAUTH_CLIENT_ID',
-    'agent_oauth_client_secret': 'AGENT_OAUTH_CLIENT_SECRET',
+    'pingone_ai_agent_client_id': 'PINGONE_AI_AGENT_CLIENT_ID',
+    'pingone_ai_agent_client_secret': 'PINGONE_AI_AGENT_CLIENT_SECRET',
+    'pingone_mcp_token_exchanger_client_id': 'PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID',
+    'pingone_mcp_token_exchanger_client_secret': 'PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET',
+    // backward-compat aliases (read from configStore which already maps old → new)
+    'ai_agent_client_id': 'PINGONE_AI_AGENT_CLIENT_ID',
+    'ai_agent_client_secret': 'PINGONE_AI_AGENT_CLIENT_SECRET',
+    'agent_oauth_client_id': 'PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID',
+    'agent_oauth_client_secret': 'PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET',
     'agent_gateway_audience': 'AGENT_GATEWAY_AUDIENCE',
-    'mcp_gateway_audience': 'MCP_GATEWAY_AUDIENCE',
-    'mcp_resource_uri': 'MCP_RESOURCE_URI',
-    'mcp_resource_uri_two_exchange': 'MCP_RESOURCE_URI_TWO_EXCHANGE',
+    'mcp_gateway_audience': 'PINGONE_RESOURCE_MCP_GATEWAY_URI',
+    'pingone_resource_mcp_server_uri': 'PINGONE_RESOURCE_MCP_SERVER_URI',
+    'mcp_resource_uri': 'PINGONE_RESOURCE_MCP_SERVER_URI',
+    'mcp_resource_uri_two_exchange': 'PINGONE_RESOURCE_TWO_EXCHANGE_URI',
     'mcp_server_url': 'MCP_SERVER_URL',
     'ai_agent_token_endpoint_auth_method': 'AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD',
     'mcp_exchanger_token_endpoint_auth_method': 'MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD'
