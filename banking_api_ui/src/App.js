@@ -51,6 +51,8 @@ import { VerticalProvider } from './context/VerticalContext';
 import EducationBar from './components/EducationBar';
 import { DemoTourProvider } from './context/DemoTourContext';
 import DemoTourModal from './components/tour/DemoTourModal';
+import ServerRestartModal from './components/ServerRestartModal';
+import { monitorApiHealth } from './services/bankingRestartNotificationService';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
 import DashboardQuickNav from './components/DashboardQuickNav';
@@ -185,6 +187,11 @@ function AppWithAuth() {
   useEffect(() => {
     const cleanup = setupBrowserExtensionHandling();
     return cleanup;
+  }, []);
+
+  // Initialize server restart notification monitoring
+  useEffect(() => {
+    monitorApiHealth();
   }, []);
 
   const injectEmailIntoNextSessionInit = useCallback((email) => {
@@ -562,6 +569,7 @@ function AppWithAuth() {
             <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
           )}
           {!isApiTrafficOnlyPage && <Footer user={user} />}
+          <ServerRestartModal />
           {!isApiTrafficOnlyPage && <DemoTourModal />}
           <SpinnerHost />
         </div>
