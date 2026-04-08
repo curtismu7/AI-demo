@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import VerticalSwitcher from './VerticalSwitcher';
+import PingOneAudit from './PingOneAudit';
 import './UserDashboard.css';
 import './DemoDataPage.css';
 
@@ -706,6 +707,15 @@ export default function DemoDataPage({ user, onLogout }) {
               is reused — only terminology, theme, and account types change.
             </p>
             <VerticalSwitcher variant="config" />
+          </section>
+
+          <section className="section demo-data-section" aria-labelledby="demo-data-pingone-audit-heading">
+            <h2 id="demo-data-pingone-audit-heading">PingOne Configuration Audit</h2>
+            <p className="demo-data-hint">
+              Validate your PingOne environment configuration — check that all required resource servers exist
+              and are configured with the correct scopes. Run the audit to verify your setup is correct.
+            </p>
+            <PingOneAudit />
           </section>
 
           <section className="section demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
