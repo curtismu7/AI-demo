@@ -85,13 +85,15 @@ When you see references to `act` or `may_act` below, remember:
 | **1-Exchange (Legacy)** | User Access Token | (none) | `banking:read`, `banking:write` | Direct exchange: User Token → MCP Token | User has banking scopes on their token |
 | **2-Exchange (Delegation)** | User Access Token (with `may_act`) | Agent Token | `banking:read`, `banking:write` + `act` claim | Chained exchange: User + Agent → MCP Token with `act` claim | User has `banking:agent:invoke` + `may_act` attribute; Agent has `banking:agent:invoke` |
 
-**Scope & Claim Requirements:**
-- **User token MUST have:** `banking:read`, `banking:write`, or `banking:agent:invoke`
-- **User attribute (2-exchange only):** `may_act` = PingOne user attribute indicating user may delegate to agents
+**Scope & Claim Requirements (RFC 8693 §4.4 - Delegation Chains):**
+- **User token MUST have:** `banking:read`, `banking:write`, or `banking:agent:invoke` scope + `may_act` claim if 2-exchange
+- **may_act claim structure:** `{ client_id: "bff-admin-client-id" }` (identifies which BFF client is authorized to act)
 - **Agent token (2-exchange only):** requires `banking:agent:invoke` scope
 - **Output token (MCP & all downstream):** receives narrowed scopes + `act` claim showing delegation chain
-  - `act` = `{ iss: agent-id, sub: user-id }` — agent is acting on behalf of user
-  - All subsequent API calls use token with `act` claim (not `may_act`)
+  - **1-exchange:** `act: { sub: "agent-client-id" }` — caller identified by sub (BFF acting on behalf of user)
+  - **2-exchange:** `act: { sub: "mcp-client-id", act: { sub: "agent-client-id" } }` — nested delegation chain per RFC 8693 §4.4 (MCP client acting, delegated by agent, delegated by user)
+  - **Key:** `sub` field identifies the actor; nested `act` preserves the delegation chain for audit trail
+  - All subsequent API calls use token with `act` claim (not `may_act`) for audit trail
 
 ---
 
@@ -274,11 +276,12 @@ Includes:
 | `admin:write` | Main Resource Server | Admin | Admin routes | Write admin configuration |
 | `admin:delete` | Main Resource Server | Admin | Admin routes | Delete admin configuration |
 
-**Delegation Claims (RFC 8693 §4.4):**
-| Claim | Token | Meaning | Example |
-|-------|-------|---------|----------|
-| `may_act` | User Token (2-exchange) | User authorized to delegate to agents | `may_act: true` |
-| `act` | MCP Token + all downstream | Agent is acting on behalf of user | `act: { iss: "agent-app-id", sub: "user-id" }` |
+**Delegation Claims (RFC 8693 §4.4 - Nested act for Delegation Chains):**
+| Claim | Token | Structure | Purpose | Examples |
+|-------|-------|-----------|---------|----------|
+| `may_act` | User Token (before exchange) | `{ client_id: "..." }` | User authorization: permission for this client to act on user's behalf | `may_act: { client_id: "bff-admin-client-id" }` |
+| `act` (1-exchange) | MCP Token (after exchange) | `{ sub: "..." }` | Proof: Actor (identified by sub) is acting on behalf of user. Audit trail. | `act: { sub: "agent-client-id" }` |
+| `act` (2-exchange) | MCP Token (after exchange) | Nested: `{ sub: "...", act: { sub: "..." } }` | Proof: Full delegation chain (MCP client acting, who is delegated by agent, who is delegated by user). Per RFC 8693 §4.4. | `act: { sub: "mcp-client-id", act: { sub: "agent-client-id" } }`
 
 ---
 
@@ -296,9 +299,13 @@ User clicks "Run Agent"
 [Agent Tool Call] → BFF receives User Access Token from session
     ↓
 [RFC 8693 Token Exchange]
-  Input:  subject_token = User Access Token
+  Input:  subject_token = User Access Token (has may_act: { client_id: "bff-admin-client-id" })
           audience = https://mcp-server.pingdemo.com
   Output: MCP Access Token (scopes: banking:read, banking:write)
+    ↓
+[MCP Token includes:]
+  - Scopes: banking:read, banking:write (narrowed)
+  - Claims: act = { client_id: "bff-admin-client-id" } (per RFC 8693 §4.1)
     ↓
 [MCP Server GET /banking/accounts] ← MCP Token (narrow scopes verified)
     ↓
@@ -322,14 +329,14 @@ User clicks "Run Agent"
 [Agent Tool Call] → BFF receives both: User Access Token (with may_act) + Agent Token
     ↓
 [RFC 8693 Token Exchange (Delegation)]
-  Input:  subject_token = User Access Token (has may_act=true)
+  Input:  subject_token = User Access Token (has may_act: { client_id: "bff-admin-client-id" })
           actor_token = Agent Token
           audience = https://mcp-server.pingdemo.com
   Output: MCP Access Token
     ↓
 [MCP Token includes:]
   - Scopes: banking:read, banking:write (narrowed)
-  - Claims: act = { iss: agent-id, sub: user-id }
+  - Claims: act = { sub: <agent-sub>, client_id: <agent-client-id> } (per RFC 8693 §4.1)
     ↓
 [MCP Server GET /banking/accounts]
   ← MCP Token with act claim (shows agent acting on behalf of user)
