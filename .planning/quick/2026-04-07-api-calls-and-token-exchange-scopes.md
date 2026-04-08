@@ -62,12 +62,15 @@ Comprehensive mapping of all API endpoints, token exchanges, and their required 
 | Exchange Type | Subject Token | Actor Token | Output Scopes | Process | Requirements |
 |---------------|---------------|-------------|----------------|---------|--------------|
 | **1-Exchange (Legacy)** | User Access Token | (none) | `banking:read`, `banking:write` | Direct exchange: User Token → MCP Token | User has banking scopes on their token |
-| **2-Exchange (Delegation)** | User Access Token | Agent/MCP Token | `banking:read`, `banking:write` | Chained exchange: User + Agent →  MCP Token with `act` claim | User has `banking:agent:invoke` + may_act on token |
+| **2-Exchange (Delegation)** | User Access Token (with `may_act`) | Agent Token | `banking:read`, `banking:write` + `act` claim | Chained exchange: User + Agent → MCP Token with `act` claim | User has `banking:agent:invoke` + `may_act` attribute; Agent has `banking:agent:invoke` |
 
-**Scope Requirements:**
-- User token MUST have: `banking:read`, `banking:write`, or `banking:agent:invoke`
-- Agent/MCP token (if 2-exchange): requires `banking:agent:invoke`
-- Output token (MCP): receives narrowed scopes based on PingOne token exchange policy
+**Scope & Claim Requirements:**
+- **User token MUST have:** `banking:read`, `banking:write`, or `banking:agent:invoke`
+- **User attribute (2-exchange only):** `may_act` = PingOne user attribute indicating user may delegate to agents
+- **Agent token (2-exchange only):** requires `banking:agent:invoke` scope
+- **Output token (MCP & all downstream):** receives narrowed scopes + `act` claim showing delegation chain
+  - `act` = `{ iss: agent-id, sub: user-id }` — agent is acting on behalf of user
+  - All subsequent API calls use token with `act` claim (not `may_act`)
 
 ---
 
@@ -240,7 +243,7 @@ Includes:
 | `banking:write` | Main Resource Server | User/MCP | Token exchange, write operations | Write banking access (deposit/transfer) |
 | `banking:accounts:read` | Main Resource Server | User/MCP | Token exchange, accounts endpoint | Read account details |
 | `banking:transactions:read` | Main Resource Server | User/MCP | Token exchange, transactions endpoint | Read transaction history |
-| `banking:agent:invoke` | Main Resource Server | User | Token exchange (2-exchange path) | Delegate access to AI agent |
+| `banking:agent:invoke` | Main Resource Server | User & Agent | Token exchange (2-exchange path) | Permission for user to delegate; required on agent token |
 | `banking:read:sensitive` | Main Resource Server | Admin/User | Sensitive data endpoints | Access PII (SSN, account numbers) |
 | `agent:invoke` | MCP Resource Server | MCP Token | /mcp/tools/call | (alias for banking:agent:invoke) |
 | `p1:read:user` | PingOne Management API | Admin | User management routes | Read PingOne user data |
@@ -249,6 +252,12 @@ Includes:
 | `admin:read` | Main Resource Server | Admin | Admin routes | Read admin configuration |
 | `admin:write` | Main Resource Server | Admin | Admin routes | Write admin configuration |
 | `admin:delete` | Main Resource Server | Admin | Admin routes | Delete admin configuration |
+
+**Delegation Claims (RFC 8693 §4.4):**
+| Claim | Token | Meaning | Example |
+|-------|-------|---------|----------|
+| `may_act` | User Token (2-exchange) | User authorized to delegate to agents | `may_act: true` |
+| `act` | MCP Token + all downstream | Agent is acting on behalf of user | `act: { iss: "agent-app-id", sub: "user-id" }` |
 
 ---
 
@@ -280,21 +289,34 @@ Response to Agent
 ```
 User Login
     ↓
-[OAuth Code → User Access Token] (scopes: profile, email, banking:agent:invoke)
+[OAuth Code → User Access Token]
+  Scopes: profile, email, banking:agent:invoke
+  Claims: may_act = true (PingOne user attribute: user authorized to delegate to agents)
     ↓
 [Agent obtains own token via Client Credentials]
+  Scopes: banking:agent:invoke
     ↓
 User clicks "Run Agent"
     ↓
-[Agent Tool Call] → BFF receives both: User Access Token + Agent Token
+[Agent Tool Call] → BFF receives both: User Access Token (with may_act) + Agent Token
     ↓
 [RFC 8693 Token Exchange (Delegation)]
-  Input:  subject_token = User Access Token
+  Input:  subject_token = User Access Token (has may_act=true)
           actor_token = Agent Token
           audience = https://mcp-server.pingdemo.com
-  Output: MCP Access Token with act = { iss: agent-id, sub: user-id }
+  Output: MCP Access Token
     ↓
-[MCP Server GET /banking/accounts] ← MCP Token with act claim (delegation audited)
+[MCP Token includes:]
+  - Scopes: banking:read, banking:write (narrowed)
+  - Claims: act = { iss: agent-id, sub: user-id }
+    ↓
+[MCP Server GET /banking/accounts]
+  ← MCP Token with act claim (shows agent acting on behalf of user)
+  ← Delegation audited: "Agent X acting for User Y"
+    ↓
+[All downstream calls]
+  ← Use token with act claim (not may_act)
+  ← MCP → Banking API → Audit logs show delegation chain
     ↓
 Response to Agent
 ```
