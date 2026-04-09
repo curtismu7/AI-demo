@@ -226,25 +226,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   /** Holds the agent HITL detail (actionId, form) while the consent modal is open so we can fire the confirmed event. */
   const agentHitlDetailRef = React.useRef(null);
 
-  /** Dashboard chrome theme (persists `bx-dash-theme` for admin + mock HTML). */
-  const [dashTheme, setDashTheme] = useState(() => {
-    try {
-      const t = localStorage.getItem('bx-dash-theme');
-      return t === 'dark' ? 'dark' : 'light';
-    } catch {
-      return 'light';
-    }
-  });
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = dashTheme;
-    try {
-      localStorage.setItem('bx-dash-theme', dashTheme);
-    } catch (_) {
-      /* ignore */
-    }
-  }, [dashTheme]);
-
   useEffect(() => {
     const onLayout = () => setDashboardLayoutState(getDashboardLayout());
     window.addEventListener('banking-dashboard-layout', onLayout);
@@ -313,8 +294,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   }, [agentPlacement, user, fetchUserData]);
 
   const handleDashThemeToggle = useCallback(() => {
-    setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
-  }, []);
+    toggleTheme();
+  }, [toggleTheme]);
 
   /** Toggle expanded state for account profile details */
   const toggleAccountProfile = useCallback((accountId) => {
@@ -1771,10 +1752,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             type="button"
             className="dashboard-toolbar-btn dashboard-toolbar-btn--theme"
             onClick={handleDashThemeToggle}
-            aria-pressed={dashTheme === 'dark'}
-            title={dashTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            aria-pressed={theme === 'dark'}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
-            {dashTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
           </button>
           <div className="dashboard-toolbar-toggle">
             <label className="toggle-label toggle-label--toolbar">
