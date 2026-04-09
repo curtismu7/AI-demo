@@ -112,6 +112,42 @@
   background-color: rgba(185, 28, 28, 0.08);
 }
 
+.landing-header-actions .landing-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  background-color: var(--chase-medium-gray, #E0E0E0);
+  color: var(--chase-dark-gray, #333333);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.landing-header-actions .landing-theme-toggle:hover {
+  background-color: #CCCCCC;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.landing-header-actions .landing-theme-toggle:active {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode theme adjustments for header button */
+[data-theme="dark"] .landing-header-actions .landing-theme-toggle {
+  background-color: #444444;
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .landing-header-actions .landing-theme-toggle:hover {
+  background-color: #555555;
+}
+
 /* ========== Hero Section ========== */
 
 .landing-hero {

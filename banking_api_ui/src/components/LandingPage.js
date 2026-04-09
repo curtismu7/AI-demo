@@ -1,8 +1,12 @@
 import React from 'react';
 import './LandingPage.css';
+import { useTheme } from '../context/ThemeContext';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
 
 export default function LandingPage() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+
   const handleAdminLogin = (e) => {
     e.preventDefault();
     // Redirect to BFF OAuth login endpoint
@@ -41,6 +45,15 @@ export default function LandingPage() {
             </button>
           </nav>
           <div className="landing-header-actions">
+            <button
+              type="button"
+              className="landing-theme-toggle"
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? '☀️ Light' : '🌙 Dark'}
+            </button>
             <button
               onClick={handleAdminLogin}
               className="btn btn-primary"
