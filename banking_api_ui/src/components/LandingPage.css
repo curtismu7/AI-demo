@@ -518,3 +518,70 @@
     background-color: rgba(185, 28, 28, 0.2);
   }
 }
+
+/* ─── App-theme Dark Mode (html[data-theme='dark'] toggle) ───────────────── */
+/* Mirrors @media prefers-color-scheme: dark but triggered by user's toggle.  */
+
+html[data-theme='dark'] .landing-page {
+  background: var(--dash-bg, #0c1018);
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .landing-header {
+  background: rgba(12, 16, 24, 0.95);
+  border-bottom: 1px solid rgb(148 163 184 / 0.14);
+}
+
+html[data-theme='dark'] .landing-logo p,
+html[data-theme='dark'] .landing-nav .nav-link {
+  color: var(--dash-muted, #94a3b8);
+}
+
+html[data-theme='dark'] .landing-hero {
+  background: linear-gradient(135deg, #0c1018 0%, #1a2230 60%, #172554 100%);
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .landing-hero-headline {
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .landing-hero-subheadline {
+  color: var(--dash-muted, #94a3b8);
+}
+
+html[data-theme='dark'] .landing-features {
+  background: var(--dash-bg, #0c1018);
+}
+
+html[data-theme='dark'] .landing-features-heading h2 {
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .landing-feature-card {
+  background: var(--dash-surface, #141a24);
+  border-color: rgb(148 163 184 / 0.18);
+}
+
+html[data-theme='dark'] .landing-feature-card:hover {
+  background: var(--dash-surface-2, #1a2230);
+  border-color: rgb(148 163 184 / 0.35);
+}
+
+html[data-theme='dark'] .landing-feature-title {
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .landing-feature-description {
+  color: var(--dash-muted, #94a3b8);
+}
+
+html[data-theme='dark'] .hero-cta-secondary {
+  background-color: transparent;
+  border-color: var(--app-primary-red, #b91c1c);
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .hero-cta-secondary:hover {
+  background-color: rgba(185, 28, 28, 0.2);
+}

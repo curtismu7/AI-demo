@@ -228,14 +228,6 @@
   min-height: 0;
 }
 
-/* Signed-in /marketing: <main> must stay white when html[data-theme=dark] */
-.App--marketing-page .main-content {
-  background-color: #ffffff;
-}
-
-html[data-theme='dark'] .App--marketing-page .main-content {
-  background-color: #ffffff;
-}
 
 /* When the bottom agent is embedded inside the dashboard (not App-level),
    make main-content a flex column so UserDashboard can fill + attach agent flush. */
