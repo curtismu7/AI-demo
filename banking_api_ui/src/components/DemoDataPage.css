@@ -523,6 +523,42 @@
   overflow-x: auto;
 }
 
+/* ── may_act quick-action strip (top of page, below hero) ── */
+.demo-data-mayact-quick {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface-1, #f8fafc);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+.demo-data-mayact-quick__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+}
+.demo-data-mayact-quick__status {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted, #64748b);
+}
+.demo-data-mayact-quick__status--on  { color: #16a34a; }
+.demo-data-mayact-quick__status--off { color: #dc2626; }
+.demo-data-mayact-quick__link {
+  font-size: 0.76rem;
+  color: var(--app-primary-red, #dc2626);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: auto;
+}
+
 .demo-data-mayact-row {
   display: flex;
   align-items: center;

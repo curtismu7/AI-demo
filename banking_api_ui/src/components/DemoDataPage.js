@@ -631,7 +631,7 @@ export default function DemoDataPage({ user, onLogout }) {
             Demo config
           </span>
           <Link to="/config" className="dashboard-toolbar-btn" title="PingOne environment and OAuth client settings">
-            PingOne config
+            ⚙ Config
           </Link>
           <button
             type="button"
@@ -669,6 +669,37 @@ export default function DemoDataPage({ user, onLogout }) {
                 update your profile, and set when extra verification is required — only for your signed-in demo user.
               </p>
             </div>
+          </div>
+
+          {/* may_act quick-action card — shortcut so users don't have to scroll to find the controls */}
+          <div className="demo-data-mayact-quick">
+            <span className="demo-data-mayact-quick__label">may_act demo</span>
+            <span className={`demo-data-mayact-quick__status${mayActEnabled === true ? ' demo-data-mayact-quick__status--on' : mayActEnabled === false ? ' demo-data-mayact-quick__status--off' : ''}`}>
+              {mayActEnabled === null ? '…' : mayActEnabled ? '✅ present in token' : '❌ absent from token'}
+            </span>
+            <button
+              type="button"
+              className={`demo-data-btn${mayActEnabled === true ? ' primary' : ' ghost'}`}
+              disabled={mayActSaving || mayActEnabled === true}
+              onClick={() => handleSetMayAct(true)}
+            >
+              {mayActSaving && mayActEnabled !== true ? 'Saving…' : '✅ Enable'}
+            </button>
+            <button
+              type="button"
+              className={`demo-data-btn${mayActEnabled === false ? ' primary' : ' ghost'}`}
+              disabled={mayActSaving || mayActEnabled === false}
+              onClick={() => handleSetMayAct(false)}
+            >
+              {mayActSaving && mayActEnabled !== false ? 'Saving…' : '❌ Clear'}
+            </button>
+            <button
+              type="button"
+              className="demo-data-mayact-quick__link"
+              onClick={() => document.getElementById('demo-mayact-heading')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              Full controls ↓
+            </button>
           </div>
 
           {persistenceNote && (
