@@ -993,8 +993,8 @@ async function _performTwoExchangeDelegation(
   const twoExFinalAud         = configResult.audiences.finalAud;
   const aiAgentClientSecret   = process.env.PINGONE_AI_AGENT_CLIENT_SECRET || process.env.AI_AGENT_CLIENT_SECRET;
   const mcpExchangerSecret    = process.env.AGENT_OAUTH_CLIENT_SECRET;
-  const aiAgentAuthMethod     = (process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
-  const mcpExchangerAuthMethod = (process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+  const aiAgentAuthMethod     = (configStore.get('ai_agent_token_endpoint_auth_method') || process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+  const mcpExchangerAuthMethod = (configStore.get('mcp_exchanger_token_endpoint_auth_method') || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
 
   // ─ Step 1: AI Agent Actor Token (Client Credentials) ───────────────────────────
   tokenEvents.push(buildTokenEvent(

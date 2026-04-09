@@ -127,6 +127,11 @@ const FIELD_DEFS = {
   ff_two_exchange_delegation: { public: true, default: 'false' }, // 2-Exchange pattern: Subject→(AI Agent exchange)→Agent Token→(MCP exchange)→Final Token with nested act.act claim
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
 
+  // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
+  // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
+  ai_agent_token_endpoint_auth_method:      { public: true, default: '' },
+  mcp_exchanger_token_endpoint_auth_method: { public: true, default: '' },
+
   // 2-Exchange delegated chain — audiences and AI Agent App credentials
   // Required only when FF_TWO_EXCHANGE_DELEGATION is ON
   PINGONE_AI_AGENT_CLIENT_ID:             { public: true,  default: '' }, // Super Banking AI Agent App client ID — performs Exchange #1
@@ -478,6 +483,8 @@ class ConfigStore {
       marketing_customer_login_mode: ['MARKETING_CUSTOMER_LOGIN_MODE'],
       marketing_demo_username_hint: ['MARKETING_DEMO_USERNAME_HINT'],
       marketing_demo_password_hint: ['MARKETING_DEMO_PASSWORD_HINT'],
+      ai_agent_token_endpoint_auth_method:   ['AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD'],
+      mcp_exchanger_token_endpoint_auth_method: ['MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD'],
     };
 
     const envVars = envFallbackMap[key] || [];

@@ -802,3 +802,33 @@ router.delete('/account/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'internal_error', message: err.message });
   }
 });
+
+// ── Token endpoint auth method (Phase 110) ──────────────────────────────────
+const VALID_TOKEN_AUTH_METHODS = new Set(['client_secret_basic', 'client_secret_post', 'client_secret_jwt', '', null]);
+
+// GET /api/demo-scenario/token-endpoint-auth
+router.get('/token-endpoint-auth', async (req, res) => {
+  res.json({
+    ai_agent_token_endpoint_auth_method:      configStore.get('ai_agent_token_endpoint_auth_method') || '',
+    mcp_exchanger_token_endpoint_auth_method: configStore.get('mcp_exchanger_token_endpoint_auth_method') || '',
+  });
+});
+
+// PATCH /api/demo-scenario/token-endpoint-auth
+router.patch('/token-endpoint-auth', async (req, res) => {
+  const { ai_agent_token_endpoint_auth_method: ai, mcp_exchanger_token_endpoint_auth_method: mcp } = req.body || {};
+  if ((ai !== undefined && !VALID_TOKEN_AUTH_METHODS.has(ai)) ||
+      (mcp !== undefined && !VALID_TOKEN_AUTH_METHODS.has(mcp))) {
+    return res.status(400).json({ error: 'invalid_value', message: 'Auth method must be client_secret_basic, client_secret_post, client_secret_jwt, or empty string.' });
+  }
+  try {
+    const patch = {};
+    if (ai !== undefined)  patch.ai_agent_token_endpoint_auth_method = ai || '';
+    if (mcp !== undefined) patch.mcp_exchanger_token_endpoint_auth_method = mcp || '';
+    await configStore.setConfig(patch);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[demo] PATCH token-endpoint-auth error:', err.message);
+    res.status(500).json({ error: 'internal_error', message: err.message });
+  }
+});

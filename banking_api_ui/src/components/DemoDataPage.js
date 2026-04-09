@@ -95,6 +95,14 @@ export default function DemoDataPage({ user, onLogout }) {
   const [accountProfiles, setAccountProfiles] = useState({});
   const [accountProfileSaving, setAccountProfileSaving] = useState(false);
   const [threshold, setThreshold] = useState('');
+
+  /** Token endpoint auth method overrides (Phase 110) */
+  const [agentTokenEndpointAuth, setAgentTokenEndpointAuth] = useState('');
+  const [mcpTokenEndpointAuth, setMcpTokenEndpointAuth] = useState('');
+  const [tokenAuthSaving, setTokenAuthSaving] = useState(false);
+
+  /** Sticky section nav active state (Phase 110) */
+  const [activeNav, setActiveNav] = useState(null);
   /** Editable profile fields (persisted as userData on save). */
   const [profile, setProfile] = useState({
     firstName: '',
@@ -317,6 +325,22 @@ export default function DemoDataPage({ user, onLogout }) {
     loadP1azFlags();
   }, [loadP1azFlags]);
 
+  /** Token endpoint auth method save handler (Phase 110) */
+  const handleTokenAuthSave = async () => {
+    setTokenAuthSaving(true);
+    try {
+      await apiClient.patch('/api/demo-scenario/token-endpoint-auth', {
+        ai_agent_token_endpoint_auth_method: agentTokenEndpointAuth || '',
+        mcp_exchanger_token_endpoint_auth_method: mcpTokenEndpointAuth || '',
+      });
+      notifySuccess('Token endpoint auth method saved.', { autoClose: 2500 });
+    } catch (err) {
+      notifyWarning('Could not save token endpoint auth method.', { autoClose: 4000 });
+    } finally {
+      setTokenAuthSaving(false);
+    }
+  };
+
   const handleP1azFlagToggle = async (flagId, nextBool) => {
     setP1azFlagSaving(flagId);
     const flagLabel = p1azFlags.find((f) => f.id === flagId)?.label || flagId;
@@ -447,7 +471,41 @@ export default function DemoDataPage({ user, onLogout }) {
   useEffect(() => {
     load();
     loadScopes();
+    // Load token endpoint auth method overrides (Phase 110)
+    apiClient.get('/api/demo-scenario/token-endpoint-auth').then(({ data }) => {
+      if (data) {
+        setAgentTokenEndpointAuth(data.ai_agent_token_endpoint_auth_method || '');
+        setMcpTokenEndpointAuth(data.mcp_exchanger_token_endpoint_auth_method || '');
+      }
+    }).catch(() => {});
   }, [load, loadScopes]);
+
+  // Sticky section nav — highlight active section as user scrolls (Phase 110)
+  const NAV_SECTIONS = [
+    { id: 'demo-data-storage-heading',       label: 'Storage' },
+    { id: 'demo-data-vertical-heading',      label: 'Demo vertical' },
+    { id: 'demo-data-pingone-audit-heading', label: 'PingOne audit' },
+    { id: 'demo-agent-auth-demo-heading',    label: 'Agent auth' },
+    { id: 'demo-acct-profile-heading',       label: 'User profile' },
+    { id: 'demo-scope-heading',              label: 'Scope' },
+    { id: 'demo-marketing-login-heading',    label: 'Marketing login' },
+    { id: 'demo-p1az-flags-heading',         label: 'PingOne Authorize' },
+    { id: 'demo-mayact-heading',             label: 'may_act' },
+  ];
+
+  useEffect(() => {
+    const observers = NAV_SECTIONS.map(({ id }) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveNav(id); },
+        { rootMargin: '-10% 0px -70% 0px', threshold: 0 }
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => observers.forEach(o => o?.disconnect());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const handleSubmit = async (e) => {
@@ -659,6 +717,26 @@ export default function DemoDataPage({ user, onLogout }) {
       </div>
 
       <div className="dashboard-content demo-data-page__body">
+        {/* Sticky section jump-to nav (Phase 110) */}
+        <nav className="demo-data-page__nav" aria-label="Jump to section">
+          <ul>
+            {NAV_SECTIONS.map(({ id, label }) => (
+              <li key={id}>
+                <a
+                  href={`#${id}`}
+                  className={`demo-data-page__nav-link${activeNav === id ? ' demo-data-page__nav-link--active' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+                    setActiveNav(id);
+                  }}
+                >
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
         <main className="demo-data-page__main" id="demo-data-main" tabIndex={-1}>
           <div className="section ud-hero demo-data-page__hero">
             <div className="ud-hero__top">
@@ -1497,6 +1575,56 @@ export default function DemoDataPage({ user, onLogout }) {
                   {' · '}
                   <Link to="/config">PingOne / OAuth config</Link>
                 </p>
+
+                {/* ── Token endpoint auth method overrides (Phase 110) ── */}
+                <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--border-light,#e2e8f0)', paddingTop: '1rem' }}>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.4rem', color: '#374151' }}>
+                    Token endpoint authentication method
+                  </h3>
+                  <p className="demo-data-hint" style={{ marginBottom: '0.75rem' }}>
+                    Override the auth method the BFF uses when exchanging tokens with PingOne.
+                    Leave blank to use the env var default (
+                    <code>AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD</code> /{' '}
+                    <code>MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD</code>).
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end' }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                      AI Agent App
+                      <select
+                        value={agentTokenEndpointAuth}
+                        onChange={(e) => setAgentTokenEndpointAuth(e.target.value)}
+                        style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                      >
+                        <option value="">— use env var —</option>
+                        <option value="client_secret_basic">client_secret_basic</option>
+                        <option value="client_secret_post">client_secret_post</option>
+                        <option value="client_secret_jwt">client_secret_jwt</option>
+                      </select>
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8rem', fontWeight: 600 }}>
+                      MCP Token Exchanger
+                      <select
+                        value={mcpTokenEndpointAuth}
+                        onChange={(e) => setMcpTokenEndpointAuth(e.target.value)}
+                        style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                      >
+                        <option value="">— use env var —</option>
+                        <option value="client_secret_basic">client_secret_basic</option>
+                        <option value="client_secret_post">client_secret_post</option>
+                        <option value="client_secret_jwt">client_secret_jwt</option>
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="demo-data-btn ghost"
+                      onClick={handleTokenAuthSave}
+                      disabled={tokenAuthSaving}
+                      style={{ alignSelf: 'flex-end' }}
+                    >
+                      {tokenAuthSaving ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
               </section>
 
             {/* ── may_act demo toggle ─────────────────────────────────────── */}
