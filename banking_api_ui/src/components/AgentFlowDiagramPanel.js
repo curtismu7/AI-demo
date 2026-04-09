@@ -3,6 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import { agentFlowDiagram } from '../services/agentFlowDiagramService';
+import { useExchangeMode } from '../context/ExchangeModeContext';
+import { useEducationUIOptional } from '../context/EducationUIContext';
+import TokenExchangeFlowDiagram from './TokenExchangeFlowDiagram';
 import './AgentFlowDiagramPanel.css';
 
 function statusBadge(status) {
@@ -81,6 +84,9 @@ export default function AgentFlowDiagramPanel() {
   const [snap, setSnap] = useState(() => agentFlowDiagram.getState());
   const [tokenChain, setTokenChain] = useState([]);
   const [showTokenChain, setShowTokenChain] = useState(false);
+  const [showFlowDiagram, setShowFlowDiagram] = useState(false);
+  const { mode } = useExchangeMode();
+  const edu = useEducationUIOptional();
 
   const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
     () => ({
@@ -187,6 +193,30 @@ export default function AgentFlowDiagramPanel() {
         {hint && steps.length === 0 && <p className="afd-hint">{hint}</p>}
         {hint && steps.length > 0 && phase === 'idle' && <p className="afd-hint">{hint}</p>}
         {steps.length === 0 && !hint && <p className="afd-empty">Use the Banking Agent (e.g. My Accounts) — this panel updates on each MCP tool call.</p>}
+
+        {/* Token Exchange Flow Diagram — collapsible */}
+        <div className="afd-flow-section">
+          <div className="afd-flow-section-header">
+            <span className="afd-flow-section-title">
+              {mode === 'double' ? '2-Exchange Flow (RFC 8693 §4)' : '1-Exchange Flow (RFC 8693 §2.1)'}
+            </span>
+            <button
+              type="button"
+              className="afd-token-toggle"
+              onClick={() => setShowFlowDiagram(v => !v)}
+              aria-expanded={showFlowDiagram}
+            >
+              {showFlowDiagram ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {showFlowDiagram && (
+            <TokenExchangeFlowDiagram
+              mode={mode}
+              className="afd-flow-diagram"
+              onEducation={panelId => edu && edu.open(panelId)}
+            />
+          )}
+        </div>
         
         {/* Token chain display */}
         {showTokenChain && (
