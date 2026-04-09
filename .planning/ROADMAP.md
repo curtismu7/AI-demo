@@ -740,6 +740,31 @@ Plans:
 
 ---
 
+
+
+### Phase 111: scope-audit-compliance-app-ids
+
+**Goal:** Wire missing PingOne OAuth app client IDs (Worker Token and MCP Token Exchanger) into code configuration to close the configuration drift identified in SCOPE_AUDIT_REPORT.md — both apps exist in PingOne console but are not referenced in the codebase.
+
+**Requirements:** SCOPE-COMPLIANCE-01
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 111-01-PLAN.md — Add Worker and MCP Exchanger client IDs to pingoneBackendDefaults.js and configStore.js
+
+**Success criteria:**
+1. Worker Token app client ID (95dc946f-5e0a-4a8b-a8ba-b587b244e005) added to code configuration
+2. MCP Token Exchanger client ID (6380065f-f328-41c2-81ed-1daeec811285) added to code configuration
+3. Both client IDs available via configStore with proper environment variable fallback
+4. Token exchange flow uses correct MCP Exchanger client ID
+5. Management API operations use correct Worker Token client ID
+6. Build passes with zero warnings
+7. All existing tests pass
+8. Configuration drift closed per SCOPE_AUDIT_REPORT.md
+
+---
+
 ## Dependency Order
 
 Phase 1 (auth-flows) → Phase 2 (token-exchange) → Phase 3 (vercel-stability) → Phase 4 (education-content) → Phase 5 (user-documentation) → Phase 6 (token-exchange-fix)
@@ -1601,5 +1626,25 @@ Plans:
 - [ ] 108-01-PLAN.md — Core service + modal component (504 detection, auto-retry, animations)
 - [ ] 108-02-PLAN.md — Integration (App.js mount, API error handling wiring)
 - [ ] 108-03-PLAN.md — Testing, CSS polish, regression verification
+
+### Phase 109: Demo-data agent placement buttons should only configure state, not move agent
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 108
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 109 to break down)
+
+### Phase 110: Fix demo-data page layout: add may_act demo button, fix Config button overflow, improve discoverability
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 109
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 110 to break down)
 
 ---
