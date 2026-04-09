@@ -364,3 +364,49 @@ export function createWithdrawalWithConsent(accountId, amount, description, cons
     consentChallengeId,
   });
 }
+
+/**
+ * Send a natural language message to the LangChain agent endpoint.
+ * Handles 401 session-refresh retry (same pattern as callMcpTool).
+ *
+ * @param {string} message - User's message text
+ * @param {string|null} [consentId] - Optional consent ID for HITL resume flow
+ * @returns {Promise<{
+ *   success?: boolean,
+ *   reply?: string,
+ *   tokenEvents?: Array,
+ *   hitl?: boolean,
+ *   consentId?: string,
+ *   reason?: string,
+ *   operation?: object,
+ *   message?: string,
+ *   error?: string,
+ *   _status?: number
+ * }>}
+ */
+export async function sendAgentMessage(message, consentId = null) {
+  const body = { message };
+  if (consentId) body.consentId = consentId;
+
+  const opts = {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  };
+
+  let res = await fetch('/api/banking-agent/message', opts);
+
+  // 401: try session refresh once, then retry
+  if (res.status === 401) {
+    const refreshed = await refreshOAuthSession();
+    if (refreshed.ok) {
+      res = await fetch('/api/banking-agent/message', opts);
+    }
+  }
+
+  const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+
+  // Attach HTTP status for caller to inspect (428 = HITL required)
+  return { ...data, _status: res.status };
+}

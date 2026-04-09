@@ -11,6 +11,7 @@ import {
   createWithdrawal,
   refreshOAuthSession,
   callMcpTool,
+  sendAgentMessage,
 } from '../services/bankingAgentService';
 import { loadPublicConfig } from '../services/configService';
 import { useEducationUIOptional } from '../context/EducationUIContext';
@@ -19,7 +20,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { EDU } from './education/educationIds';
 import { EDUCATION_COMMANDS } from './education/educationCommands';
-import { fetchNlStatus, parseNaturalLanguage } from '../services/bankingAgentNlService';
+import { fetchNlStatus } from '../services/bankingAgentNlService';
+import { appendTokenEvents } from '../services/apiTrafficStore';
 import { getToolStepsForAction } from '../utils/agentToolSteps';
 import { spinner } from '../services/spinnerService';
 import { agentFlowDiagram } from '../services/agentFlowDiagramService';
@@ -692,6 +694,14 @@ function parseLogPrompt(text) {
     return { type: 'last_login', username: loginMatch[1] };
   }
 
+  return null;
+}
+
+// ─── Token event formatter for chat display ───────────────────────
+function formatTokenEvent(evt) {
+  if (!evt?.type) return null;
+  if (evt.type === 'token_exchange') return `🔄 Token exchanged (RFC 8693) — agent=${evt.actor || 'agent'}, user=${evt.onBehalfOf || 'user'}`;
+  if (evt.type === 'tool_call') return `🔧 Tool: ${evt.tool} → ${evt.status || 'called'}`;
   return null;
 }
 
@@ -2313,8 +2323,44 @@ export default function BankingAgent({
         }
         return;
       }
-      const { source, result } = await parseNaturalLanguage(text);
-      await dispatchNlResult(result, source, text);
+      const response = await sendAgentMessage(text);
+
+      if (response._status === 428 && response.hitl) {
+        // HITL consent required — wire to existing consent modal state
+        const pendingConsentId = response.consentId;
+        setHitlPendingIntent({
+          actionId: 'agent-hitl',
+          intentPayload: {
+            consentId: pendingConsentId,
+            reason: response.reason || 'High-value operation',
+            operation: response.operation || {},
+            originalMessage: text,
+          },
+          threshold: 500,
+        });
+        addMessage('assistant', response.message || 'This operation requires your approval. Please confirm above.');
+        return;
+      }
+
+      if (response.error || !response.success) {
+        const errMsg = response.error || 'Agent could not process that request.';
+        if (errMsg.includes('session') || errMsg.includes('auth') || response._status === 401) {
+          reportNlFailure({ code: 'session_not_hydrated' });
+        } else {
+          addMessage('assistant', `⚠️ ${errMsg}`);
+        }
+        return;
+      }
+
+      if (response.tokenEvents?.length) {
+        appendTokenEvents(response.tokenEvents);
+        response.tokenEvents.forEach(evt => {
+          const tokenMsg = formatTokenEvent(evt);
+          if (tokenMsg) addMessage('token-event', tokenMsg, null);
+        });
+      }
+
+      addMessage('assistant', response.reply || 'Done.');
     } catch (err) {
       reportNlFailure(err);
     } finally {
@@ -2333,8 +2379,15 @@ export default function BankingAgent({
       addMessage('user', text);
       setNlLoading(true);
       try {
-        const { source, result } = await parseNaturalLanguage(text);
-        if (!cancelled) await dispatchNlResult(result, source, '');
+        const response = await sendAgentMessage(text);
+        if (!cancelled) {
+          if (response.error || !response.success) {
+            reportNlFailure({ code: response.error || 'unknown' });
+          } else {
+            addMessage('assistant', response.reply || 'Done.');
+            if (response.tokenEvents?.length) appendTokenEvents(response.tokenEvents);
+          }
+        }
       } catch (e) {
         if (!cancelled) reportNlFailure(e);
       } finally {
@@ -2771,8 +2824,14 @@ export default function BankingAgent({
                       setNlInput('');
                       addMessage('user', s);
                       setNlLoading(true);
-                      parseNaturalLanguage(s)
-                        .then(({ source, result }) => dispatchNlResult(result, source, s))
+                      sendAgentMessage(s)
+                        .then(res => {
+                          if (res.error || !res.success) reportNlFailure(res);
+                          else {
+                            if (res.tokenEvents?.length) appendTokenEvents(res.tokenEvents);
+                            addMessage('assistant', res.reply || 'Done.');
+                          }
+                        })
                         .catch(err => reportNlFailure(err))
                         .finally(() => setNlLoading(false));
                     }
@@ -2860,8 +2919,14 @@ export default function BankingAgent({
                             setNlInput('');
                             addMessage('user', chip.label);
                             setNlLoading(true);
-                            parseNaturalLanguage(chip.label)
-                              .then(({ source, result }) => dispatchNlResult(result, source, chip.label))
+                            sendAgentMessage(chip.label)
+                              .then(res => {
+                                if (res.error || !res.success) reportNlFailure(res);
+                                else {
+                                  if (res.tokenEvents?.length) appendTokenEvents(res.tokenEvents);
+                                  addMessage('assistant', res.reply || 'Done.');
+                                }
+                              })
                               .catch(err => reportNlFailure(err))
                               .finally(() => setNlLoading(false));
                           }}
