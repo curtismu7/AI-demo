@@ -176,3 +176,4 @@ Plan: 1 of 3
 - Phase 109 added: Demo-data agent placement buttons should only configure state, not move agent [2026-04-08]
 - Phase 110 added: Fix demo-data page layout: add may_act demo button, fix Config button overflow, improve discoverability [2026-04-08]
 - Phase 112 added: Marketing and dashboard UI polish - ensure consistent light and dark mode [2026-04-08]
+- Phase 113 added: Redesign UI to match Chase.com look and feel (preserve all functionality) for all pages [2026-04-09]
