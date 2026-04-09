@@ -1812,7 +1812,7 @@ export default function BankingAgent({
               '   The banking operation completed successfully using the local handler.',
               '',
               '   To enable full RFC 8693 exchange, ensure the user token carries',
-              '   banking:read / banking:write scopes (not just banking:agent:invoke).',
+              '   banking:read / banking:write scopes (not just banking:ai:agent:read).',
             ].join('\n');
             // No error toast — the tool result handled it as a success
           } else {
@@ -2639,7 +2639,7 @@ export default function BankingAgent({
                   </div>
 
                   <p style={{ margin: '0 0 12px', lineHeight: 1.6, fontSize: '14px' }}>
-                    The AI agent path requires the <code style={{ background: 'rgba(255,80,80,0.12)', padding: '1px 6px', borderRadius: '4px' }}>agent:invoke</code> scope
+                    The AI agent path requires the <code style={{ background: 'rgba(255,80,80,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:ai:agent:read</code> scope
                     on your access token to authorise the agent to call the MCP server.
                   </p>
 
@@ -2677,14 +2677,14 @@ export default function BankingAgent({
                       OAuth app (Super Banking User App).
                     </li>
                     <li>
-                      Add <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>agent:invoke</code>{' '}
-                      (<code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:agent:invoke</code>)
+                      Add <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:ai:agent:read</code>{' '}
+                      (<code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:ai:agent:read</code>)
                       to the app&apos;s allowed scopes (or enable <strong>ff_skip_token_exchange</strong> in
                       Admin → Config to bypass the exchange entirely).
                     </li>
                     <li>
                       <strong>Sign out and sign back in</strong> to obtain a new access token that
-                      carries the <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>agent:invoke</code> scope.
+                      carries the <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:ai:agent:read</code> scope.
                     </li>
                   </ol>
 

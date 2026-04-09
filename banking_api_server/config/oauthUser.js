@@ -45,7 +45,7 @@ const config = {
     // invocation and the AI Agent resource server injects the may_act claim.
     const enduserAudience = process.env.ENDUSER_AUDIENCE;
     if (enduserAudience) {
-      return ['profile', 'email', 'offline_access', 'banking:agent:invoke'];
+      return ['profile', 'email', 'offline_access', 'banking:ai:agent:read'];
     }
     const role = configStore.getEffective('user_role') || 'customer';
     const banking = getScopesForUserType(role);
