@@ -42,11 +42,11 @@ function getConfiguredHostnameOrNull() {
 const REFERENCE_REDIRECT_SETS = [
   {
     id: 'localhost',
-    label: 'Local development (API / BFF on port 3001)',
+    label: 'Local development (standard or run-bank.sh)',
     adminRedirectUri: 'http://localhost:3001/api/auth/oauth/callback',
     userRedirectUri: 'http://localhost:3001/api/auth/oauth/user/callback',
-    postLogoutExample: 'http://localhost:3000/logout',
-    hint: 'CRA often serves the UI on :3000 and proxies /api to :3001 — OAuth callbacks still hit the BFF origin (:3001).',
+    postLogoutExample: 'http://localhost:3000/logout (standard) or http://localhost:4000/logout (run-bank.sh)',
+    hint: 'Standard: UI on :3000, API on :3001. run-bank.sh: UI on :4000, API on :3002. OAuth callbacks always hit BFF origin (:3001).',
   },
   {
     id: 'api-pingdeme',

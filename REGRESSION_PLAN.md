@@ -86,7 +86,7 @@
 - **PingOne configuration (manual step):** The `postLogoutRedirectUri` is **NOT yet configured** in PingOne console. Admin must:
   1. Log into PingOne Administration Console
   2. Go to **Applications** → **Super Banking Admin** app → **Redirect URIs** section
-  3. Add: `http://localhost:3000/logout`, `http://localhost:3001/logout` (optional), `https://{vercel-deployment}/logout`
+  3. Add: `http://localhost:3000/logout` (standard), `http://localhost:4000/logout` (run-bank.sh), `https://{your-deployment}.vercel.app/logout` (production)
   4. Repeat for **Super Banking User** app
   5. Save
 - **Files created:** `banking_api_ui/src/components/LogoutPage.js`, `banking_api_ui/src/components/LogoutPage.css`
