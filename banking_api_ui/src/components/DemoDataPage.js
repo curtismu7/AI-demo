@@ -7,8 +7,6 @@ import axios from 'axios';
 import apiClient from '../services/apiClient';
 import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioService';
 import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../config/agentMcpScopes';
-import { useAgentUiMode } from '../context/AgentUiModeContext';
-import AgentUiModeToggle from './AgentUiModeToggle';
 import { useEducationUI } from '../context/EducationUIContext';
 import { useTheme } from '../context/ThemeContext';
 import { EDU } from './education/educationIds';
@@ -82,7 +80,6 @@ export default function DemoDataPage({ user, onLogout }) {
   const { preset: industryPreset } = useIndustryBranding();
   const navigate = useNavigate();
   const { open } = useEducationUI();
-  const { placement: agentPlacement } = useAgentUiMode();
   const { theme, toggleTheme } = useTheme();
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
   const dashboardCrumbLabel = user?.role === 'admin' ? 'Admin' : 'Dashboard';
@@ -718,22 +715,7 @@ export default function DemoDataPage({ user, onLogout }) {
             <PingOneAudit />
           </section>
 
-          <section className="section demo-data-section demo-data-agent-layout" aria-labelledby="demo-data-agent-layout-heading">
-            <h2 id="demo-data-agent-layout-heading">AI banking assistant (layout)</h2>
-            <p className="demo-data-hint">
-              Choose how the assistant appears while you learn. <strong>Middle</strong> splits the screen so you can see
-              tokens, chat, and banking side by side. <strong>Bottom</strong> pins a wide bar on home and settings.
-              <strong> Float</strong> is just the corner button. You can add <strong>+ FAB</strong> with Middle or Bottom for
-              a movable panel too (Middle and Bottom cannot be on at the same time).
-            </p>
-            <AgentUiModeToggle variant="config" />
-            {agentPlacement === 'bottom' && (
-              <p className="demo-data-agent-note" role="status">
-                Bottom dock appears on your home dashboard routes and Application Configuration. Open Home from the nav to
-                see it.
-              </p>
-            )}
-          </section>
+
 
 <details>
   <summary>🎓 Lesson: how can an AI reach your bank data?</summary>

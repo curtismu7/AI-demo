@@ -19,6 +19,7 @@ import DashboardLayoutToggle from './DashboardLayoutToggle';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import { useTheme } from '../context/ThemeContext';
 import Fido2Challenge from './Fido2Challenge';
 import './UserDashboard.css';
 
@@ -48,6 +49,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
   const { preset } = useIndustryBranding();
   const { placement: agentPlacement } = useAgentUiMode();
+  const { theme, toggleTheme } = useTheme();
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(() => agentPlacement === 'middle');
   const [dashboardLayout, setDashboardLayoutState] = useState(() => getDashboardLayout());

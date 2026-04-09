@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
+import { useTheme } from '../context/ThemeContext';
 
 const REPO_ROOT_CMD = 'cd path/to/Banking   # repository root (parent of banking_api_ui/)';
 
@@ -10,6 +11,7 @@ const REPO_ROOT_CMD = 'cd path/to/Banking   # repository root (parent of banking
  * Public deployment setup: Vercel CLI copy targets, PingOne bootstrap plan from BFF, optional admin probe + run.
  */
 export default function SetupPage() {
+  const { theme, toggleTheme } = useTheme();
   const [planSteps, setPlanSteps] = useState([]);
   const [planLoading, setPlanLoading] = useState(true);
   const [planError, setPlanError] = useState(null);
@@ -201,6 +203,14 @@ export default function SetupPage() {
             >
               Application Configuration
             </Link>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.875rem', background: 'none', border: 'none', cursor: 'pointer' }}
+              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            </button>
           </div>
         </div>
       </div>

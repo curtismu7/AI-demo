@@ -20,6 +20,7 @@ import SetupWizardTab from './SetupWizardTab';
 import ConfigTokenValidation from './ConfigTokenValidation';
 import '../styles/appShellPages.css';
 import './Config.css';
+import { useTheme } from '../context/ThemeContext';
 
 // ─── Region options ───────────────────────────────────────────────────────────
 const REGION_OPTIONS = [
@@ -540,6 +541,7 @@ function LangChainAgentConfig() {
 export default function Config() {
   const navigate = useNavigate();
   const { applyIndustryId } = useIndustryBranding();
+  const { theme, toggleTheme } = useTheme();
   const [form, setForm]               = useState(EMPTY_FORM);
   const [secretMeta, setSecretMeta]   = useState({});   // { <key>_set: bool }
   const [showSecret, setShowSecret]   = useState({});   // { key: bool }
@@ -742,6 +744,14 @@ export default function Config() {
             <Link to="/onboarding" className="app-page-shell__btn app-page-shell__btn--solid">Setup guide</Link>
             <Link to="/setup/pingone" className="app-page-shell__btn">PingOne reference</Link>
             <Link to="/" className="app-page-shell__btn">← Back to app</Link>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="app-page-shell__btn"
+              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            </button>
           </div>
         </div>
       </header>
