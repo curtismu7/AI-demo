@@ -394,6 +394,23 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'amount_exceeds_hard_limit') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
+        const amount = params.amount;
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'amount_exceeds_hard_limit',
+              message: `I can help you with that, but the maximum transaction amount is $${limit}. You entered $${amount}. Would you like me to help you with a smaller deposit instead?`,
+              limit,
+              amount,
+            },
+            null,
+            2
+          )
+        );
+      }
       if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
         const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
         const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
@@ -461,6 +478,23 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'amount_exceeds_hard_limit') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
+        const amount = params.amount;
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'amount_exceeds_hard_limit',
+              message: `I can help you with that, but the maximum transaction amount is $${limit}. You entered $${amount}. Would you like me to help you with a smaller withdrawal instead?`,
+              limit,
+              amount,
+            },
+            null,
+            2
+          )
+        );
+      }
       if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
         const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
         const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
@@ -535,6 +569,24 @@ export class BankingToolProvider {
 
       return this.createSuccessResult(JSON.stringify(result, null, 2));
     } catch (error) {
+      if (error instanceof BankingAPIError && error.errorCode === 'amount_exceeds_hard_limit') {
+        const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
+        const limit = typeof axiosData['limit'] === 'number' ? axiosData['limit'] : 1000;
+        const amount = params.amount;
+        return this.createSuccessResult(
+          JSON.stringify(
+            {
+              error: 'amount_exceeds_hard_limit',
+              message: `I can help you with that, but the maximum transaction amount is $${limit}. You entered $${amount}. Would you like me to help you with a smaller transfer instead?`,
+              limit,
+              amount,
+            },
+            null,
+            2
+          )
+        );
+      }
+      
       if (error instanceof BankingAPIError && error.errorCode === 'step_up_required') {
         const axiosData = (error.originalError?.response?.data ?? {}) as Record<string, unknown>;
         const stepUpMethod: string = typeof axiosData['step_up_method'] === 'string'
