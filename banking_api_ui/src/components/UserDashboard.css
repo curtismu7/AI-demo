@@ -2897,3 +2897,64 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   padding: 2px 8px;
   vertical-align: middle;
 }
+
+/* ─── Dark Mode Additional Overrides ─────────────────────────────────────── */
+/* Sweeping hardcoded #fff / white values at lines 265, 731, 859, 1025, 1041, */
+/* 1417, 1531. Toggle thumb whites (536, 549) and logo squares (439) are      */
+/* intentionally left as-is (UI affordance / brand mark).                     */
+
+html[data-theme='dark'] .dashboard-toolbar {
+  background: var(--dash-surface, #141a24);
+  border-top-color: var(--dash-border, rgb(148 163 184 / 0.18));
+}
+
+html[data-theme='dark'] .account-summary-table {
+  background: var(--dash-surface, #141a24);
+  border-color: var(--dash-border, rgb(148 163 184 / 0.18));
+}
+
+/* Account type badges — subdued palette in dark mode */
+html[data-theme='dark'] .account-type-badge.money_market {
+  background-color: rgba(251, 191, 36, 0.08);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
+html[data-theme='dark'] .account-type-badge.investment {
+  background-color: rgba(34, 197, 94, 0.08);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+html[data-theme='dark'] .account-type-badge.credit {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Form inputs and selects */
+html[data-theme='dark'] .form-group input {
+  background-color: var(--dash-surface-2, #1a2230);
+  border-color: var(--dash-border, rgb(148 163 184 / 0.18));
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .form-group select {
+  background-color: var(--dash-surface-2, #1a2230);
+  border-color: var(--dash-border, rgb(148 163 184 / 0.18));
+  color: var(--dash-text, #e8edf5);
+}
+
+/* Warning message */
+html[data-theme='dark'] .inline-message--warning {
+  background: rgba(251, 191, 36, 0.08);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* Token / detail modal */
+html[data-theme='dark'] .token-modal {
+  background: var(--dash-surface, #141a24);
+  color: var(--dash-text, #e8edf5);
+  border: 1px solid var(--dash-border, rgb(148 163 184 / 0.18));
+}
