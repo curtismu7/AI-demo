@@ -860,10 +860,7 @@ export default function BankingAgent({
   /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
   // Always start false — the block is session-scoped, not page-load-scoped.
   // Clear any stale localStorage value immediately so refresh/login never shows the banner.
-  const [consentBlocked, setConsentBlocked] = useState(() => {
-    setAgentBlockedByConsentDecline(false);
-    return false;
-  });
+  const [consentBlocked, setConsentBlocked] = useState(false);
   /** True when the user has accepted the in-app agent consent agreement. */
   /** Missing-scopes error from token exchange — shows config-fix modal. */
   const [scopeErrorModal, setScopeErrorModal] = useState(null);
@@ -907,6 +904,12 @@ export default function BankingAgent({
     window.addEventListener('bankingAgentConsentBlockChanged', sync);
     return () => window.removeEventListener('bankingAgentConsentBlockChanged', sync);
   }, []);
+
+  // Clear parent's consent decline state on mount (React Rule: no setState in render initializers)
+  useEffect(() => {
+    setAgentBlockedByConsentDecline(false);
+  }, [setAgentBlockedByConsentDecline]);
+
 
   useEffect(() => {
     if (consentBlocked) setActiveAction(null);
