@@ -151,7 +151,7 @@
 /* ========== Hero Section ========== */
 
 .landing-hero {
-  background: linear-gradient(135deg, #FFFFFF 0%, var(--chase-light-gray, #F5F5F5) 100%);
+  background: linear-gradient(135deg, var(--chase-navy, #004687) 0%, var(--chase-navy-dark, #003DA5) 100%);
   padding: 80px 16px;
   text-align: center;
   position: relative;
@@ -167,13 +167,13 @@
   font-size: 48px;
   font-weight: 700;
   margin: 0 0 16px;
-  color: var(--chase-dark-gray, #333333);
+  color: white;
   line-height: 1.2;
 }
 
 .landing-hero-subheadline {
   font-size: 18px;
-  color: #666666;
+  color: #f0f0f0;
   margin: 0 0 40px;
   line-height: 1.6;
   font-weight: 400;
@@ -202,24 +202,24 @@
 }
 
 .hero-cta-primary {
-  background-color: var(--app-primary-red, #b91c1c);
-  color: white;
+  background-color: white;
+  color: var(--chase-navy, #004687);
 }
 
 .hero-cta-primary:hover {
-  background-color: #991b1b;
+  background-color: #f0f0f0;
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(185, 28, 28, 0.3);
+  box-shadow: 0 8px 16px rgba(255, 255, 255, 0.3);
 }
 
 .hero-cta-secondary {
-  background-color: white;
-  color: var(--app-primary-red, #b91c1c);
-  border: 2px solid var(--app-primary-red, #b91c1c);
+  background-color: transparent;
+  color: white;
+  border: 2px solid white;
 }
 
 .hero-cta-secondary:hover {
-  background-color: rgba(185, 28, 28, 0.08);
+  background-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }
 
@@ -538,16 +538,16 @@ html[data-theme='dark'] .landing-nav .nav-link {
 }
 
 html[data-theme='dark'] .landing-hero {
-  background: linear-gradient(135deg, #0c1018 0%, #1a2230 60%, #172554 100%);
+  background: linear-gradient(135deg, var(--chase-navy, #004687) 0%, var(--chase-navy-dark, #003DA5) 100%);
   color: var(--dash-text, #e8edf5);
 }
 
 html[data-theme='dark'] .landing-hero-headline {
-  color: var(--dash-text, #e8edf5);
+  color: white;
 }
 
 html[data-theme='dark'] .landing-hero-subheadline {
-  color: var(--dash-muted, #94a3b8);
+  color: #d6e0f0;
 }
 
 html[data-theme='dark'] .landing-features {
@@ -576,12 +576,21 @@ html[data-theme='dark'] .landing-feature-description {
   color: var(--dash-muted, #94a3b8);
 }
 
+html[data-theme='dark'] .hero-cta-primary {
+  background-color: white;
+  color: var(--chase-navy, #004687);
+}
+
+html[data-theme='dark'] .hero-cta-primary:hover {
+  background-color: #f0f0f0;
+}
+
 html[data-theme='dark'] .hero-cta-secondary {
   background-color: transparent;
-  border-color: var(--app-primary-red, #b91c1c);
-  color: var(--dash-text, #e8edf5);
+  border-color: white;
+  color: white;
 }
 
 html[data-theme='dark'] .hero-cta-secondary:hover {
-  background-color: rgba(185, 28, 28, 0.2);
+  background-color: rgba(255, 255, 255, 0.15);
 }

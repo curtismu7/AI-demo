@@ -21,7 +21,6 @@ const Dashboard = ({ user, onLogout }) => {
   const location = useLocation();
   const { placement: agentPlacement } = useAgentUiMode();
   const { open } = useEducationUI();
-  const { preset } = useIndustryBranding();
   const [stats, setStats] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -1,13 +1,13 @@
 /* ─── Side Navigation ─────────────────────────────────────────────────────── */
 
 .sidenav {
-  --sn-bg:          #252b3b;
-  --sn-bg-hover:    #2e3450;
-  --sn-bg-active:   #363d5f;
-  --sn-accent:      #6366f1;
-  --sn-text:        #DDDDDD;
-  --sn-muted:       #8896b3;
-  --sn-border:      rgba(255,255,255,0.10);
+  --sn-bg:          var(--chase-navy, #004687);
+  --sn-bg-hover:    var(--chase-navy-light, #005FA3);
+  --sn-bg-active:   var(--chase-blue, #0066CC);
+  --sn-accent:      var(--chase-blue, #0066CC);
+  --sn-text:        #FFFFFF;
+  --sn-muted:       #B8C9E0;
+  --sn-border:      rgba(255,255,255,0.15);
   --sn-width:       220px;
   --sn-width-col:   60px;
 
@@ -53,12 +53,12 @@
   width: 26px;
   height: 26px;
   padding: 3px;
-  background: rgba(99,102,241,0.25);
+  background: rgba(255,255,255,0.15);
   border-radius: 5px;
 }
 
 .sidenav-logo-grid span {
-  background: #a5b4fc;
+  background: #ffffff;
   border-radius: 1px;
 }
 
