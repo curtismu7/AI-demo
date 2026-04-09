@@ -277,7 +277,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
     switch (level?.toLowerCase()) {
       case 'error': return '#ef4444';
       case 'warn': return '#f59e0b';
-      case 'info': return '#3b82f6';
+      case 'info': return 'var(--chase-navy)';
       case 'debug': return '#6b7280';
       default: return '#9ca3af';
     }
@@ -419,7 +419,7 @@ const LogViewer = ({ isOpen, onClose, standalone = false }) => {
             <span>Total: {stats.total}</span>
             <span style={{ color: '#ef4444' }}>Errors: {stats.byLevel?.error || 0}</span>
             <span style={{ color: '#f59e0b' }}>Warnings: {stats.byLevel?.warn || 0}</span>
-            <span style={{ color: '#3b82f6' }}>Info: {stats.byLevel?.info || 0}</span>
+            <span style={{ color: 'var(--chase-navy)' }}>Info: {stats.byLevel?.info || 0}</span>
           </div>
         )}
 

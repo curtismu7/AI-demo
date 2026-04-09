@@ -2224,7 +2224,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                     {/* Key claims */}
                     <div className="token-section">
                       <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#93c5fd' }}>👤 Access Token Claims</span>
+                        <span style={{ background: '#1e3a5f', border: '1px solid var(--chase-navy)', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', color: '#93c5fd' }}>👤 Access Token Claims</span>
                         <button type="button" className="token-payload-hint" title="Learn about tokens" onClick={() => open(EDU.LOGIN_FLOW, 'tokens')}>ⓘ</button>
                       </h4>
                       <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '10px 14px', fontSize: '0.8rem', marginBottom: '8px' }}>

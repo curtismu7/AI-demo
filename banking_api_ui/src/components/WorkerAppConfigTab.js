@@ -99,7 +99,7 @@ export default function WorkerAppConfigTab() {
 
   return (
     <div style={{ padding: '24px 0' }}>
-      <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--chase-navy)', marginBottom: 4 }}>
         PingOne Management API — Worker App
       </h3>
       <p style={{ color: '#6b7280', fontSize: 13, marginBottom: readOnly ? 8 : 20 }}>
@@ -185,7 +185,7 @@ export default function WorkerAppConfigTab() {
 
           {generatedPublicKey && (
             <div style={{ marginTop: 14, background: '#fff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '12px 14px' }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', marginBottom: 8 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--chase-navy)', marginBottom: 8 }}>
                 ✓ Key pair generated — private key saved to config.
               </p>
               <p style={{ fontSize: 12, color: '#374151', marginBottom: 6 }}>
@@ -214,7 +214,7 @@ export default function WorkerAppConfigTab() {
           onClick={handleSave}
           disabled={saving}
           style={{
-            padding: '8px 20px', background: '#2563eb', color: '#fff',
+            padding: '8px 20px', background: 'var(--chase-navy)', color: '#fff',
             border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
             cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1,
           }}
@@ -320,7 +320,7 @@ export default function WorkerAppConfigTab() {
 
   return (
     <div style={{ padding: '24px 0' }}>
-      <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1e40af', marginBottom: 4 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--chase-navy)', marginBottom: 4 }}>
         PingOne Management API — Worker App
       </h3>
       <p style={{ color: '#6b7280', fontSize: 13, marginBottom: readOnly ? 8 : 20 }}>
@@ -388,7 +388,7 @@ export default function WorkerAppConfigTab() {
           disabled={saving}
           style={{
             padding: '8px 20px',
-            background: '#2563eb',
+            background: 'var(--chase-navy)',
             color: '#fff',
             border: 'none',
             borderRadius: 6,

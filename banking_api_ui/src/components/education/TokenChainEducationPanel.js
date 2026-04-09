@@ -270,7 +270,7 @@ Step 5: Transfer executed
         in real time as they happen. Each event is color-coded by type:
       </p>
       <ul>
-        <li><span style={{ color: '#2563eb', fontWeight: 600 }}>●</span> <strong>user_token</strong> — initial login token</li>
+        <li><span style={{ color: 'var(--chase-navy)', fontWeight: 600 }}>●</span> <strong>user_token</strong> — initial login token</li>
         <li><span style={{ color: '#7c3aed', fontWeight: 600 }}>●</span> <strong>agent_token</strong> — agent's client_credentials token (2-exchange only)</li>
         <li><span style={{ color: '#059669', fontWeight: 600 }}>●</span> <strong>exchanged_token</strong> — delegated token after RFC 8693 exchange</li>
         <li><span style={{ color: '#dc2626', fontWeight: 600 }}>●</span> <strong>error</strong> — exchange failure (invalid scope, expired token, etc.)</li>

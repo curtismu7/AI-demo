@@ -20,7 +20,7 @@
   border-radius: 12px;
   padding: 1.5rem 1.75rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
 }
 
 .transaction-consent-popup__title {
@@ -34,7 +34,7 @@
   margin: 0 0 0.75rem;
   font-size: 0.92rem;
   line-height: 1.5;
-  color: #475569;
+  color: #666666;
 }
 
 .transaction-consent-popup__learn {
@@ -42,20 +42,20 @@
 }
 
 .transaction-consent-learn-btn--dark {
-  background: #1e3a8a;
-  border: 1px solid #1e40af;
+  background: var(--chase-navy);
+  border: 1px solid var(--chase-navy);
   color: #fff;
 }
 
 .transaction-consent-learn-btn--dark:hover {
-  background: #1e40af;
+  background: var(--chase-navy);
 }
 
 .transaction-consent-card--in-popup {
   max-width: none;
   margin: 0;
   box-shadow: none;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
   padding: 1.25rem 1.35rem;
 }
 
@@ -89,7 +89,7 @@
 .hitl-consent-banner__title {
   display: block;
   font-size: 0.95rem;
-  color: #f8fafc;
+  color: var(--chase-light-gray);
   letter-spacing: 0.02em;
   margin-bottom: 0.25rem;
 }
@@ -148,7 +148,7 @@
 
 .transaction-consent-card__loading {
   padding: 1rem 0;
-  color: #475569;
+  color: #666666;
 }
 
 .transaction-consent-learn-btn--inline {
@@ -156,14 +156,14 @@
   margin-top: 0.75rem;
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
-  background: #1e3a8a;
+  background: var(--chase-navy);
   color: #fff !important;
   font-weight: 600;
   text-decoration: none;
 }
 
 .transaction-consent-learn-btn--inline:hover {
-  background: #1e40af;
+  background: var(--chase-navy);
 }
 
 .transaction-consent-card {
@@ -173,7 +173,7 @@
   border-radius: 12px;
   padding: 1.5rem 1.75rem;
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
 }
 
 .transaction-consent-card__h2 {
@@ -186,7 +186,7 @@
 .transaction-consent-card__summary {
   margin: 0 0 1.25rem;
   padding-left: 1.25rem;
-  color: #334155;
+  color: var(--chase-dark-gray);
   line-height: 1.55;
 }
 
@@ -196,13 +196,13 @@
 
 .transaction-consent-card__legal {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #999999;
   line-height: 1.55;
   margin-bottom: 1.25rem;
   padding: 0.75rem 1rem;
-  background: #f8fafc;
+  background: var(--chase-light-gray);
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
 }
 
 .transaction-consent-card__legal p {
@@ -215,7 +215,7 @@
   gap: 0.75rem;
   cursor: pointer;
   font-size: 0.95rem;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   line-height: 1.45;
   margin-bottom: 1rem;
 }
@@ -259,21 +259,21 @@
 
 .transaction-consent-btn--ghost {
   background: #fff;
-  border-color: #cbd5e1;
-  color: #334155;
+  border-color: #CCCCCC;
+  color: var(--chase-dark-gray);
 }
 
 .transaction-consent-btn--ghost:hover:not(:disabled) {
-  background: #f8fafc;
+  background: var(--chase-light-gray);
 }
 
 .transaction-consent-btn--primary {
-  background: #1e3a8a;
+  background: var(--chase-navy);
   color: #fff;
 }
 
 .transaction-consent-btn--primary:hover:not(:disabled) {
-  background: #1e40af;
+  background: var(--chase-navy);
 }
 
 .transaction-consent-btn--danger {
@@ -303,7 +303,7 @@
   border-radius: 12px;
   padding: 1.5rem 1.5rem 1.25rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
 }
 
 .transaction-consent-modal__title {
@@ -317,7 +317,7 @@
   margin: 0 0 0.75rem;
   font-size: 0.95rem;
   line-height: 1.5;
-  color: #334155;
+  color: var(--chase-dark-gray);
 }
 
 .transaction-consent-modal__body--emphasis {
@@ -436,7 +436,7 @@
 .tx-otp-panel__back-btn {
   background: none;
   border: none;
-  color: #64748b;
+  color: #999999;
   font-size: 0.82rem;
   cursor: pointer;
   padding: 0;

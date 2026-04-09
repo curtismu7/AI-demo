@@ -9,21 +9,21 @@
   padding: 4px 8px;
   font-size: 0.8rem;
   font-weight: 600;
-  border: 1px solid var(--dash-border, #e2e8f0);
+  border: 1px solid var(--dash-border, #DDDDDD);
   border-radius: 6px;
-  background: var(--dash-surface-2, #f8fafc);
-  color: var(--dash-text, #1e293b);
+  background: var(--dash-surface-2, var(--chase-light-gray));
+  color: var(--dash-text, var(--chase-dark-gray));
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s;
 }
 
 .vertical-switcher__select:hover {
-  border-color: var(--dash-primary, #2563eb);
+  border-color: var(--dash-primary, var(--chase-navy));
 }
 
 .vertical-switcher__select:focus {
-  border-color: var(--dash-primary, #2563eb);
+  border-color: var(--dash-primary, var(--chase-navy));
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
@@ -43,9 +43,9 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 1rem;
-  border: 2px solid var(--dash-border, #e2e8f0);
+  border: 2px solid var(--dash-border, #DDDDDD);
   border-radius: 10px;
-  background: var(--dash-surface-2, #f8fafc);
+  background: var(--dash-surface-2, var(--chase-light-gray));
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   font-family: inherit;
@@ -78,12 +78,12 @@
 .vertical-switcher__label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--dash-text, #1e293b);
+  color: var(--dash-text, var(--chase-dark-gray));
   white-space: nowrap;
 }
 
 .vertical-switcher__tagline {
   font-size: 0.72rem;
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
   white-space: nowrap;
 }

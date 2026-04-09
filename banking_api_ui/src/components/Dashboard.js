@@ -861,7 +861,7 @@ const Dashboard = ({ user, onLogout }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{
-              background: 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)',
+              background: 'linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%)',
               color: 'white',
               padding: '20px 30px',
               display: 'flex',
@@ -1083,7 +1083,7 @@ const Dashboard = ({ user, onLogout }) => {
 const getActionColor = (action) => {
   const colors = {
     'LOGIN': '#10b981',
-    'REGISTER': '#3b82f6',
+    'REGISTER': 'var(--chase-navy)',
     'TRANSFER_MONEY': '#f59e0b',
     'CHECK_BALANCE': '#8b5cf6',
     'GET_TRANSACTIONS': '#06b6d4',

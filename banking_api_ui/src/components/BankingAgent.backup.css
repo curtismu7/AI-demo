@@ -34,18 +34,18 @@
 .banking-agent-panel {
   /* Design tokens — dark theme (matches landing page mock-up) */
   --ba-bg:        #0f172a;
-  --ba-surface:   #1e293b;
-  --ba-border:    #334155;
-  --ba-text:      #e2e8f0;
+  --ba-surface:   var(--chase-dark-gray);
+  --ba-border:    var(--chase-dark-gray);
+  --ba-text:      #DDDDDD;
   --ba-muted:     #94a3b8;
   --ba-user-bg:   #6366f1;
   --ba-user-txt:  #ffffff;
-  --ba-agent-bg:  #1e293b;
-  --ba-agent-txt: #e2e8f0;
+  --ba-agent-bg:  var(--chase-dark-gray);
+  --ba-agent-txt: #DDDDDD;
   --ba-accent:    #6366f1;
   --ba-accent-h:  #818cf8;
   --ba-input-bg:  #0f172a;
-  --ba-input-bd:  #334155;
+  --ba-input-bd:  var(--chase-dark-gray);
   --ba-chip-bg:   rgba(99,102,241,0.12);
   --ba-chip-bd:   #4f46e5;
   --ba-chip-txt:  #a5b4fc;
@@ -72,18 +72,18 @@
 /* Light mode override */
 .banking-agent-panel.ba-mode-light {
   --ba-bg:        #ffffff;
-  --ba-surface:   #f8fafc;
-  --ba-border:    #e2e8f0;
+  --ba-surface:   var(--chase-light-gray);
+  --ba-border:    #DDDDDD;
   --ba-text:      #0f172a;
-  --ba-muted:     #64748b;
+  --ba-muted:     #999999;
   --ba-user-bg:   #6366f1;
   --ba-user-txt:  #ffffff;
-  --ba-agent-bg:  #f1f5f9;
+  --ba-agent-bg:  var(--chase-light-gray);
   --ba-agent-txt: #0f172a;
   --ba-accent:    #6366f1;
   --ba-accent-h:  #4f46e5;
-  --ba-input-bg:  #f8fafc;
-  --ba-input-bd:  #e2e8f0;
+  --ba-input-bg:  var(--chase-light-gray);
+  --ba-input-bd:  #DDDDDD;
   --ba-chip-bg:   #eff6ff;
   --ba-chip-bd:   #c7d2fe;
   --ba-chip-txt:  #4338ca;
@@ -249,7 +249,7 @@
   border-radius: 999px;
   border: 1px solid #c6d4ff;
   background: #fff;
-  color: #1e40af;
+  color: var(--chase-navy);
   cursor: pointer;
   text-align: left;
   line-height: 1.25;
@@ -738,7 +738,7 @@
   font-weight: 600;
   text-transform: capitalize;
   background: #e8f0fe;
-  color: #1e40af;
+  color: var(--chase-navy);
 }
 .bar-rp-type-transfer  { background: #fff3cd; color: #7c5a00; }
 .bar-rp-type-deposit   { background: #defbe6; color: #198038; }

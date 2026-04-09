@@ -295,13 +295,13 @@ Super Banking Admin App:
         border: '1px solid #93c5fd', 
         borderRadius: '8px' 
       }}>
-        <h4 style={{ margin: '0 0 8px 0', color: '#1e40af' }}>Implementation Status</h4>
+        <h4 style={{ margin: '0 0 8px 0', color: 'var(--chase-navy)' }}>Implementation Status</h4>
         <ul style={{ margin: 0, paddingLeft: '20px' }}>
-          <li style={{ color: '#1e40af' }}>Resource servers created in PingOne</li>
-          <li style={{ color: '#1e40af' }}>Applications configured with resource permissions</li>
-          <li style={{ color: '#1e40af' }}>Client code updated with resource parameters</li>
-          <li style={{ color: '#1e40af' }}>Resource server validation implemented</li>
-          <li style={{ color: '#1e40af' }}>Testing and monitoring in place</li>
+          <li style={{ color: 'var(--chase-navy)' }}>Resource servers created in PingOne</li>
+          <li style={{ color: 'var(--chase-navy)' }}>Applications configured with resource permissions</li>
+          <li style={{ color: 'var(--chase-navy)' }}>Client code updated with resource parameters</li>
+          <li style={{ color: 'var(--chase-navy)' }}>Resource server validation implemented</li>
+          <li style={{ color: 'var(--chase-navy)' }}>Testing and monitoring in place</li>
         </ul>
       </div>
     </>

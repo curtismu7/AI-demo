@@ -24,7 +24,7 @@
   --p1-surface-accent: #e8f4fa;
   --p1-border: rgba(39, 123, 165, 0.2);
   --p1-text: #0f172a;
-  --p1-text-secondary: #475569;
+  --p1-text-secondary: #666666;
   --p1-indigo-deep: #312e81;
   --p1-indigo-mid: #4338ca;
 
@@ -160,7 +160,7 @@
 /* ── Checklist card ─────────────────────────────────────── */
 .config-page__card--steps {
   border-color: rgba(99, 102, 241, 0.25);
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(180deg, var(--chase-light-gray) 0%, var(--chase-light-gray) 100%);
 }
 
 .config-page__card--steps .card-title {
@@ -526,7 +526,7 @@
 }
 
 .config-page__expand-btn:hover {
-  background: #f8fafc;
+  background: var(--chase-light-gray);
   border-color: var(--p1-primary);
 }
 
@@ -568,7 +568,7 @@
   font-weight: 700;
 }
 
-.config-page__path-card--indigo .config-page__path-title { color: #1e40af; }
+.config-page__path-card--indigo .config-page__path-title { color: var(--chase-navy); }
 .config-page__path-card--green .config-page__path-title  { color: #14532d; }
 
 .config-page__path-desc {
@@ -692,14 +692,14 @@
   gap: 0.75rem;
   align-items: flex-start;
   padding: 0.65rem 0.75rem;
-  border: 1px solid var(--p1-border, #e2e8f0);
+  border: 1px solid var(--p1-border, #DDDDDD);
   border-radius: 0.5rem;
   cursor: pointer;
   background: var(--p1-surface, #fff);
 }
 
 .config-page__agent-scope-row:hover {
-  border-color: #cbd5e1;
+  border-color: #CCCCCC;
 }
 
 .config-page__agent-scope-row--on {

@@ -47,10 +47,10 @@ function TokenFlowDiagram() {
 
         {/* Flow diagram */}
         <FlowRow
-          left={<Box label="Browser / User" icon="👤" color="#1e3a5f" border="#3b82f6" />}
+          left={<Box label="Browser / User" icon="👤" color="#1e3a5f" border="var(--chase-navy)" />}
           arrow="── User Token ──────────────────→"
-          arrowColor="#60a5fa"
-          right={<Box label="Backend-for-Frontend (BFF)" icon="🏦" color="#1e3a5f" border="#3b82f6" note="Stores User Token in session" />}
+          arrowColor="var(--chase-navy-light)"
+          right={<Box label="Backend-for-Frontend (BFF)" icon="🏦" color="#1e3a5f" border="var(--chase-navy)" note="Stores User Token in session" />}
         />
         <ConnectorDown />
 
@@ -73,7 +73,7 @@ function TokenFlowDiagram() {
         <ConnectorDown />
 
         <FlowRow
-          left={<Box label="Backend-for-Frontend (BFF)" icon="🏦" color="#1e3a5f" border="#3b82f6" note="Holds User Token — never forwarded" />}
+          left={<Box label="Backend-for-Frontend (BFF)" icon="🏦" color="#1e3a5f" border="var(--chase-navy)" note="Holds User Token — never forwarded" />}
           arrow="── MCP Token only ──────────────→"
           arrowColor="#34d399"
           right={<Box label="MCP Server" icon="🤖" color="#1a2e1a" border="#22c55e" note="Validates MCP Token via introspection" />}
@@ -99,7 +99,7 @@ function TokenFlowDiagram() {
           title="User Token"
           emoji="👤"
           color="#1e3a5f"
-          border="#3b82f6"
+          border="var(--chase-navy)"
           claims={[
             { key: 'aud', val: 'Backend-for-Frontend (BFF) / PingOne client', note: 'broad' },
             { key: 'scope', val: 'openid email banking:*', note: 'broad' },
@@ -269,7 +269,7 @@ export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
                 <td style={{ padding: '8px 10px' }}><strong>MCP Token</strong></td>
                 <td style={{ padding: '8px 10px' }}>RFC 8693 exchange</td>
                 <td style={{ padding: '8px 10px' }}>Calling the MCP Server and Banking API</td>
-                <td style={{ padding: '8px 10px', color: '#60a5fa' }}>✅ Sent to MCP Server</td>
+                <td style={{ padding: '8px 10px', color: 'var(--chase-navy-light)' }}>✅ Sent to MCP Server</td>
               </tr>
             </tbody>
           </table>

@@ -23,7 +23,7 @@
 
 /* Header */
 .ssp-header {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
   color: white;
   padding: 2rem;
   text-align: center;
@@ -81,8 +81,8 @@
 /* Tabs */
 .ssp-tabs {
   display: flex;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border-bottom: 1px solid #DDDDDD;
 }
 
 .ssp-tab {
@@ -92,21 +92,21 @@
   border: none;
   font-size: 1rem;
   font-weight: 600;
-  color: #64748b;
+  color: #999999;
   cursor: pointer;
   transition: all 0.2s ease;
   border-bottom: 3px solid transparent;
 }
 
 .ssp-tab:hover {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--chase-light-gray);
+  color: #666666;
 }
 
 .ssp-tab--active {
-  color: #2563eb;
+  color: var(--chase-navy);
   background: white;
-  border-bottom-color: #2563eb;
+  border-bottom-color: var(--chase-navy);
 }
 
 /* Card Container */
@@ -122,7 +122,7 @@
 }
 
 .ssp-form-section {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #DDDDDD;
   padding-bottom: 2rem;
 }
 
@@ -132,7 +132,7 @@
 
 .ssp-form-section h3 {
   margin: 0 0 1.5rem 0;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -166,7 +166,7 @@
 
 .ssp-input:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--chase-navy);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
@@ -215,12 +215,12 @@
 }
 
 .ssp-role-card:hover {
-  border-color: #2563eb;
+  border-color: var(--chase-navy);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
 
 .ssp-role-card--selected {
-  border-color: #2563eb;
+  border-color: var(--chase-navy);
   background: #eff6ff;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
@@ -232,13 +232,13 @@
 
 .ssp-role-title {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   margin-bottom: 0.25rem;
 }
 
 .ssp-role-desc {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #999999;
 }
 
 /* Password Strength */
@@ -277,8 +277,8 @@
 
 /* mayAct Section */
 .ssp-mayact-section {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border: 1px solid #DDDDDD;
   border-radius: 8px;
   padding: 1.5rem;
 }
@@ -321,7 +321,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #cbd5e1;
+  background-color: #CCCCCC;
   transition: 0.3s;
   border-radius: 24px;
 }
@@ -339,7 +339,7 @@
 }
 
 .ssp-toggle-switch input:checked + .ssp-toggle-slider {
-  background-color: #2563eb;
+  background-color: var(--chase-navy);
 }
 
 .ssp-toggle-switch input:checked + .ssp-toggle-slider:before {
@@ -378,24 +378,24 @@
 }
 
 .ssp-mode-card:hover {
-  border-color: #2563eb;
+  border-color: var(--chase-navy);
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
 }
 
 .ssp-mode-card--selected {
-  border-color: #2563eb;
+  border-color: var(--chase-navy);
   background: #eff6ff;
 }
 
 .ssp-mode-title {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   margin-bottom: 0.25rem;
 }
 
 .ssp-mode-desc {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #999999;
 }
 
 .ssp-mayact-tooltip {
@@ -447,7 +447,7 @@
 }
 
 .ssp-submit-btn {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
   color: white;
   border: none;
   padding: 1rem 2rem;
@@ -460,7 +460,7 @@
 }
 
 .ssp-submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
@@ -521,7 +521,7 @@
 .ssp-loading {
   text-align: center;
   padding: 3rem;
-  color: #64748b;
+  color: #999999;
   font-size: 1.1rem;
 }
 
@@ -532,13 +532,13 @@
 }
 
 .ssp-profile-card h2 {
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   margin-bottom: 1rem;
   font-size: 1.5rem;
 }
 
 .ssp-profile-section {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #DDDDDD;
   padding-bottom: 2rem;
 }
 
@@ -568,11 +568,11 @@
 
 .ssp-info-label {
   font-weight: 600;
-  color: #64748b;
+  color: #999999;
 }
 
 .ssp-info-value {
-  color: #1e293b;
+  color: var(--chase-dark-gray);
 }
 
 .ssp-status--active {
@@ -614,8 +614,8 @@
 
 /* Diagnostic Panel */
 .ssp-diagnosis-panel {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border: 1px solid #DDDDDD;
   border-radius: 8px;
   padding: 1.5rem;
 }
@@ -676,9 +676,9 @@
 
 .ssp-diagnosis-next {
   padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #DDDDDD;
   font-size: 0.875rem;
-  color: #64748b;
+  color: #999999;
 }
 
 /* No Profile State */
@@ -688,7 +688,7 @@
 }
 
 .ssp-no-profile h3 {
-  color: #64748b;
+  color: #999999;
   margin-bottom: 1rem;
 }
 

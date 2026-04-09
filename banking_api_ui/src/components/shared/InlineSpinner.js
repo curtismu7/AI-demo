@@ -11,7 +11,7 @@ import './LoadingOverlay.css';
  * @param {string}  [props.color]  - Override spinner color (default blue)
  * @param {string}  [props.size]   - 'sm' (default, 20px) | 'md' (28px)
  */
-export default function InlineSpinner({ label, color = '#2563eb', size = 'sm' }) {
+export default function InlineSpinner({ label, color = 'var(--chase-navy)', size = 'sm' }) {
   const dimension = size === 'md' ? 28 : 20;
   return (
     <span

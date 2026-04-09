@@ -180,7 +180,7 @@
 }
 
 .agent-ui-mode-toggle--config .agent-ui-mode-toggle__btn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--chase-navy);
   outline-offset: 2px;
   z-index: 1;
 }
@@ -191,16 +191,16 @@
 }
 
 .landing-page--light .agent-ui-mode-toggle--landing .agent-ui-mode-toggle__segmented {
-  border-color: #cbd5e1;
+  border-color: #CCCCCC;
 }
 
 .landing-page--light .agent-ui-mode-toggle--landing .agent-ui-mode-toggle__btn {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--chase-light-gray);
+  color: var(--chase-dark-gray);
 }
 
 .landing-page--light .agent-ui-mode-toggle--landing .agent-ui-mode-toggle__btn:hover {
-  background: #e2e8f0;
+  background: #DDDDDD;
   color: #0f172a;
 }
 

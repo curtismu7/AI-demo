@@ -21,7 +21,7 @@ function ModelCard({ name, maker, context, params, color, strengths, note, child
         <strong style={{ fontSize: '0.92rem' }}>{name}</strong>
         {maker && <span style={{ fontSize: '0.73rem', background: color, color: '#fff', borderRadius: 4, padding: '1px 6px' }}>{maker}</span>}
         {params && <span style={{ fontSize: '0.73rem', background: '#e2e8f0', color: '#475569', borderRadius: 4, padding: '1px 6px' }}>{params}</span>}
-        {context && <span style={{ fontSize: '0.73rem', background: '#dbeafe', color: '#1e40af', borderRadius: 4, padding: '1px 6px' }}>{context}</span>}
+        {context && <span style={{ fontSize: '0.73rem', background: '#dbeafe', color: 'var(--chase-navy)', borderRadius: 4, padding: '1px 6px' }}>{context}</span>}
       </div>
       {strengths && <p style={{ margin: '0.2rem 0 0.1rem', fontSize: '0.83rem', color: '#334155' }}>{strengths}</p>}
       {note && <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>{note}</p>}
@@ -72,7 +72,7 @@ function CommercialContent() {
         name="Gemini 1.5 Pro / 2.0 Flash / 2.5 Pro"
         maker="Google DeepMind"
         context="1M+ tokens"
-        color="#2563eb"
+        color="var(--chase-navy)"
         strengths="Industry-leading context length, native multimodal (text/image/audio/video), Google Search grounding."
         note="2.5 Pro: state-of-the-art reasoning (2025), leading benchmarks for coding and math. Available via Google AI Studio, Vertex AI, Gemini API."
       />

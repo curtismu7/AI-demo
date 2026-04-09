@@ -13,7 +13,7 @@ const Code = ({ children }) => (
   }}>{children}</code>
 );
 
-function FrameworkCard({ name, category, tagline, color = '#2563eb', children }) {
+function FrameworkCard({ name, category, tagline, color = 'var(--chase-navy)', children }) {
   return (
     <div style={{
       borderLeft: `4px solid ${color}`, background: '#f8fafc',
@@ -133,7 +133,7 @@ function OpenSourceContent() {
         </ul>
       </FrameworkCard>
 
-      <FrameworkCard name="Microsoft AutoGen" category="Multi-agent conversation" tagline="Orchestrate multiple AI agents in collaborative conversations" color="#2563eb">
+      <FrameworkCard name="Microsoft AutoGen" category="Multi-agent conversation" tagline="Orchestrate multiple AI agents in collaborative conversations" color="var(--chase-navy)">
         <ul style={{ paddingLeft: 20, margin: 0 }}>
           <Bullet>Focus: multi-agent systems where agents converse with each other to solve tasks</Bullet>
           <Bullet>Key primitives: <code>ConversableAgent</code>, <code>AssistantAgent</code>, <code>UserProxyAgent</code>, <code>GroupChat</code></Bullet>
@@ -172,7 +172,7 @@ function OpenSourceContent() {
         </ul>
       </FrameworkCard>
 
-      <FrameworkCard name="Phidata / Agno" category="Full-stack agent framework" tagline="Agents with memory, knowledge, tools, and reasoning baked in" color="#2563eb">
+      <FrameworkCard name="Phidata / Agno" category="Full-stack agent framework" tagline="Agents with memory, knowledge, tools, and reasoning baked in" color="var(--chase-navy)">
         <ul style={{ paddingLeft: 20, margin: 0 }}>
           <Bullet>Focus: production agents with built-in memory (PostgreSQL/SQLite), knowledge bases (PDFs, URLs, tables), structured outputs</Bullet>
           <Bullet>Phidata rebranded to Agno in early 2025</Bullet>
@@ -201,7 +201,7 @@ function CommercialContent() {
         </ul>
       </FrameworkCard>
 
-      <FrameworkCard name="Microsoft Copilot Studio" category="Low-code agent builder" tagline="Build custom copilots — from no-code to pro-code" color="#2563eb">
+      <FrameworkCard name="Microsoft Copilot Studio" category="Low-code agent builder" tagline="Build custom copilots — from no-code to pro-code" color="var(--chase-navy)">
         <ul style={{ paddingLeft: 20, margin: 0 }}>
           <Bullet>Generative AI topics (GPT-4o backbone), Plugin actions (OpenAPI connectors), Power Automate flows</Bullet>
           <Bullet>MCP support added 2025; publish to Teams, web, phone; autonomous triggers</Bullet>

@@ -68,7 +68,7 @@
 }
 
 .dashboard-quick-nav__btn:nth-child(even) {
-  background: #2563eb;
+  background: var(--chase-navy);
 }
 
 .dashboard-quick-nav__btn:nth-child(odd):hover {
@@ -79,7 +79,7 @@
 }
 
 .dashboard-quick-nav__btn:nth-child(even):hover {
-  background: #1d4ed8;
+  background: var(--chase-navy);
   border-color: rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
   transform: translateY(-1px);
@@ -100,7 +100,7 @@
 }
 
 .dashboard-quick-nav__btn--active:nth-child(even) {
-  background: #1e40af;
+  background: var(--chase-navy);
   border-color: rgba(255, 255, 255, 0.25);
 }
 

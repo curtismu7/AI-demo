@@ -5,7 +5,7 @@
   --sn-bg-hover:    #2e3450;
   --sn-bg-active:   #363d5f;
   --sn-accent:      #6366f1;
-  --sn-text:        #e2e8f0;
+  --sn-text:        #DDDDDD;
   --sn-muted:       #8896b3;
   --sn-border:      rgba(255,255,255,0.10);
   --sn-width:       220px;
@@ -175,7 +175,7 @@
   gap: 10px;
   padding: 8px 12px 8px 14px;
   text-decoration: none;
-  color: #cbd5e1;
+  color: #CCCCCC;
   font-size: 13px;
   font-weight: 500;
   border-radius: 6px;
@@ -226,7 +226,7 @@
   cursor: pointer;
   font-family: inherit;
   font-size: inherit;
-  color: #cbd5e1;
+  color: #CCCCCC;
   text-align: left;
   width: 100%;
 }

@@ -119,7 +119,7 @@ function CodeBlock({ children }) {
 function StatusBadge({ status }) {
   const map = {
     idle:     { color: '#6b7280', label: 'Idle' },
-    loading:  { color: '#2563eb', label: 'Initiating…' },
+    loading:  { color: 'var(--chase-navy)', label: 'Initiating…' },
     pending:  { color: '#d97706', label: '⏳ Waiting for approval' },
     approved: { color: '#16a34a', label: '✅ Approved' },
     denied:   { color: '#dc2626', label: '❌ Denied' },

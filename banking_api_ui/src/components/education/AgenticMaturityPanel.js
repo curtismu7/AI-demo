@@ -8,7 +8,7 @@ function Badge({ color, children }) {
     red:    { bg: 'rgba(220,38,38,0.10)',  border: '#dc2626', text: '#7f1d1d' },
     amber:  { bg: 'rgba(217,119,6,0.10)',  border: '#d97706', text: '#78350f' },
     green:  { bg: 'rgba(22,163,74,0.10)',  border: '#16a34a', text: '#14532d' },
-    blue:   { bg: 'rgba(37,99,235,0.10)',  border: '#2563eb', text: '#1e3a8a' },
+    blue:   { bg: 'rgba(37,99,235,0.10)',  border: 'var(--chase-navy)', text: 'var(--chase-navy)' },
     purple: { bg: 'rgba(124,58,237,0.10)', border: '#7c3aed', text: '#4c1d95' },
   };
   const c = colorMap[color] || colorMap.blue;
@@ -30,7 +30,7 @@ function Badge({ color, children }) {
 }
 
 function QuestionCard({ question, answer, color = 'blue' }) {
-  const borderColor = { red: '#dc2626', amber: '#d97706', green: '#16a34a', blue: '#2563eb', purple: '#7c3aed' }[color] || '#2563eb';
+  const borderColor = { red: '#dc2626', amber: '#d97706', green: '#16a34a', blue: 'var(--chase-navy)', purple: '#7c3aed' }[color] || 'var(--chase-navy)';
   return (
     <div style={{
       border: `1px solid ${borderColor}33`,
@@ -51,7 +51,7 @@ function QuestionCard({ question, answer, color = 'blue' }) {
 }
 
 function LevelCard({ level, emoji, title, subtitle, color, children }) {
-  const borderColor = { red: '#dc2626', amber: '#d97706', green: '#16a34a' }[color] || '#2563eb';
+  const borderColor = { red: '#dc2626', amber: '#d97706', green: '#16a34a' }[color] || 'var(--chase-navy)';
   return (
     <div style={{
       border: `1px solid ${borderColor}33`,
@@ -565,7 +565,7 @@ const exchanged = await pingoneTokenExchange({
           borderRadius: 8,
           padding: '12px 16px',
           fontSize: '0.83rem',
-          color: '#1e3a8a',
+          color: 'var(--chase-navy)',
         }}>
           <strong>💡 To see Level 3 in action:</strong> enable the AI Banking Assistant, ask it to
           transfer more than $500. You will see the HITL consent popup, the PingOne Authorize gate

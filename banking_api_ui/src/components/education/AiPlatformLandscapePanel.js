@@ -62,7 +62,7 @@ function AwsContent() {
 }
 
 function MicrosoftContent() {
-  const c = '#2563eb';
+  const c = 'var(--chase-navy)';
   return (
     <div>
       <VendorHeader emoji="🔷" name="Microsoft Azure AI" tagline="AI everywhere, from infrastructure to copilots" color={c} />
@@ -112,7 +112,7 @@ function GoogleContent() {
 }
 
 function IbmContent() {
-  const c = '#1d4ed8';
+  const c = 'var(--chase-navy)';
   return (
     <div>
       <VendorHeader emoji="🔵" name="IBM watsonx" tagline="Enterprise AI built for trust, transparency, and governance" color={c} />
@@ -130,7 +130,7 @@ function IbmContent() {
         description="AI-powered document search and NLP enrichment. RAG-ready with watsonx.ai integration." />
       <ToolCard name="IBM OpenScale / OpenPages" category="Risk & Compliance" color={c}
         description="OpenScale: AI fairness, bias, and explainability monitoring. OpenPages: integrated risk management platform with AI for regulated industries." />
-      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '0.65rem 0.85rem', marginTop: '0.5rem', fontSize: '0.82rem', color: '#1e3a8a' }}>
+      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '0.65rem 0.85rem', marginTop: '0.5rem', fontSize: '0.82rem', color: 'var(--chase-navy)' }}>
         <strong>IBM differentiator:</strong> IBM's focus is enterprise governance and transparency — auditability, bias monitoring, and compliance for regulated industries (banking, healthcare, insurance). Granite models publish full data lineage.
       </div>
     </div>
@@ -208,9 +208,9 @@ function ComparisonContent() {
   ];
   const bestFor = [
     ['AWS', '#f97316', 'Existing AWS shops; broadest model choice + deep AWS service integration.'],
-    ['Microsoft', '#2563eb', 'Office 365 / Teams shops that want enterprise copilots with Azure compliance.'],
+    ['Microsoft', 'var(--chase-navy)', 'Office 365 / Teams shops that want enterprise copilots with Azure compliance.'],
     ['Google', '#16a34a', 'Very long context windows, multimodal (text/image/audio/video natively), or BigQuery ML.'],
-    ['IBM', '#1d4ed8', 'Banking, insurance, or healthcare needing auditable AI governance + regulatory compliance.'],
+    ['IBM', 'var(--chase-navy)', 'Banking, insurance, or healthcare needing auditable AI governance + regulatory compliance.'],
     ['Anthropic', '#7c3aed', 'Safety-critical applications, or when Claude\'s instruction-following quality is essential.'],
     ['OpenAI', '#059669', 'Largest developer ecosystem, most mature Assistants API, or real-time voice AI.'],
   ];

@@ -126,7 +126,7 @@ export default function SetupPage() {
   }, [publicBaseUrl, bootstrapDryRun, bootstrapIncludeUsers, setupMasterKey]);
 
   const headerStyle = {
-    background: 'linear-gradient(to bottom, #1e40af 0%, #1e3a8a 100%)',
+    background: 'linear-gradient(to bottom, var(--chase-navy) 0%, var(--chase-navy) 100%)',
     color: 'white',
     padding: '1rem 0',
     boxShadow: '0 2px 4px rgba(0,0,0,.15)',
@@ -193,7 +193,7 @@ export default function SetupPage() {
               style={{
                 display: 'inline-block',
                 background: 'white',
-                color: '#1e3a8a',
+                color: 'var(--chase-navy)',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 padding: '0.5rem 1rem',
@@ -217,8 +217,8 @@ export default function SetupPage() {
 
       <div className="container" style={{ padding: '2rem 20px', maxWidth: '800px' }}>
         <div style={{ ...cardStyle, background: '#eff6ff', borderColor: '#bfdbfe' }}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: '#1e3a8a' }}>Where to run commands</h2>
-          <p style={{ margin: 0, color: '#1e40af', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: 'var(--chase-navy)' }}>Where to run commands</h2>
+          <p style={{ margin: 0, color: 'var(--chase-navy)', fontSize: '0.9375rem', lineHeight: 1.6 }}>
             <code>npm run setup:vercel</code> is defined in the <strong>repository root</strong> <code>package.json</code> (the folder that contains <code>scripts/setup-vercel-env.js</code>), not inside <code>banking_api_ui/</code>.
             Clone the repo, run <code>npm install</code> at the root, link your Vercel project (<code>vercel link</code>), then use the buttons below to copy commands into your terminal.
           </p>
@@ -298,7 +298,7 @@ export default function SetupPage() {
             </button>
             <button
               type="button"
-              style={{ ...btnStyle, background: '#1e3a8a', color: '#fff', borderColor: '#1e3a8a' }}
+              style={{ ...btnStyle, background: 'var(--chase-navy)', color: '#fff', borderColor: 'var(--chase-navy)' }}
               onClick={handleManagementProbe}
               disabled={probeLoading}
             >
@@ -437,8 +437,8 @@ export default function SetupPage() {
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-          <Link to="/" style={{ fontSize: '0.9375rem', color: '#2563eb' }}>Return to sign in</Link>
-          <Link to="/onboarding" style={{ fontSize: '0.9375rem', color: '#2563eb' }}>PingOne checklist</Link>
+          <Link to="/" style={{ fontSize: '0.9375rem', color: 'var(--chase-navy)' }}>Return to sign in</Link>
+          <Link to="/onboarding" style={{ fontSize: '0.9375rem', color: 'var(--chase-navy)' }}>PingOne checklist</Link>
         </div>
       </div>
     </div>

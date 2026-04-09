@@ -124,7 +124,7 @@
   height: 1.75rem;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: #999999;
   cursor: pointer;
   border-radius: 0.25rem;
   font-size: 0.7rem;
@@ -133,7 +133,7 @@
 }
 
 .token-chain-expand:hover {
-  background: #e2e8f0;
+  background: #DDDDDD;
   color: #0f172a;
 }
 
@@ -208,13 +208,13 @@
   font-size: 0.75rem;
   line-height: 1;
   padding: 0;
-  color: #475569;
+  color: #666666;
 }
 
 .token-chain-copy:hover {
   background: #eff6ff;
   border-color: #93c5fd;
-  color: #1d4ed8;
+  color: var(--chase-navy);
 }
 
 .token-chain-detail {
@@ -229,8 +229,8 @@
 .token-chain-detail pre {
   margin: 0.4rem 0 0;
   padding: 0.5rem 0.55rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border: 1px solid #DDDDDD;
   border-radius: 0.35rem;
   font-size: 0.68rem;
   overflow: auto;

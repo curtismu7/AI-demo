@@ -51,7 +51,7 @@
 }
 
 .app-top-header .nav-link {
-  color: #1e40af;
+  color: var(--chase-navy);
   padding: 0.35rem clamp(0.35rem, 1vw, 0.75rem);
   font-size: clamp(0.7rem, 0.6vw + 0.65rem, 0.9rem);
   border-radius: 0.375rem;
@@ -83,7 +83,7 @@
 .header-switch-role-btn {
   background: #eff6ff;
   border-color: #bfdbfe;
-  color: #1e40af;
+  color: var(--chase-navy);
   font-weight: 600;
 }
 

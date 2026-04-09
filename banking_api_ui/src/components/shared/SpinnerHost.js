@@ -15,7 +15,7 @@ export default function SpinnerHost() {
 
   if (!visible) return null;
 
-  const accentColor = color || '#2563eb';
+  const accentColor = color || 'var(--chase-navy)';
 
   return ReactDOM.createPortal(
     <div

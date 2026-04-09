@@ -22,7 +22,7 @@ export default function PingOneSetupGuidePage() {
   }, []);
 
   const headerStyle = {
-    background: 'linear-gradient(to bottom, #1e40af 0%, #1e3a8a 100%)',
+    background: 'linear-gradient(to bottom, var(--chase-navy) 0%, var(--chase-navy) 100%)',
     color: 'white',
     padding: '1rem 0',
     boxShadow: '0 2px 4px rgba(0,0,0,.15)',
@@ -82,7 +82,7 @@ export default function PingOneSetupGuidePage() {
               style={{
                 display: 'inline-block',
                 background: 'white',
-                color: '#1e3a8a',
+                color: 'var(--chase-navy)',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 padding: '0.5rem 1rem',
@@ -98,8 +98,8 @@ export default function PingOneSetupGuidePage() {
 
       <div className="container" style={{ padding: '2rem 20px', maxWidth: '920px' }}>
         <div style={{ ...cardStyle, background: '#eff6ff', borderColor: '#bfdbfe' }}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: '#1e3a8a' }}>How to use this page</h2>
-          <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#1e40af', fontSize: '0.9375rem', lineHeight: 1.65 }}>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: 'var(--chase-navy)' }}>How to use this page</h2>
+          <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--chase-navy)', fontSize: '0.9375rem', lineHeight: 1.65 }}>
             <li><strong>/onboarding</strong> — short checklist (roles, hosted vs localhost).</li>
             <li><strong>/setup</strong> — copy-paste <code>npm run setup:vercel</code>, PingOne bootstrap plan from the API, and (as admin) probe / run bootstrap.</li>
             <li><strong>/config</strong> — enter or review PingOne environment, OAuth apps, and advanced options (localhost SQLite or deployment-managed).</li>
@@ -263,9 +263,9 @@ export default function PingOneSetupGuidePage() {
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-          <Link to="/setup" style={{ fontSize: '0.9375rem', color: '#2563eb' }}>Open Deployment setup</Link>
-          <Link to="/onboarding" style={{ fontSize: '0.9375rem', color: '#2563eb' }}>Open Setup checklist</Link>
-          <Link to="/" style={{ fontSize: '0.9375rem', color: '#2563eb' }}>Return to sign in</Link>
+          <Link to="/setup" style={{ fontSize: '0.9375rem', color: 'var(--chase-navy)' }}>Open Deployment setup</Link>
+          <Link to="/onboarding" style={{ fontSize: '0.9375rem', color: 'var(--chase-navy)' }}>Open Setup checklist</Link>
+          <Link to="/" style={{ fontSize: '0.9375rem', color: 'var(--chase-navy)' }}>Return to sign in</Link>
         </div>
       </div>
     </div>

@@ -164,7 +164,7 @@ function ResultCard({ result, onReset }) {
 
       <button
         onClick={onReset}
-        style={{ marginTop: '16px', padding: '10px 20px', background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+        style={{ marginTop: '16px', padding: '10px 20px', background: 'var(--chase-navy)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
       >
         Register another client
       </button>
@@ -283,7 +283,7 @@ export default function ClientRegistrationPage({ user, onLogout }) {
       <div style={{ maxWidth: '760px', margin: '0 auto' }}>
         <div style={{
           marginBottom: '32px', padding: '14px 16px', background: '#eef2ff',
-          borderLeft: '4px solid #2563eb', borderRadius: '0 6px 6px 0', fontSize: '13px', color: '#1e40af',
+          borderLeft: '4px solid var(--chase-navy)', borderRadius: '0 6px 6px 0', fontSize: '13px', color: 'var(--chase-navy)',
         }}>
           <strong>How this works:</strong> You define the metadata below (CIMD format). The server
           calls the PingOne Management API to create the OAuth application, then hosts the
@@ -385,7 +385,7 @@ export default function ClientRegistrationPage({ user, onLogout }) {
               type="submit"
               disabled={submitting || !clientName.trim()}
               style={{
-                padding: '12px 28px', background: submitting || !clientName.trim() ? '#e2e8f0' : '#1d4ed8',
+                padding: '12px 28px', background: submitting || !clientName.trim() ? '#e2e8f0' : 'var(--chase-navy)',
                 color: submitting || !clientName.trim() ? '#94a3b8' : 'white',
                 border: 'none', borderRadius: '6px', cursor: submitting || !clientName.trim() ? 'not-allowed' : 'pointer',
                 fontWeight: 700, fontSize: '15px',

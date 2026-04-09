@@ -206,7 +206,7 @@ function RecentDecisionsViewer() {
         onClick={handleFetch}
         disabled={loading}
         style={{
-          background: '#1e40af', color: '#fff', border: 'none', borderRadius: 8,
+          background: 'var(--chase-navy)', color: '#fff', border: 'none', borderRadius: 8,
           padding: '8px 18px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
           opacity: loading ? 0.65 : 1,
         }}
@@ -330,7 +330,7 @@ function AuthorizePolicyEducationDiagram() {
         {/* Check rows */}
         <g fontFamily="system-ui, Segoe UI, sans-serif">
           <rect x="36" y="136" width="348" height="42" rx="6" fill="#eff6ff" stroke="#93c5fd" />
-          <text x="48" y="156" fill="#1e3a8a" fontSize="11" fontWeight="600">1. SUB — user in IdP directory</text>
+          <text x="48" y="156" fill="var(--chase-navy)" fontSize="11" fontWeight="600">1. SUB — user in IdP directory</text>
           <text x="48" y="170" fill="#475569" fontSize="9">Subject exists / eligible (PingOne user store; sent as UserId to Authorize)</text>
 
           <rect x="36" y="184" width="348" height="42" rx="6" fill="#f0fdf4" stroke="#86efac" />

@@ -276,7 +276,7 @@ function DisplayPreferences() {
         </label>
       </div>
       {mode === 'fullpage' && (
-        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: '#1d4ed8' }}>
+        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--chase-navy)' }}>
           💡 Full Page mode: Agent results will update the account cards and transaction table on your dashboard.
           The Agent chat stays open for follow-up questions.
         </div>
@@ -390,7 +390,7 @@ function AgentLayoutPreferences() {
         reloads with split view.
       </p>
       {placement === 'bottom' && (
-        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: '#1d4ed8' }}>
+        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--chase-navy)' }}>
           Bottom dock: open <strong>Home</strong> or <strong>My Dashboard</strong> to use the agent. The marketing home page still uses the floating agent when you are not signed in.
         </div>
       )}
@@ -779,13 +779,13 @@ export default function Config() {
                   padding: '12px 24px',
                   border: '2px solid transparent',
                   borderBottom: isActive ? '2px solid #fff' : '2px solid transparent',
-                  borderTop: isActive ? '2px solid #2563eb' : '2px solid transparent',
+                  borderTop: isActive ? '2px solid var(--chase-navy)' : '2px solid transparent',
                   borderLeft: isActive ? '2px solid #e5e7eb' : '2px solid #e5e7eb',
                   borderRight: isActive ? '2px solid #e5e7eb' : '2px solid #e5e7eb',
                   background: isActive ? '#fff' : '#e5e7eb',
                   cursor: 'pointer',
                   fontWeight: isActive ? 700 : 500,
-                  color: isActive ? '#1e40af' : '#4b5563',
+                  color: isActive ? 'var(--chase-navy)' : '#4b5563',
                   fontSize: '0.9rem',
                   marginBottom: '-2px',
                   borderRadius: isActive ? '6px 6px 0 0' : '6px 6px 0 0',
@@ -843,10 +843,10 @@ export default function Config() {
                 Manage OAuth scopes in your PingOne environment. Create, update, or remove scopes and grant them to applications.
               </p>
               <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
-                <strong>Scope Update Tool:</strong> Go to the <Link to="/admin" style={{ color: '#2563eb', textDecoration: 'underline' }}>Admin Dashboard</Link> → Banking Admin page to use the automated <strong>Fix PingOne Scopes</strong> button.
+                <strong>Scope Update Tool:</strong> Go to the <Link to="/admin" style={{ color: 'var(--chase-navy)', textDecoration: 'underline' }}>Admin Dashboard</Link> → Banking Admin page to use the automated <strong>Fix PingOne Scopes</strong> button.
               </p>
               <div style={{ backgroundColor: '#f0f7fb', border: '1px solid #93c5fd', borderRadius: '8px', padding: '1rem' }}>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e40af' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--chase-navy)' }}>
                   💡 <strong>Tip:</strong> Use the automated scope update tool to:
                   <ul style={{ marginTop: '0.5rem', marginBottom: 0, paddingLeft: '1.5rem' }}>
                     <li>Create <code>banking:ai:agent:read</code> scope (Phase 69.1 standard)</li>
@@ -1909,7 +1909,7 @@ export default function Config() {
                   disabled={hostnameLoading}
                   style={{
                     padding: '0.75rem 1.5rem',
-                    background: hostnameLoading ? '#9ca3af' : '#3b82f6',
+                    background: hostnameLoading ? '#9ca3af' : 'var(--chase-navy)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '0.375rem',

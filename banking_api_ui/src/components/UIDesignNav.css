@@ -17,14 +17,14 @@
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.06em;
-  color: #334155;
+  color: var(--chase-dark-gray);
   cursor: pointer;
 }
 
 .ui-design-nav__toggle:hover {
   background: #fff;
   border-color: rgba(37, 99, 235, 0.4);
-  color: #2563eb;
+  color: var(--chase-navy);
 }
 
 .ui-design-nav__menu {
@@ -71,19 +71,19 @@
 }
 
 .ui-design-nav__link:hover {
-  background: #f1f5f9;
+  background: var(--chase-light-gray);
 }
 
 .ui-design-nav__link--active {
   font-weight: 600;
-  color: #2563eb;
+  color: var(--chase-navy);
   background: rgba(37, 99, 235, 0.08);
 }
 
 html[data-theme='dark'] .ui-design-nav__toggle {
   background: rgba(20, 26, 36, 0.95);
   border-color: rgba(148, 163, 184, 0.25);
-  color: #e2e8f0;
+  color: #DDDDDD;
 }
 
 html[data-theme='dark'] .ui-design-nav__menu {
@@ -92,7 +92,7 @@ html[data-theme='dark'] .ui-design-nav__menu {
 }
 
 html[data-theme='dark'] .ui-design-nav__link {
-  color: #e2e8f0;
+  color: #DDDDDD;
 }
 
 html[data-theme='dark'] .ui-design-nav__link:hover {

@@ -234,7 +234,7 @@ if (metadata.resource !== requested_resource_url) {
           padding: '12px 14px',
           background: '#eff6ff',
           borderRadius: 8,
-          border: '1px solid #3b82f6',
+          border: '1px solid var(--chase-navy)',
         }}
       >
         <h4 style={{ margin: '0 0 8px', fontSize: '0.95rem' }}>Current Implementation Status</h4>

@@ -397,7 +397,7 @@ function EventDetail({ event }) {
 function openInNewWindow(event) {
   const claimsHtml = event.claims
     ? Object.entries(event.claims).map(([k, v]) => {
-        const highlight = { may_act: '#1e40af', act: '#0f766e', scope: '#6d28d9', aud: '#166534' }[k] || '';
+        const highlight = { may_act: 'var(--chase-navy)', act: '#0f766e', scope: '#6d28d9', aud: '#166534' }[k] || '';
         const bg = highlight ? `background:${highlight}22;` : '';
         return `<div class="claim" style="${bg}">
           <span class="key">${k}</span>
@@ -431,7 +431,7 @@ function openInNewWindow(event) {
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:#0f172a;color:#e2e8f0;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:0}
-    .header{background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:14px 18px;display:flex;flex-direction:column;gap:2px}
+    .header{background:linear-gradient(135deg,var(--chase-navy),var(--chase-navy));padding:14px 18px;display:flex;flex-direction:column;gap:2px}
     .title{font-size:1rem;font-weight:800;color:#fff}
     .subtitle{font-size:0.78rem;color:#93c5fd}
     .body{padding:16px;display:flex;flex-direction:column;gap:14px;overflow:auto;height:calc(100vh - 70px)}

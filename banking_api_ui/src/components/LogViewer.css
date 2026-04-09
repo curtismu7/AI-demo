@@ -9,7 +9,7 @@
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   z-index: 9999;
@@ -27,8 +27,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f1f5f9;
+  border-bottom: 1px solid #DDDDDD;
+  background: var(--chase-light-gray);
   border-radius: 8px 8px 0 0;
   cursor: grab;
   user-select: none;
@@ -51,8 +51,8 @@
 
 .log-action-btn {
   background: transparent;
-  border: 1px solid #cbd5e1;
-  color: #64748b;
+  border: 1px solid #CCCCCC;
+  color: #999999;
   font-size: 16px;
   width: 28px;
   height: 28px;
@@ -66,14 +66,14 @@
 }
 .log-action-btn:hover {
   background: #eff6ff;
-  color: #1d4ed8;
+  color: var(--chase-navy);
   border-color: #93c5fd;
 }
 
 .close-button {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: #999999;
   font-size: 24px;
   cursor: pointer;
   padding: 4px 12px;
@@ -82,7 +82,7 @@
 }
 
 .close-button:hover {
-  background: #f1f5f9;
+  background: var(--chase-light-gray);
   color: #0f172a;
 }
 
@@ -90,8 +90,8 @@
   display: flex;
   gap: 12px;
   padding: 16px 24px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border-bottom: 1px solid #DDDDDD;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -114,7 +114,7 @@
   width: 100%;
   flex-basis: 100%;
   font-size: 12px;
-  color: #475569;
+  color: #666666;
   margin: 0 0 8px;
   padding: 6px 10px;
   background: #eff6ff;
@@ -124,7 +124,7 @@
 
 .log-toast-type {
   font-size: 0.7rem;
-  color: #64748b;
+  color: #999999;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -141,9 +141,9 @@
   overflow: auto;
   font-size: 11px;
   line-height: 1.35;
-  color: #1e293b;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  color: var(--chase-dark-gray);
+  background: var(--chase-light-gray);
+  border: 1px solid #DDDDDD;
   border-radius: 4px;
   padding: 6px 8px;
   white-space: pre-wrap;
@@ -157,8 +157,8 @@
 
 .runtime-chip {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #334155;
+  border: 1px solid #CCCCCC;
+  color: var(--chase-dark-gray);
   padding: 6px 12px;
   border-radius: 999px;
   font-size: 12px;
@@ -169,13 +169,13 @@
 
 .runtime-chip:hover {
   border-color: #93c5fd;
-  color: #1d4ed8;
+  color: var(--chase-navy);
   background: #eff6ff;
 }
 
 .runtime-chip.active {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: var(--chase-navy);
+  border-color: var(--chase-navy);
   color: #ffffff;
 }
 
@@ -190,7 +190,7 @@
 }
 
 .control-group label {
-  color: #475569;
+  color: #666666;
   font-size: 14px;
   white-space: nowrap;
 }
@@ -198,7 +198,7 @@
 .control-group select,
 .control-group input[type="text"] {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #CCCCCC;
   color: #0f172a;
   padding: 6px 12px;
   border-radius: 4px;
@@ -209,7 +209,7 @@
 
 .control-group select:focus,
 .control-group input[type="text"]:focus {
-  border-color: #3b82f6;
+  border-color: var(--chase-navy);
   box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
 }
 
@@ -230,8 +230,8 @@
 .clear-button,
 .copy-button {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #475569;
+  border: 1px solid #CCCCCC;
+  color: #666666;
   padding: 6px 16px;
   border-radius: 4px;
   font-size: 14px;
@@ -246,13 +246,13 @@
 .clear-button:hover,
 .copy-button:hover {
   background: #eff6ff;
-  color: #1d4ed8;
+  color: var(--chase-navy);
   border-color: #93c5fd;
 }
 
 .refresh-button:disabled,
 .copy-button:disabled {
-  background: #f1f5f9;
+  background: var(--chase-light-gray);
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -260,8 +260,8 @@
 .pause-button,
 .resume-button {
   background: #ffffff;
-  color: #475569;
-  border: 1px solid #cbd5e1;
+  color: #666666;
+  border: 1px solid #CCCCCC;
   padding: 6px 16px;
   border-radius: 4px;
   font-size: 14px;
@@ -273,7 +273,7 @@
 .pause-button:hover,
 .resume-button:hover {
   background: #eff6ff;
-  color: #1d4ed8;
+  color: var(--chase-navy);
   border-color: #93c5fd;
 }
 
@@ -281,13 +281,13 @@
   display: flex;
   gap: 20px;
   padding: 12px 24px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border-bottom: 1px solid #DDDDDD;
   font-size: 14px;
 }
 
 .log-stats span {
-  color: #64748b;
+  color: #999999;
   font-weight: 500;
 }
 
@@ -315,33 +315,33 @@
 .log-table thead {
   position: sticky;
   top: 0;
-  background: #f8fafc;
+  background: var(--chase-light-gray);
   z-index: 10;
 }
 
 .log-table th {
   text-align: left;
   padding: 12px 16px;
-  color: #64748b;
+  color: #999999;
   font-weight: 600;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid #DDDDDD;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .log-table tbody tr {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--chase-light-gray);
   transition: background 0.1s;
 }
 
 .log-table tbody tr:hover {
-  background: #f8fafc;
+  background: var(--chase-light-gray);
 }
 
 .log-table td {
   padding: 10px 16px;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   vertical-align: top;
 }
 
@@ -370,15 +370,15 @@
   white-space: pre-wrap;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   line-height: 1.5;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
 }
 
 .correlation-id {
   display: inline-block;
   margin-left: 12px;
   padding: 2px 8px;
-  background: #e2e8f0;
-  color: #64748b;
+  background: #DDDDDD;
+  color: #999999;
   border-radius: 3px;
   font-size: 11px;
 }
@@ -404,9 +404,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
-  color: #64748b;
+  background: var(--chase-light-gray);
+  border-top: 1px solid #DDDDDD;
+  color: #999999;
   font-size: 13px;
   border-radius: 0 0 8px 8px;
 }
@@ -434,11 +434,11 @@
 }
 
 .log-table-container::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: var(--chase-light-gray);
 }
 
 .log-table-container::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #CCCCCC;
   border-radius: 6px;
 }
 
@@ -481,7 +481,7 @@
 
 .log-page-shell {
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--chase-light-gray);
 }
 
 /* Responsive */

@@ -36,7 +36,7 @@
   gap: 0.75rem;
   padding: 0.65rem 3rem 0.5rem 0.75rem; /* right padding keeps tabs from hiding under X */
   border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
+  background: var(--chase-light-gray);
 }
 
 .edu-drawer-tabs {
@@ -71,13 +71,13 @@
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #CCCCCC;
   border-radius: 50%;
   background: #fff;
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
-  color: #475569;
+  color: #666666;
   padding: 0;
   z-index: 1;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -90,13 +90,13 @@
 }
 
 .edu-drawer-tab {
-  border: 1px solid #cbd5e1;
+  border: 1px solid #CCCCCC;
   background: #fff;
   border-radius: 999px;
   padding: 0.35rem 0.65rem;
   font-size: 0.7rem;
   cursor: pointer;
-  color: #334155;
+  color: var(--chase-dark-gray);
 }
 
 .edu-drawer-tab--active {
@@ -111,17 +111,17 @@
   padding: 1rem 1.25rem 1.5rem;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: #334155;
+  color: var(--chase-dark-gray);
 }
 
 .edu-drawer-body pre,
 .edu-code {
-  background: #f1f5f9;
+  background: var(--chase-light-gray);
   border-radius: 0.375rem;
   padding: 0.75rem;
   font-size: 0.75rem;
   overflow: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
 }
 
 .edu-drawer-body h3 {
@@ -149,7 +149,7 @@
 }
 
 .edu-drawer-body a {
-  color: #1d4ed8;
+  color: var(--chase-navy);
 }
 
 .edu-modal {
@@ -181,16 +181,16 @@
   padding: 1rem 1.25rem 1.5rem;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: #334155;
+  color: var(--chase-dark-gray);
 }
 
 .edu-modal-body pre,
 .edu-modal-body .edu-code {
-  background: #f1f5f9;
+  background: var(--chase-light-gray);
   border-radius: 0.375rem;
   padding: 0.75rem;
   font-size: 0.7rem;
   overflow: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
 }
 

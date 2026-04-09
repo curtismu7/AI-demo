@@ -9,7 +9,7 @@ import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 
 const ACCOUNT_TYPE_BADGE_COLORS = {
-  checking: '#3b82f6',
+  checking: 'var(--chase-navy)',
   savings: '#10b981',
   investment: '#8b5cf6',
   money_market: '#06b6d4',

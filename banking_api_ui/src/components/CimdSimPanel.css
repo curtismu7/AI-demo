@@ -141,8 +141,8 @@
 /* ---------- Tabs ---------- */
 .cimd-tabs {
   display: flex;
-  background: #f1f5f9;
-  border-bottom: 2px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border-bottom: 2px solid #DDDDDD;
   flex-shrink: 0;
   overflow-x: auto;
 }
@@ -154,7 +154,7 @@
   background: transparent;
   font-size: 0.76rem;
   font-weight: 500;
-  color: #64748b;
+  color: #999999;
   cursor: pointer;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
@@ -178,7 +178,7 @@
   padding: 1.25rem 1.4rem;
   font-size: 0.875rem;
   line-height: 1.7;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
 }
 
 .cimd-body p {
@@ -219,7 +219,7 @@
 /* ---------- Code block ---------- */
 .cimd-code {
   background: #0f172a;
-  color: #e2e8f0;
+  color: #DDDDDD;
   padding: 12px 16px;
   border-radius: 6px;
   overflow-x: auto;
@@ -254,11 +254,11 @@
 }
 .cimd-table td {
   padding: 7px 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #DDDDDD;
   vertical-align: top;
 }
 .cimd-table tr:nth-child(even) td {
-  background: #f8fafc;
+  background: var(--chase-light-gray);
 }
 
 /* ---------- Info callout ---------- */
@@ -323,8 +323,8 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #e2e8f0;
-  border: 2px solid #cbd5e1;
+  background: #DDDDDD;
+  border: 2px solid #CCCCCC;
   flex-shrink: 0;
   transition: background 0.25s, border-color 0.25s;
   display: flex;
@@ -354,7 +354,7 @@
 
 .cimd-sim-progress-label {
   font-size: 11px;
-  color: #64748b;
+  color: #999999;
   margin-left: 6px;
   font-weight: 600;
 }
@@ -407,7 +407,7 @@
 .cimd-spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid #DDDDDD;
   border-top: 2px solid #0d9488;
   border-radius: 50%;
   animation: cimd-spin 0.75s linear infinite;
@@ -453,7 +453,7 @@
 }
 
 .cimd-check-detail {
-  color: #475569;
+  color: #666666;
   font-size: 0.77rem;
   display: block;
   margin-top: 1px;
@@ -482,7 +482,7 @@
 .cimd-input {
   flex: 1;
   padding: 0.45rem 0.75rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #CCCCCC;
   border-radius: 6px;
   font-size: 0.82rem;
   outline: none;
@@ -564,5 +564,5 @@
 }
 .cimd-setup-step-body span {
   font-size: 0.81rem;
-  color: #475569;
+  color: #666666;
 }

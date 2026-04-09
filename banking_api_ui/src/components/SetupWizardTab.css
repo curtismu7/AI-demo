@@ -435,11 +435,11 @@
   .swt-log-panel {
     background-color: #2d3748;
     border-color: #4a5568;
-    color: #e2e8f0;
+    color: #DDDDDD;
   }
   
   .swt-panel-header h2 {
-    color: #e2e8f0;
+    color: #DDDDDD;
   }
   
   .swt-panel-header p {
@@ -447,7 +447,7 @@
   }
   
   .swt-input-group label {
-    color: #e2e8f0;
+    color: #DDDDDD;
   }
   
   .swt-input-group input,
@@ -455,7 +455,7 @@
   .swt-input-group textarea {
     background-color: #4a5568;
     border-color: #718096;
-    color: #e2e8f0;
+    color: #DDDDDD;
   }
   
   .swt-input-group input:focus,
@@ -470,12 +470,12 @@
   }
   
   .swt-section h3 {
-    color: #e2e8f0;
+    color: #DDDDDD;
   }
   
   .swt-log-entries {
     background-color: #2d3748;
-    color: #e2e8f0;
+    color: #DDDDDD;
   }
   
   .swt-log-entry {
@@ -488,13 +488,13 @@
   }
   
   .swt-env-header h3 {
-    color: #e2e8f0;
+    color: #DDDDDD;
   }
   
   .swt-env-textarea {
     background-color: #4a5568;
     border-color: #718096;
-    color: #e2e8f0;
+    color: #DDDDDD;
   }
 }
 

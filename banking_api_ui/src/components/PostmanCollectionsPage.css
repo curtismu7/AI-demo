@@ -2,7 +2,7 @@
 
 .postman-page {
   min-height: 100vh;
-  background: linear-gradient(165deg, #ffffff 0%, #f8fafc 48%, #f1f5f9 100%);
+  background: linear-gradient(165deg, #ffffff 0%, var(--chase-light-gray) 48%, var(--chase-light-gray) 100%);
 }
 
 .postman-page__main {
@@ -21,7 +21,7 @@
   font-weight: 700;
   color: #0f172a;
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 50%, var(--chase-navy) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -29,7 +29,7 @@
 
 .postman-page__subtitle {
   font-size: 1.125rem;
-  color: #64748b;
+  color: #999999;
   line-height: 1.6;
   max-width: 800px;
   margin: 0 auto;
@@ -42,7 +42,7 @@
 .postman-section h2 {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
@@ -57,7 +57,7 @@
 
 .postman-card {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -67,14 +67,14 @@
 }
 
 .postman-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--chase-navy);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   transform: translateY(-2px);
 }
 
 .postman-card--environment {
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-color: #3b82f6;
+  border-color: var(--chase-navy);
 }
 
 .postman-card__content {
@@ -93,7 +93,7 @@
 .postman-card__header h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   margin: 0;
   line-height: 1.4;
 }
@@ -115,7 +115,7 @@
 
 .postman-card__audience {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #999999;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -137,7 +137,7 @@
 }
 
 .postman-card__description {
-  color: #64748b;
+  color: #999999;
   line-height: 1.6;
   margin-bottom: 1rem;
   font-size: 0.875rem;
@@ -152,10 +152,10 @@
 .postman-card__feature {
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border: 1px solid #DDDDDD;
   border-radius: 6px;
-  color: #475569;
+  color: #666666;
 }
 
 .postman-card__actions {
@@ -181,13 +181,13 @@
 }
 
 .postman-btn--primary {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 50%, var(--chase-navy) 100%);
   color: white;
-  border: 1px solid #1e40af;
+  border: 1px solid var(--chase-navy);
 }
 
 .postman-btn--primary:hover {
-  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 50%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 50%, var(--chase-navy) 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
@@ -198,14 +198,14 @@
 
 .postman-card__download-count {
   font-size: 0.75rem;
-  color: #64748b;
+  color: #999999;
   text-align: center;
   font-style: italic;
 }
 
 .postman-guide {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
   border-radius: 12px;
   padding: 2rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -226,7 +226,7 @@
 .postman-guide__step-number {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
   color: white;
   border-radius: 50%;
   display: flex;
@@ -239,20 +239,20 @@
 .postman-guide__step-content h4 {
   font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   margin: 0 0 0.5rem 0;
 }
 
 .postman-guide__step-content p {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #999999;
   line-height: 1.5;
   margin: 0;
 }
 
 .postman-guide__tips {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border: 1px solid #DDDDDD;
   border-radius: 8px;
   padding: 1.5rem;
 }
@@ -260,7 +260,7 @@
 .postman-guide__tips h4 {
   font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   margin: 0 0 1rem 0;
 }
 
@@ -271,18 +271,18 @@
 
 .postman-guide__tips li {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #999999;
   line-height: 1.5;
   margin-bottom: 0.5rem;
 }
 
 .postman-guide__tips code {
-  background: #f1f5f9;
+  background: var(--chase-light-gray);
   padding: 0.125rem 0.25rem;
   border-radius: 4px;
   font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
   font-size: 0.8em;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
 }
 
 .postman-resources {
@@ -293,7 +293,7 @@
 
 .postman-resource-link {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #DDDDDD;
   border-radius: 12px;
   padding: 1.5rem;
   text-decoration: none;
@@ -305,7 +305,7 @@
 }
 
 .postman-resource-link:hover {
-  border-color: #3b82f6;
+  border-color: var(--chase-navy);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
   text-decoration: none;
@@ -323,13 +323,13 @@
 .postman-resource-content h4 {
   font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--chase-dark-gray);
   margin: 0 0 0.5rem 0;
 }
 
 .postman-resource-content p {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #999999;
   line-height: 1.5;
   margin: 0;
 }
@@ -381,11 +381,11 @@
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .postman-page {
-    background: linear-gradient(165deg, #0f172a 0%, #1e293b 48%, #334155 100%);
+    background: linear-gradient(165deg, #0f172a 0%, var(--chase-dark-gray) 48%, var(--chase-dark-gray) 100%);
   }
   
   .postman-page__header h1 {
-    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
+    background: linear-gradient(135deg, var(--chase-navy-light) 0%, var(--chase-navy) 50%, var(--chase-navy) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -396,25 +396,25 @@
   }
   
   .postman-section h2 {
-    color: #f1f5f9;
+    color: var(--chase-light-gray);
   }
   
   .postman-card {
-    background: #1e293b;
-    border-color: #475569;
+    background: var(--chase-dark-gray);
+    border-color: #666666;
   }
   
   .postman-card:hover {
-    border-color: #3b82f6;
+    border-color: var(--chase-navy);
   }
   
   .postman-card--environment {
-    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-    border-color: #3b82f6;
+    background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
+    border-color: var(--chase-navy);
   }
   
   .postman-card__header h3 {
-    color: #f1f5f9;
+    color: var(--chase-light-gray);
   }
   
   .postman-card__description {
@@ -422,18 +422,18 @@
   }
   
   .postman-card__feature {
-    background: #334155;
-    border-color: #475569;
-    color: #cbd5e1;
+    background: var(--chase-dark-gray);
+    border-color: #666666;
+    color: #CCCCCC;
   }
   
   .postman-guide {
-    background: #1e293b;
-    border-color: #475569;
+    background: var(--chase-dark-gray);
+    border-color: #666666;
   }
   
   .postman-guide__step-content h4 {
-    color: #f1f5f9;
+    color: var(--chase-light-gray);
   }
   
   .postman-guide__step-content p {
@@ -441,12 +441,12 @@
   }
   
   .postman-guide__tips {
-    background: #334155;
-    border-color: #475569;
+    background: var(--chase-dark-gray);
+    border-color: #666666;
   }
   
   .postman-guide__tips h4 {
-    color: #f1f5f9;
+    color: var(--chase-light-gray);
   }
   
   .postman-guide__tips li {
@@ -454,21 +454,21 @@
   }
   
   .postman-guide__tips code {
-    background: #475569;
-    color: #f1f5f9;
+    background: #666666;
+    color: var(--chase-light-gray);
   }
   
   .postman-resource-link {
-    background: #1e293b;
-    border-color: #475569;
+    background: var(--chase-dark-gray);
+    border-color: #666666;
   }
   
   .postman-resource-link:hover {
-    border-color: #3b82f6;
+    border-color: var(--chase-navy);
   }
   
   .postman-resource-content h4 {
-    color: #f1f5f9;
+    color: var(--chase-light-gray);
   }
   
   .postman-resource-content p {

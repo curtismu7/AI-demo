@@ -8,7 +8,7 @@
   font-size: 0.72rem;
   line-height: 1.45;
   background: #0f172a;
-  color: #e2e8f0;
+  color: #DDDDDD;
   padding: 12px 14px;
   border-radius: 8px;
   overflow: auto;
@@ -195,8 +195,8 @@
 /* ---------- Tabs ---------- */
 .ciba-tabs {
   display: flex;
-  background: #f1f5f9;
-  border-bottom: 2px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border-bottom: 2px solid #DDDDDD;
   flex-shrink: 0;
   overflow-x: auto;
 }
@@ -208,7 +208,7 @@
   background: transparent;
   font-size: 0.78rem;
   font-weight: 500;
-  color: #64748b;
+  color: #999999;
   cursor: pointer;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
@@ -223,7 +223,7 @@
 .ciba-tab--active {
   color: #1e3a5f;
   font-weight: 700;
-  border-bottom-color: #2563eb;
+  border-bottom-color: var(--chase-navy);
 }
 
 /* ---------- Scrollable body ---------- */
@@ -278,7 +278,7 @@
 /* ---------- Code block ---------- */
 .ciba-code {
   background: #0f172a;
-  color: #e2e8f0;
+  color: #DDDDDD;
   font-size: 0.74rem;
   line-height: 1.6;
   padding: 0.9rem 1rem;
@@ -305,8 +305,8 @@
   gap: 0.6rem;
   align-items: flex-start;
   padding: 0.75rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border: 1px solid #DDDDDD;
   border-radius: 8px;
   font-size: 0.8rem;
   color: #374151;
@@ -329,8 +329,8 @@
 
 .ciba-notice--info {
   background: #eff6ff;
-  border-left: 3px solid #2563eb;
-  color: #1e40af;
+  border-left: 3px solid var(--chase-navy);
+  color: var(--chase-navy);
 }
 
 .ciba-notice--warning {
@@ -378,7 +378,7 @@
 }
 
 .ciba-input:focus {
-  border-color: #2563eb;
+  border-color: var(--chase-navy);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
@@ -483,8 +483,8 @@
   gap: 0.5rem;
   font-size: 0.79rem;
   padding: 0.5rem 0.65rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--chase-light-gray);
+  border: 1px solid #DDDDDD;
   border-radius: 6px;
 }
 
@@ -511,7 +511,7 @@
   text-align: center;
 }
 
-.ciba-method--get  { background: #eff6ff; color: #1d4ed8; }
+.ciba-method--get  { background: #eff6ff; color: var(--chase-navy); }
 .ciba-method--post { background: #fef9c3; color: #854d0e; }
 
 /* ---------- Setup steps ---------- */

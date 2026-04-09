@@ -1,6 +1,6 @@
 .actorTokenEducation {
   padding: 24px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #f0f4f8 100%);
+  background: linear-gradient(135deg, #f5f7fa 0%, var(--chase-light-gray) 100%);
   border-radius: 12px;
   margin: 20px 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -86,7 +86,7 @@
 
 .token {
   display: block;
-  background: #f0f4f8;
+  background: var(--chase-light-gray);
   padding: 12px;
   border-radius: 4px;
   font-family: 'Monaco', 'Courier New', monospace;
@@ -138,7 +138,7 @@
 .term {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #f0f4f8;
+  border-bottom: 1px solid var(--chase-light-gray);
 }
 
 .term:last-child {
@@ -158,7 +158,7 @@
 }
 
 .inline {
-  background: #f0f4f8;
+  background: var(--chase-light-gray);
   padding: 2px 6px;
   border-radius: 3px;
   font-family: 'Monaco', 'Courier New', monospace;
@@ -179,7 +179,7 @@
 }
 
 .faqItem {
-  border-bottom: 1px solid #f0f4f8;
+  border-bottom: 1px solid var(--chase-light-gray);
   margin-bottom: 0;
 }
 

@@ -12,12 +12,12 @@
   --agent-primary-100: #dbeafe;
   --agent-primary-200: #bfdbfe;
   --agent-primary-300: #93c5fd;
-  --agent-primary-400: #60a5fa;
-  --agent-primary-500: #3b82f6;
-  --agent-primary-600: #2563eb;
-  --agent-primary-700: #1d4ed8;
-  --agent-primary-800: #1e40af;
-  --agent-primary-900: #1e3a8a;
+  --agent-primary-400: var(--chase-navy-light);
+  --agent-primary-500: var(--chase-navy);
+  --agent-primary-600: var(--chase-navy);
+  --agent-primary-700: var(--chase-navy);
+  --agent-primary-800: var(--chase-navy);
+  --agent-primary-900: var(--chase-navy);
 
   /* Semantic colors */
   --agent-success: #10b981;
@@ -187,8 +187,8 @@
 
 /* ─── Vertical Theme Overrides ───────────────────────────────────────────────── */
 [data-vertical="bx-finance"] {
-  --agent-primary-500: #3b82f6;
-  --agent-primary-600: #2563eb;
+  --agent-primary-500: var(--chase-navy);
+  --agent-primary-600: var(--chase-navy);
 }
 
 [data-vertical="hr-workforce"] {

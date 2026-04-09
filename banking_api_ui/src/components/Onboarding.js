@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
  */
 export default function Onboarding() {
   const headerStyle = {
-    background: 'linear-gradient(to bottom, #1e40af 0%, #1e3a8a 100%)',
+    background: 'linear-gradient(to bottom, var(--chase-navy) 0%, var(--chase-navy) 100%)',
     color: 'white',
     padding: '1rem 0',
     boxShadow: '0 2px 4px rgba(0,0,0,.15)',
@@ -42,7 +42,7 @@ export default function Onboarding() {
               style={{
                 display: 'inline-block',
                 background: 'white',
-                color: '#1e3a8a',
+                color: 'var(--chase-navy)',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 padding: '0.5rem 1rem',
@@ -58,8 +58,8 @@ export default function Onboarding() {
 
       <div className="container" style={{ padding: '2rem 20px', maxWidth: '800px' }}>
         <div style={{ ...cardStyle, background: '#eff6ff', borderColor: '#bfdbfe' }}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: '#1e3a8a' }}>What you need</h2>
-          <p style={{ margin: 0, color: '#1e40af', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: 'var(--chase-navy)' }}>What you need</h2>
+          <p style={{ margin: 0, color: 'var(--chase-navy)', fontSize: '0.9375rem', lineHeight: 1.6 }}>
             This demo uses <strong>PingOne AI IAM Core</strong> with <strong>two separate OAuth clients</strong> everywhere: one PingOne application for <em>Admin</em> sign-in and one for <em>Customer</em> (end-user) sign-in — same on Vercel, Replit, and localhost. On <strong>hosted</strong> deployments, those client IDs and secrets (and worker tokens) may be <strong>pre-configured on the server</strong> — visitors do not type them in the UI. On <strong>localhost</strong>, you enter both apps in Application Configuration (SQLite). Until the API is configured, sign-in may redirect to the configuration page.
           </p>
         </div>
@@ -123,7 +123,7 @@ export default function Onboarding() {
         </div>
 
         <div style={{ ...cardStyle, borderColor: '#e9d5ff', background: '#faf5ff' }}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: '#2563eb' }}>Localhost (development)</h2>
+          <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.75rem 0', color: 'var(--chase-navy)' }}>Localhost (development)</h2>
           <ol style={olStyle}>
             <li>Create <strong>two</strong> PingOne OIDC web apps — one for admin sign-in and one for customers — the same two-client model as hosted deployments.</li>
             <li>The configuration page shows <strong>Admin OAuth App</strong> and <strong>End-User OAuth App</strong> separately so each client ID, secret, and redirect URI maps to the correct PingOne app.</li>
@@ -161,7 +161,7 @@ export default function Onboarding() {
           >
             Go to Application Configuration
           </Link>
-          <Link to="/" style={{ fontSize: '0.9375rem', color: '#2563eb' }}>Return to sign in</Link>
+          <Link to="/" style={{ fontSize: '0.9375rem', color: 'var(--chase-navy)' }}>Return to sign in</Link>
         </div>
       </div>
     </div>

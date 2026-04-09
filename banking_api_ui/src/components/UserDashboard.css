@@ -225,7 +225,7 @@
 .embedded-banking-agent-lead {
   margin: 0 0 0.75rem;
   font-size: 0.9rem;
-  color: #64748b;
+  color: #999999;
 }
 
 /* Hero strip + light toolbar row (actions live below the blue header) */
@@ -389,7 +389,7 @@
 
 .toggle-label--toolbar .toggle-slider {
   background-color: var(--chase-medium-gray);
-  border-color: #cbd5e1;
+  border-color: #CCCCCC;
 }
 
 .toggle-label--toolbar .toggle-input:checked + .toggle-slider {
@@ -398,7 +398,7 @@
 }
 
 .toggle-label--toolbar .toggle-slider:hover {
-  background-color: #cbd5e1;
+  background-color: #CCCCCC;
 }
 
 .toggle-label--toolbar .toggle-input:checked + .toggle-slider:hover {
@@ -839,8 +839,8 @@
 
 .account-type-badge.checking {
   background-color: var(--chase-light-gray);
-  color: #475569;
-  border: 1px solid #cbd5e1;
+  color: #666666;
+  border: 1px solid #CCCCCC;
 }
 
 .account-type-badge.unknown {
@@ -1055,7 +1055,7 @@
 .form-hint.transfer-amount-hint {
   margin: 0.35rem 0 0;
   font-size: 0.8rem;
-  color: #64748b;
+  color: #999999;
   line-height: 1.35;
 }
 
@@ -2062,7 +2062,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #64748b;
+  color: #999999;
   margin-bottom: 6px;
 }
 
@@ -2070,7 +2070,7 @@
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.45;
-  color: #64748b;
+  color: #999999;
 }
 
 .ud-profile-meta {
@@ -2082,7 +2082,7 @@
 }
 
 .user-dashboard--2026 .ud-profile-meta {
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
 }
 
 .user-dashboard--2026 .ud-insight-strip {
@@ -2098,7 +2098,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
 .ud-insight-strip__text {
   margin: 0;
   font-size: 0.88rem;
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
   line-height: 1.5;
 }
 
@@ -2116,7 +2116,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
 }
 
 .dashboard-header--surface .user-email {
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
   opacity: 1;
 }
 
@@ -2189,7 +2189,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
 }
 
 .user-dashboard--2026 .ud-hero__insight {
@@ -2206,7 +2206,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
 }
 
 .user-dashboard--2026 .ud-hero__balance {
@@ -2259,7 +2259,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
   text-transform: uppercase;
 }
 
@@ -2321,7 +2321,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   gap: 0.35rem 0.75rem;
   padding: 0.65rem 0 0.25rem;
   font-size: 0.78rem;
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
 }
 
 .user-dashboard--2026 .ud-trust-strip__dot {
@@ -2356,7 +2356,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   padding: 6px 12px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--dash-muted, #64748b);
+  color: var(--dash-muted, #999999);
   background: var(--dash-surface-2, var(--chase-light-gray));
   border-radius: 999px;
   border: 1px solid var(--dash-border, rgba(15, 23, 42, 0.08));
@@ -2537,7 +2537,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   border-radius: 20px;
   border: 1px solid var(--chase-medium-gray);
   background: var(--chase-light-gray);
-  color: #475569;
+  color: #666666;
   cursor: pointer;
   transition: background .15s;
 }
@@ -2605,7 +2605,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   border-radius: 4px;
 }
 
-.ud-drawer-close:hover { background: var(--chase-light-gray); color: #475569; }
+.ud-drawer-close:hover { background: var(--chase-light-gray); color: #666666; }
 
 .ud-action-form {
   padding: 16px 18px;
@@ -2619,7 +2619,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   display: block;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #475569;
+  color: #666666;
   margin-bottom: 5px;
 }
 
@@ -2772,7 +2772,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
 
 .ud-hint-chip {
   font-size: 0.72rem;
-  color: #475569;
+  color: #666666;
   background: #fff;
   border: 1px solid var(--chase-medium-gray);
   border-radius: 6px;
@@ -2803,7 +2803,7 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   justify-content: center;
   min-height: 60vh;
   gap: 16px;
-  color: #64748b;
+  color: #999999;
 }
 
 .ud-loading-spinner {
