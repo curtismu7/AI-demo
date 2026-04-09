@@ -492,7 +492,7 @@ class PingOneProvisionService {
         { name: 'users:manage', description: 'Manage user accounts and permissions' },
         { name: 'banking:read', description: 'Read banking data and transaction history' },
         { name: 'banking:write', description: 'Perform banking operations and transfers' },
-        { name: 'banking:agent:invoke', description: 'Agent invocation permission' }
+        { name: 'banking:ai:agent:read', description: 'Agent invocation permission' }
       ];
       
       const mcpScopeResults = await this.createScopes(mcpResourceResult.resource.id, mcpScopes);
@@ -521,7 +521,7 @@ class PingOneProvisionService {
         { name: 'banking:transactions:read', description: 'Read transaction history and details' },
         { name: 'banking:accounts', description: 'Account access and management' },
         { name: 'banking:admin', description: 'Administrative access' },
-        { name: 'banking:agent:invoke', description: 'Agent invocation permission' },
+        { name: 'banking:ai:agent:read', description: 'Agent invocation permission' },
         { name: 'p1:read:user', description: 'Read user profile data' },
         { name: 'p1:update:user', description: 'Update user profile data' },
         { name: 'ai_agent', description: 'AI agent identity' },
@@ -669,7 +669,7 @@ class PingOneProvisionService {
       const userGrantResult = await this.grantScopesToApplication(
         userAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:agent:invoke', 'banking:read', 'banking:write']
+        ['banking:ai:agent:read', 'banking:read', 'banking:write']
       );
       
       if (userGrantResult.success) {
@@ -800,7 +800,7 @@ class PingOneProvisionService {
       const mcpAppGrantResult = await this.grantScopesToApplication(
         mcpAppResult.application.id,
         resourceResult.resource.id,
-        ['banking:read', 'banking:agent:invoke']
+        ['banking:read', 'banking:ai:agent:read']
       );
       
       if (mcpAppGrantResult.success) {
