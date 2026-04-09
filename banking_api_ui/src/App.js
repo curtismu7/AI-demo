@@ -39,6 +39,7 @@ import SecurityCenter from './components/SecurityCenter';
 import UserAccounts from './components/UserAccounts';
 import UserTransactions from './components/UserTransactions';
 import SelfServicePage from './components/SelfServicePage';
+import LogoutPage from './components/LogoutPage';
 
 import { savePublicConfig } from './services/configService';
 import { SpinnerProvider } from './context/SpinnerContext';
@@ -485,6 +486,8 @@ function AppWithAuth() {
                 )
               }
             />
+            <Route path="/logout" element={<LogoutPage />} />
+
             <Route path="*" element={
               !user ? (
                 <LandingPage />
