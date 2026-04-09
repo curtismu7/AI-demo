@@ -154,11 +154,6 @@ export async function callMcpTool(tool, params = {}) {
     // 504 Server Unavailable — server is restarting
     if (response.status === 504) {
       console.warn('[callMcpTool] 504 Server Unavailable - server may be restarting');
-      const error504 = {
-        error: 'server_unavailable',
-        message: 'Server is temporarily unavailable (504)',
-        statusCode: 504
-      };
       appendMcpCall(tool, 504, Date.now() - t0, null, 'Server Unavailable (504)');
       throw Object.assign(new Error('Server is restarting (504)'), {
         statusCode: 504,
