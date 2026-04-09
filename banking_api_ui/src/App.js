@@ -50,6 +50,7 @@ import { IndustryBrandingProvider } from './context/IndustryBrandingContext';
 import { VerticalProvider } from './context/VerticalContext';
 import EducationBar from './components/EducationBar';
 import { DemoTourProvider } from './context/DemoTourContext';
+import { ExchangeModeProvider } from './context/ExchangeModeContext';
 import DemoTourModal from './components/tour/DemoTourModal';
 import ServerRestartModal from './components/ServerRestartModal';
 import { monitorApiHealth } from './services/bankingRestartNotificationService';
@@ -583,13 +584,15 @@ export default function App() {
   return (
     <SpinnerProvider>
       <AgentUiModeProvider>
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <IndustryBrandingProvider>
-            <VerticalProvider>
-              <AppWithAuth />
-            </VerticalProvider>
-          </IndustryBrandingProvider>
-        </Router>
+        <ExchangeModeProvider>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <IndustryBrandingProvider>
+              <VerticalProvider>
+                <AppWithAuth />
+              </VerticalProvider>
+            </IndustryBrandingProvider>
+          </Router>
+        </ExchangeModeProvider>
       </AgentUiModeProvider>
     </SpinnerProvider>
   );
