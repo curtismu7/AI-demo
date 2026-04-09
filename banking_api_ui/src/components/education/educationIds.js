@@ -44,4 +44,6 @@ export const EDU = {
   RFC_8693: 'rfc-8693',
   /** Flow Diagrams — Technical architecture diagrams with RFC annotations */
   FLOW_DIAGRAMS: 'flow-diagrams',
+  /** IETF Standards for Agentic Identity — RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ/T JOSE */
+  IETF_STANDARDS: 'ietf-standards',
 };

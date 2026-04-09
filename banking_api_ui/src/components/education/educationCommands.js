@@ -45,4 +45,12 @@ export const EDUCATION_COMMANDS = [
   { id: 'token-chain-jwt', label: '🔗 Token Chain: JWT Claims', panel: EDU.TOKEN_CHAIN, tab: 'jwt-claims' },
   { id: 'token-chain-exchange', label: '🔗 Token Chain: Exchange Paths', panel: EDU.TOKEN_CHAIN, tab: 'exchange-paths' },
   { id: 'agent-flow', label: '🔀 Agent request flow', flowDiagram: true },
+  { id: 'ietf-standards', label: '⭐ IETF Standards: Agentic Identity', panel: EDU.IETF_STANDARDS, tab: 'overview' },
+  { id: 'ietf-standards-rfc7523bis', label: '📖 RFC7523bis', panel: EDU.IETF_STANDARDS, tab: 'rfc7523bis' },
+  { id: 'ietf-standards-identity-chaining', label: '📖 Identity Chaining', panel: EDU.IETF_STANDARDS, tab: 'identity-chaining' },
+  { id: 'ietf-standards-jag-ir', label: '📖 JAG-IR', panel: EDU.IETF_STANDARDS, tab: 'jag-ir' },
+  { id: 'ietf-standards-aims', label: '📖 AIMS', panel: EDU.IETF_STANDARDS, tab: 'aims' },
+  { id: 'ietf-standards-wimse', label: '📖 WIMSE', panel: EDU.IETF_STANDARDS, tab: 'wimse' },
+  { id: 'ietf-standards-sd-jwt-vc', label: '📖 SD-JWT VC', panel: EDU.IETF_STANDARDS, tab: 'sd-jwt-vc' },
+  { id: 'ietf-standards-pq-jose', label: '📖 PQ/T JOSE', panel: EDU.IETF_STANDARDS, tab: 'pq-jose' },
 ];

@@ -97,6 +97,7 @@ export default function SideNav({ user, onLogout }) {
     { label: 'Agent Gateway',    icon: '🌐', action: () => edu?.open(EDU.AGENT_GATEWAY, 'overview') },
     { label: 'RFC Index',        icon: '📑', action: () => edu?.open(EDU.RFC_INDEX, 'index') },
     { label: 'CIMD',             icon: '📄', action: openCimd },
+    { label: '⭐ IETF Standards', icon: '📖', action: () => edu?.open(EDU.IETF_STANDARDS, 'overview') },
   ];
 
   return (
