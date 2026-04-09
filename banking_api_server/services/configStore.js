@@ -577,8 +577,106 @@ class ConfigStore {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Two-Exchange Configuration Validation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Validate two-exchange delegation configuration.
+ * Called at startup and before first two-exchange attempt.
+ * Enforces explicit configuration (no hard-coded defaults).
+ * 
+ * @throws {Error} with code 'TWO_EXCHANGE_CONFIG_INVALID' if validation fails
+ * @returns {Object} Configuration details for audit logging
+ */
+function validateTwoExchangeConfig() {
+  const errors = [];
+  const warnings = [];
+  const logger = require('./logger') || console;
+  
+  // Require explicit AI Agent credentials (no fallbacks)
+  const aiAgentClientId = configStore.get('PINGONE_AI_AGENT_CLIENT_ID') || process.env.PINGONE_AI_AGENT_CLIENT_ID || process.env.AI_AGENT_CLIENT_ID;
+  const aiAgentSecret = configStore.get('PINGONE_AI_AGENT_CLIENT_SECRET') || process.env.PINGONE_AI_AGENT_CLIENT_SECRET || process.env.AI_AGENT_CLIENT_SECRET;
+  if (!aiAgentClientId) errors.push('Missing: PINGONE_AI_AGENT_CLIENT_ID (or AI_AGENT_CLIENT_ID)');
+  if (!aiAgentSecret) errors.push('Missing: PINGONE_AI_AGENT_CLIENT_SECRET (or AI_AGENT_CLIENT_SECRET)');
+  
+  // Require explicit MCP Exchanger credentials (no fallbacks)
+  const mcpClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+  const mcpSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
+  if (!mcpClientId) errors.push('Missing: AGENT_OAUTH_CLIENT_ID (MCP Token Exchanger client ID)');
+  if (!mcpSecret) errors.push('Missing: AGENT_OAUTH_CLIENT_SECRET (MCP Token Exchanger client secret)');
+  
+  // Require explicit audiences (NO hard-coded pingdemo.com defaults)
+  const agentGatewayAud = configStore.getEffective('PINGONE_RESOURCE_AGENT_GATEWAY_URI') || process.env.PINGONE_RESOURCE_AGENT_GATEWAY_URI;
+  const mcpGatewayAud = configStore.getEffective('PINGONE_RESOURCE_MCP_GATEWAY_URI') || process.env.PINGONE_RESOURCE_MCP_GATEWAY_URI;
+  const intermediateAud = configStore.getEffective('AI_AGENT_INTERMEDIATE_AUDIENCE') || process.env.AI_AGENT_INTERMEDIATE_AUDIENCE;
+  const finalAud = configStore.getEffective('PINGONE_RESOURCE_TWO_EXCHANGE_URI') || process.env.PINGONE_RESOURCE_TWO_EXCHANGE_URI;
+  
+  if (!agentGatewayAud) errors.push('Missing: PINGONE_RESOURCE_AGENT_GATEWAY_URI (Step 1: audience for AI Agent token acquisition)');
+  if (!mcpGatewayAud) errors.push('Missing: PINGONE_RESOURCE_MCP_GATEWAY_URI (Step 3: audience for MCP token acquisition)');
+  if (!intermediateAud) errors.push('Missing: AI_AGENT_INTERMEDIATE_AUDIENCE (Step 2: exchange #1 target audience)');
+  if (!finalAud) errors.push('Missing: PINGONE_RESOURCE_TWO_EXCHANGE_URI (Step 4: exchange #2 final audience)');
+  
+  // Audience uniqueness warning
+  if (intermediateAud && finalAud && intermediateAud === finalAud) {
+    warnings.push('Audience mismatch: AI_AGENT_INTERMEDIATE_AUDIENCE === PINGONE_RESOURCE_TWO_EXCHANGE_URI. Verify this is intentional — usually they should differ for proper nested delegation.');
+  }
+  
+  // If validation fails, throw detailed error with remediation
+  if (errors.length > 0) {
+    const remediation = [
+      'Two-Exchange Configuration Validation Failed:',
+      '',
+      errors.map(e => '  ✗ ' + e).join('\n'),
+      '',
+      'Remediation Steps:',
+      '  1. Set missing environment variables (listed above), OR',
+      '  2. Configure via Admin UI → Config → Two-Exchange Settings',
+      '  3. Verify App Credentials:',
+      '     - AI_AGENT_CLIENT_ID/SECRET → Super Banking AI Agent App (or via PINGONE_AI_AGENT_CLIENT_*)',
+      '     - AGENT_OAUTH_CLIENT_ID/SECRET → Super Banking MCP Token Exchanger, OR',
+      '  4. For production: Ensure ff_two_exchange_delegation is enabled',
+      '  5. Verify PingOne token exchange policies on both resources allow delegation'
+    ].join('\n');
+    
+    const err = new Error(remediation);
+    err.code = 'TWO_EXCHANGE_CONFIG_INVALID';
+    err.httpStatus = 503;
+    err.isConfigError = true;
+    err.details = {
+      missing: errors,
+      config: { aiAgentClientId: !!aiAgentClientId, mcpClientId: !!mcpClientId }
+    };
+    throw err;
+  }
+  
+  // Log warnings if any
+  if (warnings.length > 0) {
+    warnings.forEach(w => {
+      if (logger.warn) logger.warn('[TwoExchange:Config] ' + w);
+    });
+  }
+  
+  return {
+    valid: true,
+    credentials: {
+      aiAgentClientId,
+      mcpClientId
+    },
+    audiences: {
+      agentGatewayAud,
+      mcpGatewayAud,
+      intermediateAud,
+      finalAud
+    }
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Singleton
 const configStore = new ConfigStore();
 module.exports = configStore;
 module.exports.FIELD_DEFS   = FIELD_DEFS;
+module.exports.validateTwoExchangeConfig = validateTwoExchangeConfig;
 module.exports.SECRET_KEYS  = SECRET_KEYS;

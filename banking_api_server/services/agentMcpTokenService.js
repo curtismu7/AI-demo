@@ -942,48 +942,31 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 async function _performTwoExchangeDelegation(
   tokenEvents, userToken, userAccessTokenClaims, effectiveToolScopes, userSub, toolTrigger, mcpResourceUri
 ) {
-  const aiAgentClientId     = configStore.getEffective('ai_agent_client_id') || process.env.AI_AGENT_CLIENT_ID || '';
-  const aiAgentClientSecret = process.env.AI_AGENT_CLIENT_SECRET || '';
-  const agentGatewayAud     = configStore.getEffective('agent_gateway_audience') || 'https://agent-gateway.pingdemo.com';
-  let   intermediateAud     = configStore.getEffective('ai_agent_intermediate_audience') || '';
-  if (!intermediateAud) intermediateAud = 'https://mcp-server.pingdemo.com';
-  const mcpGatewayAud       = configStore.getEffective('mcp_gateway_audience') || 'https://mcp-gateway.pingdemo.com';
-  // Exchange #2 output audience — must point to Super Banking Resource Server (https://resource-server.pingdemo.com),
-  // NOT the 1-exchange Super Banking MCP Server (https://mcp-server.pingdemo.com).
-  // Using the 1-exchange audience triggers the wrong `act` expression (may_act.sub check instead of
-  // act.sub forward) → act=null with Required=true → PingOne rejects Exchange #2 with invalid_grant.
-  const twoExFinalAud = configStore.getEffective('mcp_resource_uri_two_exchange') || 'https://resource-server.pingdemo.com';
-  const mcpExchangerClient  = process.env.AGENT_OAUTH_CLIENT_ID || '';
-  const mcpExchangerSecret  = process.env.AGENT_OAUTH_CLIENT_SECRET || '';
-  // Auth method env vars — default 'basic' (CLIENT_SECRET_BASIC) matching PingOne app config
-  const aiAgentAuthMethod      = (process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
-  const mcpExchangerAuthMethod = (process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
-
-  // Pre-flight check: all required credentials must be present
-  const missingVars = [];
-  if (!aiAgentClientId)     missingVars.push('AI_AGENT_CLIENT_ID (or ai_agent_client_id config)');
-  if (!aiAgentClientSecret) missingVars.push('AI_AGENT_CLIENT_SECRET');
-  if (!mcpExchangerClient)  missingVars.push('AGENT_OAUTH_CLIENT_ID');
-  if (!mcpExchangerSecret)  missingVars.push('AGENT_OAUTH_CLIENT_SECRET');
-
-  if (missingVars.length > 0) {
+  // ── RFC 8693 §2.1: Two-Exchange Delegation Configuration Validation
+  let configResult;
+  try {
+    configResult = configStore.validateTwoExchangeConfig();
+  } catch (configErr) {
     tokenEvents.push(buildTokenEvent(
-      'two-exchange-not-configured',
-      '2-Exchange Delegation — Not Configured',
-      'failed',
-      null,
-      `ff_two_exchange_delegation is ON but required credentials are missing: ${missingVars.join(', ')}. ` +
-        'Set these env vars and re-deploy. See docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md for setup guide.',
-      { missingVars, rfc: 'RFC 8693' }
+      'two-exchange-config-invalid',
+      '2-Exchange Configuration — Invalid',
+      'failed', null, configErr.message,
+      { rfc: 'RFC 8693 §2.1', code: configErr.code }
     ));
-    throw createTokenExchangeError('exchange_not_configured', {
-      exchangeType: 'double',
-      exchangeStep: 'configuration',
-      actorPresent: false,
-      missingVars,
-      rfc: 'RFC 8693'
-    });
+    throw configErr;
   }
+
+  // Extract validated configuration - no hard-coded defaults
+  const aiAgentClientId       = configResult.credentials.aiAgentClientId;
+  const mcpExchangerClient    = configResult.credentials.mcpClientId;
+  const agentGatewayAud       = configResult.audiences.agentGatewayAud;
+  const intermediateAud       = configResult.audiences.intermediateAud;
+  const mcpGatewayAud         = configResult.audiences.mcpGatewayAud;
+  const twoExFinalAud         = configResult.audiences.finalAud;
+  const aiAgentClientSecret   = process.env.PINGONE_AI_AGENT_CLIENT_SECRET || process.env.AI_AGENT_CLIENT_SECRET;
+  const mcpExchangerSecret    = process.env.AGENT_OAUTH_CLIENT_SECRET;
+  const aiAgentAuthMethod     = (process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+  const mcpExchangerAuthMethod = (process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
 
   // ─ Step 1: AI Agent Actor Token (Client Credentials) ───────────────────────────
   tokenEvents.push(buildTokenEvent(
