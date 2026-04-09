@@ -1030,6 +1030,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         return;
       }
       console.error('Transfer error:', error);
+      if (error.response?.data?.error === 'amount_exceeds_hard_limit') {
+        notifyError(
+          `Transaction exceeds the $${error.response.data.limit} limit. Your amount ($${error.response.data.amount}) is too high. Please reduce the amount and try again.`,
+          5000
+        );
+        return;
+      }
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');
@@ -1088,6 +1095,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         return;
       }
       console.error('Deposit error:', error);
+      if (error.response?.data?.error === 'amount_exceeds_hard_limit') {
+        notifyError(
+          `Transaction exceeds the $${error.response.data.limit} limit. Your amount ($${error.response.data.amount}) is too high. Please reduce the amount and try again.`,
+          5000
+        );
+        return;
+      }
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');
@@ -1148,6 +1162,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         return;
       }
       console.error('Withdrawal error:', error);
+      if (error.response?.data?.error === 'amount_exceeds_hard_limit') {
+        notifyError(
+          `Transaction exceeds the $${error.response.data.limit} limit. Your amount ($${error.response.data.amount}) is too high. Please reduce the amount and try again.`,
+          5000
+        );
+        return;
+      }
       if (error.response?.status === 428) {
         setStepUpMethod(error.response.data?.step_up_method || 'email');
         setCibaStatus('idle');
