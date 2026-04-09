@@ -78,6 +78,23 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-09 — feat: integrate LogoutPage component with OAuth RP-Initiated Logout route (commit `86bcfd4`)
+
+- **Feature:** Completes **Phase 50** (Logout Configuration) by wiring the logout UI component to the Express OAuth logout backend. Frontend now has a dedicated `/logout` route serving a styled landing page after sign-out.
+- **Implementation:** (1) Created **`LogoutPage.js`** component that renders a "You're signed out" page with wave emoji animation, 3-second auto-redirect countdown to home, manual action buttons ("Sign In Again", "Go Home"), and clears sessionStorage/localStorage on mount. (2) Created **`LogoutPage.css`** with responsive design (320px–1440px), gradient background (purple: #667eea → #764ba2), wave animation, slide-in transitions, and full dark mode support. (3) Added import and route to `App.js`: `import LogoutPage from './components/LogoutPage'` and `<Route path="/logout" element={<LogoutPage />} />` before the catch-all route.
+- **Backend flow:** `/api/auth/logout` endpoint (existing in `oauth.js` lines 329–364) already handles token revocation, session destruction, and redirect to PingOne's `/as/signoff`. PingOne uses the app's configured `post_logout_redirect_uri` to redirect back to `/logout` (now routable).
+- **PingOne configuration (manual step):** The `postLogoutRedirectUri` is **NOT yet configured** in PingOne console. Admin must:
+  1. Log into PingOne Administration Console
+  2. Go to **Applications** → **Super Banking Admin** app → **Redirect URIs** section
+  3. Add: `http://localhost:3000/logout`, `http://localhost:3001/logout` (optional), `https://{vercel-deployment}/logout`
+  4. Repeat for **Super Banking User** app
+  5. Save
+- **Files created:** `banking_api_ui/src/components/LogoutPage.js`, `banking_api_ui/src/components/LogoutPage.css`
+- **Files modified:** `banking_api_ui/src/App.js` (import + route)
+- **Regression check:** `cd banking_api_ui && npm run build` → **Compiled successfully** (file size +293B JS, +344B CSS). No build errors or linting issues.
+- **Do not break:** (a) OAuth flows and session management (`routes/oauth.js`) unchanged — backend logout still works. (b) `/api/auth/logout` endpoint unchanged — still redirects to PingOne `/as/signoff` with `post_logout_redirect_uri` parameter. (c) Full logout flow only works after PingOne console configuration (manual step); before that, OAuth redirect will fail or go to PingOne dashboard instead of `/logout`.
+- **Testing:** Manual flow: (1) Login as admin. (2) Click logout. (3) Observe redirect to `/logout`. (4) Verify LogoutPage displays, countdown runs, and redirects to home after 3s. (5) Verify browser console shows no errors. (6) Repeat with user role.
+
 ### 2026-04-07 — Wrong required scopes in "Token Exchange: Missing Required Scopes" modal
 
 - **Root cause:** In `agentMcpTokenService.js`, the pre-exchange bail-out (`scopesMissingFromUserToken`) checked whether the user token carries the tool-level banking scopes (`banking:accounts:read`, `banking:read`). For the ENDUSER_AUDIENCE / agent-invoke path this is wrong in two ways: (1) a user who legitimately holds `banking:agent:invoke` was blocked — the bail-out did not recognize the delegation scope as sufficient to attempt the exchange; (2) when throwing `missing_exchange_scopes`, `requiredScopes` was set to the downstream banking scopes instead of `agent:invoke` (the actual pre-requisite for the agent/MCP path). Separately, the `BankingAgent.js` "How to fix" modal hardcoded `banking:write` and `banking:read` as the scopes to add, misdirecting users who need `agent:invoke`.
