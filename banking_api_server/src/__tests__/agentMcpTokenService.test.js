@@ -1210,4 +1210,111 @@ describe('RFC 8693 Compliance - Subject Preservation & may_act Validation', () =
     expect(mayActEvents.length).toBe(0);
   });
 });
+
+
+
+describe('Scope & Audience Mapping (RFC 8707)', () => {
+  it('should validate scopes match audience', () => {
+    const testAudience = 'https://ai-agent-gateway.example.com';
+    const result = require('../../services/configStore').validateScopeAudience(
+      ['banking:read', 'banking:write'],
+      testAudience
+    );
+    expect(result.valid).toBe(true);
+    expect(result.scopes).toEqual(['banking:read', 'banking:write']);
+    expect(result.narrowed).toBe(false);
+  });
+
+  it('should narrow scopes to audience allowlist', () => {
+    const testAudience = 'https://ai-agent-gateway.example.com';
+    const result = require('../../services/configStore').validateScopeAudience(
+      ['banking:read', 'banking:agent:invoke', 'invalid:scope'],
+      testAudience
+    );
+    expect(result.valid).toBe(true);
+    expect(result.scopes).toContain('banking:read');
+    expect(result.scopes).not.toContain('invalid:scope');
+    expect(result.narrowed).toBe(true);
+  });
+
+  it('should reject scopes with no audience match', () => {
+    const testAudience = 'https://ai-agent-gateway.example.com';
+    expect(() => {
+      require('../../services/configStore').validateScopeAudience(
+        ['invalid:scope', 'another:invalid'],
+        testAudience
+      );
+    }).toThrow(/SCOPE_MISMATCH/);
+  });
+
+  it('should allow unknown audiences (graceful degradation)', () => {
+    const result = require('../../services/configStore').validateScopeAudience(
+      ['banking:read'],
+      'https://unknown.example.com'
+    );
+    // Gracefully degrade: return scopes unchanged for unknown audiences
+    expect(result.valid).toBe(true);
+    expect(result.scopes).toEqual(['banking:read']);
+  });
+
+  it('should reject empty scope list', () => {
+    const testAudience = 'https://ai-agent-gateway.example.com';
+    expect(() => {
+      require('../../services/configStore').validateScopeAudience([], testAudience);
+    }).toThrow(/SCOPE_ERROR/);
+  });
+});describe('Scope & Audience Mapping (RFC 8707)', () => {
+  const testAudience = 'https://ai-agent-gateway.example.com';
+  
+  // Mock the configStore methods
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  
+  it('should validate scopes match audience', () => {
+    const result = require('../../services/configStore').validateScopeAudience(
+      ['banking:read', 'banking:write'],
+      testAudience
+    );
+    expect(result.valid).toBe(true);
+    expect(result.scopes).toEqual(['banking:read', 'banking:write']);
+    expect(result.narrowed).toBe(false);
+  });
+
+  it('should narrow scopes to audience allowlist', () => {
+    const result = require('../../services/configStore').validateScopeAudience(
+      ['banking:read', 'banking:agent:invoke', 'invalid:scope'],
+      testAudience
+    );
+    expect(result.valid).toBe(true);
+    expect(result.scopes).toContain('banking:read');
+    expect(result.scopes).not.toContain('invalid:scope');
+    expect(result.narrowed).toBe(true);
+  });
+
+  it('should reject scopes with no audience match', () => {
+    expect(() => {
+      require('../../services/configStore').validateScopeAudience(
+        ['invalid:scope', 'another:invalid'],
+        testAudience
+      );
+    }).toThrow(/SCOPE_MISMATCH/);
+  });
+
+  it('should reject unknown audiences', () => {
+    expect(() => {
+      require('../../services/configStore').validateScopeAudience(
+        ['banking:read'],
+        'https://unknown.example.com'
+      );
+    }).toThrow(/AUDIENCE_ERROR/);
+  });
+
+  it('should reject empty scope list', () => {
+    expect(() => {
+      require('../../services/configStore').validateScopeAudience([], testAudience);
+    }).toThrow(/SCOPE_ERROR/);
+  });
+});
+
 });

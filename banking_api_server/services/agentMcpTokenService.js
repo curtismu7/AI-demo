@@ -509,6 +509,34 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   const validExchangeScopes = effectiveToolScopes.filter(scope => !DELEGATION_ONLY_SCOPES.has(scope));
   const finalScopes = validExchangeScopes.length > 0 ? validExchangeScopes : ['banking:read'];
 
+  // RFC 8707: Validate scopes against target audience
+  let scopeValidatedFinalScopes = finalScopes;
+  try {
+    const audienceForValidation = audienceUri || mcpResourceUri;
+    const scopeValidation = configStore.validateScopeAudience(
+      finalScopes,
+      audienceForValidation
+    );
+    scopeValidatedFinalScopes = scopeValidation.scopes;
+    
+    if (scopeValidation.narrowed || scopeValidation.narrowed === false) {
+      // Log validation event
+      void writeExchangeEvent({
+        type: 'scope-validation',
+        level: 'info',
+        message: `Scopes validated for audience ${audienceForValidation}: [${scopeValidatedFinalScopes.join(', ')}]`,
+        audience: audienceForValidation,
+        validatedScopes: scopeValidatedFinalScopes,
+      });
+    }
+  } catch (validationError) {
+    // Re-throw with better error context
+    throw new Error(`Scope validation failed: ${validationError.message}`);
+  }
+  
+  // Use validated scopes for token exchange
+  finalScopes = scopeValidatedFinalScopes;
+
   // ── Comprehensive scope-resolution debug log ──────────────────────────────
   console.log(
     '[TokenExchange:DEBUG] tool=%s | userScopes=[%s] | toolCandidateScopes=[%s] | ' +

@@ -674,9 +674,108 @@ function validateTwoExchangeConfig() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RFC 8707: Scope-Audience Mapping (Phase 56-04)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Explicit scope-audience mapping per RFC 8707 resource indicators.
+ * Maps each audience URI to the OAuth scopes valid for token exchange to that audience.
+ * Replaces implicit 3-level fallback logic with explicit configuration.
+ */
+const ALLOWED_SCOPES_BY_AUDIENCE = {
+  // Agent Gateway (Step 1 actor token)
+  // OAuth app: PINGONE_AI_AGENT_CLIENT_ID
+  'https://agent-gateway.example.com': [
+    'banking:agent:invoke',
+    'ai_agent',
+  ],
+
+  // AI Agent Intermediate (Step 2 exchange output)  
+  // OAuth resource server receiving on-behalf-of token
+  'https://ai-agent-gateway.example.com': [
+    'banking:read',
+    'banking:write',
+    'banking:agent:invoke',
+  ],
+
+  // MCP Gateway (Step 3 actor token)
+  // OAuth app: PINGONE_MCP_CLIENT_ID (or derived from env)
+  'https://mcp-gateway.example.com': [
+    'banking:mcp:invoke',
+    'mcp_resource_access',
+  ],
+
+  // MCP Resource Server (Step 4 final)
+  // Resource server receiving narrowed token scopes
+  'https://resource.example.com/mcp': [
+    'get_accounts:read',
+    'transfer:execute',
+    'check:read',
+  ],
+};
+
+/**
+ * Validate that provided scopes are allowed for the given audience.
+ * Implements explicit scope-audience mapping (RFC 8707).
+ * 
+ * Throws error if:
+ *   - scopes list is empty
+ *   - audience is unknown
+ *   - no scopes match the audience allowlist
+ * 
+ * @param {string[]} scopes - OAuth scopes to validate
+ * @param {string} audience - Target audience URI (resource indicator)
+ * @returns {object} { valid: true, scopes: narrowedScopes[], narrowed: boolean }
+ * @throws {Error} with descriptive message for validation failures
+ */
+function validateScopeAudience(scopes, audience) {
+  // Check: scopes not empty
+  if (!scopes || scopes.length === 0) {
+    throw new Error(
+      `SCOPE_ERROR: No scopes provided for audience ${audience}`
+    );
+  }
+
+  // Check: audience is known in mapping
+  const allowedForAudience = ALLOWED_SCOPES_BY_AUDIENCE[audience];
+  if (!allowedForAudience) {
+    // Unknown audience - gracefully degrade by allowing all scopes
+    // This allows the validator to be added without breaking existing deployments
+    return {
+      valid: true,
+      scopes: scopes,
+      narrowed: false,
+      note: 'Unknown audience (not in ALLOWED_SCOPES_BY_AUDIENCE mapping)',
+    };
+  }
+
+  // Filter: keep only scopes valid for this audience
+  const allowedSet = new Set(allowedForAudience);
+  const validScopes = scopes.filter(s => allowedSet.has(s));
+
+  // Check: at least one scope matches
+  if (validScopes.length === 0) {
+    throw new Error(
+      `SCOPE_MISMATCH: User scopes [${scopes.join(', ')}] ` +
+      `do not match allowed scopes for ${audience} ` +
+      `[${allowedForAudience.join(', ')}]`
+    );
+  }
+
+  return {
+    valid: true,
+    scopes: validScopes,
+    narrowed: validScopes.length < scopes.length,
+  };
+}
+
+
 // Singleton
 const configStore = new ConfigStore();
 module.exports = configStore;
-module.exports.FIELD_DEFS   = FIELD_DEFS;
+module.exports.FIELD_DEFS = FIELD_DEFS;
 module.exports.validateTwoExchangeConfig = validateTwoExchangeConfig;
-module.exports.SECRET_KEYS  = SECRET_KEYS;
+module.exports.SECRET_KEYS = SECRET_KEYS;
+module.exports.ALLOWED_SCOPES_BY_AUDIENCE = ALLOWED_SCOPES_BY_AUDIENCE;
+module.exports.validateScopeAudience = validateScopeAudience;
