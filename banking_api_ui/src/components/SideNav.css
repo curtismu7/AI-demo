@@ -268,3 +268,37 @@
     display: none;
   }
 }
+
+/* ─── Theme Toggle Button ──────────────────────────────────────────────────── */
+
+.sidenav-theme-toggle {
+  opacity: 0.85;
+}
+.sidenav-theme-toggle:hover {
+  opacity: 1;
+}
+
+/* ─── Dark Mode Overrides ─────────────────────────────────────────────────── */
+/* SideNav already has a dark color scheme. In html[data-theme='dark'] mode,
+   deepen the background to align with --dash-bg (#0c1018). */
+
+html[data-theme='dark'] .sidenav {
+  --sn-bg:        #0c1018;
+  --sn-bg-hover:  #141a24;
+  --sn-bg-active: #1a2230;
+  --sn-text:      #e8edf5;
+  --sn-muted:     #94a3b8;
+  --sn-border:    rgb(148 163 184 / 0.14);
+}
+
+html[data-theme='dark'] .sidenav-group-label {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .sidenav-user-name {
+  color: #e8edf5;
+}
+
+html[data-theme='dark'] .sidenav-user-role {
+  color: #94a3b8;
+}

@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import { useTheme } from '../context/ThemeContext';
 import './SideNav.css';
 
 const ADMIN_NAV = [
@@ -72,6 +73,7 @@ const USER_NAV = [
 
 export default function SideNav({ user, onLogout }) {
   const { preset } = useIndustryBranding();
+  const { theme, toggleTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const edu = useEducationUIOptional();
   const isAdmin = user?.role === 'admin';
@@ -185,8 +187,21 @@ export default function SideNav({ user, onLogout }) {
         ))}
       </div>
 
-      {/* Footer: logout */}
+      {/* Footer: theme toggle + logout */}
       <div className="sidenav-footer">
+        {/* Theme toggle — global, persists across pages */}
+        <button
+          type="button"
+          className="sidenav-link sidenav-theme-toggle"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label="Toggle dark mode"
+        >
+          <span className="sidenav-link-icon">{theme === 'dark' ? '☀️' : '🌙'}</span>
+          {!collapsed && (
+            <span className="sidenav-link-label">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+          )}
+        </button>
         <button
           type="button"
           className="sidenav-logout-btn"
