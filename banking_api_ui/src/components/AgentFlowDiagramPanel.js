@@ -118,6 +118,24 @@ export default function AgentFlowDiagramPanel() {
     }
   }, [snap.visible, loadTokenChain]);
 
+  // Refresh token chain whenever a tool call completes
+  useEffect(() => {
+    const onAgentResult = () => {
+      if (agentFlowDiagram.getState().visible) {
+        loadTokenChain();
+      }
+    };
+    window.addEventListener('banking-agent-result', onAgentResult);
+    return () => window.removeEventListener('banking-agent-result', onAgentResult);
+  }, [loadTokenChain]);
+
+  // Also poll every 3s while panel is visible so step transitions update the chain
+  useEffect(() => {
+    if (!snap.visible) return undefined;
+    const id = setInterval(loadTokenChain, 3000);
+    return () => clearInterval(id);
+  }, [snap.visible, loadTokenChain]);
+
   useEffect(() => {
     const onOpen = () => {
       agentFlowDiagram.open();

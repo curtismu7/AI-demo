@@ -16,6 +16,7 @@ const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
 const oauthConfig = require('../config/oauth');
 const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
+const { trackTokenEvent } = require('../services/tokenChainService');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -284,6 +285,16 @@ router.get('/callback', async (req, res) => {
       req.session.oauthTokens = oauthTokens;
       req.session.user = authedUser;
       req.session.clientType = clientType;
+
+      // Record initial auth token into token chain so /api/token-chain/current reflects login
+      if (oauthTokens.accessToken && authedUser?.id) {
+        void trackTokenEvent({
+          eventType: 'auth',
+          token: oauthTokens.accessToken,
+          userId: authedUser.id,
+          description: 'User authenticated via PingOne OAuth',
+        });
+      }
 
       // Save session before redirect to prevent race condition where status
       // endpoint runs before session is persisted to the store

@@ -26,6 +26,7 @@ const {
 } = require('./agentMcpScopePolicy');
 const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
 const adminTokenService = require('./adminTokenService');
+const { trackTokenEvent } = require('./tokenChainService');
 
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
 const MIN_USER_SCOPES_FOR_MCP = Math.max(
@@ -876,6 +877,17 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       actPresent: !!mcpAccessTokenClaims?.act,
       audMatches,
     });
+
+    // Record exchanged token into tokenChainService so /api/token-chain/current returns live data
+    if (exchangedToken && userSub) {
+      void trackTokenEvent({
+        eventType: 'exchange',
+        token: exchangedToken,
+        userId: userSub,
+        description: `RFC 8693 token exchange → MCP access token (audience=${mcpResourceUri}, method=${exchangeMethod})`,
+        additionalData: { mcpResourceUri, exchangeMethod, tool },
+      });
+    }
 
     return { token: exchangedToken, tokenEvents, userSub };
 
