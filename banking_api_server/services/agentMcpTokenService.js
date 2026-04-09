@@ -1265,3 +1265,67 @@ module.exports = {
   countJwtScopes,
   MIN_USER_SCOPES_FOR_MCP,
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 56-05 Enhancement: Structured Error Code Responses
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Map error context to RFC 8693 standardized error code.
+ * Uses ERROR_CODES from configStore to provide structured error information.
+ *
+ * @param {Error|string} error - Error object or message
+ * @param {object} context - Additional error context (pingoneError, etc.)
+ * @returns {object} {errorCode: string, errorDetails: object, message: string}
+ */
+function mapErrorToStructuredResponse(error, context = {}) {
+  const errorMessage = (error?.message || error?.pingoneError || String(error) || 'Unknown error').toLowerCase();
+  
+  let errorCode = 'server_error'; // Default
+  
+  // Map common error patterns to RFC 8693 codes
+  if (errorMessage.includes('invalid_client') || errorMessage.includes('client_id')) {
+    errorCode = 'invalid_client';
+  } else if (errorMessage.includes('invalid_grant') || errorMessage.includes('grant')) {
+    errorCode = 'invalid_grant';
+  } else if (errorMessage.includes('invalid_scope') || errorMessage.includes('scope')) {
+    errorCode = 'invalid_scope';
+  } else if (errorMessage.includes('unauthorized') || errorMessage.includes('not authorized')) {
+    errorCode = 'unauthorized_client';
+  } else if (errorMessage.includes('token_expired') || errorMessage.includes('expired')) {
+    errorCode = 'token_expired';
+  } else if (errorMessage.includes('invalid_token')) {
+    errorCode = 'invalid_token';
+  } else if (errorMessage.includes('may_act')) {
+    errorCode = 'may_act_validation_failed';
+  } else if (errorMessage.includes('subject')) {
+    errorCode = 'subject_mismatch';
+  } else if (errorMessage.includes('access_denied')) {
+    errorCode = 'access_denied';
+  } else if (errorMessage.includes('insufficient_scope')) {
+    errorCode = 'insufficient_scope';
+  }
+  
+  // Try to get error details from configStore if available
+  let errorDetails = null;
+  try {
+    const { getErrorDetails } = require('./configStore');
+    errorDetails = getErrorDetails(errorCode);
+  } catch (_e) {
+    // Fallback if configStore unavailable
+    errorDetails = {
+      http_status: 500,
+      oauth_error: 'server_error',
+      description: error?.message || 'Internal server error',
+      category: 'Server',
+    };
+  }
+  
+  return {
+    errorCode,
+    errorDetails,
+    message: error?.message || error?.pingoneErrorDescription || 'Token exchange failed',
+  };
+}
+
+module.exports.mapErrorToStructuredResponse = mapErrorToStructuredResponse;
