@@ -289,3 +289,4 @@ Initial working demo deployed to Vercel with:
 - MCP server integration
 - Upstash Redis session store
 - **PingOne Scope Update UI (Phase 101.1)** — Admin dashboard button to automate scope configuration fixes. Creates `banking:ai:agent:read`, removes deprecated `banking:agent:invoke`, grants scopes to applications. Shows step-by-step progress with icons and status. Eliminates manual PingOne Console work for customers.
+- **Configuration Page Improvements (Phase 101.2)** — Renamed PingOne Setup tab to "PingOne Config", added new "Scope Management" tab linking to automated scope updates, fixed CSS word-wrap overflow on main page lead text to prevent word overlap on smaller screens.
