@@ -288,3 +288,4 @@ Initial working demo deployed to Vercel with:
 - Banking AI agent (floating and embedded modes)
 - MCP server integration
 - Upstash Redis session store
+- **PingOne Scope Update UI (Phase 101.1)** — Admin dashboard button to automate scope configuration fixes. Creates `banking:ai:agent:read`, removes deprecated `banking:agent:invoke`, grants scopes to applications. Shows step-by-step progress with icons and status. Eliminates manual PingOne Console work for customers.

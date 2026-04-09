@@ -82,6 +82,7 @@ git checkout <last-version-tag> -- <key-file>
 |---|---|---|---|
 | Admin dashboard / stats | active | `banking_api_server/routes/admin.js`, `banking_api_ui/src/components/Dashboard.js` | — |
 | Banking admin — account lookup, seed fake charges, delete account/tx | active | `banking_api_server/routes/admin.js` (`/banking/lookup`, `/banking/accounts/:id/seed-charges`), `banking_api_ui/src/components/BankingAdminOps.js` | — |
+| PingOne scope configuration — auto-create/update scopes, grant to applications, remove deprecated scopes | active | `banking_api_server/routes/admin.js` (`POST /api/admin/pingone/update-scopes`), `banking_api_server/services/pingoneScopeUpdateService.js`, `banking_api_ui/src/components/BankingAdminOps.js` | — |
 | User management (list, create, update, delete) | active | `banking_api_server/routes/users.js`, `banking_api_ui/src/components/Users.js` | `s:auth.test.js` |
 | Activity log viewer | active | `banking_api_server/routes/admin.js`, `banking_api_ui/src/components/ActivityLogs.js`, `banking_api_ui/src/components/LogViewerPage.js` | `s:logs.test.js`, `u:components/__tests__/LogViewer.test.js` |
 | OAuth verbose debug log | active | `banking_api_server/routes/admin.js`, `banking_api_server/services/oauthVerboseLogStore.js`, `banking_api_ui/src/components/OAuthDebugLogViewer.js` | — |
