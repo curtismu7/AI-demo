@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-last_updated: "2026-04-09T15:50:56.790Z"
+last_updated: "2026-04-09T16:12:39.049Z"
 progress:
-  total_phases: 130
-  completed_phases: 58
-  total_plans: 183
-  completed_plans: 137
+  total_phases: 131
+  completed_phases: 59
+  total_plans: 184
+  completed_plans: 139
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,10 +20,10 @@ progress:
 
 ## Current Position
 
-Phase: 107 (make-hostname-and-redirect-uri-configurable-via-admin-config-page) — EXECUTING
-Plan: 3 of 3
-**Previous:** Phase 96 (audience-aud-claim-validation) — ✅ COMPLETE (1/1 plans executed 2026-04-08)
-**Status:** Phase complete — ready for verification
+Phase: 110 (fix-demo-data-page-layout-add-may-act-demo-button-fix-config-button-overflow-improve-discoverability) — PLANNING
+Plan: 0 of ?
+**Previous:** Phase 109 (demo-data-agent-placement-buttons) — ✅ COMPLETE (1/1 plans executed 2026-04-09)
+**Status:** Phase 110 directory exists, no plans yet — needs discuss/plan
 
 ---
 
@@ -49,6 +49,10 @@ Plan: 3 of 3
 - Phase 85 (chase-dashboard-styling) — complete (commits: 7980dc5, 2891f33, 272d01a, 13d4676, ddc5895, fc6f87a)
 - Phase 95 (actor-token-agent-token-education) — complete (commits: 900ea2d, 0a9a8cc) [2026-04-08]
 - Phase 96 (audience-aud-claim-validation) — complete (commits: 2b24f38, c2b696d) [2026-04-08]
+- Phase 101 (token-exchange-flow-diagram-ui) — complete (commits: 0b67e63, e7af290, 0c70c0e) [2026-04-09]
+- Phase 107 (make-hostname-and-redirect-uri-configurable) — complete (summaries: 107-01, 107-02, 107-03) [2026-04-09]
+- Phase 108 (server-restart-notification-modal) — complete (summaries: 108-01, 108-02, 108-03) [2026-04-09]
+- Phase 109 (demo-data-agent-placement-fix) — complete (commits: 6595727, 2fa5973) [2026-04-09]
 
 ---
 

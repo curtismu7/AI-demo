@@ -1538,7 +1538,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 100
-**Plans:** 2/2 plans complete
+**Plans:** 3/2 plans complete
 
 Plans:
 - [x] TBD (run /gsd-plan-phase 101 to break down) (completed 2026-04-09)
@@ -1605,12 +1605,12 @@ Plans:
 **Goal:** Enable runtime hostname configuration via admin config page, eliminating manual `.env` edits for deployments across localhost, staging, and production domains. All API calls and OAuth redirect URIs automatically use the configured hostname.
 **Requirements**: TBD
 **Depends on:** Phase 106
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 107-01-PLAN.md — Backend hostname config API (GET/PUT endpoints + persistence)
-- [ ] 107-02-PLAN.md — Frontend hostname config UI (AdminConfig component + integration)
-- [ ] 107-03-PLAN.md — OAuth redirect URI integration (update OAuth services + verification)
+- [x] 107-01-PLAN.md — Backend hostname config API (GET/PUT endpoints + persistence)
+- [x] 107-02-PLAN.md — Frontend hostname config UI (AdminConfig component + integration)
+- [x] 107-03-PLAN.md — OAuth redirect URI integration (update OAuth services + verification)
 
 ### Phase 108: Add server restart notification modal with UX polish
 
@@ -1620,22 +1620,22 @@ Plans:
 
 **Depends on:** Phase 107
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 108-01-PLAN.md — Core service + modal component (504 detection, auto-retry, animations)
-- [ ] 108-02-PLAN.md — Integration (App.js mount, API error handling wiring)
-- [ ] 108-03-PLAN.md — Testing, CSS polish, regression verification
+- [x] 108-01-PLAN.md — Core service + modal component (504 detection, auto-retry, animations)
+- [x] 108-02-PLAN.md — Integration (App.js mount, API error handling wiring)
+- [x] 108-03-PLAN.md — Testing, CSS polish, regression verification
 
 ### Phase 109: Demo-data agent placement buttons should only configure state, not move agent
 
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 108
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 109 to break down)
+- [x] TBD (run /gsd-plan-phase 109 to break down) (completed 2026-04-09)
 
 ### Phase 110: Fix demo-data page layout: add may_act demo button, fix Config button overflow, improve discoverability
 
