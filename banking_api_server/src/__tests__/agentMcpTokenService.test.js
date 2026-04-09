@@ -104,6 +104,19 @@ jest.mock('../../services/configStore', () => ({
     if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return '';
     return null;
   }),
+  validateTwoExchangeConfig: jest.fn(() => ({
+    valid: true,
+    credentials: {
+      aiAgentClientId: 'test-ai-agent-id',
+      mcpClientId: 'test-mcp-id'
+    },
+    audiences: {
+      agentGatewayAud: 'https://agent-gateway.example.com',
+      intermediateAud: 'https://ai-agent-gateway.example.com',
+      mcpGatewayAud: 'https://mcp-gateway.example.com',
+      finalAud: 'https://mcp-resource.example.com'
+    }
+  }))
 }));
 
 const configStore = require('../../services/configStore');

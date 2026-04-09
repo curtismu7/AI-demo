@@ -1002,7 +1002,13 @@ async function _performTwoExchangeDelegation(
       '2-Exchange #1 — AI Agent Actor Token ❌',
       'failed',
       null,
-      `AI Agent client credentials failed: ${err.message}. Check AI_AGENT_CLIENT_ID and AI_AGENT_CLIENT_SECRET.`,
+      `AI Agent client credentials failed: ${err.message}.
+      Remediation steps:
+      1. Verify configStore has 'ai_agent_client_id' OR PINGONE_AI_AGENT_CLIENT_ID env var is set
+      2. Verify PINGONE_AI_AGENT_CLIENT_SECRET OR AI_AGENT_CLIENT_SECRET env var is set
+      3. Check PingOne Admin → Applications → Super Banking AI Agent → OAuth settings
+      4. Verify Client Credentials grant is enabled on the OAuth app
+      5. If recently modified, restart the server for env changes to take effect`,
       { error: err.message, exchangeStep: '1-actor' }
     ));
     throw createTokenExchangeError('actor_token_invalid', {
@@ -1109,7 +1115,14 @@ async function _performTwoExchangeDelegation(
       '2-Exchange #2 — MCP Actor Token ❌',
       'failed',
       null,
-      `MCP Service client credentials failed: ${err.message}. Check AGENT_OAUTH_CLIENT_ID and AGENT_OAUTH_CLIENT_SECRET.`,
+      `MCP Service client credentials failed: ${err.message}.
+      Remediation steps:
+      1. Verify configStore has 'mcp_oauth_client_id' OR AGENT_OAUTH_CLIENT_ID env var is set
+      2. Verify AGENT_OAUTH_CLIENT_SECRET env var is set
+      3. Check PingOne Admin → Applications → MCP Token Exchanger → OAuth settings
+      4. Verify Client Credentials grant is enabled and correct audience (${mcpGatewayAud}) is configured
+      5. Ensure MCP_GATEWAY_AUDIENCE env var is set correctly
+      6. Restart server if recently modified`,
       { error: err.message, exchangeStep: '2-actor' }
     ));
     throw createTokenExchangeError('actor_token_invalid', {
