@@ -537,7 +537,34 @@ BFF_CLIENT_ID=<your-bff-oauth-client-id>`}</pre>
         </>
       ),
     },
-  ];
+  ,
+    {
+      id: 'compliance',
+      label: '✓ Compliance',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>IDC AI Governance Compliance</h3>
+          <p>
+            This demo implements RFC 8693 §2.1 + §4, which fulfills two of the five IDC AI governance guardrails:
+          </p>
+          <ul style={{ paddingLeft: 20, lineHeight: 1.8 }}>
+            <li>
+              <strong>Guardrail 02:</strong> Delegated authorization with full audit trail across agent chains
+              <br/>
+              <em>Standards: Identity Chaining + ID-JAG + RFC 8693 Token Exchange</em>
+            </li>
+            <li>
+              <strong>Guardrail 03:</strong> Explainability logs — every action traceable to its authorization decision
+              <br/>
+              <em>Standards: RFC 8693 nested act claims + Identity Chaining audit chain</em>
+            </li>
+          </ul>
+          <p style={{ marginTop: 16 }}>
+            <strong>Learn more:</strong> See the <strong>IETF Standards: Agentic Identity</strong> panel for the full stack.
+          </p>
+        </>
+      ),
+    },];
 
   return (
     <EducationDrawer

@@ -488,7 +488,29 @@ POST /token { grant_type: urn:openid:params:grant-type:ciba, auth_req_id }
         </>
       ),
     },
-  ];
+  ,
+    {
+      id: 'standards',
+      label: '📖 IETF Standards',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>IETF Standards Behind These Practices</h3>
+          <p>
+            All five best practices in this panel are built on peer-reviewed, open IETF standards. Each guardrail maps to one or more active security standards from OAuth, WIMSE, JOSE Working Groups.
+          </p>
+          <ul style={{ paddingLeft: 20, lineHeight: 1.8 }}>
+            <li><strong>Practice 1 — Know Your Agents:</strong> <code>RFC 8693</code> (Token Exchange), <code>act</code> claim proposal</li>
+            <li><strong>Practice 2 — Detect Agents:</strong> <code>RFC 8693</code> exchanged tokens carry <code>act</code> claims</li>
+            <li><strong>Practice 3 — Delegation:</strong> <code>RFC 8693</code> core standard, <code>Identity Chaining</code> (ID-JAG) for audit</li>
+            <li><strong>Practice 4 — Least Privilege:</strong> <code>RAR (RFC 9396)</code> + <code>WIMSE Workload Identity</code></li>
+            <li><strong>Practice 5 — Human in the Loop:</strong> <code>JAG-IR</code> (JWT Grant Interaction Response) for CIBA</li>
+          </ul>
+          <p style={{ marginTop: 16, fontSize: '0.82rem', borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+            All seven standards co-authored by Ping Identity are covered in depth in the <strong>IETF Standards: Agentic Identity</strong> panel (see Learn &amp; Explore menu).
+          </p>
+        </>
+      ),
+    },];
 
   return (
     <EducationDrawer
