@@ -107,6 +107,7 @@ export default function DemoDataPage({ user, onLogout }) {
   const [userMeta, setUserMeta] = useState({ id: '', role: '', createdAt: '' });
   const [defaults, setDefaults] = useState(null);
   const [persistenceNote, setPersistenceNote] = useState(null);
+  const [collapsedSections, setCollapsedSections] = useState({ accountProfile: true });
 
   /** Agent MCP scope toggles — loaded from admin config, saved separately */
   const [allowedScopes, setAllowedScopes] = useState(() => {
@@ -1094,12 +1095,32 @@ export default function DemoDataPage({ user, onLogout }) {
 
             {/* ── Account Profile Fields ── */}
             <section className="section demo-data-section" aria-labelledby="demo-acct-profile-heading">
-              <h2 className="demo-data-section__heading" id="demo-acct-profile-heading">
-                Account Profile Fields{' '}
-                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 400, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.1rem 0.4rem' }}>
-                  🔒 Sensitive fields require banking:sensitive:read
-                </span>
-              </h2>
+              <button
+                type="button"
+                onClick={() => setCollapsedSections((prev) => ({ ...prev, accountProfile: !prev.accountProfile }))}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: 0,
+                  margin: 0,
+                }}
+                aria-expanded={!collapsedSections.accountProfile}
+              >
+                <h2 className="demo-data-section__heading" id="demo-acct-profile-heading" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '1.2rem', minWidth: '1rem', display: 'inline-block' }}>
+                    {collapsedSections.accountProfile ? '▶' : '▼'}
+                  </span>
+                  Account Profile Fields{' '}
+                  <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 400, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.1rem 0.4rem' }}>
+                    🔒 Sensitive fields require banking:sensitive:read
+                  </span>
+                </h2>
+              </button>
+              {!collapsedSections.accountProfile && (
+              <>
               <p className="demo-data-hint">
                 Configure extended account details returned by the AI agent after the user grants explicit consent.
                 Fields marked <strong>🔒 Sensitive</strong> are only returned via the{' '}
@@ -1199,117 +1220,11 @@ export default function DemoDataPage({ user, onLogout }) {
                   {accountProfileSaving ? 'Saving\u2026' : 'Save account profile fields'}
                 </button>
               </div>
+                          </>
+              )}
             </section>
 
-            {/* ── Account Profile Fields ── */}
-            <section className="section demo-data-section" aria-labelledby="demo-acct-profile-heading">
-              <h2 className="demo-data-section__heading" id="demo-acct-profile-heading">
-                Account Profile Fields{' '}
-                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 400, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.1rem 0.4rem' }}>
-                  🔒 Sensitive fields require banking:sensitive:read
-                </span>
-              </h2>
-              <p className="demo-data-hint">
-                Configure extended account details returned by the AI agent after the user grants explicit consent.
-                Fields marked <strong>🔒 Sensitive</strong> are only returned via the{' '}
-                <code>get_sensitive_account_details</code> tool after consent. Toggle{' '}
-                <em>Include in response</em> to control which sensitive fields the demo exposes.
-              </p>
-              {ACCOUNT_TYPE_SLOTS.filter((s) => typeSlots[s.type]?.enabled).length === 0 && (
-                <p className="demo-data-hint" style={{ fontStyle: 'italic' }}>
-                  No accounts enabled. Enable accounts in the <strong>Accounts</strong> section above.
-                </p>
-              )}
-              {ACCOUNT_TYPE_SLOTS.filter((s) => typeSlots[s.type]?.enabled).map((s) => {
-                const slot = typeSlots[s.type];
-                const prof = accountProfiles[s.type] || defaultAccountProfile(s.type, '');
-                const setProf = (field, value) =>
-                  setAccountProfiles((prev) => ({
-                    ...prev,
-                    [s.type]: { ...(prev[s.type] || defaultAccountProfile(s.type, '')), [field]: value },
-                  }));
-                return (
-                  <div key={s.type} className="demo-data-type-slot demo-data-type-slot--on" style={{ marginBottom: '1.25rem' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
-                      {s.icon} {slot.name || s.defaultName}
-                      {slot.accountNumber && (
-                        <code className="demo-data-type-slot__num">{slot.accountNumber}</code>
-                      )}
-                    </div>
-                    <div className="demo-data-type-slot__fields">
-                      {[
-                        ['swiftCode', 'SWIFT Code'],
-                        ['iban', 'IBAN'],
-                        ['branchName', 'Branch Name'],
-                        ['branchCode', 'Branch Code'],
-                        ['openedDate', 'Opened Date'],
-                        ['accountHolderName', 'Account Holder Name'],
-                      ].map(([field, label]) => (
-                        <label key={field} className="demo-data-field demo-data-field--inline">
-                          <span>{label}</span>
-                          <input
-                            type="text"
-                            value={prof[field] || ''}
-                            onChange={(e) => setProf(field, e.target.value)}
-                            maxLength={200}
-                          />
-                        </label>
-                      ))}
-                      <div style={{ border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem', background: '#fffbeb', marginTop: '0.5rem' }}>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#92400e', marginBottom: '0.4rem' }}>
-                          🔒 Sensitive — requires banking:sensitive:read
-                        </div>
-                        <label className="demo-data-field demo-data-field--inline">
-                          <span>Routing Number 🔒</span>
-                          <input
-                            type="text"
-                            value={prof.routingNumber || ''}
-                            onChange={(e) => setProf('routingNumber', e.target.value)}
-                            maxLength={50}
-                          />
-                        </label>
-                        <label className="demo-data-field demo-data-field--checkbox" style={{ marginTop: '0.25rem' }}>
-                          <input
-                            type="checkbox"
-                            checked={!!prof.includeRoutingNumber}
-                            onChange={(e) => setProf('includeRoutingNumber', e.target.checked)}
-                          />
-                          <span>Include routing number in response</span>
-                        </label>
-                        <label className="demo-data-field demo-data-field--inline" style={{ marginTop: '0.5rem' }}>
-                          <span>Full Account Number 🔒</span>
-                          <input
-                            type="text"
-                            value={prof.accountNumberFull || ''}
-                            onChange={(e) => setProf('accountNumberFull', e.target.value)}
-                            maxLength={50}
-                          />
-                        </label>
-                        <label className="demo-data-field demo-data-field--checkbox" style={{ marginTop: '0.25rem' }}>
-                          <input
-                            type="checkbox"
-                            checked={!!prof.includeAccountNumberFull}
-                            onChange={(e) => setProf('includeAccountNumberFull', e.target.checked)}
-                          />
-                          <span>Include full account number in response</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="demo-data-actions" style={{ marginTop: '1rem' }}>
-                <button
-                  type="button"
-                  className="demo-data-btn primary"
-                  disabled={accountProfileSaving}
-                  onClick={handleSaveAccountProfiles}
-                >
-                  {accountProfileSaving ? 'Saving…' : 'Save account profile fields'}
-                </button>
-              </div>
-            </section>
-            {/* \u2500\u2500 Agent Scope Permissions (separate save \u2014 calls /api/admin/config) \u2500\u2500 */}
+                        {/* \u2500\u2500 Agent Scope Permissions (separate save \u2014 calls /api/admin/config) \u2500\u2500 */}
             <section className="section demo-data-section" aria-labelledby="demo-scope-heading">
               <h2 className="demo-data-section__heading" id="demo-scope-heading">Agent scope permissions</h2>
               <p className="demo-data-hint">
