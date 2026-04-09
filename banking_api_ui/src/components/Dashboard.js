@@ -13,6 +13,7 @@ import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import { useTheme } from '../context/ThemeContext';
 import SplitPaneLayout from './SplitPaneLayout';
 import ArchitectureTabsPanel from './ArchitectureTabsPanel';
 
@@ -38,28 +39,11 @@ const Dashboard = ({ user, onLogout }) => {
   const [txLookupTotalTx, setTxLookupTotalTx] = useState(0);
   const [txLookupLoading, setTxLookupLoading] = useState(false);
   const fetchingRef = React.useRef(false);
-
-  const [dashTheme, setDashTheme] = useState(() => {
-    try {
-      const t = localStorage.getItem('bx-dash-theme');
-      return t === 'dark' ? 'dark' : 'light';
-    } catch {
-      return 'light';
-    }
-  });
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = dashTheme;
-    try {
-      localStorage.setItem('bx-dash-theme', dashTheme);
-    } catch (_) {
-      /* ignore */
-    }
-  }, [dashTheme]);
+  const { theme, toggleTheme } = useTheme();
 
   const handleDashThemeToggle = useCallback(() => {
-    setDashTheme((d) => (d === 'dark' ? 'light' : 'dark'));
-  }, []);
+    toggleTheme();
+  }, [toggleTheme]);
 
   const isLocalApiHost =
     typeof window !== 'undefined' &&
@@ -426,10 +410,10 @@ const Dashboard = ({ user, onLogout }) => {
             type="button"
             onClick={handleDashThemeToggle}
             className="app-page-toolbar-btn app-page-toolbar-btn--theme"
-            aria-pressed={dashTheme === 'dark'}
-            title={dashTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            aria-pressed={theme === 'dark'}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
-            {dashTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
           </button>
           {/* P2 — Role switch: re-login as customer without a full logout cycle */}
           <button
