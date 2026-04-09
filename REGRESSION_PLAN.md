@@ -78,6 +78,26 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-09 — Phase 110: Demo Data page layout — may_act quick-action, Config button, sticky nav, token endpoint auth selector
+
+- **Changes:**
+  1. **may_act quick-action strip** — compact status pill + Enable/Clear buttons appear below hero; wired to existing `mayActEnabled`/`handleSetMayAct` state. "Full controls ↓" scrolls to full section.
+  2. **Toolbar "Config" overflow fix** — `"PingOne config"` → `"⚙ Config"` with `title` tooltip preserved; prevents line-break on narrower screens.
+  3. **Sticky section-anchor nav** — 9-link left-rail nav (`IntersectionObserver` highlights active); hidden `<768px`.
+  4. **Token endpoint auth method selector** — UI in PingOne Authorize section lets operators choose `client_secret_basic`/`post`/`jwt` per client; saved to `configStore` via `PATCH /api/demo-scenario/token-endpoint-auth`; read at token-exchange time in `agentMcpTokenService.js` with env var fallback.
+- **Files modified:** `DemoDataPage.js`, `DemoDataPage.css`, `demoScenario.js`, `configStore.js`, `agentMcpTokenService.js`
+- **Commits:** `9e062c6` (plan 01), `7dc8523` (plan 02)
+- **Regression check:** `cd banking_api_ui && npm run build` → exit 0. Existing may_act section at `#demo-mayact-heading` unchanged. Agent FAB fix (Phase 109) unchanged. Token exchange paths unchanged except configStore takes priority over env var for auth method.
+- **Do not break:** (a) Existing `handleSetMayAct`, `mayActEnabled` state — quick-action card reuses these, no new state. (b) `agentMcpTokenService.js` two-exchange path — auth method fallback is `|| process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic'`; behavior unchanged if configStore key is empty. (c) PATCH input validated against `VALID_TOKEN_AUTH_METHODS` whitelist.
+
+### 2026-04-09 — Phase 109: Agent FAB visual jump on placement button click
+
+- **Root cause:** `AgentUiModeToggle.applyAndReload()` called `setAgentUi(next)` unconditionally before the 350ms page reload, immediately updating `AgentUiModeContext` React state and moving the FAB/dock on screen.
+- **Fix:** For `reload: true` paths, write directly to `localStorage('banking_agent_ui_v2')` and skip `setAgentUi()`. The reload re-inits context from localStorage cleanly. For `reload: false` (middle split-view), `setAgentUi()` is preserved for its intentional live update.
+- **Files modified:** `banking_api_ui/src/components/AgentUiModeToggle.js`
+- **Commits:** `6595727`, `2fa5973`
+- **Regression check:** `cd banking_api_ui && npm run build` → exit 0. Middle split-view placement still works live (reload:false path unchanged).
+
 ### 2026-04-09 — feat: integrate LogoutPage component with OAuth RP-Initiated Logout route (commit `86bcfd4`)
 
 - **Feature:** Completes **Phase 50** (Logout Configuration) by wiring the logout UI component to the Express OAuth logout backend. Frontend now has a dedicated `/logout` route serving a styled landing page after sign-out.
