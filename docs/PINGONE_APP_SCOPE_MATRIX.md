@@ -2,6 +2,8 @@
 
 Operational guide: which **PingOne OAuth / worker applications** match this codebase, which **config keys** store their **client IDs**, and which **scopes** must exist on each app. Pair with **[`PINGONE_AUTHORIZE_PLAN.md`](./PINGONE_AUTHORIZE_PLAN.md)** for Authorize product APIs and BFF context.
 
+⭐ **For comprehensive reference** showing all resource servers, complete app × resource × scope tables, and verification checklist, see **[`PINGONE_RESOURCES_AND_SCOPES_MATRIX.md`](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md)** (Phase 69.1 scope naming, RFC 8693 exchange, audience binding, multi-resource scope patterns).
+
 **Source of truth in code:** `banking_api_server/config/oauth.js`, `config/oauthUser.js`, `config/scopes.js`, `services/configStore.js`, `services/oauthService.js` (token exchange), `utils/oauthAuthorizeResource.js` (authorize URL `resource` handling).
 
 ---
@@ -10,7 +12,7 @@ Operational guide: which **PingOne OAuth / worker applications** match this code
 
 | Role in this demo | Where you store **Client ID** (Config UI `/config` or env) | Purpose |
 |-------------------|-----------------------------------------------------------|---------|
-| **Admin browser login** | `admin_client_id` | Staff OAuth → `/admin`. **Same** client (`oauthService`) performs **RFC 8693 token exchange** to MCP: requests use this app’s `client_id` / `client_secret` at the token endpoint. |
+| **Admin browser login** | `admin_client_id` | Staff OAuth → `/admin`. **Same** client (`oauthService`) performs **RFC 8693 token exchange** to MCP: requests use this app's `client_id` / `client_secret` at the token endpoint. |
 | **Customer browser login** | `user_client_id` | Customer OAuth + PKCE → `/dashboard` (`oauthUser` config). |
 | **Management / bootstrap worker** | `pingone_client_id` | **PingOne Management API** (users, apps, probes)—**not** SPA login. Different scopes (e.g. `p1:read:user`). |
 | **Agent actor** (optional) | `AGENT_OAUTH_CLIENT_ID` | **Client credentials** only; optional **`actor_token`** for subject+actor token exchange toward MCP. |
@@ -49,7 +51,7 @@ Other **`user_role`** values (`readonly`, `admin`, `ai_agent`) change the bankin
 
 The BFF sends **OIDC scopes + custom `banking:*` scopes** in a **single** `/authorize` request. PingOne may treat those as **multiple resource servers** if `resource` (RFC 8707) is used inconsistently.
 
-- **Implementation:** `buildPingOneAuthorizeResourceQueryParam` in `banking_api_server/utils/oauthAuthorizeResource.js` **does not** append `&resource=` on authorize when both OIDC and custom API scopes are present—avoiding PingOne’s *“May not request scopes for multiple resources”* for that shape.
+- **Implementation:** `buildPingOneAuthorizeResourceQueryParam` in `banking_api_server/utils/oauthAuthorizeResource.js` **does not** append `&resource=` on authorize when both OIDC and custom API scopes are present—avoiding PingOne's *"May not request scopes for multiple resources"* for that shape.
 - **`ENDUSER_AUDIENCE`:** Still used for **post-issuance** JWT **`aud`** validation in `middleware/auth.js` where configured; it is **not** required on the authorize URL for this mixed-scope pattern.
 
 ---
@@ -114,12 +116,13 @@ If you use **subject + actor** exchange: PingOne must allow the **admin** exchan
 
 ## 7. Testing note
 
-Jest suites mock `/login` redirects and do not call PingOne’s `/authorize`. **`invalid_scope` from PingOne** is only observed against a live tenant. Unit tests cover **`resource`** query construction (`src/__tests__/oauthAuthorizeResource.test.js`).
+Jest suites mock `/login` redirects and do not call PingOne's `/authorize`. **`invalid_scope` from PingOne** is only observed against a live tenant. Unit tests cover **`resource`** query construction (`src/__tests__/oauthAuthorizeResource.test.js`).
 
 ---
 
 ## See also
 
 - [`PINGONE_AUTHORIZE_PLAN.md`](./PINGONE_AUTHORIZE_PLAN.md) — Authorize product, decision endpoints, BFF overview.
+- [`PINGONE_RESOURCES_AND_SCOPES_MATRIX.md`](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) — **COMPREHENSIVE** resource servers, all applications, complete scope tables, troubleshooting. **START HERE** for authority on resource URIs, app configurations, and scope naming (Phase 69.1).
 - [`banking_api_server/OAUTH_SCOPE_CONFIGURATION.md`](../banking_api_server/OAUTH_SCOPE_CONFIGURATION.md) — scope names and user-type mappings (may overlap env var naming with older examples).
 - [`REGRESSION_PLAN.md`](../REGRESSION_PLAN.md) — audience / OAuth do-not-break notes.
