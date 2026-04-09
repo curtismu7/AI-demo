@@ -1103,4 +1103,98 @@ describe('Security properties', () => {
     expect(mockPerformTokenExchangeWithActor).not.toHaveBeenCalled();
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
+
+// ---------------------------------------------------------------------------
+// RFC 8693 Compliance: Subject Preservation & may_act Format Validation
+// ---------------------------------------------------------------------------
+describe('RFC 8693 Compliance - Subject Preservation & may_act Validation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.AGENT_OAUTH_CLIENT_ID = 'agent-client-id';
+    process.env.AGENT_OAUTH_CLIENT_SECRET = 'agent-secret';
+    mockGetAgentClientCredentialsToken.mockResolvedValue(sampleJwtAgentAccessToken);
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') 
+        return 'https://mcp-server.banking-demo.com';
+      if (key === 'enableMayActSupport') return 'true';
+      return null;
+    });
+  });
+
+  it('should validate subject claim preservation in exchanged token', async () => {
+    // When exchanged token has correct subject (matches original user_sub)
+    mockPerformTokenExchangeWithActor.mockResolvedValue(sampleJwtMcpAccessToken);
+    
+    const req = makeReq(sampleJwtUserAccessToken);
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(req, 'get_my_accounts');
+    
+    // Should NOT have a subject-preservation-mismatch event
+    const mismatchEvent = tokenEvents.find(e => e.id === 'subject-preservation-mismatch');
+    expect(mismatchEvent).toBeUndefined();
+  });
+
+  it('should emit warning when exchanged token has different subject', async () => {
+    // Mock exchanged token with DIFFERENT subject
+    const mismatchedMcpToken = makeJwt({
+      sub: 'different-user-sub', // NOT USER_SUB
+      aud: 'mcp-server',
+      scope: 'banking:read',
+      act: { client_id: 'agent-client' },
+      iss: 'https://auth.pingone.com/test-env/as',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+    
+    mockPerformTokenExchangeWithActor.mockResolvedValue(mismatchedMcpToken);
+    
+    const req = makeReq(sampleJwtUserAccessToken);
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(req, 'get_my_accounts');
+    
+    // Should have subject-preservation-mismatch event
+    const mismatchEvent = tokenEvents.find(e => e.id === 'subject-preservation-mismatch');
+    expect(mismatchEvent).toBeDefined();
+    expect(mismatchEvent.status).toBe('warning');
+    expect(mismatchEvent.title).toContain('Subject');
+  });
+
+  it('should NOT inject synthetic may_act claims', async () => {
+    // User token has no may_act claim
+    const userTokenNoMayAct = makeJwt({
+      sub: USER_SUB,
+      aud: 'banking_enduser',
+      scope: 'banking:accounts:read banking:transactions:read',
+      // NO may_act claim
+      iss: 'https://auth.pingone.com/test-env/as',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+    
+    mockPerformTokenExchangeWithActor.mockResolvedValue(sampleJwtMcpAccessToken);
+    
+    const req = makeReq(userTokenNoMayAct);
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(req, 'get_my_accounts');
+    
+    // Should NOT have a 'may-act-injected' event (no synthetic injection)
+    const injectedEvent = tokenEvents.find(e => e.id === 'may-act-injected');
+    expect(injectedEvent).toBeUndefined();
+  });
+
+  it('should skip may_act validation when enableMayActSupport is false', async () => {
+    configStore.getEffective.mockImplementation((key) => {
+      if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') 
+        return 'https://mcp-server.banking-demo.com';
+      if (key === 'enableMayActSupport') return 'false'; // DISABLED
+      return null;
+    });
+    
+    mockPerformTokenExchangeWithActor.mockResolvedValue(sampleJwtMcpAccessToken);
+    
+    const req = makeReq(sampleJwtUserAccessToken);
+    const { tokenEvents } = await resolveMcpAccessTokenWithEvents(req, 'get_my_accounts');
+    
+    // Should NOT emit may_act validation events
+    const mayActEvents = tokenEvents.filter(e => e.id && e.id.includes('may-act'));
+    expect(mayActEvents.length).toBe(0);
+  });
+});
 });

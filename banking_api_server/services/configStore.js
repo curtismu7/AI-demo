@@ -119,6 +119,8 @@ const FIELD_DEFS = {
   ff_authorize_mcp_first_tool: { public: true, default: 'false' },
   ff_hitl_enabled:         { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
   ff_inject_may_act:       { public: true, default: 'false' }, // BFF-synthesise may_act when absent from user token (demo/dev — no PingOne change needed)
+  // DEPRECATED: ff_inject_may_act. Use enableMayActSupport instead (RFC 8693 configuration-based approach).
+  enableMayActSupport:     { public: true, default: 'true'  }, // Enable validation of RFC 8693 may_act claims from PingOne token policies (not synthetic injection)
   ff_inject_audience:      { public: true, default: 'false' }, // BFF-add mcp_resource_uri to aud claim snapshot when absent (demo/dev — no PingOne change needed)
   ff_skip_token_exchange:  { public: true, default: 'false' }, // Skip RFC 8693 — pass user access token directly to MCP (demo mode; token exchange not required)
   ff_oidc_only_authorize:  { public: true, default: 'false' }, // Strip banking:* from user /authorize — fixes multi-resource error when scopes are on a PingOne Resource Server

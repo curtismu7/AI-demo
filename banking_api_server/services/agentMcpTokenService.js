@@ -360,10 +360,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 
   const { userSub, userAccessTokenClaims: _rawUserClaims } = appendUserTokenEvent(tokenEvents, userToken, req);
 
-  // ── Optional BFF synthetic may_act injection ──────────────────────────────
-  // When ff_inject_may_act is true and the user token has no may_act claim, the
-  // BFF synthesises { client_id: <bff-client-id> } so token exchange can proceed
-  // without any PingOne token-policy change.  Educational/demo only.
+  // ── RFC 8693 may_act Support Configuration ───────────────────────────────
+  // DEPRECATED: Synthetic may_act injection via ff_inject_may_act (kept for backwards compatibility).
+  // New code should use enableMayActSupport with PingOne token policies for RFC 8693 compliance.
   const ffInjectMayAct =
     configStore.getEffective('ff_inject_may_act') === true ||
     configStore.getEffective('ff_inject_may_act') === 'true';
@@ -376,7 +375,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       process.env.PINGONE_CLIENT_ID ||
       null;
     if (bffClientId) {
-      // Patch claims in memory only — the JWT itself is unchanged.
+      // DEPRECATED: Patch claims in memory only — the JWT itself is unchanged.
+      // This is a backwards-compatibility shortcut. For production RFC 8693 compliance,
+      // configure PingOne to add may_act natively via token policy + enableMayActSupport.
       userAccessTokenClaims = { ...userAccessTokenClaims, may_act: { client_id: bffClientId } };
       // Update the user-token event that was just pushed to reflect the injection.
       const utEvent = tokenEvents.find(e => e.id === 'user-token');
@@ -386,24 +387,29 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         utEvent.mayActInjected = true;
         utEvent.mayActDetails =
           `may_act synthesised by BFF (ff_inject_may_act = true): { client_id: "${bffClientId}" }. ` +
-          'This is a demo/dev shortcut — enable may_act in your PingOne token policy to remove this.';
+          'DEPRECATED: This is a demo/dev shortcut — enable may_act in your PingOne token policy and set enableMayActSupport=true for RFC 8693 compliance.';
         utEvent.explanation =
           (utEvent.explanation || '') +
-          ` [BFF-INJECTED may_act: { client_id: "${bffClientId}" } — enable ff_inject_may_act is ON]`;
+          ` [BFF-INJECTED may_act: { client_id: "${bffClientId}" } — enable ff_inject_may_act is ON — DEPRECATED]`;
       }
       tokenEvents.push(buildTokenEvent(
         'may-act-injected',
-        'may_act — BFF synthetic injection',
+        'may_act — BFF synthetic injection (DEPRECATED)',
         'active',
         null,
         `ff_inject_may_act is ON. The user access token had no may_act claim so the BFF has ` +
           `synthesised { client_id: "${bffClientId}" } in memory before attempting RFC 8693 token exchange. ` +
-          'The JWT itself is unchanged. To remove this shortcut, configure PingOne to add may_act natively ' +
-          'via an attribute mapping expression, then disable this flag.',
-        { rfc: 'RFC 8693 §4.1', synthetic: true, injectedValue: { client_id: bffClientId } }
+          'DEPRECATED: This is a demo/dev shortcut. For production RFC 8693 compliance, configure PingOne to add may_act natively ' +
+          'via an attribute mapping expression, enable enableMayActSupport=true, then disable this flag.',
+        { rfc: 'RFC 8693 §4.1', synthetic: true, deprecated: true, injectedValue: { client_id: bffClientId } }
       ));
     }
   }
+  
+  // ── RFC 8693 may_act Support Configuration (Production) ──────────────────
+  // Validate RFC 8693-compliant may_act claims from PingOne token policies (not synthetic injection).
+  const mayActSupported = configStore.getEffective('enableMayActSupport') === true ||
+    configStore.getEffective('enableMayActSupport') === 'true';
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── ff_skip_token_exchange — direct user token path (no RFC 8693) ────────
@@ -771,6 +777,30 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     // Decode MCP access token to show act claim in the UI
     const mcpAccessTokenDecoded = decodeJwtClaims(exchangedToken);
     const mcpAccessTokenClaims = mcpAccessTokenDecoded?.claims;
+
+    // ── RFC 8693 §3: Subject Preservation Validation ────────────────────────
+    // Verify that the exchanged token preserves the original user's subject claim.
+    if (exchangedToken && mcpAccessTokenClaims && mcpAccessTokenClaims.sub && mcpAccessTokenClaims.sub !== userSub) {
+      logger.warn('[RFC 8693 SECURITY] Subject mismatch in token exchange', {
+        original_sub: userSub,
+        exchanged_sub: mcpAccessTokenClaims.sub,
+        audience: mcpResourceUri,
+        scope: finalScopes.join(' '),
+      });
+      tokenEvents.push(buildTokenEvent(
+        'subject-preservation-mismatch',
+        'RFC 8693 Subject — Mismatch Detected',
+        'warning',
+        null,
+        `Subject claim mismatch detected in token exchange. Original: ${userSub}, Exchanged: ${mcpAccessTokenClaims.sub}. RFC 8693 §3 requires subject preservation.`,
+        {
+          rfc: 'RFC 8693 §3',
+          original_sub: userSub,
+          exchanged_sub: mcpAccessTokenClaims.sub,
+        }
+      ));
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Replace the in-progress event with the completed result
     const inProgressIdx = tokenEvents.findIndex(e => e.id === 'exchange-in-progress');
