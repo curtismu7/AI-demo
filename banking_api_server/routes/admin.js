@@ -686,13 +686,14 @@ router.post(
   }
 );
 
-
 module.exports = router;
 
 /**
  * POST /api/admin/pingone/update-scopes
- * Fix scope configuration in existing PingOne environment
- * Handles: banking:agent:invoke → banking:ai:agent:read (Phase 69.1)
+ * 
+ * PingOne scope configuration update.
+ * Enhanced with silent worker token acquisition - no manual credentials required.
+ * Handles: banking:agent:invoke -> banking:ai:agent:read (Phase 69.1)
  */
 router.post(
   '/pingone/update-scopes',
@@ -701,21 +702,19 @@ router.post(
     try {
       const PingOneScopeUpdateService = require('../services/pingoneScopeUpdateService');
       
-      // Get credentials from environment
+      // Get environment ID from config
       const envId = process.env.PINGONE_ENVIRONMENT_ID;
-      const clientId = process.env.pingone_client_id;
-      const clientSecret = process.env.pingone_client_secret;
       
-      if (!envId || !clientId || !clientSecret) {
+      if (!envId) {
         return res.status(400).json({
-          error: 'missing_credentials',
-          message: 'PingOne credentials not configured. Set PINGONE_ENVIRONMENT_ID, pingone_client_id, and pingone_client_secret.'
+          error: 'missing_environment',
+          message: 'PingOne environment ID not configured. Set PINGONE_ENVIRONMENT_ID.'
         });
       }
 
-      // Initialize service
+      // Initialize service with silent worker token acquisition
       const service = new PingOneScopeUpdateService();
-      await service.initialize(envId, clientId, clientSecret);
+      await service.initialize(envId); // No credentials needed - uses configStore
 
       // Run scope update
       const result = await service.fixScopeConfiguration();

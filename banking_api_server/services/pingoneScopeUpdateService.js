@@ -3,11 +3,14 @@
  * 
  * Utility to fix scope configuration in existing PingOne environments.
  * Handles renaming incorrect scope names to Phase 69.1 standardized names.
+ * 
+ * Enhanced with silent worker token acquisition using configStore.
  */
 
 'use strict';
 
 const axios = require('axios');
+const configStore = require('./configStore');
 
 class PingOneScopeUpdateService {
   constructor() {
@@ -18,15 +21,52 @@ class PingOneScopeUpdateService {
   }
 
   /**
-   * Initialize with worker credentials
+   * Initialize with automatic worker token acquisition
    */
-  async initialize(envId, workerClientId, workerClientSecret, region = 'com') {
+  async initialize(envId, region = 'com') {
     try {
       this.envId = envId;
       this.region = region;
       this.baseURL = `https://api.pingone.${region}/${envId}`;
       
-      // Get worker token
+      // Silently obtain worker token from configStore
+      const workerClientId = configStore.getEffective('pingone_worker_client_id');
+      const workerClientSecret = configStore.getEffective('pingone_authorize_worker_client_secret');
+      
+      if (!workerClientId || !workerClientSecret) {
+        throw new Error('Worker client credentials not configured. Set PINGONE_AUTHORIZE_WORKER_CLIENT_ID and PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET.');
+      }
+      
+      // Get worker token silently
+      const response = await axios.post(
+        `https://auth.pingone.${region}/${envId}/as/token`,
+        'grant_type=client_credentials',
+        {
+          auth: { username: workerClientId, password: workerClientSecret },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          timeout: 10000
+        }
+      );
+      
+      this.workerToken = response.data.access_token;
+      console.log(`[PingOneScopeUpdateService] Successfully obtained worker token for client: ${workerClientId}`);
+      return { success: true, message: 'Authenticated with PingOne using worker credentials' };
+    } catch (error) {
+      throw new Error(`Failed to initialize: ${error.response?.data?.error_description || error.message}`);
+    }
+  }
+
+  /**
+   * Legacy initialize method for backward compatibility
+   * @deprecated Use initialize() without parameters for silent token acquisition
+   */
+  async initializeWithCredentials(envId, workerClientId, workerClientSecret, region = 'com') {
+    try {
+      this.envId = envId;
+      this.region = region;
+      this.baseURL = `https://api.pingone.${region}/${envId}`;
+      
+      // Get worker token with provided credentials
       const response = await axios.post(
         `https://auth.pingone.${region}/${envId}/as/token`,
         'grant_type=client_credentials',
