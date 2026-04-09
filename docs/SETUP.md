@@ -257,15 +257,26 @@ Key points compared to local:
 
 ### Logout doesn't redirect / silently fails
 
-**Cause:** PingOne OIDC app is missing `postLogoutRedirectUris`.  
-**Fix:** Use the automatic fix endpoint:
+**Cause:** PingOne OIDC app is missing `postLogoutRedirectUris`.
+**Fix:** Use the automatic fix endpoint (choose your setup):
+
+**Standard development (UI on port 3000, API on port 3001):**
 ```bash
 curl -X POST http://localhost:3001/api/admin/app-config/fix-logout-urls \
   -H "Content-Type: application/json" \
   -H "Cookie: <your-session-cookie>" \
   -d '{"publicAppUrl": "http://localhost:3000"}'
 ```
-Or manually add logout URIs in PingOne Console → Applications → your app → Settings → Sign-Off URLs.
+
+**run-bank.sh development (UI on port 4000, API on port 3002):**
+```bash
+curl -X POST http://localhost:3002/api/admin/app-config/fix-logout-urls \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <your-session-cookie>" \
+  -d '{"publicAppUrl": "http://localhost:4000"}'
+```
+
+Or manually add logout URIs in PingOne Console → Applications → your app → Settings → Sign-Off URLs. Add both `:3000` and `:4000` for maximum flexibility.
 
 ### Audit PingOne app configuration
 
