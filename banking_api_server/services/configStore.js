@@ -108,6 +108,8 @@ const FIELD_DEFS = {
   PINGONE_AUTHORIZE_POLICY_ID:              { public: true,  default: '' },
   PINGONE_AUTHORIZE_WORKER_CLIENT_ID:       { public: true,  default: '' },
   PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET:   { public: false, default: '' },
+  PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID:    { public: true,  default: '' },
+  pingone_worker_client_id:                 { public: true,  default: '' },
 
   // Feature flags — granular toggles for in-development features
   // Each maps to a runtime behaviour controlled via /api/admin/feature-flags.
@@ -473,6 +475,7 @@ class ConfigStore {
       ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],
       pingone_ai_agent_client_id:       ['PINGONE_AI_AGENT_CLIENT_ID', 'AI_AGENT_CLIENT_ID'],
       pingone_ai_agent_client_secret:    ['PINGONE_AI_AGENT_CLIENT_SECRET', 'AI_AGENT_CLIENT_SECRET'],
+      pingone_worker_client_id:                    ['PINGONE_AUTHORIZE_WORKER_CLIENT_ID'],
       pingone_mcp_token_exchanger_client_id:     ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID', 'AGENT_OAUTH_CLIENT_ID'],
       pingone_mcp_token_exchanger_client_secret: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET', 'AGENT_OAUTH_CLIENT_SECRET'],
       pingone_mcp_token_exchanger_client_scopes: ['PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES', 'AGENT_OAUTH_CLIENT_SCOPES'],
@@ -608,7 +611,7 @@ function validateTwoExchangeConfig() {
   if (!aiAgentSecret) errors.push('Missing: PINGONE_AI_AGENT_CLIENT_SECRET (or AI_AGENT_CLIENT_SECRET)');
   
   // Require explicit MCP Exchanger credentials (no fallbacks)
-  const mcpClientId = process.env.AGENT_OAUTH_CLIENT_ID;
+  const mcpClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
   const mcpSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
   if (!mcpClientId) errors.push('Missing: AGENT_OAUTH_CLIENT_ID (MCP Token Exchanger client ID)');
   if (!mcpSecret) errors.push('Missing: AGENT_OAUTH_CLIENT_SECRET (MCP Token Exchanger client secret)');
