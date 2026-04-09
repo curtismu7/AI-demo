@@ -8,9 +8,11 @@ import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
+import { useTheme } from '../context/ThemeContext';
 
 const ActivityLogs = ({ user, onLogout }) => {
   const { open } = useEducationUI();
+  const { theme, toggleTheme } = useTheme();
   const [logs, setLogs] = useState([]);
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
@@ -192,7 +194,23 @@ const ActivityLogs = ({ user, onLogout }) => {
   }
 
   return (
-    <AdminSubPageShell title="Activity Logs" lead="View and filter audit trail of API activity.">
+    <AdminSubPageShell 
+      title="Activity Logs" 
+      lead={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <span>View and filter audit trail of API activity.</span>
+          <button
+            type="button"
+            className="app-page-shell__btn"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            style={{ marginLeft: '1rem' }}
+          >
+            {theme === 'dark' ? 'Light' : 'Dark'}
+          </button>
+        </div>
+      }
+    >
       <PageNav user={user} onLogout={onLogout} title="Activity Logs" />
       <div className="app-page-toolbar app-page-toolbar--start">
         <button
