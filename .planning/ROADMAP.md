@@ -245,14 +245,29 @@ Plans:
 
 ### Phase 13: Dashboard first impression overhaul — professional clean layout, no duplicate buttons, agent visible above the fold, no sensitive credentials on screen
 
-**Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
+**Goal:** Transform the dashboard into a modern, professional interface that immediately communicates value and guides users to key features within 30 seconds of landing; establish design system foundation for dashboard and future UI components.
 **Requirements**: CONFIG-01
 **Depends on:** Phase 12
-**Plans:** 1 plan
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 13 to break down)
+- [x] 13-01-PLAN.md — Design system tokens + Hero section redesign (Wave 1)
+- [x] 13-02-PLAN.md — Account cards + Action Hub (Wave 1, parallel to 13-01)
+- [x] 13-03-PLAN.md — Loading states + Mobile responsiveness + Micro-interactions (Wave 2)
 
+**Execution Structure:**
+- **Wave 1 (Parallel):** Plans 01 & 02 execute simultaneously — 01 provides design tokens used by both, 02 is independent; enables rapid parallelization
+- **Wave 2 (Sequential):** Plan 03 depends on Wave 1 outputs; adds performance polish, mobile optimization, accessibility compliance
+
+**Success Criteria:**
+- Hero section occupies 40% of above-fold with clear value prop and CTAs
+- Account cards show balances prominently (20% of above-fold)
+- Action Hub displays primary CTAs (25% of above-fold)
+- <2s first meaningful paint, <100ms interaction response
+- WCAG 2.1 AA accessibility; keyboard navigation; mobile-responsive
+- Design tokens established for all components; skeleton loaders during data fetch
+
+### Phase 14:
 ### Phase 14: Agent window polish — collapse cluttered left rail, prevent agent from covering the dashboard side panel
 
 **Goal:** Remove dead code, collapse lesson section accordion, fix dark mode to use ThemeContext
