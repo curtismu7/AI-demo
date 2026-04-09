@@ -1,41 +1,29 @@
 /**
  * Banking Agent Routes
  * Endpoints for LangChain agent interaction with HITL consent gates
+ * Per-request stateless agent initialization with session-persisted history
  */
 
 import express from 'express';
 import { agentSessionMiddleware } from '../middleware/agentSessionMiddleware.js';
 import {
-  hitlGatewayMiddleware,
-  evaluateToolCall,
   storeConsentRequest,
   getConsentDecision,
   recordConsentDecision,
 } from '../middleware/hitlGatewayMiddleware.js';
-import {
-  initializeBankingAgent,
-  processBankingAgentMessageWithAuth,
-} from '../services/bankingAgentLangChainService.js';
+import { processAgentMessage } from '../services/bankingAgentLangChainService.js';
 
 const router = express.Router();
 
-// Global agent executor (initialized once per session)
-let bankingAgent = null;
-
 /**
  * POST /api/banking-agent/init
- * Initialize agent executor for user session (called once on app load)
+ * Initialize agent for user session (simplified — no global executor needed)
  */
 router.post('/init', agentSessionMiddleware, async (req, res) => {
   try {
-    // Initialize LangChain agent (reuse if already initialized)
-    if (!bankingAgent || !bankingAgent.agent) {
-      bankingAgent = await initializeBankingAgent();
-    }
-
     res.json({
       success: true,
-      message: 'Agent initialized',
+      message: 'Agent ready',
       sessionId: req.sessionID,
     });
   } catch (error) {
@@ -46,71 +34,75 @@ router.post('/init', agentSessionMiddleware, async (req, res) => {
 
 /**
  * POST /api/banking-agent/message
- * Send message to agent + handle HITL flow
+ * Send message to agent with HITL consent flow
+ * Per-request agent initialization, session-persisted history
  */
-router.post('/message', agentSessionMiddleware, hitlGatewayMiddleware, async (req, res) => {
+router.post('/message', agentSessionMiddleware, async (req, res) => {
   try {
     const { message, consentId } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ error: 'Message required' });
+    // Validate message
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'message is required' });
     }
 
-    if (!bankingAgent) {
-      bankingAgent = await initializeBankingAgent();
-    }
-
-    // If consentId provided: retrieve + validate consent decision
+    // If consentId provided: retrieve + validate consent decision before proceeding
     if (consentId) {
       const consent = await getConsentDecision(consentId);
       if (!consent.valid) {
         return res.status(428).json({ error: consent.error, consentId });
       }
-
       if (!consent.approved) {
         return res.json({
           success: true,
-          message: 'Operation cancelled by user',
+          reply: 'Operation cancelled by user.',
           tokenEvents: req.tokenEvents,
         });
       }
-      // Continue with approved flag in request
       req.consentApproved = true;
     }
 
-    // Process message through agent with auth context
-    const response = await processBankingAgentMessageWithAuth(
-      message,
-      bankingAgent,
-      req.user.sub,
+    // Load session history (max 20 messages, [{role:'human'|'ai', content:string}])
+    const sessionHistory = req.session.agentChatHistory || [];
+
+    // Process through LangChain agent (re-initializes per request, restores history)
+    const result = await processAgentMessage(
+      message.trim(),
       req.agentContext,
+      sessionHistory,
       req.tokenEvents
     );
 
-    // Check if response contains tool call requiring HITL
-    // (Simplified: actual implementation checks agent intermediate steps)
-    if (response.requiresConsent && !req.consentApproved) {
-      const hitl = response.requiresConsent;
-      // Store consent request + return 428
-      await storeConsentRequest(hitl.consentId, hitl);
+    // Persist updated history to session
+    req.session.agentChatHistory = result.updatedHistory;
+
+    // If HITL interrupt was returned and not already approved: store consent request and return 428
+    if (result.interrupt && !req.consentApproved) {
+      const interruptData = result.interrupt.value ?? result.interrupt;
+      const consentId = `consent_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      await storeConsentRequest(consentId, {
+        consentId,
+        reason: 'High-value operation requires your approval',
+        operation: interruptData,
+        createdAt: new Date().toISOString(),
+      });
       return res.status(428).json({
         hitl: true,
-        consentId: hitl.consentId,
-        reason: hitl.reason,
-        operation: hitl.operation,
-        message: `${hitl.reason}. Please confirm to continue.`,
+        consentId,
+        reason: 'High-value operation requires your approval',
+        operation: interruptData,
+        message: 'This operation requires your confirmation. Please approve to continue.',
       });
     }
 
     res.json({
-      success: response.success,
-      message: response.message,
-      error: response.error,
-      tokenEvents: response.tokenEvents,
+      success: true,
+      reply: result.reply,
+      tokenEvents: result.tokenEvents,
     });
   } catch (error) {
     console.error('[agent/message] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message || 'Agent processing failed' });
   }
 });
 

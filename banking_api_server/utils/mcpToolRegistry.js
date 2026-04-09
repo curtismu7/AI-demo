@@ -14,7 +14,7 @@ async function callMcpTool(toolName, params, agentToken, userId, tokenEvents = [
   try {
     // Call BFF /api/mcp/tool endpoint (same process or via localhost)
     // Note: This assumes the BFF is accessible at the same server or via localhost
-    const mcpEndpoint = process.env.MCP_TOOL_ENDPOINT || 'http://localhost:3001/api/mcp/tool'\;
+    const mcpEndpoint = process.env.MCP_TOOL_ENDPOINT || 'http://localhost:3001/api/mcp/tool';
 
     const response = await fetch(mcpEndpoint, {
       method: 'POST',
