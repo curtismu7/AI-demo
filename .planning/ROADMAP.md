@@ -1657,4 +1657,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 112 to break down)
 
+### Phase 113: Redesign UI to match Chase.com look and feel (preserve all functionality) for all pages
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 112
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 113 to break down)
+
 ---

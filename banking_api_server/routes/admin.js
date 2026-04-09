@@ -688,3 +688,47 @@ router.post(
 
 
 module.exports = router;
+
+/**
+ * POST /api/admin/pingone/update-scopes
+ * Fix scope configuration in existing PingOne environment
+ * Handles: banking:agent:invoke → banking:ai:agent:read (Phase 69.1)
+ */
+router.post(
+  '/pingone/update-scopes',
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const PingOneScopeUpdateService = require('../services/pingoneScopeUpdateService');
+      
+      // Get credentials from environment
+      const envId = process.env.PINGONE_ENVIRONMENT_ID;
+      const clientId = process.env.pingone_client_id;
+      const clientSecret = process.env.pingone_client_secret;
+      
+      if (!envId || !clientId || !clientSecret) {
+        return res.status(400).json({
+          error: 'missing_credentials',
+          message: 'PingOne credentials not configured. Set PINGONE_ENVIRONMENT_ID, pingone_client_id, and pingone_client_secret.'
+        });
+      }
+
+      // Initialize service
+      const service = new PingOneScopeUpdateService();
+      await service.initialize(envId, clientId, clientSecret);
+
+      // Run scope update
+      const result = await service.fixScopeConfiguration();
+
+      res.json(result);
+    } catch (error) {
+      console.error('Scope update error:', error);
+      res.status(500).json({
+        error: 'scope_update_failed',
+        message: error.message || 'Failed to update scopes'
+      });
+    }
+  }
+);
+
+module.exports = router;
