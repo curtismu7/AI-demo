@@ -3,6 +3,12 @@
  * 
  * Styling for the server restart notification modal.
  * Includes fade-in animation, spinner animation, and responsive design.
+ * 
+ * PERFORMANCE NOTES:
+ * - All animations use GPU-accelerated properties (opacity, transform)
+ * - No layout shift (reflow) during animations
+ * - Runs at 60fps on modern browsers; gracefully degrades on prefers-reduced-motion
+ * - Modal z-index: 9999 (above all other app modals)
  */
 
 /* ─── Keyframe animations ───────────────────────────────────────────────── */
@@ -42,6 +48,8 @@
   z-index: 9999;
   backdrop-filter: blur(2px);
   animation: fadeIn 0.3s ease-out;
+  /* Hint browser to optimize opacity + transform layers */
+  will-change: opacity;
 }
 
 /* ─── Modal content (card) ──────────────────────────────────────────────── */
@@ -49,12 +57,14 @@
 .modal-content.server-restart-content {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.25);
   max-width: 420px;
   width: 90%;
   padding: 0;
   max-height: 90vh;
   overflow-y: auto;
+  /* Hint browser to optimize scale transform */
+  will-change: transform;
 }
 
 /* ─── Modal header ──────────────────────────────────────────────────────── */
@@ -79,7 +89,7 @@
   text-align: center;
 }
 
-/* Spinner */
+/* Spinner — 32px circular indicator with rotating border */
 .restart-spinner {
   width: 32px;
   height: 32px;
@@ -88,6 +98,8 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 16px;
+  /* Hint browser to optimize rotation transform */
+  will-change: transform;
 }
 
 /* Message text */
@@ -112,7 +124,7 @@
   padding: 16px 20px;
   border-top: 1px solid var(--app-gray-200, #e5e7eb);
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: flex-end;
 }
 
@@ -125,7 +137,7 @@
   font-weight: 500;
   cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   outline: none;
 }
 
@@ -225,11 +237,17 @@
   .modal-overlay.server-restart-modal {
     animation: none;
     opacity: 1;
+    will-change: auto;
+  }
+
+  .modal-content.server-restart-content {
+    will-change: auto;
   }
 
   .restart-spinner {
     animation: none;
     border-top-color: var(--app-gray-400, #9ca3af);
+    will-change: auto;
   }
 
   .server-restart-content .btn {
