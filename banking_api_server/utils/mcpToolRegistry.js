@@ -1,14 +1,73 @@
 /**
  * MCP Tool Registry — LangChain Tool Wrappers
- * Maps LangChain Tool interface to MCP tools via existing bankingAgentService
+ * Maps LangChain Tool interface to MCP tools via BFF endpoint (/api/mcp/tool)
  */
 
 import { Tool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { callMcpTool } from '../services/bankingAgentService.js';
 
 /**
- * Base MCP Tool Wrapper — custom Tool subclass for MCP integration
+ * Call an MCP tool via the BFF /api/mcp/tool endpoint
+ * Uses HTTP to ensure compatibility with MCP Gateway
+ */
+async function callMcpTool(toolName, params, agentToken, userId, tokenEvents = []) {
+  try {
+    // Call BFF /api/mcp/tool endpoint (same process or via localhost)
+    // Note: This assumes the BFF is accessible at the same server or via localhost
+    const mcpEndpoint = process.env.MCP_TOOL_ENDPOINT || 'http://localhost:3001/api/mcp/tool'\;
+
+    const response = await fetch(mcpEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(agentToken && { 'Authorization': `Bearer ${agentToken}` }),
+        ...(userId && { 'X-User-Id': userId }),
+      },
+      body: JSON.stringify({
+        tool: toolName,
+        params: params,
+      }),
+    });
+
+    const data = await response.json();
+
+    // Track tool call event
+    if (tokenEvents) {
+      tokenEvents.push({
+        type: 'tool_call',
+        timestamp: new Date().toISOString(),
+        tool: toolName,
+        status: response.ok ? 'success' : 'failed',
+        statusCode: response.status,
+        actor: 'agent',
+        onBehalfOf: userId,
+      });
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized: agent token may have expired');
+      }
+      throw new Error(data.error || `MCP tool failed: ${response.statusText}`);
+    }
+
+    return data.result || data;
+  } catch (error) {
+    if (tokenEvents) {
+      tokenEvents.push({
+        type: 'tool_error',
+        timestamp: new Date().toISOString(),
+        tool: toolName,
+        error: error.message,
+        actor: 'agent',
+      });
+    }
+    throw error;
+  }
+}
+
+/**
+ * Base MCP Tool Wrapper — custom Tool subclass for LangChain integration
  */
 class McpToolWrapper extends Tool {
   constructor(mcpToolName, description, schema) {
@@ -20,19 +79,17 @@ class McpToolWrapper extends Tool {
 
   async _call(input) {
     // LangChain invokes this method when tool is selected
-    // Input is a string or structured object (depends on schema)
     try {
-      // Parse input if it's a JSON string (LangChain may pass string representation)
       let toolInput = input;
       if (typeof input === 'string') {
         try {
           toolInput = JSON.parse(input);
         } catch (e) {
-          // Not JSON — treat as-is
+          // Keep as string if not JSON
         }
       }
 
-      // Call MCP tool via existing service
+      // Call MCP tool (note: called without auth in this context — will be enhanced in Plan 02)
       const result = await callMcpTool(this.name, toolInput);
       return JSON.stringify(result);
     } catch (error) {
@@ -49,7 +106,7 @@ export function createMcpToolRegistry() {
   return [
     new McpToolWrapper(
       'get_my_accounts',
-      'Retrieve list of all user accounts with balances and details',
+      'Retrieve list of all user accounts with balances and details. No parameters required.',
       z.object({}).describe('No parameters required')
     ),
     new McpToolWrapper(
@@ -83,4 +140,4 @@ export function createMcpToolRegistry() {
   ];
 }
 
-export { McpToolWrapper };
+export { McpToolWrapper, callMcpTool };
