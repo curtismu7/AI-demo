@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-09T21:43:03.687Z"
+last_updated: "2026-04-09T22:08:19.654Z"
 progress:
-  total_phases: 131
+  total_phases: 132
   completed_phases: 64
-  total_plans: 199
+  total_plans: 202
   completed_plans: 153
 ---
 
@@ -20,12 +20,12 @@ progress:
 
 ## Current Position
 
-Phase: 13 (dashboard-first-impression-overhaul) — EXECUTING
+Phase: 115 (agent-framework-integration) — EXECUTING
 Plan: 1 of 3
 Plans: 4/4 complete
 **Previous:** Phase 112 (marketing-and-dashboard-ui-polish-ensure-consistent-light-and-dark-mode) — ✅ COMPLETE
 **Next:** Phase 114 (IETF agentic identity standards) — Pending
-**Status:** Executing Phase 13
+**Status:** Executing Phase 115
 
 ---
 
@@ -119,6 +119,8 @@ Plans: 4/4 complete
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- Phase 116 added: Full LangChain native agent rebuild — replace retrofit with real framework agent across all surfaces (float, left, right, middle). Real framework agent with PingOne RFC 8693 token exchange. No compatibility shims.
 
 - Phase 114 added: IETF agentic identity standards compliance and education page — RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ/T JOSE
 - Phase 108 added: Add server restart notification modal with UX polish

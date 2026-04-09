@@ -1723,4 +1723,14 @@ Plans:
 7. Build completes without breaking changes
 8. No regression in OAuth flow, token validation, or consent mechanisms
 
+### Phase 116: Full LangChain native agent rebuild — replace retrofit with real framework agent across all surfaces
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 115
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 116 to break down)
+
 ---
