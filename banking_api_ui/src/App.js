@@ -481,7 +481,7 @@ function AppWithAuth() {
                 ) : (
                   <main className="main-content">
                     <EducationBar />
-                    <LandingPage user={user} />
+                    <LandingPage user={user} onLogout={logout} />
                   </main>
                 )
               }
@@ -495,7 +495,7 @@ function AppWithAuth() {
                 <main className="main-content">
                   <EducationBar />
                   <Routes location={backgroundLocation || fullLocation}>
-                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <LandingPage user={user} />} />
+                    <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <LandingPage user={user} onLogout={logout} />} />
                     <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
                     <Route path="/config"      element={<Navigate to="/configure?tab=pingone-config" replace />} />

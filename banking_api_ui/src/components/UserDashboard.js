@@ -20,6 +20,7 @@ import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useTheme } from '../context/ThemeContext';
+import ChaseTopNav from './ChaseTopNav';
 import Fido2Challenge from './Fido2Challenge';
 import './UserDashboard.css';
 
@@ -47,7 +48,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { open } = useEducationUI();
-  const { preset } = useIndustryBranding();
   const { placement: agentPlacement } = useAgentUiMode();
   const { theme, toggleTheme } = useTheme();
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
@@ -1675,45 +1675,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
-      {/* ── Header stack: branding row + toolbar row ────────────────── */}
-      <div className="dashboard-header-stack">
-        <div className="dashboard-header dashboard-header--surface">
-          {/* LEFT: logo + title + nav shortcuts */}
-          <div className="bank-branding">
-            <div className="bank-logo">
-              <div className="logo-icon">
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-                <div className="logo-square"></div>
-              </div>
-              <span className="bank-name">{preset.shortName}</span>
-            </div>
-            <div>
-              <h1 className="dashboard-header__title">Overview</h1>
-              <div className="dashboard-header__crumbs">
-                <Link to="/" className="dashboard-header__crumb-link">Home</Link>
-                <span className="dashboard-header__crumb-sep" aria-hidden="true">›</span>
-                <Link to="/dashboard" className="dashboard-header__crumb-link dashboard-header__crumb-link--current">Dashboard</Link>
-              </div>
-            </div>
-          </div>
-          {/* RIGHT: greeting + email */}
-          <div className="header-right">
-            <div className="user-info">
-              <span className="user-greeting">
-                Hello, {
-                  (user?.firstName || user?.lastName)
-                    ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                    : user?.name || user?.username || user?.email?.split('@')[0] || 'there'
-                }
-              </span>
-              <span className="user-email">{user?.email || user?.username}</span>
-            </div>
-          </div>
-        </div>
+      {/* ── Chase Top Nav ─────────────────────────────────────────── */}
+      <ChaseTopNav user={user} onLogout={onLogout} currentPage="dashboard" />
 
-        {/* Toolbar row */}
+      {/* ── Toolbar row with additional actions ────────────────────── */}
+      <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
           <div className="dashboard-toolbar__agent-layout">
             <AgentUiModeToggle variant="eduBar" />

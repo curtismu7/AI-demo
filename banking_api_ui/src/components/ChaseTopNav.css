@@ -1,0 +1,263 @@
+/* ChaseTopNav.css - Horizontal top navigation bar styled for Chase.com */
+
+.chase-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--chase-navy, #004687);
+  color: white;
+  padding: 12px 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* LEFT: Logo + Brand Name */
+.chase-top-nav__left {
+  display: flex;
+  align-items: center;
+  min-width: 200px;
+}
+
+.chase-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chase-brand-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+}
+
+/* CENTER: Navigation Links */
+.chase-top-nav__center {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  flex: 1;
+  justify-content: center;
+}
+
+.chase-nav-link {
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+  padding: 6px 0;
+  border-bottom: 2px solid transparent;
+}
+
+.chase-nav-link:hover {
+  opacity: 1;
+}
+
+.chase-nav-link--active {
+  opacity: 1;
+  border-bottom-color: white;
+}
+
+/* RIGHT: User Actions */
+.chase-top-nav__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.chase-user-greeting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12px;
+}
+
+.chase-user-name {
+  font-weight: 600;
+  color: white;
+  font-size: 13px;
+}
+
+.chase-user-role {
+  opacity: 0.85;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Buttons */
+.chase-nav-button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chase-nav-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.chase-nav-button:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.chase-nav-button--theme {
+  font-size: 14px;
+  padding: 6px 10px;
+  border: none;
+}
+
+.chase-nav-button--theme:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chase-nav-button--role {
+  font-size: 11px;
+}
+
+.chase-nav-button--logout {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.chase-nav-button--logout:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: white;
+}
+
+/* Dark Mode Overrides */
+html[data-theme='dark'] .chase-top-nav {
+  background: var(--dash-surface-2, #1a2230);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme='dark'] .chase-brand-name,
+html[data-theme='dark'] .chase-user-name {
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .chase-user-role {
+  color: var(--dash-muted, #94a3b8);
+}
+
+html[data-theme='dark'] .chase-nav-link {
+  color: var(--dash-text, #e8edf5);
+  opacity: 0.8;
+}
+
+html[data-theme='dark'] .chase-nav-link:hover,
+html[data-theme='dark'] .chase-nav-link--active {
+  opacity: 1;
+  border-bottom-color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .chase-nav-button {
+  border-color: var(--dash-border, rgb(148 163 184 / 0.18));
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .chase-nav-button:hover {
+  background: var(--dash-surface, #141a24);
+  border-color: var(--dash-muted, #94a3b8);
+}
+
+html[data-theme='dark'] .chase-nav-button--logout {
+  background: transparent;
+  border-color: var(--dash-border, rgb(148 163 184 / 0.18));
+}
+
+html[data-theme='dark'] .chase-nav-button--logout:hover {
+  background: var(--dash-surface, #141a24);
+  border-color: var(--dash-muted, #94a3b8);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .chase-top-nav {
+    padding: 10px 16px;
+    gap: 12px;
+  }
+
+  .chase-top-nav__center {
+    gap: 20px;
+  }
+
+  .chase-nav-link {
+    font-size: 13px;
+  }
+
+  .chase-user-greeting {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .chase-top-nav {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chase-top-nav__left {
+    width: 100%;
+    min-width: auto;
+    justify-content: center;
+  }
+
+  .chase-top-nav__center {
+    width: 100%;
+    gap: 16px;
+    order: 3;
+  }
+
+  .chase-top-nav__right {
+    width: 100%;
+    justify-content: center;
+    order: 2;
+  }
+
+  .chase-brand-name {
+    font-size: 14px;
+  }
+
+  .chase-nav-link {
+    font-size: 12px;
+  }
+
+  .chase-nav-button {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chase-top-nav {
+    padding: 8px 12px;
+  }
+
+  .chase-logo-container {
+    gap: 8px;
+  }
+
+  .chase-brand-name {
+    display: none;
+  }
+
+  .chase-nav-link {
+    font-size: 11px;
+  }
+
+  .chase-nav-button {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+}

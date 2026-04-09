@@ -11,9 +11,9 @@ import TokenChainDisplay from './TokenChainDisplay';
 import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
-import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useTheme } from '../context/ThemeContext';
+import ChaseTopNav from './ChaseTopNav';
 import SplitPaneLayout from './SplitPaneLayout';
 import ArchitectureTabsPanel from './ArchitectureTabsPanel';
 
@@ -307,24 +307,8 @@ const Dashboard = ({ user, onLogout }) => {
       <a href="#admin-dashboard-main" className="dash-skip-link">
         Skip to admin content
       </a>
-      <header className="app-page-shell__hero">
-        <div className="app-page-shell__hero-top">
-          <div className="admin-dashboard__intro">
-            <div className="admin-dashboard__brand-line">
-              <div className="admin-dashboard__logo-mark" aria-hidden="true">
-                <span /><span /><span /><span />
-              </div>
-              <span className="admin-dashboard__brand-name">{preset.shortName}</span>
-            </div>
-            <div>
-              <h1 className="app-page-shell__title">Admin Dashboard</h1>
-              <p className="admin-dashboard__welcome">
-                Welcome, {user?.firstName} {user?.lastName}
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Chase Top Nav replaces the old app-page-shell__hero */}
+      <ChaseTopNav user={user} onLogout={onLogout} currentPage="admin-dashboard" />
 
       <div
         className={`app-page-shell__body app-page-shell__body--wide ${agentPlacement === 'bottom' ? 'app-page-shell__body--embed-agent' : ''}`}

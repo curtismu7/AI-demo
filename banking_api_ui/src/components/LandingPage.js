@@ -1,11 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import './LandingPage.css';
-import { useTheme } from '../context/ThemeContext';
+import ChaseTopNav from './ChaseTopNav';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
 
-export default function LandingPage() {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
+export default function LandingPage({ user, onLogout }) {
+  const navigate = useNavigate();
 
   const handleAdminLogin = (e) => {
     e.preventDefault();
@@ -19,56 +19,60 @@ export default function LandingPage() {
     window.location.href = '/api/auth/oauth/user/login';
   };
 
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+    } else {
+      navigate('/logout');
+    }
+  };
+
   return (
     <div className="landing-page">
-      {/* Header Section */}
-      <header className="landing-header" role="banner">
-        <div className="landing-header-content">
-          <div className="landing-logo">
-            <h1>Super Banking</h1>
-            <p>AI-Powered Financial Services</p>
+      {/* Chase Top Nav - replaces old landing-header */}
+      {user ? (
+        <ChaseTopNav user={user} onLogout={handleLogout} currentPage="landing" />
+      ) : (
+        /* Fallback header for non-logged-in users */
+        <header className="landing-header" role="banner">
+          <div className="landing-header-content">
+            <div className="landing-logo">
+              <h1>Super Banking</h1>
+              <p>AI-Powered Financial Services</p>
+            </div>
+            <nav className="landing-nav" role="navigation" aria-label="Main navigation">
+              <button
+                onClick={handleAdminLogin}
+                className="nav-link"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+              >
+                Admin Dashboard
+              </button>
+              <button
+                onClick={handleCustomerLogin}
+                className="nav-link"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+              >
+                Customer Dashboard
+              </button>
+            </nav>
+            <div className="landing-header-actions">
+              <button
+                onClick={handleAdminLogin}
+                className="btn btn-primary"
+              >
+                Sign In as Admin
+              </button>
+              <button
+                onClick={handleCustomerLogin}
+                className="btn btn-secondary"
+              >
+                Sign In as Customer
+              </button>
+            </div>
           </div>
-          <nav className="landing-nav" role="navigation" aria-label="Main navigation">
-            <button
-              onClick={handleAdminLogin}
-              className="nav-link"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
-            >
-              Admin Dashboard
-            </button>
-            <button
-              onClick={handleCustomerLogin}
-              className="nav-link"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
-            >
-              Customer Dashboard
-            </button>
-          </nav>
-          <div className="landing-header-actions">
-            <button
-              type="button"
-              className="landing-theme-toggle"
-              onClick={toggleTheme}
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              aria-label="Toggle dark mode"
-            >
-              {isDark ? '☀️ Light' : '🌙 Dark'}
-            </button>
-            <button
-              onClick={handleAdminLogin}
-              className="btn btn-primary"
-            >
-              Sign In as Admin
-            </button>
-            <button
-              onClick={handleCustomerLogin}
-              className="btn btn-secondary"
-            >
-              Sign In as Customer
-            </button>
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Hero Section */}
       <section className="landing-hero" role="region" aria-label="Hero section">
