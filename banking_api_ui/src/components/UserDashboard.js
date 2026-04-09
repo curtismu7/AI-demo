@@ -1317,7 +1317,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           {isDemoMode && (
             <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
               Demo mode —{' '}
-              <button type="button" onClick={navigateToCustomerOAuthLogin} style={{ background: 'none', border: 'none', color: '#1e40af', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
+              <button type="button" onClick={navigateToCustomerOAuthLogin} style={{ background: 'none', border: 'none', color: 'var(--chase-navy)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
                 sign in
               </button>{' '}
               to use your real accounts
@@ -1609,7 +1609,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           {isDemoMode && (
             <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
               Demo mode —{' '}
-              <button type="button" onClick={navigateToCustomerOAuthLogin} style={{ background: 'none', border: 'none', color: '#1e40af', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
+              <button type="button" onClick={navigateToCustomerOAuthLogin} style={{ background: 'none', border: 'none', color: 'var(--chase-navy)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 'inherit', textDecoration: 'underline' }}>
                 sign in
               </button>{' '}
               to see your real transactions
