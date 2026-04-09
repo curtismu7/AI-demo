@@ -876,13 +876,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                 </>
               )}
               {(!agentTriggeredStepUp || agentCountdown === 0) && (
-                <a
-                  href={stepUpVerifyHref}
+                <button
+                  type="button"
                   className="dashboard-toast-error__btn"
-                  style={{ textDecoration: 'none', display: 'inline-block' }}
+                  onClick={handleInitiateOtpRef.current || handleInitiateOtp}
                 >
-                  Verify now
-                </a>
+                  Verify via Email
+                </button>
               )}
             </>
           )}

@@ -29,6 +29,41 @@ async function restoreAccountsFromSnapshot(userId) {
   }
 }
 
+/**
+ * Re-hydrate a user's transactions from the Redis snapshot on cold-start.
+ * Prevents transaction loss when a Vercel lambda is recycled.
+ */
+async function restoreTransactionsFromSnapshot(userId) {
+  try {
+    const scenario = await demoScenarioStore.load(userId);
+    if (!Array.isArray(scenario?.transactionSnapshot) || scenario.transactionSnapshot.length === 0) return;
+    for (const snap of scenario.transactionSnapshot) {
+      if (!dataStore.getTransactionById(snap.id)) {
+        await dataStore.createTransaction(snap);
+      }
+    }
+  } catch (e) {
+    console.warn('[transactions] restoreTransactionsFromSnapshot failed:', e.message);
+  }
+}
+
+/**
+ * Persist transaction snapshot to Redis/KV for serverless cold-start recovery.
+ * Keeps most recent transactions only to avoid large payloads.
+ */
+async function saveTransactionSnapshot(userId) {
+  try {
+    const existing = await demoScenarioStore.load(userId);
+    const allTx = dataStore.getTransactionsByUserId(userId).slice(-50); // Keep 50 most recent
+    await demoScenarioStore.save(userId, {
+      ...existing,
+      transactionSnapshot: allTx
+    });
+  } catch (e) {
+    console.warn('[transactions] saveTransactionSnapshot failed:', e.message);
+  }
+}
+
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
   try {
@@ -60,6 +95,11 @@ router.get('/', authenticateToken, requireScopes(['banking:transactions:read', '
 // ENDUSER_AUDIENCE is set, restore: requireScopes(['banking:transactions:read', 'banking:read'])
 router.get('/my', authenticateToken, async (req, res) => {
   try {
+    // Re-hydrate transactions from Redis snapshot in case this Lambda was cold-started.
+    if (req.user.role !== 'admin') {
+      await restoreTransactionsFromSnapshot(req.user.id);
+    }
+
     // Log RFC 8693 delegated access for audit/demo visibility
     if (req.user.isDelegated) {
       console.log(`[transactions] Delegated access — sub=${req.user.id} act.sub=${req.user.actor?.sub}`);
