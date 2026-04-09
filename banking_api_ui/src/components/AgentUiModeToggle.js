@@ -20,7 +20,14 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
 
   const applyAndReload = useCallback(
     async (next, opts = { reload: true }) => {
-      setAgentUi(next);
+      if (opts.reload) {
+        // Write to localStorage only — do NOT update React context state here.
+        // Updating context would move the FAB/dock immediately on screen (visual jump)
+        // before the page reloads. The reload will re-init context from localStorage.
+        try { localStorage.setItem('banking_agent_ui_v2', JSON.stringify(next)); } catch (_) {}
+      } else {
+        setAgentUi(next);
+      }
       const saved = await persistBankingAgentUi(next);
       if (!saved) {
         notifyWarning(
