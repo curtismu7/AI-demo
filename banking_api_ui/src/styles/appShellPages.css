@@ -44,6 +44,9 @@
   line-height: 1.55;
   opacity: 0.92;
   max-width: 40rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .app-page-shell__hero .app-page-shell__lead a {

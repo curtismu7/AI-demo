@@ -763,7 +763,8 @@ export default function Config() {
         <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
           {[
             { key: 'setup',  label: '⚙️ Setup Config' },
-            { key: 'pingone-setup', label: '🔧 PingOne Setup' },
+            { key: 'pingone-config', label: '🔧 PingOne Config' },
+            { key: 'scope-mgmt', label: '🔐 Scope Management' },
             ...(hostedOn === 'vercel' ? [{ key: 'vercel', label: '▲ Vercel Env' }] : []),
             { key: 'worker', label: '🔑 Worker App' },
             { key: 'token-validation', label: '🔍 Token Validation' },
@@ -817,7 +818,7 @@ export default function Config() {
         )}
 
         {/* PingOne Setup tab content */}
-        {activeTab === 'pingone-setup' && (
+        {activeTab === 'pingone-config' && (
           <SetupWizardTab />
         )}
 
@@ -830,6 +831,36 @@ export default function Config() {
         {activeTab === 'token-validation' && (
           <ConfigTokenValidation />
         )}
+
+        {/* Scope Management tab — PingOne scope configuration and updates */}
+        {activeTab === 'scope-mgmt' && (
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">PingOne Scope Management</h3>
+            </div>
+            <div className="card-body">
+              <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+                Manage OAuth scopes in your PingOne environment. Create, update, or remove scopes and grant them to applications.
+              </p>
+              <p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>
+                <strong>Scope Update Tool:</strong> Go to the <Link to="/admin" style={{ color: '#2563eb', textDecoration: 'underline' }}>Admin Dashboard</Link> → Banking Admin page to use the automated <strong>Fix PingOne Scopes</strong> button.
+              </p>
+              <div style={{ backgroundColor: '#f0f7fb', border: '1px solid #93c5fd', borderRadius: '8px', padding: '1rem' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e40af' }}>
+                  💡 <strong>Tip:</strong> Use the automated scope update tool to:
+                  <ul style={{ marginTop: '0.5rem', marginBottom: 0, paddingLeft: '1.5rem' }}>
+                    <li>Create <code>banking:ai:agent:read</code> scope (Phase 69.1 standard)</li>
+                    <li>Remove deprecated <code>banking:agent:invoke</code> scope</li>
+                    <li>Grant scopes to all applications</li>
+                  </ul>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Scope Management tab — PingOne scope configuration and updates */}
+        
 
         {/* Setup tab — hidden when Vercel or Worker App tab is active */}
         {activeTab === 'setup' && (
