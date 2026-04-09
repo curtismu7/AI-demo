@@ -211,7 +211,7 @@ function TextField({ label, fieldKey, value, onChange, help, placeholder, type =
         disabled={disabled}
         readOnly={disabled}
       />
-      {help && <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>{help}</p>}
+      {help && <p className="form-help" style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', wordWrap: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap', maxWidth: '100%' }}>{help}</p>}
     </div>
   );
 }
