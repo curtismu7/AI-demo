@@ -996,6 +996,16 @@ Plans:
 5. Configuration interfaces are unified with proper Vercel validation and token authentication method selection
 6. Visual design is consistent, accessible, and performant across all devices and screen sizes
 
+### Phase 115: Agent framework integration — recreate BankingAgent using LangChain for improved tool orchestration, multi-turn conversations, and maintainability
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 114
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 115 to break down)
+
 ---
 
 ### Phase 67: documentation-enhancement-and-developer-tools
