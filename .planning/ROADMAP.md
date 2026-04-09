@@ -1662,13 +1662,13 @@ Plans:
 **Goal:** Apply Chase.com visual design (navy + blues, system fonts, horizontal top nav) to LandingPage, UserDashboard, Dashboard, and high-traffic admin pages while preserving all OAuth/MCP/education functionality.
 **Requirements**: TBD
 **Depends on:** Phase 112
-**Plans:** 4/4 plans
+**Plans:** 1/4 plans complete
 
 Plans:
-- [x] Plan 01: Create ChaseTopNav component; integrate into LandingPage, UserDashboard, Dashboard
-- [x] Plan 02: LandingPage hero Chase styling + SideNav Chase refinement
-- [x] Plan 03: Create chase-theme.css (system fonts, shared overrides); apply to high-traffic admin pages
-- [x] Plan 04: Polish & visual testing across all pages
+- [x] Plan 01: Create ChaseTopNav component; integrate into LandingPage, UserDashboard, Dashboard (COMPLETE — commit 9a90b90, 2026-04-09)
+- [ ] Plan 02: LandingPage hero Chase styling + SideNav Chase refinement
+- [ ] Plan 03: Create chase-theme.css (system fonts, shared overrides); apply to high-traffic admin pages
+- [ ] Plan 04: Polish & visual testing across all pages
 
 ### Phase 114: IETF agentic identity standards compliance and education page - RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ-T JOSE
 
