@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-last_updated: "2026-04-09T16:12:39.049Z"
+status: executing
+last_updated: "2026-04-09T16:34:32.724Z"
 progress:
   total_phases: 131
-  completed_phases: 59
-  total_plans: 184
-  completed_plans: 139
+  completed_phases: 60
+  total_plans: 186
+  completed_plans: 141
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,10 +20,10 @@ progress:
 
 ## Current Position
 
-Phase: 110 (fix-demo-data-page-layout-add-may-act-demo-button-fix-config-button-overflow-improve-discoverability) — PLANNING
-Plan: 0 of ?
+Phase: 110 (fix-demo-data-page-layout-add-may-act-demo-button-fix-config-button-overflow-improve-discoverability) — EXECUTING
+Plan: 1 of 2
 **Previous:** Phase 109 (demo-data-agent-placement-buttons) — ✅ COMPLETE (1/1 plans executed 2026-04-09)
-**Status:** Phase 110 directory exists, no plans yet — needs discuss/plan
+**Status:** Executing Phase 110
 
 ---
 
@@ -73,6 +73,7 @@ Plan: 0 of ?
 - [Phase 87]: Phase 87 planned with 7-task breakdown covering service, API, React component, tests, and Vercel deployment. Scope validation rules derived from live PingOne resources and PINGONE_MAY_ACT_SETUP.md reference table.
 - [Phase 97]: In-memory mode state seeded from VALIDATION_MODE env var (not persisted to disk)
 - [Phase 97]: RFC 7662 health probe: 400 response from PingOne counts as 'connected' (invalid token is expected)
+- [Phase 110]: Token endpoint auth method stored in configStore; read at exchange time with env var fallback
 
 ## Blockers
 
