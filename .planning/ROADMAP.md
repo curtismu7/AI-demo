@@ -1725,12 +1725,14 @@ Plans:
 
 ### Phase 116: Full LangChain native agent rebuild — replace retrofit with real framework agent across all surfaces
 
-**Goal:** [To be planned]
+**Goal:** Replace deprecated createStructuredChatAgent + NL-intent dispatch with langchain 1.x createAgent() API across JS BFF and React UI. All user messages route through /api/banking-agent/message. 7-tool registry (banking + education + search). Per-request executor with session history. HITL consent gates wired.
 **Requirements**: TBD
 **Depends on:** Phase 115
-**Plans:** 0 plans
+**Plans:** 3 plans (Wave 1: 116-01, 116-02 parallel; Wave 2: 116-03)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 116 to break down)
+- [ ] 116-01-PLAN.md — Rewrite bankingAgentLangChainService.js + bankingAgentRoutes.js for langchain 1.x — Wave 1 (parallel)
+- [ ] 116-02-PLAN.md — Rebuild mcpToolRegistry.js with tool() function + 3 new tools — Wave 1 (parallel)
+- [ ] 116-03-PLAN.md — Wire BankingAgent.js to sendAgentMessage, remove parseNaturalLanguage dispatch — Wave 2 (has checkpoint)
 
 ---
