@@ -4,6 +4,7 @@ import './index.css';
 import './theme/globalTheme.css';
 import './styles/dashboard-theme.css';
 import App from './App';
+import { ThemeProvider } from './context/ThemeContext';
 import { patchFetch } from './services/apiTrafficStore';
 
 try {
@@ -24,6 +25,8 @@ patchFetch();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </React.StrictMode>
 );
