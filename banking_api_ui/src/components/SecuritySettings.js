@@ -47,7 +47,14 @@ const FIELD_META = {
     type: 'toggle',
     description: 'When enabled, ALL withdrawal transactions require MFA step-up regardless of the amount threshold above. Recommended for demos — ensures step-up is always demonstrated.',
   },
-  authorizeEnabled: {
+  maxTransactionAmount: {
+    label: 'Maximum Transaction Amount ($)',
+    type: 'number',
+    min: 0,
+    max: 1000000,
+    description: 'Hard stop limit: ALL transactions exceeding this amount are blocked. Applied to all user types (users, admin, agent).',
+  },
+    authorizeEnabled: {
     label: 'PingOne Authorize Integration',
     type: 'toggle',
     description: 'Route authorization decisions through PingOne Authorize. When enabled, every non-admin transaction is evaluated against the policy below. Works alongside (not instead of) the step-up threshold above.',
@@ -215,6 +222,7 @@ const SecuritySettings = ({ user, onLogout }) => {
     'stepUpTransactionTypes',
     'stepUpMethod',
     'stepUpWithdrawalsAlways',
+    'maxTransactionAmount',
     'authorizeEnabled',
     'authorizePolicyId',
   ];

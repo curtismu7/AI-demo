@@ -156,7 +156,9 @@ const FIELD_DEFS = {
   // 'ciba'  → back-channel (CIBA) challenge shown inline on the dashboard
   // 'email' → OIDC re-authentication redirect (PingOne email / OTP MFA)
   STEP_UP_METHOD: { public: true, default: 'email' },
-  STEP_UP_AMOUNT_THRESHOLD: { public: true, default: 250 },
+  STEP_UP_AMOUNT_THRESHOLD: { public: true, default: 500 },
+  /** Maximum allowed transaction amount (hard limit, all transaction types). Blocks anything over this. */
+  MAX_TRANSACTION_AMOUNT: { public: true, default: 1000 },
 
   /** UI industry / white-label preset (client applies colors + logo). See banking_api_ui/src/config/industryPresets.js */
   UI_INDUSTRY_PRESET: { public: true, default: 'bx_finance' },

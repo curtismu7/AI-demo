@@ -270,7 +270,21 @@ router.post('/', authenticateToken, async (req, res) => {
     if (parsedAmount > 1_000_000) {
       return res.status(400).json({ error: 'amount_exceeds_limit', message: 'Transaction amount cannot exceed $1,000,000.' });
     }
-    // Round to 2 decimal places to prevent floating-point manipulation
+
+    // ── Hard transaction limit gate ──────────────────────────────────────
+    // Block ALL transactions exceeding the absolute maximum (applies to all user types)
+    const MAX_TRANSACTION_AMOUNT = parseFloat(configStore.getEffective('max_transaction_amount')) || 1000;
+    if (parseFloat(amount) > MAX_TRANSACTION_AMOUNT) {
+      return res.status(400).json({
+        error: 'amount_exceeds_hard_limit',
+        message: `Transaction amount cannot exceed $${MAX_TRANSACTION_AMOUNT}.`,
+        limit: MAX_TRANSACTION_AMOUNT,
+        amount: parseFloat(amount),
+      });
+    }
+    // ── End hard limit gate ──────────────────────────────────────────────
+
+        // Round to 2 decimal places to prevent floating-point manipulation
     req.body.amount = Math.round(parsedAmount * 100) / 100;
 
     const performingUser = dataStore.getUserById(req.user.id);

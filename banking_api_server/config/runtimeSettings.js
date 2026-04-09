@@ -25,6 +25,8 @@ const settings = {
   // Future: PingOne Authorize integration
   authorizeEnabled: false,
   authorizePolicyId: process.env.PINGONE_AUTHORIZE_POLICY_ID || '',
+  // Hard limit for all transactions
+  maxTransactionAmount: parseFloat(process.env.MAX_TRANSACTION_AMOUNT) || 1000,
   pingonesMfaPolicyId: process.env.PINGONE_MFA_POLICY_ID || '',
 };
 
@@ -52,7 +54,7 @@ function update(updates, changedBy = 'unknown') {
     if (!allowedKeys.has(key)) continue; // Ignore unknown keys
 
     // Type-coerce numeric fields
-    if (key === 'stepUpAmountThreshold') {
+    if (key === 'stepUpAmountThreshold' || key === 'maxTransactionAmount') {
       const parsed = parseFloat(value);
       if (isNaN(parsed) || parsed < 0) continue;
       applied[key] = parsed;
