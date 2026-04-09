@@ -748,10 +748,10 @@ Plans:
 
 **Requirements:** SCOPE-COMPLIANCE-01
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 111-01-PLAN.md — Add Worker and MCP Exchanger client IDs to pingoneBackendDefaults.js and configStore.js
+- [x] 111-01-PLAN.md — Add Worker and MCP Exchanger client IDs to pingoneBackendDefaults.js and configStore.js
 
 **Success criteria:**
 1. Worker Token app client ID (95dc946f-5e0a-4a8b-a8ba-b587b244e005) added to code configuration

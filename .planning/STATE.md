@@ -3,12 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-09T16:34:32.724Z"
+last_updated: "2026-04-09T16:56:17.314Z"
 progress:
   total_phases: 131
-  completed_phases: 60
+  completed_phases: 61
   total_plans: 186
-  completed_plans: 141
+  completed_plans: 142
+  percent: 76
 ---
 
 # State — Super Banking AI Banking Demo
@@ -21,9 +22,9 @@ progress:
 ## Current Position
 
 Phase: 110 (fix-demo-data-page-layout-add-may-act-demo-button-fix-config-button-overflow-improve-discoverability) — EXECUTING
-Plan: 1 of 2
+Plan: 2 of 2
 **Previous:** Phase 109 (demo-data-agent-placement-buttons) — ✅ COMPLETE (1/1 plans executed 2026-04-09)
-**Status:** Executing Phase 110
+**Status:** Ready to execute
 
 ---
 
@@ -74,6 +75,7 @@ Plan: 1 of 2
 - [Phase 97]: In-memory mode state seeded from VALIDATION_MODE env var (not persisted to disk)
 - [Phase 97]: RFC 7662 health probe: 400 response from PingOne counts as 'connected' (invalid token is expected)
 - [Phase 110]: Token endpoint auth method stored in configStore; read at exchange time with env var fallback
+- [Phase 111-scope-audit-compliance-app-ids]: Use pingone_worker_client_id long-form keys to match configStore.getEffective() lookup chain
 
 ## Blockers
 
