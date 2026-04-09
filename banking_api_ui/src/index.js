@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import './theme/globalTheme.css';
 import './styles/dashboard-theme.css';
+import './styles/chase-theme.css';
 import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import { patchFetch } from './services/apiTrafficStore';
