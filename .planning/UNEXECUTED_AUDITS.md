@@ -98,6 +98,28 @@ All located in `.planning/phases/56-token-exchange-audit-and-compliance/`:
 
 ---
 
+
+
+---
+
+## Phase 56-05 Enhancement: Error Code Integration (e1d41fd)
+
+**Status:** ✅ COMPLETE
+
+**What it adds**:
+- mapErrorToStructuredResponse() utility function in agentMcpTokenService.js
+- Error mapping logic for RFC 8693 standardized codes
+- ERROR_CODE_INTEGRATION_GUIDE.md (250+ lines)
+
+**Purpose**: Provides error code response mapping utilities for systematic error handling throughout the token exchange service.
+
+**Key Functions**:
+- mapErrorToStructuredResponse(error) — Maps errors to RFC 8693 codes
+- Returns structured object: {errorCode, errorDetails, message}
+- Graceful fallback if configStore unavailable
+
+**Ready for Integration**: Error code utilities can now be used throughout error handlers to provide RFC 8693 compliant responses.
+
 ## Phase 84: Syntax Errors & Code Quality Audit
 
 **Status:** ✅ Mostly Executed (3 plans run, 1 optional)
