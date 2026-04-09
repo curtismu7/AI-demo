@@ -996,14 +996,6 @@ Plans:
 5. Configuration interfaces are unified with proper Vercel validation and token authentication method selection
 6. Visual design is consistent, accessible, and performant across all devices and screen sizes
 
-### Phase 115: Agent framework integration — recreate BankingAgent using LangChain for improved tool orchestration, multi-turn conversations, and maintainability
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 114
-**Plans:** 0 plans
-
-Plans:
 - [ ] TBD (run /gsd-plan-phase 115 to break down)
 
 ---
@@ -1707,3 +1699,28 @@ Plans:
 - [ ] Plan 02: Register panel in EducationPanelsHost, add educationIds entry, wire SideNav + education commands
 - [ ] Plan 03: Add compliance callouts to TokenExchangePanel and HumanInLoopPanel; link from BestPracticesPanel
 
+
+### Phase 115: Agent framework integration — recreate BankingAgent using LangChain for improved tool orchestration, multi-turn conversations, and maintainability
+
+**Goal:** Integrate LangChain as the agent framework for BankingAgent, replacing custom agent loop with LangChain agent executor. Preserve all current functionality (MCP tool integration, OAuth + RFC 8693 token exchange, HITL consent gates, token event tracking). Improve maintainability and enable multi-turn agentic patterns.
+
+**Requirements**: TBD
+**Depends on:** Phase 114
+**Plans:** 3 plans (Wave 1: 115-01, 115-02 parallel; Wave 2: 115-03)
+
+Plans:
+- [ ] 115-01-PLAN.md — LangChain agent foundation (tool registry, executor, memory) — Wave 1 (parallel)
+- [ ] 115-02-PLAN.md — OAuth session + RFC 8693 token exchange integration — Wave 1 (parallel)
+- [ ] 115-03-PLAN.md — HITL consent gates + UI wiring (BankingAgent.js, client service) — Wave 2 (depends on Wave 1)
+
+**Success criteria:**
+1. LangChain agent executor initialized with Claude 3, MCP tool registry, and ConversationBufferMemory
+2. Agent invocations tied to authenticated OAuth sessions; RFC 8693 token exchange works (user acts on behalf of agent)
+3. High-value operations (>$500) trigger HITL consent modal; user can approve/reject
+4. Token events (exchange, tool calls) tracked and displayed for transparency
+5. Agent can hold multi-turn conversation context; user can see chat history
+6. All existing MCP tools callable through LangChain agent
+7. Build completes without breaking changes
+8. No regression in OAuth flow, token validation, or consent mechanisms
+
+---
