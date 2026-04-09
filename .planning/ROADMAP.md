@@ -1647,4 +1647,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 110 to break down)
 
+### Phase 112: marketing and dashboard ui polish - ensure consistent light and dark mode
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 111
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 112 to break down)
+
 ---

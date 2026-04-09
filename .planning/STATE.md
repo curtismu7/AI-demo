@@ -112,6 +112,8 @@ Plan: 1 of 3
 
 ### Roadmap Evolution
 
+- Phase 108 added: Add server restart notification modal with UX polish
+- Phase 108 added: Add server restart notification modal with UX polish
 - Phase 102 added: redesign app UI to match Ping Operations Fabric style - split-pane layout with architecture diagram panel and chat agent panel, PingIdentity branding, red accents, solution architecture section with token flow steps
 
 - Phase 101 added: token exchange flow diagram UI - single and double exchange with AI agent bubble on responses
@@ -166,3 +168,11 @@ Plan: 1 of 3
 - Phase 97 added: Demo config with introspection and JWT validation options — ensure introspection and JWT validation are options in demo config, verify APIs working to PingOne endpoint
 - Phase 105 added: make dashboards match the color scheme and general look of chase.com main page
 - Phase 106 added: RFC 8693 §4.4 delegation claims - nested act for delegation chains - ensure compliance and implementation
+
+---
+
+## Roadmap Evolution
+
+- Phase 109 added: Demo-data agent placement buttons should only configure state, not move agent [2026-04-08]
+- Phase 110 added: Fix demo-data page layout: add may_act demo button, fix Config button overflow, improve discoverability [2026-04-08]
+- Phase 112 added: Marketing and dashboard UI polish - ensure consistent light and dark mode [2026-04-08]
