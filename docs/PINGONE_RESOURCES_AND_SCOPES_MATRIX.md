@@ -22,9 +22,10 @@
 | **Purpose** | OAuth token audience for end-user (customer/admin) login + RFC 8693 token exchange |
 | **Token Audience** | Set on user access tokens via `resource=...` parameter at `/authorize` and `/token` |
 
-**Scopes Defined:**
+**Scopes Defined on This Resource:**
 
 | Scope | Description | User Types |
+|-------|-------------|-----------|
 |-------|-------------|-----------|
 | `openid` | OIDC scope (built-in) | All |
 | `profile` | User profile claims | All |
@@ -116,9 +117,14 @@
 openid profile email offline_access banking:general:read banking:general:write banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write
 ```
 
-**Scopes on App (granted in PingOne):**
-- ✅ All Main Banking Resource Server scopes (admin needs full access)
-- ✅ RFC 8693 exchange enabled for this app
+**Scopes on App (granted in PingOne Console):**
+
+All scopes on **Main Banking Resource Server**:
+
+- ✅ `openid`, `profile`, `email`, `offline_access` (Main Banking Resource)
+- ✅ `banking:general:read`, `banking:general:write`, `banking:admin:full`, `banking:admin:read`, `banking:admin:write` (Main Banking Resource)
+- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` (Main Banking Resource)
+- ✅ RFC 8693 token exchange **enabled** on this app
 
 **Uses Audience:** `https://resource.pingdemo.com` (or value of `ENDUSER_AUDIENCE` if set)
 
@@ -149,12 +155,12 @@ openid profile email offline_access banking:ai:agent:read banking:general:read b
 
 Based on `user_role` config:
 
-| `user_role` | Scopes Granted |
+| `user_role` | Scopes Granted (on Main Banking Resource Server) |
 |---|---|
 | `customer` ✅ | `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
 | `readonly` | `banking:general:read`, `banking:accounts:read`, `banking:transactions:read` |
 | `admin` | `banking:admin:full`, `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
-| `ai_agent` | `banking:ai:agent:read`, `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
+| `ai_agent` | **`banking:ai:agent:read`**, `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
 
 **Uses Audience:** `https://resource.pingdemo.com` or value of `ENDUSER_AUDIENCE` (if set)
 
