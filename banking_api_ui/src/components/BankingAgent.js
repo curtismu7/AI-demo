@@ -32,7 +32,6 @@ import { isBankingAgentFloatingDefaultOpen } from '../utils/bankingAgentFloating
 import { isPublicMarketingAgentPath } from '../utils/embeddedAgentFabVisibility';
 import AgentConsentModal from './AgentConsentModal';
 import TransactionConsentModal from './TransactionConsentModal';
-import AgentFlowDiagramPanel from './AgentFlowDiagramPanel';
 import bffAxios from '../services/bffAxios';
 import './BankingAgent.css';
 
@@ -2730,9 +2729,6 @@ export default function BankingAgent({
                 }}
               />
             )}
-
-            {/* Agent Flow Diagram Panel - floating draggable panel */}
-            <AgentFlowDiagramPanel />
 
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">

@@ -512,7 +512,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // RFC 8707: Validate scopes against target audience
   let scopeValidatedFinalScopes = finalScopes;
   try {
-    const audienceForValidation = audienceUri || mcpResourceUri;
+    const audienceForValidation = mcpResourceUri;
     const scopeValidation = configStore.validateScopeAudience(
       finalScopes,
       audienceForValidation
