@@ -112,7 +112,7 @@ Plan: 3 of 3
 
 ### Roadmap Evolution
 
-- Phase 108 added: Add server restart notification modal with UX polish
+- Phase 114 added: IETF agentic identity standards compliance and education page — RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ/T JOSE
 - Phase 108 added: Add server restart notification modal with UX polish
 - Phase 102 added: redesign app UI to match Ping Operations Fabric style - split-pane layout with architecture diagram panel and chat agent panel, PingIdentity branding, red accents, solution architecture section with token flow steps
 

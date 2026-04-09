@@ -1667,4 +1667,15 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 113 to break down)
 
----
+### Phase 114: IETF agentic identity standards compliance and education page - RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ-T JOSE
+
+**Goal:** Add a new education drawer (IETFStandardsPanel) covering all 7 IETF drafts where Ping Identity is author or co-author. Map each standard to IDC's 5 AI governance guardrails. Show what's already implemented in this demo vs. roadmap. Wire compliance callouts into existing TokenExchange and HumanInLoop panels.
+**Requirements**: IETF-EDU-01, IETF-EDU-02, IETF-EDU-03
+**Depends on:** Phase 108
+**Plans:** 3 plans
+
+Plans:
+- [ ] Plan 01: Create IETFStandardsPanel.js with 8-tab education drawer (7 standards + overview/IDC guardrails tab)
+- [ ] Plan 02: Register panel in EducationPanelsHost, add educationIds entry, wire SideNav + education commands
+- [ ] Plan 03: Add compliance callouts to TokenExchangePanel and HumanInLoopPanel; link from BestPracticesPanel
+
