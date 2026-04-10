@@ -1776,4 +1776,14 @@ Plans:
 6. Tool filtering uses whitelist constant (PUBLIC_TOOLS)
 7. All tests passing (11 tests: 5 unit + 6 integration)
 
+### Phase 120: UI/UX: Audit all buttons and navigation; make sidebar and nav more bank-like
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 119
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 120 to break down)
+
 ---
