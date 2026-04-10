@@ -22,7 +22,9 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     if (!process.env.ANTHROPIC_API_KEY && !process.env.GROQ_API_KEY) {
       console.warn('[processAgentMessage] No LLM API key configured (ANTHROPIC_API_KEY or GROQ_API_KEY), returning fallback response');
       return {
-        message: 'The banking agent is not configured. Please set ANTHROPIC_API_KEY or GROQ_API_KEY environment variable to enable AI-powered banking assistance.',
+        reply: 'The banking agent is not configured. Please set ANTHROPIC_API_KEY or GROQ_API_KEY environment variable to enable AI-powered banking assistance.',
+        success: false,
+        error: 'No LLM API key configured',
         toolsCalled: [],
         tokensUsed: 0,
         requiresConsent: false,
@@ -54,7 +56,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     const responseContent = lastMessage?.content || lastMessage?.text || 'No response from agent';
 
     return {
-      message: responseContent,
+      reply: responseContent,
+      success: true,
       toolsCalled: [],
       tokensUsed: 0,
       requiresConsent: false,
@@ -70,7 +73,9 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     // Return a graceful error response instead of throwing
     return {
-      message: `Agent error: ${error.message}`,
+      reply: `Agent error: ${error.message}`,
+      success: false,
+      error: error.message,
       toolsCalled: [],
       tokensUsed: 0,
       requiresConsent: false,
