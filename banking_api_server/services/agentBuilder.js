@@ -120,8 +120,18 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
         },
       };
       const response = await model.bindTools(tools).invoke(messages, config);
-      // Ensure response is in the correct message format
-      const messageContent = response.content || response.text || response;
+      // Handle LangChain response format - it may have tool_calls or content as array
+      let messageContent;
+      if (response.tool_calls && response.tool_calls.length > 0) {
+        // If there are tool calls, return the response as-is (tool_calls will be processed by toolNode)
+        return { messages: [response] };
+      } else if (Array.isArray(response.content)) {
+        // Content might be an array of content blocks
+        messageContent = response.content.map(c => typeof c === 'string' ? c : JSON.stringify(c)).join('\n');
+      } else {
+        // Ensure response is in the correct message format
+        messageContent = response.content || response.text || JSON.stringify(response);
+      }
       return { messages: [{ role: 'assistant', content: messageContent }] };
     }
 
