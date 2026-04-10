@@ -153,7 +153,7 @@ function createMcpToolRegistry() {
       },
       {
         name: 'get_my_accounts',
-        description: 'Retrieve list of all user accounts with balances and details. Call this when the user asks to see their accounts, check balances, or view account information.',
+        description: 'Retrieve list of all user accounts with balances and details. This tool requires NO parameters - it automatically uses the authenticated user session. Call this directly when the user asks to "show my accounts", "see my accounts", "what accounts do I have", "check my balance", or "view account information". Do NOT ask for account details or username.',
         schema: z.object({}),
       }
     ),
