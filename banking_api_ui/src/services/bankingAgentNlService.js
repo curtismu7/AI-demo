@@ -3,8 +3,6 @@
  * Natural language routing for the Banking Agent (Backend-for-Frontend (BFF): heuristic + optional Gemini).
  */
 
-import { refreshOAuthSession } from './bankingAgentService';
-
 export async function fetchNlStatus() {
   const res = await fetch('/api/banking-agent/nl/status', { credentials: 'include' });
   if (!res.ok) return { geminiConfigured: false, heuristicAlwaysAvailable: true };
@@ -22,13 +20,7 @@ export async function parseNaturalLanguage(message) {
     credentials: 'include',
     body: JSON.stringify({ message }),
   };
-  let res = await fetch('/api/banking-agent/nl', opts);
-  if (res.status === 401) {
-    const refreshed = await refreshOAuthSession();
-    if (refreshed.ok) {
-      res = await fetch('/api/banking-agent/nl', opts);
-    }
-  }
+  const res = await fetch('/api/banking-agent/nl', opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.message || data.error || `NL request failed (${res.status})`);
