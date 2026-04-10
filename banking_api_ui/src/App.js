@@ -395,18 +395,19 @@ function AppWithAuth() {
   const marketingAgentSurface =
     isPublicMarketingAgentPath(pathname) && (!user || pathNorm === '/marketing');
 
+  // Marketing `/` + `/marketing`: always reserve bottom dock (float + bottom) regardless of agent UI toggle.
+  const hasEmbeddedDockLayout =
+    isMarketingEmbeddedDockSurface(pathname, user) ||
+    (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute);
+
   const showFloatingAgent =
     !isApiTrafficOnlyPage &&
+    !hasEmbeddedDockLayout &&
     (marketingAgentSurface ||
       (Boolean(user) &&
         onDashboardAgentRoute &&
         !(agentPlacement === 'middle' && onUserDashboardRoute) &&
         !((agentPlacement === 'left-dock' || agentPlacement === 'right-dock') && !agentFab)));
-
-  // Marketing `/` + `/marketing`: always reserve bottom dock (float + bottom) regardless of agent UI toggle.
-  const hasEmbeddedDockLayout =
-    isMarketingEmbeddedDockSurface(pathname, user) ||
-    (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute);
 
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
   const toastContainerAutoCloseMs =
