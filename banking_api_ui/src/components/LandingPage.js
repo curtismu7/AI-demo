@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LandingPage.css';
-import ChaseTopNav from './ChaseTopNav';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
 
 export default function LandingPage({ user, onLogout }) {
@@ -29,11 +28,8 @@ export default function LandingPage({ user, onLogout }) {
 
   return (
     <div className="landing-page">
-      {/* Chase Top Nav - replaces old landing-header */}
-      {user ? (
-        <ChaseTopNav user={user} onLogout={handleLogout} currentPage="landing" />
-      ) : (
-        /* Fallback header for non-logged-in users */
+      {/* Fallback header for non-logged-in users */}
+      {!user && (
         <header className="landing-header" role="banner">
           <div className="landing-header-content">
             <div className="landing-logo">
@@ -144,7 +140,7 @@ export default function LandingPage({ user, onLogout }) {
 
       {/* Embedded Agent Dock - fixed bottom-right on desktop, static on mobile */}
       <div className="landing-agent-dock-container">
-        <EmbeddedAgentDock variant="marketing" />
+        <EmbeddedAgentDock variant="marketing" user={user} onLogout={onLogout} />
       </div>
     </div>
   );
