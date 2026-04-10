@@ -6,34 +6,19 @@
 const { tool } = require('@langchain/core/tools');
 const { z } = require('zod/v4');
 const { explainTopic } = require('../services/educationTopics.js');
-const { createRequire } = require('module');
+const { mcpCallTool } = require('../services/mcpWebSocketClient');
 
-const require = createRequire(import.meta.url);
+
 const braveSearchService = require('../services/braveSearchService');
 
 /**
- * Call an MCP tool via the BFF /api/mcp/tool endpoint
- * Uses HTTP to ensure compatibility with MCP Gateway
+ * Call an MCP tool via direct WebSocket client
+ * Uses mcpWebSocketClient.mcpCallTool to avoid circular HTTP dependency
  */
 async function callMcpTool(toolName, params, agentToken, userId, tokenEvents = []) {
   try {
-    // Call BFF /api/mcp/tool endpoint (same process or via localhost)
-    const mcpEndpoint = process.env.MCP_TOOL_ENDPOINT || 'http://localhost:3001/api/mcp/tool';
-
-    const response = await fetch(mcpEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(agentToken && { 'Authorization': `Bearer ${agentToken}` }),
-        ...(userId && { 'X-User-Id': userId }),
-      },
-      body: JSON.stringify({
-        tool: toolName,
-        params: params,
-      }),
-    });
-
-    const data = await response.json();
+    const correlationId = `agent-${Date.now()}`;
+    const result = await mcpCallTool(toolName, params, agentToken, userId, correlationId);
 
     // Track tool call event
     if (tokenEvents) {
@@ -41,21 +26,21 @@ async function callMcpTool(toolName, params, agentToken, userId, tokenEvents = [
         type: 'tool_call',
         timestamp: new Date().toISOString(),
         tool: toolName,
-        status: response.ok ? 'success' : 'failed',
-        statusCode: response.status,
+        status: 'success',
         actor: 'agent',
         onBehalfOf: userId,
       });
     }
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Unauthorized: agent token may have expired');
+    // Extract text content from MCP response format
+    if (result && result.content && Array.isArray(result.content)) {
+      const textContent = result.content.find(c => c.type === 'text');
+      if (textContent) {
+        return textContent.text;
       }
-      throw new Error(data.error || `MCP tool failed: ${response.statusText}`);
     }
 
-    return data.result || data;
+    return result;
   } catch (error) {
     if (tokenEvents) {
       tokenEvents.push({
@@ -82,7 +67,7 @@ function getAgentContext(config) {
  * Returns array of LangChain tools ready for agent use
  * All tools receive auth via config.configurable.agentContext
  */
-export function createMcpToolRegistry() {
+function createMcpToolRegistry() {
   return [
     // ─── Existing 4 banking tools (rewritten with tool() function) ───
 
@@ -231,4 +216,4 @@ export function createMcpToolRegistry() {
   ];
 }
 
-module.exports = { callMcpTool };
+module.exports = { callMcpTool, createMcpToolRegistry };
