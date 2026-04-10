@@ -1,22 +1,24 @@
 /**
- * Agent Builder — LangChain 1.x Agent Factory
- * Creates fresh ReactAgent per request with banking tools, system prompt, and auth context
+ * Agent Builder — LangGraph StateGraph Factory
+ * Creates fresh LangGraph agent per request with banking tools, system prompt, and auth context
  * 
- * Pattern (per LangChain 1.x):
- * - createAgent() from langchain root (NOT langchain/agents — that path doesn't exist in 1.x)
- * - ChatAnthropic model with system prompt
+ * Pattern (per LangGraph):
+ * - StateGraph with defined state schema
+ * - Nodes for agent reasoning and tool execution
+ * - ChatAnthropic/ChatGroq model with system prompt
  * - Tools from createMcpToolRegistry()
  * - Config-driven agent context (auth, tokens, events)
  */
 
-const { createAgent } = require('langchain');
+const { StateGraph } = require('@langchain/langgraph');
 const { ChatAnthropic } = require('@langchain/anthropic');
-const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
+const { ChatGroq } = require('@langchain/groq');
+const { Annotation } = require('@langchain/langgraph');
 
 /**
- * LangChain 1.x system prompt for banking agent
+ * LangGraph system prompt for banking agent
  */
-const BANKING_AGENT_SYSTEM_PROMPT = `You are a banking assistant powered by LangChain and MCP tools.
+const BANKING_AGENT_SYSTEM_PROMPT = `You are a banking assistant powered by LangGraph and MCP tools.
 
 Your capabilities:
 - Retrieve user accounts and balances
@@ -36,6 +38,36 @@ When a user asks you to perform an action:
 Be concise and professional in all responses.`;
 
 /**
+ * Define the state schema for the banking agent
+ */
+const AgentAnnotation = Annotation.Root({
+  messages: Annotation({
+    reducer: (x, y) => x.concat(y),
+    default: () => [],
+  }),
+  userId: Annotation({
+    reducer: (x, y) => y || x,
+    default: () => '',
+  }),
+  userToken: Annotation({
+    reducer: (x, y) => y || x,
+    default: () => '',
+  }),
+  sessionId: Annotation({
+    reducer: (x, y) => y || x,
+    default: () => '',
+  }),
+  tokenEvents: Annotation({
+    reducer: (x, y) => y || x,
+    default: () => [],
+  }),
+  provider: Annotation({
+    reducer: (x, y) => y || x,
+    default: () => '',
+  }),
+});
+
+/**
  * Create a fresh banking agent for a user request
  * 
  * @param {object} config - Agent configuration
@@ -43,7 +75,7 @@ Be concise and professional in all responses.`;
  * @param {string} config.userToken - User's OAuth access token
  * @param {string} config.sessionId - Express session ID
  * @param {array} config.tokenEvents - Token event tracking array (passed by reference)
- * @returns {Promise<object>} LangChain 1.x agent ready for invoke()
+ * @returns {Promise<object>} LangGraph agent ready for invoke()
  */
 async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = [] }) {
   try {
@@ -53,44 +85,64 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     }
 
     // Initialize model with system prompt and API key from environment
-    const model = new ChatAnthropic({
-      modelName: 'claude-3-5-sonnet-20241022',
-      temperature: 0.7,
-      maxTokens: 1024,
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      // Disable automatic tool calling for now
-      // We'll handle tool invocation through MCP directly
-    });
+    // Priority: Anthropic → Groq
+    let model;
+    let provider;
 
-    // Get all available MCP tools wrapped as LangChain tools
-    const tools = createMcpToolRegistry();
+    if (process.env.ANTHROPIC_API_KEY) {
+      console.log('[agentBuilder] Using Anthropic (Claude)');
+      model = new ChatAnthropic({
+        modelName: 'claude-3-5-sonnet-20241022',
+        temperature: 0.7,
+        maxTokens: 1024,
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+      provider = 'anthropic';
+    } else if (process.env.GROQ_API_KEY) {
+      console.log('[agentBuilder] Using Groq (Llama 3.1)');
+      model = new ChatGroq({
+        modelName: 'llama-3.1-8b-instant',
+        temperature: 0.7,
+        maxTokens: 1024,
+        apiKey: process.env.GROQ_API_KEY,
+      });
+      provider = 'groq';
+    } else {
+      console.error('[agentBuilder] No LLM API key configured (ANTHROPIC_API_KEY or GROQ_API_KEY)');
+      throw new Error('No LLM API key configured. Please set ANTHROPIC_API_KEY or GROQ_API_KEY environment variable to use the banking agent.');
+    }
 
-    // Create agent configuration with auth context available to tools
-    const agentConfig = {
-      configurable: {
-        agentContext: {
-          userId,
-          userToken,
-          sessionId,
-          tokenEvents,
-        },
+    // Define the agent node
+    async function agentNode(state) {
+      const messages = [
+        { role: 'system', content: BANKING_AGENT_SYSTEM_PROMPT },
+        ...state.messages,
+      ];
+      const response = await model.invoke(messages);
+      return { messages: [response] };
+    }
+
+    // Create the graph
+    const workflow = new StateGraph(AgentAnnotation)
+      .addNode('agent', agentNode)
+      .addEdge('__start__', 'agent')
+      .addEdge('agent', '__end__');
+
+    // Compile the graph
+    const app = workflow.compile();
+
+    // Return the compiled graph with initial state
+    return {
+      graph: app,
+      initialState: {
+        messages: [],
+        userId,
+        userToken,
+        sessionId,
+        tokenEvents,
+        provider,
       },
     };
-
-    // Create the agent using LangChain 1.x createAgent()
-    // This returns an agent that can be invoked
-    const agent = await createAgent({
-      llm: model,
-      tools: tools,
-      prompt: BANKING_AGENT_SYSTEM_PROMPT,
-      // Type of agent to create
-      agentType: 'react', // Reason + Act pattern
-    });
-
-    // Attach config to agent for use during invoke
-    agent.configurable = agentConfig.configurable;
-
-    return agent;
   } catch (error) {
     console.error('[agentBuilder] Failed to create agent:', error.message);
     throw error;
