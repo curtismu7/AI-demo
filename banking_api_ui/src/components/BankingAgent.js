@@ -2588,7 +2588,7 @@ export default function BankingAgent({
                   <button
                     type="button"
                     className="ba-header-signout"
-                    onClick={() => onLogout?.()}
+                    onClick={() => onLogout()}
                   >
                     Sign out
                   </button>
