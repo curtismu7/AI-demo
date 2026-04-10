@@ -72,8 +72,16 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     console.error('[processAgentMessage] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
 
     // Return a graceful error response instead of throwing
+    let userMessage = 'The banking agent encountered an error. Please try again.';
+    if (error.message.includes('model') && error.message.includes('not_found')) {
+      userMessage = 'The AI model is not available. Please contact support or try again later.';
+    } else if (error.message.includes('API key') || error.message.includes('401')) {
+      userMessage = 'Authentication error. Please log out and log in again.';
+    } else if (error.message.includes('429') || error.message.includes('rate limit')) {
+      userMessage = 'Too many requests. Please wait a moment and try again.';
+    }
     return {
-      reply: `Agent error: ${error.message}`,
+      reply: userMessage,
       success: false,
       error: error.message,
       toolsCalled: [],
