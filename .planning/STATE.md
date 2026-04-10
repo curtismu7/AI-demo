@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-09T22:57:53.672Z"
+last_updated: "2026-04-10T14:23:00.000Z"
 progress:
   total_phases: 133
-  completed_phases: 64
+  completed_phases: 65
   total_plans: 205
   completed_plans: 155
 ---
@@ -51,6 +51,7 @@ Plans: 4/4 complete
 - Phase 85 (chase-dashboard-styling) — complete (commits: 7980dc5, 2891f33, 272d01a, 13d4676, ddc5895, fc6f87a)
 - Phase 95 (actor-token-agent-token-education) — complete (commits: 900ea2d, 0a9a8cc) [2026-04-08]
 - Phase 96 (audience-aud-claim-validation) — complete (commits: 2b24f38, c2b696d) [2026-04-08]
+- Phase 99 (langgraph-upgrade) — complete (commits: pending) [2026-04-10]
 - Phase 101 (token-exchange-flow-diagram-ui) — complete (commits: 0b67e63, e7af290, 0c70c0e) [2026-04-09]
 - Phase 107 (make-hostname-and-redirect-uri-configurable) — complete (summaries: 107-01, 107-02, 107-03) [2026-04-09]
 - Phase 108 (server-restart-notification-modal) — complete (summaries: 108-01, 108-02, 108-03) [2026-04-09]
@@ -199,3 +200,5 @@ Plans: 4/4 complete
 - Phase 117 added: "LangChain production-quality agent with pluggable model interface" [2026-04-09]
 - Phase 118 added: "Research and plan HuggingFace integration with LangChain" [2026-04-09]
 - Phase 119 added: "Call MCP server and get tools without authenticating user" [2026-04-09]
+- Phase 120 added: "UI/UX: Audit all buttons and navigation; make sidebar and nav more bank-like" [2026-04-10]
+- Phase 99 added: "LangGraph upgrade — migrate banking agent from LangChain createAgent to LangGraph StateGraph for better state management" [2026-04-10]

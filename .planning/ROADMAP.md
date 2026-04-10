@@ -41,6 +41,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 94 | explicit-hitl-for-agent-consent | Explicit HITL for user approval before agent performs actions on user behalf | HITL-01, HITL-02 | 0 plans |
 | 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01 | ✅ Complete (1/1) |
 | 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01 | ✅ Complete (1/1) |
+| 99 | langgraph-upgrade | Migrate banking agent from LangChain createAgent to LangGraph StateGraph for better state management | None | ✅ Complete (1/1) |
 
 ---
 
@@ -1518,6 +1519,42 @@ Plans:
 
 Plans:
 - [x] 97-01-PLAN.md — Configuration and validation mode toggle, health check endpoint, UI component, documentation
+
+### Phase 99: langgraph-upgrade
+
+**Goal:** Migrate banking agent from LangChain createAgent to LangGraph StateGraph for better state management and more sophisticated agent workflows
+
+**Requirements:** None
+
+**Status:** ✅ Complete (1/1 plans executed)
+
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 99-01-PLAN.md — Install @langchain/langgraph and migrate agentBuilder.js to StateGraph pattern
+
+**Success criteria:**
+1. @langchain/langgraph package installed
+2. agentBuilder.js uses LangGraph StateGraph pattern
+3. bankingAgentLangChainService.js invokes LangGraph graph
+4. API server starts successfully with LangGraph
+5. Banking agent responds to messages correctly
+6. No breaking changes to the API endpoint
+
+**Key Changes:**
+- Installed @langchain/langgraph version 1.2.8
+- Migrated agentBuilder.js from LangChain createAgent to LangGraph StateGraph
+- Defined state schema with messages, userId, userToken, sessionId, tokenEvents, provider
+- Created single agent node with start/end edges
+- Updated bankingAgentLangChainService.js to invoke LangGraph graph
+- Maintained backward compatible API endpoint
+
+**Future Work:**
+- Add tool calling nodes for MCP tool integration
+- Implement multi-agent patterns for complex operations
+- Add conditional edges for HITL consent flows
+
+---
 
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
