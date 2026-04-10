@@ -173,6 +173,19 @@ router.get('/login', (req, res) => {
       return res.redirect(`${getFrontendOrigin(req)}/config?error=not_configured`);
     }
 
+    // Check if user already has an active session
+    const token = req.session.oauthTokens?.accessToken;
+    const hasOAuthToken = !!(token && token !== '_cookie_session');
+    const expiresAt = req.session.oauthTokens?.expiresAt;
+    const tokenNotExpired = !expiresAt || Date.now() < expiresAt;
+    const isUserAuthenticated = !!(req.session.user && hasOAuthToken && tokenNotExpired && req.session.oauthType === 'user');
+
+    if (isUserAuthenticated) {
+      // User already has an active session - redirect to dashboard
+      console.log('[oauth/user/login] User already authenticated, redirecting to dashboard:', req.session.user.email);
+      return res.redirect(`${getFrontendOrigin(req)}/dashboard`);
+    }
+
     // Drop any prior admin session so Customer sign-in starts fresh.
     const isAdminSession = req.session?.oauthType === 'admin' || req.session?.user?.role === 'admin';
     if (isAdminSession) {
