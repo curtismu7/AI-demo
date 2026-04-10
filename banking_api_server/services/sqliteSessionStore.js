@@ -6,9 +6,11 @@
 
 const Database = require('better-sqlite3');
 const path = require('path');
+const EventEmitter = require('events');
 
-class SqliteSessionStore {
+class SqliteSessionStore extends EventEmitter {
   constructor(options = {}) {
+    super();
     this.options = {
       dbPath: options.dbPath || path.join(__dirname, '../../data/sessions.db'),
       table: options.table || 'sessions',
