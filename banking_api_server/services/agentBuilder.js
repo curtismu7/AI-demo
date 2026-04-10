@@ -91,7 +91,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     if (process.env.GROQ_API_KEY) {
       console.log('[agentBuilder] Using Groq (Llama 3.1)');
       model = new ChatGroq({
-        modelName: 'llama-3.1-8b-instant',
+        model: 'llama-3.1-8b-instant',
         temperature: 0.7,
         maxTokens: 1024,
         apiKey: process.env.GROQ_API_KEY,
