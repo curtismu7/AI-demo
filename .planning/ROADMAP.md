@@ -1753,16 +1753,27 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 118 to break down)
-
 ### Phase 119: Call MCP server and get tools without authenticating user
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Expose MCP tool discovery to external AI clients (Claude Desktop, Cursor, Windsurf) without requiring authentication. Implement unauthenticated `/.well-known/mcp-server` endpoint (RFC 8414 convention) with whitelist-based tool filtering (safe: explain_topic, brave_search; blocked: banking operations) + rate limiting (100 req/min per IP).
+
+**Requirements:** None (foundational infrastructure for AI client integration)
+
 **Depends on:** Phase 118
-**Plans:** 0 plans
+
+**Plans:** 2/2 plans complete ✅
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 119 to break down)
+- [x] 119-01-PLAN.md — Discovery endpoints (/.well-known/mcp-server + /api/mcp/tools) with whitelist filtering and rate limiting (Wave 1)
+- [x] 119-02-PLAN.md — Unit + integration tests for discovery endpoints, whitelist enforcement, rate limiting (Wave 2)
+
+**Success criteria:**
+1. GET /.well-known/mcp-server returns 200 with tool list (only explain_topic, brave_search; no banking ops)
+2. GET /api/mcp/tools returns identical tool list (dual endpoint parity)
+3. Rate limit enforces exactly 100 requests/min per IP (429 on request 101)
+4. No authentication required — both endpoints public
+5. Response includes server metadata, tool names, descriptions, JSON schemas
+6. Tool filtering uses whitelist constant (PUBLIC_TOOLS)
+7. All tests passing (11 tests: 5 unit + 6 integration)
 
 ---
