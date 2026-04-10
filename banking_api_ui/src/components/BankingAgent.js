@@ -2792,7 +2792,6 @@ export default function BankingAgent({
                 challengeId={hitlChallengeId.challengeId}
                 preloadedSnapshot={hitlChallengeId.snapshot}
                 user={effectiveUser}
-                autoConfirm
                 onClose={() => setHitlChallengeId(null)}
                 onTransactionSuccess={(msg) => {
                   const { actionId } = hitlChallengeId;
@@ -2806,7 +2805,7 @@ export default function BankingAgent({
                 }}
                 onDeclinedConfirmed={() => {
                   setHitlChallengeId(null);
-                  notifyInfo('Transaction declined. The AI assistant stays active for read-only actions.');
+                  addMessage('assistant', '❌ **Transaction declined.**\n\nThe transaction was not completed.', hitlChallengeId.actionId);
                 }}
               />
             )}
