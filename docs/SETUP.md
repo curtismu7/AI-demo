@@ -34,6 +34,8 @@ cd Banking
 
 You need **three PingOne OAuth applications** (two for browser login, one worker for Management API calls).
 
+**Source of truth:** See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative resource server, application, and scope definitions.
+
 ### 2.1 Create the Banking API Resource (custom scopes)
 
 Before creating the apps, define the Resource that the custom `banking:*` scopes belong to.
@@ -41,16 +43,21 @@ Before creating the apps, define the Resource that the custom `banking:*` scopes
 1. PingOne Admin → **Environment** → **Resources** (or **APIs**)
 2. Click **Add Resource** → give it any name (e.g. `Super Banking Banking API`)
 3. **Audience**: `banking_mcp_01` (or your preferred value; must match `REACT_APP_ENDUSER_AUDIENCE`)
-4. Add the following **custom scopes**:
+4. Add the following **custom scopes** (Phase 69.1 standardization):
 
 ```
-banking:admin
-banking:read
-banking:write
+banking:general:read
+banking:general:write
+banking:admin:full
 banking:accounts:read
 banking:transactions:read
 banking:transactions:write
+banking:ai:agent:read
+banking:ai:agent:write
+banking:ai:agent:admin
 ```
+
+**Note:** Use Phase 69.1 scope naming standardization. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for the complete scope matrix.
 
 ### 2.2 Admin OIDC Application (`admin_client_id`)
 
@@ -64,7 +71,7 @@ Used for **staff login** (`/admin`) and **RFC 8693 Token Exchange** to MCP.
 | Redirect URI (local) | `http://localhost:3001/api/auth/oauth/callback` |
 | Redirect URI (hosted) | `https://<your-domain>/api/auth/oauth/callback` |
 | Token auth method | `client_secret_basic` or `client_secret_post` |
-| Required scopes | `openid profile email offline_access banking:admin banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write` |
+| Required scopes | `openid profile email offline_access banking:general:read banking:general:write banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write` |
 | Token Exchange | **Enable** if using MCP agent delegation (RFC 8693) |
 
 **Copy the Client ID and Client Secret** — you will use these as `PINGONE_AI_CORE_CLIENT_ID` / `PINGONE_AI_CORE_CLIENT_SECRET`.
@@ -80,7 +87,9 @@ Used for **customer login** (`/dashboard`).
 | PKCE enforcement | Required (S256) |
 | Redirect URI (local) | `http://localhost:3001/api/auth/oauth/user/callback` |
 | Redirect URI (hosted) | `https://<your-domain>/api/auth/oauth/user/callback` |
-| Required scopes | `openid profile email offline_access banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write` |
+| Required scopes | `openid profile email offline_access banking:ai:agent:read banking:general:read banking:general:write banking:accounts:read banking:transactions:read banking:transactions:write` |
+
+**Critical:** Must include `banking:ai:agent:read` for agent delegation to work. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
 
 **Copy the Client ID and Client Secret** — these become `PINGONE_AI_CORE_USER_CLIENT_ID` / `PINGONE_AI_CORE_USER_CLIENT_SECRET`.
 

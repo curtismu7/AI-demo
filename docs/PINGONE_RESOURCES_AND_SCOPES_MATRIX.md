@@ -1,8 +1,19 @@
 # PingOne Resources × Applications × Scopes — Complete Matrix
 
-**Authoritative reference** for PingOne resource servers, OAuth applications, and scope configurations in the Super Banking demo.
+**📋 AUTHORITATIVE SOURCE OF TRUTH** for PingOne resource servers, OAuth applications, and scope configurations in the Super Banking demo.
 
-**Related docs:**
+**This document is the single source of truth for:**
+- All PingOne resource servers and their scopes
+- All OAuth applications (Admin, User, Worker, Agent)
+- Scope naming standards (Phase 69.1)
+- Environment variable mappings
+- Verification checklists
+
+**End-user documentation that references this source of truth:**
+- [SETUP.md](./SETUP.md) — Complete setup guide for developers
+- [PINGONE_APP_CONFIG.md](./PINGONE_APP_CONFIG.md) — App configuration reference
+
+**Related technical docs:**
 - [PINGONE_APP_SCOPE_MATRIX.md](./PINGONE_APP_SCOPE_MATRIX.md) — Application setup guide (grant types, redirect URIs, PingOne console directions)
 - [PINGONE_NAMING_STANDARDIZATION_AUDIT.md](./PINGONE_NAMING_STANDARDIZATION_AUDIT.md) — Phase 69.1 scope naming conventions (**authoritative**)
 - [ENVIRONMENT_MAPPING_AUD_AUDIT.md](./ENVIRONMENT_MAPPING_AUD_AUDIT.md) — Audience validation by component
