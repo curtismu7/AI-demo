@@ -225,7 +225,7 @@ app.use(helmet({
     directives: {
       defaultSrc:     ["'self'"],
       scriptSrc:      ["'self'", "'unsafe-inline'"],   // CRA requires unsafe-inline in prod build
-      styleSrc:       ["'self'", "'unsafe-inline'"],
+      styleSrc:       ["'self'", "'unsafe-inline'", "https://assets.pingone.com"],
       imgSrc:         ["'self'", 'data:', 'https:'],
       connectSrc:     ["'self'", 'https://*.pingone.com', 'https://*.pingidentity.com', 'wss:'],
       fontSrc:        ["'self'", 'data:'],
