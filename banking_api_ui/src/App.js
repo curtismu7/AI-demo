@@ -32,6 +32,7 @@ import TransactionConsentPage from './components/TransactionConsentPage';
 import DelegatedAccessPage from './components/DelegatedAccessPage';
 import DelegationPage from './components/DelegationPage';
 import FeatureFlagsPage from './components/FeatureFlagsPage';
+import ScopeAuditPage from './components/ScopeAuditPage';
 import LangChainPage from './pages/LangChainPage';
 import PostmanCollectionsPage from './components/PostmanCollectionsPage';
 import Profile from './components/Profile';
@@ -60,6 +61,7 @@ import Footer from './components/Footer';
 import DashboardQuickNav from './components/DashboardQuickNav';
 import EmbeddedAgentDock from './components/EmbeddedAgentDock';
 import SideAgentDock from './components/SideAgentDock';
+import TopNav from './components/TopNav';
 import {
   isBankingAgentDashboardRoute,
   isDashboardQuickNavRoute,
@@ -448,23 +450,32 @@ function AppWithAuth() {
             <Route path="/setup" element={<SetupPage />} />
             {/* Demo config accessible without login - needed to configure flags before PingOne is set up */}
             <Route path="/configure" element={
-              <main className="main-content">
-                <EducationBar />
-                <UnifiedConfigurationPage user={user} onLogout={logout} />
-              </main>
+              <>
+                <TopNav user={user} onLogout={logout} />
+                <main className="main-content">
+                  <EducationBar />
+                  <UnifiedConfigurationPage user={user} onLogout={logout} />
+                </main>
+              </>
             } />
             <Route path="/demo-data" element={
-              <main className="main-content">
-                <EducationBar />
-                <DemoDataPage user={user} onLogout={logout} />
-              </main>
+              <>
+                <TopNav user={user} onLogout={logout} />
+                <main className="main-content">
+                  <EducationBar />
+                  <DemoDataPage user={user} onLogout={logout} />
+                </main>
+              </>
             } />
             {/* Self-service user provisioning — accessible without login */}
             <Route path="/self-service" element={
-              <main className="main-content">
-                <EducationBar />
-                <SelfServicePage />
-              </main>
+              <>
+                <TopNav user={user} onLogout={logout} />
+                <main className="main-content">
+                  <EducationBar />
+                  <SelfServicePage />
+                </main>
+              </>
             } />
             <Route
               path="/onboarding"
