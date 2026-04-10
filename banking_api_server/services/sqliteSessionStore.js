@@ -6,9 +6,9 @@
 
 const Database = require('better-sqlite3');
 const path = require('path');
-const EventEmitter = require('events');
+const Store = require('express-session').Store;
 
-class SqliteSessionStore extends EventEmitter {
+class SqliteSessionStore extends Store {
   constructor(options = {}) {
     super();
     this.options = {
