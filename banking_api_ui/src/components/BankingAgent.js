@@ -1883,14 +1883,7 @@ export default function BankingAgent({
         // The panel may display 'transactions' (history after the write), but the dashboard
         // must know a write occurred.
         const eventType = isWriteAction ? 'confirm' : resultType;
-        console.log('[BankingAgent] Dispatching banking-agent-result event:', { 
-          eventType, 
-          isWriteAction, 
-          actionId, 
-          label,
-          resultData 
-        });
-        window.dispatchEvent(new CustomEvent('banking-agent-result', {
+                window.dispatchEvent(new CustomEvent('banking-agent-result', {
           detail: { type: eventType, data: resultData, label },
         }));
         if (displayMode === 'panel') {
@@ -2196,7 +2189,7 @@ export default function BankingAgent({
       }
       return;
     }
-    if (err?.statusCode === 401 || err?.code === 'authentication_required') {
+    if (err?.statusCode === 401 || err?._status === 401 || err?.code === 'authentication_required') {
       if (cookieOnlyBffSession) {
         if (!sessionFixBubbleShownRef.current) {
           sessionFixBubbleShownRef.current = true;
@@ -2218,8 +2211,9 @@ export default function BankingAgent({
       }
       return;
     }
-    notifyError(`❌ Could not parse request: ${err.message}`, { autoClose: agentToastMs.errShort });
-    addMessage('assistant', `Could not parse: ${err.message}`);
+    const errorMessage = err.message || err.error || 'An unexpected error occurred. Please try again.';
+    notifyError(`❌ Could not parse request: ${errorMessage}`, { autoClose: agentToastMs.errShort });
+    addMessage('assistant', `Could not parse: ${errorMessage}`);
   }
 
   async function handleNaturalLanguage() {
