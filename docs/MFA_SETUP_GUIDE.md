@@ -142,10 +142,10 @@ This becomes your `PINGONE_MFA_POLICY_ID` environment variable.
 Ensure the following scopes include step-up requirements:
 
 **Super Banking AI Agent Service:**
-- `banking:agent:invoke` - Add ACR: `urn:pingone:policy:Super_Banking_Step_Up_MFA_Policy`
+- `banking:ai:agent` - Add ACR: `urn:pingone:policy:Super_Banking_Step_Up_MFA_Policy`
 
 **Super Banking MCP Server:**
-- `banking:transactions:write` - Add ACR: `urn:pingone:policy:Super_Banking_Step_Up_MFA_Policy`
+- `banking:general:write` - Add ACR: `urn:pingone:policy:Super_Banking_Step_Up_MFA_Policy`
 
 ## Part 3 - Environment Variables
 
