@@ -45,6 +45,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 100 | configurable-step-up-mfa-threshold | Configurable step-up MFA threshold and agent transaction stop limit | TBD | 0 plans |
 | 101 | token-exchange-flow-diagram-ui | Single and double exchange with AI agent bubble on responses | TBD | 3/2 plans |
 | 102 | agent-token-exchange-flow | Implement complete token exchange flow for agent: two-exchange (user+agent→MCP) and single-exchange (user→agent→MCP) paths | None | 0 plans |
+| 103 | pingone-test-page | Comprehensive PingOne test page with Chase.com-style UI and fix buttons | TBD | 0 plans |
 
 ---
 
@@ -1633,18 +1634,27 @@ Plans:
 - [ ] TBD (run /gsd-plan-phase 102 to break down)
 
 
-### Phase 103: Redesign /marketing landing page — professional layout, clear CTA, and agent integration
+### Phase 103: PingOne Test Page
 
-**Goal:** Transform the public `/marketing` page into a professional, credible landing experience that clearly communicates the demo's value proposition (RFC 8693 flows, MCP spec, AI-banking integration) and guides visitors to appropriate entry points (admin or customer login).
+**Goal:** Build a comprehensive test page that tests all aspects of PingOne integration including APIs, Token exchange, configuration (Apps, Scopes, Resources, User attributes), and specifications. The page will have a Chase.com-style UI with fix buttons for each test. Worker token will be retrieved on startup if credentials are saved in .env.
 
-**Requirements:** MKT-01, MKT-02, MKT-03, MKT-04, MKT-05, MKT-06, MKT-07
+**Requirements:** PINGONE-TEST-01, PINGONE-TEST-02, PINGONE-TEST-03, PINGONE-TEST-04, PINGONE-TEST-05, PINGONE-TEST-06, PINGONE-TEST-07
 
-**Depends on:** Phase 102 (branding colors, design patterns established)
+**Depends on:** Phase 2 (token-exchange), Phase 85 (chase-dashboard-styling)
 
 **Plans:** 0 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 103 to break down)
+
+**Success criteria:**
+1. Test page loads and automatically retrieves worker token on startup if creds are saved
+2. All PingOne API tests run successfully with clear pass/fail indicators
+3. Token exchange tests (1-exchange and 2-exchange) validate end-to-end flows
+4. Fix buttons successfully resolve common configuration issues
+5. UI matches Chase.com design language and is responsive
+6. All tests can be run independently or in batch mode
+7. Test results are persisted and can be exported
 
 ### Phase 104: Apply light grey backgrounds consistently across all pages
 
