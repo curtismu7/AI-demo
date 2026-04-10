@@ -5,16 +5,19 @@
  */
 'use strict';
 
+const { BANKING_SCOPES } = require('../config/scopes');
+
 /** Scopes this demo understands for MCP banking tools (must match PingOne + MCP registry). */
 const KNOWN_AGENT_MCP_SCOPES = [
   // Broad umbrella scopes — accepted by any matching tool; easier to configure in PingOne
-  'banking:read',              // accounts + transactions read
-  'banking:write',             // transfers, deposits, withdrawals
+  BANKING_SCOPES.BANKING_READ,              // accounts + transactions read
+  BANKING_SCOPES.BANKING_WRITE,             // transfers, deposits, withdrawals
   // Specific scopes — finer-grained; accepted as an alternative to the broad scope
-  'banking:accounts:read',
-  'banking:transactions:read',
-  'banking:transactions:write',
-  'ai_agent',
+  BANKING_SCOPES.BANKING_READ,              // accounts + transactions read
+  BANKING_SCOPES.BANKING_WRITE,             // transfers, deposits, withdrawals
+  BANKING_SCOPES.SENSITIVE,                 // sensitive data operations
+  BANKING_SCOPES.ADMIN,                     // admin operations
+  BANKING_SCOPES.AI_AGENT,                  // AI Agent operations
 ];
 
 const DEFAULT_AGENT_MCP_ALLOWED_SCOPES = KNOWN_AGENT_MCP_SCOPES.join(' ');
