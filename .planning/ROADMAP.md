@@ -42,6 +42,9 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01 | ✅ Complete (1/1) |
 | 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01 | ✅ Complete (1/1) |
 | 99 | langgraph-upgrade | Migrate banking agent from LangChain createAgent to LangGraph StateGraph for better state management | None | ✅ Complete (1/1) |
+| 100 | configurable-step-up-mfa-threshold | Configurable step-up MFA threshold and agent transaction stop limit | TBD | 0 plans |
+| 101 | token-exchange-flow-diagram-ui | Single and double exchange with AI agent bubble on responses | TBD | 3/2 plans |
+| 102 | agent-token-exchange-flow | Implement complete token exchange flow for agent: two-exchange (user+agent→MCP) and single-exchange (user→agent→MCP) paths | None | 0 plans |
 
 ---
 
@@ -1586,6 +1589,28 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 100 to break down)
+
+### Phase 102: Agent Token Exchange Flow
+
+**Goal:** Implement complete token exchange flow for agent to obtain proper tokens for calling MCP server. Support two paths: two-exchange (user + agent → MCP with act claim) and single-exchange (user → agent → MCP).
+
+**Requirements:** None
+
+**Depends on:** Phase 99, Phase 6
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 102-01-PLAN.md — Agent token acquisition + two-exchange flow + single-exchange flow + MCP validation
+
+**Success criteria:**
+- Agent can obtain its own token via client credentials when needed
+- Two-exchange flow works: user token + agent token → MCP token with `act` claim
+- Single-exchange flow works: user token → agent token → MCP server
+- MCP server correctly validates tokens from both paths
+- Token chain display shows the correct exchange path used
+- Agent tool calls work without authentication errors in both modes
+- Session persists agent tokens correctly using SQLite (local) or Redis (Vercel)
 
 ### Phase 101: token exchange flow diagram UI - single and double exchange with AI agent bubble on responses
 
