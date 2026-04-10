@@ -1473,7 +1473,9 @@ export default function BankingAgent({
   function addMessage(role, content, tool, extra = {}) {
     const { id: exId, ...rest } = extra;
     const id = exId || `${Date.now()}`;
-    setMessages(prev => [...prev, { id, role, content: content ?? '', tool, ...rest }]);
+    // Ensure content is always a string for React rendering
+    const contentString = typeof content === 'string' ? content : JSON.stringify(content);
+    setMessages(prev => [...prev, { id, role, content: contentString ?? '', tool, ...rest }]);
   }
 
   function markToolProgressOutcome(success) {
