@@ -139,7 +139,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     async function toolNode(state) {
       const lastMessage = state.messages[state.messages.length - 1];
       if (lastMessage?.tool_calls) {
-        const toolResults = [];
+        const toolMessages = [];
         for (const toolCall of lastMessage.tool_calls) {
           const tool = tools.find(t => t.name === toolCall.name);
           if (tool) {
@@ -155,19 +155,22 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
               });
               // Ensure result is a string for React rendering
               const resultString = typeof result === 'string' ? result : JSON.stringify(result);
-              toolResults.push({
+              // Return individual tool message for each tool call
+              toolMessages.push({
+                role: 'tool',
                 tool_call_id: toolCall.id,
                 content: resultString,
               });
             } catch (error) {
-              toolResults.push({
+              toolMessages.push({
+                role: 'tool',
                 tool_call_id: toolCall.id,
                 content: `Error: ${error.message}`,
               });
             }
           }
         }
-        return { messages: [{ role: 'tool', content: JSON.stringify(toolResults) }] };
+        return { messages: toolMessages };
       }
       return { messages: [] };
     }
