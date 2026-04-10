@@ -3,19 +3,56 @@
  * @description Live PingOne RFC 8693 tests — real tokens, real HTTP to /as/token.
  * Does not run in CI or default `npm test` unless RUN_PINGONE_TOKEN_INTEGRATION=true.
  *
- * User tokens require PKCE flow with username/password - not practical for automated testing.
- * Therefore, live tests require manual token input.
- *
  * Run (from banking_api_server, with .env or exported vars):
  *   RUN_PINGONE_TOKEN_INTEGRATION=true \
- *   INTEGRATION_SUBJECT_ACCESS_TOKEN='<paste User token JWT>' \
- *   INTEGRATION_AGENT_ACCESS_TOKEN='<paste Agent token JWT>' \
+ *   INTEGRATION_TEST_USERNAME='<PingOne username>' \
+ *   INTEGRATION_TEST_PASSWORD='<PingOne password>' \
  *   npm test -- --testPathPattern=token-exchange-pingone --forceExit
  */
 
-const live =
-  (process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' || process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true') &&
-  String(process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN || '').trim().length > 0;
+// Load environment variables from .env file
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+
+const live = process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' || process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true';
+
+/**
+ * Helper to perform PKCE flow and obtain user token
+ */
+async function getUserTokenViaPKCE() {
+  const axios = require('axios');
+  const configStore = require('../../services/configStore');
+  await configStore.ensureInitialized();
+
+  const clientId = configStore.getEffective('pingone_user_client_id');
+  const clientSecret = configStore.getEffective('pingone_user_client_secret');
+  const envId = configStore.getEffective('pingone_environment_id');
+  const region = configStore.getEffective('pingone_region') || 'com';
+  const username = process.env.INTEGRATION_TEST_USERNAME;
+  const password = process.env.INTEGRATION_TEST_PASSWORD;
+
+  if (!username || !password) {
+    throw new Error('INTEGRATION_TEST_USERNAME and INTEGRATION_TEST_PASSWORD must be set for PKCE flow');
+  }
+
+  // For testing, we'll use resource owner password credentials flow instead of full PKCE
+  // This requires username/password but doesn't require browser interaction
+  const tokenResponse = await axios.post(
+    `https://auth.pingone.${region}/${envId}/as/token`,
+    new URLSearchParams({
+      grant_type: 'password',
+      username: username,
+      password: password,
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: 'openid profile email'
+    }),
+    {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    }
+  );
+
+  return tokenResponse.data.access_token;
+}
 
 describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', () => {
   /**
@@ -49,7 +86,7 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
   it('performTokenExchange returns a 3-part JWT with sub and aud', async () => {
     const oauthService = require('../../services/oauthService');
     const configStore = require('../../services/configStore');
-    const subject = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
+    const subject = await getUserTokenViaPKCE();
     const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write')
@@ -74,18 +111,13 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
 
   /**
    * Exchanges a user token + agent actor token for an MCP token using RFC 8693 actor exchange.
-   * Requires INTEGRATION_SUBJECT_ACCESS_TOKEN and INTEGRATION_AGENT_ACCESS_TOKEN env vars.
    * The act claim is informational only — warns if absent (PingOne policy may not be set up yet).
    */
   it('performTokenExchangeWithActor returns a 3-part JWT with sub and aud', async () => {
     const oauthService = require('../../services/oauthService');
     const configStore  = require('../../services/configStore');
-    const subject  = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
-    const actor    = process.env.INTEGRATION_AGENT_ACCESS_TOKEN;
-    if (!actor) {
-      console.warn('[SKIP] INTEGRATION_AGENT_ACCESS_TOKEN not set — skipping performTokenExchangeWithActor live test');
-      return;
-    }
+    const subject  = await getUserTokenViaPKCE();
+    const actor    = await oauthService.getAgentClientCredentialsToken();
     const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
