@@ -176,6 +176,7 @@ const adminConfigRoutes = require('./routes/adminConfig');
 const adminManagementRoutes = require('./routes/adminManagement');
 const cibaRoutes        = require('./routes/ciba');
 const mfaRoutes         = require('./routes/mfa');
+const mfaTestRoutes     = require('./routes/mfaTest');
 const authorizeRoutes   = require('./routes/authorize');
 const setupRoutes       = require('./routes/setup');
 const setupWizardRoutes  = require('./routes/setupWizard');
@@ -186,6 +187,7 @@ const mcpInspectorRoutes = require('./routes/mcpInspector');
 const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const bankingAgentRoutes = require('./routes/bankingAgentRoutes');
+const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const langchainConfigRoutes = require('./routes/langchainConfig');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
@@ -819,6 +821,7 @@ app.use('/api/admin/config', adminConfigRoutes);
 // Feature flags — admin-authenticated; registered before the broader /api/admin/* guard
 // so the route path is unambiguous.
 app.use('/api/admin/feature-flags', authenticateToken, featureFlagsRoutes);
+app.use('/api/admin/scope-audit', authenticateToken, require('./routes/scopeAudit'));
 app.use('/api/admin/vercel-config', authenticateToken, vercelConfigRoutes);
 
 // PingOne redirect URI allowlist (JSON). Registered here BEFORE /api/auth so the path is not
@@ -843,9 +846,12 @@ app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/auth/oauth/user', oauthUserRoutes);
 app.use('/api/auth/ciba', cibaRoutes);
 app.use('/api/auth/mfa',  mfaRoutes);
+app.use('/api/mfa/test', mfaTestRoutes);
 app.use('/api/agent', agentIdentityRoutes);
-// NL route uses its own req.session?.user check — full JWT validation is not
-// needed here and causes invalid_token errors when JWKS fetch times out.
+// NL/search routes: public LLM config + NL parsing. Must be mounted BEFORE bankingAgentRoutes
+// so /nl/status, /nl, and /search are handled without agentSessionMiddleware.
+app.use('/api/banking-agent', bankingAgentNlRoutes);
+// Authenticated agent routes: /init, /message, /consent — require OAuth session.
 app.use('/api/banking-agent', bankingAgentRoutes);
 app.use('/api/langchain', langchainConfigRoutes);
 app.use('/api/authorize', authorizeRoutes);
