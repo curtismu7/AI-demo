@@ -224,7 +224,7 @@ const { migrateAccounts } = require('./services/demoDataService');
 const appConfigRoutes = require('./routes/appConfig');
 const verticalConfigRoutes = require('./routes/verticalConfig');
 const pingoneAuditRoutes = require('./routes/pingoneAudit');
-const pingoneTestRoutes = require('./routes/pingoneTest');
+const pingoneTestRoutes = require('./routes/pingoneTestRoutes');
 
 // Import middleware
 const { authenticateToken, requireSession } = require('./middleware/auth');

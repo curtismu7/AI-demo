@@ -20,11 +20,13 @@ export default function PingOneTestPage() {
       if (data.success) {
         setWorkerToken(data.token);
       } else {
-        setError('Failed to load worker token: ' + data.error);
+        console.warn('Failed to load worker token:', data.error);
+        // Don't set error - allow page to load without worker token
       }
     } catch (err) {
       console.error('Worker token error:', err);
-      setError('Failed to load worker token: ' + err.message);
+      console.warn('Continuing without worker token - some features may be limited');
+      // Don't set error - allow page to load without worker token
     }
   }, []);
 
