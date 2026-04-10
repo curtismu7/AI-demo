@@ -89,16 +89,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     let model;
     let provider;
 
-    if (process.env.ANTHROPIC_API_KEY) {
-      console.log('[agentBuilder] Using Anthropic (Claude)');
-      model = new ChatAnthropic({
-        modelName: 'claude-3-5-haiku-latest',
-        temperature: 0.7,
-        maxTokens: 1024,
-        apiKey: process.env.ANTHROPIC_API_KEY,
-      });
-      provider = 'anthropic';
-    } else if (process.env.GROQ_API_KEY) {
+    if (process.env.GROQ_API_KEY) {
       console.log('[agentBuilder] Using Groq (Llama 3.1)');
       model = new ChatGroq({
         modelName: 'llama-3.1-8b-instant',
@@ -107,9 +98,18 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
         apiKey: process.env.GROQ_API_KEY,
       });
       provider = 'groq';
+    } else if (process.env.ANTHROPIC_API_KEY) {
+      console.log('[agentBuilder] Using Anthropic (Claude)');
+      model = new ChatAnthropic({
+        modelName: 'claude-3-5-haiku-latest',
+        temperature: 0.7,
+        maxTokens: 1024,
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+      provider = 'anthropic';
     } else {
-      console.error('[agentBuilder] No LLM API key configured (ANTHROPIC_API_KEY or GROQ_API_KEY)');
-      throw new Error('No LLM API key configured. Please set ANTHROPIC_API_KEY or GROQ_API_KEY environment variable to use the banking agent.');
+      console.error('[agentBuilder] No LLM API key configured (GROQ_API_KEY or ANTHROPIC_API_KEY)');
+      throw new Error('No LLM API key configured. Please set GROQ_API_KEY or ANTHROPIC_API_KEY environment variable to use the banking agent.');
     }
 
     // Define the agent node
