@@ -13,6 +13,7 @@
 const { StateGraph } = require('@langchain/langgraph');
 const { ChatGroq } = require('@langchain/groq');
 const { Annotation } = require('@langchain/langgraph');
+const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
 
 /**
  * LangGraph system prompt for banking agent
@@ -101,23 +102,81 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       throw new Error('No LLM API key configured. Please set GROQ_API_KEY environment variable to use the banking agent.');
     }
 
-    // Define the agent node
+    // Define the agent node with tools
+    const tools = createMcpToolRegistry();
+    
     async function agentNode(state) {
       const messages = [
         { role: 'system', content: BANKING_AGENT_SYSTEM_PROMPT },
         ...state.messages,
       ];
-      const response = await model.invoke(messages);
+      const config = {
+        configurable: {
+          agentContext: {
+            agentToken: userToken,
+            userId,
+            tokenEvents,
+          },
+        },
+      };
+      const response = await model.bindTools(tools).invoke(messages, config);
       // Ensure response is in the correct message format
       const messageContent = response.content || response.text || response;
       return { messages: [{ role: 'assistant', content: messageContent }] };
     }
 
-    // Create the graph
+    // Tool execution node
+    async function toolNode(state) {
+      const lastMessage = state.messages[state.messages.length - 1];
+      if (lastMessage?.tool_calls) {
+        const toolResults = [];
+        for (const toolCall of lastMessage.tool_calls) {
+          const tool = tools.find(t => t.name === toolCall.name);
+          if (tool) {
+            try {
+              const result = await tool.invoke(toolCall.args, {
+                configurable: {
+                  agentContext: {
+                    agentToken: userToken,
+                    userId,
+                    tokenEvents,
+                  },
+                },
+              });
+              toolResults.push({
+                tool_call_id: toolCall.id,
+                content: result,
+              });
+            } catch (error) {
+              toolResults.push({
+                tool_call_id: toolCall.id,
+                content: `Error: ${error.message}`,
+              });
+            }
+          }
+        }
+        return { messages: [{ role: 'tool', content: JSON.stringify(toolResults) }] };
+      }
+      return { messages: [] };
+    }
+
+    // Create the graph with conditional edge for tool calls
     const workflow = new StateGraph(AgentAnnotation)
       .addNode('agent', agentNode)
+      .addNode('tools', toolNode)
       .addEdge('__start__', 'agent')
-      .addEdge('agent', '__end__');
+      .addConditionalEdges(
+        'agent',
+        (state) => {
+          const lastMessage = state.messages[state.messages.length - 1];
+          return lastMessage?.tool_calls?.length > 0 ? 'tools' : '__end__';
+        },
+        {
+          tools: 'tools',
+          __end__: '__end__',
+        }
+      )
+      .addEdge('tools', 'agent');
 
     // Compile the graph
     const app = workflow.compile();
