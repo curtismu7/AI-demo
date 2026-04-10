@@ -7,33 +7,35 @@ const { tool } = require('@langchain/core/tools');
 const { z } = require('zod/v4');
 const { explainTopic } = require('../services/educationTopics.js');
 const { mcpCallTool } = require('../services/mcpWebSocketClient');
-const { resolveMcpAccessTokenWithEvents } = require('../services/agentMcpTokenService');
+const { decodeJwtClaims } = require('../services/agentMcpTokenService');
 
 
 const braveSearchService = require('../services/braveSearchService');
 
 /**
- * Internal MCP tool call with token exchange (bypasses requireSession for agent context)
+ * Internal MCP tool call with agent token (bypasses requireSession for agent context)
  * Used by agent tools which run in the same process but don't have session cookies
  */
-async function callMcpToolInternal(toolName, params, userId, tokenEvents = []) {
+async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEvents = []) {
   try {
-    // Resolve token exchange (same logic as POST /api/mcp/tool but without HTTP round-trip)
-    const resolved = await resolveMcpAccessTokenWithEvents(
-      { session: { user: { id: userId } } },
-      toolName
-    );
-    const exchangedToken = resolved.token;
-    const userSub = resolved.userSub || null;
+    // Decode userSub from agentToken for MCP metadata
+    const userSub = agentToken ? decodeJwtClaims(agentToken)?.sub : null;
 
-    // Track token events
-    if (resolved.tokenEvents && tokenEvents) {
-      tokenEvents.push(...resolved.tokenEvents);
+    // Track token event
+    if (tokenEvents) {
+      tokenEvents.push({
+        type: 'agent_token_used',
+        timestamp: new Date().toISOString(),
+        tool: toolName,
+        status: 'success',
+        actor: 'agent',
+        onBehalfOf: userId,
+      });
     }
 
-    // Call MCP server directly via WebSocket with exchanged token
+    // Call MCP server directly via WebSocket with agent token
     const correlationId = `agent-${Date.now()}`;
-    const result = await mcpCallTool(toolName, params, exchangedToken, userSub, correlationId);
+    const result = await mcpCallTool(toolName, params, agentToken, userSub, correlationId);
 
     // Track tool call event
     if (tokenEvents) {
@@ -145,8 +147,8 @@ function createMcpToolRegistry() {
 
     tool(
       async (input, config) => {
-        const { userId, tokenEvents } = getAgentContext(config);
-        const result = await callMcpToolInternal('get_my_accounts', input, userId, tokenEvents);
+        const { agentToken, userId, tokenEvents } = getAgentContext(config);
+        const result = await callMcpToolInternal('get_my_accounts', input, agentToken, userId, tokenEvents);
         return JSON.stringify(result);
       },
       {
@@ -158,8 +160,8 @@ function createMcpToolRegistry() {
 
     tool(
       async (input, config) => {
-        const { userId, tokenEvents } = getAgentContext(config);
-        const result = await callMcpToolInternal('create_transfer', input, userId, tokenEvents);
+        const { agentToken, userId, tokenEvents } = getAgentContext(config);
+        const result = await callMcpToolInternal('create_transfer', input, agentToken, userId, tokenEvents);
         return JSON.stringify(result);
       },
       {
@@ -176,8 +178,8 @@ function createMcpToolRegistry() {
 
     tool(
       async (input, config) => {
-        const { userId, tokenEvents } = getAgentContext(config);
-        const result = await callMcpToolInternal('create_deposit', input, userId, tokenEvents);
+        const { agentToken, userId, tokenEvents } = getAgentContext(config);
+        const result = await callMcpToolInternal('create_deposit', input, agentToken, userId, tokenEvents);
         return JSON.stringify(result);
       },
       {
@@ -193,8 +195,8 @@ function createMcpToolRegistry() {
 
     tool(
       async (input, config) => {
-        const { userId, tokenEvents } = getAgentContext(config);
-        const result = await callMcpToolInternal('create_withdrawal', input, userId, tokenEvents);
+        const { agentToken, userId, tokenEvents } = getAgentContext(config);
+        const result = await callMcpToolInternal('create_withdrawal', input, agentToken, userId, tokenEvents);
         return JSON.stringify(result);
       },
       {
