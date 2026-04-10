@@ -4,53 +4,95 @@
  * Handles RFC 8693 token exchange setup and session validation
  */
 
-import { refreshOAuthSession } from './bankingAgentService.js';
+// TODO: Implement refreshOAuthSession or import from appropriate service
+// const { refreshOAuthSession } = require('./bankingAgentService.js');
+const refreshOAuthSession = async (req) => {
+  // Stub: to be implemented in Phase 116-02
+  console.warn('[agentSessionMiddleware] refreshOAuthSession not yet implemented');
+};
 
 /**
  * Main middleware: validates session, attaches auth context
  * Should be applied to all /api/banking-agent/* routes
  */
-export async function agentSessionMiddleware(req, res, next) {
+async function agentSessionMiddleware(req, res, next) {
   try {
-    // Step 1: Verify user is authenticated
-    if (!req.user || !req.user.sub) {
+    console.log('[agentSessionMiddleware] Starting middleware');
+    console.log('[agentSessionMiddleware] Session exists:', !!req.session);
+    console.log('[agentSessionMiddleware] Session ID:', req.session?.id);
+    console.log('[agentSessionMiddleware] Request path:', req.path);
+    console.log('[agentSessionMiddleware] Request method:', req.method);
+
+    // Step 1: Verify user is authenticated via session (no authenticateToken needed —
+    // full JWT re-validation can cause JWKS timeout errors; session is sufficient here).
+    console.log('[agentSessionMiddleware] Checking session.user...');
+    if (!req.session?.user) {
+      console.log('[agentSessionMiddleware] ERROR: No session.user');
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'Please log in to access the banking agent.',
       });
     }
+    console.log('[agentSessionMiddleware] session.user present:', !!req.session.user);
+    console.log('[agentSessionMiddleware] user keys:', Object.keys(req.session.user || {}));
 
-    if (!req.session || !req.session.oauth_tokens) {
+    console.log('[agentSessionMiddleware] Checking oauthTokens...');
+    if (!req.session.oauthTokens?.accessToken) {
+      console.log('[agentSessionMiddleware] ERROR: No oauthTokens.accessToken');
+      console.log('[agentSessionMiddleware] oauthTokens present:', !!req.session.oauthTokens);
+      console.log('[agentSessionMiddleware] oauthTokens keys:', req.session.oauthTokens ? Object.keys(req.session.oauthTokens) : 'none');
       return res.status(401).json({
-        error: 'Session not found',
-        message: 'Session has expired. Please log in again.',
+        error: 'oauth_session_required',
+        message: 'The banking agent requires an active PingOne OAuth session. Please sign in via PingOne to use the agent.',
+        hint: 'Use the "Sign in with PingOne" button — local account login does not provision agent tokens.',
       });
     }
+    // Check if this is a cookie-restored stub (no real tokens available)
+    if (req.session.oauthTokens.accessToken === '_cookie_session') {
+      console.log('[agentSessionMiddleware] ERROR: Session restored from cookie but real tokens not available');
+      console.log('[agentSessionMiddleware] Session restored from cookie:', !!req.session._restoredFromCookie);
+      console.log('[agentSessionMiddleware] Session store configured:', !!req.sessionStore);
+      return res.status(401).json({
+        error: 'session_restore_required',
+        message: 'Your session was restored from a cookie but the full OAuth tokens are not available. Please sign in again to restore your session.',
+        hint: 'This can happen when the session store (Redis/Upstash) is not available. Sign in again to refresh your session.',
+      });
+    }
+    console.log('[agentSessionMiddleware] oauthTokens.accessToken present:', !!req.session.oauthTokens.accessToken);
 
     // Step 2: Check session expiry and refresh if needed
-    if (req.session.expiresAt && req.session.expiresAt < Date.now()) {
+    console.log('[agentSessionMiddleware] Checking token expiry...');
+    if (req.session.oauthTokens.expiresAt && req.session.oauthTokens.expiresAt < Date.now()) {
+      console.log('[agentSessionMiddleware] Token expired, attempting refresh...');
       try {
         await refreshOAuthSession(req);
+        console.log('[agentSessionMiddleware] Token refresh successful');
       } catch (error) {
-        console.error('[agentSessionMiddleware] Refresh failed:', error.message);
+        console.error('[agentSessionMiddleware] ERROR: Refresh failed:', error.message);
+        console.error('[agentSessionMiddleware] Refresh error stack:', error.stack);
         return res.status(401).json({
           error: 'Session expired',
           message: 'Could not refresh session. Please log in again.',
         });
       }
     }
+    console.log('[agentSessionMiddleware] Token valid');
 
     // Step 3: Attach auth context to request for agent service
+    console.log('[agentSessionMiddleware] Attaching agentContext...');
     req.agentContext = {
-      userId: req.user.sub, // PingOne user ID
-      email: req.user.email || 'unknown',
-      accessToken: req.session.oauth_tokens.access_token,
-      refreshToken: req.session.oauth_tokens.refresh_token,
+      userId: req.session.user.oauthId || req.session.user.id,
+      email: req.session.user.email || 'unknown',
+      accessToken: req.session.oauthTokens.accessToken,
+      refreshToken: req.session.oauthTokens.refreshToken || null,
       sessionId: req.sessionID,
       // These will be populated after token exchange in Plan 02
       agentToken: null,
       tokenExchangedAt: null,
     };
+    console.log('[agentSessionMiddleware] agentContext.userId:', req.agentContext.userId);
+    console.log('[agentSessionMiddleware] agentContext.email:', req.agentContext.email);
+    console.log('[agentSessionMiddleware] agentContext.accessToken present:', !!req.agentContext.accessToken);
 
     // Step 4: Initialize token events tracking for this request
     // Events will be collected during MCP tool calls and returned in response
@@ -65,10 +107,15 @@ export async function agentSessionMiddleware(req, res, next) {
       });
     };
 
+    console.log('[agentSessionMiddleware] All checks passed, calling next()');
     // All checks passed — proceed to next middleware/handler
     next();
   } catch (error) {
-    console.error('[agentSessionMiddleware] Error:', error.message);
+    console.error('[agentSessionMiddleware] ERROR: Middleware error');
+    console.error('[agentSessionMiddleware] Error name:', error.name);
+    console.error('[agentSessionMiddleware] Error message:', error.message);
+    console.error('[agentSessionMiddleware] Error stack:', error.stack);
+    console.error('[agentSessionMiddleware] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     return res
       .status(500)
       .json({ error: 'Internal server error', message: error.message });
@@ -79,7 +126,7 @@ export async function agentSessionMiddleware(req, res, next) {
  * Optional: Middleware to enforce agent context presence
  * Use after agentSessionMiddleware if you want double-validation
  */
-export function requireAgentContext(req, res, next) {
+function requireAgentContext(req, res, next) {
   if (!req.agentContext) {
     return res.status(500).json({
       error: 'Agent context not initialized',
@@ -92,7 +139,7 @@ export function requireAgentContext(req, res, next) {
 /**
  * Helper to safely access auth context with defaults
  */
-export function getAuthContextOrDefault(req) {
+function getAuthContextOrDefault(req) {
   return (
     req.agentContext || {
       userId: null,
@@ -105,3 +152,9 @@ export function getAuthContextOrDefault(req) {
     }
   );
 }
+
+module.exports = {
+  agentSessionMiddleware,
+  requireAgentContext,
+  getAuthContextOrDefault,
+};
