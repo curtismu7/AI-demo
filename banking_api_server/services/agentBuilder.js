@@ -119,7 +119,9 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
         ...state.messages,
       ];
       const response = await model.invoke(messages);
-      return { messages: [response] };
+      // Ensure response is in the correct message format
+      const messageContent = response.content || response.text || response;
+      return { messages: [{ role: 'assistant', content: messageContent }] };
     }
 
     // Create the graph
