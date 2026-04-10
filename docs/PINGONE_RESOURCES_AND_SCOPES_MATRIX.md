@@ -42,20 +42,14 @@
 | `profile` | User profile claims | All |
 | `email` | Email claim | All |
 | `offline_access` | Refresh token support | Admin, Customer, AI_Agent |
-| `banking:general:read` | Read banking data | All |
-| `banking:general:write` | Write banking data | Admin, Customer, AI_Agent |
-| `banking:admin:full` | Admin operations | Admin only |
-| `banking:admin:read` | Admin read-only | Admin only |
-| `banking:admin:write` | Admin write | Admin only |
-| `banking:accounts:read` | Read account details | All |
-| `banking:transactions:read` | Read transaction history | All |
-| `banking:transactions:write` | Create/modify transactions | Admin, Customer, AI_Agent |
-| `banking:sensitive:read` | Sensitive data access | Admin only |
-| `banking:sensitive:write` | Sensitive data modification | Admin only |
-| **`banking:ai:agent:read`** | **Agent delegation scope** (Phase 69.1 name) | Admin, AI_Agent, Customer (2-exchange) |
-| `banking:ai:agent:write` | Agent write delegation | Admin, AI_Agent |
-| `banking:ai:agent:admin` | Agent admin delegation | Admin only |
+| `banking:general:read` | Read all banking data (accounts, transactions, users) | All |
+| `banking:general:write` | Write all banking data (create transactions, modify accounts) | Admin, Customer, AI_Agent |
+| `banking:admin` | Admin operations (full access including sensitive data) | Admin only |
+| `banking:sensitive` | Sensitive data access (read+write) | Admin only |
+| `banking:ai:agent` | Agent delegation (full agent access) | Admin, AI_Agent, Customer (2-exchange) |
 | `ai_agent` | Agent identity marker | AI_Agent only |
+
+**Note:** Consolidated from 14 scopes to 6 scopes (57% reduction) to simplify configuration without losing functionality. All capabilities preserved through broader scopes.
 
 ---
 

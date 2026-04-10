@@ -35,11 +35,10 @@ http://localhost:3001
 ### Scopes (via Resource Grants)
 
 - `openid`, `profile`, `email`, `offline_access`
-- `banking:general:read`, `banking:general:write`, `banking:admin:full`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write`
-- `banking:ai:agent:read` (Phase 69.1 standardization)
+- `banking:general:read`, `banking:general:write`, `banking:admin`, `banking:sensitive`, `banking:ai:agent`
 - `p1:read:user`, `p1:update:user`
 
-**Note:** Use `banking:ai:agent:read` (NOT `banking:agent:invoke`) per Phase 69.1 scope naming standardization. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
+**Note:** Consolidated from 14 scopes to 6 scopes (57% reduction). All capabilities preserved through broader scopes. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
 
 ### Token Exchange
 
@@ -82,10 +81,10 @@ Same as Admin app.
 ### Scopes
 
 - `openid`, `profile`, `email`, `offline_access`
-- `banking:ai:agent:read` (critical for agent delegation)
-- `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write`
+- `banking:ai:agent` (critical for agent delegation)
+- `banking:general:read`, `banking:general:write`
 
-**Note:** Must include `banking:ai:agent:read` for agent delegation to work. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
+**Note:** Must include `banking:ai:agent` for agent delegation to work. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
 
 ### Attribute Mappings
 
@@ -132,17 +131,13 @@ Falls back to `PINGONE_CLIENT_ID` / `PINGONE_CLIENT_SECRET` if management-specif
 
 | Scope | Description |
 |-------|-------------|
-| `banking:general:read` | Read banking data |
-| `banking:general:write` | Write banking data |
-| `banking:admin:full` | Admin operations |
-| `banking:accounts:read` | Read account details |
-| `banking:transactions:read` | Read transaction history |
-| `banking:transactions:write` | Create/modify transactions |
-| `banking:ai:agent:read` | Agent delegation scope |
-| `banking:ai:agent:write` | Agent write delegation |
-| `banking:ai:agent:admin` | Agent admin delegation |
+| `banking:general:read` | Read all banking data |
+| `banking:general:write` | Write all banking data |
+| `banking:admin` | Admin operations (full access) |
+| `banking:sensitive` | Sensitive data access (read+write) |
+| `banking:ai:agent` | Agent delegation (full access) |
 
-**Note:** Use Phase 69.1 scope naming standardization. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
+**Note:** Consolidated from 14 scopes to 6 scopes (57% reduction). All capabilities preserved through broader scopes. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
 
 ---
 
