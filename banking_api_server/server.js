@@ -56,7 +56,9 @@ if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
 //   2. node-redis wire protocol (TCP/TLS) — for self-hosted Redis or explicit REDIS_URL / KV_URL.
 //      Requires an active connection; less reliable on Vercel due to cold starts.
 //
-//   3. Memory store — development fallback; sessions lost on restart.
+//   3. SQLite store — local development fallback; sessions persist across restarts.
+//
+//   4. Memory store — last resort; sessions lost on restart.
 
 /** @type {import('./services/upstashSessionStore') | null} */
 let upstashSessionStoreInstance = null;
@@ -67,7 +69,7 @@ let sessionRedisClient = null;
 let sessionRedisInitError = null;
 let sessionRedisConnectError = null;
 let _redisConnectPromise = null;
-/** 'upstash-rest' | 'redis-wire' | 'memory' */
+/** 'upstash-rest' | 'redis-wire' | 'sqlite' | 'memory' */
 let sessionStoreType = 'memory';
 let sessionStore;
 
@@ -149,6 +151,22 @@ if (!sessionStore) {
       sessionRedisClient = null;
       console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
     }
+  }
+}
+
+// ── Priority 3: SQLite store (local development fallback) ───────────────────
+if (!sessionStore) {
+  try {
+    const SqliteSessionStore = require('./services/sqliteSessionStore');
+    sessionStore = new SqliteSessionStore({
+      dbPath: path.join(__dirname, 'data/sessions.db'),
+      ttl: 24 * 60 * 60 * 1000, // 24 hours
+    });
+    sessionStoreType = 'sqlite';
+    console.log('[session-store] Using SQLite store for local development — sessions persist across restarts');
+  } catch (err) {
+    sessionRedisInitError = err.message || String(err);
+    console.warn('[session-store] SQLite store init failed, falling back to memory store:', err.message);
   }
 }
 
