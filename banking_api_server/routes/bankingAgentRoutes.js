@@ -84,6 +84,12 @@ router.post('/message', async (req, res) => {
     console.log('[banking-agent/message] processAgentMessage response received');
     console.log('[banking-agent/message] Response keys:', Object.keys(response || {}));
     console.log('[banking-agent/message] requiresConsent:', response?.requiresConsent);
+    console.log('[banking-agent/message] tokenEvents count:', response?.tokenEvents?.length || 0);
+
+    // Include token events in the response
+    if (response?.tokenEvents && response.tokenEvents.length > 0) {
+      console.log('[banking-agent/message] Including token events in response');
+    }
 
     // Check if consent is required
     if (response.requiresConsent) {
@@ -100,12 +106,22 @@ router.post('/message', async (req, res) => {
         requiresConsent: true,
         consentId,
         action: response.action,
-        message: response.message
+        message: response.message,
+        tokenEvents: response.tokenEvents || []
       });
     }
 
-    console.log('[banking-agent/message] Sending successful response');
-    res.json(response);
+    console.log('[banking-agent/message] Returning agent response');
+    return res.json({
+      reply: response.reply,
+      success: response.success,
+      toolsCalled: response.toolsCalled,
+      tokensUsed: response.tokensUsed,
+      requiresConsent: response.requiresConsent,
+      agentConfigured: response.agentConfigured,
+      error: response.error,
+      tokenEvents: response.tokenEvents || []
+    });
   } catch (error) {
     console.error('[banking-agent/message] ERROR: Agent message error');
     console.error('[banking-agent/message] Error name:', error.name);

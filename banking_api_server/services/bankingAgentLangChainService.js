@@ -50,6 +50,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     console.log('[processAgentMessage] Agent invoke completed');
     console.log('[processAgentMessage] Final state keys:', Object.keys(finalState || {}));
     console.log('[processAgentMessage] Final messages count:', finalState?.messages?.length || 0);
+    console.log('[processAgentMessage] Token events count:', finalState?.tokenEvents?.length || 0);
 
     // Extract the last message from the agent response
     const lastMessage = finalState.messages[finalState.messages.length - 1];
@@ -61,7 +62,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       toolsCalled: [],
       tokensUsed: 0,
       requiresConsent: false,
-      agentConfigured: true
+      agentConfigured: true,
+      tokenEvents: finalState?.tokenEvents || []
     };
   } catch (error) {
     console.error('[processAgentMessage] ERROR: Agent processing error');
