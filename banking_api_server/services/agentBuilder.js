@@ -143,9 +143,11 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
                   },
                 },
               });
+              // Ensure result is a string for React rendering
+              const resultString = typeof result === 'string' ? result : JSON.stringify(result);
               toolResults.push({
                 tool_call_id: toolCall.id,
-                content: result,
+                content: resultString,
               });
             } catch (error) {
               toolResults.push({
