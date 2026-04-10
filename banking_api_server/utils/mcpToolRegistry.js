@@ -3,10 +3,10 @@
  * All tools receive auth context via config.configurable.agentContext
  */
 
-import { tool } from '@langchain/core/tools';
-import { z } from 'zod/v4';
-import { explainTopic } from '../services/educationTopics.js';
-import { createRequire } from 'module';
+const { tool } = require('@langchain/core/tools');
+const { z } = require('zod/v4');
+const { explainTopic } = require('../services/educationTopics.js');
+const { createRequire } = require('module');
 
 const require = createRequire(import.meta.url);
 const braveSearchService = require('../services/braveSearchService');
@@ -231,4 +231,4 @@ export function createMcpToolRegistry() {
   ];
 }
 
-export { callMcpTool };
+module.exports = { callMcpTool };

@@ -185,7 +185,7 @@ const vercelConfigRoutes = require('./routes/vercelConfig');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
-const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
+const bankingAgentRoutes = require('./routes/bankingAgentRoutes');
 const langchainConfigRoutes = require('./routes/langchainConfig');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
@@ -846,7 +846,7 @@ app.use('/api/auth/mfa',  mfaRoutes);
 app.use('/api/agent', agentIdentityRoutes);
 // NL route uses its own req.session?.user check — full JWT validation is not
 // needed here and causes invalid_token errors when JWKS fetch times out.
-app.use('/api/banking-agent', bankingAgentNlRoutes);
+app.use('/api/banking-agent', bankingAgentRoutes);
 app.use('/api/langchain', langchainConfigRoutes);
 app.use('/api/authorize', authorizeRoutes);
 app.use('/api/introspect', introspectRoutes);

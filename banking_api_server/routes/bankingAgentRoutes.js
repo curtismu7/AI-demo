@@ -4,135 +4,102 @@
  * Per-request stateless agent initialization with session-persisted history
  */
 
-import express from 'express';
-import { agentSessionMiddleware } from '../middleware/agentSessionMiddleware.js';
-import {
+const express = require('express');
+const { agentSessionMiddleware } = require('../middleware/agentSessionMiddleware');
+const {
   storeConsentRequest,
   getConsentDecision,
   recordConsentDecision,
-} from '../middleware/hitlGatewayMiddleware.js';
-import { processAgentMessage } from '../services/bankingAgentLangChainService.js';
+} = require('../middleware/hitlGatewayMiddleware');
+const { processAgentMessage } = require('../services/bankingAgentLangChainService');
 
 const router = express.Router();
+router.use(agentSessionMiddleware);
 
-/**
- * POST /api/banking-agent/init
- * Initialize agent for user session (simplified — no global executor needed)
- */
-router.post('/init', agentSessionMiddleware, async (req, res) => {
+// POST /init - Initialize agent session
+router.post('/init', async (req, res) => {
   try {
-    res.json({
-      success: true,
-      message: 'Agent ready',
-      sessionId: req.sessionID,
+    const { userId, userToken } = req.session.agentContext || {};
+    if (!userId || !userToken) {
+      return res.status(401).json({ error: 'Session expired', agentInitRequired: true });
+    }
+    res.json({ 
+      sessionId: req.session.id, 
+      initialized: true,
+      agentReady: true 
     });
   } catch (error) {
-    console.error('[agent/init] Error:', error);
+    console.error('Agent init error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-/**
- * POST /api/banking-agent/message
- * Send message to agent with HITL consent flow
- * Per-request agent initialization, session-persisted history
- */
-router.post('/message', agentSessionMiddleware, async (req, res) => {
+// POST /message - Process agent message
+router.post('/message', async (req, res) => {
   try {
-    const { message, consentId } = req.body;
-
-    // Validate message
-    if (!message || typeof message !== 'string') {
-      return res.status(400).json({ error: 'message is required' });
+    const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message required' });
     }
 
-    // If consentId provided: retrieve + validate consent decision before proceeding
-    if (consentId) {
-      const consent = await getConsentDecision(consentId);
-      if (!consent.valid) {
-        return res.status(428).json({ error: consent.error, consentId });
-      }
-      if (!consent.approved) {
-        return res.json({
-          success: true,
-          reply: 'Operation cancelled by user.',
-          tokenEvents: req.tokenEvents,
-        });
-      }
-      req.consentApproved = true;
+    const { userId, userToken, tokenEvents } = req.session.agentContext || {};
+    if (!userId || !userToken) {
+      return res.status(401).json({ error: 'Session expired', agentInitRequired: true });
     }
 
-    // Load session history (max 20 messages, [{role:'human'|'ai', content:string}])
-    const sessionHistory = req.session.agentChatHistory || [];
+    // Check for pending consent decisions
+    const consentDecision = await getConsentDecision(req.session.id);
+    if (consentDecision?.decision === 'denied') {
+      return res.status(403).json({ error: 'User denied consent', consentDenied: true });
+    }
 
-    // Process through LangChain agent (re-initializes per request, restores history)
-    const result = await processAgentMessage(
-      message.trim(),
-      req.agentContext,
-      sessionHistory,
-      req.tokenEvents
-    );
+    // Process message with agent
+    const response = await processAgentMessage({
+      message,
+      userId,
+      userToken,
+      sessionId: req.session.id,
+      tokenEvents: tokenEvents || []
+    });
 
-    // Persist updated history to session
-    req.session.agentChatHistory = result.updatedHistory;
-
-    // If HITL interrupt was returned and not already approved: store consent request and return 428
-    if (result.interrupt && !req.consentApproved) {
-      const interruptData = result.interrupt.value ?? result.interrupt;
-      const consentId = `consent_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      await storeConsentRequest(consentId, {
-        consentId,
-        reason: 'High-value operation requires your approval',
-        operation: interruptData,
-        createdAt: new Date().toISOString(),
+    // Check if consent is required
+    if (response.requiresConsent) {
+      const consentId = Math.random().toString(36).substr(2, 9);
+      await storeConsentRequest(req.session.id, {
+        id: consentId,
+        action: response.action,
+        amount: response.amount,
+        details: response.details
       });
-      return res.status(428).json({
-        hitl: true,
+      return res.status(428).json({ 
+        requiresConsent: true,
         consentId,
-        reason: 'High-value operation requires your approval',
-        operation: interruptData,
-        message: 'This operation requires your confirmation. Please approve to continue.',
+        action: response.action,
+        message: response.message 
       });
     }
 
-    res.json({
-      success: true,
-      reply: result.reply,
-      tokenEvents: result.tokenEvents,
-    });
+    res.json(response);
   } catch (error) {
-    console.error('[agent/message] Error:', error);
-    res.status(500).json({ error: error.message || 'Agent processing failed' });
-  }
-});
-
-/**
- * POST /api/banking-agent/consent
- * Record user consent decision + resume agent
- */
-router.post('/consent', agentSessionMiddleware, async (req, res) => {
-  try {
-    const { consentId, decision } = req.body;
-
-    if (!consentId || !decision) {
-      return res.status(400).json({ error: 'consentId + decision required' });
-    }
-
-    if (!['approve', 'reject'].includes(decision)) {
-      return res.status(400).json({ error: "decision must be 'approve' or 'reject'" });
-    }
-
-    const consent = await recordConsentDecision(consentId, decision);
-
-    res.json({
-      success: true,
-      message: `Operation ${decision}ed`,
-      decision: consent.decision,
-    });
-  } catch (error) {
-    console.error('[agent/consent] Error:', error);
+    console.error('Agent message error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-export default router;
+// POST /consent - Record user consent decision
+router.post('/consent', async (req, res) => {
+  try {
+    const { consentId, approved } = req.body;
+    if (!consentId || approved === undefined) {
+      return res.status(400).json({ error: 'consentId and approved required' });
+    }
+
+    await recordConsentDecision(req.session.id, consentId, approved);
+    res.json({ recorded: true, approved });
+  } catch (error) {
+    console.error('Consent recording error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
