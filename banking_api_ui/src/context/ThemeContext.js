@@ -21,7 +21,7 @@ const ThemeContext = createContext({
   toggleTheme: () => {},
   agentAppearance: 'auto',
   setAgentAppearance: () => {},
-  effectiveAgentTheme: 'light',
+  effectiveAgentTheme: 'auto',
 });
 
 function readStoredTheme() {
