@@ -24,7 +24,7 @@ const FIELD_META = {
   stepUpAcrValue: {
     label: 'Required ACR Value',
     type: 'text',
-    description: 'Must match the PingOne Sign-On Policy name exactly (e.g. Multi_factor).',
+    description: 'Must match the PingOne Sign-On Policy name exactly (e.g. Multi_Factor).',
   },
   stepUpTransactionTypes: {
     label: 'Transaction Types Requiring Step-up',

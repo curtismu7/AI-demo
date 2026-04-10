@@ -18,7 +18,7 @@ const SetupWizardTab = () => {
     publicAppUrl: window.location.origin,
     vercelToken: '',
     vercelProjectId: '',
-    stepUpAcrValue: 'Multi_factor'
+    stepUpAcrValue: 'Multi_Factor'
   });
 
   // UI state
@@ -432,12 +432,12 @@ const SetupWizardTab = () => {
               type="text"
               value={formData.stepUpAcrValue}
               onChange={handleInputChange}
-              placeholder="Multi_factor"
+              placeholder="Multi_Factor"
               className={errors.stepUpAcrValue ? 'error' : ''}
               disabled={running}
             />
             <small className="swt-help">
-              PingOne Sign-On Policy name for MFA step-up (e.g., Multi_factor)
+              PingOne Sign-On Policy name for MFA step-up (e.g., Multi_Factor)
             </small>
             {errors.stepUpAcrValue && <span className="swt-error">{errors.stepUpAcrValue}</span>}
           </div>

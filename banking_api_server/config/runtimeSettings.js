@@ -12,7 +12,7 @@
 const settings = {
   // Step-up MFA
   stepUpAmountThreshold: parseFloat(process.env.STEP_UP_AMOUNT_THRESHOLD) || 0,
-  stepUpAcrValue: process.env.STEP_UP_ACR_VALUE || 'Multi_factor',
+  stepUpAcrValue: process.env.STEP_UP_ACR_VALUE || 'Multi_Factor',
   stepUpEnabled: true,
   // Step-up method: 'ciba' (back-channel challenge) or 'email' (OIDC re-auth redirect)
   stepUpMethod: process.env.STEP_UP_METHOD || 'email',

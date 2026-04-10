@@ -50,7 +50,7 @@ router.get('/sensitive-details', async (req, res) => {
   try {
     // ACR-based step-up gate: if user hasn't completed step-up auth, require it
     const userAcr = String(req.user?.acr || req.user?.['pingone:acr'] || '');
-    const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue') || 'Multi_factor';
+    const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue') || 'Multi_Factor';
     const hasElevatedAcr = userAcr === STEP_UP_ACR || userAcr.split(' ').includes(STEP_UP_ACR);
 
     if (!hasElevatedAcr) {

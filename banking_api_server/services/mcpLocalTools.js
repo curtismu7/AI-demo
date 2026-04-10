@@ -594,7 +594,7 @@ async function callToolLocal(tool, params, userId, req) {
 
 
 async function get_sensitive_account_details(params, userId, req) {
-  const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue') || 'Multi_factor';
+  const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue') || 'Multi_Factor';
   const userAcr = String(req?.user?.acr || req?.user?.['pingone:acr'] || '');
   const hasElevatedAcr = userAcr === STEP_UP_ACR || userAcr.split(' ').includes(STEP_UP_ACR);
 
