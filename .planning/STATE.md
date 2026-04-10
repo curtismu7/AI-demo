@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-09T22:08:19.654Z"
+last_updated: "2026-04-09T22:57:53.672Z"
 progress:
-  total_phases: 132
+  total_phases: 133
   completed_phases: 64
-  total_plans: 202
-  completed_plans: 153
+  total_plans: 205
+  completed_plans: 155
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,12 +20,12 @@ progress:
 
 ## Current Position
 
-Phase: 115 (agent-framework-integration) — EXECUTING
+Phase: 116 (full-langchain-native-agent-rebuild) — EXECUTING
 Plan: 1 of 3
 Plans: 4/4 complete
 **Previous:** Phase 112 (marketing-and-dashboard-ui-polish-ensure-consistent-light-and-dark-mode) — ✅ COMPLETE
 **Next:** Phase 114 (IETF agentic identity standards) — Pending
-**Status:** Executing Phase 115
+**Status:** Executing Phase 116
 
 ---
 
@@ -188,3 +188,14 @@ Plans: 4/4 complete
 - Phase 112 added: Marketing and dashboard UI polish - ensure consistent light and dark mode [2026-04-08]
 - Phase 113 added: Redesign UI to match Chase.com look and feel (preserve all functionality) for all pages [2026-04-09]
 - Phase 115 added: Agent framework integration — recreate BankingAgent using LangChain for improved tool orchestration, multi-turn conversations, and maintainability [2026-04-09]
+- Phase 116 added: Full LangChain native agent rebuild — replace createStructuredChatAgent retrofit with langchain 1.x createAgent() API across BFF and UI; 7-tool registry; per-request executor; session history; HITL 428 consent [2026-04-09]
+- Phase 117 added: LangChain production-quality agent with pluggable model interface (Groq default, OpenAI/Anthropic/HuggingFace support) [2026-04-09]
+- Phase 118 added: Research and plan HuggingFace integration with LangChain for cost-effective model deployment — evaluate ecosystem, licensing, model selection, deployment options [2026-04-09]
+
+---
+
+## Roadmap Evolution
+
+- Phase 117 added: "LangChain production-quality agent with pluggable model interface" [2026-04-09]
+- Phase 118 added: "Research and plan HuggingFace integration with LangChain" [2026-04-09]
+- Phase 119 added: "Call MCP server and get tools without authenticating user" [2026-04-09]

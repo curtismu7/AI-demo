@@ -1735,4 +1735,34 @@ Plans:
 - [ ] 116-02-PLAN.md — Rebuild mcpToolRegistry.js with tool() function + 3 new tools — Wave 1 (parallel)
 - [ ] 116-03-PLAN.md — Wire BankingAgent.js to sendAgentMessage, remove parseNaturalLanguage dispatch — Wave 2 (has checkpoint)
 
+### Phase 117: LangChain production-quality agent with pluggable model interface (Groq default, OpenAI/Anthropic/HuggingFace support)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 116
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 117 to break down)
+
+### Phase 118: Research and plan HuggingFace integration with LangChain for cost-effective model deployment — evaluate ecosystem, licensing, model selection, deployment options
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 117
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 118 to break down)
+
+### Phase 119: Call MCP server and get tools without authenticating user
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 118
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 119 to break down)
+
 ---
