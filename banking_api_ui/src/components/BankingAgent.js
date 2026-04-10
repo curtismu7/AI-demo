@@ -2989,10 +2989,10 @@ export default function BankingAgent({
                         ? 'Type a message or pick an action on the left.'
                         : marketingGuestChatEnabled
                           ? isConfigured
-                            ? 'Ask about OAuth or try a suggestion — we'll open PingOne only when you need banking.'
-                            : 'Set up PingOne in Application setup — you can still ask general questions once configured.'
+                            ? 'Ask about OAuth or try a suggestion - we will open PingOne only when you need banking.'
+                            : 'Set up PingOne in Application setup - you can still ask general questions once configured.'
                           : isConfigured
-                            ? 'PingOne is configured — sign in to get started.'
+                            ? 'PingOne is configured - sign in to get started.'
                             : 'Set up your PingOne credentials to get started.'}
                     </p>
                   </div>
