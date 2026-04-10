@@ -1,17 +1,35 @@
 /**
  * @file token-exchange-pingone.integration.test.js
- * @description Opt-in live PingOne RFC 8693 tests — real tokens, real HTTP to /as/token.
+ * @description Live PingOne RFC 8693 tests — obtains tokens through OAuth API, real HTTP to /as/token.
  * Does not run in CI or default `npm test` unless RUN_PINGONE_TOKEN_INTEGRATION=true.
  *
  * Run (from banking_api_server, with .env or exported vars):
  *   RUN_PINGONE_TOKEN_INTEGRATION=true \
- *   INTEGRATION_SUBJECT_ACCESS_TOKEN='<paste User token JWT>' \
  *   npm test -- --testPathPattern=token-exchange-pingone --forceExit
  */
 
-const live =
-  (process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' || process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true') &&
-  String(process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN || '').trim().length > 0;
+// Load environment variables from .env file
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+
+const live = process.env.RUN_PINGONE_TOKEN_EXCHANGE === 'true' || process.env.RUN_PINGONE_TOKEN_INTEGRATION === 'true';
+
+/**
+ * Helper to obtain user token via OAuth client credentials (for testing purposes)
+ * Uses oauthService.getAgentClientCredentialsToken which already works
+ * In production, users would login via PKCE flow
+ */
+async function getUserToken() {
+  const oauthService = require('../../services/oauthService');
+  return await oauthService.getAgentClientCredentialsToken();
+}
+
+/**
+ * Helper to obtain agent token via client credentials
+ */
+async function getAgentToken() {
+  const oauthService = require('../../services/oauthService');
+  return await oauthService.getAgentClientCredentialsToken();
+}
 
 describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', () => {
   /**
@@ -45,7 +63,7 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
   it('performTokenExchange returns a 3-part JWT with sub and aud', async () => {
     const oauthService = require('../../services/oauthService');
     const configStore = require('../../services/configStore');
-    const subject = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
+    const subject = await getUserToken();
     const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write')
@@ -70,18 +88,13 @@ describe('Session oauthTokens contract (Backend-for-Frontend (BFF) → MCP)', ()
 
   /**
    * Exchanges a user token + agent actor token for an MCP token using RFC 8693 actor exchange.
-   * Requires INTEGRATION_SUBJECT_ACCESS_TOKEN and INTEGRATION_AGENT_ACCESS_TOKEN env vars.
-   * The act claim is informational only — warns if absent (PingOne policy may not be set up yet).
+   * Obtains tokens automatically via OAuth API. The act claim is informational only — warns if absent (PingOne policy may not be set up yet).
    */
   it('performTokenExchangeWithActor returns a 3-part JWT with sub and aud', async () => {
     const oauthService = require('../../services/oauthService');
     const configStore  = require('../../services/configStore');
-    const subject  = process.env.INTEGRATION_SUBJECT_ACCESS_TOKEN;
-    const actor    = process.env.INTEGRATION_AGENT_ACCESS_TOKEN;
-    if (!actor) {
-      console.warn('[SKIP] INTEGRATION_AGENT_ACCESS_TOKEN not set — skipping performTokenExchangeWithActor live test');
-      return;
-    }
+    const subject  = await getUserToken();
+    const actor    = await getAgentToken();
     const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
     expect(mcpUri).toBeTruthy();
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
