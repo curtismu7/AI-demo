@@ -2584,6 +2584,15 @@ export default function BankingAgent({
                     Sign out
                   </button>
                 )}
+                {!isInline && isLoggedIn && (
+                  <button
+                    type="button"
+                    className="ba-header-signout"
+                    onClick={() => onLogout?.()}
+                  >
+                    Sign out
+                  </button>
+                )}
                 {/* Collapse to FAB only in float mode */}
                 {!isInline && (
                   <button 
