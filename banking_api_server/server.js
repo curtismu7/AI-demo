@@ -224,6 +224,7 @@ const { migrateAccounts } = require('./services/demoDataService');
 const appConfigRoutes = require('./routes/appConfig');
 const verticalConfigRoutes = require('./routes/verticalConfig');
 const pingoneAuditRoutes = require('./routes/pingoneAudit');
+const pingoneTestRoutes = require('./routes/pingoneTest');
 
 // Import middleware
 const { authenticateToken, requireSession } = require('./middleware/auth');
@@ -966,6 +967,9 @@ app.use('/api/logs', logsRoutes);
 
 // PingOne Configuration Audit — admin-accessible endpoint for validating resources and scopes
 app.use('/api/pingone/audit', pingoneAuditRoutes);
+
+// PingOne Test Page — comprehensive testing of PingOne integration
+app.use('/api/pingone-test', pingoneTestRoutes);
 
 // Migration API routes - mixed authentication (some public, some admin-only)
 app.use('/api/migration', migrationRoutes);

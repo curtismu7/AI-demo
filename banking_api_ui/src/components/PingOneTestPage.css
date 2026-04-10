@@ -1,0 +1,267 @@
+/* PingOne Test Page - Chase.com-style UI */
+
+.pingone-test-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+/* Loading State */
+.pingone-test-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #003366;
+  border-top: 4px solid #00a651;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error State */
+.pingone-test-error {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.error-message {
+  color: #d32f2f;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Header */
+.pingone-test-header {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.pingone-test-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #003366;
+  margin: 0 0 1rem 0;
+}
+
+.pingone-test-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pingone-test-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-indicator {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.status-indicator--success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-indicator--error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Content */
+.pingone-test-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Sections */
+.pingone-test-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pingone-test-section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #003366;
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+/* Grid Layout */
+.pingone-test-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Test Cards */
+.test-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.test-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.test-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.test-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #003366;
+  margin: 0;
+}
+
+.test-card-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.test-card-status--passed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.test-card-status--failed {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.test-card-status--running {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.test-card-status--pending {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.test-card-content {
+  margin-bottom: 1rem;
+}
+
+.test-card-value {
+  color: #424242;
+  font-size: 0.95rem;
+  margin: 0;
+  word-break: break-all;
+}
+
+.test-card-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Buttons */
+.pingone-test-button {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pingone-test-button--primary {
+  background: #003366;
+  color: white;
+}
+
+.pingone-test-button--primary:hover {
+  background: #004080;
+  transform: translateY(-1px);
+}
+
+.pingone-test-button--secondary {
+  background: #00a651;
+  color: white;
+}
+
+.pingone-test-button--secondary:hover {
+  background: #00c853;
+  transform: translateY(-1px);
+}
+
+.pingone-test-button--fix {
+  background: #d32f2f;
+  color: white;
+}
+
+.pingone-test-button--fix:hover {
+  background: #b71c1c;
+  transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pingone-test-page {
+    padding: 1rem;
+  }
+
+  .pingone-test-header,
+  .pingone-test-section {
+    padding: 1.5rem;
+  }
+
+  .pingone-test-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pingone-test-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .test-card-actions {
+    flex-direction: column;
+  }
+
+  .pingone-test-button {
+    width: 100%;
+  }
+}
