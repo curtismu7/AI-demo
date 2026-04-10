@@ -1500,6 +1500,27 @@ export default function BankingAgent({
       }, 150);
       return;
     }
+    if (actionId === 'login_user') {
+      let usePiFlow = false;
+      try {
+        const r = await fetch('/api/admin/config', { credentials: 'include' });
+        const j = await r.json();
+        const cfg = j?.config || {};
+        if (cfg.marketing_customer_login_mode === 'slide_pi_flow') usePiFlow = true;
+      } catch (_) {
+        /* keep default redirect */
+      }
+      setTimeout(() => {
+        const p = (location.pathname || '').replace(/\/$/, '') || '/';
+        const params = new URLSearchParams();
+        if (isPublicMarketingAgentPath(p)) params.set('return_to', '/marketing');
+        if (usePiFlow) params.set('use_pi_flow', '1');
+        const q = params.toString();
+        window.location.href = `${apiUrl}/api/auth/oauth/user/login${q ? `?${q}` : ''}`;
+      }, 150);
+      return;
+    }
+    // Default behavior for other action IDs
     let usePiFlow = false;
     try {
       const r = await fetch('/api/admin/config', { credentials: 'include' });
@@ -3032,6 +3053,20 @@ export default function BankingAgent({
                               onClick={() => window.open('/api/auth/debug?deep=1', '_blank', 'noopener,noreferrer')}
                             >
                               Open session debug
+                            </button>
+                            <button
+                              type="button"
+                              className="ba-session-fix-btn ba-session-fix-btn--secondary"
+                              onClick={() => handleLoginAction('login_admin')}
+                            >
+                              Admin
+                            </button>
+                            <button
+                              type="button"
+                              className="ba-session-fix-btn ba-session-fix-btn--secondary"
+                              onClick={() => handleLoginAction('login_user')}
+                            >
+                              Login
                             </button>
                             <button
                               type="button"
