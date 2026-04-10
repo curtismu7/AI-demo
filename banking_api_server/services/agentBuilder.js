@@ -92,7 +92,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     if (process.env.ANTHROPIC_API_KEY) {
       console.log('[agentBuilder] Using Anthropic (Claude)');
       model = new ChatAnthropic({
-        modelName: 'claude-3-5-sonnet-20240620',
+        modelName: 'claude-3-5-sonnet-20241022',
         temperature: 0.7,
         maxTokens: 1024,
         apiKey: process.env.ANTHROPIC_API_KEY,
