@@ -9,6 +9,34 @@ const oauthService = require('../services/oauthService');
 const configStore = require('../services/configStore');
 const { managementService } = require('../services/pingoneManagementService');
 const pingOneUserService = require('../services/pingOneUserService');
+const apiCallTrackerService = require('../services/apiCallTrackerService');
+
+/**
+ * Helper function to track API calls
+ * @param {string} sessionId - Session ID for tracking
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ * @param {number} startTime - Start time for duration calculation
+ * @param {object} responseData - Response data to track
+ * @param {string} category - Category for the API call
+ * @param {string} description - Description of the API call
+ */
+function trackApiCall(sessionId, req, res, startTime, responseData, category, description) {
+  const duration = Date.now() - startTime;
+  apiCallTrackerService.trackCall({
+    sessionId,
+    method: req.method,
+    url: req.originalUrl,
+    requestHeaders: req.headers,
+    requestBody: req.body,
+    responseStatus: res.statusCode || (responseData.success ? 200 : 500),
+    responseHeaders: res.getHeaders(),
+    responseBody: responseData,
+    duration,
+    category,
+    description
+  });
+}
 
 /**
  * POST /api/pingone-test/worker-config
@@ -132,7 +160,11 @@ router.post('/worker-config', async (req, res) => {
  * GET /api/pingone-test/verify-assets
  * Verify PingOne assets (Apps, Resources, Scopes, Users) using worker token
  */
-router.get('/verify-assets', async (_req, res) => {
+router.get('/verify-assets', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+  const requestHeaders = req.headers;
+
   try {
     await configStore.ensureInitialized();
 
@@ -230,17 +262,23 @@ router.get('/verify-assets', async (_req, res) => {
       };
     }
 
-    res.json({
+    const responseData = {
       success: true,
       assets
-    });
+    };
+
+    trackApiCall(sessionId, req, res, startTime, responseData, 'pingone-test', 'Verify PingOne assets (Apps, Resources, Scopes, Users)');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Asset verification error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message,
       assets: null
-    });
+    };
+
+    trackApiCall(sessionId, req, res, startTime, responseData, 'pingone-test', 'Verify PingOne assets (Apps, Resources, Scopes, Users)');
+    res.json(responseData);
   }
 });
 
@@ -249,35 +287,46 @@ router.get('/verify-assets', async (_req, res) => {
  * Test getting Authorization Code token from user session
  */
 router.get('/authz-token', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     const oauthTokens = req.session.oauthTokens;
     if (!oauthTokens || !oauthTokens.accessToken) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'No authorization token found in session. User must log in first.'
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
+      return res.json(responseData);
     }
 
     // Verify the token is still valid
     const now = Date.now();
     if (oauthTokens.expiresAt && now > oauthTokens.expiresAt) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'Authorization token has expired.'
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
+      return res.json(responseData);
     }
 
-    res.json({
+    const responseData = {
       success: true,
       token: oauthTokens.accessToken.substring(0, 20) + '...',
       expiresAt: oauthTokens.expiresAt
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Authz token test error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
+    res.json(responseData);
   }
 });
 
@@ -285,22 +334,30 @@ router.get('/authz-token', async (req, res) => {
  * GET /api/pingone-test/agent-token
  * Test getting Agent token (client credentials)
  */
-router.get('/agent-token', async (_req, res) => {
+router.get('/agent-token', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     await configStore.ensureInitialized();
 
     const agentToken = await oauthService.getAgentClientCredentialsToken();
 
-    res.json({
+    const responseData = {
       success: true,
-      token: agentToken.substring(0, 20) + '...'
-    });
+      token: agentToken.access_token.substring(0, 20) + '...',
+      expires_in: agentToken.expires_in
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Agent token (client credentials)');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Agent token test error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Agent token (client credentials)');
+    res.json(responseData);
   }
 });
 
@@ -309,13 +366,18 @@ router.get('/agent-token', async (_req, res) => {
  * Test exchange user token (authz) for MCP token
  */
 router.get('/exchange-user-to-mcp', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     const oauthTokens = req.session.oauthTokens;
     if (!oauthTokens || !oauthTokens.accessToken) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'No authorization token found in session. User must log in first.'
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
+      return res.json(responseData);
     }
 
     await configStore.ensureInitialized();
@@ -334,16 +396,20 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
       scope: 'openid'
     });
 
-    res.json({
+    const responseData = {
       success: true,
       token: exchangedToken.substring(0, 20) + '...'
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Exchange user to MCP error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
+    res.json(responseData);
   }
 });
 
@@ -352,13 +418,18 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
  * Test exchange user token (authz) and Agent Token (client creds) for MCP token
  */
 router.get('/exchange-user-agent-to-mcp', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     const oauthTokens = req.session.oauthTokens;
     if (!oauthTokens || !oauthTokens.accessToken) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'No authorization token found in session. User must log in first.'
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
+      return res.json(responseData);
     }
 
     await configStore.ensureInitialized();
@@ -377,16 +448,20 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
       scope: 'openid'
     });
 
-    res.json({
+    const responseData = {
       success: true,
       token: exchangedToken.substring(0, 20) + '...'
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Exchange user+agent to MCP error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
+    res.json(responseData);
   }
 });
 
@@ -395,13 +470,18 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
  * Test exchange user token for Agent Token, then use those 2 for MCP token
  */
 router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     const oauthTokens = req.session.oauthTokens;
     if (!oauthTokens || !oauthTokens.accessToken) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'No authorization token found in session. User must log in first.'
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token for Agent Token, then use those 2 for MCP token');
+      return res.json(responseData);
     }
 
     await configStore.ensureInitialized();
@@ -426,17 +506,21 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
       scope: 'openid'
     });
 
-    res.json({
+    const responseData = {
       success: true,
       agentToken: agentToken.substring(0, 20) + '...',
       mcpToken: mcpToken.substring(0, 20) + '...'
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token for Agent Token, then use those 2 for MCP token');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Exchange user→agent→MCP error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token for Agent Token, then use those 2 for MCP token');
+    res.json(responseData);
   }
 });
 
@@ -445,25 +529,30 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
  * Get worker token for PingOne Management API calls
  * Uses client credentials from MCP token exchanger app
  */
-router.get('/worker-token', async (_req, res) => {
+router.get('/worker-token', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     await configStore.ensureInitialized();
 
     const workerTokenData = await oauthService.getAgentClientCredentialsTokenWithExpiry();
     
-    res.json({
+    const responseData = {
       success: true,
-      token: workerTokenData.token,
-      expiresAt: workerTokenData.expiresAt,
-      expiresIn: workerTokenData.expiresIn,
-      timestamp: new Date().toISOString()
-    });
+      token: workerTokenData.access_token.substring(0, 20) + '...',
+      expiresAt: workerTokenData.expiresAt
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get worker token for PingOne Management API calls');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Worker token error:', error.message);
-    res.status(500).json({
+    const responseData = {
       success: false,
       error: error.message
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get worker token for PingOne Management API calls');
+    res.json(responseData);
   }
 });
 
@@ -471,10 +560,13 @@ router.get('/worker-token', async (_req, res) => {
  * GET /api/pingone-test/config
  * Get PingOne configuration from environment
  */
-router.get('/config', async (_req, res) => {
+router.get('/config', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     await configStore.ensureInitialized();
-    
+
     const config = {
       environmentId: configStore.getEffective('pingone_environment_id'),
       region: configStore.getEffective('pingone_region'),
@@ -490,7 +582,7 @@ router.get('/config', async (_req, res) => {
       mgmtClientSecret: process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || configStore.getEffective('pingone_worker_token_client_secret') || configStore.getEffective('pingone_mgmt_client_secret'),
       mgmtTokenAuthMethod: process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || configStore.getEffective('pingone_worker_token_auth_method') || configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic'
     };
-    
+
     // Partially mask secrets for display (show first 8 chars)
     const maskedConfig = Object.entries(config).reduce((acc, [key, value]) => {
       if (key.includes('Secret') || key.includes('secret')) {
@@ -506,17 +598,21 @@ router.get('/config', async (_req, res) => {
       }
       return acc;
     }, {});
-    
-    res.json({
+
+    const responseData = {
       success: true,
       config: maskedConfig
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'config', 'Get PingOne configuration from environment');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Config error:', error.message);
-    res.status(500).json({
+    const responseData = {
       success: false,
       error: error.message
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'config', 'Get PingOne configuration from environment');
+    res.status(500).json(responseData);
   }
 });
 
@@ -564,36 +660,45 @@ router.post('/token-exchange', async (req, res) => {
  * GET /api/pingone-test/apps
  * Test PingOne Applications via Management API
  */
-router.get('/apps', async (_req, res) => {
+router.get('/apps', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     await configStore.ensureInitialized();
-    
+
     // Initialize management service
     try {
       managementService.initialize();
     } catch (initError) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'Management API not configured: ' + initError.message,
         apps: []
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Applications via Management API');
+      return res.json(responseData);
     }
-    
+
     const result = await managementService.getApplications();
-    
-    res.json({
+
+    const responseData = {
       success: result.success,
       apps: result.applications || [],
       count: result.applications?.length || 0,
       error: result.error
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Applications via Management API');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Apps test error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message,
       apps: []
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Applications via Management API');
+    res.json(responseData);
   }
 });
 
@@ -601,36 +706,45 @@ router.get('/apps', async (_req, res) => {
  * GET /api/pingone-test/resources
  * Test PingOne Resource Servers via Management API
  */
-router.get('/resources', async (_req, res) => {
+router.get('/resources', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     await configStore.ensureInitialized();
-    
+
     // Initialize management service
     try {
       managementService.initialize();
     } catch (initError) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'Management API not configured: ' + initError.message,
         resources: []
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Resource Servers via Management API');
+      return res.json(responseData);
     }
-    
+
     const result = await managementService.getResourceServers();
-    
-    res.json({
+
+    const responseData = {
       success: result.success,
       resources: result.resourceServers || [],
       count: result.resourceServers?.length || 0,
       error: result.error
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Resource Servers via Management API');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Resources test error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message,
       resources: []
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Resource Servers via Management API');
+    res.json(responseData);
   }
 });
 
@@ -639,46 +753,57 @@ router.get('/resources', async (_req, res) => {
  * Test PingOne Scopes via Management API
  */
 router.get('/scopes', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     await configStore.ensureInitialized();
-    
+
     // Initialize management service
     try {
       managementService.initialize();
     } catch (initError) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'Management API not configured: ' + initError.message,
         scopes: []
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Scopes via Management API');
+      return res.json(responseData);
     }
-    
+
     const { resourceServerId } = req.query;
-    
+
     if (!resourceServerId) {
-      return res.json({
+      const responseData = {
         success: false,
         error: 'resourceServerId query parameter is required',
         scopes: []
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Scopes via Management API');
+      return res.json(responseData);
     }
-    
+
     const result = await managementService.getScopes(resourceServerId);
-    
-    res.json({
+
+    const responseData = {
       success: result.success,
       scopes: result.scopes || [],
       count: result.scopes?.length || 0,
       resourceServerId,
       error: result.error
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Scopes via Management API');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Scopes test error:', error.message);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message,
       scopes: []
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Scopes via Management API');
+    res.json(responseData);
   }
 });
 
@@ -686,43 +811,52 @@ router.get('/scopes', async (req, res) => {
  * GET /api/pingone-test/users
  * Test PingOne Users via Management API using worker token
  */
-router.get('/users', async (_req, res) => {
+router.get('/users', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
   try {
     await configStore.ensureInitialized();
-    
+
     // Initialize user service
     try {
       pingOneUserService.initialize();
       console.log('[PingOneTest] pingOneUserService initialized successfully');
     } catch (initError) {
       console.error('[PingOneTest] pingOneUserService initialization failed:', initError.message);
-      return res.json({
+      const responseData = {
         success: false,
         error: 'User service not configured: ' + initError.message,
         users: []
-      });
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Users via Management API using worker token');
+      return res.json(responseData);
     }
-    
+
     const result = await pingOneUserService.listUsers({ limit: 50 });
     console.log('[PingOneTest] listUsers result:', JSON.stringify(result, null, 2));
-    
+
     const users = result._embedded?.users || [];
-    
-    res.json({
+
+    const responseData = {
       success: true,
       users,
       count: users.length,
       error: null
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Users via Management API using worker token');
+    res.json(responseData);
   } catch (error) {
     console.error('[PingOneTest] Users test error:', error.message);
     console.error('[PingOneTest] PingOne API error status:', error.response?.status);
     console.error('[PingOneTest] PingOne API error data:', error.response?.data);
-    res.json({
+    const responseData = {
       success: false,
       error: error.message,
       users: []
-    });
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Users via Management API using worker token');
+    res.json(responseData);
   }
 });
 
