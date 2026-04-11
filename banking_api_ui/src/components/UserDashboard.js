@@ -10,6 +10,7 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import ApiCallDisplay from './ApiCallDisplay';
 import ExchangeModeToggle from './ExchangeModeToggle';
 import TransactionConsentModal from './TransactionConsentModal';
 import BankingAgent from './BankingAgent';
@@ -20,7 +21,6 @@ import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useTheme } from '../context/ThemeContext';
-import ChaseTopNav from './ChaseTopNav';
 import Fido2Challenge from './Fido2Challenge';
 import './UserDashboard.css';
 
@@ -1675,9 +1675,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
-      {/* ── Chase Top Nav ─────────────────────────────────────────── */}
-      <ChaseTopNav user={user} onLogout={onLogout} currentPage="dashboard" />
-
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
@@ -1784,6 +1781,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             <div className="section ud-token-rail__inner">
               <ExchangeModeToggle />
               <TokenChainDisplay />
+              <ApiCallDisplay sessionId="user-dashboard" />
             </div>
           </aside>
 
@@ -1811,7 +1809,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             <aside className="ud-token-rail" aria-label="Token chain">
               <div className="section ud-token-rail__inner">
                 <ExchangeModeToggle />
-              <TokenChainDisplay />
+                <TokenChainDisplay />
+                <ApiCallDisplay sessionId="user-dashboard" />
               </div>
             </aside>
 

@@ -9,6 +9,7 @@ import { EDU } from './education/educationIds';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
 import { useTheme } from '../context/ThemeContext';
+import ApiCallDisplay from './ApiCallDisplay';
 
 const ActivityLogs = ({ user, onLogout }) => {
   const { open } = useEducationUI();
@@ -174,12 +175,9 @@ const ActivityLogs = ({ user, onLogout }) => {
           button.style.backgroundColor = '';
         }, 2000);
       }
-      // Log the generated command for debugging
-      console.log('Generated cURL command:', curlCommand);
     }).catch(err => {
       console.error('Failed to copy to clipboard:', err);
-      console.log('cURL command (copy manually if needed):', curlCommand);
-      notifyError('Copy failed. The cURL command was printed to the browser console (F12 → Console).');
+      notifyError('Copy failed. Please copy the cURL command manually.');
     });
   };
 
@@ -554,6 +552,12 @@ const ActivityLogs = ({ user, onLogout }) => {
           </div>
         </div>
       )}
+      
+      {/* API Calls tracker */}
+      <section style={{ marginTop: '2rem' }}>
+        <h3 style={{ marginBottom: '1rem' }}>API Calls</h3>
+        <ApiCallDisplay sessionId="activity-logs" />
+      </section>
     </AdminSubPageShell>
   );
 };

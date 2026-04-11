@@ -8,16 +8,19 @@ import { resolveSessionUser } from '../services/sessionResolver';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import ApiCallDisplay from './ApiCallDisplay';
+import { useCurrentUserTokenEvent } from '../hooks/useCurrentUserTokenEvent';
 import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useTheme } from '../context/ThemeContext';
-import ChaseTopNav from './ChaseTopNav';
 import SplitPaneLayout from './SplitPaneLayout';
 import ArchitectureTabsPanel from './ArchitectureTabsPanel';
 
 const Dashboard = ({ user, onLogout }) => {
+  // Fetch and display current user token in the token chain
+  useCurrentUserTokenEvent();
   const location = useLocation();
   const { placement: agentPlacement } = useAgentUiMode();
   const { open } = useEducationUI();
@@ -306,9 +309,6 @@ const Dashboard = ({ user, onLogout }) => {
       <a href="#admin-dashboard-main" className="dash-skip-link">
         Skip to admin content
       </a>
-      {/* Chase Top Nav replaces the old app-page-shell__hero */}
-      <ChaseTopNav user={user} onLogout={onLogout} currentPage="admin-dashboard" />
-
       <div
         className={`app-page-shell__body app-page-shell__body--wide ${agentPlacement === 'bottom' ? 'app-page-shell__body--embed-agent' : ''}`}
       >
@@ -425,6 +425,12 @@ const Dashboard = ({ user, onLogout }) => {
       {/* Token chain — grouped card (TokenChainDisplay includes its own title) */}
       <section className="dash-shell-card dash-shell-card--token" aria-label="Security and token chain">
         <TokenChainDisplay />
+      </section>
+
+      {/* API Calls tracker */}
+      <section className="dash-shell-card" aria-label="API Calls">
+        <h2 className="dash-shell-card__title">API Calls</h2>
+        <ApiCallDisplay sessionId="dashboard" />
       </section>
 
       <section className="dash-shell-card" aria-labelledby="tx-lookup-heading">
