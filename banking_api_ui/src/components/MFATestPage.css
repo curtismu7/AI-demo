@@ -1,0 +1,337 @@
+.mfa-test-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.mfa-test-loading,
+.mfa-test-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 1rem;
+}
+
+.mfa-test-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.mfa-test-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+.mfa-test-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mfa-test-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-indicator {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-indicator--success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-indicator--error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.mfa-test-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mfa-test-button--primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.mfa-test-button--primary:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.mfa-test-button--primary:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.mfa-test-button--secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.mfa-test-button--secondary:hover {
+  background-color: #545b62;
+}
+
+.mfa-test-button--test {
+  background-color: #28a745;
+  color: white;
+}
+
+.mfa-test-button--test:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.mfa-test-button--test:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.mfa-test-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.mfa-test-section {
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.mfa-test-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.config-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.config-label {
+  font-weight: 500;
+  color: #666;
+}
+
+.config-value {
+  font-family: monospace;
+  color: #333;
+}
+
+.test-card {
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.test-card--passed {
+  border-color: #28a745;
+  background-color: #d4edda;
+}
+
+.test-card--failed {
+  border-color: #dc3545;
+  background-color: #f8d7da;
+}
+
+.test-card--pending {
+  border-color: #6c757d;
+  background-color: #e2e3e5;
+}
+
+.test-card--running {
+  border-color: #007bff;
+  background-color: #cce5ff;
+}
+
+.test-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.test-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge--passed {
+  background-color: #28a745;
+  color: white;
+}
+
+.status-badge--failed {
+  background-color: #dc3545;
+  color: white;
+}
+
+.status-badge--pending {
+  background-color: #6c757d;
+  color: white;
+}
+
+.status-badge--running {
+  background-color: #007bff;
+  color: white;
+}
+
+.test-card-error {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+}
+
+.otp-verify-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.otp-verify-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.otp-input-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.otp-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: monospace;
+  letter-spacing: 0.25rem;
+}
+
+.otp-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.devices-list {
+  margin-top: 1rem;
+}
+
+.devices-list-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  color: #333;
+}
+
+.devices-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.device-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.device-type {
+  font-weight: 500;
+  color: #333;
+}
+
+.device-id {
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.info-text {
+  color: #6c757d;
+  font-size: 0.875rem;
+  margin: 0.5rem 0 0 0;
+  font-style: italic;
+}
+
+.fido-verify-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.fido-verify-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: #333;
+}

@@ -784,6 +784,9 @@ const Dashboard = ({ user, onLogout }) => {
           >
             🔒 Security Settings
           </Link>
+          <Link to="/mfa-test" className="btn btn-secondary">
+            🔐 MFA Test
+          </Link>
           <Link
             to="/mcp-inspector"
             className="btn btn-secondary"
