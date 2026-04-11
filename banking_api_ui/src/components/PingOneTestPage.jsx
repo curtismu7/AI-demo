@@ -78,6 +78,37 @@ export default function PingOneTestPage() {
     console.log('Fixing:', testName);
   }, []);
 
+  const testApps = useCallback(async () => {
+    const { data } = await apiClient.get('/api/pingone-test/apps');
+    if (!data.success) throw new Error(data.error);
+    return { count: data.count, apps: data.apps };
+  }, []);
+
+  const testResources = useCallback(async () => {
+    const { data } = await apiClient.get('/api/pingone-test/resources');
+    if (!data.success) throw new Error(data.error);
+    return { count: data.count, resources: data.resources };
+  }, []);
+
+  const testScopes = useCallback(async () => {
+    // Get resources first to find a resource server ID
+    const { data: resourcesData } = await apiClient.get('/api/pingone-test/resources');
+    if (!resourcesData.success || !resourcesData.resources?.length) {
+      throw new Error('No resource servers found');
+    }
+    const resourceServerId = resourcesData.resources[0].id;
+    
+    const { data } = await apiClient.get(`/api/pingone-test/scopes?resourceServerId=${resourceServerId}`);
+    if (!data.success) throw new Error(data.error);
+    return { count: data.count, scopes: data.scopes, resourceServerId };
+  }, []);
+
+  const testUsers = useCallback(async () => {
+    const { data } = await apiClient.get('/api/pingone-test/users');
+    if (!data.success) throw new Error(data.error);
+    return { count: data.count, users: data.users };
+  }, []);
+
   if (loading) {
     return (
       <div className="pingone-test-page">
@@ -232,6 +263,41 @@ export default function PingOneTestPage() {
                 return data;
               })}
               onFix={() => fixIssue('double-exchange')}
+            />
+          </div>
+        </section>
+
+        {/* PingOne API Tests Section */}
+        <section className="pingone-test-section">
+          <h2 className="pingone-test-section-title">PingOne API Tests</h2>
+          <div className="pingone-test-grid">
+            <TestCard
+              title="Applications"
+              value={testResults['apps']?.result?.count !== undefined ? `${testResults.apps.result.count} apps` : 'Test PingOne applications'}
+              status={testResults['apps']?.status || 'pending'}
+              onTest={() => runTest('apps', testApps)}
+              onFix={() => fixIssue('apps')}
+            />
+            <TestCard
+              title="Resource Servers"
+              value={testResults['resources']?.result?.count !== undefined ? `${testResults.resources.result.count} resources` : 'Test PingOne resource servers'}
+              status={testResults['resources']?.status || 'pending'}
+              onTest={() => runTest('resources', testResources)}
+              onFix={() => fixIssue('resources')}
+            />
+            <TestCard
+              title="Scopes"
+              value={testResults['scopes']?.result?.count !== undefined ? `${testResults.scopes.result.count} scopes` : 'Test PingOne scopes'}
+              status={testResults['scopes']?.status || 'pending'}
+              onTest={() => runTest('scopes', testScopes)}
+              onFix={() => fixIssue('scopes')}
+            />
+            <TestCard
+              title="Users"
+              value={testResults['users']?.result?.count !== undefined ? `${testResults.users.result.count} users` : 'Test PingOne users'}
+              status={testResults['users']?.status || 'pending'}
+              onTest={() => runTest('users', testUsers)}
+              onFix={() => fixIssue('users')}
             />
           </div>
         </section>
