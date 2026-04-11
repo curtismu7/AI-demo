@@ -103,8 +103,9 @@ Plans: 4/4 complete
 
 ---
 
-## Pending Todos (58)
+## Pending Todos (59)
 
+- **[TODO -> docs]** Add API calls with JSON body or headers for education - Create service to capture and display API calls for educational purposes
 - **[TODO -> ui]** Show tokens for each call with ability to decode them - Create token service with collapsible display and JWT decode functionality
 - **[TODO -> auth]** Reorganize PingOne apps — OIDC agents to AI Agents group, OIDC user apps to Applications group
 - **[TODO -> ui]** Fix floating agent popout window size — popout must match agent height and be at least as wide as the agent panel
