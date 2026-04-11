@@ -48,6 +48,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 103 | pingone-test-page | Comprehensive PingOne test page with Chase.com-style UI and fix buttons | TBD | 0 plans |
 | 104 | pingone-test-security-audit | Security audit and hardening of PingOne test page to ensure worker tokens stay on backend | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05 | 1 plan |
 | 121 | api-display-modal-enhancement | Integrate API display service into dashboards and marketing page as draggable, resizable modal | TBD | 0 plans |
+| 122 | conditional-step-up-auth | Conditional step-up authentication: logged-in users only need MFA for banking transactions, non-logged-in users need login + MFA | TBD | 0 plans |
 
 ---
 
@@ -1876,5 +1877,26 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 121 to break down)
+
+### Phase 122: Conditional Step-Up Authentication for Banking Transactions
+
+**Goal:** Implement conditional authentication flow where logged-in users only require MFA for banking transactions, while non-logged-in users require both login and MFA.
+
+**Requirements**: TBD
+
+**Depends on:** Phase 1 (auth-flows), Phase 100 (configurable-step-up-mfa-threshold), Phase 94 (explicit-hitl-for-agent-consent)
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 122 to break down)
+
+**Success criteria:**
+1. Logged-in users performing banking transactions are prompted for MFA only (not login)
+2. Non-logged-in users performing banking transactions are prompted for login first, then MFA
+3. Session state is properly checked before determining auth requirements
+4. Step-up MFA threshold is respected for both flows
+5. No regression in existing authentication flows
+6. UI clearly communicates which auth step is required (login vs MFA)
 
 ---

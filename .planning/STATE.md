@@ -125,6 +125,7 @@ Plans: 3/3 complete
 
 ### Roadmap Evolution
 
+- Phase 122 added: Conditional Step-Up Authentication for Banking Transactions — Logged-in users only require MFA for banking transactions, non-logged-in users require both login and MFA
 - Phase 121 added: API Display Modal Enhancement — Integrate new API display service into dashboards and marketing page as draggable, resizable modal for educational purposes
 
 - Phase 116 added: Full LangChain native agent rebuild — replace retrofit with real framework agent across all surfaces (float, left, right, middle). Real framework agent with PingOne RFC 8693 token exchange. No compatibility shims.
