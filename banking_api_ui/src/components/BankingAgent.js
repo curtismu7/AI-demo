@@ -2374,6 +2374,9 @@ export default function BankingAgent({
 
       if (response.tokenEvents?.length) {
         appendTokenEvents(response.tokenEvents);
+        if (tokenChain) {
+          tokenChain.setTokenEvents('agent', response.tokenEvents);
+        }
         response.tokenEvents.forEach(evt => {
           const tokenMsg = formatTokenEvent(evt);
           if (tokenMsg) addMessage('token-event', tokenMsg, null);
@@ -2405,7 +2408,12 @@ export default function BankingAgent({
             reportNlFailure({ code: response.error || 'unknown' });
           } else {
             addMessage('assistant', response.reply || 'Done.');
-            if (response.tokenEvents?.length) appendTokenEvents(response.tokenEvents);
+            if (response.tokenEvents?.length) {
+              appendTokenEvents(response.tokenEvents);
+              if (tokenChain) {
+                tokenChain.setTokenEvents('agent', response.tokenEvents);
+              }
+            }
           }
         }
       } catch (e) {
@@ -2668,7 +2676,12 @@ export default function BankingAgent({
                     setNlLoading(true);
                     try {
                       const response = await sendAgentMessage(originalMessage, pendingId);
-                      if (response.tokenEvents?.length) appendTokenEvents(response.tokenEvents);
+                      if (response.tokenEvents?.length) {
+                        appendTokenEvents(response.tokenEvents);
+                        if (tokenChain) {
+                          tokenChain.setTokenEvents('agent', response.tokenEvents);
+                        }
+                      }
                       addMessage('assistant', response.reply || '✅ Operation completed.');
                     } catch (err) {
                       addMessage('error', `Failed to resume after consent: ${err.message}`);
@@ -2876,7 +2889,12 @@ export default function BankingAgent({
                         .then(res => {
                           if (res.error || !res.success) reportNlFailure(res);
                           else {
-                            if (res.tokenEvents?.length) appendTokenEvents(res.tokenEvents);
+                            if (res.tokenEvents?.length) {
+                              appendTokenEvents(res.tokenEvents);
+                              if (tokenChain) {
+                                tokenChain.setTokenEvents('agent', res.tokenEvents);
+                              }
+                            }
                             addMessage('assistant', res.reply || 'Done.');
                           }
                         })
@@ -2971,7 +2989,12 @@ export default function BankingAgent({
                               .then(res => {
                                 if (res.error || !res.success) reportNlFailure(res);
                                 else {
-                                  if (res.tokenEvents?.length) appendTokenEvents(res.tokenEvents);
+                                  if (res.tokenEvents?.length) {
+                                    appendTokenEvents(res.tokenEvents);
+                                    if (tokenChain) {
+                                      tokenChain.setTokenEvents('agent', res.tokenEvents);
+                                    }
+                                  }
                                   addMessage('assistant', res.reply || 'Done.');
                                 }
                               })
