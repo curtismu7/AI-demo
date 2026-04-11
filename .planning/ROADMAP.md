@@ -1909,7 +1909,7 @@ Plans:
 
 **Depends on:** Phase 52 (PingOne MFA step-up implementation), Phase 1 (auth-flows)
 
-**Plans:** 1 plan
+**Plans:** 0/1 plans complete
 
 Plans:
 - [x] 123-01: Create MFA test page with SMS, email, and FIDO2 testing
@@ -1936,7 +1936,7 @@ Plans:
 
 **Depends on:** Phase 122 (conditional-step-up-authentication), Phase 52 (pingone-mfa-step-up)
 
-**Plans:** TBD
+**Plans:** 0/1 plans complete
 
 **Success criteria:**
 1. MFA prompt clearly indicates HITL status with text like "Manual approval required"
@@ -1945,5 +1945,41 @@ Plans:
 4. Education panel explains HITL concept in context
 5. HITL indication works for all step-up MFA scenarios
 6. UI contract preserved (no breaking changes to existing MFA flow)
+
+### Phase 125: 124
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 124
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 125 to break down)
+
+### Phase 126: 124
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 125
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 126 to break down)
+
+### Phase 127: Comprehensive Debug and Fix - Fix pingone-test page, mfa-test page, and agent failures
+
+**Goal:** Systematically debug and fix critical issues preventing the app from working: pingone-test page failures, mfa-test page failures, and agent failures.
+
+**Requirements**: TBD
+**Depends on:** Phase 116 (full-langchain-native-agent-rebuild), Phase 122 (conditional-step-up-authentication), Phase 52 (pingone-mfa-step-up)
+
+**Plans:** 1/5 plans complete
+
+Plans:
+- [x] 127-01: Debug PingOne Test page failures
+- [ ] 127-02: Debug MFA Test page failures
+- [ ] 127-03: Debug Banking Agent failures
+- [ ] 127-04: Fix identified issues
+- [ ] 127-05: Verify end-to-end functionality
 
 ---
