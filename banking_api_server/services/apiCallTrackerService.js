@@ -3,6 +3,7 @@
  *
  * Service for tracking API calls with request/response details for educational purposes.
  * Captures JSON bodies, headers, and metadata for display on the PingOne test page.
+ * Also tracks tokens separately for decoding/display without sanitizing headers.
  */
 
 const crypto = require('crypto');
@@ -10,6 +11,10 @@ const crypto = require('crypto');
 // In-memory storage for API calls (production should use database)
 const apiCalls = new Map();
 const MAX_CALLS_PER_SESSION = 100;
+
+// In-memory storage for tokens per session (for decoding/display)
+const sessionTokens = new Map();
+const MAX_TOKENS_PER_SESSION = 50;
 
 /**
  * Track an API call with request/response details
@@ -151,9 +156,56 @@ function getApiCallStats(sessionId = 'default') {
   };
 }
 
+/**
+ * Track a token for a session (separate from API calls to avoid sanitization)
+ */
+function trackToken(sessionId = 'default', tokenData) {
+  const { token, tokenType, description } = tokenData;
+  
+  if (!token) return;
+  
+  if (!sessionTokens.has(sessionId)) {
+    sessionTokens.set(sessionId, []);
+  }
+  
+  const tokens = sessionTokens.get(sessionId);
+  tokens.push({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    token,
+    tokenType: tokenType || 'unknown',
+    description: description || 'Token'
+  });
+  
+  // Keep only last MAX_TOKENS_PER_SESSION tokens
+  if (tokens.length > MAX_TOKENS_PER_SESSION) {
+    sessionTokens.set(sessionId, tokens.slice(-MAX_TOKENS_PER_SESSION));
+  }
+  
+  console.log('[apiCallTracker] Tracked token:', { sessionId, tokenType, description });
+}
+
+/**
+ * Get all tokens for a session
+ */
+function getSessionTokens(sessionId = 'default') {
+  return sessionTokens.get(sessionId) || [];
+}
+
+/**
+ * Clear tokens for a session
+ */
+function clearSessionTokens(sessionId = 'default') {
+  sessionTokens.delete(sessionId);
+  console.log('[apiCallTracker] Cleared tokens for session:', sessionId);
+}
+
 module.exports = {
   trackApiCall,
   getApiCalls,
   clearApiCalls,
-  getApiCallStats
+  getApiCallStats,
+  trackToken,
+  getSessionTokens,
+  clearSessionTokens
 };

@@ -5,7 +5,7 @@
  */
 
 const express = require('express');
-const { trackApiCall, getApiCalls, clearApiCalls, getApiCallStats } = require('../services/apiCallTrackerService');
+const { trackApiCall, getApiCalls, clearApiCalls, getApiCallStats, trackToken, getSessionTokens, clearSessionTokens } = require('../services/apiCallTrackerService');
 
 const router = express.Router();
 
@@ -77,6 +77,52 @@ router.post('/', (req, res) => {
     });
   } catch (error) {
     console.error('[apiCallTracker] Error tracking call:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/api-calls/tokens
+ * Retrieve tracked tokens for a session
+ */
+router.get('/tokens', (req, res) => {
+  try {
+    const sessionId = req.session?.id || req.query.sessionId || 'default';
+    const tokens = getSessionTokens(sessionId);
+
+    res.json({
+      success: true,
+      sessionId,
+      tokens
+    });
+  } catch (error) {
+    console.error('[apiCallTracker] Error retrieving tokens:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/api-calls/tokens
+ * Clear tracked tokens for a session
+ */
+router.delete('/tokens', (req, res) => {
+  try {
+    const sessionId = req.session?.id || req.query.sessionId || 'default';
+    clearSessionTokens(sessionId);
+
+    res.json({
+      success: true,
+      sessionId,
+      message: 'Tokens cleared'
+    });
+  } catch (error) {
+    console.error('[apiCallTracker] Error clearing tokens:', error);
     res.status(500).json({
       success: false,
       error: error.message

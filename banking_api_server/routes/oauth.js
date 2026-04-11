@@ -17,6 +17,7 @@ const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie'
 const oauthConfig = require('../config/oauth');
 const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 const { trackTokenEvent } = require('../services/tokenChainService');
+const { trackToken } = require('../services/apiCallTrackerService');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -288,11 +289,20 @@ router.get('/callback', async (req, res) => {
 
       // Record initial auth token into token chain so /api/token-chain/current reflects login
       if (oauthTokens.accessToken && authedUser?.id) {
-        void trackTokenEvent({
+        trackTokenEvent({
           eventType: 'auth',
           token: oauthTokens.accessToken,
           userId: authedUser.id,
           description: 'User authenticated via PingOne OAuth',
+        }).catch(err => {
+          console.error('[oauth/callback] Failed to track token event:', err.message);
+        });
+        
+        // Track token for API call display (separate from token chain)
+        trackToken(req.session.id, {
+          token: oauthTokens.accessToken,
+          tokenType: 'user_token',
+          description: 'OAuth Access Token'
         });
       }
 

@@ -27,6 +27,7 @@ const {
 const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
 const adminTokenService = require('./adminTokenService');
 const { trackTokenEvent } = require('./tokenChainService');
+const { trackToken } = require('./apiCallTrackerService');
 
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
 const MIN_USER_SCOPES_FOR_MCP = Math.max(
@@ -888,6 +889,13 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
         additionalData: { mcpResourceUri, exchangeMethod, tool },
       }).catch(err => {
         console.error('[TokenExchange] Failed to track token event:', err.message);
+      });
+      
+      // Track token for API call display (separate from token chain)
+      trackToken(req.session?.id || 'default', {
+        token: exchangedToken,
+        tokenType: 'exchanged_token',
+        description: `MCP Access Token (${exchangeMethod})`
       });
     }
 
