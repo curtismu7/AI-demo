@@ -31,13 +31,10 @@ export default function MFATestPage() {
   const [emailVerifyStatus, setEmailVerifyStatus] = useState('pending');
   const [emailVerifyError, setEmailVerifyError] = useState(null);
 
-  // FIDO2 test state (Task 5)
+  // FIDO2 test state (Task 5 - WebAuthn API integration placeholder)
   const [fidoInitiateStatus, setFidoInitiateStatus] = useState('pending');
   const [fidoInitiateError, setFidoInitiateError] = useState(null);
   const [fidoDaId, setFidoDaId] = useState(null);
-  const [fidoDevices, setFidoDevices] = useState([]);
-  const [fidoVerifyStatus, setFidoVerifyStatus] = useState('pending');
-  const [fidoVerifyError, setFidoVerifyError] = useState(null);
 
   // Device management state
   const [devices, setDevices] = useState([]);
@@ -200,7 +197,7 @@ export default function MFATestPage() {
     }
   }, [emailDaId, emailDevices, emailOtp]);
 
-  // FIDO2 test functions (Task 5)
+  // FIDO2 test functions (Task 5 - WebAuthn API integration placeholder)
   const testFidoInitiate = useCallback(async () => {
     setFidoInitiateStatus('pending');
     setFidoInitiateError(null);
@@ -208,7 +205,6 @@ export default function MFATestPage() {
       const { data } = await apiClient.post('/api/mfa/test/integration/initiate', { method: 'fido2' });
       if (data.success) {
         setFidoDaId(data.daId);
-        setFidoDevices(data.devices || []);
         setFidoInitiateStatus('passed');
         notifySuccess('FIDO2 challenge initiated successfully');
       } else {
@@ -221,12 +217,6 @@ export default function MFATestPage() {
       setFidoInitiateError(err.message);
       notifyError('FIDO2 initiation failed: ' + err.message);
     }
-  }, []);
-
-  const testFidoVerify = useCallback(async () => {
-    // FIDO2 verification would use navigator.credentials.get() and call the verify endpoint
-    // For now, mark as pending since this requires browser WebAuthn API integration
-    notifyInfo('FIDO2 verification requires WebAuthn API integration - Task 5');
   }, []);
 
   // Device enrollment functions
@@ -413,7 +403,7 @@ export default function MFATestPage() {
           )}
         </section>
 
-        {/* FIDO2 Test Section - Task 5 */}
+        {/* FIDO2 Test Section - Task 5 (WebAuthn API integration placeholder) */}
         <section className="mfa-test-section">
           <h2 className="mfa-test-section-title">FIDO2/Passkey Testing</h2>
           <TestCard
@@ -426,12 +416,6 @@ export default function MFATestPage() {
             <div className="fido-verify-section">
               <h3 className="fido-verify-title">Verify FIDO2</h3>
               <p className="info-text">FIDO2 verification requires WebAuthn API integration</p>
-              <TestCard
-                title="Verify FIDO2"
-                status={fidoVerifyStatus}
-                error={fidoVerifyError}
-                onTest={testFidoVerify}
-              />
             </div>
           )}
         </section>
