@@ -1912,7 +1912,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 123-01: Create MFA test page with SMS, email, and FIDO2 testing
+- [x] 123-01: Create MFA test page with SMS, email, and FIDO2 testing
 
 **Success criteria:**
 1. MFA test page accessible from Admin Dashboard
