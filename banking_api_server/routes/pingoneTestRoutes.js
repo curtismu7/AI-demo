@@ -23,7 +23,7 @@ const apiCallTrackerService = require('../services/apiCallTrackerService');
  */
 function trackApiCall(sessionId, req, res, startTime, responseData, category, description) {
   const duration = Date.now() - startTime;
-  apiCallTrackerService.trackCall({
+  apiCallTrackerService.trackApiCall({
     sessionId,
     method: req.method,
     url: req.originalUrl,
@@ -138,7 +138,7 @@ router.post('/worker-config', async (req, res) => {
 
     console.log('[PingOneTest] Worker configuration updated:', {
       storageMethod,
-      clientId: clientId.substring(0, 8) + '...',
+      clientId: clientId ? clientId.substring(0, 8) + '...' : 'undefined',
       authMethod
     });
 
@@ -314,7 +314,7 @@ router.get('/authz-token', async (req, res) => {
 
     const responseData = {
       success: true,
-      token: oauthTokens.accessToken.substring(0, 20) + '...',
+      token: oauthTokens.accessToken ? oauthTokens.accessToken.substring(0, 20) + '...' : 'undefined',
       expiresAt: oauthTokens.expiresAt
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
@@ -345,7 +345,7 @@ router.get('/agent-token', async (req, res) => {
 
     const responseData = {
       success: true,
-      token: agentToken.access_token.substring(0, 20) + '...',
+      token: agentToken.access_token ? agentToken.access_token.substring(0, 20) + '...' : 'undefined',
       expires_in: agentToken.expires_in
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Agent token (client credentials)');
@@ -398,7 +398,7 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
 
     const responseData = {
       success: true,
-      token: exchangedToken.substring(0, 20) + '...'
+      token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined'
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
     res.json(responseData);
@@ -450,7 +450,7 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
 
     const responseData = {
       success: true,
-      token: exchangedToken.substring(0, 20) + '...'
+      token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined'
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
     res.json(responseData);
@@ -508,8 +508,8 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
 
     const responseData = {
       success: true,
-      agentToken: agentToken.substring(0, 20) + '...',
-      mcpToken: mcpToken.substring(0, 20) + '...'
+      agentToken: agentToken ? agentToken.substring(0, 20) + '...' : 'undefined',
+      mcpToken: mcpToken ? mcpToken.substring(0, 20) + '...' : 'undefined'
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token for Agent Token, then use those 2 for MCP token');
     res.json(responseData);
@@ -540,7 +540,7 @@ router.get('/worker-token', async (req, res) => {
     
     const responseData = {
       success: true,
-      token: workerTokenData.access_token.substring(0, 20) + '...',
+      token: workerTokenData.access_token ? workerTokenData.access_token.substring(0, 20) + '...' : 'undefined',
       expiresAt: workerTokenData.expiresAt
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get worker token for PingOne Management API calls');
@@ -586,7 +586,7 @@ router.get('/config', async (req, res) => {
     // Partially mask secrets for display (show first 8 chars)
     const maskedConfig = Object.entries(config).reduce((acc, [key, value]) => {
       if (key.includes('Secret') || key.includes('secret')) {
-        if (value && value.length > 8) {
+        if (value && typeof value === 'string' && value.length > 8) {
           acc[key] = value.substring(0, 8) + '...';
         } else if (value) {
           acc[key] = '***';
