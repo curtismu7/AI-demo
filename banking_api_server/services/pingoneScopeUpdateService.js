@@ -18,26 +18,40 @@ class PingOneScopeUpdateService {
     this.workerToken = null;
     this.envId = null;
     this.region = null;
+    this.tokenCache = {
+      token: null,
+      expiresAt: null,
+      ttl: 30 * 60 * 1000 // 30 minutes TTL
+    };
   }
 
   /**
-   * Initialize with automatic worker token acquisition
+   * Get or refresh worker token with caching
+   * Returns cached token if valid, otherwise fetches new token
    */
-  async initialize(envId, region = 'com') {
+  async getOrRefreshWorkerToken(envId, region = 'com') {
+    const now = Date.now();
+    
+    // Check if cached token is still valid
+    if (this.tokenCache.token && this.tokenCache.expiresAt && now < this.tokenCache.expiresAt) {
+      this.workerToken = this.tokenCache.token;
+      console.log('[PingOneScopeUpdateService] Using cached worker token');
+      return { success: true, cached: true, message: 'Using cached worker token' };
+    }
+    
+    // Fetch new token
     try {
       this.envId = envId;
       this.region = region;
       this.baseURL = `https://api.pingone.${region}/${envId}`;
       
-      // Silently obtain worker token from configStore
       const workerClientId = configStore.getEffective('pingone_worker_client_id');
       const workerClientSecret = configStore.getEffective('pingone_authorize_worker_client_secret');
       
       if (!workerClientId || !workerClientSecret) {
-        throw new Error('Worker client credentials not configured. Set PINGONE_AUTHORIZE_WORKER_CLIENT_ID and PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET.');
+        throw new Error('Worker client credentials not configured');
       }
       
-      // Get worker token silently
       const response = await axios.post(
         `https://auth.pingone.${region}/${envId}/as/token`,
         'grant_type=client_credentials',
@@ -48,9 +62,38 @@ class PingOneScopeUpdateService {
         }
       );
       
-      this.workerToken = response.data.access_token;
-      console.log(`[PingOneScopeUpdateService] Successfully obtained worker token for client: ${workerClientId}`);
-      return { success: true, message: 'Authenticated with PingOne using worker credentials' };
+      // Cache the new token
+      this.tokenCache.token = response.data.access_token;
+      this.tokenCache.expiresAt = now + this.tokenCache.ttl;
+      this.workerToken = this.tokenCache.token;
+      
+      console.log(`[PingOneScopeUpdateService] Refreshed worker token for client: ${workerClientId}`);
+      return { success: true, cached: false, message: 'Refreshed worker token' };
+    } catch (error) {
+      throw new Error(`Failed to obtain worker token: ${error.response?.data?.error_description || error.message}`);
+    }
+  }
+
+  /**
+   * Validate credentials without fetching token
+   */
+  validateCredentials() {
+    const workerClientId = configStore.getEffective('pingone_worker_client_id');
+    const workerClientSecret = configStore.getEffective('pingone_authorize_worker_client_secret');
+    
+    if (!workerClientId || !workerClientSecret) {
+      return { valid: false, message: 'Worker client credentials not configured' };
+    }
+    
+    return { valid: true, message: 'Worker client credentials configured' };
+  }
+
+  /**
+   * Initialize with automatic worker token acquisition
+   */
+  async initialize(envId, region = 'com') {
+    try {
+      return await this.getOrRefreshWorkerToken(envId, region);
     } catch (error) {
       throw new Error(`Failed to initialize: ${error.response?.data?.error_description || error.message}`);
     }
@@ -237,6 +280,18 @@ class PingOneScopeUpdateService {
     };
 
     try {
+      // Ensure we have a valid token (uses caching)
+      if (!this.workerToken || !this.tokenCache.expiresAt || Date.now() >= this.tokenCache.expiresAt) {
+        steps.push({ 
+          icon: '🔐', 
+          message: 'Validating worker credentials...' 
+        });
+        await this.getOrRefreshWorkerToken(this.envId, this.region);
+        steps.push({ 
+          icon: '✅', 
+          message: 'Worker token obtained' 
+        });
+      }
       // Step 1: Find Main Banking Resource
       steps.push({ 
         icon: '🔍', 

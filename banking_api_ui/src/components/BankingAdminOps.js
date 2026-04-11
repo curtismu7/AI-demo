@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/BankingAdminOps.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import bffAxios from '../services/bffAxios';
 import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '../utils/appToast';
@@ -25,6 +25,27 @@ export default function BankingAdminOps({ user, onLogout }) {
   const [scopeSteps, setScopeSteps] = useState([]);
   const [scopeSummary, setScopeSummary] = useState('');
   const [scopeError, setScopeError] = useState('');
+  const [credentialStatus, setCredentialStatus] = useState(null);
+
+  // Check PingOne credential status on mount
+  useEffect(() => {
+    const checkCredentialStatus = async () => {
+      try {
+        const { data } = await bffAxios.get('/api/admin/pingone/credential-status');
+        setCredentialStatus(data);
+        if (!data.valid) {
+          notifyWarning('⚠️ PingOne credentials not configured. Set PINGONE_AUTHORIZE_WORKER_CLIENT_ID and PINGONE_AUTHORIZE_WORKER_CLIENT_SECRET.');
+        } else {
+          notifyInfo('✅ PingOne worker app authenticated');
+        }
+      } catch (err) {
+        console.error('Credential status check failed:', err);
+        // Silently fail - this is just a status check
+      }
+    };
+
+    checkCredentialStatus();
+  }, []);
 
   const handleFixPingOneScopes = useCallback(async () => {
     setScopeSteps([]);

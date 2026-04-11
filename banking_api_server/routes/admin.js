@@ -714,10 +714,23 @@ router.post(
 
       // Initialize service with silent worker token acquisition
       const service = new PingOneScopeUpdateService();
+      
+      // Validate credentials upfront
+      const credentialStatus = service.validateCredentials();
+      if (!credentialStatus.valid) {
+        return res.status(400).json({
+          error: 'credentials_not_configured',
+          message: credentialStatus.message
+        });
+      }
+
       await service.initialize(envId); // No credentials needed - uses configStore
 
       // Run scope update
       const result = await service.fixScopeConfiguration();
+      
+      // Include credential status in response
+      result.credentialStatus = credentialStatus;
 
       res.json(result);
     } catch (error) {
@@ -725,6 +738,32 @@ router.post(
       res.status(500).json({
         error: 'scope_update_failed',
         message: error.message || 'Failed to update scopes'
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/pingone/credential-status
+ * 
+ * Validate PingOne worker credentials without performing operations.
+ * Returns credential status for UI display on component mount.
+ */
+router.get(
+  '/pingone/credential-status',
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const PingOneScopeUpdateService = require('../services/pingoneScopeUpdateService');
+      const service = new PingOneScopeUpdateService();
+      const credentialStatus = service.validateCredentials();
+      
+      res.json(credentialStatus);
+    } catch (error) {
+      console.error('Credential status check error:', error);
+      res.status(500).json({
+        error: 'credential_check_failed',
+        message: error.message
       });
     }
   }
