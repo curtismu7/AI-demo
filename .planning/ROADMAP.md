@@ -1886,10 +1886,10 @@ Plans:
 
 **Depends on:** Phase 1 (auth-flows), Phase 100 (configurable-step-up-mfa-threshold), Phase 94 (explicit-hitl-for-agent-consent)
 
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 122 to break down)
+- [x] 122-01: Implement conditional auth gate (session check → step-up MFA)
 
 **Success criteria:**
 1. Logged-in users performing banking transactions are prompted for MFA only (not login)
@@ -1898,5 +1898,32 @@ Plans:
 4. Step-up MFA threshold is respected for both flows
 5. No regression in existing authentication flows
 6. UI clearly communicates which auth step is required (login vs MFA)
+
+---
+
+### Phase 123: PingOne MFA Test Page
+
+**Goal:** Create a comprehensive test page for PingOne MFA functionality including OTP (SMS, email), FIDO2/passkey, registration, and authentication testing.
+
+**Requirements**: TBD
+
+**Depends on:** Phase 52 (PingOne MFA step-up implementation), Phase 1 (auth-flows)
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 123-01: Create MFA test page with SMS, email, and FIDO2 testing
+
+**Success criteria:**
+1. MFA test page accessible from Admin Dashboard
+2. SMS OTP test flow works end-to-end
+3. Email OTP test flow works end-to-end
+4. FIDO2/passkey test flow works end-to-end
+5. User registration test flow works with MFA enrollment
+6. User authentication test flow works with step-up MFA
+7. Device enrollment test flow allows adding new MFA devices
+8. Device management test UI allows listing and removing devices
+9. All test results displayed clearly with pass/fail status
+10. Fix buttons provide actionable guidance for failed tests
 
 ---
