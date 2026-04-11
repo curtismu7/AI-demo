@@ -125,6 +125,8 @@ Plans: 3/3 complete
 
 ### Roadmap Evolution
 
+- Phase 121 added: API Display Modal Enhancement — Integrate new API display service into dashboards and marketing page as draggable, resizable modal for educational purposes
+
 - Phase 116 added: Full LangChain native agent rebuild — replace retrofit with real framework agent across all surfaces (float, left, right, middle). Real framework agent with PingOne RFC 8693 token exchange. No compatibility shims.
 
 - Phase 114 added: IETF agentic identity standards compliance and education page — RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ/T JOSE

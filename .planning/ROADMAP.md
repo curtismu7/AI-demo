@@ -46,6 +46,8 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 101 | token-exchange-flow-diagram-ui | Single and double exchange with AI agent bubble on responses | TBD | 3/2 plans |
 | 102 | agent-token-exchange-flow | Implement complete token exchange flow for agent: two-exchange (user+agent→MCP) and single-exchange (user→agent→MCP) paths | None | 0 plans |
 | 103 | pingone-test-page | Comprehensive PingOne test page with Chase.com-style UI and fix buttons | TBD | 0 plans |
+| 104 | pingone-test-security-audit | Security audit and hardening of PingOne test page to ensure worker tokens stay on backend | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05 | 1 plan |
+| 121 | api-display-modal-enhancement | Integrate API display service into dashboards and marketing page as draggable, resizable modal | TBD | 0 plans |
 
 ---
 
@@ -1656,18 +1658,24 @@ Plans:
 6. All tests can be run independently or in batch mode
 7. Test results are persisted and can be exported
 
-### Phase 104: Apply light grey backgrounds consistently across all pages
+### Phase 104: PingOne Test Page Security Audit
 
-**Goal:** Audit all authenticated, public, and internal pages; apply light grey background (#F5F5F5) consistently for unified visual experience. Establish background color conventions and ensure no visual regressions or accessibility issues.
+**Goal:** Comprehensive security audit and hardening of PingOne test page to ensure worker tokens stay on backend and never leak to frontend.
 
-**Requirements:** BG-01, BG-02, BG-03, BG-04, BG-05, BG-06, BG-07
+**Requirements:** SEC-01, SEC-02, SEC-03, SEC-04, SEC-05
 
+**Plans:** 1 plan
 **Depends on:** Phase 103 (establishes new page templates and branding patterns)
 
-**Plans:** 0 plans
-
 Plans:
-- [ ] TBD (run /gsd-plan-phase 104 to break down)
+- [x] 104-01-PLAN.md — Security audit: Remove worker token from frontend response, keep tokens backend-only
+
+**Success criteria:**
+1. Worker token is never visible in browser dev tools (Network tab, Console, Application storage)
+2. Frontend only sees token status (valid/expired) and expiry time, never the actual token
+3. `/verify-assets` returns asset data without exposing the worker token
+4. All error messages are sanitized (no token leakage)
+5. Security model documented: tokens stay on backend, frontend sees metadata only
 
 ### Phase 105: make dashboards match the color scheme and general look of chase.com main page
 
@@ -1857,5 +1865,16 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 120 to break down)
+
+### Phase 121: API Display Modal Enhancement
+
+**Goal:** Integrate new API display service into dashboards and marketing page as a draggable, resizable modal for educational purposes. The modal should be able to be dragged off-monitor and resized from all corners.
+
+**Requirements**: TBD
+**Depends on:** Phase 120
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 121 to break down)
 
 ---
