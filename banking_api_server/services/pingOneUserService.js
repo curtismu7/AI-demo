@@ -59,20 +59,19 @@ class PingOneUserService {
     try {
       const region = configStore.getEffective('pingone_region') || 'com';
       const tokenEndpoint = `https://auth.pingone.${region}/${this.environmentId}/as/token`;
+      const authMethod = (configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic').toLowerCase();
       
-      const credentials = Buffer.from(`${this.workerAppClientId}:${this.workerAppClientSecret}`).toString('base64');
-      
-      const response = await axios.post(tokenEndpoint, 
-        new URLSearchParams({
-          grant_type: 'client_credentials',
-        }),
-        {
-          headers: {
-            'Authorization': `Basic ${credentials}`,
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        }
-      );
+      let body = 'grant_type=client_credentials';
+      const axiosConfig = { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } };
+
+      if (authMethod === 'post') {
+        body += `&client_id=${encodeURIComponent(this.workerAppClientId)}&client_secret=${encodeURIComponent(this.workerAppClientSecret)}`;
+      } else {
+        // default: basic
+        axiosConfig.auth = { username: this.workerAppClientId, password: this.workerAppClientSecret };
+      }
+
+      const response = await axios.post(tokenEndpoint, body, axiosConfig);
 
       this.accessToken = response.data.access_token;
       // Set expiry 5 minutes before actual expiry to be safe
@@ -80,7 +79,8 @@ class PingOneUserService {
 
       logger.debug(LOG_CATEGORIES.USER_MANAGEMENT, 'Worker app token obtained', {
         expiresIn: response.data.expires_in,
-        tokenType: response.data.token_type
+        tokenType: response.data.token_type,
+        authMethod
       });
 
       return this.accessToken;
