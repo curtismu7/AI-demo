@@ -12,6 +12,46 @@
   font-family: var(--app-font-family, 'Inter', 'Segoe UI', sans-serif);
 }
 
+/* ========== Session Banner ========== */
+
+.landing-session-banner {
+  background-color: #FFFFFF;
+  border-bottom: 1px solid var(--chase-medium-gray, #E0E0E0);
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--chase-dark-gray, #333333);
+}
+
+.landing-session-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing-session-banner-link {
+  color: var(--app-primary-red, #b91c1c);
+  font-weight: 500;
+}
+
+.landing-session-banner-link:hover {
+  text-decoration: underline;
+}
+
+.landing-session-banner-logout {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  color: var(--chase-dark-gray, #333333);
+  transition: background-color 0.2s ease;
+}
+
+.landing-session-banner-logout:hover {
+  background-color: var(--chase-medium-gray, #E0E0E0);
+}
+
 /* ========== Header ========== */
 
 .landing-header {

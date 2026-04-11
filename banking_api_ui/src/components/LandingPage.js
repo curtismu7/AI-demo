@@ -28,6 +28,31 @@ export default function LandingPage({ user, onLogout }) {
 
   return (
     <div className="landing-page">
+      {/* Session banner for logged-in users */}
+      {user && (
+        <div className="landing-session-banner">
+          <span className="landing-session-banner-text">
+            Welcome back, {user.firstName || user.username || 'User'} ·
+            <button
+              type="button"
+              onClick={() => navigate('/user-dashboard')}
+              className="landing-session-banner-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline', font: 'inherit' }}
+            >
+              Go to Dashboard
+            </button>
+          </span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="landing-session-banner-logout"
+            style={{ background: 'none', border: '1px solid currentColor', cursor: 'pointer', padding: '4px 8px', font: 'inherit' }}
+          >
+            Sign Out
+          </button>
+        </div>
+      )}
+
       {/* Fallback header for non-logged-in users */}
       {!user && (
         <header className="landing-header" role="banner">
@@ -37,6 +62,20 @@ export default function LandingPage({ user, onLogout }) {
               <p>AI-Powered Financial Services</p>
             </div>
             <nav className="landing-nav" role="navigation" aria-label="Main navigation">
+              <button
+                onClick={() => navigate('/demo-data')}
+                className="nav-link"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+              >
+                Demo Config
+              </button>
+              <button
+                onClick={() => navigate('/pingone-test')}
+                className="nav-link"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+              >
+                PingOne Test
+              </button>
               <button
                 onClick={handleAdminLogin}
                 className="nav-link"
