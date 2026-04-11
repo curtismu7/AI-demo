@@ -86,10 +86,12 @@ async function trackTokenEvent(eventData) {
     userId,
     additionalData = {}
   } = eventData;
-  
+
+  console.log('[tokenChain] Recording event:', { eventType, userId, description });
+
   const claims = extractJwtClaims(token);
   const tokenType = classifyTokenType(token, additionalData);
-  
+
   const event = {
     id: crypto.randomUUID(),
     timestamp: new Date().toISOString(),
@@ -106,19 +108,22 @@ async function trackTokenEvent(eventData) {
     exchangeSteps: [],
     userId
   };
-  
+
   // Store event (in production, this would be persisted to database)
   if (!tokenEvents.has(userId)) {
     tokenEvents.set(userId, []);
   }
   tokenEvents.get(userId).push(event);
-  
+
+  console.log('[tokenChain] Event recorded. Total events for user:', tokenEvents.get(userId).length);
+
   // Keep only last 50 events per user
   const userEvents = tokenEvents.get(userId);
   if (userEvents.length > 50) {
     tokenEvents.set(userId, userEvents.slice(-50));
+    console.log('[tokenChain] Trimmed events to last 50 for user:', userId);
   }
-  
+
   return event;
 }
 

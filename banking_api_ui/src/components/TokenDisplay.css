@@ -1,0 +1,311 @@
+.token-display {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.token-display--empty {
+  padding: 1rem;
+  background: #f9fafb;
+}
+
+.token-display-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #f3f4f6;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.token-display-header:hover {
+  background: #e5e7eb;
+}
+
+.token-display-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #111827;
+}
+
+.token-display-toggle {
+  font-size: 0.75rem;
+  color: #6b7280;
+  transition: transform 0.2s;
+}
+
+.token-display-value {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.token-display-error {
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.875rem;
+  border-top: 1px solid #d1d5db;
+}
+
+.token-display-loading {
+  padding: 0.75rem 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  border-top: 1px solid #d1d5db;
+}
+
+.token-display-content {
+  padding: 1rem;
+  border-top: 1px solid #d1d5db;
+}
+
+.token-summary {
+  margin-bottom: 1.5rem;
+}
+
+.token-summary h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.token-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.token-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.token-summary-item--actor {
+  grid-column: 1 / -1;
+  background: #f0fdf4;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #bbf7d0;
+}
+
+.token-summary-item--scopes {
+  grid-column: 1 / -1;
+}
+
+.token-summary-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.token-summary-value {
+  font-size: 0.875rem;
+  color: #111827;
+  word-break: break-word;
+}
+
+.token-summary-value.token-valid {
+  color: #059669;
+  font-weight: 500;
+}
+
+.token-summary-value.token-expired {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.token-summary-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.token-scope-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 0.75rem;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.token-section {
+  margin-bottom: 1.5rem;
+}
+
+.token-section:last-child {
+  margin-bottom: 0;
+}
+
+.token-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.token-section-content {
+  background: #f9fafb;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #374151;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.token-full-token {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.6875rem;
+}
+
+.token-claims {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.token-claim {
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 4px;
+  border-left: 3px solid #6366f1;
+}
+
+.token-claim-key {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4f46e5;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.token-claim-value {
+  font-size: 0.875rem;
+  color: #111827;
+  margin-bottom: 0.25rem;
+  word-break: break-word;
+}
+
+.token-claim-object {
+  margin: 0;
+  padding: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.token-claim-description {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  .token-display {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .token-display--empty {
+    background: #111827;
+  }
+
+  .token-display-header {
+    background: #374151;
+  }
+
+  .token-display-header:hover {
+    background: #4b5563;
+  }
+
+  .token-display-label {
+    color: #f9fafb;
+  }
+
+  .token-display-toggle {
+    color: #9ca3af;
+  }
+
+  .token-display-value {
+    color: #9ca3af;
+  }
+
+  .token-display-error {
+    background: #450a0a;
+    color: #fca5a5;
+    border-top-color: #374151;
+  }
+
+  .token-display-loading {
+    color: #9ca3af;
+    border-top-color: #374151;
+  }
+
+  .token-display-content {
+    border-top-color: #374151;
+  }
+
+  .token-summary h4 {
+    color: #f9fafb;
+  }
+
+  .token-summary-label {
+    color: #9ca3af;
+  }
+
+  .token-summary-value {
+    color: #f9fafb;
+  }
+
+  .token-summary-item--actor {
+    background: #052e16;
+    border-color: #166534;
+  }
+
+  .token-scope-badge {
+    background: #312e81;
+    color: #c7d2fe;
+  }
+
+  .token-section h4 {
+    color: #f9fafb;
+  }
+
+  .token-section-content {
+    background: #111827;
+    color: #d1d5db;
+  }
+
+  .token-claim {
+    background: #111827;
+    border-left-color: #818cf8;
+  }
+
+  .token-claim-key {
+    color: #818cf8;
+  }
+
+  .token-claim-value {
+    color: #f9fafb;
+  }
+
+  .token-claim-object {
+    background: #1f2937;
+    border-color: #4b5563;
+  }
+
+  .token-claim-description {
+    color: #9ca3af;
+  }
+}

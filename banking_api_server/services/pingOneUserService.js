@@ -24,10 +24,10 @@ class PingOneUserService {
    * Initialize the service with configuration
    */
   initialize() {
-    const region = configStore.getEffective('PINGONE_REGION') || 'com';
-    const environmentId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
-    const workerAppClientId = process.env.PINGONE_MGMT_CLIENT_ID;
-    const workerAppClientSecret = process.env.PINGONE_MGMT_CLIENT_SECRET;
+    const region = process.env.PINGONE_REGION || configStore.getEffective('PINGONE_REGION') || 'com';
+    const environmentId = process.env.PINGONE_ENVIRONMENT_ID || configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+    const workerAppClientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || configStore.getEffective('PINGONE_MGMT_CLIENT_ID') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
+    const workerAppClientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || configStore.getEffective('PINGONE_MGMT_CLIENT_SECRET') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
     const adminPopulationId = configStore.getEffective('admin_population_id');
 
     if (!environmentId || !workerAppClientId || !workerAppClientSecret) {
@@ -57,10 +57,19 @@ class PingOneUserService {
     }
 
     try {
-      const region = configStore.getEffective('pingone_region') || 'com';
+      const region = process.env.PINGONE_REGION || configStore.getEffective('pingone_region') || 'com';
       const tokenEndpoint = `https://auth.pingone.${region}/${this.environmentId}/as/token`;
-      const authMethod = (configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic').toLowerCase();
-      
+      const authMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic').toLowerCase();
+
+      console.log('[pingOneUserService] Getting worker app token:', {
+        region,
+        environmentId: this.environmentId,
+        authMethod,
+        hasClientId: !!this.workerAppClientId,
+        hasClientSecret: !!this.workerAppClientSecret,
+        clientIdPrefix: this.workerAppClientId?.substring(0, 8)
+      });
+
       let body = 'grant_type=client_credentials';
       const axiosConfig = { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } };
 
@@ -70,6 +79,9 @@ class PingOneUserService {
         // default: basic
         axiosConfig.auth = { username: this.workerAppClientId, password: this.workerAppClientSecret };
       }
+
+      console.log('[pingOneUserService] Request body:', body);
+      console.log('[pingOneUserService] Request headers:', { ...axiosConfig.headers, hasAuth: !!axiosConfig.auth });
 
       const response = await axios.post(tokenEndpoint, body, axiosConfig);
 

@@ -1,6 +1,76 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/apiClient';
+import TokenDisplay from './TokenDisplay';
+import ApiCallDisplay from './ApiCallDisplay';
+import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import './PingOneTestPage.css';
+
+// Configuration details for each test - what users need to verify in PingOne
+const TEST_CONFIG = {
+  authzToken: {
+    appName: 'Super Banking User App',
+    appType: 'WEB_APP',
+    requiredScopes: ['openid', 'profile', 'email'],
+    audience: null,
+    spel: null
+  },
+  agentToken: {
+    appName: 'Super Banking MCP Token Exchanger',
+    appType: 'WORKER',
+    requiredScopes: ['openid'],
+    audience: null,
+    spel: null
+  },
+  exchange1: {
+    appName: 'Super Banking MCP Token Exchanger',
+    appType: 'WORKER',
+    requiredScopes: ['openid'],
+    audience: 'https://mcp-server.pingdemo.com',
+    spel: 'T1 (user token) → MCP token'
+  },
+  exchange2: {
+    appName: 'Super Banking MCP Token Exchanger',
+    appType: 'WORKER',
+    requiredScopes: ['openid'],
+    audience: 'https://mcp-gateway.pingdemo.com',
+    spel: 'T1 (user token) + T2 (agent token) → MCP token'
+  },
+  exchange3: {
+    appName: 'Super Banking AI Agent App',
+    appType: 'AI_AGENT',
+    requiredScopes: ['openid'],
+    audience: 'https://agent-gateway.pingdemo.com',
+    spel: 'T1 (user token) → T2 (agent token) → MCP token'
+  },
+  apps: {
+    appName: 'Super Banking User App',
+    appType: 'WEB_APP',
+    requiredScopes: null,
+    audience: null,
+    spel: null
+  },
+  resources: {
+    appName: 'Super Banking MCP Server',
+    appType: 'RESOURCE_SERVER',
+    requiredScopes: null,
+    audience: 'https://mcp-server.pingdemo.com',
+    spel: null
+  },
+  scopes: {
+    appName: 'Super Banking MCP Server',
+    appType: 'RESOURCE_SERVER',
+    requiredScopes: ['banking:accounts:read', 'banking:accounts:write', 'banking:transactions:read', 'banking:transactions:write'],
+    audience: 'https://mcp-server.pingdemo.com',
+    spel: null
+  },
+  users: {
+    appName: 'Super Banking User App',
+    appType: 'WEB_APP',
+    requiredScopes: null,
+    audience: null,
+    spel: null
+  }
+};
 
 /**
  * PingOneTestPage — comprehensive test page for PingOne integration
@@ -9,24 +79,166 @@ import './PingOneTestPage.css';
  */
 export default function PingOneTestPage() {
   const [workerToken, setWorkerToken] = useState(null);
+  const [workerTokenExpiry, setWorkerTokenExpiry] = useState(null);
+  const [workerTokenError, setWorkerTokenError] = useState(null);
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [testResults, setTestResults] = useState({});
 
+  // Worker token configuration state
+  const [workerConfig, setWorkerConfig] = useState({
+    clientId: '',
+    clientSecret: '',
+    authMethod: 'basic'
+  });
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configSaveError, setConfigSaveError] = useState(null);
+  const [configSaveSuccess, setConfigSaveSuccess] = useState(false);
+  
+  // Asset verification state
+  const [assetVerification, setAssetVerification] = useState(null);
+  const [verifyingAssets, setVerifyingAssets] = useState(false);
+  
+  // Token acquisition tests state
+  const [authzTokenStatus, setAuthzTokenStatus] = useState('pending');
+  const [agentTokenStatus, setAgentTokenStatus] = useState('pending');
+  const [authzTokenError, setAuthzTokenError] = useState(null);
+  const [agentTokenError, setAgentTokenError] = useState(null);
+  
+  // Token exchange tests state
+  const [exchange1Status, setExchange1Status] = useState('pending');
+  const [exchange2Status, setExchange2Status] = useState('pending');
+  const [exchange3Status, setExchange3Status] = useState('pending');
+  const [exchange1Error, setExchange1Error] = useState(null);
+  const [exchange2Error, setExchange2Error] = useState(null);
+  const [exchange3Error, setExchange3Error] = useState(null);
+
+  // Current time for updating time remaining display
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every second to refresh time remaining display
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Load test results from localStorage on mount
+  useEffect(() => {
+    const savedResults = localStorage.getItem('pingoneTestResults');
+    if (savedResults) {
+      const results = JSON.parse(savedResults);
+      setAuthzTokenStatus(results.authzTokenStatus || 'pending');
+      setAgentTokenStatus(results.agentTokenStatus || 'pending');
+      setAuthzTokenError(results.authzTokenError || null);
+      setAgentTokenError(results.agentTokenError || null);
+      setExchange1Status(results.exchange1Status || 'pending');
+      setExchange2Status(results.exchange2Status || 'pending');
+      setExchange3Status(results.exchange3Status || 'pending');
+      setExchange1Error(results.exchange1Error || null);
+      setExchange2Error(results.exchange2Error || null);
+      setExchange3Error(results.exchange3Error || null);
+    }
+  }, []);
+
+  // Save test results to localStorage whenever they change
+  useEffect(() => {
+    const results = {
+      authzTokenStatus,
+      agentTokenStatus,
+      authzTokenError,
+      agentTokenError,
+      exchange1Status,
+      exchange2Status,
+      exchange3Status,
+      exchange1Error,
+      exchange2Error,
+      exchange3Error
+    };
+    localStorage.setItem('pingoneTestResults', JSON.stringify(results));
+  }, [authzTokenStatus, agentTokenStatus, authzTokenError, agentTokenError, exchange1Status, exchange2Status, exchange3Status, exchange1Error, exchange2Error, exchange3Error]);
+
+  // Load existing worker config from config endpoint on mount
+  useEffect(() => {
+    const loadWorkerConfig = async () => {
+      try {
+        const { data } = await apiClient.get('/api/pingone-test/config');
+        if (data.success && data.config) {
+          setWorkerConfig({
+            clientId: data.config.mgmtClientId || '',
+            clientSecret: data.config.mgmtClientSecret || '',
+            authMethod: data.config.mgmtTokenAuthMethod || 'basic'
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to load existing worker config:', err.message);
+      }
+    };
+    loadWorkerConfig();
+  }, []);
+
+  const isTokenValid = (expiresAt) => {
+    if (!expiresAt) return false;
+    try {
+      const expiryDate = new Date(expiresAt);
+      const now = new Date();
+      return expiryDate > now;
+    } catch {
+      return false;
+    }
+  };
+
+  const formatExpiryTime = (expiresAt) => {
+    if (!expiresAt) return 'Unknown';
+    const expiryDate = new Date(expiresAt);
+    return expiryDate.toLocaleString();
+  };
+
+  const formatTimeRemaining = (expiresAt) => {
+    if (!expiresAt) return 'Unknown';
+    const expiryDate = new Date(expiresAt);
+    const now = currentTime;
+    const diffMs = expiryDate - now;
+    
+    if (diffMs <= 0) return 'Expired';
+    
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const remainingMins = diffMins % 60;
+    
+    if (diffHours > 0) {
+      return `${diffHours}h ${remainingMins}m`;
+    } else {
+      return `${remainingMins}m`;
+    }
+  };
+
   const loadWorkerToken = useCallback(async () => {
     try {
+      notifyInfo('Fetching worker token...', { toastId: 'worker-token-loading' });
       const { data } = await apiClient.get('/api/pingone-test/worker-token');
+      console.log('[loadWorkerToken] API response:', data);
       if (data.success) {
         setWorkerToken(data.token);
+        setWorkerTokenExpiry({
+          expiresAt: data.expiresAt,
+          expiresIn: data.expiresIn
+        });
+        setWorkerTokenError(null);
+        notifySuccess('Worker token fetched successfully');
       } else {
-        console.warn('Failed to load worker token:', data.error);
-        // Don't set error - allow page to load without worker token
+        const errorMsg = data.error || 'Failed to fetch worker token';
+        setWorkerTokenError(errorMsg);
+        notifyError(errorMsg);
       }
-    } catch (err) {
-      console.error('Worker token error:', err);
-      console.warn('Continuing without worker token - some features may be limited');
-      // Don't set error - allow page to load without worker token
+    } catch (error) {
+      console.error('[loadWorkerToken] Error:', error);
+      const errorMsg = error.message || 'Failed to fetch worker token';
+      setWorkerTokenError(errorMsg);
+      notifyError(errorMsg);
     }
   }, []);
 
@@ -53,6 +265,31 @@ export default function PingOneTestPage() {
     loadConfig();
   }, [loadWorkerToken, loadConfig]);
 
+  // Poll worker token status - every 5 minutes, or every 1 minute if under 5 minutes remaining
+  useEffect(() => {
+    if (!workerTokenExpiry) return;
+
+    const getPollInterval = () => {
+      if (!workerTokenExpiry.expiresAt) return 5 * 60 * 1000; // 5 minutes default
+      const expiryDate = new Date(workerTokenExpiry.expiresAt);
+      const now = new Date();
+      const diffMs = expiryDate - now;
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      // If under 5 minutes remaining, poll every 1 minute
+      if (diffMins < 5 && diffMins > 0) {
+        return 1 * 60 * 1000; // 1 minute
+      }
+      return 5 * 60 * 1000; // 5 minutes
+    };
+
+    const interval = setInterval(() => {
+      loadWorkerToken();
+    }, getPollInterval());
+
+    return () => clearInterval(interval);
+  }, [workerTokenExpiry, loadWorkerToken]);
+
   const runTest = useCallback(async (testName, testFn) => {
     setTestResults(prev => ({
       ...prev,
@@ -74,8 +311,176 @@ export default function PingOneTestPage() {
   }, []);
 
   const fixIssue = useCallback(async (testName) => {
-    // Implement fix logic based on test
-    console.log('Fixing:', testName);
+    // Provide fix guidance based on test type
+    const fixMessages = {
+      'environmentId': 'Set PINGONE_ENVIRONMENT_ID in .env file or configure in Admin Dashboard',
+      'region': 'Set PINGONE_REGION in .env file (default: com)',
+      'adminClientId': 'Set PINGONE_ADMIN_CLIENT_ID in .env file',
+      'userClientId': 'Set PINGONE_USER_CLIENT_ID in .env file',
+      'mcpTokenExchangerClientId': 'Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID in .env file',
+      'aiAgentClientId': 'Set PINGONE_AI_AGENT_CLIENT_ID in .env file',
+      'resourceMcpServerUri': 'Set PINGONE_RESOURCE_MCP_SERVER_URI in .env file',
+      'resourceMcpGatewayUri': 'Set PINGONE_RESOURCE_MCP_GATEWAY_URI in .env file',
+      'resourceAgentGatewayUri': 'Set PINGONE_RESOURCE_AGENT_GATEWAY_URI in .env file',
+      'single-exchange': 'Ensure worker token is valid and token exchange endpoint is configured correctly',
+      'double-exchange': 'Ensure worker token is valid and both user and agent tokens are available',
+      'apps': 'Configure Management API roles for Applications in PingOne Worker App settings',
+      'resources': 'Configure Management API roles for Resource Servers in PingOne Worker App settings',
+      'scopes': 'Configure Management API roles for Scopes in PingOne Worker App settings',
+      'users': 'Configure Management API roles for Users in PingOne Worker App settings'
+    };
+
+    const message = fixMessages[testName] || 'Check configuration for this item';
+    alert(`Fix guidance: ${message}\n\nPlease configure this setting in the .env file or via the Admin Dashboard.`);
+  }, []);
+
+  const saveWorkerConfig = useCallback(async () => {
+    setSavingConfig(true);
+    setConfigSaveError(null);
+    setConfigSaveSuccess(false);
+
+    try {
+      notifyInfo('Saving worker configuration...', { toastId: 'worker-config-saving' });
+      const { data } = await apiClient.post('/api/pingone-test/worker-config', {
+        clientId: workerConfig.clientId,
+        clientSecret: workerConfig.clientSecret,
+        authMethod: workerConfig.authMethod
+      });
+
+      if (data.success) {
+        setConfigSaveSuccess(true);
+        notifySuccess('Worker configuration saved successfully');
+        // Display details about the storage method
+        if (data.details) {
+          console.log('[PingOneTest] Storage details:', data.details);
+        }
+        // Reload config after saving
+        const { data: configData } = await apiClient.get('/api/pingone-test/config');
+        if (configData.success) {
+          setConfig(configData);
+        }
+        setTimeout(() => setConfigSaveSuccess(false), 5000); // Show success for 5 seconds to allow reading details
+      } else {
+        const errorMsg = data.error || 'Failed to save configuration';
+        setConfigSaveError(errorMsg);
+        notifyError(errorMsg);
+      }
+    } catch (err) {
+      const errorMsg = err.message || 'Failed to save configuration';
+      setConfigSaveError(errorMsg);
+      notifyError(errorMsg);
+    } finally {
+      setSavingConfig(false);
+    }
+  }, [workerConfig]);
+
+  const verifyAssets = useCallback(async () => {
+    setVerifyingAssets(true);
+    setAssetVerification(null);
+
+    try {
+      notifyInfo('Verifying PingOne assets...', { toastId: 'verify-assets-loading' });
+      const { data } = await apiClient.get('/api/pingone-test/verify-assets');
+      if (data.success) {
+        setAssetVerification(data.assets);
+        notifySuccess('Asset verification completed');
+      } else {
+        const errorMsg = data.error || 'Asset verification failed';
+        setAssetVerification({ error: errorMsg });
+        notifyError(errorMsg);
+      }
+    } catch (err) {
+      const errorMsg = err.message || 'Asset verification failed';
+      setAssetVerification({ error: errorMsg });
+      notifyError(errorMsg);
+    } finally {
+      setVerifyingAssets(false);
+    }
+  }, []);
+
+  const testAuthzToken = useCallback(async () => {
+    setAuthzTokenStatus('pending');
+    setAuthzTokenError(null);
+    try {
+      const { data } = await apiClient.get('/api/pingone-test/authz-token');
+      if (data.success) {
+        setAuthzTokenStatus('passed');
+      } else {
+        setAuthzTokenStatus('failed');
+        setAuthzTokenError(data.error);
+      }
+    } catch (err) {
+      setAuthzTokenStatus('failed');
+      setAuthzTokenError(err.message);
+    }
+  }, []);
+
+  const testAgentToken = useCallback(async () => {
+    setAgentTokenStatus('pending');
+    setAgentTokenError(null);
+    try {
+      const { data } = await apiClient.get('/api/pingone-test/agent-token');
+      if (data.success) {
+        setAgentTokenStatus('passed');
+      } else {
+        setAgentTokenStatus('failed');
+        setAgentTokenError(data.error);
+      }
+    } catch (err) {
+      setAgentTokenStatus('failed');
+      setAgentTokenError(err.message);
+    }
+  }, []);
+
+  const testExchange1 = useCallback(async () => {
+    setExchange1Status('pending');
+    setExchange1Error(null);
+    try {
+      const { data } = await apiClient.get('/api/pingone-test/exchange-user-to-mcp');
+      if (data.success) {
+        setExchange1Status('passed');
+      } else {
+        setExchange1Status('failed');
+        setExchange1Error(data.error);
+      }
+    } catch (err) {
+      setExchange1Status('failed');
+      setExchange1Error(err.message);
+    }
+  }, []);
+
+  const testExchange2 = useCallback(async () => {
+    setExchange2Status('pending');
+    setExchange2Error(null);
+    try {
+      const { data } = await apiClient.get('/api/pingone-test/exchange-user-agent-to-mcp');
+      if (data.success) {
+        setExchange2Status('passed');
+      } else {
+        setExchange2Status('failed');
+        setExchange2Error(data.error);
+      }
+    } catch (err) {
+      setExchange2Status('failed');
+      setExchange2Error(err.message);
+    }
+  }, []);
+
+  const testExchange3 = useCallback(async () => {
+    setExchange3Status('pending');
+    setExchange3Error(null);
+    try {
+      const { data } = await apiClient.get('/api/pingone-test/exchange-user-to-agent-to-mcp');
+      if (data.success) {
+        setExchange3Status('passed');
+      } else {
+        setExchange3Status('failed');
+        setExchange3Error(data.error);
+      }
+    } catch (err) {
+      setExchange3Status('failed');
+      setExchange3Error(err.message);
+    }
   }, []);
 
   const testApps = useCallback(async () => {
@@ -154,6 +559,277 @@ export default function PingOneTestPage() {
       </div>
 
       <div className="pingone-test-content">
+        {/* Worker Token Configuration Section */}
+        <section className="pingone-test-section">
+          <h2 className="pingone-test-section-title">Worker Token Configuration</h2>
+          <div className="worker-token-config">
+            <div className="worker-token-config-form">
+              <div className="worker-token-info">
+                <h3>PingOne Token Endpoint</h3>
+                <code className="code-block">
+                  POST https://auth.pingone.com/{config?.region || 'com'}/{config?.environmentId}/as/token
+                </code>
+                <div className="token-params">
+                  <strong>Authentication Method: {workerConfig.authMethod || 'basic'}</strong>
+                  {workerConfig.authMethod === 'post' ? (
+                    <div className="request-details">
+                      <strong>Request Body:</strong>
+                      <pre className="code-block">
+{`{
+  "grant_type": "client_credentials",
+  "client_id": "${workerConfig.clientId || '...'}",
+  "client_secret": "***"
+}`}
+                      </pre>
+                    </div>
+                  ) : (
+                    <div className="request-details">
+                      <strong>Request Headers:</strong>
+                      <pre className="code-block">
+{`Content-Type: application/x-www-form-urlencoded
+Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '*** (base64(client_id:client_secret))' : '...'}`}
+                      </pre>
+                      <strong>Request Body:</strong>
+                      <pre className="code-block">
+{`grant_type=client_credentials`}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {workerTokenExpiry && (
+                <div className="worker-token-status">
+                  <span className={`status-indicator ${isTokenValid(workerTokenExpiry.expiresAt) ? 'status-indicator--success' : 'status-indicator--error'}`}>
+                    {isTokenValid(workerTokenExpiry.expiresAt) ? '✓ Token Valid' : '✗ Token Expired'}
+                  </span>
+                  <span className="token-expiry">
+                    Expires: {formatExpiryTime(workerTokenExpiry.expiresAt)}
+                  </span>
+                  <span className="token-time-remaining">
+                    {formatTimeRemaining(workerTokenExpiry.expiresAt)}
+                  </span>
+                </div>
+              )}
+              {workerTokenError && (
+                <div className="worker-token-error">
+                  <span className="status-indicator status-indicator--error">✗ Error</span>
+                  <span className="error-message">{workerTokenError}</span>
+                </div>
+              )}
+              {workerToken && (
+                <TokenDisplay
+                  token={workerToken}
+                  label="Worker Token (Management API)"
+                  showFullToken={false}
+                />
+              )}
+              <div className="token-actions">
+                <button
+                  type="button"
+                  className="pingone-test-button pingone-test-button--secondary"
+                  onClick={loadWorkerToken}
+                  disabled={loading}
+                >
+                  {loading ? 'Loading...' : 'Fetch Worker Token'}
+                </button>
+                {workerToken && (
+                  <button
+                    type="button"
+                    className="pingone-test-button pingone-test-button--fix"
+                    onClick={() => {
+                      setWorkerToken(null);
+                      setWorkerTokenExpiry(null);
+                      setWorkerTokenError(null);
+                    }}
+                  >
+                    Clear Token
+                  </button>
+                )}
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); saveWorkerConfig(); }}>
+                <div className="form-group">
+                  <label htmlFor="worker-client-id">Client ID</label>
+                  <input
+                    id="worker-client-id"
+                    type="text"
+                    className="form-input"
+                    value={workerConfig.clientId}
+                    onChange={(e) => setWorkerConfig(prev => ({ ...prev, clientId: e.target.value }))}
+                    placeholder="Enter PingOne Worker App Client ID"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="worker-client-secret">Client Secret</label>
+                  <input
+                    id="worker-client-secret"
+                    type="password"
+                    className="form-input"
+                    value={workerConfig.clientSecret}
+                    onChange={(e) => setWorkerConfig(prev => ({ ...prev, clientSecret: e.target.value }))}
+                    placeholder="Enter PingOne Worker App Client Secret"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="worker-auth-method">Token Auth Method</label>
+                  <select
+                    id="worker-auth-method"
+                    className="form-select"
+                    value={workerConfig.authMethod}
+                    onChange={(e) => setWorkerConfig(prev => ({ ...prev, authMethod: e.target.value }))}
+                  >
+                    <option value="basic">Basic (Authorization header)</option>
+                    <option value="post">Post (body parameters)</option>
+                    <option value="none">None (no authentication)</option>
+                  </select>
+                </div>
+                <div className="form-actions">
+                  <button
+                    type="submit"
+                    className="pingone-test-button pingone-test-button--primary"
+                    disabled={savingConfig}
+                  >
+                    {savingConfig ? 'Saving...' : 'Save Configuration'}
+                  </button>
+                {configSaveSuccess && (
+                  <span className="config-success">✓ Configuration saved successfully</span>
+                )}
+                {configSaveError && (
+                  <span className="config-error">✗ {configSaveError}</span>
+                )}
+              </div>
+              </form>
+            </div>
+            <div className="worker-token-config-info">
+              <p className="info-text">
+                Configure the PingOne Worker App credentials for Management API access.
+                These credentials will be saved to .env and Vercel environment variables.
+              </p>
+              <p className="info-text">
+                <strong>Note:</strong> The Worker App must have the Management API roles (Applications, Users, etc.) configured in PingOne.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* API Calls Display Section */}
+        <section className="pingone-test-section">
+          <h2 className="pingone-test-section-title">API Calls</h2>
+          <ApiCallDisplay sessionId="pingone-test" />
+        </section>
+
+        {/* PingOne Asset Verification Section */}
+        <section className="pingone-test-section">
+          <h2 className="pingone-test-section-title">PingOne Asset Verification</h2>
+          <div className="asset-verification-header">
+            <p className="asset-verification-description">
+              Verify that all required PingOne assets (Applications, Resources, Scopes, Users) are configured correctly using the worker token.
+            </p>
+            <div className="asset-verification-actions">
+              <button
+                type="button"
+                className="pingone-test-button pingone-test-button--primary"
+                onClick={loadWorkerToken}
+                disabled={verifyingAssets}
+              >
+                Get Worker Token
+              </button>
+              <button
+                type="button"
+                className="pingone-test-button pingone-test-button--secondary"
+                onClick={verifyAssets}
+                disabled={verifyingAssets || !workerToken}
+              >
+                {verifyingAssets ? 'Verifying...' : 'Verify Assets'}
+              </button>
+            </div>
+          </div>
+          {assetVerification && (
+            <div className="asset-verification-results">
+              {assetVerification.error ? (
+                <div className="asset-error">
+                  <p className="error-message">Error: {assetVerification.error}</p>
+                </div>
+              ) : (
+                <div className="asset-results-grid">
+                  <AssetCard
+                    title="Applications"
+                    status={assetVerification.applications?.status}
+                    count={assetVerification.applications?.count}
+                    error={assetVerification.applications?.error}
+                  />
+                  <AssetCard
+                    title="Resource Servers"
+                    status={assetVerification.resources?.status}
+                    count={assetVerification.resources?.count}
+                    error={assetVerification.resources?.error}
+                  />
+                  <AssetCard
+                    title="Scopes"
+                    status={assetVerification.scopes?.status}
+                    count={assetVerification.scopes?.count}
+                    error={assetVerification.scopes?.error}
+                  />
+                  <AssetCard
+                    title="Users"
+                    status={assetVerification.users?.status}
+                    count={assetVerification.users?.count}
+                    error={assetVerification.users?.error}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Token Acquisition Tests Section */}
+        <section className="pingone-test-section">
+          <h2 className="pingone-test-section-title">Token Acquisition Tests</h2>
+          <div className="pingone-test-grid">
+            <TestCard
+              title="Authorization Code Token"
+              status={authzTokenStatus}
+              error={authzTokenError}
+              onTest={testAuthzToken}
+              config={TEST_CONFIG.authzToken}
+            />
+            <TestCard
+              title="Agent Token (Client Credentials)"
+              status={agentTokenStatus}
+              error={agentTokenError}
+              onTest={testAgentToken}
+              config={TEST_CONFIG.agentToken}
+            />
+          </div>
+        </section>
+
+        {/* Token Exchange Tests Section */}
+        <section className="pingone-test-section">
+          <h2 className="pingone-test-section-title">Token Exchange Tests</h2>
+          <div className="pingone-test-grid">
+            <TestCard
+              title="User Token → MCP Token"
+              status={exchange1Status}
+              error={exchange1Error}
+              onTest={testExchange1}
+              config={TEST_CONFIG.exchange1}
+            />
+            <TestCard
+              title="User Token + Agent Token → MCP Token"
+              status={exchange2Status}
+              error={exchange2Error}
+              onTest={testExchange2}
+              config={TEST_CONFIG.exchange2}
+            />
+            <TestCard
+              title="User Token → Agent Token → MCP Token"
+              status={exchange3Status}
+              error={exchange3Error}
+              onTest={testExchange3}
+              config={TEST_CONFIG.exchange3}
+            />
+          </div>
+        </section>
+
         {/* Configuration Section */}
         <section className="pingone-test-section">
           <h2 className="pingone-test-section-title">Configuration</h2>
@@ -306,27 +982,61 @@ export default function PingOneTestPage() {
   );
 }
 
-function TestCard({ title, value, status, onTest, onFix }) {
+const TestCard = ({ title, status, error, onTest, onFix, value, config }) => (
+  <div className={`pingone-test-card status-${status}`}>
+    <h3 className="pingone-test-card-title">{title}</h3>
+    {value && <div className="pingone-test-card-value">{value}</div>}
+    <div className={`pingone-test-card-status status-${status}`}>{status}</div>
+    {error && <div className="pingone-test-card-error">{error}</div>}
+    {config && (
+      <div className="pingone-test-card-config">
+        <div className="config-item">
+          <span className="config-label">App Name:</span>
+          <span className="config-value">{config.appName}</span>
+        </div>
+        <div className="config-item">
+          <span className="config-label">App Type:</span>
+          <span className="config-value">{config.appType}</span>
+        </div>
+        {config.requiredScopes && (
+          <div className="config-item">
+            <span className="config-label">Required Scopes:</span>
+            <span className="config-value">{config.requiredScopes.join(', ')}</span>
+          </div>
+        )}
+        {config.audience && (
+          <div className="config-item">
+            <span className="config-label">Audience:</span>
+            <span className="config-value">{config.audience}</span>
+          </div>
+        )}
+        {config.spel && (
+          <div className="config-item">
+            <span className="config-label">SPEL:</span>
+            <span className="config-value">{config.spel}</span>
+          </div>
+        )}
+      </div>
+    )}
+    <div className="pingone-test-card-actions">
+      {onTest && <button className="pingone-test-button" onClick={onTest}>Test</button>}
+      {onFix && <button className="pingone-test-button fix" onClick={onFix}>Fix</button>}
+    </div>
+  </div>
+);
+
+function AssetCard({ title, status, count, error }) {
   return (
-    <div className="test-card">
-      <div className="test-card-header">
-        <h3 className="test-card-title">{title}</h3>
-        <span className={`test-card-status test-card-status--${status}`}>
+    <div className="asset-card">
+      <div className="asset-card-header">
+        <h3 className="asset-card-title">{title}</h3>
+        <span className={`asset-card-status asset-card-status--${status}`}>
           {status}
         </span>
       </div>
-      <div className="test-card-content">
-        <p className="test-card-value">{value || '—'}</p>
-      </div>
-      <div className="test-card-actions">
-        <button type="button" className="pingone-test-button pingone-test-button--primary" onClick={onTest}>
-          Test
-        </button>
-        {status === 'failed' && (
-          <button type="button" className="pingone-test-button pingone-test-button--fix" onClick={onFix}>
-            Fix
-          </button>
-        )}
+      <div className="asset-card-content">
+        <p className="asset-card-count">{count !== undefined ? `${count} found` : '—'}</p>
+        {error && <p className="asset-card-error">{error}</p>}
       </div>
     </div>
   );

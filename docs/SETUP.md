@@ -69,6 +69,13 @@ Used for **staff login** (`/admin`) and **RFC 8693 Token Exchange** to MCP.
 | Token auth method | `client_secret_basic` or `client_secret_post` |
 | Required scopes | `openid profile email offline_access banking:general:read banking:general:write banking:admin banking:sensitive banking:ai:agent` |
 | Token Exchange | **Enable** if using MCP agent delegation (RFC 8693) |
+| CORS Origins | `https://api.pingdemo.com` (local development) or your production domain |
+
+**CORS Configuration:**
+- In PingOne Admin → Applications → Admin OIDC App → Configuration → Advanced
+- Add `https://api.pingdemo.com` to Allowed Origins for local development
+- Add your production domain (e.g., `https://your-domain.com`) for hosted deployments
+- This allows the frontend to make API calls to the backend
 
 **Copy the Client ID and Client Secret** — you will use these as `PINGONE_AI_CORE_CLIENT_ID` / `PINGONE_AI_CORE_CLIENT_SECRET`.
 
@@ -84,6 +91,13 @@ Used for **customer login** (`/dashboard`).
 | Redirect URI (local) | `http://localhost:3001/api/auth/oauth/user/callback` |
 | Redirect URI (hosted) | `https://<your-domain>/api/auth/oauth/user/callback` |
 | Required scopes | `openid profile email offline_access banking:ai:agent banking:general:read banking:general:write` |
+| CORS Origins | `https://api.pingdemo.com` (local development) or your production domain |
+
+**CORS Configuration:**
+- In PingOne Admin → Applications → End-User OIDC App → Configuration → Advanced
+- Add `https://api.pingdemo.com` to Allowed Origins for local development
+- Add your production domain (e.g., `https://your-domain.com`) for hosted deployments
+- This allows the frontend to make API calls to the backend
 
 **Critical:** Must include `banking:ai:agent` for agent delegation to work. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
 

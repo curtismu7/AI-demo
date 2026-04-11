@@ -880,12 +880,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 
     // Record exchanged token into tokenChainService so /api/token-chain/current returns live data
     if (exchangedToken && userSub) {
-      void trackTokenEvent({
+      trackTokenEvent({
         eventType: 'exchange',
         token: exchangedToken,
         userId: userSub,
         description: `RFC 8693 token exchange → MCP access token (audience=${mcpResourceUri}, method=${exchangeMethod})`,
         additionalData: { mcpResourceUri, exchangeMethod, tool },
+      }).catch(err => {
+        console.error('[TokenExchange] Failed to track token event:', err.message);
       });
     }
 

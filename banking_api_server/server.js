@@ -225,6 +225,8 @@ const appConfigRoutes = require('./routes/appConfig');
 const verticalConfigRoutes = require('./routes/verticalConfig');
 const pingoneAuditRoutes = require('./routes/pingoneAudit');
 const pingoneTestRoutes = require('./routes/pingoneTestRoutes');
+const tokenDisplayRoutes = require('./routes/tokenDisplay');
+const apiCallTrackerRoutes = require('./routes/apiCallTracker');
 
 // Import middleware
 const { authenticateToken, requireSession } = require('./middleware/auth');
@@ -290,7 +292,7 @@ app.use(cors({
   // Fallback to false (block all cross-origin) rather than reflecting any Origin.
   // The React CRA dev proxy makes requests same-origin in development, so this
   // fallback only affects calls from a different origin without the env var set.
-  origin: process.env.CORS_ORIGIN || (isProduction ? false : 'http://localhost:3000'),
+  origin: process.env.CORS_ORIGIN || (isProduction ? false : ['https://api.pingdemo.com', 'https://localhost:4000']),
   credentials: true
 }));
 
@@ -921,6 +923,8 @@ app.use('/api/oauth/clients', authenticateToken, oauthClientsRoutes);
 app.use('/api/oauth/token', oauthTokenRoutes);
 app.use('/api/delegation', authenticateToken, delegationRoutes);
 app.use('/api/token-chain', authenticateToken, tokenChainRoutes);
+app.use('/api/token-display', authenticateToken, tokenDisplayRoutes);
+app.use('/api/api-calls', apiCallTrackerRoutes);
 app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
 app.use('/api/config/vertical', verticalConfigRoutes);
 app.use('/api/config/verticals', verticalConfigRoutes);
