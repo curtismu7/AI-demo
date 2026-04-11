@@ -24,8 +24,8 @@ Phase: 123 (PingOne MFA Test Page) — ✅ COMPLETE
 Plan: 1 of 1 complete
 Plans: 1/1 complete
 **Previous:** Phase 122 (conditional-step-up-authentication) — ✅ COMPLETE
-**Next:** TBD (No Phase 124 defined in ROADMAP)
-**Status:** Phase 123 complete, ready for next phase
+**Next:** Phase 124 (MFA HITL Indication)
+**Status:** Phase 123 complete, Phase 124 ready to start
 
 ---
 

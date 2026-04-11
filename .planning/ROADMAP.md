@@ -1927,3 +1927,23 @@ Plans:
 10. Fix buttons provide actionable guidance for failed tests
 
 ---
+
+### Phase 124: MFA HITL Indication
+
+**Goal:** Add clear Human-in-the-Loop (HITL) indication to MFA prompts so users understand when they need to manually approve a transaction.
+
+**Requirements**: TBD
+
+**Depends on:** Phase 122 (conditional-step-up-authentication), Phase 52 (pingone-mfa-step-up)
+
+**Plans:** TBD
+
+**Success criteria:**
+1. MFA prompt clearly indicates HITL status with text like "Manual approval required"
+2. Visual cue (icon/badge) distinguishes HITL from automatic MFA
+3. Users understand they need to manually approve the transaction
+4. Education panel explains HITL concept in context
+5. HITL indication works for all step-up MFA scenarios
+6. UI contract preserved (no breaking changes to existing MFA flow)
+
+---
