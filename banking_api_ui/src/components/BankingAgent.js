@@ -2659,6 +2659,27 @@ export default function BankingAgent({
             {hitlPendingIntent && (() => {
               const handleHitlConfirm = async () => {
                 const { actionId, intentPayload } = hitlPendingIntent;
+
+                // Agent HITL resume flow (LangChain agent)
+                if (actionId === 'agent-hitl' && intentPayload?.consentId) {
+                  const { consentId: pendingId, originalMessage } = intentPayload;
+                  setHitlPendingIntent(null);
+                  if (originalMessage) {
+                    setNlLoading(true);
+                    try {
+                      const response = await sendAgentMessage(originalMessage, pendingId);
+                      if (response.tokenEvents?.length) appendTokenEvents(response.tokenEvents);
+                      addMessage('assistant', response.reply || '✅ Operation completed.');
+                    } catch (err) {
+                      addMessage('error', `Failed to resume after consent: ${err.message}`);
+                    } finally {
+                      setNlLoading(false);
+                    }
+                  }
+                  return;
+                }
+
+                // Existing transaction HITL flow
                 try {
                   const { data } = await bffAxios.post('/api/transactions/consent-challenge', intentPayload);
                   const cid = data?.challengeId;
