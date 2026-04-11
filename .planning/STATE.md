@@ -20,12 +20,12 @@ progress:
 
 ## Current Position
 
-Phase: 116 (full-langchain-native-agent-rebuild) — ✅ COMPLETE
+Phase: 114 (IETF agentic identity standards) — ✅ COMPLETE
 Plan: 3 of 3 complete
-Plans: 4/4 complete
-**Previous:** Phase 112 (marketing-and-dashboard-ui-polish-ensure-consistent-light-and-dark-mode) — ✅ COMPLETE
-**Next:** Phase 114 (IETF agentic identity standards) — Pending
-**Status:** Phase 116 complete
+Plans: 3/3 complete
+**Previous:** Phase 116 (full-langchain-native-agent-rebuild) — ✅ COMPLETE
+**Next:** TBD
+**Status:** Phase 114 complete
 
 ---
 
@@ -56,6 +56,7 @@ Plans: 4/4 complete
 - Phase 107 (make-hostname-and-redirect-uri-configurable) — complete (summaries: 107-01, 107-02, 107-03) [2026-04-09]
 - Phase 108 (server-restart-notification-modal) — complete (summaries: 108-01, 108-02, 108-03) [2026-04-09]
 - Phase 109 (demo-data-agent-placement-fix) — complete (commits: 6595727, 2fa5973) [2026-04-09]
+- Phase 114 (ietf-agentic-identity-standards) — complete (summaries: 114-01, 114-02, 114-03) [2026-04-11]
 - Phase 116 (full-langchain-native-agent-rebuild) — complete (commits: f8ebbeb, 0dd5367, 193f59e) [2026-04-11]
 
 ---
