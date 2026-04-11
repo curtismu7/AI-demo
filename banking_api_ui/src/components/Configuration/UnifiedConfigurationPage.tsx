@@ -217,7 +217,9 @@ const ConfigurationHeader: React.FC<{
   saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   onSave: () => void;
   onReset: () => void;
-}> = ({ title, subtitle, saveStatus, onSave, onReset }) => {
+  onThemeToggle?: () => void;
+  theme?: string;
+}> = ({ title, subtitle, saveStatus, onSave, onReset, onThemeToggle, theme }) => {
   return (
     <header className="configuration-header">
       <div className="configuration-header__content">
@@ -226,6 +228,15 @@ const ConfigurationHeader: React.FC<{
           <p className="configuration-header__subtitle">{subtitle}</p>
         </div>
         <div className="configuration-header__actions">
+          {onThemeToggle && (
+            <button
+              onClick={onThemeToggle}
+              className="configuration-header__btn configuration-header__btn--theme"
+              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            </button>
+          )}
           <button
             onClick={onReset}
             className="configuration-header__btn configuration-header__btn--secondary"
@@ -344,7 +355,7 @@ const UnifiedConfigurationPage: React.FC<{
   const { placement: agentUiMode } = useAgentUiMode();
   useEducationUI();
   const { industryId } = useIndustryBranding();
-  useTheme();
+  const { theme, toggleTheme } = useTheme();
 
   // Load initial configuration
   useEffect(() => {
@@ -438,6 +449,8 @@ const UnifiedConfigurationPage: React.FC<{
         saveStatus={state.saveStatus}
         onSave={saveConfiguration}
         onReset={resetConfiguration}
+        onThemeToggle={toggleTheme}
+        theme={theme}
       />
       
       <ConfigurationTabs
