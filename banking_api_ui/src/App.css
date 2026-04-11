@@ -719,6 +719,35 @@
   background: rgba(255, 255, 255, 0.5);
 }
 
+/* HITL indicator styling */
+.session-reauth-banner--hitl {
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom-color: #f59e0b;
+}
+
+.session-reauth-banner__hitl-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.session-reauth-banner__hitl-icon {
+  font-size: 1.1rem;
+}
+
+.session-reauth-banner__hitl-text {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    OTP Step-Up Modal — Phase 52
    ═══════════════════════════════════════════════════════════════════ */

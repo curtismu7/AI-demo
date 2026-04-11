@@ -444,6 +444,7 @@ function AppWithAuth() {
             <SessionReauthBanner
               message={sessionReauth.message}
               role={sessionReauth.role}
+              isHITL={sessionReauth.isHITL || false}
               onDismiss={() => setSessionReauth(null)}
             />
           )}
