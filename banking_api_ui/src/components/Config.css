@@ -223,7 +223,8 @@
   background: rgba(255, 255, 255, 0.92);
   border-radius: 8px;
   border: 1px solid #c7d2fe;
-  word-break: break-all;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .config-page__redirect-foot {
@@ -723,7 +724,8 @@
 .config-page__agent-scope-code {
   font-size: 0.72rem;
   color: #6b7280;
-  word-break: break-all;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .config-page__agent-scope-desc {
