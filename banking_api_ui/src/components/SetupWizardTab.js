@@ -81,6 +81,10 @@ const SetupWizardTab = () => {
       newErrors.publicAppUrl = 'Public App URL is required';
     }
     
+    if (!formData.stepUpAcrValue.trim()) {
+      newErrors.stepUpAcrValue = 'Step-up ACR Value is required';
+    }
+    
     if (showVercelOptions && formData.vercelToken && !formData.vercelProjectId.trim()) {
       newErrors.vercelProjectId = 'Vercel Project ID is required when Vercel Token is provided';
     }
@@ -437,7 +441,7 @@ const SetupWizardTab = () => {
               disabled={running}
             />
             <small className="swt-help">
-              PingOne Sign-On Policy name for MFA step-up (e.g., Multi_Factor)
+              PingOne Sign-On Policy name for MFA step-up (must match exactly, e.g., Multi_Factor). Find your policies in PingOne Admin Console → Authentication → Authentication Policies.
             </small>
             {errors.stepUpAcrValue && <span className="swt-error">{errors.stepUpAcrValue}</span>}
           </div>
