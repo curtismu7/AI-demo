@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const oauthConfig = require('../config/oauth');
 const { isOAuthVerboseDebug } = require('../utils/oauthDebugFlags');
 const { verboseOAuthLog } = require('../utils/oauthVerboseLogger');
+const { trackTokenEvent } = require('./tokenChainService');
 
 // Utility function to decode and log OAuth token information
 const logTokenInfo = (token, context = '') => {
@@ -79,7 +80,8 @@ function applyTokenEndpointAuth(clientId, clientSecret, method, body, headers) {
     return;
   }
   // Default: CLIENT_SECRET_BASIC (Authorization: Basic header)
-  const credentials = `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`;
+  // Per RFC 7617, credentials are sent as base64(client_id:client_secret) with no URL encoding
+  const credentials = `${clientId}:${clientSecret}`;
   headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`;
 }
 
@@ -187,6 +189,24 @@ class OAuthService {
       // Log the received access token information
       if (tokenResponse.data.access_token) {
         logTokenInfo(tokenResponse.data.access_token, 'OAuth Token Exchange');
+        
+        // Record token exchange event for token chain tracking
+        const jwt = require('jsonwebtoken');
+        try {
+          const claims = jwt.decode(tokenResponse.data.access_token);
+          if (claims?.sub) {
+            trackTokenEvent({
+              eventType: 'auth',
+              token: tokenResponse.data.access_token,
+              userId: claims.sub,
+              description: 'OAuth authorization code exchange for access token',
+            }).catch(err => {
+              console.error('[oauthService] Failed to track token event:', err.message);
+            });
+          }
+        } catch (decodeErr) {
+          console.warn('[oauthService] Could not decode token for tracking');
+        }
         
         // Add resource binding validation if resources were requested
         if (resources && resources.length > 0) {
@@ -322,25 +342,30 @@ class OAuthService {
   }
 
   /**
-   * Client-credentials token for the dedicated "agent actor" OAuth application (PingOne).
-   * Used as actor_token when exchanging for an on-behalf-of MCP access token.
-   * PingOne App: Super Banking MCP Token Exchanger — configure via PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID / PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET.
+   * Client-credentials token for the PingOne Worker Token app (Management API).
+   * Used for verifying apps, resources, scopes, users in PingOne.
+   * PingOne App: Super Banking Worker Token — configure via PINGONE_WORKER_TOKEN_CLIENT_ID / PINGONE_WORKER_TOKEN_CLIENT_SECRET.
    */
   async getAgentClientCredentialsToken() {
-    const clientId = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID;
-    const clientSecret = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET || process.env.AGENT_OAUTH_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      throw new Error('PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID and PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET must be set for agent actor tokens (PingOne App: Super Banking MCP Token Exchanger)');
+      throw new Error('PINGONE_WORKER_TOKEN_CLIENT_ID and PINGONE_WORKER_TOKEN_CLIENT_SECRET must be set for worker token (PingOne App: Super Banking Worker Token)');
     }
-    const scope = process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES || process.env.AGENT_OAUTH_CLIENT_SCOPES || 'openid';
-    const agentAuthMethod = (process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+    const agentAuthMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+    
+    // For Basic auth: only grant_type in body
+    // For POST auth: include client_id and client_secret in body
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
-      client_id: clientId,
-      scope,
     });
+    if (agentAuthMethod === 'post') {
+      body.set('client_id', clientId);
+    }
+    
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     applyTokenEndpointAuth(clientId, clientSecret, agentAuthMethod, body, headers);
+    
     try {
       const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const at = response.data.access_token;
@@ -357,7 +382,60 @@ class OAuthService {
       richErr.pingoneError            = pingoneData.error;
       richErr.pingoneErrorDescription = pingoneData.error_description;
       richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
-      richErr.requestContext          = { scope, client_id: clientId };
+      richErr.requestContext          = { client_id: clientId };
+      throw richErr;
+    }
+  }
+
+  /**
+   * Client-credentials token with expiry information for the PingOne Worker Token app.
+   * Used for PingOne Management API calls (e.g., verifying apps, resources, scopes, users).
+   * Returns token along with expiresAt timestamp and expiresIn seconds.
+   * Per PingOne documentation, worker apps (client credentials) should NOT include scope in the request.
+   */
+  async getAgentClientCredentialsTokenWithExpiry() {
+    const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      throw new Error('PINGONE_WORKER_TOKEN_CLIENT_ID and PINGONE_WORKER_TOKEN_CLIENT_SECRET must be set for worker token (PingOne App: Super Banking Worker Token)');
+    }
+    const agentAuthMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+    
+    // Per PingOne documentation: client credentials grant should NOT include scope
+    // https://developer.pingidentity.com/pingone-api/getting-started/create-a-test-environment/step-1-get-access-token.html
+    // For Basic auth: only grant_type in body, credentials go in Authorization header
+    // For POST auth: include client_id and client_secret in body
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+    });
+    if (agentAuthMethod === 'post') {
+      body.set('client_id', clientId);
+    }
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyTokenEndpointAuth(clientId, clientSecret, agentAuthMethod, body, headers);
+    
+    console.log('[AgentClientCredentialsWithExpiry] Request body:', body.toString());
+    console.log('[AgentClientCredentialsWithExpiry] Headers:', headers);
+    
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
+      const at = response.data.access_token;
+      if (!at) throw new Error('Client credentials response missing access_token');
+      const expiresIn = response.data.expires_in || 3600; // Default to 1 hour if not provided
+      const expiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
+      return { token: at, expiresAt, expiresIn };
+    } catch (error) {
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[AgentClientCredentialsWithExpiry] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `Agent client credentials failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { client_id: clientId };
       throw richErr;
     }
   }
@@ -485,6 +563,27 @@ class OAuthService {
         timeout: 10000,
       });
       console.log('[TokenRefresh] Admin access token refreshed successfully');
+      
+      // Record token refresh event for token chain tracking
+      if (response.data.access_token) {
+        const jwt = require('jsonwebtoken');
+        try {
+          const claims = jwt.decode(response.data.access_token);
+          if (claims?.sub) {
+            trackTokenEvent({
+              eventType: 'refresh',
+              token: response.data.access_token,
+              userId: claims.sub,
+              description: 'OAuth access token refreshed',
+            }).catch(err => {
+              console.error('[oauthService] Failed to track token refresh event:', err.message);
+            });
+          }
+        } catch (decodeErr) {
+          console.warn('[oauthService] Could not decode refreshed token for tracking');
+        }
+      }
+      
       return response.data;
     } catch (error) {
       console.error('[TokenRefresh] Admin refresh failed:', error.response?.data || error.message);
