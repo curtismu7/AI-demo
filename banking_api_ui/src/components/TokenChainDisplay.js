@@ -585,9 +585,12 @@ const InspectIcon = () => (
 
 const CLAIMS_STRIP_IDS = new Set(['user-token', 'exchanged-token', 'agent-actor-token', 'exchanged-token-fallback']);
 
-function fmtSub(sub) {
+function fmtSub(sub, hints) {
   if (!sub) return null;
   const s = String(sub);
+  if (hints?.currentUser?.sub && s === hints.currentUser.sub && hints.currentUser.name) {
+    return `${hints.currentUser.name} (${s.slice(0, 8)}…)`;
+  }
   return s.length > 14 ? s.slice(0, 12) + '…' : s;
 }
 function fmtAud(aud) {
@@ -608,23 +611,32 @@ function fmtExpiry(exp) {
   if (secsLeft < 3600) return Math.round(secsLeft / 60) + 'm';
   return Math.round(secsLeft / 3600) + 'h';
 }
-function fmtAct(act) {
+function fmtAct(act, hints) {
   if (!act) return null;
   if (typeof act === 'object') {
-    if (act.client_id) return act.client_id;
-    if (act.sub) return 'sub:' + act.sub;
+    if (act.client_id) {
+      const known = hints?.knownClients?.[act.client_id];
+      return known ? `${known} (${String(act.client_id).slice(0, 8)}…)` : act.client_id;
+    }
+    if (act.sub) {
+      const s = String(act.sub);
+      if (hints?.currentUser?.sub && s === hints.currentUser.sub && hints.currentUser.name) {
+        return `${hints.currentUser.name} (${s.slice(0, 8)}…)`;
+      }
+      return 'sub:' + s.slice(0, 12) + '…';
+    }
     return JSON.stringify(act).slice(0, 40);
   }
   return String(act).slice(0, 40);
 }
 
 /** Compact inline strip showing key claims without opening the inspector. */
-function ClaimsStrip({ event }) {
+function ClaimsStrip({ event, hints }) {
   if (!CLAIMS_STRIP_IDS.has(event.id)) return null;
   const cl = event.claims;
   if (!cl) return null;
-  const sub    = fmtSub(cl.sub);
-  const act    = fmtAct(cl.act);
+  const sub    = fmtSub(cl.sub, hints);
+  const act    = fmtAct(cl.act, hints);
   const mayAct = cl.may_act && cl.may_act.client_id ? String(cl.may_act.client_id) : null;
   const aud    = fmtAud(cl.aud);
   const scope  = fmtScope(cl.scope);
@@ -651,7 +663,7 @@ function ClaimsStrip({ event }) {
 }
 
 /** Renders one step in the token chain. The inspect icon (right side) opens the floating inspector panel. */
-function EventRow({ event, isLast, onInspect }) {
+function EventRow({ event, isLast, onInspect, hints }) {
   const inspectBtnRef = useRef(null);
   const hasDetail = event.claims || event.explanation || event.exchangeRequest || event.jwtFullDecode
     || event.mayActPresent !== undefined || event.actPresent !== undefined;
@@ -785,7 +797,7 @@ function EventRow({ event, isLast, onInspect }) {
               {actHint    && <span className={`tcd-event-hint tcd-event-hint--${actHint.cls}`}>{actHint.text}</span>}
             </div>
           )}
-          <ClaimsStrip event={event} />
+          <ClaimsStrip event={event} hints={hints} />
         </div>
       </div>
 
@@ -796,7 +808,7 @@ function EventRow({ event, isLast, onInspect }) {
 
 // ─── History entry ─────────────────────────────────────────────────────────────
 
-function HistoryEntry({ entry, index, onInspect }) {
+function HistoryEntry({ entry, index, onInspect, hints }) {
   const [open, setOpen] = useState(index === 0);
   const ts = new Date(entry.timestamp).toLocaleTimeString();
   return (
@@ -807,7 +819,7 @@ function HistoryEntry({ entry, index, onInspect }) {
         <span className="tcd-hist-chev">{open ? '▾' : '▸'}</span>
       </button>
       {open && entry.events.map((ev, i) => (
-        <EventRow key={ev.id} event={ev} isLast={i === entry.events.length - 1} onInspect={onInspect} />
+        <EventRow key={ev.id} event={ev} isLast={i === entry.events.length - 1} onInspect={onInspect} hints={hints} />
       ))}
     </div>
   );
@@ -882,6 +894,7 @@ const TokenChainDisplay = () => {
   const [inspectedEvent, setInspectedEvent] = useState(null);
   const [inspectorPos, setInspectorPos] = useState({ x: 120, y: 100 });
   const [copied, setCopied] = useState(false);
+  const [identityHints, setIdentityHints] = useState(null);
 
   /** Fetch session preview (called on mount, on login, and when live events reset). */
   const fetchSessionPreview = useCallback(async () => {
@@ -921,6 +934,43 @@ const TokenChainDisplay = () => {
   React.useEffect(() => {
     void fetchSessionPreview();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- only runs once on mount
+  }, []);
+
+  /** Fetch identity hints once on mount — resolve current user name + known client IDs for friendly display. */
+  React.useEffect(() => {
+    let cancelled = false;
+    async function loadIdentityHints() {
+      try {
+        const [sessionRes, configRes] = await Promise.all([
+          fetch('/api/auth/session', { credentials: 'include' }),
+          fetch('/api/pingone-test/config', { credentials: 'include' }),
+        ]);
+        if (cancelled) return;
+        const sessionData = sessionRes.ok ? await sessionRes.json() : null;
+        const configData  = configRes.ok  ? await configRes.json()  : null;
+        const hints = { currentUser: null, knownClients: {} };
+        if (sessionData?.authenticated && sessionData.user) {
+          const u = sessionData.user;
+          const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || u.username || '';
+          hints.currentUser = { sub: u.id, name, email: u.email };
+        }
+        if (configData) {
+          const clientLabels = {
+            adminClientId:             'Super Banking BFF (Admin)',
+            userClientId:              'Super Banking BFF (User)',
+            mcpTokenExchangerClientId: 'MCP Token Exchanger',
+            aiAgentClientId:           'AI Agent',
+          };
+          for (const [key, label] of Object.entries(clientLabels)) {
+            const id = configData[key];
+            if (id) hints.knownClients[id] = label;
+          }
+        }
+        setIdentityHints(hints);
+      } catch (_e) { /* non-fatal — falls back to raw UUIDs */ }
+    }
+    void loadIdentityHints();
+    return () => { cancelled = true; };
   }, []);
 
   /** Also re-fetch immediately after a successful PingOne login (e.g. session expiry re-auth). */
@@ -1048,7 +1098,7 @@ const TokenChainDisplay = () => {
             )}
             {isLive && <ExchangeModeBanner events={currentEvents} />}
             {currentEvents.map((ev, i) => (
-              <EventRow key={ev.id} event={ev} isLast={i === currentEvents.length - 1} onInspect={handleInspect} />
+              <EventRow key={ev.id} event={ev} isLast={i === currentEvents.length - 1} onInspect={handleInspect} hints={identityHints} />
             ))}
           </div>
         )}
@@ -1058,7 +1108,7 @@ const TokenChainDisplay = () => {
             {history.length === 0
               ? <div className="tcd-placeholder-note">No history yet</div>
               : history.map((entry, i) => (
-                  <HistoryEntry key={`${entry.timestamp}-${entry.tool}`} entry={entry} index={i} onInspect={handleInspect} />
+                  <HistoryEntry key={`${entry.timestamp}-${entry.tool}`} entry={entry} index={i} onInspect={handleInspect} hints={identityHints} />
                 ))
             }
           </div>
