@@ -1,5 +1,5 @@
 # Phases 120+ Status
-_Last updated: 2026-04-12_
+_Last updated: 2026-04-12 (session 2)_
 
 ## Audit 120–135 complete. All 4 cross-phase conflicts resolved.
 
@@ -16,14 +16,14 @@ _Last updated: 2026-04-12_
 | 128 | Quality Audit 120–127 | ✅ PASS | — |
 | 129 | Audit Last 15 Todos | ❌ NOT EXECUTED | — |
 | 130 | PingOne Asset Verification Rich Table | ✅ PASS | — |
-| 131 | Test Page Config & Resources Pass/Fail Details | ⚠️ PARTIAL | — |
+| 131 | Test Page Config & Resources Pass/Fail Details + Chase top nav links | ✅ DONE | `fc2498c` |
 | 132 | Full E2E Testing of PingOne Test Page | ✅ PASS | — |
 | 133 | PingOne test page UX — per-section API Calls toggles + Agent Token label | ✅ DONE | `97a67fd` |
 | 134 | Audit all phases 120+ (meta-audit) | ✅ DONE (this audit) | `4c01430` |
 | 135 | MFA test page UX — mirror Phase 133 | ✅ DONE | `7ed0efe` |
 | 136 | Token chain reliability audit & hardening | ✅ DONE | `1f0846f` `d68a545` |
-| 137 | Configure page complete redesign (Chase.com style, all 5 tabs) | 🔄 PLANNED (5 plans) | — |
-| 138 | Audit & fix all placeholder content across app and server | 🆕 ADDED | — |
+| 137 | Configure page complete redesign (Chase.com style, all 5 tabs) | ✅ DONE (5 plans, all approved) | `cc39029` |
+| 138 | Audit & fix all placeholder content across app and server | ✅ DONE (4/4 plans + checkpoint approved) | `2a57937`–`edba6ce` |
 
 ## Cross-Phase Conflicts (all resolved)
 
@@ -78,9 +78,6 @@ _Last updated: 2026-04-12_
 
 | Phase | Description | Priority |
 |-------|-------------|----------|
-| 137 | Configure page redesign — execute plans 01–05 | High |
-| 138 | Placeholder audit — plan then execute | High |
-| 131 | "Explain why" detail text per config row | Medium |
-| 127 | Finish MFA test page + agent failure debugging | Medium |
-| 121 | API Display Modal — execute or formally defer | Low |
+| 127 | MFA test page live testing + Banking Agent e2e (requires live PingOne) | Medium |
+| 121 | API Display Modal — draggable/resizable modal wrapping ApiCallDisplay | Low |
 | 129 | Audit last 15 todos | Low |
