@@ -254,6 +254,70 @@
   word-break: break-word;
 }
 
+.test-card-detail {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.test-card-detail__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.test-card-detail__row:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #424242;
+  flex-shrink: 0;
+  min-width: 4.5rem;
+}
+
+.detail-code {
+  font-family: 'Courier New', Courier, monospace;
+  background: #e8eaf6;
+  color: #3949ab;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.76rem;
+  word-break: break-all;
+}
+
+.detail-text {
+  color: #616161;
+  line-height: 1.4;
+}
+
+.test-card-detail__fix {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff3e0;
+  border: 1px solid #ffb74d;
+  border-left: 3px solid #f57c00;
+  border-radius: 4px;
+  color: #e65100;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.test-card--passed .test-card-detail {
+  background: #f1f8f1;
+  border-color: #c8e6c9;
+}
+
+.test-card--passed .detail-code {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
 .test-card-config {
   margin: 0.75rem 0;
   padding: 0.75rem;

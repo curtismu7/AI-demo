@@ -85,6 +85,55 @@ const EXPECTED_BANKING_SCOPES = [
   'banking:transactions:write',
 ];
 
+// Metadata for each config/resource key: env var name, format hint, inline fix message
+const CONFIG_META = {
+  environmentId: {
+    envVar: 'PINGONE_ENVIRONMENT_ID',
+    format: 'UUID — e.g. 12345678-1234-1234-1234-123456789012',
+    failMsg: 'Not set — add PINGONE_ENVIRONMENT_ID=<your-env-uuid> to .env and restart the server',
+  },
+  region: {
+    envVar: 'PINGONE_REGION',
+    format: 'com | eu | ca | asia',
+    failMsg: 'Not set — add PINGONE_REGION=com to .env (default is com)',
+  },
+  adminClientId: {
+    envVar: 'PINGONE_ADMIN_CLIENT_ID',
+    format: 'UUID — copy Client ID from PingOne → Applications → Super Banking Admin App',
+    failMsg: 'Not set — add PINGONE_ADMIN_CLIENT_ID=<uuid> to .env; get value from PingOne → Applications',
+  },
+  userClientId: {
+    envVar: 'PINGONE_USER_CLIENT_ID',
+    format: 'UUID — copy Client ID from PingOne → Applications → Super Banking User App',
+    failMsg: 'Not set — add PINGONE_USER_CLIENT_ID=<uuid> to .env; get value from PingOne → Applications',
+  },
+  mcpTokenExchangerClientId: {
+    envVar: 'PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID',
+    format: 'UUID — copy from PingOne → Applications → Super Banking MCP Token Exchanger',
+    failMsg: 'Not set — add PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID=<uuid> to .env',
+  },
+  aiAgentClientId: {
+    envVar: 'PINGONE_AI_AGENT_CLIENT_ID',
+    format: 'UUID — copy from PingOne → Applications → Super Banking AI Agent App',
+    failMsg: 'Not set — add PINGONE_AI_AGENT_CLIENT_ID=<uuid> to .env',
+  },
+  resourceMcpServerUri: {
+    envVar: 'PINGONE_RESOURCE_MCP_SERVER_URI',
+    format: 'URI — e.g. https://mcp-server.pingdemo.com',
+    failMsg: 'Not set — add PINGONE_RESOURCE_MCP_SERVER_URI=<uri> to .env (copy Audience URI from PingOne → Connections → Resource Servers → Super Banking MCP Server)',
+  },
+  resourceMcpGatewayUri: {
+    envVar: 'PINGONE_RESOURCE_MCP_GATEWAY_URI',
+    format: 'URI — e.g. https://mcp-gateway.pingdemo.com',
+    failMsg: 'Not set — add PINGONE_RESOURCE_MCP_GATEWAY_URI=<uri> to .env (copy Audience URI from PingOne → Connections → Resource Servers → Super Banking MCP Gateway)',
+  },
+  resourceAgentGatewayUri: {
+    envVar: 'PINGONE_RESOURCE_AGENT_GATEWAY_URI',
+    format: 'URI — e.g. https://agent-gateway.pingdemo.com',
+    failMsg: 'Not set — add PINGONE_RESOURCE_AGENT_GATEWAY_URI=<uri> to .env (copy Audience URI from PingOne → Connections → Resource Servers → Super Banking Agent Gateway)',
+  },
+};
+
 /**
  * PingOneTestPage — comprehensive test page for PingOne integration
  * Tests: APIs, Token exchange, Configuration (Apps, Scopes, Resources, Users)
@@ -947,6 +996,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.environmentId ? 'passed' : 'failed'}
               onTest={() => runTest('environmentId', () => Promise.resolve(config?.environmentId))}
               onFix={() => fixIssue('environmentId')}
+              envVar={CONFIG_META.environmentId.envVar}
+              format={CONFIG_META.environmentId.format}
+              failMsg={CONFIG_META.environmentId.failMsg}
             />
             <TestCard
               title="Region"
@@ -954,6 +1006,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.region ? 'passed' : 'failed'}
               onTest={() => runTest('region', () => Promise.resolve(config?.region))}
               onFix={() => fixIssue('region')}
+              envVar={CONFIG_META.region.envVar}
+              format={CONFIG_META.region.format}
+              failMsg={CONFIG_META.region.failMsg}
             />
             <TestCard
               title="Admin Client ID"
@@ -961,6 +1016,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.adminClientId ? 'passed' : 'failed'}
               onTest={() => runTest('adminClientId', () => Promise.resolve(config?.adminClientId))}
               onFix={() => fixIssue('adminClientId')}
+              envVar={CONFIG_META.adminClientId.envVar}
+              format={CONFIG_META.adminClientId.format}
+              failMsg={CONFIG_META.adminClientId.failMsg}
             />
             <TestCard
               title="User Client ID"
@@ -968,6 +1026,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.userClientId ? 'passed' : 'failed'}
               onTest={() => runTest('userClientId', () => Promise.resolve(config?.userClientId))}
               onFix={() => fixIssue('userClientId')}
+              envVar={CONFIG_META.userClientId.envVar}
+              format={CONFIG_META.userClientId.format}
+              failMsg={CONFIG_META.userClientId.failMsg}
             />
             <TestCard
               title="MCP Token Exchanger Client ID"
@@ -975,6 +1036,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.mcpTokenExchangerClientId ? 'passed' : 'failed'}
               onTest={() => runTest('mcpTokenExchangerClientId', () => Promise.resolve(config?.mcpTokenExchangerClientId))}
               onFix={() => fixIssue('mcpTokenExchangerClientId')}
+              envVar={CONFIG_META.mcpTokenExchangerClientId.envVar}
+              format={CONFIG_META.mcpTokenExchangerClientId.format}
+              failMsg={CONFIG_META.mcpTokenExchangerClientId.failMsg}
             />
             <TestCard
               title="AI Agent Client ID"
@@ -982,6 +1046,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.aiAgentClientId ? 'passed' : 'failed'}
               onTest={() => runTest('aiAgentClientId', () => Promise.resolve(config?.aiAgentClientId))}
               onFix={() => fixIssue('aiAgentClientId')}
+              envVar={CONFIG_META.aiAgentClientId.envVar}
+              format={CONFIG_META.aiAgentClientId.format}
+              failMsg={CONFIG_META.aiAgentClientId.failMsg}
             />
           </div>
           <SectionApiCalls />
@@ -997,6 +1064,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.resourceMcpServerUri ? 'passed' : 'failed'}
               onTest={() => runTest('resourceMcpServerUri', () => Promise.resolve(config?.resourceMcpServerUri))}
               onFix={() => fixIssue('resourceMcpServerUri')}
+              envVar={CONFIG_META.resourceMcpServerUri.envVar}
+              format={CONFIG_META.resourceMcpServerUri.format}
+              failMsg={CONFIG_META.resourceMcpServerUri.failMsg}
             />
             <TestCard
               title="MCP Gateway URI"
@@ -1004,6 +1074,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.resourceMcpGatewayUri ? 'passed' : 'failed'}
               onTest={() => runTest('resourceMcpGatewayUri', () => Promise.resolve(config?.resourceMcpGatewayUri))}
               onFix={() => fixIssue('resourceMcpGatewayUri')}
+              envVar={CONFIG_META.resourceMcpGatewayUri.envVar}
+              format={CONFIG_META.resourceMcpGatewayUri.format}
+              failMsg={CONFIG_META.resourceMcpGatewayUri.failMsg}
             />
             <TestCard
               title="Agent Gateway URI"
@@ -1011,6 +1084,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={config?.resourceAgentGatewayUri ? 'passed' : 'failed'}
               onTest={() => runTest('resourceAgentGatewayUri', () => Promise.resolve(config?.resourceAgentGatewayUri))}
               onFix={() => fixIssue('resourceAgentGatewayUri')}
+              envVar={CONFIG_META.resourceAgentGatewayUri.envVar}
+              format={CONFIG_META.resourceAgentGatewayUri.format}
+              failMsg={CONFIG_META.resourceAgentGatewayUri.failMsg}
             />
           </div>
           <SectionApiCalls />
@@ -1109,7 +1185,7 @@ function SectionApiCalls() {
   );
 }
 
-const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl, testLabel }) => {
+const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl, testLabel, envVar, format, failMsg }) => {
   const [testing, setTesting] = React.useState(false);
 
   const handleTest = async () => {
@@ -1133,6 +1209,25 @@ const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl
         </span>
       </div>
       {value && <p className="test-card-value">{value}</p>}
+      {(envVar || format) && (
+        <div className="test-card-detail">
+          {envVar && (
+            <div className="test-card-detail__row">
+              <span className="detail-label">Env var:</span>
+              <code className="detail-code">{envVar}</code>
+            </div>
+          )}
+          {format && (
+            <div className="test-card-detail__row">
+              <span className="detail-label">Format:</span>
+              <span className="detail-text">{format}</span>
+            </div>
+          )}
+          {status === 'failed' && failMsg && (
+            <div className="test-card-detail__fix">{failMsg}</div>
+          )}
+        </div>
+      )}
       {error && <div className="test-card-error">{error}</div>}
       {config && (
         <div className="test-card-config">
