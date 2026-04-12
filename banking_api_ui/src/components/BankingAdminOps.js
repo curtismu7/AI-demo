@@ -25,7 +25,7 @@ export default function BankingAdminOps({ user, onLogout }) {
   const [scopeSteps, setScopeSteps] = useState([]);
   const [scopeSummary, setScopeSummary] = useState('');
   const [scopeError, setScopeError] = useState('');
-  const [credentialStatus, setCredentialStatus] = useState(null);
+  const [, setCredentialStatus] = useState(null);
 
   // Check PingOne credential status on mount
   useEffect(() => {

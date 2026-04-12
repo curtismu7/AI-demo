@@ -189,7 +189,6 @@ export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
         </>
       ),
     },
-  ,
     {
       id: 'compliance',
       label: '✓ Compliance',

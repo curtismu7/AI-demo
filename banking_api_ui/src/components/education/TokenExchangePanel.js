@@ -537,7 +537,6 @@ BFF_CLIENT_ID=<your-bff-oauth-client-id>`}</pre>
         </>
       ),
     },
-  ,
     {
       id: 'compliance',
       label: '✓ Compliance',

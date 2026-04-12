@@ -14,10 +14,7 @@
  *   - From API handlers: errors automatically trigger via fetch wrapper
  */
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-
-// ─── Context for restart modal state ───────────────────────────────────────
-const RestartModalContext = createContext(null);
+import { useState, useEffect } from 'react';
 
 let globalRestartState = {
   isVisible: false,
@@ -268,10 +265,12 @@ export const __internal__ = {
   },
 };
 
-export default {
+const bankingRestartNotificationService = {
   useRestartModal,
   monitorApiHealth,
   checkServerHealth,
   handle504Error,
   manualRetry,
 };
+
+export default bankingRestartNotificationService;

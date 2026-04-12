@@ -7,9 +7,9 @@ import { useTheme } from '../context/ThemeContext';
 import { 
   MdLock, MdSettings, MdSearch, MdDataUsage, 
   MdDeploy, MdBook, MdPerson, MdDescription, MdListAlt, 
-  MdSwapHoriz, MdSwapCalls, MdDashboard, MdAccountBalance, 
+  MdSwapHoriz, MdSwapCalls, MdAccountBalance, 
   MdMoneyExchange, MdPlug, MdFileText, MdSecurity, MdApps,
-  MdOutlineChat, MdGroup, MdPersonAdd, MdManageAccounts
+  MdOutlineChat, MdManageAccounts
 } from 'react-icons/md';
 import { 
   HiOutlineUsers, HiOutlineBarChart3
@@ -20,7 +20,6 @@ const ADMIN_NAV = [
   {
     group: 'Overview',
     items: [
-      { to: '/admin',        label: 'Dashboard',       icon: 'MdDashboard' },
       { to: '/admin',        label: 'Admin Dashboard', icon: 'MdManageAccounts' },
       { to: '/agent',        label: 'AI Agent',         icon: 'MdOutlineChat' },
     ],
@@ -58,8 +57,7 @@ const ADMIN_NAV = [
       { to: '/mcp-inspector',      label: 'MCP Inspector',    icon: 'MdPlug' },
       { label: 'MCP Tracking',     icon: 'MdSwapCalls', action: 'openMcpTracking' },
       { to: '/oauth-debug-logs',   label: 'OAuth Logs',       icon: 'MdSearch' },
-      { label: '▶ Run Scope Check',   icon: 'MdLock', action: 'runScopeAudit' },
-      { to: '/scope-audit',        label: 'Scope Audit',      icon: 'MdLock' },
+      { to: '/scope-audit',        label: 'Scope Audit',      icon: 'MdSecurity' },
       { to: '/client-registration',label: 'Client Reg.',      icon: 'MdFileText' },
     ],
   },
@@ -99,10 +97,10 @@ export default function SideNav({ user, onLogout }) {
   // Helper function to render React Icon component from icon string name
   const renderIcon = (iconName, size = 20) => {
     const iconMap = {
-      MdDashboard, MdOutlineChat, MdListAlt, HiOutlineUsers, MdAccountBalance,
+      MdOutlineChat, MdListAlt, HiOutlineUsers, MdAccountBalance,
       MdSwapHoriz, MdSettings, MdLock, MdDataUsage, MdDeploy, MdBook, MdPerson,
       MdPlug, MdSearch, MdFileText, HiOutlineBarChart3, MdMoneyExchange, MdSecurity,
-      MdApps, MdDescription, MdSwapCalls, MdGroup, MdPersonAdd, MdManageAccounts
+      MdApps, MdDescription, MdSwapCalls, MdManageAccounts
     };
     
     const IconComponent = iconMap[iconName];

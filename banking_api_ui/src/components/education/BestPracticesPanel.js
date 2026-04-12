@@ -488,7 +488,6 @@ POST /token { grant_type: urn:openid:params:grant-type:ciba, auth_req_id }
         </>
       ),
     },
-  ,
     {
       id: 'standards',
       label: '📖 IETF Standards',

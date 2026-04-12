@@ -68,12 +68,13 @@ export function TokenChainProvider({ children }) {
     try { localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY); } catch {}
   }, []);
 
-  // Use tool events if available, otherwise show session token
-  const displayEvents = events.length > 0 ? events : (sessionTokenEvent ? [sessionTokenEvent] : []);
-
   const value = useMemo(
-    () => ({ events: displayEvents, history, setTokenEvents, clearEvents, setSessionToken, clearHistory }),
-    [displayEvents, history, setTokenEvents, clearEvents, setSessionToken, clearHistory]
+    () => {
+      // Use tool events if available, otherwise show session token
+      const displayEvents = events.length > 0 ? events : (sessionTokenEvent ? [sessionTokenEvent] : []);
+      return { events: displayEvents, history, setTokenEvents, clearEvents, setSessionToken, clearHistory };
+    },
+    [events, sessionTokenEvent, history, setTokenEvents, clearEvents, setSessionToken, clearHistory]
   );
 
   return (

@@ -110,7 +110,7 @@ export default function LandingPage({ user, onLogout }) {
       )}
 
       {/* Hero Section */}
-      <section className="landing-hero" role="region" aria-label="Hero section">
+      <section className="landing-hero" aria-label="Hero section">
         <div className="landing-hero-content">
           <h1 className="landing-hero-headline">Secured AI Banking</h1>
           <p className="landing-hero-subheadline">

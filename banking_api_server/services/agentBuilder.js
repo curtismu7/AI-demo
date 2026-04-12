@@ -12,6 +12,7 @@
 
 const { StateGraph } = require('@langchain/langgraph');
 const { ChatGroq } = require('@langchain/groq');
+const { ChatAnthropic } = require('@langchain/anthropic');
 const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
 const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
@@ -122,12 +123,12 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     }
 
     // Initialize model with system prompt and API key from environment
-    // Using Groq (Llama 3.1) for reliable performance
+    // Groq is preferred (faster, lower cost); Anthropic is fallback
     let model;
     let provider;
 
     if (process.env.GROQ_API_KEY) {
-      console.log('[agentBuilder] Using Groq (Llama 3.1)');
+      console.log('[agentBuilder] Using Groq (llama-3.1-8b-instant)');
       model = new ChatGroq({
         model: 'llama-3.1-8b-instant',
         temperature: 0.7,
@@ -135,9 +136,18 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
         apiKey: process.env.GROQ_API_KEY,
       });
       provider = 'groq';
+    } else if (process.env.ANTHROPIC_API_KEY) {
+      console.log('[agentBuilder] Using Anthropic (claude-3-5-haiku-20241022)');
+      model = new ChatAnthropic({
+        model: 'claude-3-5-haiku-20241022',
+        temperature: 0.7,
+        maxTokens: 1024,
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+      provider = 'anthropic';
     } else {
-      console.error('[agentBuilder] ERROR: No LLM API key configured (GROQ_API_KEY required)');
-      throw new Error('No LLM API key configured. Please set GROQ_API_KEY environment variable to use the banking agent.');
+      console.error('[agentBuilder] ERROR: No LLM API key configured');
+      throw new Error('No LLM API key configured. Set GROQ_API_KEY or ANTHROPIC_API_KEY to use the banking agent.');
     }
 
     // Define the agent node with tools

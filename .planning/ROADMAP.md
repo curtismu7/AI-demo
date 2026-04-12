@@ -1983,3 +1983,27 @@ Plans:
 - [ ] 127-05: Verify end-to-end functionality
 
 ---
+
+### Phase 128: Quality Audit and Fix — Phases 120–127 Code Review and Professional Polish
+
+**Goal:** Reevaluate all code delivered in phases 120–127: review PLAN.md artifacts against actual implementation, identify and fix bugs, eliminate dead code and lint warnings, and elevate the entire codebase to top professional quality.
+
+**Scope:**
+- Fix all ESLint/build warnings (unused vars, missing hook dependencies, anonymous exports)
+- Complete phase 127 remaining tasks: banking agent debug, MFA test verification, E2E
+- Audit and fix SideNav, TopNav, MFATestPage, PingOneTestPage, BankingAgent for correctness
+- Verify all phase 120–127 acceptance criteria are actually met in the code
+- No regressions: `npm run build` exits 0 with no new errors
+
+**Requirements**: QUALITY-128-01
+**Depends on:** Phase 127 (comprehensive-debug-and-fix)
+
+**Plans:** 0/1 plans complete
+
+Plans:
+- [ ] 128-01: Fix build warnings, lint cleanup, dead code removal
+- [ ] 128-02: Complete banking agent debug and E2E verification
+- [ ] 128-03: Code quality audit — SideNav, TopNav, key components
+- [ ] 128-04: Final quality verification and cleanup
+
+---

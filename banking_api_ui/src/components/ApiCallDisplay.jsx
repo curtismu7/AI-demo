@@ -44,6 +44,7 @@ export default function ApiCallDisplay({ sessionId = 'default' }) {
     // Auto-refresh every 10 seconds
     const interval = setInterval(fetchApiCalls, 10000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchApiCalls is recreated each render; sessionId is the real trigger
   }, [sessionId]);
 
   const filteredCalls = filterCategory === 'all' 

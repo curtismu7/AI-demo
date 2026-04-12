@@ -59,10 +59,15 @@ export default function TopNav({ user, onLogout }) {
           >
             {mobileMenuOpen ? <MdClose size={24} /> : <MdMenu size={24} />}
           </button>
-          <div className="topnav-brand" onClick={() => navigate('/admin')}>
+          <button
+            type="button"
+            className="topnav-brand"
+            onClick={() => navigate('/admin')}
+            aria-label="Go to admin dashboard"
+          >
             <MdAccountBalance className="topnav-brand-icon" />
             <span className="topnav-brand-name">Super Bank</span>
-          </div>
+          </button>
         </div>
 
         {/* Center: Navigation Groups (Desktop) */}

@@ -58,9 +58,8 @@ const useChatWidget = () => {
             const bankingWidgets = document.querySelectorAll('[id*="banking"]');
             const allWidgets = document.querySelectorAll('[class*="widget"], [id*="widget"]');
             
-            // Inspect each widget element in detail
-            [...chatWidgets, ...bankingWidgets, ...allWidgets].forEach((el, index) => {
-              const styles = window.getComputedStyle(el);
+            // Inspect each widget element in detail — force visibility for elements with banking/chat IDs
+            [...chatWidgets, ...bankingWidgets, ...allWidgets].forEach((el) => {
               
               // Try to make it visible and positioned
               if (el.id.includes('banking') || el.id.includes('chat')) {
@@ -81,13 +80,7 @@ const useChatWidget = () => {
             });
             
             // Check for elements with high z-index that might be covering
-            const highZElements = Array.from(document.querySelectorAll('*')).filter(el => {
-              const zIndex = window.getComputedStyle(el).zIndex;
-              return zIndex && parseInt(zIndex) > 1000;
-            });
-            
-            // Look for any elements that might be the chat widget
-            const possibleWidgets = document.querySelectorAll('div[style*="position: fixed"], div[style*="position: absolute"]');
+            // (diagnostic only — not used in logic)
           }, 100);
           
         } catch (error) {

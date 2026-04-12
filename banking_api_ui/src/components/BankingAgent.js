@@ -908,7 +908,8 @@ export default function BankingAgent({
   // Clear parent's consent decline state on mount (React Rule: no setState in render initializers)
   useEffect(() => {
     setAgentBlockedByConsentDecline(false);
-  }, [setAgentBlockedByConsentDecline]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   useEffect(() => {
@@ -2108,9 +2109,13 @@ export default function BankingAgent({
 
   /**
    * Shared NL dispatch: education panels, banking tools, or fallback hint.
-   * Used by the input bar and by left-column suggestion chips (same behavior).
+   * Reserved for future NL-router integration — not yet wired to submission handler.
+   * @param {object} result - NL routing result from server
+   * @param {string} _source - routing source tag (unused)
+   * @param {string} nlUserText - original user text for post-auth replay
    */
-  async function dispatchNlResult(result, source = 'heuristic', nlUserText = '') {
+  // eslint-disable-next-line no-unused-vars
+  async function dispatchNlResult(result, _source = 'heuristic', nlUserText = '') {
     setShowCommands(false);
     if (result.kind === 'education' && result.ciba) {
       openEducationCommand({ ciba: true, tab: result.tab });

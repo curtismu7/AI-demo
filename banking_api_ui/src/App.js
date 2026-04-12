@@ -547,6 +547,7 @@ function AppWithAuth() {
                       element={<AdminRoute user={user}><ClientRegistrationPage /></AdminRoute>}
                     />
                     <Route path="/postman" element={<PostmanCollectionsPage user={user} onLogout={logout} />} />
+                    <Route path="/scope-audit" element={<AdminRoute user={user}><ScopeAuditPage /></AdminRoute>} />
                     {/* User-friendly self-service routes */}
                     <Route path="/accounts" element={<UserAccounts user={user} />} />
                     <Route path="/transactions" element={<UserTransactions user={user} />} />

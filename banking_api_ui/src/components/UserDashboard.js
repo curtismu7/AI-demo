@@ -17,7 +17,7 @@ import BankingAgent from './BankingAgent';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import DashboardLayoutToggle from './DashboardLayoutToggle';
-import { useIndustryBranding } from '../context/IndustryBrandingContext';
+
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useTheme } from '../context/ThemeContext';
@@ -258,7 +258,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   /** Refresh balances silently after any agent write action (deposit/withdraw/transfer). */
   useEffect(() => {
     const onAgentResult = ({ detail }) => {
-      const { type, data, label } = detail;
+      const { type } = detail;
       // 'confirm' covers deposit, withdraw, and transfer success responses.
       // 'accounts' and 'transactions' are read-only — no balance change.
       if (type === 'confirm') {
@@ -897,6 +897,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     } else {
       toast.warning(body, opts);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleInitiateOtp excluded: ref keeps it current without re-triggering the toast
   }, [stepUpRequired, stepUpMethod, cibaStatus, handleCibaStepUp, dismissStepUp, stepUpVerifyHref, agentTriggeredStepUp, agentCountdown, cancelAutoInitiate]);
 
   // Demo mode: true when accounts haven't been replaced by real API data
