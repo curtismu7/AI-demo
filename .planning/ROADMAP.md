@@ -2061,7 +2061,7 @@ Plans:
 
 ### Phase 134: Audit all phases 120+ — verify code quality, plan completeness, no regressions, no cross-phase conflicts; plan and execute any unplanned or unexecuted phases
 
-**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
+**Goal:** Audit all phases 120 and above: verify each delivered its goal, no regressions introduced, no cross-phase conflicts, and any unplanned or unexecuted phases are identified and resolved.
 **Requirements**: TBD
 **Depends on:** Phase 133
 **Plans:** 1 plan
