@@ -321,6 +321,12 @@
   color: white;
 }
 
+a.pingone-test-button--primary,
+a.pingone-test-button--primary:visited {
+  color: white;
+  text-decoration: none;
+}
+
 .pingone-test-button--primary:hover {
   background: #004080;
   transform: translateY(-1px);
