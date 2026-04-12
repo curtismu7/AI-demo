@@ -35,7 +35,7 @@ class PingOneManagementService {
       throw new Error('PINGONE_ENVIRONMENT_ID is required for Management API operations');
     }
 
-    this.baseURL = `https://api.pingone.${this.region}/${this.environmentId}`;
+    this.baseURL = `https://api.pingone.${this.region}/v1/environments/${this.environmentId}`;
     this.initialized = true;
   }
 
@@ -64,7 +64,7 @@ class PingOneManagementService {
 
     try {
       const response = await axios.post(
-        `${this.baseURL}/resourceServers`,
+        `${this.baseURL}/resources`,
         payload,
         { headers: this.getHeaders() }
       );
@@ -87,13 +87,13 @@ class PingOneManagementService {
 
     try {
       const response = await axios.get(
-        `${this.baseURL}/resourceServers`,
+        `${this.baseURL}/resources`,
         { headers: this.getHeaders() }
       );
 
       return {
         success: true,
-        resourceServers: response.data._embedded.resourceServers || response.data
+        resourceServers: response.data._embedded?.resources || response.data._embedded?.resourceServers || []
       };
     } catch (error) {
       return this.handleError(error, 'getResourceServers');
@@ -117,7 +117,7 @@ class PingOneManagementService {
         };
 
         const response = await axios.post(
-          `${this.baseURL}/resourceServers/${resourceServerId}/scopes`,
+          `${this.baseURL}/resources/${resourceServerId}/scopes`,
           payload,
           { headers: this.getHeaders() }
         );
@@ -152,13 +152,13 @@ class PingOneManagementService {
 
     try {
       const response = await axios.get(
-        `${this.baseURL}/resourceServers/${resourceServerId}/scopes`,
+        `${this.baseURL}/resources/${resourceServerId}/scopes`,
         { headers: this.getHeaders() }
       );
 
       return {
         success: true,
-        scopes: response.data._embedded.scopes || response.data
+        scopes: response.data._embedded?.scopes || []
       };
     } catch (error) {
       return this.handleError(error, 'getScopes');
@@ -233,7 +233,7 @@ class PingOneManagementService {
       };
 
       const response = await axios.post(
-        `${this.baseURL}/applications/${applicationId}/resourceServers`,
+        `${this.baseURL}/applications/${applicationId}/resources`,
         payload,
         { headers: this.getHeaders() }
       );
@@ -371,7 +371,7 @@ class PingOneManagementService {
 
     try {
       const response = await axios.get(
-        `${this.baseURL}/environments/${this.environmentId}`,
+        `${this.baseURL}`,
         { headers: this.getHeaders() }
       );
 
