@@ -1540,7 +1540,7 @@
   margin: 0;
 }
 
-.modal-header {
+.token-modal .modal-header {
   background: linear-gradient(135deg, var(--chase-navy) 0%, var(--chase-navy) 100%);
   color: white;
   padding: 20px 30px;
@@ -1550,7 +1550,7 @@
   flex-shrink: 0;
 }
 
-.modal-header h3 {
+.token-modal .modal-header h3 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
@@ -1740,11 +1740,11 @@
     width: calc(100vw - 20px);
   }
   
-  .modal-header {
+  .token-modal .modal-header {
     padding: 15px 20px;
   }
   
-  .modal-header h3 {
+  .token-modal .modal-header h3 {
     font-size: 1.3rem;
   }
   

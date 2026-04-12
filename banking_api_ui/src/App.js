@@ -143,21 +143,31 @@ function AdminRoute({ user, children }) {
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
-      <div className="modal-content" style={{ maxWidth: 420 }}>
-        <div className="modal-header">
-          <h2 id="admin-modal-title">Admin access required</h2>
+      <div className="modal-content" style={{ maxWidth: 440, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{
+          background: '#fff3cd',
+          borderBottom: '1px solid #ffc107',
+          padding: '1.25rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+        }}>
+          <span style={{ fontSize: '1.5rem', lineHeight: 1 }} aria-hidden="true">🔒</span>
+          <h2 id="admin-modal-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#7c5d00' }}>
+            Admin access required
+          </h2>
         </div>
-        <div className="modal-body">
-          <p style={{ margin: '0 0 1.25rem' }}>
+        <div className="modal-body" style={{ padding: '1.5rem' }}>
+          <p style={{ margin: '0 0 1.25rem', color: '#374151', lineHeight: 1.6 }}>
             This page is only available to users with the <strong>admin</strong> role.
             Contact your administrator to have your account upgraded.
           </p>
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-secondary"
             onClick={() => setDismissed(true)}
           >
-            Go back
+            ← Go back
           </button>
         </div>
       </div>
