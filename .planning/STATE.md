@@ -127,6 +127,7 @@ Plans: 4/4 complete
 
 ### Roadmap Evolution
 
+- Phase 130 added: PingOne Asset Verification — rich table with apps, resources, scopes and missing item highlights
 - Phase 129 added: Audit last 15 todos — verify completed correctly, no errors, working
 - Phase 126 renamed + context added: Surface sub claim as user ID in token chain display and education panels
 - Phase 122 added: Conditional Step-Up Authentication for Banking Transactions — Logged-in users only require MFA for banking transactions, non-logged-in users require both login and MFA

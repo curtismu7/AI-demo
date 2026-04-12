@@ -2017,4 +2017,15 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 129 to break down)
 
+### Phase 130: PingOne Asset Verification — rich table with apps, resources, scopes and missing item highlights
+
+**Goal:** Replace the 4-tile PingOne Asset Verification summary with a rich app→resource→scope table. Each app row shows its granted resource servers and scopes, with red highlights for missing expected apps, unassigned resource servers, and absent banking scopes. Summary count tiles remain above the table.
+**Requirements**: APP-RESOURCE-SCOPE-TABLE, MISSING-HIGHLIGHT
+**Depends on:** Phase 129
+**Plans:** 2 plans
+
+Plans:
+- [ ] 130-01-PLAN.md — Backend: add getApplicationResources() + enrich verify-assets response
+- [ ] 130-02-PLAN.md — Frontend: AssetTable component with missing-item highlights
+
 ---
