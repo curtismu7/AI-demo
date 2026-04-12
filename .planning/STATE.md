@@ -127,6 +127,7 @@ Plans: 4/4 complete
 
 ### Roadmap Evolution
 
+- Phase 136 added: Token chain reliability audit and hardening — make foolproof
 - Phase 132 added: Full end-to-end testing of pingone-test page — verify all token acquisition, token exchange, config, assets, and decoded token display
 - Phase 131 added: PingOne test page — config and resources sections: show pass/fail details and explain why
 - Phase 130 added: PingOne Asset Verification — rich table with apps, resources, scopes and missing item highlights
@@ -220,3 +221,4 @@ Plans: 4/4 complete
 - Phase 103 added: "PingOne Test Page — comprehensive test page with Chase.com-style UI and fix buttons" [2026-04-10]
 - Phase 133 added: "PingOne test page UX — add Test/Get Token button to Agent Token card, add decoded token panel and Show API call to every section on the page" [2026-04-12]
 - Phase 134 added: "Audit all phases 120+ — verify code quality, plan completeness, no regressions, no cross-phase conflicts; plan and execute any unplanned or unexecuted phases" [2026-04-12]
+- Phase 135 added: "MFA test page UX — add decoded token panels and Show API Calls toggle to every section (mirror Phase 133 for MFA page)" [2026-04-12]

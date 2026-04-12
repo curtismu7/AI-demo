@@ -2079,4 +2079,14 @@ Plans:
 Plans:
 - [ ] 135-01-PLAN.md — Add apiCallTrackerService to mfaTest.js routes + SectionApiCalls to all 6 sections + CSS
 
+### Phase 136: Token chain reliability audit and hardening - make foolproof
+
+**Goal:** Audit every place the token chain can break or go silent — missing events after login, chain not updating after agent tool calls, UI stuck on placeholder, identity hints not resolving, session preview stale — and fix each one. Add automated smoke tests and a visible error state when the chain fails so breakages are immediately obvious.
+**Requirements**: TBD
+**Depends on:** Phase 134 (audit 120+), Phase 132 (decoded token panels)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 136 to break down)
+
 ---
