@@ -505,148 +505,104 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     );
   }
 
-  // Narrow toolCandidateScopes to only scopes the user token actually carries.
-  // PingOne can only narrow — it cannot grant a scope the subject token doesn't have.
-  // Example: tool needs ['banking:accounts:read','banking:read']; user has 'banking:read'
-  //          → toolScopes = ['banking:read']  (exchanges successfully for the broad scope)
+  // ── Scope resolution: no fallbacks (RFC 8693 §2.1 + RFC 8707) ────────────
+  // Two explicit paths — no silent fallbacks, no hard-coded defaults:
+  //
+  // Path A — Direct intersection: user token carries at least one tool scope
+  //   → finalScopes = toolCandidateScopes ∩ userTokenScopes
+  //
+  // Path B — Delegation: user token carries banking:ai:agent:read
+  //   → PingOne token-exchange policy on the MCP resource decides whether to
+  //     grant the tool's scopes from the delegation scope. Pass toolCandidateScopes
+  //     directly and let PingOne adjudicate.
+  //
+  // Anything else → fail fast with a clear error message.
+  //
+  // DELEGATION_ONLY_SCOPES are NOT valid resource-access scopes on the MCP server
+  // — they cannot be used as exchange scopes themselves.
+  const DELEGATION_ONLY_SCOPES = new Set(['banking:ai:agent:read', 'ai_agent']);
+
   const userTokenScopes = new Set(
     (typeof userAccessTokenClaims?.scope === 'string'
       ? userAccessTokenClaims.scope.split(' ')
       : (userAccessTokenClaims?.scope || [])
     ).filter(Boolean)
   );
-  const toolScopes = toolCandidateScopes.filter((s) => userTokenScopes.has(s));
-  // If none of the tool's required scopes are in the user token (e.g. user logged in with
-  // banking:ai:agent:read only when ENDUSER_AUDIENCE is set), fall back to any banking:*
-  // scope the user token carries — but EXCLUDE pure delegation scopes
-  // (banking:ai:agent:read, ai_agent) because they are not valid resource-access scopes on
-  // the MCP resource server. Using them as the exchange scope causes PingOne to return
-  // "At least one scope must be granted" since they are absent from the MCP resource's
-  // scope registry.  Instead, fall through to toolCandidateScopes so PingOne evaluates the
-  // exchange against the actual tool scopes it does know about (banking:write, etc.).
-  // PingOne's token exchange policy — configured on the MCP resource — decides whether to
-  // grant those scopes when the subject token carries the delegation scope (banking:ai:agent:read).
-  const DELEGATION_ONLY_SCOPES = new Set(['banking:ai:agent:read', 'ai_agent']);
-  const fallbackScopes = toolScopes.length > 0
-    ? null
-    : [...userTokenScopes].filter(
-        (s) => (s.startsWith('banking:') || s === 'ai_agent') && !DELEGATION_ONLY_SCOPES.has(s)
-      );
-  const effectiveToolScopes = toolScopes.length > 0
-    ? toolScopes
-    : (fallbackScopes && fallbackScopes.length > 0 ? fallbackScopes : toolCandidateScopes);
 
-  // Safety check: ensure we have at least one valid scope for token exchange
-  // If all scopes are delegation-only, use a minimal banking:read scope to avoid "At least one scope must be granted"
-  const validExchangeScopes = effectiveToolScopes.filter(scope => !DELEGATION_ONLY_SCOPES.has(scope));
-  let finalScopes = validExchangeScopes.length > 0 ? validExchangeScopes : ['banking:read'];
-
-  // RFC 8707: Validate scopes against target audience
-  let scopeValidatedFinalScopes = finalScopes;
-  try {
-    const audienceForValidation = mcpResourceUri;
-    const scopeValidation = configStore.validateScopeAudience(
-      finalScopes,
-      audienceForValidation
-    );
-    scopeValidatedFinalScopes = scopeValidation.scopes;
-    
-    if (scopeValidation.narrowed !== undefined) {
-      // Log validation event
-      void writeExchangeEvent({
-        type: 'scope-validation',
-        level: 'info',
-        message: `Scopes validated for audience ${audienceForValidation}: [${scopeValidatedFinalScopes.join(', ')}]`,
-        audience: audienceForValidation,
-        validatedScopes: scopeValidatedFinalScopes,
-      });
-    }
-  } catch (validationError) {
-    // Re-throw with better error context
-    throw new Error(`Scope validation failed: ${validationError.message}`);
-  }
-  
-  // Use validated scopes for token exchange
-  finalScopes = scopeValidatedFinalScopes;
-
-  // ── Comprehensive scope-resolution debug log ──────────────────────────────
-  console.log(
-    '[TokenExchange:DEBUG] tool=%s | userScopes=[%s] | toolCandidateScopes=[%s] | ' +
-    'toolScopes=[%s] | fallbackScopes=[%s] | effectiveToolScopes=[%s] | finalScopes=[%s] | ' +
-    'mcpResourceUri=%s | ENDUSER_AUDIENCE=%s',
-    tool,
-    [...userTokenScopes].join(',') || '(none)',
-    toolCandidateScopes.join(','),
-    toolScopes.join(',') || '(none — no tool scopes in user token)',
-    (fallbackScopes || []).join(',') || '(none)',
-    effectiveToolScopes.join(','),
-    finalScopes.join(','),
-    mcpResourceUri || '(not set)',
-    process.env.ENDUSER_AUDIENCE || '(not set)'
+  // Path A: direct intersection
+  const directScopes = toolCandidateScopes.filter(
+    (s) => userTokenScopes.has(s) && !DELEGATION_ONLY_SCOPES.has(s)
   );
 
-  // ── Pre-exchange bail-out: skip when exchange is guaranteed to fail ────────
-  // PingOne token exchange can ONLY narrow scopes — it cannot grant a scope that the
-  // subject token does not already carry.  When none of finalScopes appear in the user
-  // token (common when ENDUSER_AUDIENCE is set and login scope is banking:ai:agent:read
-  // only), the exchange will always return "At least one scope must be granted" (HTTP 400).
-  // Detecting this upfront avoids the round-trip to PingOne and routes directly to the
-  // local tool fallback in server.js without surfacing a confusing error to the user.
-  //
-  // Exception: if ff_skip_token_exchange is ON we never reach this point (returned above).
-  // Exception: if user token carries banking:ai:agent:read — the delegation scope that authorises
-  //            the agent to invoke the MCP server.  PingOne's token exchange policy on the MCP
-  //            resource decides whether to grant banking scopes from this delegation scope, so
-  //            we must NOT pre-block the exchange.  Pass through and let PingOne adjudicate.
-  // Exception: if PingOne has a cross-scope grant policy for banking:ai:agent:read → banking:write,
-  //            set ALLOW_AGENT_INVOKE_EXCHANGE=true to bypass this early-exit (legacy env override).
-  const allowAgentInvokeExchange = process.env.ALLOW_AGENT_INVOKE_EXCHANGE === 'true';
-  // Auto-bypass: user holds the agent delegation scope — PingOne token-exchange policy decides.
-  const userHasAgentInvokeScope = userTokenScopes.has('banking:ai:agent:read') || userTokenScopes.has('banking:ai:agent:read');
-  const scopesMissingFromUserToken = finalScopes.every(s => !userTokenScopes.has(s));
-  if (scopesMissingFromUserToken && !allowAgentInvokeExchange && !userHasAgentInvokeScope) {
+  // Path B: user holds the delegation scope; PingOne policy decides
+  const userHasDelegationScope = userTokenScopes.has('banking:ai:agent:read');
+
+  let finalScopes;
+  let scopeResolutionPath;
+
+  if (directScopes.length > 0) {
+    // Path A: use the exact intersection — no guessing
+    finalScopes = directScopes;
+    scopeResolutionPath = 'direct-intersection';
+  } else if (userHasDelegationScope) {
+    // Path B: delegation — pass tool scopes, PingOne policy decides
+    finalScopes = toolCandidateScopes.filter((s) => !DELEGATION_ONLY_SCOPES.has(s));
+    scopeResolutionPath = 'delegation-via-agent-invoke';
+    if (finalScopes.length === 0) {
+      const userScopesStr = [...userTokenScopes].join(' ') || '(none)';
+      const err = new Error(
+        `Token exchange failed: tool ${tool} has no non-delegation candidate scopes. ` +
+        `Tool scopes: [${toolCandidateScopes.join(', ')}]. User scopes: [${userScopesStr}].`
+      );
+      err.code = 'no_exchangeable_scopes';
+      err.httpStatus = 403;
+      err.tokenEvents = tokenEvents;
+      throw err;
+    }
+  } else {
+    // No path — fail fast, never silently downgrade
     const userScopesStr = [...userTokenScopes].join(' ') || '(none)';
-    // The pre-condition for the agent/MCP path is banking:ai:agent:read, not the downstream banking scopes.
-    // Showing banking scopes here would misdirect the user — they need to obtain banking:ai:agent:read first.
-    const requiredStr = 'banking:ai:agent:read';
-    console.warn(
-      '[TokenExchange:BLOCKED] tool=%s — user token [%s] lacks banking:ai:agent:read and has none of finalScopes [%s]. ' +
-      'The agent/MCP path requires banking:ai:agent:read on the user token. ' +
-      'Fix: add banking:ai:agent:read (banking:ai:agent:read) to PingOne user app scopes and re-login. ' +
-      'Or enable ff_skip_token_exchange. ' +
-      'Or set ALLOW_AGENT_INVOKE_EXCHANGE=true if PingOne grants banking scopes from banking:ai:agent:read.',
-      tool, userScopesStr, finalScopes.join(',')
+    const requiredBase = 'banking:ai:agent:read (delegation) or one of: ' + toolCandidateScopes.join(', ');
+    const err = new Error(
+      `Token exchange blocked: user token [${userScopesStr}] lacks required scopes for tool ${tool}. ` +
+      `Need ${requiredBase}. Sign in again with the correct PingOne app and scopes.`
     );
-    tokenEvents.push(buildTokenEvent(
-      'exchange-blocked',
-      'Token Exchange (RFC 8693) — Blocked: banking:ai:agent:read scope not on user token',
-      'failed',
-      null,
-      `User access token does not carry banking:ai:agent:read (banking:ai:agent:read) — the scope that authorises the agent to call the MCP server. ` +
-      `User token scopes: [${userScopesStr}]. ` +
-      `Fix: add banking:ai:agent:read to the PingOne user app allowed scopes and sign in again.`,
-      {
-        rfc: 'RFC 8693 §2.1',
-        trigger: toolTrigger,
-        userScopes: userScopesStr,
-        requiredScopes: requiredStr,
-        blockReason: 'agent_invoke_scope_not_on_subject_token',
-        enduserAudience: process.env.ENDUSER_AUDIENCE || null,
-      }
-    ));
-    const scopeErr = new Error(
-      `Token exchange blocked: your access token has [${userScopesStr}] but the agent/MCP path requires [${requiredStr}]. ` +
-      `Add banking:ai:agent:read (banking:ai:agent:read) to the PingOne user app, then sign out and sign back in.`
-    );
-    scopeErr.code        = 'missing_exchange_scopes';
-    scopeErr.httpStatus  = 403;
-    scopeErr.tokenEvents = tokenEvents;
-    scopeErr.missingScopes   = ['banking:ai:agent:read'];
-    scopeErr.userScopes      = userScopesStr;
-    scopeErr.requiredScopes  = requiredStr;
-    throw scopeErr;
+    err.code = 'missing_exchange_scopes';
+    err.httpStatus = 403;
+    err.tokenEvents = tokenEvents;
+    err.missingScopes = toolCandidateScopes;
+    err.userScopes = userScopesStr;
+    throw err;
   }
-  // ─────────────────────────────────────────────────────────────────────────
+
+  // RFC 8707: validate scopes against target audience — fail fast if invalid
+  const scopeValidation = configStore.validateScopeAudience(finalScopes, mcpResourceUri);
+  finalScopes = scopeValidation.scopes;
+
+  void writeExchangeEvent({
+    type: 'scope-resolution',
+    level: 'info',
+    message: `[${scopeResolutionPath}] Scopes for tool ${tool}: [${finalScopes.join(', ')}]`,
+    tool,
+    path: scopeResolutionPath,
+    userScopes: [...userTokenScopes].join(' '),
+    finalScopes,
+    audience: mcpResourceUri,
+  });
+
+  // Alias: downstream code references effectiveToolScopes
+  const effectiveToolScopes = finalScopes;
+
+  // ── Scope debug log ─────────────────────────────────────────────────────
+  console.log(
+    '[TokenExchange:DEBUG] tool=%s | path=%s | userScopes=[%s] | toolCandidates=[%s] | finalScopes=[%s] | audience=%s',
+    tool,
+    scopeResolutionPath,
+    [...userTokenScopes].join(',') || '(none)',
+    toolCandidateScopes.join(','),
+    finalScopes.join(','),
+    mcpResourceUri || '(not set)'
+  );
 
   // ── 2-Exchange delegation path ──────────────────────────────────────────────────
   // ff_two_exchange_delegation: Subject Token → (AI Agent) → Agent Exchanged Token → (MCP) → Final Token
