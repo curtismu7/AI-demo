@@ -2030,12 +2030,12 @@ Plans:
 
 ### Phase 131: PingOne test page — config and resources sections: show pass/fail details and explain why
 
-**Goal:** [To be planned]
+**Goal:** Enhance Configuration and Resources TestCards to show inline env var name, format hint, and amber fix message when failed — so operators understand why each item passes or fails without clicking Fix buttons.
 **Requirements**: TBD
 **Depends on:** Phase 130
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 131 to break down)
+- [ ] 131-01-PLAN.md — Add CONFIG_META + enhance TestCard inline detail block + wire up Config/Resources sections + CSS
 
 ---
