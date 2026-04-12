@@ -2099,4 +2099,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 137 to break down)
 
+### Phase 138: audit and fix all placeholder content across the app and server replace with real functionality
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 137
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 138 to break down)
+
 ---

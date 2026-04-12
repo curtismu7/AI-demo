@@ -22,6 +22,8 @@ _Last updated: 2026-04-12_
 | 134 | Audit all phases 120+ (meta-audit) | ✅ DONE (this audit) | `4c01430` |
 | 135 | MFA test page UX — mirror Phase 133 | ✅ DONE | `7ed0efe` |
 | 136 | Token chain reliability audit & hardening | ✅ DONE | `1f0846f` `d68a545` |
+| 137 | Configure page complete redesign (Chase.com style, all 5 tabs) | 🔄 PLANNED (5 plans) | — |
+| 138 | Audit & fix all placeholder content across app and server | 🆕 ADDED | — |
 
 ## Cross-Phase Conflicts (all resolved)
 
@@ -47,6 +49,25 @@ _Last updated: 2026-04-12_
 - `UserDashboard.js`: add `useCurrentUserTokenEvent()` hook call on mount (`d68a545`)
 - `TokenChainDisplay.js`: remove stale guard; add `isPlaceholder` + `tcd-empty-state` (`d68a545`)
 
+## Phase 137 — Configure Page Redesign (planned)
+
+**Goal:** Replace all 19 placeholder sections in `UnifiedConfigurationPage.tsx` with real, functional forms.
+
+**5 plans / 3 waves:**
+| Plan | Coverage | Wave |
+|------|----------|------|
+| 137-01 | `pingone-config` tab (4 sections) + CSS helpers + Test Connection | 1 |
+| 137-02 | `quick-start` tab (3 sections, industry tiles) | 1 |
+| 137-03 | `demo-management` + `agent-configuration` (8 sections) | 1 |
+| 137-04 | `advanced` tab (4 sections) + Generate Keypair + placeholder cleanup | 2 |
+| 137-05 | Human verification checkpoint | 3 |
+
+## Phase 138 — Placeholder Audit (planned)
+
+**Goal:** Find and fix every remaining placeholder, stub, or TODO in the UI and server. Replace with real functionality or clearly-scoped deferrals.
+
+**Scope:** All `.tsx`, `.jsx`, `.js` across `banking_api_ui/src/` and `banking_api_server/routes/` + `services/`.
+
 ## Other Fixes This Session
 
 | Fix | Files | Commit |
@@ -57,6 +78,8 @@ _Last updated: 2026-04-12_
 
 | Phase | Description | Priority |
 |-------|-------------|----------|
+| 137 | Configure page redesign — execute plans 01–05 | High |
+| 138 | Placeholder audit — plan then execute | High |
 | 131 | "Explain why" detail text per config row | Medium |
 | 127 | Finish MFA test page + agent failure debugging | Medium |
 | 121 | API Display Modal — execute or formally defer | Low |
