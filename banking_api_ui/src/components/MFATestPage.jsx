@@ -2,6 +2,27 @@ import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/apiClient';
 import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import './MFATestPage.css';
+import ApiCallDisplay from './ApiCallDisplay';
+
+/**
+ * Collapsible per-section API call display toggle (Phase 135)
+ */
+function SectionApiCalls() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="section-api-calls">
+      <button
+        type="button"
+        className="section-api-toggle"
+        onClick={() => setOpen(o => !o)}
+      >
+        {open ? '▾ Hide API Calls' : '▸ Show API Calls'}
+      </button>
+      {open && <ApiCallDisplay sessionId="mfa-test" />}
+    </div>
+  );
+}
+
 
 /**
  * MFATestPage — comprehensive test page for PingOne MFA functionality
@@ -337,6 +358,7 @@ export default function MFATestPage() {
               <span className="config-value">${config?.threshold?.toFixed(2) || '500.00'}</span>
             </div>
           </div>
+          <SectionApiCalls />
         </section>
 
         {/* SMS OTP Test Section */}
@@ -376,6 +398,7 @@ export default function MFATestPage() {
               />
             </div>
           )}
+          <SectionApiCalls />
         </section>
 
         {/* Email OTP Test Section */}
@@ -415,6 +438,7 @@ export default function MFATestPage() {
               />
             </div>
           )}
+          <SectionApiCalls />
         </section>
 
         {/* FIDO2 Test Section - Task 5 (WebAuthn API integration placeholder) */}
@@ -432,6 +456,7 @@ export default function MFATestPage() {
               <p className="info-text">FIDO2 verification requires WebAuthn API integration</p>
             </div>
           )}
+          <SectionApiCalls />
         </section>
 
         {/* Device Enrollment Section */}
@@ -450,6 +475,7 @@ export default function MFATestPage() {
             onTest={testFidoEnrollInit}
           />
           <p className="info-text">FIDO2 enrollment completion will be implemented in Task 5</p>
+          <SectionApiCalls />
         </section>
 
         {/* Device Management Section */}
@@ -474,6 +500,7 @@ export default function MFATestPage() {
               </ul>
             </div>
           )}
+          <SectionApiCalls />
         </section>
       </div>
     </div>

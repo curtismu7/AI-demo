@@ -9,6 +9,26 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const mfaService = require('../services/mfaService');
 const oauthService = require('../services/oauthService');
+const apiCallTrackerService = require('../services/apiCallTrackerService');
+
+/** Track a completed API call for the mfa-test session display */
+function trackMfaApiCall(req, res, startTime, responseData, description) {
+  try {
+    apiCallTrackerService.trackApiCall({
+      sessionId: 'mfa-test',
+      method: req.method,
+      url: req.originalUrl,
+      requestHeaders: req.headers,
+      requestBody: req.body,
+      responseStatus: res.statusCode || (responseData.success !== false ? 200 : 500),
+      responseHeaders: res.getHeaders ? res.getHeaders() : {},
+      responseBody: responseData,
+      duration: Date.now() - startTime,
+      category: 'mfa-test',
+      description
+    });
+  } catch (_e) { /* non-fatal */ }
+}
 
 /**
  * GET /api/mfa/test/config
@@ -230,14 +250,17 @@ router.post('/integration/initiate', authenticateToken, async (req, res) => {
       return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
     }
 
+    const _t1 = Date.now();
     const result = await mfaService.initiateDeviceAuth(userId, userAccessToken);
-    res.json({
+    const resBody = {
       success: true,
       daId: result.id,
       status: result.status,
       devices: result._embedded?.devices || [],
       method,
-    });
+    };
+    res.json(resBody);
+    trackMfaApiCall(req, res, _t1, resBody, 'Initiate MFA device authentication');
   } catch (err) {
     console.error('[MFA Test Integration] POST /initiate failed:', err.message);
     if (err.code === 'token_expired') {
@@ -274,13 +297,16 @@ router.post('/integration/verify-otp', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'invalid_body', message: 'Provide daId, deviceId, and otp.' });
     }
 
+    const _t3 = Date.now();
     const result = await mfaService.submitOtp(daId, deviceId, otp, userAccessToken);
-    res.json({
+    const resBody = {
       success: true,
       daId,
       status: result.status,
       completed: result.status === 'COMPLETED',
-    });
+    };
+    res.json(resBody);
+    trackMfaApiCall(req, res, _t3, resBody, 'Verify OTP code via PingOne MFA');
   } catch (err) {
     console.error('[MFA Test Integration] POST /verify-otp failed:', err.message);
     res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
@@ -352,13 +378,16 @@ router.post('/integration/enroll-email', authenticateToken, async (req, res) => 
     if (!userId || !email) {
       return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
     }
+    const _t4 = Date.now();
     const device = await mfaService.enrollEmailDevice(userId, email);
-    res.json({
+    const resBody = {
       success: true,
       deviceId: device.id,
       type: device.type,
       email: device.email
-    });
+    };
+    res.json(resBody);
+    trackMfaApiCall(req, res, _t4, resBody, 'Enroll email OTP device');
   } catch (err) {
     console.error('[MFA Test Integration] POST /enroll-email failed:', err.message);
     res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
@@ -375,8 +404,11 @@ router.post('/integration/enroll-fido2-init', authenticateToken, async (req, res
     if (!userId) {
       return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
     }
+    const _t5 = Date.now();
     const result = await mfaService.initFido2Registration(userId);
-    res.json({ success: true, ...result });
+    const resBody = { success: true, ...result };
+    res.json(resBody);
+    trackMfaApiCall(req, res, _t5, resBody, 'Initiate FIDO2/passkey registration');
   } catch (err) {
     console.error('[MFA Test Integration] POST /enroll-fido2-init failed:', err.message);
     res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });
@@ -421,11 +453,11 @@ router.get('/integration/devices', authenticateToken, async (req, res) => {
       return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
     }
 
+    const _t6 = Date.now();
     const devices = await mfaService.listMfaDevices(userId);
-    res.json({
-      success: true,
-      devices,
-    });
+    const resBody = { success: true, devices };
+    res.json(resBody);
+    trackMfaApiCall(req, res, _t6, resBody, 'List enrolled MFA devices');
   } catch (err) {
     console.error('[MFA Test Integration] GET /devices failed:', err.message);
     res.status(err.status || 500).json({ success: false, error: err.message, pingError: err.pingError });

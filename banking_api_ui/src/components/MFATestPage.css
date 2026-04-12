@@ -387,3 +387,25 @@
   border-radius: 3px;
   font-size: 0.8rem;
 }
+
+/* Per-section API Calls toggle (Phase 135 — mirrors PingOneTestPage) */
+.section-api-calls {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--chase-light-gray, #ddd);
+  padding-top: 0.75rem;
+}
+
+.section-api-toggle {
+  background: none;
+  border: 1px solid var(--chase-medium-gray, #bbb);
+  border-radius: 4px;
+  color: var(--chase-dark-gray, #495057);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  transition: background 0.15s;
+}
+
+.section-api-toggle:hover {
+  background: var(--chase-light-gray, #f0f0f0);
+}
