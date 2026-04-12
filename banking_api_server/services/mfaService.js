@@ -296,4 +296,6 @@ module.exports = {
   enrollEmailDevice,
   initFido2Registration,
   completeFido2Registration,
+  // Test helper — resets the cached default policy ID (used in unit tests)
+  _resetDefaultPolicyCache() { _cachedDefaultPolicyId = null; },
 };

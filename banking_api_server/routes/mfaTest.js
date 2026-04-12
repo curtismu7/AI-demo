@@ -49,25 +49,20 @@ router.get('/methods', (req, res) => {
 
 /**
  * GET /api/mfa/test/devices
- * Returns registered MFA devices for current user
+ * Returns registered MFA devices for current user (proxies to PingOne Management API)
  */
-router.get('/devices', (req, res) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  
-  // In production, this would query the database
-  const devices = [
-    {
-      id: 'device-1',
-      type: 'email',
-      name: 'Email OTP',
-      registeredAt: new Date().toISOString(),
-      lastUsed: new Date().toISOString()
+router.get('/devices', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.session.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
     }
-  ];
-  
-  res.json({ devices });
+    const devices = await mfaService.listMfaDevices(userId);
+    res.json({ devices });
+  } catch (err) {
+    console.error('[MFA Test] GET /devices failed:', err.message);
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 /**
@@ -191,7 +186,9 @@ router.get('/status', (req, res) => {
 
   res.json({
     authenticated: true,
-    mfaConfigured: process.env.PINGONE_MFA_POLICY_ID ? true : false,
+    // mfaConfigured is always true — if no explicit policy ID the server auto-resolves default
+    mfaConfigured: true,
+    policySource: process.env.PINGONE_MFA_POLICY_ID ? 'configured' : 'auto',
     sessionActive: true,
     lastMfaVerification: req.session.lastMfaVerification || null
   });
