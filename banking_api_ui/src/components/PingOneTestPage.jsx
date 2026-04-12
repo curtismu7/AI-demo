@@ -259,10 +259,21 @@ export default function PingOneTestPage() {
     }
   }, []);
 
-  // Load worker token and config on startup
+  // Load worker token and config on startup; also auto-check authz token so
+  // the "Login required" state shows immediately without a manual Test click.
   useEffect(() => {
     loadWorkerToken();
     loadConfig();
+    // Silently probe the authz token — if no session the card will show Login button
+    apiClient.get('/api/pingone-test/authz-token').then(({ data }) => {
+      if (data.success) {
+        setAuthzTokenStatus('passed');
+        setAuthzTokenError(null);
+      } else {
+        setAuthzTokenStatus('failed');
+        setAuthzTokenError(data.error);
+      }
+    }).catch(() => { /* network error — leave as pending */ });
   }, [loadWorkerToken, loadConfig]);
 
   // Poll worker token status - every 5 minutes, or every 1 minute if under 5 minutes remaining
@@ -824,6 +835,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               error={authzTokenError}
               onTest={testAuthzToken}
               config={TEST_CONFIG.authzToken}
+              loginUrl={authzTokenStatus === 'failed' && authzTokenError && authzTokenError.toLowerCase().includes('log in') ? '/api/auth/oauth/user/login' : null}
             />
             <TestCard
               title="Agent Token (Client Credentials)"
@@ -838,6 +850,19 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
         {/* Token Exchange Tests Section */}
         <section className="pingone-test-section">
           <h2 className="pingone-test-section-title">Token Exchange Tests</h2>
+          {authzTokenStatus === 'failed' && authzTokenError && authzTokenError.toLowerCase().includes('log in') && (
+            <div className="pingone-test-login-banner">
+              <span className="pingone-test-login-banner__text">
+                ⚠️ Token exchange requires a user access token. Log in to PingOne first using the Authorization Code + PKCE flow.
+              </span>
+              <a
+                href="/api/auth/oauth/user/login"
+                className="pingone-test-button pingone-test-button--primary pingone-test-login-banner__btn"
+              >
+                Login to PingOne →
+              </a>
+            </div>
+          )}
           <div className="pingone-test-grid">
             <TestCard
               title="User Token → MCP Token"
@@ -1015,7 +1040,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
   );
 }
 
-const TestCard = ({ title, status, error, onTest, onFix, value, config }) => {
+const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl }) => {
   const [testing, setTesting] = React.useState(false);
 
   const handleTest = async () => {
@@ -1050,6 +1075,14 @@ const TestCard = ({ title, status, error, onTest, onFix, value, config }) => {
         </div>
       )}
       <div className="test-card-actions">
+        {loginUrl && (
+          <a
+            href={loginUrl}
+            className="pingone-test-button pingone-test-button--primary"
+          >
+            Login to PingOne →
+          </a>
+        )}
         {onTest && (
           <button
             type="button"
