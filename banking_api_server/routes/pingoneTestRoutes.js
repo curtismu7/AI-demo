@@ -341,12 +341,12 @@ router.get('/agent-token', async (req, res) => {
   try {
     await configStore.ensureInitialized();
 
-    const agentToken = await oauthService.getAgentClientCredentialsToken();
+    const tokenData = await oauthService.getAgentClientCredentialsTokenWithExpiry();
 
     const responseData = {
       success: true,
-      token: agentToken.access_token ? agentToken.access_token.substring(0, 20) + '...' : 'undefined',
-      expires_in: agentToken.expires_in
+      token: tokenData.token ? tokenData.token.substring(0, 20) + '...' : 'undefined',
+      expires_in: tokenData.expiresIn
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Agent token (client credentials)');
     res.json(responseData);
@@ -540,7 +540,7 @@ router.get('/worker-token', async (req, res) => {
     
     const responseData = {
       success: true,
-      token: workerTokenData.access_token ? workerTokenData.access_token.substring(0, 20) + '...' : 'undefined',
+      token: workerTokenData.token ? workerTokenData.token.substring(0, 20) + '...' : 'undefined',
       expiresAt: workerTokenData.expiresAt
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get worker token for PingOne Management API calls');
