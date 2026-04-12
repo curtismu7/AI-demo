@@ -898,7 +898,6 @@ const TokenChainDisplay = () => {
 
   /** Fetch session preview (called on mount, on login, and when live events reset). */
   const fetchSessionPreview = useCallback(async () => {
-    if (ctx && ctx.events.length > 0) return; // live data present — skip
     try {
       // Use new token-chain API
       const res = await fetch('/api/token-chain', { credentials: 'include' });
@@ -986,6 +985,7 @@ const TokenChainDisplay = () => {
   const isLive = ctx && ctx.events.length > 0;
   const isSessionPreview = !isLive && Array.isArray(sessionPreviewEvents) && sessionPreviewEvents.length > 0;
   const currentEvents = isLive ? ctx.events : (isSessionPreview ? sessionPreviewEvents : PLACEHOLDER_EVENTS);
+  const isPlaceholder = !isLive && !isSessionPreview;
   const history = ctx ? ctx.history : [];
 
   /** Open the inspector for a given event, positioning near the trigger element. */
@@ -1097,7 +1097,14 @@ const TokenChainDisplay = () => {
               </div>
             )}
             {isLive && <ExchangeModeBanner events={currentEvents} />}
-            {currentEvents.map((ev, i) => (
+{isPlaceholder && identityHints?.currentUser && (
+              <div className="tcd-empty-state">
+                <span className="tcd-empty-state__icon">🔗</span>
+                <p className="tcd-empty-state__msg">Token chain loading…</p>
+                <p className="tcd-empty-state__hint">Interact with the AI Agent or make a banking action to see the full OAuth 2.0 token chain.</p>
+              </div>
+            )}
+            {(!isPlaceholder || !identityHints?.currentUser) && currentEvents.map((ev, i) => (
               <EventRow key={ev.id} event={ev} isLast={i === currentEvents.length - 1} onInspect={handleInspect} hints={identityHints} />
             ))}
           </div>

@@ -23,6 +23,7 @@ import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useTheme } from '../context/ThemeContext';
 import Fido2Challenge from './Fido2Challenge';
+import { useCurrentUserTokenEvent } from '../hooks/useCurrentUserTokenEvent';
 import './UserDashboard.css';
 
 /** Format a number as USD currency — $1,234.56 */
@@ -51,6 +52,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const { open } = useEducationUI();
   const { placement: agentPlacement } = useAgentUiMode();
   const { theme, toggleTheme } = useTheme();
+  useCurrentUserTokenEvent(); // Seed the token chain with current user's session token on mount
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(() => agentPlacement === 'middle');
   const [dashboardLayout, setDashboardLayoutState] = useState(() => getDashboardLayout());
