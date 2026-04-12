@@ -214,6 +214,20 @@ router.get('/verify-assets', async (req, res) => {
       });
     }
 
+    // Expected assets for missing-item analysis
+    const EXPECTED_APP_NAMES = [
+      'Super Banking User App',
+      'Super Banking Admin App',
+      'Super Banking MCP Token Exchanger',
+      'Super Banking AI Agent App'
+    ];
+    const EXPECTED_BANKING_SCOPES = [
+      'banking:accounts:read',
+      'banking:accounts:write',
+      'banking:transactions:read',
+      'banking:transactions:write'
+    ];
+
     // Get all assets in parallel
     const [appsResult, resourcesResult, usersResult] = await Promise.all([
       managementService.getApplications(),
@@ -221,47 +235,79 @@ router.get('/verify-assets', async (req, res) => {
       pingOneUserService.listUsers({ limit: 50 })
     ]);
 
-    const assets = {
-      applications: {
-        status: appsResult.success ? 'passed' : 'failed',
-        count: appsResult.applications?.length || 0,
-        error: appsResult.error,
-        data: appsResult.applications || []
-      },
-      resources: {
-        status: resourcesResult.success ? 'passed' : 'failed',
-        count: resourcesResult.resourceServers?.length || 0,
-        error: resourcesResult.error,
-        data: resourcesResult.resourceServers || []
-      },
-      users: {
-        status: usersResult._embedded?.users ? 'passed' : 'failed',
-        count: usersResult._embedded?.users?.length || 0,
-        error: usersResult.error,
-        data: usersResult._embedded?.users || []
-      }
-    };
+    // Enrich each app with its granted resources (parallel)
+    const apps = appsResult.success ? (appsResult.applications || []) : [];
+    const appResourceResults = await Promise.all(
+      apps.map(app => managementService.getApplicationResources(app.id)
+        .then(r => ({ appId: app.id, resources: r.success ? r.resources : [] }))
+        .catch(() => ({ appId: app.id, resources: [] }))
+      )
+    );
+    const appResourcesMap = {};
+    appResourceResults.forEach(r => { appResourcesMap[r.appId] = r.resources; });
 
-    // Get scopes for the first resource server
-    if (resourcesResult.success && resourcesResult.resourceServers?.length > 0) {
+    // Get scopes for the first resource server (for summary tile)
+    let scopesAsset = { status: 'failed', count: 0, error: 'No resource servers available', data: [] };
+    if (resourcesResult.success && resourcesResult.resourceServers && resourcesResult.resourceServers.length > 0) {
       const resourceServerId = resourcesResult.resourceServers[0].id;
       const scopesResult = await managementService.getScopes(resourceServerId);
-      assets.scopes = {
+      scopesAsset = {
         status: scopesResult.success ? 'passed' : 'failed',
-        count: scopesResult.scopes?.length || 0,
+        count: scopesResult.scopes ? scopesResult.scopes.length : 0,
         error: scopesResult.error,
         data: scopesResult.scopes || [],
         resourceServerId
       };
-    } else {
-      assets.scopes = {
-        status: 'failed',
-        count: 0,
-        error: 'No resource servers available',
-        data: []
-      };
     }
 
+    // Compute missing analysis
+    const missingApps = EXPECTED_APP_NAMES.filter(
+      name => !apps.some(a => a.name === name)
+    );
+    const missingResourcesByApp = {};
+    const missingScopesByApp = {};
+    apps.forEach(app => {
+      const grantedResources = appResourcesMap[app.id] || [];
+      const allGrantedScopes = grantedResources.flatMap(r => r.scopes || []);
+      const missingScopes = EXPECTED_BANKING_SCOPES.filter(s => !allGrantedScopes.includes(s));
+      if (missingScopes.length > 0) {
+        missingScopesByApp[app.id] = missingScopes;
+      }
+    });
+
+    const assets = {
+      applications: {
+        status: appsResult.success ? 'passed' : 'failed',
+        count: apps.length,
+        error: appsResult.error,
+        data: apps.map(app => ({
+          id: app.id,
+          name: app.name,
+          type: app.type,
+          grantedResources: appResourcesMap[app.id] || []
+        }))
+      },
+      resources: {
+        status: resourcesResult.success ? 'passed' : 'failed',
+        count: resourcesResult.resourceServers ? resourcesResult.resourceServers.length : 0,
+        error: resourcesResult.error,
+        data: resourcesResult.resourceServers || []
+      },
+      scopes: scopesAsset,
+      users: {
+        status: usersResult._embedded && usersResult._embedded.users ? 'passed' : 'failed',
+        count: usersResult._embedded && usersResult._embedded.users ? usersResult._embedded.users.length : 0,
+        error: usersResult.error,
+        data: usersResult._embedded ? usersResult._embedded.users || [] : []
+      },
+      missing: {
+        apps: missingApps,
+        resourcesByApp: missingResourcesByApp,
+        scopesByApp: missingScopesByApp
+      },
+      expectedApps: EXPECTED_APP_NAMES,
+      expectedScopes: EXPECTED_BANKING_SCOPES
+    };
     const responseData = {
       success: true,
       assets

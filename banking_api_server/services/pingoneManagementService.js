@@ -248,6 +248,31 @@ class PingOneManagementService {
   }
 
   /**
+   * Get resource servers and their granted scopes for a specific application.
+   * Uses PingOne Management API: GET /applications/{appId}/resources
+   */
+  async getApplicationResources(applicationId) {
+    this.ensureInitialized();
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/applications/${applicationId}/resources`,
+        { headers: this.getHeaders() }
+      );
+      const resources = response.data._embedded?.resources || [];
+      return {
+        success: true,
+        resources: resources.map(r => ({
+          id: r.id,
+          name: r.name,
+          scopes: (r._embedded?.scopes || r.scopes || []).map(s => s.name || s)
+        }))
+      };
+    } catch (error) {
+      return this.handleError(error, 'getApplicationResources');
+    }
+  }
+
+  /**
    * Get all applications
    */
   async getApplications() {
