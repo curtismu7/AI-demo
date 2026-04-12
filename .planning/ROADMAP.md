@@ -338,7 +338,7 @@ Plans:
 
 ### Phase 20: Postman collections — fix 1-exchange utilities and build industry-standard 2-exchange collection
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 19
 **Plans:** 3/3 plans complete
@@ -382,7 +382,7 @@ Plans:
 
 ### Phase 24: Agent builder landscape — LangChain, open-source and commercial frameworks, vendor comparison
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 23
 **Plans:** 0/2 plans executed
@@ -392,7 +392,7 @@ Plans:
 
 ### Phase 25: LLM landscape — commercial and open-source models, capabilities overview, and comparison
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 24
 **Plans:** 0/2 plans executed
@@ -402,7 +402,7 @@ Plans:
 
 ### Phase 26: AI platform landscape — AWS Bedrock, Microsoft Azure AI, Google Vertex AI, IBM watsonx, Anthropic, OpenAI tools overview and vendor comparison
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 25
 **Plans:** 0/2 plans executed
@@ -460,10 +460,10 @@ Plans:
 
 ### Phase 31: floating draggable resizable windows - agent request flow, agent panel, API viewer, log viewer and all drawers use unified drag-resize system with consistent UX across all windows
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 30
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 31 to break down)
@@ -550,10 +550,10 @@ Plans:
 
 ### Phase 39: Architecture diagram — create draw.io diagram of the full app architecture (UI, BFF, MCP server, LangChain agent, PingOne, PingGateway) showing component relationships, auth flows, and token paths
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 38
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 39 to break down)
@@ -580,10 +580,10 @@ Plans:
 
 ### Phase 42: Persist demo accounts across server restarts using env file on Vercel and SQLite on local
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 41
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 42 to break down)
@@ -601,47 +601,47 @@ Plans:
 
 ### Phase 44: Admin mode token exchange — use admin token (not user token) for MCP tool calls when in admin session, enable admin-only actions (view all users, delete account)
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 43
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 44 to break down)
 
 ### Phase 45: need to support RFC 9728 (OAuth 2.0 Protected Resource Metadata)
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 44
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 45 to break down)
 
 ### Phase 46: Standardize PingOne app, resource, and scope naming across all use cases
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 45
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 46 to break down)
 
 ### Phase 47: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 46
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 47 to break down)
 
 ### Phase 48: Remove invalid SpEL act expression from Super Banking Banking API and enforce act chain at BFF PAZ layer instead update docs
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 47
 **Plans:** 1/1 plans complete
@@ -1029,150 +1029,150 @@ Plans:
 
 ### Phase 68: RFC 9728 Support - Protected Resource Metadata implementation
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 67
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 68 to break down)
 
 ### Phase 69: Standardize PingOne app, resource, and scope naming across all use cases
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 68
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 69 to break down)
 
 ### Phase 70: Super Banking rename verification — confirm no regressions across UI, API, MCP, and docs
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 69
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 70 to break down)
 
 ### Phase 71: 59.1 RFC 9728 compliance audit - Protected Resource Metadata implementation
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 70
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 71 to break down)
 
 ### Phase 72: 60.1 Agent showcase and integration storytelling - banking platform AI narrative
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 71
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 72 to break down)
 
 ### Phase 73: 61.1 MCP spec error code compliance audit - 403/401 per MCP spec
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 72
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 73 to break down)
 
 ### Phase 74: 62.1 Token exchange critical fixes and enhancements - may_act, RFC 8707, scopes
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 73
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 74 to break down)
 
 ### Phase 75: 63.1 Documentation and integration critical fixes - ops guides, API docs
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 74
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 75 to break down)
 
 ### Phase 76: 64.1 Unified configuration page - consolidate /config and /demo-data
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 75
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 76 to break down)
 
 ### Phase 77: 65.1 API configuration and management enhancements - auth methods, Vercel vars
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 76
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 77 to break down)
 
 ### Phase 78: 66.1 UI enhancements and user experience improvements
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 77
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 78 to break down)
 
 ### Phase 79: 67.1 Documentation enhancement and developer tools
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 78
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 79 to break down)
 
 ### Phase 80: 68.1 RFC 9728 Support - Protected Resource Metadata implementation
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 79
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 80 to break down)
 
 ### Phase 81: 69.1 Standardize PingOne app, resource, and scope naming across all use cases
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 80
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 81 to break down)
 
 ### Phase 82: 70.1 Super Banking rename verification - confirm no regressions across all layers
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 81
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 82 to break down)
@@ -1234,10 +1234,10 @@ Plans:
 
 ### Phase 86: test everything you can for production run
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 85
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 86 to break down)
@@ -1248,7 +1248,7 @@ Plans:
 
 **Requirements**: TOKEN-VAL-01, TOKEN-VAL-02, TOKEN-VAL-03
 **Depends on:** Phase 91 (token introspection endpoint completed)
-**Plans:** 0 plans (run /gsd-plan-phase 87 to break down)
+**Plans:** 1 plan (run /gsd-plan-phase 87 to break down)
 
 **Key Focus Areas:**
 1. **Agent (MCP Client) — Token Validation**
@@ -1306,40 +1306,40 @@ Plans:
 
 ### Phase 90: Scope/resource check: OIDC app OIDC scope spelling validation, resource URL validation, and fix capability
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 89
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 90 to break down)
 
 ### Phase 91: External MCP client access — public MCP server with PingOne-protected auth, restrict to @pingidentity.com Google login, per-client authorization, and Claude/ChatGPT integration planning
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 90
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 91 to break down)
 
 ### Phase 92: User custom attribute validation — verify user has required PingOne custom attributes configured correctly, report and fix capability, integrate into existing scope/resource check tooling
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 91
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 92 to break down)
 
 ### Phase 93: Surface agent-on-behalf-of-user actions in UI and education
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: CONFIG-01
 **Depends on:** Phase 92
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 93 to break down)
@@ -1350,7 +1350,7 @@ Plans:
 
 **Requirements**: HITL-01, HITL-02
 **Depends on:** Phase 93 (Surface agent-on-behalf-of-user actions)
-**Plans:** 0 plans (run /gsd-plan-phase 94 to break down)
+**Plans:** 1 plan (run /gsd-plan-phase 94 to break down)
 
 **Key Focus Areas:**
 1. **Agent Action Interceptor**
@@ -1565,7 +1565,7 @@ Plans:
 
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 97
 **Plans:** 2/2 plans complete
@@ -1586,10 +1586,10 @@ Plans:
 
 ### Phase 100: configurable step-up MFA threshold and agent transaction stop limit
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 99
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 100 to break down)
@@ -1618,7 +1618,7 @@ Plans:
 
 ### Phase 101: token exchange flow diagram UI - single and double exchange with AI agent bubble on responses
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 100
 **Plans:** 3/2 plans complete
@@ -1628,10 +1628,10 @@ Plans:
 
 ### Phase 102: redesign app UI to match Ping Operations Fabric style - split-pane layout with architecture diagram panel and chat agent panel, PingIdentity branding, red accents, solution architecture section with token flow steps
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 101
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 102 to break down)
@@ -1645,7 +1645,7 @@ Plans:
 
 **Depends on:** Phase 2 (token-exchange), Phase 85 (chase-dashboard-styling)
 
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 103 to break down)
@@ -1680,20 +1680,20 @@ Plans:
 
 ### Phase 105: make dashboards match the color scheme and general look of chase.com main page
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 104
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 105 to break down)
 
 ### Phase 106: RFC 8693 §4.4 delegation claims - nested act for delegation chains - ensure compliance and implementation
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 105
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 106 to break down)
@@ -1727,7 +1727,7 @@ Plans:
 
 ### Phase 109: Demo-data agent placement buttons should only configure state, not move agent
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 108
 **Plans:** 1/1 plans complete
@@ -1737,7 +1737,7 @@ Plans:
 
 ### Phase 110: Fix demo-data page layout: add may_act demo button, fix Config button overflow, improve discoverability
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 109
 **Plans:** 2/2 plans complete
@@ -1747,7 +1747,7 @@ Plans:
 
 ### Phase 112: marketing and dashboard ui polish - ensure consistent light and dark mode
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 111
 **Plans:** 4/4 plans complete
@@ -1818,20 +1818,20 @@ Plans:
 
 ### Phase 117: LangChain production-quality agent with pluggable model interface (Groq default, OpenAI/Anthropic/HuggingFace support)
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 116
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 117 to break down)
 
 ### Phase 118: Research and plan HuggingFace integration with LangChain for cost-effective model deployment — evaluate ecosystem, licensing, model selection, deployment options
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 117
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 ### Phase 119: Call MCP server and get tools without authenticating user
@@ -1859,10 +1859,10 @@ Plans:
 
 ### Phase 120: UI/UX: Audit all buttons and navigation; make sidebar and nav more bank-like
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 119
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 120 to break down)
@@ -1873,7 +1873,7 @@ Plans:
 
 **Requirements**: TBD
 **Depends on:** Phase 120
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 121 to break down)
@@ -1948,10 +1948,10 @@ Plans:
 
 ### Phase 125: 124
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 124
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 125 to break down)
@@ -1962,7 +1962,7 @@ Plans:
 
 **Requirements**: TBD
 **Depends on:** Phase 124
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 126 to break down)
@@ -2009,10 +2009,10 @@ Plans:
 
 ### Phase 129: Audit last 15 todos — verify completed correctly, no errors, working
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 128
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 129 to break down)
@@ -2061,12 +2061,22 @@ Plans:
 
 ### Phase 134: Audit all phases 120+ — verify code quality, plan completeness, no regressions, no cross-phase conflicts; plan and execute any unplanned or unexecuted phases
 
-**Goal:** [To be planned]
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: TBD
 **Depends on:** Phase 133
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 134 to break down)
+
+### Phase 135: MFA test page UX — add decoded token panels and Show API Calls toggle to every section (mirror Phase 133 for MFA page)
+
+**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
+**Requirements**: TBD
+**Depends on:** Phase 134
+**Plans:** 1 plan
+
+Plans:
+- [ ] 135-01-PLAN.md — Add apiCallTrackerService to mfaTest.js routes + SectionApiCalls to all 6 sections + CSS
 
 ---
