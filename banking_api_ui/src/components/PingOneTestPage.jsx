@@ -856,7 +856,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               error={authzTokenError}
               onTest={testAuthzToken}
               config={TEST_CONFIG.authzToken}
-              loginUrl={authzTokenStatus === 'failed' && authzTokenError && authzTokenError.toLowerCase().includes('log in') ? '/api/auth/oauth/user/login' : null}
+              loginUrl={authzTokenStatus === 'failed' && authzTokenError && authzTokenError.toLowerCase().includes('log in') ? '/api/auth/oauth/user/login?return_to=/pingone-test' : null}
             />
             <TestCard
               title="Agent Token (Client Credentials)"
@@ -877,7 +877,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 ⚠️ Token exchange requires a user access token. Log in to PingOne first using the Authorization Code + PKCE flow.
               </span>
               <a
-                href="/api/auth/oauth/user/login"
+                href="/api/auth/oauth/user/login?return_to=/pingone-test"
                 className="pingone-test-button pingone-test-button--primary pingone-test-login-banner__btn"
               >
                 Login to PingOne →
