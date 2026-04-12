@@ -1859,7 +1859,7 @@ Plans:
 
 ### Phase 120: UI/UX: Audit all buttons and navigation; make sidebar and nav more bank-like
 
-**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
+**Goal:** Audit all interactive buttons and navigation elements across the app (sidebar, top nav, bottom sections). Verify buttons work and are visible to correct roles. Redesign sidebar and top navigation to look more bank-like: tighter spacing, professional line icons (not emoji), prominent section headers, smooth animations, and softer color palette.
 **Requirements**: TBD
 **Depends on:** Phase 119
 **Plans:** 1 plan
@@ -1948,7 +1948,7 @@ Plans:
 
 ### Phase 125: 124
 
-**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
+**Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 124
 **Plans:** 1 plan
@@ -2009,7 +2009,7 @@ Plans:
 
 ### Phase 129: Audit last 15 todos — verify completed correctly, no errors, working
 
-**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
+**Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 128
 **Plans:** 1 plan
