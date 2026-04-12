@@ -389,7 +389,7 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
     const exchangedToken = await oauthService.performTokenExchangeWithActor(
       oauthTokens.accessToken,
       agentToken,
-      configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI'),
+      configStore.getEffective('pingone_resource_mcp_server_uri'),
       'openid'
     );
 
@@ -438,7 +438,7 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
     const exchangedToken = await oauthService.performTokenExchangeWithActor(
       oauthTokens.accessToken,
       agentToken,
-      configStore.getEffective('PINGONE_RESOURCE_MCP_GATEWAY_URI'),
+      configStore.getEffective('pingone_resource_mcp_gateway_uri'),
       'openid'
     );
 
@@ -483,7 +483,7 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
     // Step 1: Exchange user token for agent token (simple token exchange)
     const agentToken = await oauthService.performTokenExchange(
       oauthTokens.accessToken,
-      configStore.getEffective('PINGONE_RESOURCE_AGENT_GATEWAY_URI'),
+      configStore.getEffective('pingone_resource_agent_gateway_uri'),
       'openid'
     );
 
@@ -491,7 +491,7 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
     const mcpToken = await oauthService.performTokenExchangeWithActor(
       oauthTokens.accessToken,
       agentToken,
-      configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI'),
+      configStore.getEffective('pingone_resource_mcp_server_uri'),
       'openid'
     );
 
@@ -559,13 +559,13 @@ router.get('/config', async (req, res) => {
     const config = {
       environmentId: configStore.getEffective('pingone_environment_id'),
       region: configStore.getEffective('pingone_region'),
-      adminClientId: configStore.getEffective('pingone_admin_client_id'),
-      userClientId: configStore.getEffective('pingone_user_client_id'),
+      adminClientId: configStore.getEffective('admin_client_id'),
+      userClientId: configStore.getEffective('user_client_id'),
       mcpTokenExchangerClientId: configStore.getEffective('pingone_mcp_token_exchanger_client_id'),
       aiAgentClientId: configStore.getEffective('pingone_ai_agent_client_id'),
-      resourceMcpServerUri: configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI'),
-      resourceMcpGatewayUri: configStore.getEffective('PINGONE_RESOURCE_MCP_GATEWAY_URI'),
-      resourceAgentGatewayUri: configStore.getEffective('PINGONE_RESOURCE_AGENT_GATEWAY_URI'),
+      resourceMcpServerUri: configStore.getEffective('pingone_resource_mcp_server_uri'),
+      resourceMcpGatewayUri: configStore.getEffective('pingone_resource_mcp_gateway_uri'),
+      resourceAgentGatewayUri: configStore.getEffective('pingone_resource_agent_gateway_uri'),
       // Worker token credentials (for pre-populating the form)
       mgmtClientId: process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || configStore.getEffective('pingone_worker_token_client_id') || configStore.getEffective('pingone_mgmt_client_id'),
       mgmtClientSecret: process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || configStore.getEffective('pingone_worker_token_client_secret') || configStore.getEffective('pingone_mgmt_client_secret'),
@@ -614,7 +614,7 @@ router.post('/token-exchange', async (req, res) => {
     await configStore.ensureInitialized();
     
     const { mode = 'single', subjectToken, actorToken } = req.body;
-    const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
+    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri');
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
     
     let result;
@@ -858,7 +858,7 @@ router.post('/token-exchange', async (req, res) => {
     await configStore.ensureInitialized();
     
     const { mode = 'single', subjectToken, actorToken } = req.body;
-    const mcpUri = configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI');
+    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri');
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
     
     let result;

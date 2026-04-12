@@ -295,6 +295,7 @@ export default function PingOneTestPage() {
       ...prev,
       [testName]: { status: 'running', result: null, error: null }
     }));
+    notifyInfo(`Running ${testName}…`, { toastId: `test-${testName}` });
 
     try {
       const result = await testFn();
@@ -302,37 +303,49 @@ export default function PingOneTestPage() {
         ...prev,
         [testName]: { status: 'passed', result, error: null }
       }));
+      notifySuccess(`${testName} passed ✓`);
     } catch (err) {
       setTestResults(prev => ({
         ...prev,
         [testName]: { status: 'failed', result: null, error: err.message }
       }));
+      notifyError(`${testName} failed: ${err.message}`);
     }
   }, []);
 
-  const fixIssue = useCallback(async (testName) => {
-    // Provide fix guidance based on test type
-    const fixMessages = {
-      'environmentId': 'Set PINGONE_ENVIRONMENT_ID in .env file or configure in Admin Dashboard',
-      'region': 'Set PINGONE_REGION in .env file (default: com)',
-      'adminClientId': 'Set PINGONE_ADMIN_CLIENT_ID in .env file',
-      'userClientId': 'Set PINGONE_USER_CLIENT_ID in .env file',
-      'mcpTokenExchangerClientId': 'Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID in .env file',
-      'aiAgentClientId': 'Set PINGONE_AI_AGENT_CLIENT_ID in .env file',
-      'resourceMcpServerUri': 'Set PINGONE_RESOURCE_MCP_SERVER_URI in .env file',
-      'resourceMcpGatewayUri': 'Set PINGONE_RESOURCE_MCP_GATEWAY_URI in .env file',
-      'resourceAgentGatewayUri': 'Set PINGONE_RESOURCE_AGENT_GATEWAY_URI in .env file',
-      'single-exchange': 'Ensure worker token is valid and token exchange endpoint is configured correctly',
-      'double-exchange': 'Ensure worker token is valid and both user and agent tokens are available',
-      'apps': 'Configure Management API roles for Applications in PingOne Worker App settings',
-      'resources': 'Configure Management API roles for Resource Servers in PingOne Worker App settings',
-      'scopes': 'Configure Management API roles for Scopes in PingOne Worker App settings',
-      'users': 'Configure Management API roles for Users in PingOne Worker App settings'
+  const fixIssue = useCallback((testName) => {
+    const envId = config?.environmentId;
+    const consoleBase = envId
+      ? `https://console.pingone.com/edit/${envId}/#`
+      : 'https://console.pingone.com';
+
+    const fixActions = {
+      environmentId:             { msg: 'Set PINGONE_ENVIRONMENT_ID in your .env file, then restart the server.', url: 'https://console.pingone.com' },
+      region:                    { msg: 'Set PINGONE_REGION in .env (e.g. com | eu | ca). Default is com.', url: null },
+      adminClientId:             { msg: 'Set PINGONE_ADMIN_CLIENT_ID — copy Client ID from PingOne → Applications → Super Banking Admin App.', url: `${consoleBase}/application/list` },
+      userClientId:              { msg: 'Set PINGONE_USER_CLIENT_ID — copy Client ID from PingOne → Applications → Super Banking User App.', url: `${consoleBase}/application/list` },
+      mcpTokenExchangerClientId: { msg: 'Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID — copy from PingOne → Applications → Super Banking MCP Token Exchanger.', url: `${consoleBase}/application/list` },
+      aiAgentClientId:           { msg: 'Set PINGONE_AI_AGENT_CLIENT_ID — copy from PingOne → Applications → Super Banking AI Agent App.', url: `${consoleBase}/application/list` },
+      resourceMcpServerUri:      { msg: 'Set PINGONE_RESOURCE_MCP_SERVER_URI — copy the Audience URI from PingOne → Connections → Resource Servers → Super Banking MCP Server.', url: `${consoleBase}/foundation/Resource/list` },
+      resourceMcpGatewayUri:     { msg: 'Set PINGONE_RESOURCE_MCP_GATEWAY_URI — Audience URI for the MCP Gateway resource server.', url: `${consoleBase}/foundation/Resource/list` },
+      resourceAgentGatewayUri:   { msg: 'Set PINGONE_RESOURCE_AGENT_GATEWAY_URI — Audience URI for the Agent Gateway resource server.', url: `${consoleBase}/foundation/Resource/list` },
+      'single-exchange':         { msg: 'Open the MCP Token Exchanger app in PingOne → enable Token Exchange grant → set audience to PINGONE_RESOURCE_MCP_SERVER_URI.', url: `${consoleBase}/application/list` },
+      'double-exchange':         { msg: 'Enable Token Exchange with actor tokens on the MCP Token Exchanger app. Check may_act / actor policy in PingOne.', url: `${consoleBase}/application/list` },
+      apps:                      { msg: 'In PingOne → Worker App → Roles → assign Read Clients / Applications role.', url: `${consoleBase}/application/list` },
+      resources:                 { msg: 'In PingOne → Worker App → Roles → assign Read Resource Servers role.', url: `${consoleBase}/foundation/Resource/list` },
+      scopes:                    { msg: 'In PingOne → Worker App → Roles → assign Read Scopes role.', url: `${consoleBase}/foundation/Resource/list` },
+      users:                     { msg: 'In PingOne → Worker App → Roles → assign Read Users role.', url: `${consoleBase}/users/list` },
     };
 
-    const message = fixMessages[testName] || 'Check configuration for this item';
-    alert(`Fix guidance: ${message}\n\nPlease configure this setting in the .env file or via the Admin Dashboard.`);
-  }, []);
+    const action = fixActions[testName];
+    if (!action) {
+      notifyInfo('Check configuration for this item in PingOne admin console.');
+      window.open('https://console.pingone.com', '_blank', 'noopener,noreferrer');
+      return;
+    }
+    notifyInfo(action.msg, { autoClose: 10000 });
+    if (action.url) window.open(action.url, '_blank', 'noopener,noreferrer');
+  }, [config]);
 
   const saveWorkerConfig = useCallback(async () => {
     setSavingConfig(true);
@@ -399,87 +412,107 @@ export default function PingOneTestPage() {
   }, []);
 
   const testAuthzToken = useCallback(async () => {
-    setAuthzTokenStatus('pending');
+    setAuthzTokenStatus('running');
     setAuthzTokenError(null);
+    notifyInfo('Testing authorization token…', { toastId: 'test-authz-token' });
     try {
       const { data } = await apiClient.get('/api/pingone-test/authz-token');
       if (data.success) {
         setAuthzTokenStatus('passed');
+        notifySuccess('Authorization token found in session ✓');
       } else {
         setAuthzTokenStatus('failed');
         setAuthzTokenError(data.error);
+        notifyError(`Auth token: ${data.error}`);
       }
     } catch (err) {
       setAuthzTokenStatus('failed');
       setAuthzTokenError(err.message);
+      notifyError(`Auth token error: ${err.message}`);
     }
   }, []);
 
   const testAgentToken = useCallback(async () => {
-    setAgentTokenStatus('pending');
+    setAgentTokenStatus('running');
     setAgentTokenError(null);
+    notifyInfo('Testing agent token (client credentials)…', { toastId: 'test-agent-token' });
     try {
       const { data } = await apiClient.get('/api/pingone-test/agent-token');
       if (data.success) {
         setAgentTokenStatus('passed');
+        notifySuccess('Agent client-credentials token acquired ✓');
       } else {
         setAgentTokenStatus('failed');
         setAgentTokenError(data.error);
+        notifyError(`Agent token: ${data.error}`);
       }
     } catch (err) {
       setAgentTokenStatus('failed');
       setAgentTokenError(err.message);
+      notifyError(`Agent token error: ${err.message}`);
     }
   }, []);
 
   const testExchange1 = useCallback(async () => {
-    setExchange1Status('pending');
+    setExchange1Status('running');
     setExchange1Error(null);
+    notifyInfo('Testing User Token → MCP Token exchange…', { toastId: 'test-exchange1' });
     try {
       const { data } = await apiClient.get('/api/pingone-test/exchange-user-to-mcp');
       if (data.success) {
         setExchange1Status('passed');
+        notifySuccess('User → MCP token exchange succeeded ✓');
       } else {
         setExchange1Status('failed');
         setExchange1Error(data.error);
+        notifyError(`Exchange 1 failed: ${data.error}`);
       }
     } catch (err) {
       setExchange1Status('failed');
       setExchange1Error(err.message);
+      notifyError(`Exchange 1 error: ${err.message}`);
     }
   }, []);
 
   const testExchange2 = useCallback(async () => {
-    setExchange2Status('pending');
+    setExchange2Status('running');
     setExchange2Error(null);
+    notifyInfo('Testing User + Agent Token → MCP Token exchange…', { toastId: 'test-exchange2' });
     try {
       const { data } = await apiClient.get('/api/pingone-test/exchange-user-agent-to-mcp');
       if (data.success) {
         setExchange2Status('passed');
+        notifySuccess('User + Agent → MCP token exchange succeeded ✓');
       } else {
         setExchange2Status('failed');
         setExchange2Error(data.error);
+        notifyError(`Exchange 2 failed: ${data.error}`);
       }
     } catch (err) {
       setExchange2Status('failed');
       setExchange2Error(err.message);
+      notifyError(`Exchange 2 error: ${err.message}`);
     }
   }, []);
 
   const testExchange3 = useCallback(async () => {
-    setExchange3Status('pending');
+    setExchange3Status('running');
     setExchange3Error(null);
+    notifyInfo('Testing User → Agent → MCP three-step exchange…', { toastId: 'test-exchange3' });
     try {
       const { data } = await apiClient.get('/api/pingone-test/exchange-user-to-agent-to-mcp');
       if (data.success) {
         setExchange3Status('passed');
+        notifySuccess('User → Agent → MCP three-step exchange succeeded ✓');
       } else {
         setExchange3Status('failed');
         setExchange3Error(data.error);
+        notifyError(`Exchange 3 failed: ${data.error}`);
       }
     } catch (err) {
       setExchange3Status('failed');
       setExchange3Error(err.message);
+      notifyError(`Exchange 3 error: ${err.message}`);
     }
   }, []);
 
@@ -737,7 +770,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 type="button"
                 className="pingone-test-button pingone-test-button--secondary"
                 onClick={verifyAssets}
-                disabled={verifyingAssets || !workerToken}
+                disabled={verifyingAssets}
               >
                 {verifyingAssets ? 'Verifying...' : 'Verify Assets'}
               </button>
@@ -982,48 +1015,64 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
   );
 }
 
-const TestCard = ({ title, status, error, onTest, onFix, value, config }) => (
-  <div className={`pingone-test-card status-${status}`}>
-    <h3 className="pingone-test-card-title">{title}</h3>
-    {value && <div className="pingone-test-card-value">{value}</div>}
-    <div className={`pingone-test-card-status status-${status}`}>{status}</div>
-    {error && <div className="pingone-test-card-error">{error}</div>}
-    {config && (
-      <div className="pingone-test-card-config">
-        <div className="config-item">
-          <span className="config-label">App Name:</span>
-          <span className="config-value">{config.appName}</span>
+const TestCard = ({ title, status, error, onTest, onFix, value, config }) => {
+  const [testing, setTesting] = React.useState(false);
+
+  const handleTest = async () => {
+    if (!onTest) return;
+    setTesting(true);
+    try {
+      await onTest();
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const statusLabel = { passed: '✓ passed', failed: '✗ failed', running: '⟳ testing', pending: '— pending' };
+
+  return (
+    <div className={`test-card test-card--${status}`}>
+      <div className="test-card-header">
+        <h3 className="test-card-title">{title}</h3>
+        <span className={`test-card-status test-card-status--${status}`}>
+          {statusLabel[status] || status}
+        </span>
+      </div>
+      {value && <p className="test-card-value">{value}</p>}
+      {error && <div className="test-card-error">{error}</div>}
+      {config && (
+        <div className="test-card-config">
+          <div className="config-item"><span className="config-label">App:</span><span className="config-value">{config.appName}</span></div>
+          <div className="config-item"><span className="config-label">Type:</span><span className="config-value">{config.appType}</span></div>
+          {config.requiredScopes && <div className="config-item"><span className="config-label">Scopes:</span><span className="config-value">{config.requiredScopes.join(', ')}</span></div>}
+          {config.audience && <div className="config-item"><span className="config-label">Audience:</span><span className="config-value">{config.audience}</span></div>}
+          {config.spel && <div className="config-item"><span className="config-label">Flow:</span><span className="config-value">{config.spel}</span></div>}
         </div>
-        <div className="config-item">
-          <span className="config-label">App Type:</span>
-          <span className="config-value">{config.appType}</span>
-        </div>
-        {config.requiredScopes && (
-          <div className="config-item">
-            <span className="config-label">Required Scopes:</span>
-            <span className="config-value">{config.requiredScopes.join(', ')}</span>
-          </div>
+      )}
+      <div className="test-card-actions">
+        {onTest && (
+          <button
+            type="button"
+            className="pingone-test-button pingone-test-button--secondary"
+            onClick={handleTest}
+            disabled={testing || status === 'running'}
+          >
+            {testing || status === 'running' ? 'Testing…' : 'Test'}
+          </button>
         )}
-        {config.audience && (
-          <div className="config-item">
-            <span className="config-label">Audience:</span>
-            <span className="config-value">{config.audience}</span>
-          </div>
-        )}
-        {config.spel && (
-          <div className="config-item">
-            <span className="config-label">SPEL:</span>
-            <span className="config-value">{config.spel}</span>
-          </div>
+        {onFix && (
+          <button
+            type="button"
+            className="pingone-test-button pingone-test-button--fix"
+            onClick={onFix}
+          >
+            Fix in PingOne ↗
+          </button>
         )}
       </div>
-    )}
-    <div className="pingone-test-card-actions">
-      {onTest && <button className="pingone-test-button" onClick={onTest}>Test</button>}
-      {onFix && <button className="pingone-test-button fix" onClick={onFix}>Fix</button>}
     </div>
-  </div>
-);
+  );
+};
 
 function AssetCard({ title, status, count, error }) {
   return (
