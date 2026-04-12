@@ -175,7 +175,7 @@
 
 .topnav-search-input:focus {
   outline: none;
-  border-color: #004687;
+  border-color: var(--chase-navy, #004687);
 }
 
 /* ─── Mobile Menu ───────────────────────────────────────────────────── */
@@ -224,7 +224,7 @@
 }
 
 .topnav-mobile-item:hover {
-  color: #004687;
+  color: var(--chase-navy, #004687);
 }
 
 .topnav-mobile-item--logout {

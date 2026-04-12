@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/UserTransactions.js
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import './UserTransactions.css';
 
 export default function UserTransactions({ user }) {
   const [transactions, setTransactions] = useState([]);

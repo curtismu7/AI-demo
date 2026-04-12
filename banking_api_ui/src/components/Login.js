@@ -5,6 +5,7 @@ import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { notifyError } from '../utils/appToast';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import './Login.css';
 
 const Login = () => {
   const { preset } = useIndustryBranding();
@@ -85,9 +86,9 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container" style={loginContainerStyle}>
+    <div className="login-container login-page" style={loginContainerStyle}>
         <div className="login-card">
-          <div className="login-header">
+          <div className="login-header login-card__header">
             <div className="login-branding">
               <div className="login-logo">
                 <div className="logo-icon">
@@ -104,7 +105,7 @@ const Login = () => {
             <p>Sign in to access your banking services</p>
           </div>
 
-          <div className="oauth-login">
+          <div className="oauth-login login-card__body">
             <div className="oauth-options">
               <div className="oauth-option">
                 <h4>Admin Access</h4>
