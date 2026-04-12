@@ -110,8 +110,12 @@ export default function AgentFlowDiagramPanel() {
   }, []);
 
   useEffect(() => {
-    agentFlowDiagram.subscribe(setSnap);
-    // Load token chain when agent flow is active
+    const unsub = agentFlowDiagram.subscribe(setSnap);
+    return unsub;
+  }, []);
+
+  // Load token chain when agent flow becomes visible
+  useEffect(() => {
     if (snap.visible) {
       loadTokenChain();
       setShowTokenChain(true);

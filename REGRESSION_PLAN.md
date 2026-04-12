@@ -78,6 +78,20 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-11 — Phase 127/128: PingOneTestPage backend bugs + UI restoration + build quality audit
+
+- **Root cause (5 bugs):**
+  1. `worker-token` and `agent-token` routes accessed `workerTokenData.access_token` but `getAgentClientCredentialsTokenWithExpiry()` returns `{token, expiresAt, expiresIn}` — always returned `undefined`.
+  2. All 3 token exchange test endpoints called `performTokenExchange({object})` but the method takes positional args `(subjectToken, audience, scopes)` — always threw.
+  3. All `configStore.getEffective()` calls in pingoneTestRoutes used UPPERCASE/wrong-prefixed keys not present in `envFallbackMap` — always returned empty string.
+  4. PingOneTestPage.jsx used CSS class `pingone-test-card status-${status}` but CSS defined `.test-card.test-card--${status}` — no styling applied.
+  5. `react-scripts build` crashed due to `"not op_mini"` invalid browserslist query in `banking_api_ui/package.json` — fixed to `"not op_mini all"`.
+- **Phase 128 quality sweep:** 12 ESLint build warnings eliminated; missing `/scope-audit` route added to App.js; SideNav duplicate nav entry and `MdDashboard`/`MdGroup`/`MdPersonAdd` unused icon imports removed; sparse array commas in 3 education panels fixed; `bankingRestartNotificationService` anonymous default export fixed; `TokenChainContext` useMemo deps stabilized; TopNav brand `<div onClick>` → `<button>` (a11y); `agentBuilder` Groq-only fallback extended to support `ANTHROPIC_API_KEY`.
+- **Files modified:** `banking_api_server/routes/pingoneTestRoutes.js`, `banking_api_ui/src/components/PingOneTestPage.jsx`, `PingOneTestPage.css`, `banking_api_ui/package.json`, `banking_api_server/services/agentBuilder.js`, `App.js`, `SideNav.js`, `TopNav.js`, `UserDashboard.js`, `BankingAgent.js`, `BankingAdminOps.js`, `ApiCallDisplay.jsx`, `LandingPage.js`, `hooks/useChatWidget.js`, `context/TokenChainContext.js`, `services/bankingRestartNotificationService.js`, education panels (3 files).
+- **Commits:** `f8987ab`, `1bdcf93`, `3923546`, `f8014fc`, `792a91d`, `72cb41a`
+- **Regression check:** `cd banking_api_ui && npm run build` → `Compiled successfully.` (zero warnings). `GET /api/pingone-test/worker-token` → `{"success":true,"token":"eyJ..."}`. `GET /api/pingone-test/config` → all 13 config keys populated. `GET /api/pingone-test/verify-assets` → `{"success":true}`.
+- **Do not break:** All PingOne token exchange chains; MFA test page integration routes (still require auth — expected); banking agent `/message` endpoint (requires OAuth session); browserslist targets (production build now uses `"not op_mini all"`).
+
 ### 2026-04-10 — Bug: bankingAgentNl routes unregistered → nl/status, nl, search always 401
 
 - **Root cause:** `bankingAgentNl.js` (containing `/nl/status`, `/nl`, `/search` endpoints) was never imported or mounted in `server.js`. These routes fell through to `bankingAgentRoutes` which applies `agentSessionMiddleware` to ALL sub-paths via `router.use(agentSessionMiddleware)`. The middleware blocks requests without `req.session.oauthTokens?.accessToken`, so even public LLM config endpoints like `/nl/status` returned 401 for every caller.

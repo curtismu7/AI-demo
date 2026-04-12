@@ -1977,10 +1977,10 @@ Plans:
 
 Plans:
 - [x] 127-01: Debug PingOne Test page failures
-- [ ] 127-02: Debug MFA Test page failures
-- [ ] 127-03: Debug Banking Agent failures
-- [ ] 127-04: Fix identified issues
-- [ ] 127-05: Verify end-to-end functionality
+- [x] 127-02: Debug MFA Test page failures — routes verified working; mfaEnabled:false is config (PINGONE_MFA_POLICY_ID not set), not a code bug
+- [x] 127-03: Debug Banking Agent failures — agentBuilder Anthropic fallback added, routes confirmed
+- [x] 127-04: Fix identified issues — all PingOne test bugs, build, UI, and agentBuilder fixed
+- [x] 127-05: Verify end-to-end functionality — worker-token, agent-token, verify-assets, config all pass
 
 ---
 
@@ -2001,9 +2001,9 @@ Plans:
 **Plans:** 0/1 plans complete
 
 Plans:
-- [ ] 128-01: Fix build warnings, lint cleanup, dead code removal
-- [ ] 128-02: Complete banking agent debug and E2E verification
-- [ ] 128-03: Code quality audit — SideNav, TopNav, key components
-- [ ] 128-04: Final quality verification and cleanup
+- [x] 128-01: Fix build warnings, lint cleanup, dead code removal — 12 warnings → 0
+- [x] 128-02: Complete banking agent debug and E2E verification — agentBuilder fixed, endpoints verified
+- [x] 128-03: Code quality audit — SideNav, TopNav, key components — duplicate entries, missing route, a11y fix
+- [x] 128-04: Final quality verification and cleanup — build: Compiled successfully, zero warnings
 
 ---
