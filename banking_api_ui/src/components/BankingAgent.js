@@ -2109,7 +2109,6 @@ export default function BankingAgent({
 
   /**
    * Shared NL dispatch: education panels, banking tools, or fallback hint.
-   * Reserved for future NL-router integration — not yet wired to submission handler.
    * @param {object} result - NL routing result from server
    * @param {string} _source - routing source tag (unused)
    * @param {string} nlUserText - original user text for post-auth replay

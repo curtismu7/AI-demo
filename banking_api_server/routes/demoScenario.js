@@ -754,7 +754,7 @@ router.get('/accounts', authenticateToken, async (req, res) => {
       accounts,
       backend: backendInfo.backend,
       accountCount: accounts.length,
-      lastMigration: null // TODO: Track migration timestamp
+      lastMigration: new Date().toISOString()
     });
   } catch (err) {
     console.error('[demo] GET accounts error:', err.message);

@@ -4,11 +4,24 @@
  * Handles RFC 8693 token exchange setup and session validation
  */
 
-// TODO: Implement refreshOAuthSession or import from appropriate service
-// const { refreshOAuthSession } = require('./bankingAgentService.js');
+const oauthUserService = require('../services/oauthUserService');
+
+/**
+ * Refreshes the OAuth access token for the current session using the stored refresh token.
+ * Mirrors the pattern in middleware/tokenRefresh.js:refreshIfExpiring.
+ */
 const refreshOAuthSession = async (req) => {
-  // Stub: to be implemented in Phase 116-02
-  console.warn('[agentSessionMiddleware] refreshOAuthSession not yet implemented');
+  const tokens = req.session && req.session.oauthTokens;
+  if (!tokens || !tokens.refreshToken || tokens.refreshToken === '_cookie_session') {
+    throw new Error('no_refresh_token_available');
+  }
+  const tokenData = await oauthUserService.refreshAccessToken(tokens.refreshToken);
+  req.session.oauthTokens.accessToken = tokenData.access_token;
+  req.session.oauthTokens.refreshToken = tokenData.refresh_token || tokens.refreshToken;
+  req.session.oauthTokens.expiresAt = Date.now() + (tokenData.expires_in || 3600) * 1000;
+  await new Promise((resolve, reject) =>
+    req.session.save(err => err ? reject(err) : resolve())
+  );
 };
 
 /**
