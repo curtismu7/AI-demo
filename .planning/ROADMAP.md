@@ -2057,7 +2057,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 133-01-PLAN.md — testLabel prop + SectionApiCalls component + per-section toggles + CSS + build verify
+- [x] 133-01-PLAN.md — testLabel prop + SectionApiCalls component + per-section toggles + CSS + build verify
 
 ### Phase 134: Audit all phases 120+ — verify code quality, plan completeness, no regressions, no cross-phase conflicts; plan and execute any unplanned or unexecuted phases
 
@@ -2077,7 +2077,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 135-01-PLAN.md — Add apiCallTrackerService to mfaTest.js routes + SectionApiCalls to all 6 sections + CSS
+- [x] 135-01-PLAN.md — Add apiCallTrackerService to mfaTest.js routes + SectionApiCalls to all 6 sections + CSS
 
 ### Phase 136: Token chain reliability audit and hardening - make foolproof
 
@@ -2088,5 +2088,15 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 136 to break down)
+
+### Phase 137: Configure page complete redesign — Chase.com style, functional PingOne config, full review and testing
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 136
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 137 to break down)
 
 ---
