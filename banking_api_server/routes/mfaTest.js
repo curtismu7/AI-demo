@@ -418,15 +418,14 @@ router.post('/integration/enroll-fido2-complete', authenticateToken, async (req,
 router.get('/integration/devices', authenticateToken, async (req, res) => {
   try {
     const userId = req.session.user?.id;
-    const userAccessToken = req.session.oauthTokens?.accessToken;
-    if (!userId || !userAccessToken) {
+    if (!userId) {
       return res.status(401).json({ success: false, error: 'no_session', message: 'Not authenticated.' });
     }
 
-    const result = await mfaService.initiateDeviceAuth(userId, userAccessToken);
+    const devices = await mfaService.listMfaDevices(userId);
     res.json({
       success: true,
-      devices: result._embedded?.devices || [],
+      devices,
     });
   } catch (err) {
     console.error('[MFA Test Integration] GET /devices failed:', err.message);

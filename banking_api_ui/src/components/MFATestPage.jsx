@@ -306,6 +306,21 @@ export default function MFATestPage() {
       </div>
 
       <div className="mfa-test-content">
+        {/* Warning banner when PINGONE_MFA_POLICY_ID is not set */}
+        {!config?.mfaEnabled && (
+          <div className="mfa-test-warning-banner" role="alert">
+            <strong>⚠️ MFA Policy not configured</strong>
+            <p>
+              <code>PINGONE_MFA_POLICY_ID</code> is not set — challenge-based tests (SMS OTP, Email OTP, FIDO2)
+              will fail. Device listing and enrollment tests use the Management API and will still work.
+            </p>
+            <p>
+              To fix: create an MFA Policy in PingOne → MFA → MFA Policies, copy the policy ID, then
+              set <code>PINGONE_MFA_POLICY_ID=&lt;id&gt;</code> in your <code>.env</code> and restart the server.
+            </p>
+          </div>
+        )}
+
         {/* Configuration Section */}
         <section className="mfa-test-section">
           <h2 className="mfa-test-section-title">MFA Configuration</h2>

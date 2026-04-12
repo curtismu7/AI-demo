@@ -200,7 +200,7 @@ async function listMfaDevices(userId) {
 async function enrollEmailDevice(userId, email) {
   try {
     const workerToken = await _getWorkerToken();
-    const url = `${_apiBaseUrl()}/users/${userId}/mfaDevices`;
+    const url = `${_apiBaseUrl()}/users/${userId}/devices`;
     const { data } = await axios.post(
       url,
       { type: 'EMAIL', email },
@@ -220,10 +220,10 @@ async function enrollEmailDevice(userId, email) {
 async function initFido2Registration(userId) {
   try {
     const workerToken = await _getWorkerToken();
-    const url = `${_apiBaseUrl()}/users/${userId}/fido2Devices`;
+    const url = `${_apiBaseUrl()}/users/${userId}/devices`;
     const { data } = await axios.post(
       url,
-      {},
+      { type: 'FIDO2_PLATFORM' },
       { headers: { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
     );
     console.log('[MFA] initiated FIDO2 registration userId=%s deviceId=%s', userId, data.id);
@@ -243,7 +243,7 @@ async function initFido2Registration(userId) {
 async function completeFido2Registration(userId, deviceId, attestation) {
   try {
     const workerToken = await _getWorkerToken();
-    const url = `${_apiBaseUrl()}/users/${userId}/fido2Devices/${deviceId}`;
+    const url = `${_apiBaseUrl()}/users/${userId}/devices/${deviceId}`;
     const { data } = await axios.put(
       url,
       { attestation },
