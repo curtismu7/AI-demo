@@ -2043,21 +2043,21 @@ Plans:
 **Goal:** Fix the `decodeJwtForDisplay is not defined` ReferenceError that breaks all token endpoints on the test page, then verify the full /pingone-test page end-to-end: worker token, authz token, agent token, all 3 token exchanges, configuration section inline details (Phase 131), asset table (Phase 130), and decoded token panels.
 **Requirements**: TBD
 **Depends on:** Phase 131
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 132-01-PLAN.md — Fix decodeJwtForDisplay in pingoneTestRoutes.js (backend bug, Wave 1)
-- [ ] 132-02-PLAN.md — Human verification checkpoint: full /pingone-test end-to-end tour (Wave 2)
+- [x] 132-02-PLAN.md — Human verification checkpoint: full /pingone-test end-to-end tour (Wave 2)
 
 ### Phase 133: PingOne test page UX — add Test/Get Token button to Agent Token card, add decoded token panel and Show API call to every section on the page
 
-**Goal:** [To be planned]
+**Goal:** UX improvements on /pingone-test: rename Agent Token button to "Get Token", add collapsible "Show API Calls" toggle to every major section (replacing the single global API Calls section).
 **Requirements**: TBD
 **Depends on:** Phase 132
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 133 to break down)
+- [ ] 133-01-PLAN.md — testLabel prop + SectionApiCalls component + per-section toggles + CSS + build verify
 
 ### Phase 134: Audit all phases 120+ — verify code quality, plan completeness, no regressions, no cross-phase conflicts; plan and execute any unplanned or unexecuted phases
 
