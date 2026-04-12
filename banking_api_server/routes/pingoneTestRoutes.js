@@ -605,7 +605,7 @@ router.get('/worker-token', async (req, res) => {
     
     const responseData = {
       success: true,
-      token: workerTokenData.token ? workerTokenData.token.substring(0, 20) + '...' : 'undefined',
+      status: workerTokenData.token ? 'valid' : 'missing',
       decoded: workerTokenData.token ? decodeJwtForDisplay(workerTokenData.token) : null,
       expiresAt: workerTokenData.expiresAt
     };

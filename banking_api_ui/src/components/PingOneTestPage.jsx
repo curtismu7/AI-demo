@@ -293,7 +293,7 @@ export default function PingOneTestPage() {
       const { data } = await apiClient.get('/api/pingone-test/worker-token');
       console.log('[loadWorkerToken] API response:', data);
       if (data.success) {
-        setWorkerToken(data.token);
+        setWorkerToken(data.status || null);
         setWorkerDecoded(data.decoded || null);
         setWorkerTokenExpiry({
           expiresAt: data.expiresAt,
@@ -666,8 +666,8 @@ export default function PingOneTestPage() {
         <h1 className="pingone-test-title">PingOne Integration Test Page</h1>
         <div className="pingone-test-meta">
           <div className="pingone-test-status">
-            <span className={`status-indicator ${workerToken ? 'status-indicator--success' : 'status-indicator--error'}`}>
-              {workerToken ? 'Worker Token: Active' : 'Worker Token: Missing'}
+            <span className={`status-indicator ${workerToken === 'valid' ? 'status-indicator--success' : 'status-indicator--error'}`}>
+              {workerToken === 'valid' ? 'Worker Token: Active' : 'Worker Token: Missing'}
             </span>
           </div>
           <button
@@ -750,7 +750,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 >
                   {loading ? 'Loading...' : 'Fetch Worker Token'}
                 </button>
-                {workerToken && (
+                {workerToken === 'valid' && (
                   <button
                     type="button"
                     className="pingone-test-button pingone-test-button--fix"
