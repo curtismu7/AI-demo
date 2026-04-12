@@ -14,6 +14,7 @@ import ApiCallDisplay from './ApiCallDisplay';
 import ExchangeModeToggle from './ExchangeModeToggle';
 import TransactionConsentModal from './TransactionConsentModal';
 import BankingAgent from './BankingAgent';
+import ChaseTopNav from './ChaseTopNav';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
 import AgentUiModeToggle from './AgentUiModeToggle';
 import DashboardLayoutToggle from './DashboardLayoutToggle';
@@ -1703,6 +1704,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
+      <ChaseTopNav user={user} onLogout={onLogout} currentPage="dashboard" />
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
