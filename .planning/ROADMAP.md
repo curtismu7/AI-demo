@@ -2101,12 +2101,17 @@ Plans:
 
 ### Phase 138: audit and fix all placeholder content across the app and server replace with real functionality
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Audit and fix all placeholder/stub content across UI and server; apply Chase.com visual redesign pass across all pages.
+**Requirements**: D-01, D-02, D-03, D-04, D-05
 **Depends on:** Phase 137
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 138 to break down)
+- [ ] 138-01-PLAN.md — Server stubs: agentSessionMiddleware refresh + demoScenario lastMigration + BankingAgent dead code
+- [ ] 138-02-PLAN.md — UserDashboard placeholder pills + Chase hero/cards redesign
+- [ ] 138-03-PLAN.md — Chase nav + Login + Transactions redesign
+- [ ] 138-04-PLAN.md — Chase Profile + SecurityCenter + Admin pages redesign
+- [ ] 138-05-PLAN.md — Human verification checkpoint
+
 
 ---
