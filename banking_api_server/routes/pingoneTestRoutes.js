@@ -480,25 +480,20 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
 
     await configStore.ensureInitialized();
 
-    // Step 1: Exchange user token for agent token
-    const agentToken = await oauthService.performTokenExchange({
-      subjectToken: oauthTokens.accessToken,
-      subjectTokenType: 'urn:ietf:params:oauth:token-type:access_token',
-      requestedTokenType: 'urn:ietf:params:oauth:token-type:access_token',
-      audience: configStore.getEffective('PINGONE_RESOURCE_AGENT_GATEWAY_URI'),
-      scope: 'openid'
-    });
+    // Step 1: Exchange user token for agent token (simple token exchange)
+    const agentToken = await oauthService.performTokenExchange(
+      oauthTokens.accessToken,
+      configStore.getEffective('PINGONE_RESOURCE_AGENT_GATEWAY_URI'),
+      'openid'
+    );
 
     // Step 2: Use both user token and agent token to exchange for MCP token
-    const mcpToken = await oauthService.performTokenExchange({
-      subjectToken: oauthTokens.accessToken,
-      subjectTokenType: 'urn:ietf:params:oauth:token-type:access_token',
-      actorToken: agentToken,
-      actorTokenType: 'urn:ietf:params:oauth:token-type:access_token',
-      requestedTokenType: 'urn:ietf:params:oauth:token-type:access_token',
-      audience: configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI'),
-      scope: 'openid'
-    });
+    const mcpToken = await oauthService.performTokenExchangeWithActor(
+      oauthTokens.accessToken,
+      agentToken,
+      configStore.getEffective('PINGONE_RESOURCE_MCP_SERVER_URI'),
+      'openid'
+    );
 
     const responseData = {
       success: true,
