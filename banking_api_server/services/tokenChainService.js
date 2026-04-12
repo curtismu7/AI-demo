@@ -179,6 +179,38 @@ async function clearTokenChain(userId) {
   tokenEvents.delete(userId);
 }
 
+/**
+ * Synthesize a single auth event from a raw access token.
+ * Fallback for cold-start / server restart when the in-memory Map has no events.
+ * Returns an array with one synthetic event, or [] if token cannot be decoded.
+ */
+function synthesizeFromSession(accessToken) {
+  if (!accessToken || typeof accessToken !== 'string') return [];
+  try {
+    const claims = jwt.decode(accessToken);
+    if (!claims || !claims.sub) return [];
+    return [{
+      id: 'synthetic-session-' + String(claims.sub).slice(0, 8),
+      timestamp: new Date().toISOString(),
+      eventType: 'auth',
+      tokenType: 'user_token',
+      tokenSub: claims.sub,
+      tokenAct: claims.act || null,
+      tokenAgent: (claims.act && claims.act.client_id) || null,
+      scopes: claims.scope
+        ? (Array.isArray(claims.scope) ? claims.scope : claims.scope.split(' '))
+        : [],
+      audience: Array.isArray(claims.aud) ? claims.aud.join(' ') : (claims.aud || ''),
+      issuer: claims.iss || '',
+      expiry: claims.exp ? new Date(claims.exp * 1000).toISOString() : null,
+      description: 'User session token (synthesized — server restarted or cold start)',
+      exchangeSteps: [],
+      userId: claims.sub,
+      _synthetic: true,
+    }];
+  } catch (_e) { return []; }
+}
+
 module.exports = {
   trackTokenEvent,
   addExchangeStep,
@@ -186,5 +218,6 @@ module.exports = {
   getCurrentTokens,
   clearTokenChain,
   classifyTokenType,
-  generateTokenDescription
+  generateTokenDescription,
+  synthesizeFromSession
 };

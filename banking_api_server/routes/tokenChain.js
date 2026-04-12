@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { getTokenChain, getCurrentTokens } = require('../services/tokenChainService');
+const { getTokenChain, getCurrentTokens, synthesizeFromSession } = require('../services/tokenChainService');
 
 // GET /api/token-chain — get token chain for authenticated user
 router.get('/', async (req, res) => {
   try {
-    const tokenChain = await getTokenChain(req.user.id);
+    let tokenChain = await getTokenChain(req.user.id);
+    // Fallback: synthesize from session token if Map is empty (e.g. after server restart)
+    if (tokenChain.length === 0 && req.session && req.session.oauthTokens && req.session.oauthTokens.accessToken) {
+      tokenChain = synthesizeFromSession(req.session.oauthTokens.accessToken);
+    }
     res.json({
       tokenChain,
       metadata: {

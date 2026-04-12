@@ -289,10 +289,13 @@ router.get('/callback', async (req, res) => {
 
       // Record initial auth token into token chain so /api/token-chain/current reflects login
       if (oauthTokens.accessToken && authedUser?.id) {
+        // Use decoded.sub as userId key — must match req.user.id set by authenticateToken middleware
+        const _tcClaims = (() => { try { return require('jsonwebtoken').decode(oauthTokens.accessToken) || {}; } catch { return {}; } })();
+        const _tcUserId = _tcClaims.sub || authedUser.id;
         trackTokenEvent({
           eventType: 'auth',
           token: oauthTokens.accessToken,
-          userId: authedUser.id,
+          userId: _tcUserId,
           description: 'User authenticated via PingOne OAuth',
         }).catch(err => {
           console.error('[oauth/callback] Failed to track token event:', err.message);
