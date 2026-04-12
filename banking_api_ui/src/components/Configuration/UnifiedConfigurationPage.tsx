@@ -1,5 +1,5 @@
 // banking_api_ui/src/components/Configuration/UnifiedConfigurationPage.tsx
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { type FC, useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { notifySuccess, notifyError } from '../../utils/appToast';
 import { savePublicConfig, loadPublicConfig } from '../../services/configService';
@@ -70,6 +70,8 @@ interface ConfigurationState {
   // MFA
   mfaPolicyId: string;
   mfaStepUpThreshold: number;
+  agentTransactionCountLimit: number;
+  agentTransactionValueLimit: number;
   cibaEnabled: boolean;
   // Token Exchange / MCP
   mcpServerUrl: string;
@@ -118,6 +120,8 @@ const getDefaultState = (): ConfigurationState => ({
   userRedirectUri: '',
   mfaPolicyId: '',
   mfaStepUpThreshold: 500,
+  agentTransactionCountLimit: 0,
+  agentTransactionValueLimit: 0,
   cibaEnabled: false,
   mcpServerUrl: '',
   mcpResourceUri: '',
@@ -149,7 +153,7 @@ const getDefaultState = (): ConfigurationState => ({
 
 // Inline form helper components
 
-const CfgField: React.FC<{
+const CfgField: FC<{
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -159,7 +163,7 @@ const CfgField: React.FC<{
   disabled?: boolean;
 }> = ({ label, value, onChange, type = 'text', help, placeholder, disabled }) => (
   <div className="form-group">
-    <label className="form-label">{label}</label>
+    <div className="form-label">{label}</div>
     <input
       type={type}
       className="form-input"
@@ -172,7 +176,7 @@ const CfgField: React.FC<{
   </div>
 );
 
-const CfgSecretField: React.FC<{
+const CfgSecretField: FC<{
   label: string;
   fieldKey: string;
   value: string;
@@ -182,7 +186,7 @@ const CfgSecretField: React.FC<{
   help?: string;
 }> = ({ label, fieldKey, value, showSecrets, onToggle, onChange, help }) => (
   <div className="form-group">
-    <label className="form-label">{label}</label>
+    <div className="form-label">{label}</div>
     <div className="cfg-secret-wrap">
       <input
         type={showSecrets[fieldKey] ? 'text' : 'password'}
@@ -205,7 +209,7 @@ const CfgSecretField: React.FC<{
   </div>
 );
 
-const CfgSelect: React.FC<{
+const CfgSelect: FC<{
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -213,7 +217,7 @@ const CfgSelect: React.FC<{
   help?: string;
 }> = ({ label, value, onChange, options, help }) => (
   <div className="form-group">
-    <label className="form-label">{label}</label>
+    <div className="form-label">{label}</div>
     <select className="form-input" value={value} onChange={e => onChange(e.target.value)}>
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
@@ -221,7 +225,7 @@ const CfgSelect: React.FC<{
   </div>
 );
 
-const CfgToggle: React.FC<{
+const CfgToggle: FC<{
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
@@ -243,7 +247,7 @@ const CfgToggle: React.FC<{
 
 // Static sub-components
 
-const ConfigurationHeader: React.FC<{
+const ConfigurationHeader: FC<{
   title: string;
   subtitle: string;
   saveStatus: 'idle' | 'saving' | 'saved' | 'error';
@@ -261,6 +265,7 @@ const ConfigurationHeader: React.FC<{
       <div className="configuration-header__actions">
         {onThemeToggle && (
           <button
+            type="button"
             onClick={onThemeToggle}
             className="configuration-header__btn configuration-header__btn--theme"
             title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
@@ -269,6 +274,7 @@ const ConfigurationHeader: React.FC<{
           </button>
         )}
         <button
+          type="button"
           onClick={onReset}
           className="configuration-header__btn configuration-header__btn--secondary"
           disabled={saveStatus === 'saving'}
@@ -276,6 +282,7 @@ const ConfigurationHeader: React.FC<{
           Reset to Defaults
         </button>
         <button
+          type="button"
           onClick={onSave}
           className={`configuration-header__btn configuration-header__btn--primary ${saveStatus}`}
           disabled={saveStatus === 'saving'}
@@ -294,14 +301,15 @@ const ConfigurationHeader: React.FC<{
   </header>
 );
 
-const ConfigurationTabs: React.FC<{
+const ConfigurationTabs: FC<{
   tabs: typeof CONFIGURATION_TABS;
   activeTab: string;
   onTabChange: (tabId: string) => void;
 }> = ({ tabs, activeTab, onTabChange }) => (
-  <nav className="configuration-tabs" role="tablist">
+  <nav className="configuration-tabs">
     {tabs.map(tab => (
       <button
+        type="button"
         key={tab.id}
         className={`configuration-tab ${activeTab === tab.id ? 'active' : ''}`}
         onClick={() => onTabChange(tab.id)}
@@ -319,7 +327,7 @@ const ConfigurationTabs: React.FC<{
   </nav>
 );
 
-const SectionNavigation: React.FC<{
+const SectionNavigation: FC<{
   sections: string[];
   activeSection: string;
   onSectionChange: (section: string) => void;
@@ -353,6 +361,7 @@ const SectionNavigation: React.FC<{
         {sections.map(section => (
           <li key={section}>
             <button
+              type="button"
               className={`section-nav-item ${activeSection === section ? 'active' : ''}`}
               onClick={() => onSectionChange(section)}
             >
@@ -367,7 +376,7 @@ const SectionNavigation: React.FC<{
 
 // Main Component
 
-const UnifiedConfigurationPage: React.FC<{
+const UnifiedConfigurationPage: FC<{
   user: unknown;
   onLogout: () => void;
 }> = ({ user }) => {
@@ -381,6 +390,7 @@ const UnifiedConfigurationPage: React.FC<{
   useEducationUI();
   const { industryId: ctxIndustryId } = useIndustryBranding();
   const { theme, toggleTheme } = useTheme();
+  const isAdminUser = (user as { role?: string } | null)?.role === 'admin';
 
   // Load config
   useEffect(() => {
@@ -399,7 +409,9 @@ const UnifiedConfigurationPage: React.FC<{
           userClientSecret: (cfg.user_client_secret as string) || '',
           userRedirectUri: (cfg.user_redirect_uri as string) || '',
           mfaPolicyId: (cfg.pingone_mfa_policy_id as string) || '',
-          mfaStepUpThreshold: Number(cfg.mfa_step_up_threshold) || 500,
+          mfaStepUpThreshold: Number(cfg.step_up_amount_threshold ?? cfg.mfa_step_up_threshold) || 500,
+          agentTransactionCountLimit: Number(cfg.agent_transaction_count_limit) || 0,
+          agentTransactionValueLimit: Number(cfg.agent_transaction_value_limit) || 0,
           cibaEnabled: !!cfg.ciba_enabled,
           mcpServerUrl: (cfg.mcp_server_url as string) || '',
           mcpResourceUri: (cfg.mcp_resource_uri as string) || '',
@@ -420,12 +432,41 @@ const UnifiedConfigurationPage: React.FC<{
           debugShowTokenDetails: !!cfg.debug_show_token_details,
           debugShowApiCalls: !!cfg.debug_show_api_calls,
         }));
+
+        if (isAdminUser) {
+          try {
+            const settingsRes = await fetch('/api/admin/settings', {
+              method: 'GET',
+              credentials: 'include',
+            });
+            if (settingsRes.ok) {
+              const settingsData = await settingsRes.json() as {
+                settings?: {
+                  stepUpAmountThreshold?: number;
+                  agentTransactionCountLimit?: number;
+                  agentTransactionValueLimit?: number;
+                };
+              };
+              const s = settingsData.settings;
+              if (s) {
+                setState(prevState => ({
+                  ...prevState,
+                  mfaStepUpThreshold: Number(s.stepUpAmountThreshold) || prevState.mfaStepUpThreshold,
+                  agentTransactionCountLimit: Number(s.agentTransactionCountLimit) || 0,
+                  agentTransactionValueLimit: Number(s.agentTransactionValueLimit) || 0,
+                }));
+              }
+            }
+          } catch (_settingsError) {
+            // Non-fatal: keep config-page values even if runtime settings API is unavailable.
+          }
+        }
       } catch (error) {
         console.error('Failed to load configuration:', error);
       }
     };
     loadConfiguration();
-  }, [ctxAgentUiMode, ctxIndustryId]);
+  }, [ctxAgentUiMode, ctxIndustryId, isAdminUser]);
 
   // Handle initial tab from URL params
   useEffect(() => {
@@ -508,7 +549,10 @@ const UnifiedConfigurationPage: React.FC<{
         user_client_secret: state.userClientSecret,
         user_redirect_uri: state.userRedirectUri,
         pingone_mfa_policy_id: state.mfaPolicyId,
+        step_up_amount_threshold: state.mfaStepUpThreshold,
         mfa_step_up_threshold: state.mfaStepUpThreshold,
+        agent_transaction_count_limit: state.agentTransactionCountLimit,
+        agent_transaction_value_limit: state.agentTransactionValueLimit,
         ciba_enabled: state.cibaEnabled,
         mcp_server_url: state.mcpServerUrl,
         mcp_resource_uri: state.mcpResourceUri,
@@ -529,6 +573,23 @@ const UnifiedConfigurationPage: React.FC<{
         debug_show_token_details: state.debugShowTokenDetails,
         debug_show_api_calls: state.debugShowApiCalls,
       });
+
+      if (isAdminUser) {
+        const settingsRes = await fetch('/api/admin/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            stepUpAmountThreshold: state.mfaStepUpThreshold,
+            agentTransactionCountLimit: state.agentTransactionCountLimit,
+            agentTransactionValueLimit: state.agentTransactionValueLimit,
+          }),
+        });
+        if (!settingsRes.ok) {
+          throw new Error('Failed to update runtime security settings');
+        }
+      }
+
       setState(prev => ({ ...prev, saveStatus: 'saved' }));
       notifySuccess('Configuration saved successfully!');
     } catch (error) {
@@ -536,7 +597,7 @@ const UnifiedConfigurationPage: React.FC<{
       setState(prev => ({ ...prev, saveStatus: 'error' }));
       notifyError('Failed to save configuration');
     }
-  }, [state]);
+  }, [state, isAdminUser]);
 
   const resetConfiguration = useCallback(() => {
     setState(getDefaultState());
@@ -654,6 +715,20 @@ const UnifiedConfigurationPage: React.FC<{
           onChange={v => setState(prev => ({ ...prev, mfaStepUpThreshold: Number(v) || 0, saveStatus: 'idle' }))}
           type="number"
           help="Transactions above this amount require MFA step-up. Default: 500"
+        />
+        <CfgField
+          label="Agent Transaction Count Limit"
+          value={String(state.agentTransactionCountLimit)}
+          onChange={v => setState(prev => ({ ...prev, agentTransactionCountLimit: Number(v) || 0, saveStatus: 'idle' }))}
+          type="number"
+          help="Delegated agent stop limit by transaction count per approval window. Set 0 for unlimited."
+        />
+        <CfgField
+          label="Agent Transaction Value Limit (USD)"
+          value={String(state.agentTransactionValueLimit)}
+          onChange={v => setState(prev => ({ ...prev, agentTransactionValueLimit: Number(v) || 0, saveStatus: 'idle' }))}
+          type="number"
+          help="Delegated agent stop limit by cumulative value per approval window. Set 0 for unlimited."
         />
         <div className="form-group">
           <label className="form-label">
@@ -1006,7 +1081,7 @@ const UnifiedConfigurationPage: React.FC<{
         </div>
         {state.generatedPublicKey && (
           <div className="form-group" style={{ marginTop: '1rem' }}>
-            <label className="form-label">Public Key (copy to PingOne)</label>
+            <div className="form-label">Public Key (copy to PingOne)</div>
             <textarea
               className="form-input cfg-scopes-textarea"
               readOnly

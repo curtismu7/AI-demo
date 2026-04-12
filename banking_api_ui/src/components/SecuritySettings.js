@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/apiClient';
 import { notifySuccess, notifyError } from '../utils/appToast';
 import { useEducationUI } from '../context/EducationUIContext';
@@ -54,7 +54,21 @@ const FIELD_META = {
     max: 1000000,
     description: 'Hard stop limit: ALL transactions exceeding this amount are blocked. Applied to all user types (users, admin, agent).',
   },
-    authorizeEnabled: {
+  agentTransactionCountLimit: {
+    label: 'Agent Transaction Count Limit',
+    type: 'number',
+    min: 0,
+    max: 1000,
+    description: 'Delegated agent stop limit by transaction count per approval window. Set to 0 for unlimited.',
+  },
+  agentTransactionValueLimit: {
+    label: 'Agent Transaction Value Limit ($)',
+    type: 'number',
+    min: 0,
+    max: 1000000,
+    description: 'Delegated agent stop limit by cumulative transaction value per approval window. Set to 0 for unlimited.',
+  },
+  authorizeEnabled: {
     label: 'PingOne Authorize Integration',
     type: 'toggle',
     description: 'Route authorization decisions through PingOne Authorize. When enabled, every non-admin transaction is evaluated against the policy below. Works alongside (not instead of) the step-up threshold above.',
@@ -223,6 +237,8 @@ const SecuritySettings = ({ user, onLogout }) => {
     'stepUpMethod',
     'stepUpWithdrawalsAlways',
     'maxTransactionAmount',
+    'agentTransactionCountLimit',
+    'agentTransactionValueLimit',
     'authorizeEnabled',
     'authorizePolicyId',
   ];
@@ -274,10 +290,10 @@ const SecuritySettings = ({ user, onLogout }) => {
                 <div key={key} style={{ marginBottom: '28px', paddingBottom: '28px', borderBottom: '1px solid #f3f4f6' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <div>
-                      <label style={{ display: 'block', fontWeight: '600', color: '#374151', fontSize: '0.9rem', marginBottom: '4px' }}>
+                      <div style={{ display: 'block', fontWeight: '600', color: '#374151', fontSize: '0.9rem', marginBottom: '4px' }}>
                         {meta.label}
                         {meta.disabled && <span style={{ marginLeft: '8px', fontSize: '0.75rem', background: '#f3f4f6', color: '#9ca3af', padding: '2px 6px', borderRadius: '4px' }}>Coming soon</span>}
-                      </label>
+                      </div>
                       <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>{meta.description}</p>
                     </div>
                   </div>
@@ -339,6 +355,7 @@ const SecuritySettings = ({ user, onLogout }) => {
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
               <button
+                type="button"
                 onClick={handleSave}
                 disabled={!dirty || saving}
                 style={{ padding: '10px 24px', background: dirty ? 'var(--chase-navy)' : '#9ca3af', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '0.875rem', cursor: dirty ? 'pointer' : 'not-allowed', transition: 'background 0.2s' }}
@@ -346,6 +363,7 @@ const SecuritySettings = ({ user, onLogout }) => {
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
               <button
+                type="button"
                 onClick={handleReset}
                 disabled={!dirty || saving}
                 style={{ padding: '10px 24px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '500', fontSize: '0.875rem', cursor: dirty ? 'pointer' : 'not-allowed' }}
@@ -367,7 +385,7 @@ const SecuritySettings = ({ user, onLogout }) => {
               <p style={{ padding: '16px 20px', color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>No changes yet.</p>
             ) : (
               history.map((entry, i) => (
-                <div key={i} style={{ padding: '12px 20px', borderBottom: '1px solid #f9fafb' }}>
+                <div key={`${entry.timestamp || 'unknown'}-${entry.changedBy || 'unknown'}-${i}`} style={{ padding: '12px 20px', borderBottom: '1px solid #f9fafb' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontWeight: '600', fontSize: '0.8rem', color: '#374151' }}>{entry.changedBy}</span>
                     <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
@@ -436,6 +454,12 @@ const SecuritySettings = ({ user, onLogout }) => {
               <tr>
                 <th style={{ padding: '10px 20px', textAlign: 'left', color: '#374151', fontWeight: '600' }}>Session required for tool calls</th>
                 <td style={{ padding: '10px 20px', color: '#374151' }}>✅ Always (requireSession middleware)</td>
+              </tr>
+              <tr style={{ borderTop: '1px solid #f3f4f6' }}>
+                <th style={{ padding: '10px 20px', textAlign: 'left', color: '#374151', fontWeight: '600' }}>Agent transaction stop limits</th>
+                <td style={{ padding: '10px 20px', color: '#374151' }}>
+                  count: {settings.agentTransactionCountLimit > 0 ? settings.agentTransactionCountLimit : 'unlimited'} · value: {settings.agentTransactionValueLimit > 0 ? `$${settings.agentTransactionValueLimit}` : 'unlimited'}
+                </td>
               </tr>
             </tbody>
           </table>

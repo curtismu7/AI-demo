@@ -27,6 +27,9 @@ const settings = {
   authorizePolicyId: process.env.PINGONE_AUTHORIZE_POLICY_ID || '',
   // Hard limit for all transactions
   maxTransactionAmount: parseFloat(process.env.MAX_TRANSACTION_AMOUNT) || 1000,
+  // Agent delegated transaction stop limits (0 = unlimited)
+  agentTransactionCountLimit: parseFloat(process.env.AGENT_TRANSACTION_COUNT_LIMIT) || 0,
+  agentTransactionValueLimit: parseFloat(process.env.AGENT_TRANSACTION_VALUE_LIMIT) || 0,
   pingonesMfaPolicyId: process.env.PINGONE_MFA_POLICY_ID || '',
 };
 
@@ -54,9 +57,14 @@ function update(updates, changedBy = 'unknown') {
     if (!allowedKeys.has(key)) continue; // Ignore unknown keys
 
     // Type-coerce numeric fields
-    if (key === 'stepUpAmountThreshold' || key === 'maxTransactionAmount') {
+    if (
+      key === 'stepUpAmountThreshold' ||
+      key === 'maxTransactionAmount' ||
+      key === 'agentTransactionCountLimit' ||
+      key === 'agentTransactionValueLimit'
+    ) {
       const parsed = parseFloat(value);
-      if (isNaN(parsed) || parsed < 0) continue;
+      if (Number.isNaN(parsed) || parsed < 0) continue;
       applied[key] = parsed;
     } else {
       applied[key] = value;

@@ -78,6 +78,22 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-12 — Phase 100 start: runtime-configurable agent transaction stop limits
+
+- **Change:** Started Phase 100 implementation by wiring agent delegated transaction stop limits into live runtime settings + admin security UI.
+- **Root cause:** `agentTransactionTracker` enforced `agentTransactionCountLimit` / `agentTransactionValueLimit`, but those settings were not initialized in `runtimeSettings` or exposed in `SecuritySettings`, making them effectively hidden/unconfigurable.
+- **Fix:**
+  1. Added `agentTransactionCountLimit` and `agentTransactionValueLimit` to `runtimeSettings` (env fallback + numeric coercion in `update()`).
+  2. Added both fields to `SecuritySettings` metadata + form render order.
+  3. Added read-only summary row under Auth Gate Summary to show active agent stop limits.
+  4. Synced `UnifiedConfigurationPage.tsx` MFA section with these controls and wired admin save/load to runtime settings API (`/api/admin/settings`) so Configure page and Security Settings stay aligned.
+  5. Fixed touched-file lint issues in `SecuritySettings.js` (button types, label semantics, key usage), `runtimeSettings.js` (`Number.isNaN`), and `UnifiedConfigurationPage.tsx` (explicit button types + label semantics).
+- **Files modified:** `banking_api_server/config/runtimeSettings.js`, `banking_api_ui/src/components/SecuritySettings.js`, `banking_api_ui/src/components/Configuration/UnifiedConfigurationPage.tsx`, `docs/phases-100-119.md`
+- **Verification:**
+  - `cd banking_api_ui && npm run build` → success (existing unrelated warning in `TokenChainDisplay.js`)
+  - `cd banking_api_server && npm test -- --runTestsByPath src/__tests__/runtime-settings-api.test.js src/__tests__/agentTransactionTracker.test.js` → 23 passed
+- **Do not break:** Existing defaults remain backward-compatible (`0` = unlimited); only delegated agent flows read the new stop-limit settings; non-delegated/admin transaction behavior remains unchanged.
+
 ### 2026-04-11 — Phase 127/128: PingOneTestPage backend bugs + UI restoration + build quality audit
 
 - **Root cause (5 bugs):**
