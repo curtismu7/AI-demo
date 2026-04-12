@@ -53,61 +53,82 @@ export default function LandingPage({ user, onLogout }) {
         </div>
       )}
 
-      {/* Fallback header for non-logged-in users */}
-      {!user && (
-        <header className="landing-header" role="banner">
-          <div className="landing-header-content">
-            <div className="landing-logo">
-              <h1>Super Banking</h1>
-              <p>AI-Powered Financial Services</p>
-            </div>
-            <nav className="landing-nav" role="navigation" aria-label="Main navigation">
-              <button
-                onClick={() => navigate('/demo-data')}
-                className="nav-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
-              >
-                Demo Config
-              </button>
-              <button
-                onClick={() => navigate('/pingone-test')}
-                className="nav-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
-              >
-                PingOne Test
-              </button>
-              <button
-                onClick={handleAdminLogin}
-                className="nav-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
-              >
-                Admin Dashboard
-              </button>
-              <button
-                onClick={handleCustomerLogin}
-                className="nav-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
-              >
-                Customer Dashboard
-              </button>
-            </nav>
-            <div className="landing-header-actions">
-              <button
-                onClick={handleAdminLogin}
-                className="btn btn-primary"
-              >
-                Sign In as Admin
-              </button>
-              <button
-                onClick={handleCustomerLogin}
-                className="btn btn-secondary"
-              >
-                Sign In as Customer
-              </button>
-            </div>
+      {/* Header with nav — always visible */}
+      <header className="landing-header" role="banner">
+        <div className="landing-header-content">
+          <div className="landing-logo">
+            <h1>Super Banking</h1>
+            <p>AI-Powered Financial Services</p>
           </div>
-        </header>
-      )}
+          <nav className="landing-nav" role="navigation" aria-label="Main navigation">
+            <button
+              onClick={() => navigate('/demo-data')}
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+            >
+              Demo Config
+            </button>
+            <button
+              onClick={() => navigate('/pingone-test')}
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+            >
+              PingOne Test
+            </button>
+            {!user && (
+              <>
+                <button
+                  onClick={handleAdminLogin}
+                  className="nav-link"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+                >
+                  Admin Dashboard
+                </button>
+                <button
+                  onClick={handleCustomerLogin}
+                  className="nav-link"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+                >
+                  Customer Dashboard
+                </button>
+              </>
+            )}
+          </nav>
+          <div className="landing-header-actions">
+            {user ? (
+              <>
+                <button
+                  onClick={() => navigate('/user-dashboard')}
+                  className="btn btn-primary"
+                >
+                  My Dashboard
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="btn btn-secondary"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleAdminLogin}
+                  className="btn btn-primary"
+                >
+                  Sign In as Admin
+                </button>
+                <button
+                  onClick={handleCustomerLogin}
+                  className="btn btn-secondary"
+                >
+                  Sign In as Customer
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
 
       {/* Hero Section */}
       <section className="landing-hero" aria-label="Hero section">
