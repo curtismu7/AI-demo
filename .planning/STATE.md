@@ -127,6 +127,7 @@ Plans: 4/4 complete
 
 ### Roadmap Evolution
 
+- Phase 131 added: PingOne test page — config and resources sections: show pass/fail details and explain why
 - Phase 130 added: PingOne Asset Verification — rich table with apps, resources, scopes and missing item highlights
 - Phase 129 added: Audit last 15 todos — verify completed correctly, no errors, working
 - Phase 126 renamed + context added: Surface sub claim as user ID in token chain display and education panels

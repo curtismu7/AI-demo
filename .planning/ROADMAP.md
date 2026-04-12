@@ -2028,4 +2028,14 @@ Plans:
 - [ ] 130-01-PLAN.md — Backend: add getApplicationResources() + enrich verify-assets response
 - [ ] 130-02-PLAN.md — Frontend: AssetTable component with missing-item highlights
 
+### Phase 131: PingOne test page — config and resources sections: show pass/fail details and explain why
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 130
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 131 to break down)
+
 ---
