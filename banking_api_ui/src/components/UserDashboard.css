@@ -2356,10 +2356,19 @@ html[data-theme='dark'] .user-dashboard--2026 .ud-insight-strip {
   padding: 6px 12px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--dash-muted, #999999);
+  color: var(--chase-navy, #004687);
   background: var(--dash-surface-2, var(--chase-light-gray));
   border-radius: 999px;
   border: 1px solid var(--dash-border, rgba(15, 23, 42, 0.08));
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.user-dashboard--2026 .ud-super-pill:hover {
+  background: var(--chase-medium-gray, #E0E0E0);
+  border-color: var(--chase-navy-light, #005FA3);
+  color: var(--chase-navy, #004687);
+  text-decoration: none;
 }
 
 @media (max-width: 520px) {
@@ -2957,4 +2966,36 @@ html[data-theme='dark'] .token-modal {
   background: var(--dash-surface, #141a24);
   color: var(--dash-text, #e8edf5);
   border: 1px solid var(--dash-border, rgb(148 163 184 / 0.18));
+}
+
+/* Chase account card primary variant */
+.ud-account-card--primary {
+  background: linear-gradient(135deg, var(--chase-navy, #004687) 0%, var(--chase-navy-light, #005FA3) 100%);
+}
+.ud-account-card--primary .ud-account-balance {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+}
+.ud-account-card--primary .ud-account-type {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.8);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+/* Quick-action button */
+.ud-action-btn {
+  background: var(--chase-blue, #0066CC);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.625rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ud-action-btn:hover {
+  background: var(--chase-navy-light, #005FA3);
 }

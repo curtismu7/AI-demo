@@ -1298,10 +1298,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             title="Inspect session and Upstash store health"
           >Session debug</a>
         </div>
-        <div className="ud-super-pills" aria-label="More capabilities (demo)">
-          <span className="ud-super-pill" title="Demo placeholder">Insights</span>
-          <span className="ud-super-pill" title="Demo placeholder">Goals</span>
-          <span className="ud-super-pill" title="Demo placeholder">Payments hub</span>
+        <div className="ud-super-pills" aria-label="Quick links">
+          <Link to="/security" className="ud-super-pill" aria-label="Security and Insights">Insights</Link>
+          <Link to="/transactions" className="ud-super-pill" aria-label="Payments and Transfers">Payments hub</Link>
         </div>
 
         {/* Customer Profile */}
