@@ -862,23 +862,27 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
         <section className="pingone-test-section">
           <h2 className="pingone-test-section-title">Token Acquisition Tests</h2>
           <div className="pingone-test-grid">
-            <TestCard
-              title="Authorization Code Token"
-              status={authzTokenStatus}
-              error={authzTokenError}
-              onTest={testAuthzToken}
-              config={TEST_CONFIG.authzToken}
-              loginUrl={authzTokenStatus === 'failed' && authzTokenError && authzTokenError.toLowerCase().includes('log in') ? '/api/auth/oauth/user/login?return_to=/pingone-test' : null}
-            />
-            <DecodedTokenPanel decoded={authzDecoded} label="Authorization Code Token" />
-            <TestCard
-              title="Agent Token (Client Credentials)"
-              status={agentTokenStatus}
-              error={agentTokenError}
-              onTest={testAgentToken}
-              config={TEST_CONFIG.agentToken}
-            />
-            <DecodedTokenPanel decoded={agentDecoded} label="Agent Token (Client Credentials)" />
+            <div className="test-card-col">
+              <TestCard
+                title="Authorization Code Token"
+                status={authzTokenStatus}
+                error={authzTokenError}
+                onTest={testAuthzToken}
+                config={TEST_CONFIG.authzToken}
+                loginUrl={authzTokenStatus !== 'passed' ? '/api/auth/oauth/user/login?return_to=/pingone-test' : null}
+              />
+              <DecodedTokenPanel decoded={authzDecoded} label="Authorization Code Token" />
+            </div>
+            <div className="test-card-col">
+              <TestCard
+                title="Agent Token (Client Credentials)"
+                status={agentTokenStatus}
+                error={agentTokenError}
+                onTest={testAgentToken}
+                config={TEST_CONFIG.agentToken}
+              />
+              <DecodedTokenPanel decoded={agentDecoded} label="Agent Token (Client Credentials)" />
+            </div>
           </div>
         </section>
 
@@ -899,31 +903,37 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             </div>
           )}
           <div className="pingone-test-grid">
-            <TestCard
-              title="User Token → MCP Token"
-              status={exchange1Status}
-              error={exchange1Error}
-              onTest={testExchange1}
-              config={TEST_CONFIG.exchange1}
-            />
-            <DecodedTokenPanel decoded={exchange1Decoded} label="MCP Token (User Exchange)" />
-            <TestCard
-              title="User Token + Agent Token → MCP Token"
-              status={exchange2Status}
-              error={exchange2Error}
-              onTest={testExchange2}
-              config={TEST_CONFIG.exchange2}
-            />
-            <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Token (User+Agent Exchange)" />
-            <TestCard
-              title="User Token → Agent Token → MCP Token"
-              status={exchange3Status}
-              error={exchange3Error}
-              onTest={testExchange3}
-              config={TEST_CONFIG.exchange3}
-            />
-            <DecodedTokenPanel decoded={exchange3AgentDecoded} label="Agent Token (User→Agent step)" />
-            <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
+            <div className="test-card-col">
+              <TestCard
+                title="User Token → MCP Token"
+                status={exchange1Status}
+                error={exchange1Error}
+                onTest={testExchange1}
+                config={TEST_CONFIG.exchange1}
+              />
+              <DecodedTokenPanel decoded={exchange1Decoded} label="MCP Token (User Exchange)" />
+            </div>
+            <div className="test-card-col">
+              <TestCard
+                title="User Token + Agent Token → MCP Token"
+                status={exchange2Status}
+                error={exchange2Error}
+                onTest={testExchange2}
+                config={TEST_CONFIG.exchange2}
+              />
+              <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Token (User+Agent Exchange)" />
+            </div>
+            <div className="test-card-col">
+              <TestCard
+                title="User Token → Agent Token → MCP Token"
+                status={exchange3Status}
+                error={exchange3Error}
+                onTest={testExchange3}
+                config={TEST_CONFIG.exchange3}
+              />
+              <DecodedTokenPanel decoded={exchange3AgentDecoded} label="Agent Token (User→Agent step)" />
+              <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
+            </div>
           </div>
         </section>
 

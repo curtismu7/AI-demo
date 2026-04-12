@@ -742,3 +742,25 @@ a.pingone-test-button--primary:visited {
   background: #f1f5f9;
   color: #475569;
 }
+
+/* ─── Token card column wrapper (TestCard + DecodedTokenPanel stacked) ──── */
+.test-card-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.test-card-col .test-card {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
+}
+
+.test-card-col .decoded-token-panel {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+  margin-top: 0;
+  background: #f0f4f8;
+}
