@@ -925,11 +925,18 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       }
     ));
 
+    // RFC 8693 §5.2: Structured error code for audit log and operator diagnostics
+    const { errorCode: rfc8693Code, errorDetails: rfc8693Details } = mapErrorToStructuredResponse(err);
+
     // Write failure to cross-Lambda Redis audit log (fire-and-forget)
     void writeExchangeEvent({
       type: 'exchange-failed',
       level: 'error',
-      message: `[TokenExchange] Failed — ${failParts}`,
+      message: `[TokenExchange] Failed — error_code=${rfc8693Code} — ${failParts}`,
+      error_code: rfc8693Code,
+      oauth_error: rfc8693Details.oauth_error,
+      http_status: rfc8693Details.http_status,
+      category: rfc8693Details.category,
       httpStatus: err.httpStatus,
       pingoneError: err.pingoneError,
       pingoneErrorDescription: err.pingoneErrorDescription,
@@ -1105,8 +1112,11 @@ async function _performTwoExchangeDelegation(
       { error: err.message, httpStatus: err.httpStatus, pingoneError: err.pingoneError,
         pingoneErrorDescription: err.pingoneErrorDescription, exchangeStep: '1-exchange' }
     ));
+    const { errorCode: ex1Code, errorDetails: ex1Details } = mapErrorToStructuredResponse(err);
     void writeExchangeEvent({ type: 'exchange-failed', level: 'error',
-      message: `[2-Exchange#1] Failed — ${err.message}`, exchangeStep: '1', pingoneError: err.pingoneError });
+      message: `[2-Exchange#1] Failed — error_code=${ex1Code} — ${err.message}`,
+      error_code: ex1Code, oauth_error: ex1Details.oauth_error, http_status: ex1Details.http_status,
+      category: ex1Details.category, exchangeStep: '1', pingoneError: err.pingoneError });
     throw createTokenExchangeError('invalid_grant', {
       exchangeType: 'double',
       exchangeStep: '1-exchange',
@@ -1243,8 +1253,11 @@ async function _performTwoExchangeDelegation(
       { error: err.message, httpStatus: err.httpStatus, pingoneError: err.pingoneError,
         pingoneErrorDescription: err.pingoneErrorDescription, exchangeStep: '2-exchange' }
     ));
+    const { errorCode: ex2Code, errorDetails: ex2Details } = mapErrorToStructuredResponse(err);
     void writeExchangeEvent({ type: 'exchange-failed', level: 'error',
-      message: `[2-Exchange#2] Failed — ${err.message}`, pingoneError: err.pingoneError });
+      message: `[2-Exchange#2] Failed — error_code=${ex2Code} — ${err.message}`,
+      error_code: ex2Code, oauth_error: ex2Details.oauth_error, http_status: ex2Details.http_status,
+      category: ex2Details.category, pingoneError: err.pingoneError });
     throw createTokenExchangeError('delegation_chain_broken', {
       exchangeType: 'double',
       exchangeStep: '2-exchange',
@@ -1314,20 +1327,8 @@ function mapErrorToStructuredResponse(error, context = {}) {
     errorCode = 'insufficient_scope';
   }
   
-  // Try to get error details from configStore if available
-  let errorDetails = null;
-  try {
-    const { getErrorDetails } = require('./configStore');
-    errorDetails = getErrorDetails(errorCode);
-  } catch (_e) {
-    // Fallback if configStore unavailable
-    errorDetails = {
-      http_status: 500,
-      oauth_error: 'server_error',
-      description: error?.message || 'Internal server error',
-      category: 'Server',
-    };
-  }
+  // Get error details from configStore (already imported at top of file)
+  const errorDetails = configStore.getErrorDetails(errorCode);
   
   return {
     errorCode,

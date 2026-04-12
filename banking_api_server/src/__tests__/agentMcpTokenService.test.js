@@ -99,25 +99,34 @@ jest.mock('../../services/mcpWebSocketClient', () => ({
   },
 }));
 
-jest.mock('../../services/configStore', () => ({
-  getEffective: jest.fn((key) => {
-    if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return '';
-    return null;
-  }),
-  validateTwoExchangeConfig: jest.fn(() => ({
-    valid: true,
-    credentials: {
-      aiAgentClientId: 'test-ai-agent-id',
-      mcpClientId: 'test-mcp-id'
-    },
-    audiences: {
-      agentGatewayAud: 'https://agent-gateway.example.com',
-      intermediateAud: 'https://ai-agent-gateway.example.com',
-      mcpGatewayAud: 'https://mcp-gateway.example.com',
-      finalAud: 'https://mcp-resource.example.com'
-    }
-  }))
-}));
+jest.mock('../../services/configStore', () => {
+  const actual = jest.requireActual('../../services/configStore');
+  return {
+    getEffective: jest.fn((key) => {
+      if (key === 'PINGONE_RESOURCE_MCP_SERVER_URI') return '';
+      return null;
+    }),
+    validateTwoExchangeConfig: jest.fn(() => ({
+      valid: true,
+      credentials: {
+        aiAgentClientId: 'test-ai-agent-id',
+        mcpClientId: 'test-mcp-id'
+      },
+      audiences: {
+        agentGatewayAud: 'https://agent-gateway.example.com',
+        intermediateAud: 'https://ai-agent-gateway.example.com',
+        mcpGatewayAud: 'https://mcp-gateway.example.com',
+        finalAud: 'https://mcp-resource.example.com'
+      }
+    })),
+    // Real implementations for error code functions (plan 56-05)
+    getErrorDetails: actual.getErrorDetails,
+    mapErrorToCode: actual.mapErrorToCode,
+    ERROR_CODES: actual.ERROR_CODES,
+    validateScopeAudience: actual.validateScopeAudience,
+    buildAllowedScopesByAudience: actual.buildAllowedScopesByAudience,
+  };
+});
 
 const configStore = require('../../services/configStore');
 const { resolveMcpAccessTokenWithEvents, buildSessionPreviewTokenEvents } = require('../../services/agentMcpTokenService');
@@ -1317,4 +1326,55 @@ describe('Scope & Audience Mapping (RFC 8707)', () => {
   });
 });
 
+});
+
+describe('RFC 8693 Error Code Standardization', () => {
+  const { mapErrorToStructuredResponse } = require('../../services/agentMcpTokenService');
+  const configStore = require('../../services/configStore');
+
+  it('should map invalid_client errors to RFC 8693 invalid_client code', () => {
+    const err = new Error('invalid_client: client authentication failed');
+    const result = mapErrorToStructuredResponse(err);
+    expect(result.errorCode).toBe('invalid_client');
+    expect(result.errorDetails.oauth_error).toBe('invalid_client');
+    expect(result.errorDetails.http_status).toBe(401);
+  });
+
+  it('should include http_status and category in error details', () => {
+    const err = new Error('invalid_grant: authorization code expired');
+    const result = mapErrorToStructuredResponse(err);
+    expect(result.errorDetails).toHaveProperty('http_status');
+    expect(result.errorDetails).toHaveProperty('oauth_error');
+    expect(result.errorDetails).toHaveProperty('category');
+  });
+
+  it('should fall back to server_error for unknown error messages', () => {
+    const err = new Error('some completely unknown internal failure');
+    const result = mapErrorToStructuredResponse(err);
+    expect(result.errorCode).toBe('server_error');
+    expect(result.errorDetails.http_status).toBe(500);
+    expect(result.errorDetails.oauth_error).toBe('server_error');
+  });
+
+  it('configStore.getErrorDetails returns valid detail for all known codes', () => {
+    const knownCodes = ['invalid_client', 'invalid_grant', 'invalid_scope', 'server_error', 'access_denied'];
+    knownCodes.forEach(code => {
+      const details = configStore.getErrorDetails(code);
+      expect(details).toHaveProperty('http_status');
+      expect(details).toHaveProperty('oauth_error');
+      expect(details).toHaveProperty('category');
+    });
+  });
+
+  it('configStore.getErrorDetails returns server_error for unknown code', () => {
+    const details = configStore.getErrorDetails('completely_unknown_code_xyz');
+    expect(details.oauth_error).toBe('server_error');
+    expect(details.http_status).toBe(500);
+  });
+
+  it('mapErrorToStructuredResponse returns message from error', () => {
+    const err = new Error('Token exchange rejected by authorization server');
+    const result = mapErrorToStructuredResponse(err);
+    expect(result.message).toBe('Token exchange rejected by authorization server');
+  });
 });
