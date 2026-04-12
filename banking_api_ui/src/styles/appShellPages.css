@@ -4,7 +4,7 @@
 
 .app-page-shell {
   min-height: calc(100vh - 48px);
-  background: linear-gradient(180deg, var(--chase-light-gray) 0%, #DDDDDD 100%);
+  background: var(--chase-light-gray, #F5F5F5);
   padding: 0 1rem 2.5rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
 }
@@ -13,14 +13,11 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.75rem 1.5rem 1.5rem;
-  background: linear-gradient(
-    135deg,
-    var(--brand-app-shell-hero-start, var(--chase-navy)) 0%,
-    var(--brand-app-shell-hero-end, var(--chase-navy)) 100%
-  );
-  color: #fff;
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 8px 24px rgba(30, 58, 138, 0.22);
+  background: #FFFFFF;
+  color: var(--chase-dark-gray, #333333);
+  border: 1px solid var(--chase-medium-gray, #E0E0E0);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .app-page-shell__hero-top {
@@ -36,13 +33,14 @@
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--app-primary-red, #b91c1c);
 }
 
 .app-page-shell__lead {
   margin: 0;
   font-size: 0.95rem;
   line-height: 1.55;
-  opacity: 0.92;
+  color: #666666;
   max-width: 40rem;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -50,14 +48,14 @@
 }
 
 .app-page-shell__hero .app-page-shell__lead a {
-  color: #fff;
+  color: var(--app-primary-red, #b91c1c);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .app-page-shell__hero .app-page-shell__lead a:hover {
-  opacity: 0.95;
+  opacity: 0.8;
 }
 
 .app-page-shell__actions {
@@ -247,7 +245,7 @@
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--app-primary-red, #b91c1c);
 }
 
 .admin-dashboard__headline {
@@ -255,12 +253,13 @@
   font-size: 1.35rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--chase-dark-gray, #333333);
 }
 
 .admin-dashboard__welcome {
   margin: 0.25rem 0 0;
   font-size: 0.95rem;
-  opacity: 0.9;
+  color: #666666;
 }
 
 .app-page-card {
@@ -373,6 +372,18 @@ html[data-theme='dark'] .app-page-shell__title {
 }
 
 html[data-theme='dark'] .app-page-shell__lead {
+  color: var(--dash-muted, #94a3b8);
+}
+
+html[data-theme='dark'] .admin-dashboard__brand-name {
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .admin-dashboard__headline {
+  color: var(--dash-text, #e8edf5);
+}
+
+html[data-theme='dark'] .admin-dashboard__welcome {
   color: var(--dash-muted, #94a3b8);
 }
 

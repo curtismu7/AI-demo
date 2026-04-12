@@ -20,6 +20,8 @@
     "test:bff-tokens": "jest --testPathPattern='redisWireUrl|bffSessionGating' --forceExit --verbose",
     "test:session": "jest --testPathPattern='authSession|authStateCookie|bffSessionGating|upstashSessionStore|session-store-resilience|oauth-e2e-integration' --forceExit",
     "verify:token-exchange": "node scripts/verify-token-exchange.js",
+    "verify:scopes": "node scripts/verify-scope-configuration.js",
+    "verify:scopes:fix": "node scripts/verify-scope-configuration.js --fix",
     "test:pingone-token-integration": "jest --testPathPattern=token-exchange-pingone --forceExit",
     "test:scope-assignments": "node test-scope-assignments.js",
     "test:oauth-provider-scopes": "node test-oauth-provider-scopes.js",
@@ -31,6 +33,8 @@
   "dependencies": {
     "@langchain/anthropic": "^1.3.26",
     "@langchain/core": "^1.1.39",
+    "@langchain/groq": "^1.2.0",
+    "@langchain/langgraph": "^1.2.8",
     "@vercel/kv": "^3.0.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",

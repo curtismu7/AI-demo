@@ -78,6 +78,14 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-10 — Bug: bankingAgentNl routes unregistered → nl/status, nl, search always 401
+
+- **Root cause:** `bankingAgentNl.js` (containing `/nl/status`, `/nl`, `/search` endpoints) was never imported or mounted in `server.js`. These routes fell through to `bankingAgentRoutes` which applies `agentSessionMiddleware` to ALL sub-paths via `router.use(agentSessionMiddleware)`. The middleware blocks requests without `req.session.oauthTokens?.accessToken`, so even public LLM config endpoints like `/nl/status` returned 401 for every caller.
+- **Fix:** (1) Added `const bankingAgentNlRoutes = require('./routes/bankingAgentNl')` to server.js. (2) Mounted it at `/api/banking-agent` BEFORE `bankingAgentRoutes` so the NL/search routes are served by their own router (no auth middleware). (3) Improved `agentSessionMiddleware.js` error message for missing oauthTokens: changed misleading `"Session not found" / "Session has expired"` to `"oauth_session_required" / "Please sign in via PingOne to use the agent"` to distinguish a logged-in-but-not-via-OAuth user from an unauthenticated user.
+- **Files modified:** `banking_api_server/server.js`, `banking_api_server/middleware/agentSessionMiddleware.js`
+- **Regression check:** `curl /api/banking-agent/nl/status` → 200 (no auth); `curl -b session POST /api/banking-agent/message` → 401 with `oauth_session_required` (expected for local-auth); `/message` with valid OAuth session token should return 200. bankingAgentRoutes authenticated paths (`/init`, `/message`, `/consent`) still protected by `agentSessionMiddleware`.
+- **Do not break:** (a) `bankingAgentRoutes` middleware chain — NL routes are now handled entirely before bankingAgentRoutes, so bankingAgentRoutes never sees /nl/* requests. (b) `agentSessionMiddleware` session checks — only the error message and error code changed; validation logic (session.user check, oauthTokens check, expiry check) is unchanged.
+
 ### 2026-04-09 — Phase 110: Demo Data page layout — may_act quick-action, Config button, sticky nav, token endpoint auth selector
 
 - **Changes:**

@@ -18,7 +18,7 @@ Add a new phase to the development roadmap when identified work doesn't fit into
 // turbo
 Load project context:
 ```bash
-node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" init roadmap
+node "$HOME/.claude/get-shit-done/bin/gsd-tools.cjs" init roadmap
 ```
 
 Extract from init JSON: `roadmap_exists`, `phases`, `current_phase`.
@@ -75,7 +75,7 @@ Update `.planning/STATE.md`:
 
 ### 7. Git Commit
 ```bash
-node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" commit "docs: add Phase [number] - [name]" --files .planning/phases/[phase-file].md .planning/ROADMAP.md .planning/STATE.md
+node "$HOME/.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs: add Phase [number] - [name]" --files .planning/phases/[phase-file].md .planning/ROADMAP.md .planning/STATE.md
 ```
 
 ## Expected Outcome

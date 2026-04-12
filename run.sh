@@ -12,7 +12,8 @@
 #   ./run.sh test     Run full test suite
 #   ./run.sh help     Show this help message
 #
-# Ports: UI=3000, API=3001, MCP=8080, LangChain=8888
+# Ports: UI=4000, API=3001, MCP=8081, LangChain=8889
+# Hostname: api.pingdemo.com (fallback to localhost if not resolvable)
 # Config: banking_api_server/.env and banking_api_ui/.env
 # Logs:   .logs/ directory
 # PIDs:   .pids/ directory
@@ -26,10 +27,18 @@ PIDS_DIR="${BASEDIR}/.pids"
 LOGS_DIR="${BASEDIR}/.logs"
 
 API_PORT=3001
-UI_PORT=3000
-MCP_PORT=8080
-AGENT_PORT=8888
+UI_PORT=4000
+MCP_PORT=8081
+AGENT_PORT=8889
 NODE_MIN_VERSION=16
+
+# Hostname resolution: try api.pingdemo.com first, fallback to localhost
+DEFAULT_HOST="api.pingdemo.com"
+if nslookup "${DEFAULT_HOST}" >/dev/null 2>&1 || host "${DEFAULT_HOST}" >/dev/null 2>&1 || dig "${DEFAULT_HOST}" +short >/dev/null 2>&1; then
+  HOSTNAME="${DEFAULT_HOST}"
+else
+  HOSTNAME="localhost"
+fi
 
 # Log file paths
 LOG_API="${LOGS_DIR}/banking-api.log"
@@ -161,6 +170,9 @@ cmd_start() {
   echo ""
   echo -e "${BOLD}🏦  Banking Digital Assistant — Starting...${NC}"
 
+  # Stop any existing services first to avoid conflicts
+  cmd_stop
+
   preflight_checks
 
   mkdir -p "${PIDS_DIR}" "${LOGS_DIR}"
@@ -173,10 +185,10 @@ cmd_start() {
 
   sleep 1
 
-  # Banking MCP Server (port 8080)
+  # Banking MCP Server (port 8081)
   if [ -d "${BASEDIR}/banking_mcp_server" ]; then
     info "Starting Banking MCP Server on :${MCP_PORT}..."
-    (cd "${BASEDIR}/banking_mcp_server" && npm start > "${LOG_MCP}" 2>&1) &
+    (cd "${BASEDIR}/banking_mcp_server" && MCP_SERVER_PORT=${MCP_PORT} npm start > "${LOG_MCP}" 2>&1) &
     echo $! > "${PID_MCP}"
     ok "Banking MCP Server started (PID $(cat "${PID_MCP}"))"
   fi
@@ -201,15 +213,30 @@ cmd_start() {
 
   # Post-start banner
   echo ""
-  echo -e "${BOLD}${GREEN}✅  All services started${NC}"
+  echo -e "${BOLD}${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${BOLD}${GREEN}║${NC}  ${BOLD}${GREEN}✅ All Services Started Successfully${NC}                           ${BOLD}${GREEN}║${NC}"
+  echo -e "${BOLD}${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
   echo ""
-  echo -e "  ${CYAN}Banking UI     ${NC}  http://localhost:${UI_PORT}"
-  echo -e "  ${CYAN}Banking API    ${NC}  http://localhost:${API_PORT}/api"
-  echo -e "  ${CYAN}MCP Server     ${NC}  ws://localhost:${MCP_PORT}"
-  echo -e "  ${CYAN}LangChain      ${NC}  http://localhost:${AGENT_PORT}"
+  echo -e "${BOLD}📡 Server URLs:${NC}"
   echo ""
-  echo -e "  ${BOLD}Logs:${NC}  ./run.sh logs"
-  echo -e "  ${BOLD}Stop:${NC}  ./run.sh stop"
+  echo -e "  ${CYAN}➜ Banking UI:${NC}       ${BOLD}http://${HOSTNAME}:${UI_PORT}${NC}"
+  echo -e "  ${CYAN}➜ Banking API:${NC}      ${BOLD}http://${HOSTNAME}:${API_PORT}/api${NC}"
+  echo -e "  ${CYAN}➜ MCP Server:${NC}       ${BOLD}ws://${HOSTNAME}:${MCP_PORT}${NC}"
+  echo -e "  ${CYAN}➜ LangChain Agent:${NC}  ${BOLD}http://${HOSTNAME}:${AGENT_PORT}${NC}"
+  echo ""
+  echo -e "${BOLD}📋 Management Commands:${NC}"
+  echo ""
+  echo -e "  ${CYAN}• View logs:${NC}   ./run.sh logs"
+  echo -e "  ${CYAN}• Check status:${NC} ./run.sh status"
+  echo -e "  ${CYAN}• Stop services:${NC} ./run.sh stop"
+  echo -e "  ${CYAN}• Restart:${NC}      ./run.sh restart"
+  echo ""
+  echo -e "${BOLD}📁 Log Files:${NC}"
+  echo ""
+  echo -e "  ${CYAN}• API:${NC}     ${LOG_API}"
+  echo -e "  ${CYAN}• UI:${NC}      ${LOG_UI}"
+  echo -e "  ${CYAN}• MCP:${NC}     ${LOG_MCP}"
+  echo -e "  ${CYAN}• Agent:${NC}   ${LOG_AGENT}"
   echo ""
 }
 
@@ -224,6 +251,14 @@ cmd_stop() {
   kill_pid_file "${PID_MCP}"   "Banking MCP Server"
   kill_pid_file "${PID_API}"   "Banking API Server"
 
+  # Also kill any processes using our ports (more robust than PID files)
+  for port in "${UI_PORT}" "${API_PORT}" "${MCP_PORT}" "${AGENT_PORT}"; do
+    if port_in_use "${port}"; then
+      info "Killing process using port ${port}..."
+      lsof -ti :${port} | xargs kill -9 2>/dev/null || true
+    fi
+  done
+
   echo ""
   ok "All services stopped"
   echo ""
@@ -233,6 +268,8 @@ cmd_stop() {
 cmd_restart() {
   cmd_stop
   cmd_start
+  # Show logs after restart
+  cmd_logs
 }
 
 # ── Status ─────────────────────────────────────────────────────────────────
@@ -375,7 +412,7 @@ cmd_help() {
 }
 
 # ── Dispatch ───────────────────────────────────────────────────────────────
-COMMAND="${1:-help}"
+COMMAND="${1:-restart}"
 
 case "${COMMAND}" in
   start)   cmd_start ;;

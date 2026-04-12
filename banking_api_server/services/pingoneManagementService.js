@@ -20,9 +20,10 @@ class PingOneManagementService {
 
   /**
    * Initialize the Management API service
+   * @param {string} [token] - Optional token to use (if not provided, uses PINGONE_MANAGEMENT_API_TOKEN env var)
    */
-  initialize() {
-    this.token = process.env.PINGONE_MANAGEMENT_API_TOKEN;
+  initialize(token = null) {
+    this.token = token || process.env.PINGONE_MANAGEMENT_API_TOKEN;
     this.environmentId = process.env.PINGONE_ENVIRONMENT_ID;
     this.region = process.env.PINGONE_REGION || 'com';
 

@@ -131,16 +131,12 @@ async function retryHealthCheck() {
   const isHealthy = await checkServerHealth();
 
   if (isHealthy) {
-    console.log('[RestartNotification] Server is back online');
     hideRestartModal();
     return true;
   }
 
   // Schedule next retry
   const nextDelay = getNextDelay();
-  console.log(
-    `[RestartNotification] Retrying in ${nextDelay}ms (attempt ${globalRestartState.attemptCount})`
-  );
 
   globalRestartState.retryTimeoutId = setTimeout(retryHealthCheck, nextDelay);
   return false;
@@ -168,14 +164,14 @@ export function handle504Error(error) {
  * Manual retry triggered by user clicking "Retry Now" button
  */
 export async function manualRetry() {
-  console.log('[RestartNotification] Manual retry triggered');
   // Clear pending timeout and retry immediately
   if (globalRestartState.retryTimeoutId) {
     clearTimeout(globalRestartState.retryTimeoutId);
   }
-  globalRestartState.currentDelay = globalRestartState.baseDelay;
+  globalRestartState.retryTimeoutId = null;
   globalRestartState.isRetrying = true;
-  await retryHealthCheck();
+  notifySubscribers();
+  return await retryHealthCheck();
 }
 
 /**
@@ -248,7 +244,6 @@ export function useRestartModal() {
  * Call once in App.js on mount
  */
 export function monitorApiHealth() {
-  console.log('[RestartNotification] Monitoring initialized');
   // Fetch wrapper is already in place; nothing else needed
 }
 

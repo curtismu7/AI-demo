@@ -32,6 +32,11 @@
   --chase-blue: #0066CC;
   --chase-blue-light: #0052A3;
   
+  /* Phase 120-02: Softer Sidebar Colors */
+  --sidebar-bg: #1a3a52;
+  --sidebar-bg-active: #2c5a7a;
+  --sidebar-bg-hover: #244a63;
+  
   /* Chase Neutrals */
   --chase-white: #FFFFFF;
   --chase-light-gray: #F5F5F5;

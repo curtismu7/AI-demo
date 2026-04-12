@@ -361,6 +361,18 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
+    // ── Session check for conditional authentication (Phase 122) ───────────────
+    // Non-logged-in users must sign in before any banking action.
+    // Logged-in users proceed to step-up MFA gate (if threshold exceeded).
+    if (!req.session?.user) {
+      console.log('[SessionCheck] No active session - login required for banking action');
+      return res.status(401).json({
+        error: 'unauthenticated',
+        error_description: 'Login required. Please sign in to perform banking operations.',
+        login_url: '/sign-in'
+      });
+    }
+
     // ── Step-up MFA gate ─────────────────────────────────────────────────────
     // Transfers and withdrawals above the threshold require a fresh MFA token.
     // All values are read from runtimeSettings (configurable via admin UI at /settings).
@@ -380,6 +392,8 @@ router.post('/', authenticateToken, async (req, res) => {
       const userAcr = req.user.acr;
       if (!userAcr || userAcr !== STEP_UP_ACR) {
         const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
+        const hitlAmount = parseFloat(req.body.amount);
+        const isHITL = hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD;
         return res.status(428).json({
           error: 'step_up_required',
           error_description: 'All withdrawals require additional MFA authentication.',
@@ -387,6 +401,7 @@ router.post('/', authenticateToken, async (req, res) => {
           step_up_method: stepUpMethod,
           step_up_url: '/api/auth/oauth/user/stepup',
           amount_threshold: 0,
+          isHITL: isHITL,
         });
       }
     }
@@ -396,6 +411,8 @@ router.post('/', authenticateToken, async (req, res) => {
       if (!userAcr || userAcr !== STEP_UP_ACR) {
         const stepUpMethod = configStore.getEffective('step_up_method') || runtimeSettings.get('stepUpMethod') || 'ciba';
         console.log(`[StepUp] Amount ${amount} exceeds threshold ${STEP_UP_THRESHOLD}. User ACR: ${userAcr}. Requiring step-up. Method: ${stepUpMethod}`);
+        const hitlAmount = parseFloat(req.body.amount);
+        const isHITL = hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD;
         return res.status(428).json({
           error: 'step_up_required',
           error_description: `Transfers and withdrawals of $${STEP_UP_THRESHOLD} or more require additional authentication (MFA). Update this threshold in Admin → Security Settings.`,
@@ -403,6 +420,7 @@ router.post('/', authenticateToken, async (req, res) => {
           step_up_method: stepUpMethod,
           step_up_url: '/api/auth/oauth/user/stepup',
           amount_threshold: STEP_UP_THRESHOLD,
+          isHITL: isHITL,
         });
       }
     }

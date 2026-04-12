@@ -1973,7 +1973,7 @@ Plans:
 **Requirements**: TBD
 **Depends on:** Phase 116 (full-langchain-native-agent-rebuild), Phase 122 (conditional-step-up-authentication), Phase 52 (pingone-mfa-step-up)
 
-**Plans:** 1/5 plans complete
+**Plans:** 0/1 plans complete
 
 Plans:
 - [x] 127-01: Debug PingOne Test page failures

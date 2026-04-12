@@ -49,17 +49,19 @@ router.post('/message', async (req, res) => {
       return res.status(400).json({ error: 'Message required' });
     }
 
-    console.log('[banking-agent/message] Message length:', message.length);
+    console.log('[banking-agent/message] Message length:', message?.length || 0);
+    console.log('[banking-agent/message] Message preview:', message?.substring(0, 100));
     console.log('[banking-agent/message] agentContext present:', !!req.agentContext);
     console.log('[banking-agent/message] agentContext keys:', req.agentContext ? Object.keys(req.agentContext) : 'none');
 
     const { userId, accessToken, tokenEvents } = req.agentContext || {};
     console.log('[banking-agent/message] userId:', userId);
     console.log('[banking-agent/message] accessToken present:', !!accessToken);
+    console.log('[banking-agent/message] accessToken length:', accessToken?.length || 0);
     console.log('[banking-agent/message] tokenEvents count:', tokenEvents?.length || 0);
 
     if (!userId || !accessToken) {
-      console.log('[banking-agent/message] ERROR: Session expired - userId:', userId, 'accessToken present:', !!accessToken);
+      console.error('[banking-agent/message] ERROR: Session expired - userId:', userId, 'accessToken present:', !!accessToken);
       return res.status(401).json({ error: 'Session expired', agentInitRequired: true });
     }
 
@@ -83,8 +85,14 @@ router.post('/message', async (req, res) => {
     });
     console.log('[banking-agent/message] processAgentMessage response received');
     console.log('[banking-agent/message] Response keys:', Object.keys(response || {}));
+    console.log('[banking-agent/message] success:', response?.success);
     console.log('[banking-agent/message] requiresConsent:', response?.requiresConsent);
+    console.log('[banking-agent/message] agentConfigured:', response?.agentConfigured);
     console.log('[banking-agent/message] tokenEvents count:', response?.tokenEvents?.length || 0);
+    console.log('[banking-agent/message] error present:', !!response?.error);
+    if (response?.error) {
+      console.error('[banking-agent/message] Response error:', response.error);
+    }
 
     // Include token events in the response
     if (response?.tokenEvents && response.tokenEvents.length > 0) {

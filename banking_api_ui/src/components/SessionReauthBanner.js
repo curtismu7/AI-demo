@@ -1,14 +1,22 @@
 // banking_api_ui/src/components/SessionReauthBanner.js
 import { navigateToAdminOAuthLogin, navigateToCustomerOAuthLogin } from '../utils/authUi';
+import { useEducationUI } from '../context/EducationUIContext';
+import { EDU } from './education/educationIds';
 
 /**
  * Fixed on-page notice when the session is invalid and the user must sign in again.
  * @param {{ message: string, role: 'admin' | 'customer', onDismiss: () => void, isHITL?: boolean }} props
  */
 export default function SessionReauthBanner({ message, role, onDismiss, isHITL = false }) {
+  const { open } = useEducationUI();
+  
   const handleSignIn = () => {
     if (role === 'admin') navigateToAdminOAuthLogin();
     else navigateToCustomerOAuthLogin();
+  };
+
+  const handleLearnMore = () => {
+    open(EDU.HUMAN_IN_LOOP, 'what');
   };
 
   const signInLabel = role === 'admin' ? 'Admin sign in' : 'Sign in';
@@ -27,6 +35,11 @@ export default function SessionReauthBanner({ message, role, onDismiss, isHITL =
           <button type="button" className="session-reauth-banner__btn session-reauth-banner__btn--primary" onClick={handleSignIn}>
             {signInLabel}
           </button>
+          {isHITL && (
+            <button type="button" className="session-reauth-banner__btn session-reauth-banner__btn--secondary" onClick={handleLearnMore}>
+              Learn more
+            </button>
+          )}
           <button type="button" className="session-reauth-banner__btn session-reauth-banner__btn--ghost" onClick={onDismiss}>
             Dismiss
           </button>

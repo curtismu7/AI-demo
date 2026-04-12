@@ -19,7 +19,7 @@ Continue with the next logical development phase or task based on current projec
 // turbo
 Run todo phase matching to identify current priorities:
 ```bash
-node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" todo match-phase "52" 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(f\"{m['score']:.1f} [{m['area']}] {m['title']}\") for m in sorted(d['matches'], key=lambda x: -x['score'])]"
+node "$HOME/.claude/get-shit-done/bin/gsd-tools.cjs" todo match-phase "52" 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(f\"{m['score']:.1f} [{m['area']}] {m['title']}\") for m in sorted(d['matches'], key=lambda x: -x['score'])]"
 ```
 
 ### 2. Review Project State

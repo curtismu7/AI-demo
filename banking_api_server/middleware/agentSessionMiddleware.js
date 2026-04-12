@@ -49,13 +49,17 @@ async function agentSessionMiddleware(req, res, next) {
     }
     // Check if this is a cookie-restored stub (no real tokens available)
     if (req.session.oauthTokens.accessToken === '_cookie_session') {
-      console.log('[agentSessionMiddleware] ERROR: Session restored from cookie but real tokens not available');
+      console.log('[agentSessionMiddleware] ERROR: OAuth access token is _cookie_session stub - real tokens not available');
       console.log('[agentSessionMiddleware] Session restored from cookie:', !!req.session._restoredFromCookie);
       console.log('[agentSessionMiddleware] Session store configured:', !!req.sessionStore);
+      console.log('[agentSessionMiddleware] Session user present:', !!req.session.user);
+      console.log('[agentSessionMiddleware] oauthTokens keys:', req.session.oauthTokens ? Object.keys(req.session.oauthTokens) : 'none');
       return res.status(401).json({
         error: 'session_restore_required',
-        message: 'Your session was restored from a cookie but the full OAuth tokens are not available. Please sign in again to restore your session.',
-        hint: 'This can happen when the session store (Redis/Upstash) is not available. Sign in again to refresh your session.',
+        message: 'OAuth access token not available in session. Please sign in again.',
+        hint: req.session._restoredFromCookie 
+          ? 'Session was restored from cookie but real OAuth tokens are missing. Sign in again to get fresh tokens.'
+          : 'Session has stub token instead of real OAuth tokens. This may indicate a session save failure. Sign in again.',
       });
     }
     console.log('[agentSessionMiddleware] oauthTokens.accessToken present:', !!req.session.oauthTokens.accessToken);
@@ -89,6 +93,7 @@ async function agentSessionMiddleware(req, res, next) {
       // These will be populated after token exchange in Plan 02
       agentToken: null,
       tokenExchangedAt: null,
+      tokenEvents: [],
     };
     console.log('[agentSessionMiddleware] agentContext.userId:', req.agentContext.userId);
     console.log('[agentSessionMiddleware] agentContext.email:', req.agentContext.email);
@@ -96,7 +101,7 @@ async function agentSessionMiddleware(req, res, next) {
 
     // Step 4: Initialize token events tracking for this request
     // Events will be collected during MCP tool calls and returned in response
-    req.tokenEvents = [];
+    req.tokenEvents = req.agentContext.tokenEvents;
 
     // Steps 5: Add helper methods for token exchange (will be called by agent service)
     req.recordTokenEvent = (type, data) => {

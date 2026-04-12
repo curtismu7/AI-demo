@@ -59,6 +59,7 @@ export default function TransactionConsentModal({
   const [otpError, setOtpError] = useState('');
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpExpiresAt, setOtpExpiresAt] = useState(null);
+  const [otpEmail, setOtpEmail] = useState(null); // email address OTP was sent to
   const otpInputRef = useRef(null);
 
   const autoConfirmFiredRef = useRef(null);
@@ -78,6 +79,7 @@ export default function TransactionConsentModal({
       setOtpError('');
       setOtpVerifying(false);
       setOtpExpiresAt(null);
+      setOtpEmail(null);
     }
   }, [open]);
 
@@ -163,6 +165,7 @@ export default function TransactionConsentModal({
         );
         setOtpSent(data.otpSent !== false);
         setOtpExpiresAt(data.otpExpiresAt);
+        setOtpEmail(data.otpEmail || user.email || null);
         if (data.otpSent === false && data.otpCodeFallback) {
           setOtpFallbackCode(data.otpCodeFallback);
         }
@@ -175,8 +178,8 @@ export default function TransactionConsentModal({
         setSubmitting(false);
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoConfirm, loading, loadFailed, snapshot, otpStep, submitting, challengeId, user?.id]);
+  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoConfirm, loading, loadFailed, snapshot, otpStep, submitting, challengeId, user?.id, user?.email, onClose]);
 
   const summaryLines = useMemo(() => {
     if (!snapshot) return [];
@@ -250,6 +253,7 @@ export default function TransactionConsentModal({
       );
       setOtpSent(data.otpSent !== false);
       setOtpExpiresAt(data.otpExpiresAt);
+      setOtpEmail(data.otpEmail || user.email || null);
       if (data.otpSent === false && data.otpCodeFallback) {
         setOtpFallbackCode(data.otpCodeFallback);
       }
@@ -371,9 +375,16 @@ export default function TransactionConsentModal({
         {otpStep ? (
           <div className="tx-otp-panel">
             {otpSent ? (
-              <p className="tx-otp-panel__lead">
-                A 6-digit verification code was sent to your email address via PingOne. Enter it below to authorise this transaction.
-              </p>
+              <>
+                <p className="tx-otp-panel__lead">
+                  A 6-digit verification code was sent to your email address via PingOne. Enter it below to authorise this transaction.
+                </p>
+                {otpEmail && (
+                  <p className="tx-otp-panel__email" style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.5rem' }}>
+                    Email: <strong>{otpEmail}</strong>
+                  </p>
+                )}
+              </>
             ) : otpFallbackCode ? (
               <div className="tx-otp-panel__lead tx-otp-panel__lead--warn">
                 <p style={{ margin: '0 0 0.5rem' }}>⚠️ Email delivery unavailable (PingOne Notifications not configured).</p>

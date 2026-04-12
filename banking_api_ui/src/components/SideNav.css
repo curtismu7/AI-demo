@@ -1,9 +1,9 @@
 /* ─── Side Navigation ─────────────────────────────────────────────────────── */
 
 .sidenav {
-  --sn-bg:          var(--chase-navy, #004687);
-  --sn-bg-hover:    var(--chase-navy-light, #005FA3);
-  --sn-bg-active:   var(--chase-blue, #0066CC);
+  --sn-bg:          var(--sidebar-bg, #1a3a52);
+  --sn-bg-hover:    var(--sidebar-bg-hover, #244a63);
+  --sn-bg-active:   var(--sidebar-bg-active, #2c5a7a);
   --sn-accent:      var(--chase-blue, #0066CC);
   --sn-text:        #FFFFFF;
   --sn-muted:       #B8C9E0;
@@ -157,30 +157,32 @@
 }
 
 .sidenav-group {
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
 
 .sidenav-group-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--sn-muted);
-  padding: 10px 14px 4px;
+  padding: 12px 14px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 4px;
 }
 
 .sidenav-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px 8px 14px;
+  gap: 8px;
+  padding: 12px 14px;
   text-decoration: none;
   color: #CCCCCC;
   font-size: 13px;
   font-weight: 500;
   border-radius: 6px;
   margin: 1px 6px;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -195,6 +197,7 @@
   color: #fff;
   border-left: 3px solid var(--sn-accent);
   padding-left: 11px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .sidenav-link-icon {

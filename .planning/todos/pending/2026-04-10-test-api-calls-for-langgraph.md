@@ -20,4 +20,4 @@ Test the /api/banking-agent/message endpoint with various requests:
 3. Verify no breaking changes to the API contract
 4. Check that LangGraph state management works as expected
 
-Use curl or Postman to test the endpoint with valid authentication tokens.
+**Note:** The endpoint requires authentication. Test through the UI at https://api.pingdemo.com:4000/agent after logging in, or use curl/Postman with valid session cookies/tokens.

@@ -471,6 +471,7 @@ class ConfigStore {
       ciba_enabled:           ['CIBA_ENABLED'],
       step_up_method:         ['STEP_UP_METHOD'],
       step_up_amount_threshold: ['STEP_UP_AMOUNT_THRESHOLD'],
+      pingone_mfa_policy_id:  ['PINGONE_MFA_POLICY_ID'],
       agent_mcp_allowed_scopes: ['AGENT_MCP_ALLOWED_SCOPES'],
       ff_two_exchange_delegation:      ['FF_TWO_EXCHANGE_DELEGATION'],
       pingone_ai_agent_client_id:       ['PINGONE_AI_AGENT_CLIENT_ID', 'AI_AGENT_CLIENT_ID'],
@@ -689,41 +690,95 @@ function validateTwoExchangeConfig() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Explicit scope-audience mapping per RFC 8707 resource indicators.
+ * Build explicit scope-audience mapping per RFC 8707 resource indicators.
  * Maps each audience URI to the OAuth scopes valid for token exchange to that audience.
- * Replaces implicit 3-level fallback logic with explicit configuration.
+ * Reads resource URIs from configStore to support dynamic configuration.
+ * 
+ * Called at validation time (not at module load) so config changes are reflected.
  */
-const ALLOWED_SCOPES_BY_AUDIENCE = {
-  // Agent Gateway (Step 1 actor token)
-  // OAuth app: PINGONE_AI_AGENT_CLIENT_ID
-  'https://agent-gateway.example.com': [
-    'banking:agent:invoke',
-    'ai_agent',
-  ],
+function buildAllowedScopesByAudience() {
+  const mapping = {};
 
-  // AI Agent Intermediate (Step 2 exchange output)  
-  // OAuth resource server receiving on-behalf-of token
-  'https://ai-agent-gateway.example.com': [
-    'banking:read',
-    'banking:write',
-    'banking:agent:invoke',
-  ],
+  // User End-User banking API (standard 1-exchange)
+  const endUserAudience = store.get('PINGONE_AUDIENCE_ENDUSER') || 'https://banking-api.banking-demo.com';
+  if (endUserAudience) {
+    mapping[endUserAudience] = [
+      'banking:read',
+      'banking:write',
+      'banking:accounts:read',
+      'banking:transactions:read',
+      'banking:transactions:write',
+      'banking:general:read',
+      'banking:general:write',
+      'banking:admin', // Allow admin scopes here too for role-based access
+    ];
+  }
 
-  // MCP Gateway (Step 3 actor token)
-  // OAuth app: PINGONE_MCP_CLIENT_ID (or derived from env)
-  'https://mcp-gateway.example.com': [
-    'banking:mcp:invoke',
-    'mcp_resource_access',
-  ],
+  // Agent Gateway (Step 1 actor token) — 2-exchange only
+  const agentGatewayUri = store.get('PINGONE_RESOURCE_AGENT_GATEWAY_URI') || 'https://banking-agent-gateway.banking-demo.com';
+  if (agentGatewayUri) {
+    mapping[agentGatewayUri] = [
+      'banking:agent:invoke',
+      'ai_agent',
+    ];
+  }
 
-  // MCP Resource Server (Step 4 final)
-  // Resource server receiving narrowed token scopes
-  'https://resource.example.com/mcp': [
-    'get_accounts:read',
-    'transfer:execute',
-    'check:read',
-  ],
-};
+  // AI Agent Intermediate (Step 2 exchange output) — 2-exchange delegation
+  const aiAgentAudience = store.get('AI_AGENT_INTERMEDIATE_AUDIENCE') || store.get('PINGONE_AUDIENCE_AI_AGENT') || 'https://banking-ai-agent.banking-demo.com';
+  if (aiAgentAudience) {
+    mapping[aiAgentAudience] = [
+      'banking:read',
+      'banking:write',
+      'banking:agent:invoke',
+      'banking:accounts:read',
+      'banking:transactions:read',
+      'banking:transactions:write',
+    ];
+  }
+
+  // MCP Gateway (Step 3 actor token) — 2-exchange only
+  const mcpGatewayUri = store.get('PINGONE_RESOURCE_MCP_GATEWAY_URI') || 'https://banking-mcp-gateway.banking-demo.com';
+  if (mcpGatewayUri) {
+    mapping[mcpGatewayUri] = [
+      'banking:mcp:invoke',
+      'mcp_resource_access',
+      'banking:ai:agent:read',
+      'banking:ai:agent:write',
+    ];
+  }
+
+  // MCP Resource Server (1-exchange final) — standard 1-exchange
+  const mcpServerUri = store.get('PINGONE_RESOURCE_MCP_SERVER_URI') || 'https://banking-mcp-server.banking-demo.com';
+  if (mcpServerUri) {
+    mapping[mcpServerUri] = [
+      'get_accounts:read',
+      'transfer:execute',
+      'check:read',
+      'banking:accounts:read',
+      'banking:transactions:read',
+      'banking:transactions:write',
+      'banking:ai:agent:read',
+      'banking:ai:agent:write',
+    ];
+  }
+
+  // 2-Exchange final resource
+  const twoExchangeUri = store.get('PINGONE_RESOURCE_TWO_EXCHANGE_URI') || 'https://banking-resource-server.banking-demo.com';
+  if (twoExchangeUri) {
+    mapping[twoExchangeUri] = [
+      'get_accounts:read',
+      'transfer:execute',
+      'check:read',
+      'banking:accounts:read',
+      'banking:transactions:read',
+      'banking:transactions:write',
+      'banking:ai:agent:read',
+      'banking:ai:agent:write',
+    ];
+  }
+
+  return mapping;
+}
 
 /**
  * Validate that provided scopes are allowed for the given audience.
@@ -747,6 +802,9 @@ function validateScopeAudience(scopes, audience) {
     );
   }
 
+  // Build mapping at validation time (allows dynamic config changes)
+  const ALLOWED_SCOPES_BY_AUDIENCE = buildAllowedScopesByAudience();
+
   // Check: audience is known in mapping
   const allowedForAudience = ALLOWED_SCOPES_BY_AUDIENCE[audience];
   if (!allowedForAudience) {
@@ -756,7 +814,7 @@ function validateScopeAudience(scopes, audience) {
       valid: true,
       scopes: scopes,
       narrowed: false,
-      note: 'Unknown audience (not in ALLOWED_SCOPES_BY_AUDIENCE mapping)',
+      note: `Unknown audience (not in ALLOWED_SCOPES_BY_AUDIENCE mapping): ${audience}`,
     };
   }
 
@@ -955,7 +1013,7 @@ module.exports = configStore;
 module.exports.FIELD_DEFS = FIELD_DEFS;
 module.exports.validateTwoExchangeConfig = validateTwoExchangeConfig;
 module.exports.SECRET_KEYS = SECRET_KEYS;
-module.exports.ALLOWED_SCOPES_BY_AUDIENCE = ALLOWED_SCOPES_BY_AUDIENCE;
+module.exports.buildAllowedScopesByAudience = buildAllowedScopesByAudience;
 module.exports.validateScopeAudience = validateScopeAudience;
 module.exports.ERROR_CODES = ERROR_CODES;
 module.exports.getErrorDetails = getErrorDetails;

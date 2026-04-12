@@ -719,6 +719,16 @@
   background: rgba(255, 255, 255, 0.5);
 }
 
+.session-reauth-banner__btn--secondary {
+  background: #fff;
+  color: #b45309;
+  border-color: #f59e0b;
+}
+
+.session-reauth-banner__btn--secondary:hover {
+  background: #fef3c7;
+}
+
 /* HITL indicator styling */
 .session-reauth-banner--hitl {
   background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);

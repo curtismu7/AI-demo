@@ -14,6 +14,7 @@ const { StateGraph } = require('@langchain/langgraph');
 const { ChatGroq } = require('@langchain/groq');
 const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
+const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
 
 /**
  * LangGraph system prompt for banking agent
@@ -77,10 +78,47 @@ const AgentAnnotation = Annotation.Root({
  * @returns {Promise<object>} LangGraph agent ready for invoke()
  */
 async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = [] }) {
+  console.log('[agentBuilder] === CREATE BANKING AGENT START ===');
+  console.log('[agentBuilder] userId:', userId);
+  console.log('[agentBuilder] userToken present:', !!userToken);
+  console.log('[agentBuilder] userToken length:', userToken?.length || 0);
+  console.log('[agentBuilder] sessionId:', sessionId);
+  console.log('[agentBuilder] tokenEvents initial count:', tokenEvents?.length || 0);
+
   try {
     // Validate inputs
     if (!userId || !userToken) {
+      console.error('[agentBuilder] ERROR: Missing required inputs - userId:', !!userId, 'userToken:', !!userToken);
       throw new Error('Agent requires userId and userToken');
+    }
+
+    // Perform token exchange to get MCP access token and generate token events
+    console.log('[agentBuilder] Performing token exchange for MCP access...');
+    const mockReq = {
+      session: { oauthTokens: { accessToken: userToken }, id: sessionId },
+      sessionID: sessionId,
+    };
+    
+    let agentToken;
+    let exchangeEvents;
+    try {
+      const result = await resolveMcpAccessTokenWithEvents(mockReq, 'banking_agent');
+      agentToken = result.token;
+      exchangeEvents = result.tokenEvents;
+      console.log('[agentBuilder] Token exchange completed, agentToken present:', !!agentToken);
+      console.log('[agentBuilder] agentToken length:', agentToken?.length || 0);
+      console.log('[agentBuilder] Exchange events count:', exchangeEvents?.length || 0);
+    } catch (exchangeError) {
+      console.error('[agentBuilder] ERROR: Token exchange failed:', exchangeError.message);
+      console.error('[agentBuilder] Exchange error stack:', exchangeError.stack);
+      throw new Error(`Token exchange failed: ${exchangeError.message}`);
+    }
+
+    // Add exchange events to the token events array
+    if (exchangeEvents && exchangeEvents.length > 0) {
+      console.log('[agentBuilder] Adding exchange events to tokenEvents array');
+      tokenEvents.push(...exchangeEvents);
+      console.log('[agentBuilder] tokenEvents count after adding:', tokenEvents.length);
     }
 
     // Initialize model with system prompt and API key from environment
@@ -98,7 +136,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       });
       provider = 'groq';
     } else {
-      console.error('[agentBuilder] No LLM API key configured (GROQ_API_KEY required)');
+      console.error('[agentBuilder] ERROR: No LLM API key configured (GROQ_API_KEY required)');
       throw new Error('No LLM API key configured. Please set GROQ_API_KEY environment variable to use the banking agent.');
     }
 
@@ -113,7 +151,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       const config = {
         configurable: {
           agentContext: {
-            agentToken: userToken,
+            agentToken,
             userId,
             tokenEvents,
           },
@@ -147,7 +185,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
               const result = await tool.invoke(toolCall.args, {
                 configurable: {
                   agentContext: {
-                    agentToken: userToken,
+                    agentToken,
                     userId,
                     tokenEvents,
                   },

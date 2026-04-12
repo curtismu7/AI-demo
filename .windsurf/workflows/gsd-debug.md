@@ -21,7 +21,7 @@ Investigation, debugging, and systematic bug resolution for complex issues that 
 // turbo
 Identify and prioritize the specific issues to debug based on current blockers:
 ```bash
-node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" todo match-phase "52" 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(f\"{m['score']:.1f} [{m['area']}] {m['title']}\") for m in sorted(d['matches'], key=lambda x: -x['score'])]" | head -10
+node "$HOME/.claude/get-shit-done/bin/gsd-tools.cjs" todo match-phase "52" 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(f\"{m['score']:.1f} [{m['area']}] {m['title']}\") for m in sorted(d['matches'], key=lambda x: -x['score'])]" | head -10
 ```
 
 ### 2. Systematic Investigation
@@ -66,4 +66,4 @@ For each identified issue:
 - This workflow integrates with the GSD rules in `.cursor/rules/gsd-*.mdc`
 - Always check `REGRESSION_PLAN.md` before making changes to protected areas
 - Focus on one issue at a time for thorough investigation
-- Document all findings for future reference and team knowledge sharing
+- Document all findings for future reference and team knowledge sharin

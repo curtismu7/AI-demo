@@ -346,7 +346,8 @@ function AppWithAuth() {
       const d = e.detail;
       if (!d || typeof d.message !== 'string' || !d.message.trim()) return;
       const role = d.role === 'admin' ? 'admin' : 'customer';
-      setSessionReauth({ message: d.message.trim(), role });
+      const isHITL = d.isHITL === true;
+      setSessionReauth({ message: d.message.trim(), role, isHITL });
     };
     window.addEventListener(SESSION_REAUTH_EVENT, onSessionReauth);
     return () => window.removeEventListener(SESSION_REAUTH_EVENT, onSessionReauth);
@@ -509,9 +510,11 @@ function AppWithAuth() {
               !user ? (
                 <LandingPage />
               ) : (
-                <main className="main-content">
-                  <EducationBar />
-                  <Routes location={backgroundLocation || fullLocation}>
+                <>
+                  <TopNav user={user} onLogout={logout} />
+                  <main className="main-content">
+                    <EducationBar />
+                    <Routes location={backgroundLocation || fullLocation}>
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <LandingPage user={user} onLogout={logout} />} />
                     <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
@@ -554,6 +557,7 @@ function AppWithAuth() {
                     <AdminRoute user={user}><AuditPage user={user} onClose={() => window.history.back()} /></AdminRoute>
                   )}
                 </main>
+                </>
               )
             } />
           </Routes>

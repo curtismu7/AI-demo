@@ -24,8 +24,6 @@ export default function LogoutPage() {
     const timer = setInterval(() => {
       setCountdown(c => {
         if (c <= 1) {
-          clearInterval(timer);
-          navigate('/');
           return 0;
         }
         return c - 1;
@@ -33,7 +31,14 @@ export default function LogoutPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [navigate]);
+  }, []);
+
+  // Navigate when countdown reaches 0
+  useEffect(() => {
+    if (countdown === 0) {
+      navigate('/');
+    }
+  }, [countdown, navigate]);
 
   return (
     <div className="logout-page">

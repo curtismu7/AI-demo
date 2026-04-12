@@ -17,9 +17,18 @@ const braveSearchService = require('../services/braveSearchService');
  * Used by agent tools which run in the same process but don't have session cookies
  */
 async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEvents = []) {
+  console.log('[MCP_TOOL] === CALL MCP TOOL INTERNAL START ===');
+  console.log('[MCP_TOOL] toolName:', toolName);
+  console.log('[MCP_TOOL] params:', JSON.stringify(params));
+  console.log('[MCP_TOOL] agentToken present:', !!agentToken);
+  console.log('[MCP_TOOL] agentToken length:', agentToken?.length || 0);
+  console.log('[MCP_TOOL] userId:', userId);
+  console.log('[MCP_TOOL] tokenEvents count:', tokenEvents?.length || 0);
+
   try {
     // Decode userSub from agentToken for MCP metadata
     const userSub = agentToken ? decodeJwtClaims(agentToken)?.sub : null;
+    console.log('[MCP_TOOL] userSub from agentToken:', userSub);
 
     // Track token event
     if (tokenEvents) {
@@ -31,11 +40,16 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
         actor: 'agent',
         onBehalfOf: userId,
       });
+      console.log('[MCP_TOOL] Added agent_token_used event');
     }
 
     // Call MCP server directly via WebSocket with agent token
     const correlationId = `agent-${Date.now()}`;
+    console.log('[MCP_TOOL] Calling mcpCallTool with correlationId:', correlationId);
     const result = await mcpCallTool(toolName, params, agentToken, userSub, correlationId);
+    console.log('[MCP_TOOL] mcpCallTool completed successfully');
+    console.log('[MCP_TOOL] result type:', typeof result);
+    console.log('[MCP_TOOL] result keys:', result ? Object.keys(result) : 'none');
 
     // Track tool call event
     if (tokenEvents) {
@@ -47,15 +61,23 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
         actor: 'agent',
         onBehalfOf: userId,
       });
+      console.log('[MCP_TOOL] Added tool_call event');
     }
 
     // Extract text content from MCP response format
     if (result?.content?.[0]?.type === 'text') {
+      console.log('[MCP_TOOL] Returning text content from result');
       return result.content[0].text;
     }
 
+    console.log('[MCP_TOOL] Returning result as-is');
     return result;
   } catch (error) {
+    console.error('[MCP_TOOL] ERROR: MCP tool call failed');
+    console.error('[MCP_TOOL] Error name:', error.name);
+    console.error('[MCP_TOOL] Error message:', error.message);
+    console.error('[MCP_TOOL] Error stack:', error.stack);
+    
     if (tokenEvents) {
       tokenEvents.push({
         type: 'tool_error',
@@ -64,6 +86,7 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
         error: error.message,
         actor: 'agent',
       });
+      console.log('[MCP_TOOL] Added tool_error event');
     }
     throw error;
   }

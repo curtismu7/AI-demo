@@ -33,7 +33,11 @@ module.exports = function (app) {
   const certFile = path.join(__dirname, '../../certs/api.pingdemo.com+2.pem');
   const apiHttps = fs.existsSync(certFile) || process.env.REACT_APP_API_HTTPS === 'true';
   const protocol = apiHttps ? 'https' : 'http';
-  const target = `${protocol}://localhost:${apiPort}`;
+  // Use api.pingdemo.com as hostname to match the SSL certificate issued for that domain.
+  // The server.js also uses this hostname when HTTPS is enabled.
+  // When certificates are present, must use matching hostname for SSL/TLS handshake.
+  const hostname = apiHttps ? 'api.pingdemo.com' : 'localhost';
+  const target = `${protocol}://${hostname}:${apiPort}`;
 
   app.use(
     '/api',

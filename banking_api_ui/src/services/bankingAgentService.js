@@ -49,36 +49,26 @@ export async function refreshOAuthSession() {
  * @returns {Promise<{ result: any, tokenEvents: Array }>}
  */
 export async function callMcpTool(tool, params = {}) {
+  console.log('[callMcpTool] === MCP TOOL CALL START ===');
+  console.log('[callMcpTool] tool:', tool);
+  console.log('[callMcpTool] params:', JSON.stringify(params));
+  console.log('[callMcpTool] tool type:', typeof tool);
+
   // Client-side validation to prevent 400 errors and improve debugging
   if (!tool || typeof tool !== 'string') {
-    console.error('[callMcpTool] Invalid tool parameter:', { tool, toolType: typeof tool, params });
+    console.error('[callMcpTool] ERROR: Invalid tool parameter:', { tool, toolType: typeof tool, params });
     throw new Error(`Invalid tool name: ${tool} (type: ${typeof tool}). Expected non-empty string.`);
   }
 
-  // Defensive check for browser extension interference
-  try {
-    console.log('[callMcpTool] Calling MCP tool:', { tool, paramsKeys: Object.keys(params || {}) });
-  } catch (err) {
-    // Timeout or connection error
-    if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
-      console.warn('[callMcpTool] Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
-      throw Object.assign(new Error('Connection timeout - server may be restarting'), {
-        statusCode: 504,
-        code: 'connection_timeout',
-        isNetworkError: true
-      });
-    }
-    
-    // Re-throw other errors
-    console.warn('[callMcpTool] Console logging failed (possible extension interference):', err);
-  }
+  console.log('[callMcpTool] Tool validation passed');
   
   try {
     agentFlowDiagram.startMcpToolCall(tool);
+    console.log('[callMcpTool] Flow diagram started');
   } catch (err) {
     // Timeout or connection error
     if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
-      console.warn('[callMcpTool] Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
+      console.error('[callMcpTool] ERROR: Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
       throw Object.assign(new Error('Connection timeout - server may be restarting'), {
         statusCode: 504,
         code: 'connection_timeout',
@@ -94,6 +84,7 @@ export async function callMcpTool(tool, params = {}) {
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  console.log('[callMcpTool] flowTraceId:', flowTraceId);
 
   const closeSse = openMcpFlowSse(flowTraceId, (data) => {
     try {
@@ -101,7 +92,7 @@ export async function callMcpTool(tool, params = {}) {
     } catch (err) {
     // Timeout or connection error
     if (err.name === 'AbortError' || err.message === 'Failed to fetch' || err.message.includes('ERR_CONNECTION')) {
-      console.warn('[callMcpTool] Connection timeout or network error:', { tool, errorName: err.name, errorMessage: err.message });
+      console.error('[callMcpTool] ERROR: Connection timeout or network error in SSE:', { tool, errorName: err.name, errorMessage: err.message });
       throw Object.assign(new Error('Connection timeout - server may be restarting'), {
         statusCode: 504,
         code: 'connection_timeout',
@@ -167,13 +158,13 @@ export async function callMcpTool(tool, params = {}) {
       const err400 = await response.clone().json().catch(() => ({ 
         error: 'unknown_400',
         message: 'Bad request - invalid tool parameters',
-        debug: { status: 400, body: body.substring(0, 200) }
+        debug: { status: 400, body: body ? body.substring(0, 200) : 'undefined' }
       }));
       
       console.error('[callMcpTool] 400 error from server:', {
         error: err400,
         requestBody: { tool, params, flowTraceId },
-        bodyLength: body.length
+        bodyLength: body?.length || 0
       });
       
       const tokenEvents = err400.tokenEvents || [];

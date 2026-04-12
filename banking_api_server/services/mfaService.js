@@ -49,11 +49,14 @@ function _wrapError(fnName, err) {
  * Status at this point: DEVICE_SELECTION_REQUIRED
  */
 async function initiateDeviceAuth(userId, userAccessToken) {
+  const policyId = configStore.getEffective('pingone_mfa_policy_id');
+  if (!policyId) {
+    const e = new Error('PINGONE_MFA_POLICY_ID is not configured. Set it in .env or via admin UI.');
+    e.status = 503;
+    e.code = 'mfa_not_configured';
+    throw e;
+  }
   try {
-    const policyId = configStore.getEffective('pingone_mfa_policy_id');
-    if (!policyId) {
-      throw new Error('PINGONE_MFA_POLICY_ID is not configured. Set it in .env or via admin UI.');
-    }
     const url = `${_authBaseUrl()}/deviceAuthentications`;
     const { data } = await axios.post(
       url,

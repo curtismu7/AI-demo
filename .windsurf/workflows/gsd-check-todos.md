@@ -19,7 +19,7 @@ List all pending todos, allow selection, load full context for the selected todo
 // turbo
 Load todo context and check for pending todos:
 ```bash
-node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" init todos
+node "$HOME/.claude/get-shit-done/bin/gsd-tools.cjs" init todos
 ```
 
 Extract from init JSON: `todo_count`, `todos`, `pending_dir`.
@@ -140,7 +140,7 @@ If todo was moved to done/, commit the change:
 
 ```bash
 git rm --cached .planning/todos/pending/[filename] 2>/dev/null || true
-node "$HOME/.copilot/get-shit-done/bin/gsd-tools.cjs" commit "docs: start work on todo - [title]" --files .planning/todos/done/[filename] .planning/STATE.md
+node "$HOME/.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs: start work on todo - [title]" --files .planning/todos/done/[filename] .planning/STATE.md
 ```
 
 Tool respects `commit_docs` config and gitignore automatically.

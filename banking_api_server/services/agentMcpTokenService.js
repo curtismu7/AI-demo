@@ -14,6 +14,23 @@
  */
 'use strict';
 
+const DEBUG = process.env.DEBUG_AGENT_MCP === 'true';
+function debugLog(...args) {
+  if (DEBUG) {
+    console.log('[AGENT_MCP_DEBUG]', ...args);
+  }
+}
+
+// Always log critical errors regardless of DEBUG flag
+function errorLog(...args) {
+  console.error('[AGENT_MCP_ERROR]', ...args);
+}
+
+// Always log critical warnings regardless of DEBUG flag
+function warnLog(...args) {
+  console.warn('[AGENT_MCP_WARN]', ...args);
+}
+
 const configStore = require('./configStore');
 const oauthService = require('./oauthService');
 const { writeExchangeEvent } = require('./exchangeAuditStore');
@@ -314,19 +331,32 @@ function buildSessionPreviewTokenEvents(req) {
  * @param {string} tool
  */
 async function resolveMcpAccessTokenWithEvents(req, tool) {
+  console.log('[AGENT_MCP] === RESOLVE MCP ACCESS TOKEN START ===');
+  console.log('[AGENT_MCP] Tool:', tool);
+  console.log('[AGENT_MCP] Session ID:', req.sessionID);
+  console.log('[AGENT_MCP] Session exists:', !!req.session);
+  console.log('[AGENT_MCP] Session keys:', req.session ? Object.keys(req.session) : 'none');
+  
   const tokenEvents = [];
   let userToken = getSessionBearerForMcp(req);
 
+  console.log('[AGENT_MCP] User token from session:', userToken ? 'PRESENT' : 'MISSING');
+
   if (!userToken) {
+    errorLog('ERROR: No user token in session - returning null');
+    console.log('[AGENT_MCP] oauthTokens present:', !!req.session?.oauthTokens);
+    console.log('[AGENT_MCP] oauthTokens keys:', req.session?.oauthTokens ? Object.keys(req.session.oauthTokens) : 'none');
     return { token: null, tokenEvents, userSub: null };
   }
 
   // ── Admin Token Detection ────────────────────────────────────────────────
   // Check if this is an admin session and use admin token as subject token
   const shouldUseAdmin = adminTokenService.shouldUseAdminTokenForTool(req, tool);
+  console.log('[AGENT_MCP] Should use admin token:', shouldUseAdmin);
   
   if (shouldUseAdmin) {
     const adminToken = adminTokenService.getAdminTokenFromSession(req.session);
+    console.log('[AGENT_MCP] Admin token from session:', adminToken ? 'PRESENT' : 'MISSING');
     if (adminToken) {
       tokenEvents.push(buildTokenEvent(
         'admin-token-detected',
@@ -509,7 +539,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // Safety check: ensure we have at least one valid scope for token exchange
   // If all scopes are delegation-only, use a minimal banking:read scope to avoid "At least one scope must be granted"
   const validExchangeScopes = effectiveToolScopes.filter(scope => !DELEGATION_ONLY_SCOPES.has(scope));
-  const finalScopes = validExchangeScopes.length > 0 ? validExchangeScopes : ['banking:read'];
+  let finalScopes = validExchangeScopes.length > 0 ? validExchangeScopes : ['banking:read'];
 
   // RFC 8707: Validate scopes against target audience
   let scopeValidatedFinalScopes = finalScopes;
@@ -521,7 +551,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     );
     scopeValidatedFinalScopes = scopeValidation.scopes;
     
-    if (scopeValidation.narrowed || scopeValidation.narrowed === false) {
+    if (scopeValidation.narrowed !== undefined) {
       // Log validation event
       void writeExchangeEvent({
         type: 'scope-validation',
@@ -811,7 +841,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     // ── RFC 8693 §3: Subject Preservation Validation ────────────────────────
     // Verify that the exchanged token preserves the original user's subject claim.
     if (exchangedToken && mcpAccessTokenClaims && mcpAccessTokenClaims.sub && mcpAccessTokenClaims.sub !== userSub) {
-      logger.warn('[RFC 8693 SECURITY] Subject mismatch in token exchange', {
+      console.warn('[RFC 8693 SECURITY] Subject mismatch in token exchange', {
         original_sub: userSub,
         exchanged_sub: mcpAccessTokenClaims.sub,
         audience: mcpResourceUri,

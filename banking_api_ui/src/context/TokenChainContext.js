@@ -12,6 +12,8 @@ const TOKEN_CHAIN_HISTORY_KEY = 'tokenChainHistory';
 export function TokenChainProvider({ children }) {
   // Array of token event objects — latest tool call only (replaced on each call)
   const [events, setEvents] = useState([]);
+  // Current session token event — shown when no tool events (e.g., on dashboard load)
+  const [sessionTokenEvent, setSessionTokenEvent] = useState(null);
   // History: array of { tool, timestamp, events[] } — hydrated from localStorage on mount
   const [history, setHistory] = useState(() => {
     try {
@@ -41,6 +43,8 @@ export function TokenChainProvider({ children }) {
   const setTokenEvents = useCallback((tool, newEvents) => {
     if (!Array.isArray(newEvents) || newEvents.length === 0) { return; }
     setEvents(newEvents);
+    // Clear session token event when a tool runs (tool events take precedence)
+    setSessionTokenEvent(null);
     setHistory(prev => [
       { tool, timestamp: new Date().toISOString(), events: newEvents },
       ...prev.slice(0, 19), // keep last 20 calls
@@ -51,16 +55,25 @@ export function TokenChainProvider({ children }) {
     setEvents([]);
   }, []);
 
+  /** Set the current user session token event (shown on dashboard before any tool calls). */
+  const setSessionToken = useCallback((tokenEvent) => {
+    setSessionTokenEvent(tokenEvent);
+  }, []);
+
   /** Clears history from both state and localStorage (called on logout). */
   const clearHistory = useCallback(() => {
     setHistory([]);
     setEvents([]);
+    setSessionTokenEvent(null);
     try { localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY); } catch {}
   }, []);
 
+  // Use tool events if available, otherwise show session token
+  const displayEvents = events.length > 0 ? events : (sessionTokenEvent ? [sessionTokenEvent] : []);
+
   const value = useMemo(
-    () => ({ events, history, setTokenEvents, clearEvents, clearHistory }),
-    [events, history, setTokenEvents, clearEvents, clearHistory]
+    () => ({ events: displayEvents, history, setTokenEvents, clearEvents, setSessionToken, clearHistory }),
+    [displayEvents, history, setTokenEvents, clearEvents, setSessionToken, clearHistory]
   );
 
   return (

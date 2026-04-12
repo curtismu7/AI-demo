@@ -772,10 +772,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   useEffect(() => {
     const onAgentStepUp = (e) => {
       const method = (e && e.detail && e.detail.step_up_method) || 'email';
+      const isHITL = (e && e.detail && e.detail.isHITL) === true;
       if (method === 'ciba') {
         setAgentTriggeredStepUp(true);
         setStepUpRequired(true);
         setStepUpMethod('ciba');
+        // Dispatch SESSION_REAUTH_EVENT with isHITL flag for SessionReauthBanner
+        window.dispatchEvent(new CustomEvent('SESSION_REAUTH_EVENT', { 
+          detail: { message: 'Additional authentication required for this transaction.', role: 'customer', isHITL } 
+        }));
         // 3-second countdown then auto-initiate CIBA
         setAgentCountdown(3);
         const t1 = setTimeout(() => setAgentCountdown(2), 1000);
@@ -789,6 +794,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else {
         // Email OTP: generate code server-side and show inline modal (no PingOne redirect)
         setAgentTriggeredStepUp(true);
+        // Dispatch SESSION_REAUTH_EVENT with isHITL flag for SessionReauthBanner
+        window.dispatchEvent(new CustomEvent('SESSION_REAUTH_EVENT', { 
+          detail: { message: 'Additional authentication required for this transaction.', role: 'customer', isHITL } 
+        }));
         handleInitiateOtpRef.current && handleInitiateOtpRef.current();
       }
     };
@@ -975,6 +984,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
+    // Phase 122: Session check before banking action
+    if (!user) {
+      notifyWarning('You need to sign in first to perform banking operations. Tap Customer Sign In to get started.');
+      return;
+    }
+
     if (isDemoMode) {
       applyDemoTransaction('transfer', parseFloat(transferForm.amount), selectedAccount.id, transferForm.toAccountId, transferForm.description || 'Demo transfer');
       setTransferForm({ toAccountId: '', amount: '', description: '' });
@@ -1040,6 +1055,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       return;
     }
 
+    // Phase 122: Session check before banking action
+    if (!user) {
+      notifyWarning('You need to sign in first to perform banking operations. Tap Customer Sign In to get started.');
+      return;
+    }
+
     if (isDemoMode) {
       applyDemoTransaction('deposit', parseFloat(depositForm.amount), null, depositAccount.id, depositForm.description || 'Demo deposit');
       setDepositForm({ amount: '', description: '' });
@@ -1102,6 +1123,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
     if (!withdrawAccount || !withdrawForm.amount) {
       notifyWarning('Please fill in all withdrawal details');
+      return;
+    }
+
+    // Phase 122: Session check before banking action
+    if (!user) {
+      notifyWarning('You need to sign in first to perform banking operations. Tap Customer Sign In to get started.');
       return;
     }
 

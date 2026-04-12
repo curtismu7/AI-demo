@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import axios from 'axios';
 
 /**
@@ -32,26 +32,8 @@ export function ExchangeModeProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load initial mode from server on mount
-  useEffect(() => {
-    const loadInitialMode = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get('/api/mcp/exchange-mode');
-        const initialMode = response.data.mode === 'double' ? 'double' : 'single';
-        setModeState(initialMode);
-        setError(null);
-      } catch (err) {
-        console.warn('Failed to load exchange mode:', err.message);
-        setError(err.message);
-        // Keep default 'single' mode on error
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInitialMode();
-  }, []);
+  // Don't fetch initial mode - always default to 'single' to prevent 401 errors
+  // Mode is only fetched when user explicitly changes it
 
   /**
    * Update exchange mode (calls API to persist)

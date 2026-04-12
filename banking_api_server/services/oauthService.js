@@ -350,7 +350,7 @@ class OAuthService {
     const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID;
     const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET || process.env.AGENT_OAUTH_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      throw new Error('PINGONE_WORKER_TOKEN_CLIENT_ID and PINGONE_WORKER_TOKEN_CLIENT_SECRET must be set for worker token (PingOne App: Super Banking Worker Token)');
+      throw new Error('Agent client credentials not set. Set one of: PINGONE_WORKER_TOKEN_CLIENT_ID/SECRET, PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID/SECRET, or AGENT_OAUTH_CLIENT_ID/SECRET');
     }
     const agentAuthMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
     

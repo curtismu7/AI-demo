@@ -4,7 +4,7 @@
  * Requires explicit user consent for transfers/withdrawals >$500
  */
 
-import crypto from 'crypto';
+const crypto = require('crypto');
 
 // Configuration
 const HITL_THRESHOLD = 500; // USD
@@ -13,7 +13,7 @@ const HIGH_VALUE_TOOLS = ['create_transfer', 'create_withdrawal'];
 /**
  * Middleware: Check if tool call requires HITL consent
  */
-export function hitlGatewayMiddleware(req, res, next) {
+function hitlGatewayMiddleware(req, res, next) {
   // Attach HITL evaluator to request
   req.evaluateHitl = evaluateToolCall;
   req.hitlPending = {}; // Store pending consent requests
@@ -24,7 +24,7 @@ export function hitlGatewayMiddleware(req, res, next) {
  * Evaluate tool call for HITL requirement
  * Returns: { requiresConsent: boolean, consentId?: string, reason?: string }
  */
-export async function evaluateToolCall(toolCall, userId) {
+async function evaluateToolCall(toolCall, userId) {
   const { tool, params } = toolCall;
 
   // Check if tool is high-value operation
@@ -59,7 +59,7 @@ export async function evaluateToolCall(toolCall, userId) {
 /**
  * Generate unique consent request ID
  */
-export function generateConsentId(userId, tool, params) {
+function generateConsentId(userId, tool, params) {
   const hash = crypto
     .createHash('sha256')
     .update(`${userId}-${tool}-${JSON.stringify(params)}-${Date.now()}`)
@@ -70,7 +70,7 @@ export function generateConsentId(userId, tool, params) {
 /**
  * Store consent request (in-memory or Redis)
  */
-export async function storeConsentRequest(consentId, consentData) {
+async function storeConsentRequest(consentId, consentData) {
   // For demo: in-memory map
   // Production: use Redis with 5-min TTL
   if (!global.pendingConsents) {
@@ -88,7 +88,7 @@ export async function storeConsentRequest(consentId, consentData) {
 /**
  * Retrieve + validate consent decision
  */
-export async function getConsentDecision(consentId) {
+async function getConsentDecision(consentId) {
   const consent = global.pendingConsents?.[consentId];
   if (!consent) {
     return { valid: false, error: 'Consent request expired or not found' };
@@ -113,7 +113,7 @@ export async function getConsentDecision(consentId) {
 /**
  * Record consent decision
  */
-export async function recordConsentDecision(consentId, decision) {
+async function recordConsentDecision(consentId, decision) {
   const consent = global.pendingConsents?.[consentId];
   if (!consent) {
     throw new Error('Consent request not found');
@@ -124,3 +124,12 @@ export async function recordConsentDecision(consentId, decision) {
 
   return consent;
 }
+
+module.exports = {
+  hitlGatewayMiddleware,
+  evaluateToolCall,
+  generateConsentId,
+  storeConsentRequest,
+  getConsentDecision,
+  recordConsentDecision,
+};

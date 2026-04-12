@@ -359,4 +359,103 @@ describe('Step-Up MFA Gate — POST /api/transactions', () => {
       expect(blocked.status).toBe(428);
     });
   });
+
+  // ── HITL flag in step-up response (Phase 124) ────────────────────────────────────
+  describe('HITL (Human-in-the-loop) flag in step-up response', () => {
+    it('should return isHITL=true when amount exceeds $500 HITL threshold', async () => {
+      runtimeSettings.update({
+        stepUpEnabled: true,
+        stepUpAmountThreshold: 250,
+        stepUpAcrValue: 'Multi_factor',
+        stepUpTransactionTypes: ['withdrawal'],
+      }, 'test');
+
+      const res = await request(app)
+        .post('/api/transactions')
+        .set('x-test-user', customerUser({ acr: null }))
+        .send(highValueWithdrawal(600)); // Exceeds $500 HITL threshold
+
+      expect(res.status).toBe(428);
+      expect(res.body.error).toBe('step_up_required');
+      expect(res.body.isHITL).toBe(true);
+    });
+
+    it('should return isHITL=false when amount is below $500 HITL threshold', async () => {
+      runtimeSettings.update({
+        stepUpEnabled: true,
+        stepUpAmountThreshold: 250,
+        stepUpAcrValue: 'Multi_factor',
+        stepUpTransactionTypes: ['withdrawal'],
+      }, 'test');
+
+      const res = await request(app)
+        .post('/api/transactions')
+        .set('x-test-user', customerUser({ acr: null }))
+        .send(highValueWithdrawal(400)); // Below $500 HITL threshold
+
+      expect(res.status).toBe(428);
+      expect(res.body.error).toBe('step_up_required');
+      expect(res.body.isHITL).toBe(false);
+    });
+
+    it('should return isHITL=true when withdrawal always requires step-up and amount exceeds $500', async () => {
+      runtimeSettings.update({
+        stepUpEnabled: true,
+        stepUpWithdrawalsAlways: true,
+        stepUpAcrValue: 'Multi_factor',
+      }, 'test');
+
+      const res = await request(app)
+        .post('/api/transactions')
+        .set('x-test-user', customerUser({ acr: null }))
+        .send(highValueWithdrawal(600)); // Exceeds $500 HITL threshold
+
+      expect(res.status).toBe(428);
+      expect(res.body.error).toBe('step_up_required');
+      expect(res.body.isHITL).toBe(true);
+    });
+
+    it('should return isHITL=false when withdrawal always requires step-up but amount is below $500', async () => {
+      runtimeSettings.update({
+        stepUpEnabled: true,
+        stepUpWithdrawalsAlways: true,
+        stepUpAcrValue: 'Multi_factor',
+      }, 'test');
+
+      const res = await request(app)
+        .post('/api/transactions')
+        .set('x-test-user', customerUser({ acr: null }))
+        .send(highValueWithdrawal(300)); // Below $500 HITL threshold
+
+      expect(res.status).toBe(428);
+      expect(res.body.error).toBe('step_up_required');
+      expect(res.body.isHITL).toBe(false);
+    });
+
+    it('should return isHITL=true for transfers exceeding $500 HITL threshold', async () => {
+      runtimeSettings.update({
+        stepUpEnabled: true,
+        stepUpAmountThreshold: 250,
+        stepUpAcrValue: 'Multi_factor',
+        stepUpTransactionTypes: ['transfer', 'withdrawal'],
+      }, 'test');
+
+      const transferBody = {
+        fromAccountId: 'test-account-id',
+        toAccountId: 'test-account-id',
+        amount: 600, // Exceeds $500 HITL threshold
+        type: 'transfer',
+        description: 'Test high-value transfer',
+      };
+
+      const res = await request(app)
+        .post('/api/transactions')
+        .set('x-test-user', customerUser({ acr: null }))
+        .send(transferBody);
+
+      expect(res.status).toBe(428);
+      expect(res.body.error).toBe('step_up_required');
+      expect(res.body.isHITL).toBe(true);
+    });
+  });
 });

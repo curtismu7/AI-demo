@@ -1734,12 +1734,13 @@ export default function BankingAgent({
           setHitlPendingIntent({ actionId, form, intentPayload, threshold: normalized.hitl_threshold_usd ?? 500 });
         } else if (normalized.step_up_required === true || normalized.error === 'step_up_required') {
           const stepUpMethod = normalized.step_up_method || 'email';
+          const isHITL = normalized.isHITL === true;
           pendingStepUpActionRef.current = { actionId, form, method: stepUpMethod };
           const stepUpMessageBody = stepUpMethod === 'ciba'
             ? `🔐 **Additional verification required.**\n\nCIBA push sent to your device — waiting for approval…\n\nApprove the request on your registered device and your action will resume automatically.`
             : `🔐 **Additional verification required.**\n\nEmail OTP sent to your registered email — waiting for verification…\n\nComplete the verification and your action will resume automatically.`;
           addMessage('assistant', stepUpMessageBody, actionId);
-          window.dispatchEvent(new CustomEvent('agentStepUpRequested', { detail: { step_up_method: stepUpMethod } }));
+          window.dispatchEvent(new CustomEvent('agentStepUpRequested', { detail: { step_up_method: stepUpMethod, isHITL } }));
           toast.dismiss(toastId);
           setLoading(false);
           return;
@@ -1972,6 +1973,13 @@ export default function BankingAgent({
           'Sign in again: server session has no tokens (Vercel needs Redis/Upstash + redeploy, then sign out & sign in).',
           { autoClose: 12000 },
         );
+      } else if (
+        err?.statusCode === 401 &&
+        (err?.response?.error === 'unauthenticated' ||
+         /Login required/i.test(String(err?.message || '')))
+      ) {
+        // Phase 122: Non-logged-in users attempting banking actions
+        addMessage('assistant', '🔐 You need to sign in first to perform banking operations. Tap **Customer Sign In** in the left panel to get started.');
       } else if (
         err?.statusCode === 401 ||
         err?.code === 'authentication_required' ||

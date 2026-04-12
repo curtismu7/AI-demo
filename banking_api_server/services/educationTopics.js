@@ -4,7 +4,7 @@
  * Extracted from BankingAgent.js TOPIC_MESSAGES © 2024
  */
 
-export const TOPIC_MESSAGES = {
+const TOPIC_MESSAGES = {
   'login-flow': `🔐 Authorization Code + PKCE Flow:\n\n1. App generates code_verifier (random 64 bytes) + code_challenge (SHA-256 hash)\n2. Browser redirects to PingOne /as/authorize with challenge\n3. User authenticates → PingOne redirects back with code\n4. Backend-for-Frontend (BFF) exchanges code + verifier for tokens (server-side only)\n5. Browser never sees the token — only a session cookie\n\nPKCE prevents interception: even if code is stolen, attacker can't exchange it without the verifier.`,
   'token-exchange': `🔄 RFC 8693 Token Exchange (User token → MCP token):\n\nWhy: The user token has broad scope. The MCP server needs a narrowly-scoped MCP token for least-privilege.\n\nHow:\n• Backend-for-Frontend (BFF) holds the User token (session access token)\n• Backend-for-Frontend (BFF) calls PingOne /as/token with grant_type=urn:ietf:params:oauth:grant-type:token-exchange\n• User token is subject_token; agent client credentials are actor_token\n• PingOne validates may_act on the User token and issues an MCP token\n• MCP token has: sub=user, act={client_id=agent}, narrow scope, MCP audience\n\nmay_act on the User token → act on the MCP token — proving delegation chain.`,
   'may-act': `📋 may_act / act Claims (RFC 8693 §4.1):\n\nmay_act on the User token: "this client is allowed to act on my behalf"\n  { "sub": "user-uuid", "may_act": { "client_id": "bff-admin-client" } }\n\nact on the MCP token (exchanged token): "this action was delegated"\n  { "sub": "user-uuid", "act": { "client_id": "bff-admin-client" } }\n\nThe MCP server validates act to confirm the Backend-for-Frontend (BFF) is the authorized actor — not just any client that got a token.`,
@@ -25,7 +25,7 @@ export const TOPIC_MESSAGES = {
  * @param {string} topicKey - Topic key to explain (e.g., 'login-flow', 'langchain')
  * @returns {string} Education content for the topic
  */
-export function explainTopic(topicKey) {
+function explainTopic(topicKey) {
   if (!topicKey) {
     return `I can explain: ${Object.keys(TOPIC_MESSAGES).join(', ')}. Which topic would you like to know about?`;
   }
@@ -45,3 +45,5 @@ export function explainTopic(topicKey) {
   // Fallback
   return `I can explain: ${Object.keys(TOPIC_MESSAGES).join(', ')}. Which topic would you like to know about?`;
 }
+
+module.exports = { TOPIC_MESSAGES, explainTopic };

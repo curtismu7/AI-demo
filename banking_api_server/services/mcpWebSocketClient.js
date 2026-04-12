@@ -210,12 +210,17 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
                 method: 'notifications/initialized',
               })
             );
+            // Include agentToken in tool call params for MCP server authentication
+            const callParams = { ...followParams };
+            if (agentToken) callParams.agentToken = agentToken;
+            if (userSub) callParams.userSub = userSub;
+            if (correlationId) callParams.correlationId = correlationId;
             ws.send(
               JSON.stringify({
                 jsonrpc: '2.0',
                 id: FOLLOW_REQUEST_ID,
                 method: followMethod,
-                params: followParams || {},
+                params: callParams,
               })
             );
             return;

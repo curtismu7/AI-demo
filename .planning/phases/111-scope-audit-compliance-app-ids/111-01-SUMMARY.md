@@ -7,7 +7,7 @@ dependency_graph:
   requires: []
   provides: [worker-client-id-config, mcp-exchanger-client-id-config]
   affects: [agentMcpTokenService, pingOneAuthorizeService, validateTwoExchangeConfig]
-tech_stack:
+tech_stack:/gsd-discuss-phase 116
   added: []
   patterns: [configStore-getEffective, pingoneBackendDefaults-fallback]
 key_files:
@@ -21,7 +21,7 @@ decisions:
 metrics:
   duration: "~15 minutes"
   completed: "2025-07-07"
-  tasks_completed: 3
+  tasks_completed: 3/gsd-plan-phase 116
   files_modified: 2
 ---
 
