@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/Profile.js
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
+import './Profile.css';
 
 export default function Profile({ user, onLogout }) {
   const [isEditing, setIsEditing] = useState(false);

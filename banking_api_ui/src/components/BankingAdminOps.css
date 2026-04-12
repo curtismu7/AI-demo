@@ -1,0 +1,53 @@
+/* BankingAdminOps.css — Chase-branded admin operations panel styles */
+
+.banking-admin-ops {
+  background: var(--chase-light-gray, #F5F5F5);
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.admin-ops-section {
+  background: var(--chase-white, #FFFFFF);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.admin-ops-section__header {
+  background: var(--chase-navy, #004687);
+  color: var(--chase-white, #FFFFFF);
+  padding: 0.875rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.admin-ops-section__body {
+  padding: 1.5rem;
+}
+
+.admin-ops-btn {
+  background: var(--chase-blue, #0066CC);
+  color: var(--chase-white, #FFFFFF);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.125rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-ops-btn:hover {
+  background: var(--chase-navy-light, #005FA3);
+}
+
+.admin-ops-btn--danger {
+  background: var(--chase-error, #F44336);
+}
+
+.admin-ops-btn--danger:hover {
+  background: #c62828;
+}

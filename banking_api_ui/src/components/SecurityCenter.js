@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/SecurityCenter.js
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
+import './SecurityCenter.css';
 
 export default function SecurityCenter({ user }) {
   const [activeTab, setActiveTab] = useState('overview');
