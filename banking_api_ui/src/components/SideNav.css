@@ -1,9 +1,9 @@
 /* ─── Side Navigation ─────────────────────────────────────────────────────── */
 
 .sidenav {
-  --sn-bg:          var(--sidebar-bg, #1a3a52);
-  --sn-bg-hover:    var(--sidebar-bg-hover, #244a63);
-  --sn-bg-active:   var(--sidebar-bg-active, #2c5a7a);
+  --sn-bg:          var(--chase-navy, #004687);
+  --sn-bg-hover:    var(--chase-navy-light, #005FA3);
+  --sn-bg-active:   var(--chase-blue, #0066CC);
   --sn-accent:      var(--chase-blue, #0066CC);
   --sn-text:        #FFFFFF;
   --sn-muted:       #B8C9E0;

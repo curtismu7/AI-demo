@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LandingPage.css';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
+import ChaseTopNav from './ChaseTopNav';
 
 export default function LandingPage({ user, onLogout }) {
   const navigate = useNavigate();
@@ -28,33 +29,11 @@ export default function LandingPage({ user, onLogout }) {
 
   return (
     <div className="landing-page">
-      {/* Session banner for logged-in users */}
-      {user && (
-        <div className="landing-session-banner">
-          <span className="landing-session-banner-text">
-            Welcome back, {user.firstName || user.username || 'User'} ·
-            <button
-              type="button"
-              onClick={() => navigate('/user-dashboard')}
-              className="landing-session-banner-link"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', textDecoration: 'underline', font: 'inherit' }}
-            >
-              Go to Dashboard
-            </button>
-          </span>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="landing-session-banner-logout"
-            style={{ background: 'none', border: '1px solid currentColor', cursor: 'pointer', padding: '4px 8px', font: 'inherit' }}
-          >
-            Sign Out
-          </button>
-        </div>
-      )}
-
-      {/* Header with nav — always visible */}
-      <header className="landing-header" role="banner">
+      {/* Logged-in: Chase navy top nav; logged-out: white marketing header */}
+      {user ? (
+        <ChaseTopNav user={user} onLogout={handleLogout} currentPage="landing" />
+      ) : (
+        <header className="landing-header" role="banner">
         <div className="landing-header-content">
           <div className="landing-logo">
             <h1>Super Banking</h1>
@@ -75,60 +54,25 @@ export default function LandingPage({ user, onLogout }) {
             >
               PingOne Test
             </button>
-            {!user && (
-              <>
-                <button
-                  onClick={handleAdminLogin}
-                  className="nav-link"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
-                >
-                  Admin Dashboard
-                </button>
-                <button
-                  onClick={handleCustomerLogin}
-                  className="nav-link"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
-                >
-                  Customer Dashboard
-                </button>
-              </>
-            )}
+
           </nav>
           <div className="landing-header-actions">
-            {user ? (
-              <>
-                <button
-                  onClick={() => navigate('/user-dashboard')}
-                  className="btn btn-primary"
-                >
-                  My Dashboard
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="btn btn-secondary"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleAdminLogin}
-                  className="btn btn-primary"
-                >
-                  Sign In as Admin
-                </button>
-                <button
-                  onClick={handleCustomerLogin}
-                  className="btn btn-secondary"
-                >
-                  Sign In as Customer
-                </button>
-              </>
-            )}
+            <button
+              onClick={handleAdminLogin}
+              className="btn btn-primary"
+            >
+              Sign In as Admin
+            </button>
+            <button
+              onClick={handleCustomerLogin}
+              className="btn btn-secondary"
+            >
+              Sign In as Customer
+            </button>
           </div>
         </div>
       </header>
+      )}
 
       {/* Hero Section */}
       <section className="landing-hero" aria-label="Hero section">
