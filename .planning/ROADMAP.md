@@ -2049,4 +2049,14 @@ Plans:
 - [ ] 132-01-PLAN.md — Fix decodeJwtForDisplay in pingoneTestRoutes.js (backend bug, Wave 1)
 - [ ] 132-02-PLAN.md — Human verification checkpoint: full /pingone-test end-to-end tour (Wave 2)
 
+### Phase 133: PingOne test page UX — add Test/Get Token button to Agent Token card, add decoded token panel and Show API call to every section on the page
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 132
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 133 to break down)
+
 ---
