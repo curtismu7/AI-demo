@@ -15,9 +15,11 @@ const oauthService = require('../services/oauthService');
  * Returns current MFA configuration for testing
  */
 router.get('/config', (_req, res) => {
+  const explicitPolicyId = process.env.PINGONE_MFA_POLICY_ID;
   const config = {
-    mfaEnabled: process.env.PINGONE_MFA_POLICY_ID ? true : false,
-    policyId: process.env.PINGONE_MFA_POLICY_ID || null,
+    mfaEnabled: true,
+    policyId: explicitPolicyId || '(default — auto-resolved)',
+    policySource: explicitPolicyId ? 'configured' : 'auto',
     acrValue: process.env.PINGONE_MFA_ACR_VALUE || null,
     threshold: parseFloat(process.env.MFA_STEP_UP_THRESHOLD) || 500.00,
     methods: ['otp', 'fido2', 'push'],

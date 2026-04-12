@@ -1956,11 +1956,12 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 125 to break down)
 
-### Phase 126: 124
+### Phase 126: Surface sub claim as user ID in token chain display
 
-**Goal:** [To be planned]
+**Goal:** Surface the `sub` claim as the human-readable user ID in the token chain display and education panels. Use `act` claim to show the agent/actor identity. Make identity visible in chain so users can see who is acting on whose behalf.
+
 **Requirements**: TBD
-**Depends on:** Phase 125
+**Depends on:** Phase 124
 **Plans:** 0 plans
 
 Plans:
@@ -2005,5 +2006,15 @@ Plans:
 - [x] 128-02: Complete banking agent debug and E2E verification — agentBuilder fixed, endpoints verified
 - [x] 128-03: Code quality audit — SideNav, TopNav, key components — duplicate entries, missing route, a11y fix
 - [x] 128-04: Final quality verification and cleanup — build: Compiled successfully, zero warnings
+
+### Phase 129: Audit last 15 todos — verify completed correctly, no errors, working
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 128
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 129 to break down)
 
 ---

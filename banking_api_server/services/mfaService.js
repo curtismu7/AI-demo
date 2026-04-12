@@ -17,16 +17,41 @@ function _apiBaseUrl() {
 async function _getWorkerToken() {
   const region = configStore.getEffective('PINGONE_REGION') || 'com';
   const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
-  const clientId = configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
-  const clientSecret = configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
-  if (!envId || !clientId || !clientSecret) throw new Error('PingOne worker credentials not configured');
+  // Use PINGONE_WORKER_TOKEN credentials (worker app with Management API access)
+  const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID
+    || configStore.getEffective('pingone_worker_token_client_id');
+  const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET
+    || configStore.getEffective('pingone_worker_token_client_secret');
+  const authMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || 'basic').toLowerCase();
+  if (!envId || !clientId || !clientSecret) throw new Error('PingOne worker credentials not configured (set PINGONE_WORKER_TOKEN_CLIENT_ID/SECRET)');
   const tokenUrl = `https://auth.pingone.${region}/${envId}/as/token`;
-  const resp = await axios.post(tokenUrl, 'grant_type=client_credentials', {
-    auth: { username: clientId, password: clientSecret },
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  const body = new URLSearchParams({ grant_type: 'client_credentials' });
+  const reqConfig = { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10000 };
+  if (authMethod === 'post') {
+    body.set('client_id', clientId);
+    body.set('client_secret', clientSecret);
+  } else {
+    reqConfig.auth = { username: clientId, password: clientSecret };
+  }
+  const resp = await axios.post(tokenUrl, body.toString(), reqConfig);
+  return resp.data.access_token;
+}
+
+let _cachedDefaultPolicyId = null;
+
+async function _getDefaultMfaPolicy() {
+  if (_cachedDefaultPolicyId) return _cachedDefaultPolicyId;
+  const workerToken = await _getWorkerToken();
+  const { data } = await axios.get(`${_apiBaseUrl()}/mfaPolicies`, {
+    headers: { Authorization: `Bearer ${workerToken}` },
     timeout: 10000,
   });
-  return resp.data.access_token;
+  const policies = data._embedded?.mfaPolicies || [];
+  const def = policies.find(p => p.default === true) || policies[0];
+  if (!def) throw new Error('No MFA policies found in PingOne environment');
+  console.log('[MFA] resolved default policy id=%s name=%s', def.id, def.name);
+  _cachedDefaultPolicyId = def.id;
+  return def.id;
 }
 
 function _wrapError(fnName, err) {
@@ -49,12 +74,17 @@ function _wrapError(fnName, err) {
  * Status at this point: DEVICE_SELECTION_REQUIRED
  */
 async function initiateDeviceAuth(userId, userAccessToken) {
-  const policyId = configStore.getEffective('pingone_mfa_policy_id');
+  let policyId = configStore.getEffective('pingone_mfa_policy_id');
   if (!policyId) {
-    const e = new Error('PINGONE_MFA_POLICY_ID is not configured. Set it in .env or via admin UI.');
-    e.status = 503;
-    e.code = 'mfa_not_configured';
-    throw e;
+    console.log('[MFA] PINGONE_MFA_POLICY_ID not set — resolving default policy from PingOne');
+    try {
+      policyId = await _getDefaultMfaPolicy();
+    } catch (resolveErr) {
+      const e = new Error('PINGONE_MFA_POLICY_ID is not configured and default policy could not be resolved: ' + resolveErr.message);
+      e.status = 503;
+      e.code = 'mfa_not_configured';
+      throw e;
+    }
   }
   try {
     const url = `${_authBaseUrl()}/deviceAuthentications`;
