@@ -643,3 +643,102 @@ a.pingone-test-button--primary:visited {
   white-space: nowrap;
   text-decoration: none;
 }
+
+/* ── Asset Table (Phase 130) ─────────────────────────────────────────── */
+.asset-table-wrapper {
+  margin-top: 1.5rem;
+}
+
+.asset-table-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.75rem;
+}
+
+.asset-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.asset-table-th {
+  background: #f1f5f9;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: #475569;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.asset-table-td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.asset-table-td--name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.asset-table-row--ok {
+  background: #fff;
+}
+
+.asset-table-row--warn {
+  background: #fffbeb;
+}
+
+.asset-table-row--missing {
+  background: #fff5f5;
+}
+
+.asset-rs-name {
+  font-size: 0.78rem;
+  color: #374151;
+  margin-bottom: 2px;
+}
+
+/* Badges */
+.asset-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  margin: 2px 2px 2px 0;
+  white-space: nowrap;
+}
+
+.asset-badge--ok {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.asset-badge--warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.asset-badge--missing {
+  background: #fee2e2;
+  color: #b91c1c;
+  text-decoration: line-through;
+}
+
+.asset-badge--scope {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.asset-badge--type {
+  background: #f1f5f9;
+  color: #475569;
+}

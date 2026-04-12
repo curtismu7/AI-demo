@@ -72,6 +72,19 @@ const TEST_CONFIG = {
   }
 };
 
+const EXPECTED_APP_NAMES = [
+  'Super Banking User App',
+  'Super Banking Admin App',
+  'Super Banking MCP Token Exchanger',
+  'Super Banking AI Agent App',
+];
+const EXPECTED_BANKING_SCOPES = [
+  'banking:accounts:read',
+  'banking:accounts:write',
+  'banking:transactions:read',
+  'banking:transactions:write',
+];
+
 /**
  * PingOneTestPage — comprehensive test page for PingOne integration
  * Tests: APIs, Token exchange, Configuration (Apps, Scopes, Resources, Users)
@@ -794,6 +807,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   <p className="error-message">Error: {assetVerification.error}</p>
                 </div>
               ) : (
+                <>
                 <div className="asset-results-grid">
                   <AssetCard
                     title="Applications"
@@ -820,6 +834,13 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                     error={assetVerification.users?.error}
                   />
                 </div>
+                <AssetTable
+                  apps={assetVerification.applications?.data || []}
+                  missing={assetVerification.missing || { apps: [], scopesByApp: {}, resourcesByApp: {} }}
+                  expectedApps={assetVerification.expectedApps || EXPECTED_APP_NAMES}
+                  expectedScopes={assetVerification.expectedScopes || EXPECTED_BANKING_SCOPES}
+                />
+                </>
               )}
             </div>
           )}
@@ -1119,6 +1140,92 @@ function AssetCard({ title, status, count, error }) {
       <div className="asset-card-content">
         <p className="asset-card-count">{count !== undefined ? `${count} found` : '—'}</p>
         {error && <p className="asset-card-error">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+
+function AssetTable({ apps, missing, expectedApps, expectedScopes }) {
+  const missingAppNames = missing.apps || [];
+
+  return (
+    <div className="asset-table-wrapper">
+      <h3 className="asset-table-title">Application &#8594; Resource &#8594; Scope Matrix</h3>
+      <div style={{ overflowX: 'auto' }}>
+        <table className="asset-table">
+          <thead>
+            <tr>
+              <th className="asset-table-th">Application</th>
+              <th className="asset-table-th">Type</th>
+              <th className="asset-table-th">Resource Servers</th>
+              <th className="asset-table-th">Scopes Granted</th>
+              <th className="asset-table-th">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {apps.map(app => {
+              const missingScopesForApp = (missing.scopesByApp || {})[app.id] || [];
+              const hasIssue = missingScopesForApp.length > 0;
+              return (
+                <tr key={app.id} className={hasIssue ? 'asset-table-row--warn' : 'asset-table-row--ok'}>
+                  <td className="asset-table-td asset-table-td--name">{app.name}</td>
+                  <td className="asset-table-td">
+                    <span className="asset-badge asset-badge--type">{app.type || '—'}</span>
+                  </td>
+                  <td className="asset-table-td">
+                    {app.grantedResources && app.grantedResources.length > 0 ? (
+                      app.grantedResources.map(rs => (
+                        <div key={rs.id} className="asset-rs-name">{rs.name}</div>
+                      ))
+                    ) : (
+                      <span className="asset-badge asset-badge--warn">No resources assigned</span>
+                    )}
+                  </td>
+                  <td className="asset-table-td">
+                    {app.grantedResources && app.grantedResources.flatMap(rs => rs.scopes).length > 0 ? (
+                      <>
+                        {app.grantedResources.flatMap(rs => rs.scopes).map(scope => (
+                          <span
+                            key={scope}
+                            className={'asset-badge ' + (missingScopesForApp.includes(scope) ? 'asset-badge--missing' : 'asset-badge--scope')}
+                          >
+                            {scope}
+                          </span>
+                        ))}
+                        {missingScopesForApp.map(scope => (
+                          <span key={'miss-' + scope} className="asset-badge asset-badge--missing">
+                            {scope} &#x2717;
+                          </span>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {expectedScopes.map(scope => (
+                          <span key={scope} className="asset-badge asset-badge--missing">{scope} &#x2717;</span>
+                        ))}
+                      </>
+                    )}
+                  </td>
+                  <td className="asset-table-td">
+                    {hasIssue
+                      ? <span className="asset-badge asset-badge--warn">&#9888; Incomplete</span>
+                      : <span className="asset-badge asset-badge--ok">&#10003; OK</span>
+                    }
+                  </td>
+                </tr>
+              );
+            })}
+            {missingAppNames.map(name => (
+              <tr key={name} className="asset-table-row--missing">
+                <td className="asset-table-td asset-table-td--name" style={{ color: '#b91c1c', fontStyle: 'italic' }}>{name}</td>
+                <td className="asset-table-td"><span className="asset-badge asset-badge--missing">App not found</span></td>
+                <td className="asset-table-td" colSpan={2} style={{ color: '#b91c1c', fontSize: '0.8rem' }}>Expected app not found in PingOne.</td>
+                <td className="asset-table-td"><span className="asset-badge asset-badge--missing">&#x2717; MISSING</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
