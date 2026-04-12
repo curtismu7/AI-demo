@@ -10,7 +10,7 @@ const TEST_CONFIG = {
   authzToken: {
     appName: 'Super Banking User App',
     appType: 'WEB_APP',
-    requiredScopes: ['openid', 'profile', 'email'],
+    requiredScopes: ['openid', 'profile', 'email', 'banking:accounts:read', 'banking:transactions:read'],
     audience: null,
     spel: null
   },

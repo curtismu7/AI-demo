@@ -386,11 +386,12 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
     const agentToken = await oauthService.getAgentClientCredentialsToken();
 
     // Perform token exchange with actor token
+    const mcpScopes1 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:accounts:read banking:accounts:write banking:transactions:read banking:transactions:write').trim().split(/\s+/);
     const exchangedToken = await oauthService.performTokenExchangeWithActor(
       oauthTokens.accessToken,
       agentToken,
       configStore.getEffective('pingone_resource_mcp_server_uri'),
-      'openid'
+      mcpScopes1
     );
 
     const responseData = {
@@ -435,11 +436,12 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
     const agentToken = await oauthService.getAgentClientCredentialsToken();
 
     // Perform token exchange with both user and agent tokens
+    const mcpScopes2 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:accounts:read banking:accounts:write banking:transactions:read banking:transactions:write').trim().split(/\s+/);
     const exchangedToken = await oauthService.performTokenExchangeWithActor(
       oauthTokens.accessToken,
       agentToken,
       configStore.getEffective('pingone_resource_mcp_gateway_uri'),
-      'openid'
+      mcpScopes2
     );
 
     const responseData = {
@@ -484,15 +486,16 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
     const agentToken = await oauthService.performTokenExchange(
       oauthTokens.accessToken,
       configStore.getEffective('pingone_resource_agent_gateway_uri'),
-      'openid'
+      ['banking:ai:agent:read']
     );
 
     // Step 2: Use both user token and agent token to exchange for MCP token
+    const mcpScopes3 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:accounts:read banking:accounts:write banking:transactions:read banking:transactions:write').trim().split(/\s+/);
     const mcpToken = await oauthService.performTokenExchangeWithActor(
       oauthTokens.accessToken,
       agentToken,
       configStore.getEffective('pingone_resource_mcp_server_uri'),
-      'openid'
+      mcpScopes3
     );
 
     const responseData = {
@@ -618,7 +621,7 @@ router.post('/token-exchange', async (req, res) => {
     
     const { mode = 'single', subjectToken, actorToken } = req.body;
     const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri');
-    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
+    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:accounts:read banking:accounts:write banking:transactions:read banking:transactions:write').trim().split(/\s+/);
     
     let result;
     if (mode === 'single') {
@@ -862,7 +865,7 @@ router.post('/token-exchange', async (req, res) => {
     
     const { mode = 'single', subjectToken, actorToken } = req.body;
     const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri');
-    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write').trim().split(/\s+/);
+    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:accounts:read banking:accounts:write banking:transactions:read banking:transactions:write').trim().split(/\s+/);
     
     let result;
     if (mode === 'single') {
