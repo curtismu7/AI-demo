@@ -12,6 +12,27 @@ const pingOneUserService = require('../services/pingOneUserService');
 const apiCallTrackerService = require('../services/apiCallTrackerService');
 
 /**
+ * Decode a JWT for display in the UI — server-side only, never exposes raw token to browser.
+ * Returns { header: object, payload: object } matching DecodedTokenPanel's expected shape.
+ * Returns null on any error (invalid token, bad base64, etc.).
+ *
+ * @param {string} token - Raw JWT string
+ * @returns {{ header: object, payload: object } | null}
+ */
+function decodeJwtForDisplay(token) {
+  if (!token || typeof token !== 'string') { return null; }
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) { return null; }
+    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    return { header, payload };
+  } catch (_e) {
+    return null;
+  }
+}
+
+/**
  * Helper function to track API calls
  * @param {string} sessionId - Session ID for tracking
  * @param {object} req - Express request object
