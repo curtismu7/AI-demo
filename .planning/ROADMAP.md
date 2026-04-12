@@ -2038,4 +2038,15 @@ Plans:
 Plans:
 - [ ] 131-01-PLAN.md — Add CONFIG_META + enhance TestCard inline detail block + wire up Config/Resources sections + CSS
 
+### Phase 132: Full end-to-end testing of pingone-test page — verify all token acquisition, token exchange, config, assets, and decoded token display
+
+**Goal:** Fix the `decodeJwtForDisplay is not defined` ReferenceError that breaks all token endpoints on the test page, then verify the full /pingone-test page end-to-end: worker token, authz token, agent token, all 3 token exchanges, configuration section inline details (Phase 131), asset table (Phase 130), and decoded token panels.
+**Requirements**: TBD
+**Depends on:** Phase 131
+**Plans:** 2 plans
+
+Plans:
+- [ ] 132-01-PLAN.md — Fix decodeJwtForDisplay in pingoneTestRoutes.js (backend bug, Wave 1)
+- [ ] 132-02-PLAN.md — Human verification checkpoint: full /pingone-test end-to-end tour (Wave 2)
+
 ---
