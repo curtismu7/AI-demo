@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/apiClient';
-import TokenDisplay from './TokenDisplay';
+import DecodedTokenPanel from './DecodedTokenPanel';
 import ApiCallDisplay from './ApiCallDisplay';
 import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import './PingOneTestPage.css';
@@ -127,6 +127,15 @@ export default function PingOneTestPage() {
   const [exchange2Error, setExchange2Error] = useState(null);
   const [exchange3Error, setExchange3Error] = useState(null);
 
+  // Decoded token claims from BFF (server-side decode — no raw JWT in browser)
+  const [authzDecoded, setAuthzDecoded] = useState(null);
+  const [agentDecoded, setAgentDecoded] = useState(null);
+  const [exchange1Decoded, setExchange1Decoded] = useState(null);
+  const [exchange2Decoded, setExchange2Decoded] = useState(null);
+  const [exchange3AgentDecoded, setExchange3AgentDecoded] = useState(null);
+  const [exchange3McpDecoded, setExchange3McpDecoded] = useState(null);
+  const [workerDecoded, setWorkerDecoded] = useState(null);
+
   // Current time for updating time remaining display
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -236,6 +245,7 @@ export default function PingOneTestPage() {
       console.log('[loadWorkerToken] API response:', data);
       if (data.success) {
         setWorkerToken(data.token);
+        setWorkerDecoded(data.decoded || null);
         setWorkerTokenExpiry({
           expiresAt: data.expiresAt,
           expiresIn: data.expiresIn
@@ -281,6 +291,7 @@ export default function PingOneTestPage() {
     apiClient.get('/api/pingone-test/authz-token').then(({ data }) => {
       if (data.success) {
         setAuthzTokenStatus('passed');
+        setAuthzDecoded(data.decoded || null);
         setAuthzTokenError(null);
       } else {
         setAuthzTokenStatus('failed');
@@ -464,6 +475,7 @@ export default function PingOneTestPage() {
       const { data } = await apiClient.get('/api/pingone-test/agent-token');
       if (data.success) {
         setAgentTokenStatus('passed');
+        setAgentDecoded(data.decoded || null);
         notifySuccess('Agent client-credentials token acquired ✓');
       } else {
         setAgentTokenStatus('failed');
@@ -485,6 +497,7 @@ export default function PingOneTestPage() {
       const { data } = await apiClient.get('/api/pingone-test/exchange-user-to-mcp');
       if (data.success) {
         setExchange1Status('passed');
+        setExchange1Decoded(data.decoded || null);
         notifySuccess('User → MCP token exchange succeeded ✓');
       } else {
         setExchange1Status('failed');
@@ -506,6 +519,7 @@ export default function PingOneTestPage() {
       const { data } = await apiClient.get('/api/pingone-test/exchange-user-agent-to-mcp');
       if (data.success) {
         setExchange2Status('passed');
+        setExchange2Decoded(data.decoded || null);
         notifySuccess('User + Agent → MCP token exchange succeeded ✓');
       } else {
         setExchange2Status('failed');
@@ -527,6 +541,8 @@ export default function PingOneTestPage() {
       const { data } = await apiClient.get('/api/pingone-test/exchange-user-to-agent-to-mcp');
       if (data.success) {
         setExchange3Status('passed');
+        setExchange3AgentDecoded(data.agentTokenDecoded || null);
+        setExchange3McpDecoded(data.mcpTokenDecoded || null);
         notifySuccess('User → Agent → MCP three-step exchange succeeded ✓');
       } else {
         setExchange3Status('failed');
@@ -673,12 +689,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   <span className="error-message">{workerTokenError}</span>
                 </div>
               )}
-              {workerToken && (
-                <TokenDisplay
-                  token={workerToken}
-                  label="Worker Token (Management API)"
-                  showFullToken={false}
-                />
+              {workerDecoded && (
+                <DecodedTokenPanel decoded={workerDecoded} label="Worker Token (Management API)" />
               )}
               <div className="token-actions">
                 <button
@@ -858,6 +870,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               config={TEST_CONFIG.authzToken}
               loginUrl={authzTokenStatus === 'failed' && authzTokenError && authzTokenError.toLowerCase().includes('log in') ? '/api/auth/oauth/user/login?return_to=/pingone-test' : null}
             />
+            <DecodedTokenPanel decoded={authzDecoded} label="Authorization Code Token" />
             <TestCard
               title="Agent Token (Client Credentials)"
               status={agentTokenStatus}
@@ -865,6 +878,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               onTest={testAgentToken}
               config={TEST_CONFIG.agentToken}
             />
+            <DecodedTokenPanel decoded={agentDecoded} label="Agent Token (Client Credentials)" />
           </div>
         </section>
 
@@ -892,6 +906,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               onTest={testExchange1}
               config={TEST_CONFIG.exchange1}
             />
+            <DecodedTokenPanel decoded={exchange1Decoded} label="MCP Token (User Exchange)" />
             <TestCard
               title="User Token + Agent Token → MCP Token"
               status={exchange2Status}
@@ -899,6 +914,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               onTest={testExchange2}
               config={TEST_CONFIG.exchange2}
             />
+            <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Token (User+Agent Exchange)" />
             <TestCard
               title="User Token → Agent Token → MCP Token"
               status={exchange3Status}
@@ -906,6 +922,8 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               onTest={testExchange3}
               config={TEST_CONFIG.exchange3}
             />
+            <DecodedTokenPanel decoded={exchange3AgentDecoded} label="Agent Token (User→Agent step)" />
+            <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
           </div>
         </section>
 

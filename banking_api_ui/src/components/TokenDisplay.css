@@ -309,3 +309,122 @@
     color: #9ca3af;
   }
 }
+
+/* ─── DecodedTokenPanel ──────────────────────────────────────────────── */
+
+.decoded-token-panel {
+  margin-top: 0.5rem;
+  background: #f8fafc;
+}
+
+.decoded-token-body {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.decoded-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.decoded-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chase-navy, #004687);
+  margin-bottom: 0.1rem;
+}
+
+.decoded-claims-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.decoded-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.decoded-badge--alg {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.decoded-badge--typ {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.decoded-kv {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.decoded-key {
+  font-weight: 600;
+  color: #6b7280;
+  min-width: 4rem;
+  flex-shrink: 0;
+}
+
+.decoded-val {
+  color: #111827;
+  word-break: break-all;
+}
+
+.decoded-val--mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.decoded-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.decoded-scope-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  font-family: ui-monospace, monospace;
+}
+
+.decoded-section--raw details {
+  margin-top: 0.25rem;
+}
+
+.decoded-raw-toggle {
+  font-size: 0.75rem;
+  color: #6b7280;
+  cursor: pointer;
+  user-select: none;
+}
+
+.decoded-raw {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-family: ui-monospace, monospace;
+  overflow-x: auto;
+  color: #334155;
+  white-space: pre;
+}

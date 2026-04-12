@@ -361,6 +361,7 @@ router.get('/authz-token', async (req, res) => {
     const responseData = {
       success: true,
       token: oauthTokens.accessToken ? oauthTokens.accessToken.substring(0, 20) + '...' : 'undefined',
+      decoded: oauthTokens.accessToken ? decodeJwtForDisplay(oauthTokens.accessToken) : null,
       expiresAt: oauthTokens.expiresAt
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
@@ -392,6 +393,7 @@ router.get('/agent-token', async (req, res) => {
     const responseData = {
       success: true,
       token: tokenData.token ? tokenData.token.substring(0, 20) + '...' : 'undefined',
+      decoded: tokenData.token ? decodeJwtForDisplay(tokenData.token) : null,
       expires_in: tokenData.expiresIn
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Agent token (client credentials)');
@@ -442,7 +444,8 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
 
     const responseData = {
       success: true,
-      token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined'
+      token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined',
+      decoded: exchangedToken ? decodeJwtForDisplay(exchangedToken) : null
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
     res.json(responseData);
@@ -492,7 +495,8 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
 
     const responseData = {
       success: true,
-      token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined'
+      token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined',
+      decoded: exchangedToken ? decodeJwtForDisplay(exchangedToken) : null
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
     res.json(responseData);
@@ -547,7 +551,9 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
     const responseData = {
       success: true,
       agentToken: agentToken ? agentToken.substring(0, 20) + '...' : 'undefined',
-      mcpToken: mcpToken ? mcpToken.substring(0, 20) + '...' : 'undefined'
+      mcpToken: mcpToken ? mcpToken.substring(0, 20) + '...' : 'undefined',
+      agentTokenDecoded: agentToken ? decodeJwtForDisplay(agentToken) : null,
+      mcpTokenDecoded: mcpToken ? decodeJwtForDisplay(mcpToken) : null
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token for Agent Token, then use those 2 for MCP token');
     res.json(responseData);
@@ -579,6 +585,7 @@ router.get('/worker-token', async (req, res) => {
     const responseData = {
       success: true,
       token: workerTokenData.token ? workerTokenData.token.substring(0, 20) + '...' : 'undefined',
+      decoded: workerTokenData.token ? decodeJwtForDisplay(workerTokenData.token) : null,
       expiresAt: workerTokenData.expiresAt
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get worker token for PingOne Management API calls');
