@@ -778,13 +778,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               </p>
             </div>
           </div>
+          <SectionApiCalls />
         </section>
 
-        {/* API Calls Display Section */}
-        <section className="pingone-test-section">
-          <h2 className="pingone-test-section-title">API Calls</h2>
-          <ApiCallDisplay sessionId="pingone-test" />
-        </section>
 
         {/* PingOne Asset Verification Section */}
         <section className="pingone-test-section">
@@ -856,6 +852,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               )}
             </div>
           )}
+          <SectionApiCalls />
         </section>
 
         {/* Token Acquisition Tests Section */}
@@ -880,10 +877,12 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 error={agentTokenError}
                 onTest={testAgentToken}
                 config={TEST_CONFIG.agentToken}
+                testLabel="Get Token"
               />
               <DecodedTokenPanel decoded={agentDecoded} label="Agent Token (Client Credentials)" />
             </div>
           </div>
+          <SectionApiCalls />
         </section>
 
         {/* Token Exchange Tests Section */}
@@ -935,6 +934,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
             </div>
           </div>
+          <SectionApiCalls />
         </section>
 
         {/* Configuration Section */}
@@ -984,6 +984,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               onFix={() => fixIssue('aiAgentClientId')}
             />
           </div>
+          <SectionApiCalls />
         </section>
 
         {/* Resources Section */}
@@ -1012,6 +1013,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               onFix={() => fixIssue('resourceAgentGatewayUri')}
             />
           </div>
+          <SectionApiCalls />
         </section>
 
         {/* Token Exchange Section */}
@@ -1048,6 +1050,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               onFix={() => fixIssue('double-exchange')}
             />
           </div>
+          <SectionApiCalls />
         </section>
 
         {/* PingOne API Tests Section */}
@@ -1083,13 +1086,30 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               onFix={() => fixIssue('users')}
             />
           </div>
+          <SectionApiCalls />
         </section>
       </div>
     </div>
   );
 }
 
-const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl }) => {
+function SectionApiCalls() {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="section-api-calls">
+      <button
+        type="button"
+        className="section-api-toggle"
+        onClick={() => setOpen(o => !o)}
+      >
+        {open ? '▾ Hide API Calls' : '▸ Show API Calls'}
+      </button>
+      {open && <ApiCallDisplay sessionId="pingone-test" />}
+    </div>
+  );
+}
+
+const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl, testLabel }) => {
   const [testing, setTesting] = React.useState(false);
 
   const handleTest = async () => {
@@ -1139,7 +1159,7 @@ const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl
             onClick={handleTest}
             disabled={testing || status === 'running'}
           >
-            {testing || status === 'running' ? 'Testing…' : 'Test'}
+            {testing || status === 'running' ? 'Testing…' : (testLabel || 'Test')}
           </button>
         )}
         {onFix && (
