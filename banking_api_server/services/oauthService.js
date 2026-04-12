@@ -4,6 +4,8 @@ const oauthConfig = require('../config/oauth');
 const { isOAuthVerboseDebug } = require('../utils/oauthDebugFlags');
 const { verboseOAuthLog } = require('../utils/oauthVerboseLogger');
 const { trackTokenEvent } = require('./tokenChainService');
+// configStore used to read runtime-saved worker token credentials (survives browser refresh)
+const configStore = require('./configStore');
 
 // Utility function to decode and log OAuth token information
 const logTokenInfo = (token, context = '') => {
@@ -347,12 +349,22 @@ class OAuthService {
    * PingOne App: Super Banking Worker Token — configure via PINGONE_WORKER_TOKEN_CLIENT_ID / PINGONE_WORKER_TOKEN_CLIENT_SECRET.
    */
   async getAgentClientCredentialsToken() {
-    const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID;
-    const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID
+      || configStore.getEffective('pingone_worker_token_client_id')
+      || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID
+      || process.env.AGENT_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET
+      || configStore.getEffective('pingone_worker_token_client_secret')
+      || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET
+      || process.env.AGENT_OAUTH_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
       throw new Error('Agent client credentials not set. Set one of: PINGONE_WORKER_TOKEN_CLIENT_ID/SECRET, PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID/SECRET, or AGENT_OAUTH_CLIENT_ID/SECRET');
     }
-    const agentAuthMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+    const agentAuthMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD
+      || configStore.getEffective('pingone_worker_token_auth_method')
+      || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
+      || process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD
+      || 'basic').toLowerCase();
     
     // For Basic auth: only grant_type in body
     // For POST auth: include client_id and client_secret in body
@@ -394,12 +406,22 @@ class OAuthService {
    * Per PingOne documentation, worker apps (client credentials) should NOT include scope in the request.
    */
   async getAgentClientCredentialsTokenWithExpiry() {
-    const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID;
-    const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const clientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID
+      || configStore.getEffective('pingone_worker_token_client_id')
+      || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID
+      || process.env.AGENT_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET
+      || configStore.getEffective('pingone_worker_token_client_secret')
+      || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET
+      || process.env.AGENT_OAUTH_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
       throw new Error('PINGONE_WORKER_TOKEN_CLIENT_ID and PINGONE_WORKER_TOKEN_CLIENT_SECRET must be set for worker token (PingOne App: Super Banking Worker Token)');
     }
-    const agentAuthMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+    const agentAuthMethod = (process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD
+      || configStore.getEffective('pingone_worker_token_auth_method')
+      || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
+      || process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD
+      || 'basic').toLowerCase();
     
     // Per PingOne documentation: client credentials grant should NOT include scope
     // https://developer.pingidentity.com/pingone-api/getting-started/create-a-test-environment/step-1-get-access-token.html

@@ -569,7 +569,10 @@ router.get('/config', async (req, res) => {
       // Worker token credentials (for pre-populating the form)
       mgmtClientId: process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || configStore.getEffective('pingone_worker_token_client_id') || configStore.getEffective('pingone_mgmt_client_id'),
       mgmtClientSecret: process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || configStore.getEffective('pingone_worker_token_client_secret') || configStore.getEffective('pingone_mgmt_client_secret'),
-      mgmtTokenAuthMethod: process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || configStore.getEffective('pingone_worker_token_auth_method') || configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic'
+      mgmtTokenAuthMethod: process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || configStore.getEffective('pingone_worker_token_auth_method') || configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic',
+      // Two-exchange delegation (RFC 8693 double-hop)
+      twoExchangeResourceUri: process.env.PINGONE_RESOURCE_TWO_EXCHANGE_URI || configStore.getEffective('pingone_resource_two_exchange_uri') || null,
+      ffTwoExchangeDelegation: (process.env.FF_TWO_EXCHANGE_DELEGATION === 'true') || (configStore.getEffective('ff_two_exchange_delegation') === 'true') || false
     };
 
     // Partially mask secrets for display (show first 8 chars)

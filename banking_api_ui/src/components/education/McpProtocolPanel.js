@@ -213,6 +213,61 @@ Tool executes; result returned to agent`
       ),
     },
     {
+      id: 'mfa-gate',
+      label: 'MFA gate on tools',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>MFA gate on tool discovery</h3>
+          <p>
+            <code>GET /api/mcp/inspector/tools</code> (tools/list) requires an <strong>authenticated session</strong>.
+            Unauthenticated requests receive <code>401 Unauthorized</code>, preventing tool enumeration by
+            unauthenticated callers.
+          </p>
+          <pre className="edu-code" style={{ fontSize: '0.78rem', lineHeight: 1.6 }}>{
+`GET /api/mcp/inspector/tools?sessionId=...
+
+If no valid session:
+  → 401 { error: "unauthorized", message: "Login required" }
+
+If session present with valid access token:
+  → 200 { tools: [ { name, description, inputSchema }, ... ] }
+
+BFF validation steps:
+  1. Session cookie present and not expired
+  2. session.oauthTokens.accessToken valid (or refreshed via refresh_token)
+  3. Token forwarded to MCP server tools/list call`
+          }</pre>
+
+          <h3>Why gate tools/list?</h3>
+          <p>
+            An unauthenticated caller could enumerate all available banking operations — account balance,
+            transfer funds, device authentication — without being a real user. Gating the tool list at
+            the BFF means even tool discovery is behind the same auth boundary as tool execution.
+          </p>
+
+          <h3>Step-up MFA for high-value tool calls</h3>
+          <p>
+            <code>POST /api/mcp/tool</code> (tools/call) for transactions at or above the configured
+            threshold triggers <strong>step-up authentication</strong> before the tool executes.
+            The agent receives a <code>401</code> with <code>step_up_required: true</code> and
+            must wait for the user to complete MFA before retrying.
+          </p>
+          <pre className="edu-code" style={{ fontSize: '0.78rem', lineHeight: 1.6 }}>{
+`POST /api/mcp/tool { tool: "transfer_funds", amount: 5000 }
+
+Below threshold:
+  → 200 { result: "Transfer complete" }
+
+At/above threshold (step-up):
+  → 401 { step_up_required: true, cibaAuthId: "..." }
+  UI shows MFA prompt; polls /api/ciba/status
+  On approval → retry POST /api/mcp/tool (same body)
+  → 200 { result: "Transfer complete" }`
+          }</pre>
+        </>
+      ),
+    },
+    {
       id: 'inspector',
       label: 'Live inspector',
       content: (
