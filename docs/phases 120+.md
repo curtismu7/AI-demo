@@ -1,5 +1,5 @@
 # Phases 120+ Status
-_Last updated: 2026-04-12 (session 3)_
+_Last updated: 2026-04-12 (session 4)_
 
 ## Audit 120–135 complete. All 4 cross-phase conflicts resolved.
 
@@ -12,7 +12,7 @@ _Last updated: 2026-04-12 (session 3)_
 | 124 | MFA HITL Indication | ✅ PASS (partial scope) | — |
 | 125 | (directory anomaly — empty dir removed) | ✅ CLEANED | `4c01430` |
 | 126 | Surface sub/act as friendly names | ✅ DONE via conflict fix | `4c01430` |
-| 127 | Comprehensive Debug & Fix | ⚠️ PARTIAL (2/5 tasks) | — |
+| 127 | Comprehensive Debug & Fix | ⚠️ PARTIAL — PingOne test page fully fixed; MFA test + Banking Agent e2e not started (requires live PingOne) | `f8987ab` `1bdcf93` `3923546` `f8014fc` `792a91d` |
 | 128 | Quality Audit 120–127 | ✅ PASS | — |
 | 129 | Audit Last 15 Todos | ❌ NOT EXECUTED | — |
 | 130 | PingOne Asset Verification Rich Table | ✅ PASS | — |
@@ -22,8 +22,8 @@ _Last updated: 2026-04-12 (session 3)_
 | 134 | Audit all phases 120+ (meta-audit) | ✅ DONE (this audit) | `4c01430` |
 | 135 | MFA test page UX — mirror Phase 133 | ✅ DONE | `7ed0efe` |
 | 136 | Token chain reliability audit & hardening | ✅ DONE | `1f0846f` `d68a545` |
-| 137 | Configure page complete redesign (Chase.com style, all 5 tabs) | ✅ DONE (5 plans, all approved) | `cc39029` |
-| 138 | Audit & fix all placeholder content across app and server | ✅ DONE (4/4 plans + checkpoint approved) | `2a57937`–`edba6ce` |
+| 137 | Configure page complete redesign (Chase.com style, all 5 tabs) | ✅ DONE (5 plans, all approved) | `400dfed` |
+| 138 | Audit & fix all placeholder content across app and server | ⚠️ PARTIAL — plans 01–04 done; plan 05 (human-verify checkpoint) pending approval | `2a57937`–`edba6ce` |
 
 ## Cross-Phase Conflicts (all resolved)
 
@@ -62,7 +62,7 @@ _Last updated: 2026-04-12 (session 3)_
 | 137-04 | `advanced` tab (4 sections) + Generate Keypair + placeholder cleanup | 2 |
 | 137-05 | Human verification checkpoint | 3 |
 
-## Phase 138 — Placeholder Audit ✅ DONE
+## Phase 138 — Placeholder Audit ⚠️ CHECKPOINT PENDING
 
 **What was fixed:**
 - `agentSessionMiddleware.js`: stub `console.warn` → real `oauthUserService.refreshAccessToken` with session save
@@ -87,5 +87,6 @@ _Last updated: 2026-04-12 (session 3)_
 
 | Phase | Description | Priority |
 |-------|-------------|----------|
-| 127 | MFA test page live testing + Banking Agent e2e (requires live PingOne) | Medium |
+| 127 | MFA test page live testing + Banking Agent e2e (requires live PingOne) — PingOne test page already fully fixed | Medium |
+| 138 | Plan 05: human-verify checkpoint — type "approved" or describe issues | High |
 | 129 | Audit last 15 todos | Low |
