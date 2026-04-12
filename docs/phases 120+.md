@@ -1,12 +1,12 @@
 # Phases 120+ Status
-_Last updated: 2026-04-12 (session 2)_
+_Last updated: 2026-04-12 (session 3)_
 
 ## Audit 120–135 complete. All 4 cross-phase conflicts resolved.
 
 | Phase | Title | Status | Commit(s) |
 |-------|-------|--------|-----------|
 | 120 | UI/UX: buttons & navigation | ✅ PASS | — |
-| 121 | API Display Modal Enhancement | ❌ NOT EXECUTED | — |
+| 121 | API Display Modal Enhancement | ✅ DONE (ApiCallsModal on admin Dashboard; ApiCallDisplay inline on UserDashboard; API Traffic window on toolbar) | `existing` |
 | 122 | Conditional Step-Up Auth | ✅ PASS | — |
 | 123 | PingOne MFA Test Page | ✅ PASS | — |
 | 124 | MFA HITL Indication | ✅ PASS (partial scope) | — |
@@ -49,7 +49,7 @@ _Last updated: 2026-04-12 (session 2)_
 - `UserDashboard.js`: add `useCurrentUserTokenEvent()` hook call on mount (`d68a545`)
 - `TokenChainDisplay.js`: remove stale guard; add `isPlaceholder` + `tcd-empty-state` (`d68a545`)
 
-## Phase 137 — Configure Page Redesign (planned)
+## Phase 137 — Configure Page Redesign ✅ DONE
 
 **Goal:** Replace all 19 placeholder sections in `UnifiedConfigurationPage.tsx` with real, functional forms.
 
@@ -62,22 +62,30 @@ _Last updated: 2026-04-12 (session 2)_
 | 137-04 | `advanced` tab (4 sections) + Generate Keypair + placeholder cleanup | 2 |
 | 137-05 | Human verification checkpoint | 3 |
 
-## Phase 138 — Placeholder Audit (planned)
+## Phase 138 — Placeholder Audit ✅ DONE
 
-**Goal:** Find and fix every remaining placeholder, stub, or TODO in the UI and server. Replace with real functionality or clearly-scoped deferrals.
+**What was fixed:**
+- `agentSessionMiddleware.js`: stub `console.warn` → real `oauthUserService.refreshAccessToken` with session save
+- `demoScenario.js`: hardcoded `lastMigration` string → `new Date().toISOString()`
+- `UserDashboard.js`: demo placeholder pills → real `<Link>` to `/security` and `/transactions`
+- `BankingAgent.js`: removed dead "not yet wired" comment
+- Login, UserTransactions, Profile, SecurityCenter, BankingAdminOps: Chase-styled CSS created
+- `TopNav.css`: 2 raw hex values → CSS tokens
 
-**Scope:** All `.tsx`, `.jsx`, `.js` across `banking_api_ui/src/` and `banking_api_server/routes/` + `services/`.
+**Commits:** `2a57937` → `edba6ce`
 
 ## Other Fixes This Session
 
 | Fix | Files | Commit |
 |-----|-------|--------|
 | Admin-access modal unreadable (navy CSS bleed from `.modal-header` in UserDashboard.css) | `App.js`, `UserDashboard.css` | `f527568` |
+| Phase 56-04: Removed 3-level scope fallback chain in agentMcpTokenService — explicit two-path (direct-intersection \| delegation), fail-fast | `agentMcpTokenService.js` | `2b08830` |
+| Phase 56-05: RFC 8693 §5.2 error codes wired into all exchange catch blocks; `writeExchangeEvent` enriched with `error_code`, `oauth_error`, `http_status`, `category`; 6 new tests | `agentMcpTokenService.js`, test file | `ce02a4e` |
+| Phase 131 + nav: CONFIG_META constant + enhanced TestCard (env var, format, fix guidance); PingOne Test + MFA Test added to Chase top nav | `PingOneTestPage.jsx/css`, `ChaseTopNav.js` | `fc2498c` |
 
 ## Remaining Work
 
 | Phase | Description | Priority |
 |-------|-------------|----------|
 | 127 | MFA test page live testing + Banking Agent e2e (requires live PingOne) | Medium |
-| 121 | API Display Modal — draggable/resizable modal wrapping ApiCallDisplay | Low |
 | 129 | Audit last 15 todos | Low |
