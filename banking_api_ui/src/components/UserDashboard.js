@@ -79,6 +79,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     description: ''
   });
   const [withdrawAccount, setWithdrawAccount] = useState(null);
+  /** 'all' | 'agent' — filters the transaction history table. */
+  const [txFilter, setTxFilter] = useState('all');
   const [autoRefresh, setAutoRefresh] = useState(false);
   /** Server-issued id for high-value HITL — opens TransactionConsentModal on the dashboard. */
   const [consentChallengeId, setConsentChallengeId] = useState(null);
@@ -1225,7 +1227,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     if (clientType === 'enduser') {
       return { icon: '◉', label: 'End User', color: '#4b5563' };
     } else if (clientType === 'ai_agent') {
-      return { icon: '◎', label: 'AI Agent', color: '#6b7280' };
+      return { icon: '🤖', label: '🤖 Agent', color: '#3b69c2' };
     } else {
       return { icon: '○', label: 'Unknown', color: '#9ca3af' };
     }
@@ -1618,7 +1620,29 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
         {/* Recent Transactions */}
         <div className="section">
-          <h2>Recent Transactions</h2>
+          <div className="tx-section-header">
+            <h2>Recent Transactions</h2>
+            <div className="tx-tabs" role="tablist" aria-label="Transaction filter">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={txFilter === 'all'}
+                className={`tx-tab${txFilter === 'all' ? ' tx-tab--active' : ''}`}
+                onClick={() => setTxFilter('all')}
+              >
+                All Transactions
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={txFilter === 'agent'}
+                className={`tx-tab${txFilter === 'agent' ? ' tx-tab--active' : ''}`}
+                onClick={() => setTxFilter('agent')}
+              >
+                🤖 Agent Activity
+              </button>
+            </div>
+          </div>
           {isDemoMode && (
             <p className="demo-notice" style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
               Demo mode —{' '}
@@ -1640,6 +1664,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </div>
             <div className="transactions-list">
               {transactions
+                .filter(t => txFilter === 'all' || t.clientType === 'ai_agent')
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .slice(0, 20)
                 .map(transaction => {
