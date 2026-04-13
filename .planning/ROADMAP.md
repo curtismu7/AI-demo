@@ -2156,7 +2156,9 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 142 to break down)
+- [x] 142-01-PLAN.md — Add diagonal stripe CSS pattern to standard banking buttons
+- [x] 142-02-PLAN.md — Implement disabled and authorization pending states
+- [x] 142-03-PLAN.md — Manual verification of styling
 
 ### Phase 143: UX: agent banking actions via MCP server — new user token scoped to agent with aud claim, then 1-token or 2-token exchange for MCP token (FF), showing pattern evolution from standard authz to agentic authz
 
