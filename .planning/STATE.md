@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-04-13T11:48:00.000Z"
+status: executing
+last_updated: "2026-04-13T21:32:33.463Z"
 progress:
-  total_phases: 162
-  completed_phases: 73
-  total_plans: 241
-  completed_plans: 181
+  total_phases: 149
+  completed_phases: 72
+  total_plans: 247
+  completed_plans: 184
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,11 +20,11 @@ progress:
 
 ## Current Position
 
-Phase: 14 (agent-window-polish) — PLANNING
-Plan: unplanned (run /gsd-plan-phase 14)
+Phase: 142 (ux-clear-separation-of-banking-action-buttons-standard-authz-transfer-deposit-vs-token-exchange-visual-distinction-for-pingone-oauth-actions) — EXECUTING
+Plan: 1 of 3
 **Previous:** Phase 13 (dashboard-first-impression-overhaul) — ✅ COMPLETE
 **Next:** /gsd-plan-phase 14
-**Status:** Ready to plan Phase 14
+**Status:** Executing Phase 142
 
 ---
 
@@ -125,6 +125,7 @@ Plan: unplanned (run /gsd-plan-phase 14)
 ## Accumulated Context
 
 ### Roadmap Evolution
+
 - Phase 145 added: MCP server audit — does the server meet spec requirements and provide the agent with tools + metadata (capabilities, descriptions, parameter schemas) to make decisions dynamically, not hardcoded tool calls
 
 - Phase 144 added: Agent token exchange from ID token — agent never receives access token, only scoped to user data via RFC 8693 token exchange

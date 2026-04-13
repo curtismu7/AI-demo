@@ -2118,7 +2118,7 @@ Plans:
 **Goal:** Make /pingone-test and /mfa-test fully functional and maximally educational. Fix all broken flows (token exchange subjects, FIDO2 WebAuthn). Add comprehensive PingOne entity mapping (apps × resources × scopes × users × SPEL). Add decoded claim tooltips, token lineage diffs, and "What is Happening" panels to every section. Surface as much PingOne data as possible for learning.
 **Requirements**: All buttons functional; decoded tokens on every card; verify-assets expanded with users/grants/SPEL; per-section edu panels on both pages.
 **Depends on:** Phase 138, Phase 104 (worker token security fix — done)
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 139-01-PLAN.md — Audit + fix broken flows (exchange subjectToken, FIDO2 WebAuthn, Fix buttons)
@@ -2131,7 +2131,7 @@ Plans:
 **Goal:** Strip `?oauth=success` query param from the browser URL after PingOne login redirects to return_to page. BFF already fully implements return_to; the only gap is the frontend not cleaning up the oauth param (sso_silent is already cleaned; oauth was not).
 **Requirements**: URL clean after login; session retry logic unaffected; npm run build 0.
 **Depends on:** Phase 139
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [x] 140-01-PLAN.md — Strip ?oauth param from URL on App.js mount (one-shot useEffect matching sso_silent pattern)
@@ -2153,7 +2153,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 141
-**Plans:** 0 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 142-01-PLAN.md — Add diagonal stripe CSS pattern to standard banking buttons
@@ -2165,7 +2165,7 @@ Plans:
 **Goal:** Enable agent-initiated banking transactions with user approval gates, real-time feedback, and live token exchange path demonstration.
 **Requirements**: TOKEN-01, TOKEN-02, AGENT-APPROVAL-01, AGENT-ACTIVITY-01
 **Depends on:** Phase 142
-**Plans:** 4 plans
+**Plans:** 0/4 plans executed
 
 Plans:
 - [ ] 143-01-PLAN.md — Approval threshold HITL modal + error handling service
