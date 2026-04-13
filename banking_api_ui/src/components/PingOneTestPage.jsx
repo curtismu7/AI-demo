@@ -994,6 +994,12 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 config={TEST_CONFIG.exchange1}
               />
               <DecodedTokenPanel decoded={exchange1Decoded} label="MCP Token (User Exchange)" />
+              <TokenLineageDiff
+                fromDecoded={authzDecoded}
+                toDecoded={exchange1Decoded}
+                fromLabel="User Token (T1)"
+                toLabel="MCP Token (Exchange 1)"
+              />
             </div>
             <div className="test-card-col">
               <TestCard
@@ -1004,6 +1010,12 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 config={TEST_CONFIG.exchange2}
               />
               <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Token (User+Agent Exchange)" />
+              <TokenLineageDiff
+                fromDecoded={authzDecoded}
+                toDecoded={exchange2Decoded}
+                fromLabel="User Token (T1)"
+                toLabel="MCP Token with act (Exchange 2)"
+              />
             </div>
             <div className="test-card-col">
               <TestCard
@@ -1014,7 +1026,19 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 config={TEST_CONFIG.exchange3}
               />
               <DecodedTokenPanel decoded={exchange3AgentDecoded} label="Agent Token (User→Agent step)" />
+              <TokenLineageDiff
+                fromDecoded={authzDecoded}
+                toDecoded={exchange3AgentDecoded}
+                fromLabel="User Token (T1)"
+                toLabel="Agent Token (T2)"
+              />
               <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
+              <TokenLineageDiff
+                fromDecoded={exchange3AgentDecoded}
+                toDecoded={exchange3McpDecoded}
+                fromLabel="Agent Token (T2)"
+                toLabel="MCP Token (T3)"
+              />
             </div>
           </div>
           <SectionApiCalls />
@@ -1267,6 +1291,86 @@ const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl
     </div>
   );
 };
+
+function TokenLineageDiff({ fromDecoded, toDecoded, fromLabel, toLabel }) {
+  const [open, setOpen] = React.useState(false);
+  if (!fromDecoded?.payload || !toDecoded?.payload) return null;
+
+  const from = fromDecoded.payload;
+  const to = toDecoded.payload;
+  const allKeys = Array.from(new Set([...Object.keys(from), ...Object.keys(to)]));
+  const SKIP = ['jti', 'nbf', 'iat', 'exp', 'at_hash'];
+  const rows = allKeys
+    .filter(k => !SKIP.includes(k))
+    .map(k => {
+      const fv = from[k];
+      const tv = to[k];
+      const fStr = fv !== undefined ? (typeof fv === 'object' ? JSON.stringify(fv) : String(fv)) : undefined;
+      const tStr = tv !== undefined ? (typeof tv === 'object' ? JSON.stringify(tv) : String(tv)) : undefined;
+      let kind;
+      if (fStr === undefined) kind = 'added';
+      else if (tStr === undefined) kind = 'removed';
+      else if (fStr !== tStr) kind = 'changed';
+      else kind = 'same';
+      return { k, fStr, tStr, kind };
+    })
+    .sort((a, b) => {
+      const ORDER = { changed: 0, added: 1, removed: 2, same: 3 };
+      return ORDER[a.kind] - ORDER[b.kind];
+    });
+
+  const changed = rows.filter(r => r.kind !== 'same');
+  const same = rows.filter(r => r.kind === 'same');
+
+  return (
+    <div className="tld-wrapper">
+      <button type="button" className="tld-toggle" onClick={() => setOpen(o => !o)}>
+        <span className="tld-icon">{open ? '▼' : '▶'}</span>
+        <span className="tld-label">🔀 Token Lineage Diff — {fromLabel || 'Input'} → {toLabel || 'Output'}</span>
+        {changed.length > 0 && (
+          <span className="tld-badge">{changed.length} claim{changed.length !== 1 ? 's' : ''} changed</span>
+        )}
+      </button>
+      {open && (
+        <div className="tld-body">
+          <div className="tld-headers">
+            <span className="tld-col-label tld-col--from">{fromLabel || 'Input Token'}</span>
+            <span className="tld-col-label tld-col--to">{toLabel || 'Output Token'}</span>
+          </div>
+          {changed.map(({ k, fStr, tStr, kind }) => (
+            <div key={k} className={`tld-row tld-row--${kind}`}>
+              <span className="tld-claim-key">{k}</span>
+              <span className={`tld-kind-badge tld-kind--${kind}`}>{kind}</span>
+              <div className="tld-values">
+                {fStr !== undefined && (
+                  <code className="tld-val tld-val--from">{fStr.length > 80 ? fStr.slice(0, 77) + '…' : fStr}</code>
+                )}
+                {kind === 'changed' && <span className="tld-arrow">→</span>}
+                {tStr !== undefined && (
+                  <code className="tld-val tld-val--to">{tStr.length > 80 ? tStr.slice(0, 77) + '…' : tStr}</code>
+                )}
+              </div>
+            </div>
+          ))}
+          {same.length > 0 && (
+            <details className="tld-same-details">
+              <summary className="tld-same-summary">{same.length} unchanged claim{same.length !== 1 ? 's' : ''}</summary>
+              {same.map(({ k, fStr }) => (
+                <div key={k} className="tld-row tld-row--same">
+                  <span className="tld-claim-key">{k}</span>
+                  <span className="tld-kind-badge tld-kind--same">same</span>
+                  <div className="tld-values">
+                    <code className="tld-val tld-val--same">{fStr.length > 80 ? fStr.slice(0, 77) + '…' : fStr}</code>
+                  </div>
+                </div>
+              ))}
+            </details>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function WhatIsHappening({ title, steps, apiFlow }) {
   const [open, setOpen] = React.useState(false);

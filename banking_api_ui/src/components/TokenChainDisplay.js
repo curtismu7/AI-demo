@@ -923,7 +923,7 @@ const TokenChainDisplay = () => {
     } catch (_err) {
       /* non-fatal — keep placeholder */
     }
-  }, [ctx]);
+  }, []);
 
   /**
    * Fetch on mount — App.js dispatches 'userAuthenticated' and sets loading=false
@@ -932,8 +932,7 @@ const TokenChainDisplay = () => {
    */
   React.useEffect(() => {
     void fetchSessionPreview();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- only runs once on mount
-  }, []);
+  }, [fetchSessionPreview]);
 
   /** Fetch identity hints once on mount — resolve current user name + known client IDs for friendly display. */
   React.useEffect(() => {
