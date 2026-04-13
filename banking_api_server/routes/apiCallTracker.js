@@ -15,7 +15,7 @@ const router = express.Router();
  */
 router.get('/', (req, res) => {
   try {
-    const sessionId = req.session?.id || req.query.sessionId || 'default';
+    const sessionId = req.query.sessionId || req.session?.id || 'default';
     const limit = parseInt(req.query.limit) || 50;
 
     const calls = getApiCalls(sessionId, limit);
@@ -42,7 +42,7 @@ router.get('/', (req, res) => {
  */
 router.delete('/', (req, res) => {
   try {
-    const sessionId = req.session?.id || req.query.sessionId || 'default';
+    const sessionId = req.query.sessionId || req.session?.id || 'default';
     clearApiCalls(sessionId);
 
     res.json({
@@ -90,7 +90,7 @@ router.post('/', (req, res) => {
  */
 router.get('/tokens', (req, res) => {
   try {
-    const sessionId = req.session?.id || req.query.sessionId || 'default';
+    const sessionId = req.query.sessionId || req.session?.id || 'default';
     const tokens = getSessionTokens(sessionId);
 
     res.json({
@@ -113,7 +113,7 @@ router.get('/tokens', (req, res) => {
  */
 router.delete('/tokens', (req, res) => {
   try {
-    const sessionId = req.session?.id || req.query.sessionId || 'default';
+    const sessionId = req.query.sessionId || req.session?.id || 'default';
     clearSessionTokens(sessionId);
 
     res.json({
