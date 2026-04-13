@@ -1948,7 +1948,7 @@ Plans:
 
 ### Phase 125: 124
 
-**Goal:** [To be planned]
+**Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: TBD
 **Depends on:** Phase 124
 **Plans:** 1 plan
@@ -2009,7 +2009,7 @@ Plans:
 
 ### Phase 129: Audit last 15 todos — verify completed correctly, no errors, working
 
-**Goal:** [To be planned]
+**Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: TBD
 **Depends on:** Phase 128
 **Plans:** 1 plan
@@ -2091,7 +2091,7 @@ Plans:
 
 ### Phase 137: Configure page complete redesign — Chase.com style, functional PingOne config, full review and testing
 
-**Goal:** [To be planned]
+**Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: TBD
 **Depends on:** Phase 136
 **Plans:** 5/5 plans complete
@@ -2138,19 +2138,20 @@ Plans:
 
 ### Phase 141: local setup wizard — guided PingOne configuration, app/resource/scope creation, SPEL attribute mapping, worker credentials, env file generation — app runs on completion
 
-**Goal:** New web wizard at `/setup/wizard` — 5-section accordion (credentials → discovery → create → env file → smoke test) that takes a fresh clone to a fully running app. Extends existing pingoneProvisionService with SPEL attribute mapping and headless smoke tests. Public BFF route (no auth). Writes `.env` + persists to configStore SQLite.
+**Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: TBD
 **Depends on:** Phase 140
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] 141-01 — BFF: public `/api/setup/wizard` route + schema/SPEL/smoke methods in pingoneProvisionService + configStore integration
-- [ ] 141-02 — React: SetupWizardPage 5-section accordion + CSS + App.js route + SetupPage link
-- [ ] 141-03 — Polish: run-bank.sh first-launch hint + forceRecreate wiring + write-env endpoint + verification
+- [ ] 141-01-PLAN.md — Extend pingoneProvisionService: mcp_exchanger app + schema attr + SPEL claim
+- [ ] 141-02-PLAN.md — Build SetupWizard.js accordion component + CSS
+- [ ] 141-03-PLAN.md — Wire route + SideNav + SetupWizardTab env update
+- [ ] 141-04-PLAN.md — Human verify checkpoint
 
 ### Phase 142: UX: clear separation of banking action buttons — standard authz (transfer, deposit) vs token exchange — visual distinction for PingOne OAuth actions
 
-**Goal:** [To be planned]
+**Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: TBD
 **Depends on:** Phase 141
 **Plans:** 2/3 plans executed
@@ -2175,7 +2176,7 @@ Plans:
 
 ### Phase 144: Agent token exchange from ID token — agent never receives access token, only scoped to user data via RFC 8693 token exchange
 
-**Goal:** [To be planned]
+**Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: TBD
 **Depends on:** Phase 143
 **Plans:** 0 plans
@@ -2185,7 +2186,7 @@ Plans:
 
 ### Phase 145: MCP server audit — does the server meet spec requirements and provide the agent with tools + metadata (capabilities, descriptions, parameter schemas) to make decisions dynamically, not hardcoded tool calls
 
-**Goal:** [To be planned]
+**Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: TBD
 **Depends on:** Phase 144
 **Plans:** 0 plans
