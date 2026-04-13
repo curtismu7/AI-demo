@@ -2113,5 +2113,17 @@ Plans:
 - [ ] 138-04-PLAN.md — Chase Profile + SecurityCenter + Admin pages redesign
 - [ ] 138-05-PLAN.md — Human verification checkpoint
 
+### Phase 139: Full test page fix + educational overhaul — PingOne Test + MFA Test, entity mapping, tokens, APIs, SPEL
+
+**Goal:** Make /pingone-test and /mfa-test fully functional and maximally educational. Fix all broken flows (token exchange subjects, FIDO2 WebAuthn). Add comprehensive PingOne entity mapping (apps × resources × scopes × users × SPEL). Add decoded claim tooltips, token lineage diffs, and "What is Happening" panels to every section. Surface as much PingOne data as possible for learning.
+**Requirements**: All buttons functional; decoded tokens on every card; verify-assets expanded with users/grants/SPEL; per-section edu panels on both pages.
+**Depends on:** Phase 138, Phase 104 (worker token security fix — done)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 139-01-PLAN.md — Audit + fix broken flows (exchange subjectToken, FIDO2 WebAuthn, Fix buttons)
+- [ ] 139-02-PLAN.md — PingOne entity mapper: apps × resources × scopes × users × SPEL × grant matrix
+- [ ] 139-03-PLAN.md — Educational overlays: claim tooltips, token lineage diffs, What is Happening panels
+
 
 ---
