@@ -2,11 +2,75 @@
  * SQLite Session Store for local development
  * Stores express-session data in SQLite database
  * Intended for local development only; use Redis/Upstash for production
+ *
+ * Database driver priority:
+ *   1. better-sqlite3  — synchronous, fast, supports Node 20/22 LTS
+ *   2. node:sqlite     — built-in since Node 22.5; experimental but works on Node 25+
+ *      when better-sqlite3 native addon is compiled for a different Node version
  */
 
-const Database = require('better-sqlite3');
 const path = require('path');
 const Store = require('express-session').Store;
+
+/** Load a compatible SQLite driver: better-sqlite3 first, node:sqlite fallback. */
+function loadSqliteDriver() {
+  try {
+    const Database = require('better-sqlite3');
+    // Verify it actually works at runtime (native addon version check)
+    const probe = new Database(':memory:');
+    probe.close();
+    return { driver: 'better-sqlite3', Database };
+  } catch (_) {
+    // better-sqlite3 native addon not compatible with current Node.js version
+  }
+
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    // Wrap node:sqlite in a better-sqlite3-compatible interface
+    function NodeSqliteDatabase(dbPath) {
+      if (dbPath === ':memory:') {
+        this._db = new DatabaseSync(':memory:');
+      } else {
+        this._db = new DatabaseSync(dbPath);
+      }
+      const self = this;
+      this.exec = (sql) => self._db.exec(sql);
+      this.prepare = (sql) => {
+        const stmt = self._db.prepare(sql);
+        return {
+          run: (...args) => stmt.run(...args),
+          get: (...args) => stmt.get(...args),
+          all: (...args) => stmt.all(...args),
+        };
+      };
+      this.close = () => {};
+    }
+    // Probe it
+    const probe = new NodeSqliteDatabase(':memory:');
+    probe.exec('SELECT 1');
+    return { driver: 'node:sqlite', Database: NodeSqliteDatabase };
+  } catch (_) {
+    // node:sqlite not available
+  }
+
+  return null;
+}
+
+const sqliteDriver = loadSqliteDriver();
+if (!sqliteDriver) {
+  throw new Error('No SQLite driver available — install better-sqlite3 or use Node 22.5+');
+}
+
+const { Database } = sqliteDriver;
+if (sqliteDriver.driver === 'node:sqlite') {
+  // Suppress ExperimentalWarning for node:sqlite in local dev logs
+  process.removeAllListeners('warning');
+  process.on('warning', (w) => {
+    if (w.name === 'ExperimentalWarning' && w.message && w.message.includes('SQLite')) return;
+    process.stderr.write(`[warning] ${w.name}: ${w.message}\n`);
+  });
+  console.log('[sqlite-session-store] Using node:sqlite built-in (better-sqlite3 unavailable for current Node.js)');
+}
 
 class SqliteSessionStore extends Store {
   constructor(options = {}) {

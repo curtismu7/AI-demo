@@ -210,22 +210,20 @@ class UpstashSessionStore extends Store {
   /**
    * Write session — update cache immediately; persist to Upstash.
    *
-   * Errors are propagated to the caller (cb(err)) so that critical callers such
-   * as the OAuth callback's explicit req.session.save() can detect a failed write
-   * and redirect to an error page rather than silently continuing with a session
-   * that will be invisible on the next serverless Lambda instance.
-   *
-   * The synchronous in-memory cache is always updated first, so warm Lambda
-   * instances continue to work.  Cross-instance persistence requires Upstash.
+   * Errors are swallowed (fault-tolerant, matching createFaultTolerantStore for redis-wire).
+   * The synchronous in-memory cache is always updated first so warm Lambda instances serve
+   * requests without a round-trip. Cross-instance persistence requires Upstash; a failed
+   * write is logged and monitored via the circuit-breaker but does NOT abort the login —
+   * a failed login is worse UX than a session that is invisible to cold-start instances.
    */
   set(sid, session, cb) {
     this._cache.set(sid, session); // synchronous — in-process update first
 
-    // Circuit open → Upstash is known-unavailable; propagate so callers can react.
+    // Circuit open → Upstash is known-unavailable; log and treat as success (in-memory cache still valid).
     if (this._circuit.isOpen) {
       const reason = this._circuit.lastError || 'circuit OPEN (Upstash unavailable)';
-      console.warn(`[session-store] Upstash SET skipped — ${reason}. Session persisted to in-memory cache only.`);
-      return cb(new Error(`Session not persisted to Redis: ${reason}`));
+      console.warn(`[session-store] Upstash SET skipped — ${reason}. Session in-memory only (cross-instance persistence degraded).`);
+      return cb(null);
     }
 
     const ttl = this._ttl(session);
@@ -234,8 +232,8 @@ class UpstashSessionStore extends Store {
       .then(() => { this._circuit.onSuccess(); cb(null); })
       .catch((err) => {
         this._circuit.onFailure(err);
-        console.error('[session-store] Upstash SET error (session not persisted to Redis):', err.message);
-        cb(err);
+        console.error('[session-store] Upstash SET error (swallowed — session in-memory only):', err.message);
+        cb(null); // fault-tolerant: do not abort login on Upstash write failure
       });
   }
 
