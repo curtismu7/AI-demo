@@ -2138,12 +2138,14 @@ Plans:
 
 ### Phase 141: local setup wizard — guided PingOne configuration, app/resource/scope creation, SPEL attribute mapping, worker credentials, env file generation — app runs on completion
 
-**Goal:** [To be planned]
+**Goal:** New web wizard at `/setup/wizard` — 5-section accordion (credentials → discovery → create → env file → smoke test) that takes a fresh clone to a fully running app. Extends existing pingoneProvisionService with SPEL attribute mapping and headless smoke tests. Public BFF route (no auth). Writes `.env` + persists to configStore SQLite.
 **Requirements**: TBD
 **Depends on:** Phase 140
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 141 to break down)
+- [ ] 141-01 — BFF: public `/api/setup/wizard` route + schema/SPEL/smoke methods in pingoneProvisionService + configStore integration
+- [ ] 141-02 — React: SetupWizardPage 5-section accordion + CSS + App.js route + SetupPage link
+- [ ] 141-03 — Polish: run-bank.sh first-launch hint + forceRecreate wiring + write-env endpoint + verification
 
 ---
