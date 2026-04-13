@@ -2148,4 +2148,24 @@ Plans:
 - [ ] 141-02 — React: SetupWizardPage 5-section accordion + CSS + App.js route + SetupPage link
 - [ ] 141-03 — Polish: run-bank.sh first-launch hint + forceRecreate wiring + write-env endpoint + verification
 
+### Phase 142: UX: clear separation of banking action buttons — standard authz (transfer, deposit) vs token exchange — visual distinction for PingOne OAuth actions
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 141
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 142 to break down)
+
+### Phase 143: UX: agent banking actions via MCP server — new user token scoped to agent with aud claim, then 1-token or 2-token exchange for MCP token (FF), showing pattern evolution from standard authz to agentic authz
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 142
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 143 to break down)
+
 ---

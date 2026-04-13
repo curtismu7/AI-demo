@@ -126,6 +126,8 @@ Plan: unplanned (run /gsd-plan-phase 14)
 
 ### Roadmap Evolution
 
+- Phase 143 added: UX agent banking actions via MCP server — new user token scoped to agent with aud claim, then 1-token or 2-token exchange for MCP token (FF), pattern evolution from standard authz to agentic authz
+- Phase 142 added: UX clear separation of banking action buttons — standard authz (transfer, deposit) vs token exchange — visual distinction for PingOne OAuth actions
 - Phase 138 added: Audit and fix all placeholder content across app and server — replace with real functionality
 - Phase 137 added: Configure page complete redesign — Chase.com style, functional PingOne config, full review and testing
 - Phase 136 added: Token chain reliability audit and hardening — make foolproof
