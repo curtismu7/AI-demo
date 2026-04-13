@@ -2128,12 +2128,12 @@ Plans:
 
 ### Phase 140: OAuth return_to redirect — after PingOne login return to originating page with session access token available for token exchange
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Strip `?oauth=success` query param from the browser URL after PingOne login redirects to return_to page. BFF already fully implements return_to; the only gap is the frontend not cleaning up the oauth param (sso_silent is already cleaned; oauth was not).
+**Requirements**: URL clean after login; session retry logic unaffected; npm run build 0.
 **Depends on:** Phase 139
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 140 to break down)
+- [ ] 140-01-PLAN.md — Strip ?oauth param from URL on App.js mount (one-shot useEffect matching sso_silent pattern)
 
 ---
