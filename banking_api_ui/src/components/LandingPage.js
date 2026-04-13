@@ -54,6 +54,13 @@ export default function LandingPage({ user, onLogout }) {
             >
               PingOne Test
             </button>
+            <button
+              onClick={() => navigate('/mfa-test')}
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit' }}
+            >
+              MFA Test
+            </button>
 
           </nav>
           <div className="landing-header-actions">

@@ -1301,6 +1301,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="ud-super-pills" aria-label="Quick links">
           <Link to="/security" className="ud-super-pill" aria-label="Security and Insights">Insights</Link>
           <Link to="/transactions" className="ud-super-pill" aria-label="Payments and Transfers">Payments hub</Link>
+          <Link to="/pingone-test" className="ud-super-pill" aria-label="PingOne integration test page">PingOne Test</Link>
+          <Link to="/mfa-test" className="ud-super-pill" aria-label="MFA test page">MFA Test</Link>
         </div>
 
         {/* Customer Profile */}

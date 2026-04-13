@@ -789,6 +789,9 @@ const Dashboard = ({ user, onLogout }) => {
           >
             🔒 Security Settings
           </Link>
+          <Link to="/pingone-test" className="btn btn-secondary">
+            🔬 PingOne Test
+          </Link>
           <Link to="/mfa-test" className="btn btn-secondary">
             🔐 MFA Test
           </Link>
