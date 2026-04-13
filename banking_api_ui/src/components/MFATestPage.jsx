@@ -633,6 +633,21 @@ export default function MFATestPage() {
         {/* Device Enrollment Section */}
         <section className="mfa-test-section">
           <h2 className="mfa-test-section-title">Device Enrollment</h2>
+          <WhatIsHappening
+            title="Device Enrollment — Registering a New MFA Device"
+            steps={[
+              'Email enrollment: POST /api/mfa/test/integration/enroll-email → PingOne creates an EMAIL device record for the user',
+              'FIDO2 enrollment (Step 1): POST /api/mfa/test/integration/enroll-fido2-init → PingOne returns publicKeyCredentialCreationOptions',
+              'FIDO2 enrollment (Step 2): Browser calls navigator.credentials.create() using the challenge — private key stays in device secure enclave',
+              'FIDO2 enrollment (Step 3): POST /api/mfa/test/integration/enroll-fido2-complete with attestation → PingOne stores the public key',
+              'After enrollment, the device appears in Device Management and can be used for MFA challenges',
+            ]}
+            apiFlow={[
+              { method: 'POST', endpoint: '/api/mfa/test/integration/enroll-email', note: 'Register email device' },
+              { method: 'POST', endpoint: '/api/mfa/test/integration/enroll-fido2-init', note: 'Get WebAuthn creation options' },
+              { method: 'POST', endpoint: '/api/mfa/test/integration/enroll-fido2-complete', note: 'Submit attestation' },
+            ]}
+          />
           <TestCard
             title="Enroll Email Device"
             status={enrollEmailStatus}
@@ -659,6 +674,19 @@ export default function MFATestPage() {
         {/* Device Management Section */}
         <section className="mfa-test-section">
           <h2 className="mfa-test-section-title">Device Management</h2>
+          <WhatIsHappening
+            title="Device Management — Listing Enrolled MFA Devices"
+            steps={[
+              'GET /api/mfa/test/devices → BFF calls PingOne Management API to list all MFA devices for the authenticated user',
+              'Each device has: type (SMS, EMAIL, FIDO2_BIOMETRICS), nickname/email, status (ACTIVE, INACTIVE), and enrolledAt date',
+              'Devices are the registered MFA factors — each one can be used to satisfy an MFA challenge',
+              'Admins can disable or delete devices via PingOne console or Management API',
+            ]}
+            apiFlow={[
+              { method: 'GET', endpoint: '/api/mfa/test/devices', note: 'List enrolled MFA devices' },
+              { method: 'GET', endpoint: '/v1/environments/{envId}/users/{userId}/devices', note: 'PingOne Management API' },
+            ]}
+          />
           <TestCard
             title="List Devices"
             status={devicesStatus}
