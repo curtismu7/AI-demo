@@ -2104,14 +2104,14 @@ Plans:
 **Goal:** Audit and fix all placeholder/stub content across UI and server; apply Chase.com visual redesign pass across all pages.
 **Requirements**: D-01, D-02, D-03, D-04, D-05
 **Depends on:** Phase 137
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 Plans:
-- [ ] 138-01-PLAN.md — Server stubs: agentSessionMiddleware refresh + demoScenario lastMigration + BankingAgent dead code
-- [ ] 138-02-PLAN.md — UserDashboard placeholder pills + Chase hero/cards redesign
-- [ ] 138-03-PLAN.md — Chase nav + Login + Transactions redesign
-- [ ] 138-04-PLAN.md — Chase Profile + SecurityCenter + Admin pages redesign
-- [ ] 138-05-PLAN.md — Human verification checkpoint
+- [x] 138-01-PLAN.md — Server stubs: agentSessionMiddleware refresh + demoScenario lastMigration + BankingAgent dead code
+- [x] 138-02-PLAN.md — UserDashboard placeholder pills + Chase hero/cards redesign
+- [x] 138-03-PLAN.md — Chase nav + Login + Transactions redesign
+- [x] 138-04-PLAN.md — Chase Profile + SecurityCenter + Admin pages redesign
+- [x] 138-05-PLAN.md — Human verification checkpoint
 
 ### Phase 139: Full test page fix + educational overhaul — PingOne Test + MFA Test, entity mapping, tokens, APIs, SPEL
 
@@ -2121,9 +2121,19 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 139-01-PLAN.md — Audit + fix broken flows (exchange subjectToken, FIDO2 WebAuthn, Fix buttons)
-- [ ] 139-02-PLAN.md — PingOne entity mapper: apps × resources × scopes × users × SPEL × grant matrix
-- [ ] 139-03-PLAN.md — Educational overlays: claim tooltips, token lineage diffs, What is Happening panels
+- [x] 139-01-PLAN.md — Audit + fix broken flows (exchange subjectToken, FIDO2 WebAuthn, Fix buttons)
+- [x] 139-02-PLAN.md — PingOne entity mapper: apps × resources × scopes × users × SPEL × grant matrix
+- [x] 139-03-PLAN.md — Educational overlays: claim tooltips, token lineage diffs, What is Happening panels
 
+
+### Phase 140: OAuth return_to redirect — after PingOne login return to originating page with session access token available for token exchange
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 139
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 140 to break down)
 
 ---
