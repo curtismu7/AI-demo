@@ -2015,7 +2015,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 129 to break down)
+- [x] Audited 15 most recent todos — 7 archived to done, 8 remain as backlog
 
 ### Phase 130: PingOne Asset Verification — rich table with apps, resources, scopes and missing item highlights
 
