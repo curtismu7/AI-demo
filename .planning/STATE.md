@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-12T21:00:17.360Z"
+status: planning
+last_updated: "2026-04-13T11:48:00.000Z"
 progress:
-  total_phases: 157
-  completed_phases: 68
-  total_plans: 237
-  completed_plans: 170
+  total_phases: 162
+  completed_phases: 73
+  total_plans: 241
+  completed_plans: 181
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,12 +20,11 @@ progress:
 
 ## Current Position
 
-Phase: 138 (audit-and-fix-all-placeholder-content-across-the-app-and-server-replace-with-real-functionality) — EXECUTING
-Plan: 1 of 5
-Plans: 4/4 complete
-**Previous:** Phase 127 (comprehensive-debug-and-fix) — ✅ COMPLETE
-**Next:** Phase 129 (TBD — run /gsd-new-milestone or /gsd-progress to see options)
-**Status:** Executing Phase 138
+Phase: 14 (agent-window-polish) — PLANNING
+Plan: unplanned (run /gsd-plan-phase 14)
+**Previous:** Phase 13 (dashboard-first-impression-overhaul) — ✅ COMPLETE
+**Next:** /gsd-plan-phase 14
+**Status:** Ready to plan Phase 14
 
 ---
 
@@ -209,6 +208,7 @@ Plans: 4/4 complete
 - Phase 116 added: Full LangChain native agent rebuild — replace createStructuredChatAgent retrofit with langchain 1.x createAgent() API across BFF and UI; 7-tool registry; per-request executor; session history; HITL 428 consent [2026-04-09]
 - Phase 117 added: LangChain production-quality agent with pluggable model interface (Groq default, OpenAI/Anthropic/HuggingFace support) [2026-04-09]
 - Phase 118 added: Research and plan HuggingFace integration with LangChain for cost-effective model deployment — evaluate ecosystem, licensing, model selection, deployment options [2026-04-09]
+- Phase 141 added: Local setup wizard — guided PingOne configuration, app/resource/scope creation, SPEL attribute mapping, worker credentials, env file generation — app runs on completion [2026-04-13]
 
 ---
 

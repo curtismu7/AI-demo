@@ -1,14 +1,28 @@
-// Load environment variables from .env file (no-op on Vercel where env vars are injected)
-require('dotenv').config();
+// Load environment variables — local dev: root .env takes precedence over banking_api_server/.env
+// On Vercel, env vars are injected directly (both calls are no-ops)
+const path = require('path');
+require('dotenv').config({
+    path: path.resolve(__dirname, '../.env'),
+    override: false
+});
+require('dotenv').config({
+    override: false
+});
 
 // Validate required env vars at startup — exits in production if any are missing
 require('./scripts/check-env');
 
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
-const { resolveRedisWireUrl } = require('./services/redisWireUrl');
-const { mcpNoBearerResponse } = require('./services/bffSessionGating');
-const { createFaultTolerantStore } = require('./services/faultTolerantStore');
+const {
+    resolveRedisWireUrl
+} = require('./services/redisWireUrl');
+const {
+    mcpNoBearerResponse
+} = require('./services/bffSessionGating');
+const {
+    createFaultTolerantStore
+} = require('./services/faultTolerantStore');
 
 const express = require('express');
 const cors = require('cors');
@@ -18,32 +32,32 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 
-const isVercel  = !!process.env.VERCEL;
-const isReplit  = !!process.env.REPL_ID || !!process.env.REPLIT_DEPLOYMENT;
+const isVercel = !!process.env.VERCEL;
+const isReplit = !!process.env.REPL_ID || !!process.env.REPLIT_DEPLOYMENT;
 const isProduction = process.env.NODE_ENV === 'production' || isVercel || isReplit;
 
 // Log deployment context on startup
-if (isVercel)  console.log('[platform] Vercel deployment detected');
-if (isReplit)  console.log('[platform] Replit deployment detected');
+if (isVercel) console.log('[platform] Vercel deployment detected');
+if (isReplit) console.log('[platform] Replit deployment detected');
 if (!isVercel && !isReplit && isProduction) console.log('[platform] Generic production deployment');
 
 // Log OAuth config so mismatches are visible in Vercel logs
 if (isVercel) {
-  const _mask = (v, n = 4) => v ? v.slice(0, n) + '...' : 'MISSING';
-  const _envId    = process.env.PINGONE_ENVIRONMENT_ID || process.env.PINGONE_ENV_ID || '';
-  const _adminId  = process.env.PINGONE_ADMIN_CLIENT_ID  || process.env.PINGONE_AI_CORE_CLIENT_ID  || process.env.PINGONE_CORE_CLIENT_ID  || '';
-  const _adminSec = process.env.PINGONE_ADMIN_CLIENT_SECRET || process.env.PINGONE_AI_CORE_CLIENT_SECRET || process.env.PINGONE_CORE_CLIENT_SECRET || '';
-  const _userId   = process.env.PINGONE_USER_CLIENT_ID   || process.env.PINGONE_AI_CORE_USER_CLIENT_ID   || process.env.PINGONE_CORE_USER_CLIENT_ID   || '';
-  const _userSec  = process.env.PINGONE_USER_CLIENT_SECRET  || process.env.PINGONE_AI_CORE_USER_CLIENT_SECRET  || process.env.PINGONE_CORE_USER_CLIENT_SECRET  || '';
-  console.log('[oauth-config] env_id=%s  admin_client_id=%s  admin_secret=%s  user_client_id=%s  user_secret=%s',
-    _mask(_envId, 8), _mask(_adminId, 8), _mask(_adminSec, 4), _mask(_userId, 8), _mask(_userSec, 4));
+    const _mask = (v, n = 4) => v ? v.slice(0, n) + '...' : 'MISSING';
+    const _envId = process.env.PINGONE_ENVIRONMENT_ID || process.env.PINGONE_ENV_ID || '';
+    const _adminId = process.env.PINGONE_ADMIN_CLIENT_ID || process.env.PINGONE_AI_CORE_CLIENT_ID || process.env.PINGONE_CORE_CLIENT_ID || '';
+    const _adminSec = process.env.PINGONE_ADMIN_CLIENT_SECRET || process.env.PINGONE_AI_CORE_CLIENT_SECRET || process.env.PINGONE_CORE_CLIENT_SECRET || '';
+    const _userId = process.env.PINGONE_USER_CLIENT_ID || process.env.PINGONE_AI_CORE_USER_CLIENT_ID || process.env.PINGONE_CORE_USER_CLIENT_ID || '';
+    const _userSec = process.env.PINGONE_USER_CLIENT_SECRET || process.env.PINGONE_AI_CORE_USER_CLIENT_SECRET || process.env.PINGONE_CORE_USER_CLIENT_SECRET || '';
+    console.log('[oauth-config] env_id=%s  admin_client_id=%s  admin_secret=%s  user_client_id=%s  user_secret=%s',
+        _mask(_envId, 8), _mask(_adminId, 8), _mask(_adminSec, 4), _mask(_userId, 8), _mask(_userSec, 4));
 }
 
 // Security guard: SKIP_TOKEN_SIGNATURE_VALIDATION must never be enabled in production.
 // Validates at startup (before any request is served) so misconfigurations are caught early.
 if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
-  console.error('[FATAL] SKIP_TOKEN_SIGNATURE_VALIDATION=true is not allowed in production. Remove this env var before deploying.');
-  process.exit(1);
+    console.error('[FATAL] SKIP_TOKEN_SIGNATURE_VALIDATION=true is not allowed in production. Remove this env var before deploying.');
+    process.exit(1);
 }
 
 // ── Optional persistent session store (required for Vercel / multi-instance deployments) ──
@@ -74,132 +88,143 @@ let sessionStoreType = 'memory';
 let sessionStore;
 
 // ── Priority 1: Upstash REST (HTTP — recommended for Vercel) ──────────────
-const _restUrl   = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+const _restUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const _restToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
 if (_restUrl && _restToken) {
-  try {
-    const UpstashSessionStore = require('./services/upstashSessionStore');
-    upstashSessionStoreInstance = new UpstashSessionStore({ prefix: 'banking:sess:' });
-    sessionStore = upstashSessionStoreInstance;
-    sessionStoreType = 'upstash-rest';
-    sessionRedisEnvHint = process.env.UPSTASH_REDIS_REST_URL ? 'UPSTASH_REDIS_REST_*' : 'KV_REST_API_*';
-    console.log(`[session-store] Using Upstash REST store (${sessionRedisEnvHint}) — HTTP, no TCP connection`);
-  } catch (err) {
-    sessionRedisInitError = err.message || String(err);
-    console.warn('[session-store] Upstash REST store init failed, trying wire protocol:', err.message);
-  }
+    try {
+        const UpstashSessionStore = require('./services/upstashSessionStore');
+        upstashSessionStoreInstance = new UpstashSessionStore({
+            prefix: 'banking:sess:'
+        });
+        sessionStore = upstashSessionStoreInstance;
+        sessionStoreType = 'upstash-rest';
+        sessionRedisEnvHint = process.env.UPSTASH_REDIS_REST_URL ? 'UPSTASH_REDIS_REST_*' : 'KV_REST_API_*';
+        console.log(`[session-store] Using Upstash REST store (${sessionRedisEnvHint}) — HTTP, no TCP connection`);
+    } catch (err) {
+        sessionRedisInitError = err.message || String(err);
+        console.warn('[session-store] Upstash REST store init failed, trying wire protocol:', err.message);
+    }
 }
 
 // ── Priority 2: node-redis wire protocol (self-hosted Redis / explicit REDIS_URL) ──
 if (!sessionStore) {
-  const _redisResolved = resolveRedisWireUrl(process.env);
-  const _redisUrl = _redisResolved.url;
-  if (_redisResolved.invalidRedisUrlIgnored) {
-    console.warn(
-      '[session-store] REDIS_URL is set but is not redis:// or rediss:// (wrong value or REST URL pasted). ' +
-        'Ignoring it; using KV_URL or REST-derived URL if available.',
-    );
-  }
-
-  if (_redisUrl) {
-    try {
-      const connectRedisPkg = require('connect-redis');
-      const RedisStore =
-        connectRedisPkg.RedisStore ||
-        connectRedisPkg.default ||
-        connectRedisPkg;
-      const { createClient } = require('redis');
-      const redisClient = createClient({
-        url: _redisUrl,
-        socket: {
-          connectTimeout: 8000,
-          reconnectStrategy: (retries) => {
-            if (retries < 3) return Math.min(retries * 200, 1000);
-            return new Error('[session-store] Redis reconnect exhausted');
-          },
-        },
-      });
-      sessionRedisClient = redisClient;
-      sessionRedisEnvHint = _redisResolved.envHint;
-
-      redisClient.on('error', (err) => {
-        if (!redisClient._loggedError) {
-          sessionRedisConnectError = err.message || String(err);
-          console.error('[session-store] Redis wire error:', err.message);
-          redisClient._loggedError = true;
-        }
-      });
-      redisClient.on('ready', () => {
-        console.log('[session-store] Redis wire connected and ready');
-        redisClient._loggedError = false;
-      });
-
-      _redisConnectPromise = redisClient.connect().catch((err) => {
-        sessionRedisConnectError = err.message || String(err);
-        console.error('[session-store] Redis wire initial connect failed:', err.message);
-      });
-
-      const rawStore = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
-      sessionStore = createFaultTolerantStore(rawStore, {
-        onError: (method, err) => { sessionRedisConnectError = err.message || String(err); },
-      });
-      sessionStoreType = 'redis-wire';
-      console.log(`[session-store] Using Redis wire store (from ${sessionRedisEnvHint}), eager connect initiated`);
-    } catch (err) {
-      sessionRedisInitError = err.message || String(err);
-      sessionRedisClient = null;
-      console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
+    const _redisResolved = resolveRedisWireUrl(process.env);
+    const _redisUrl = _redisResolved.url;
+    if (_redisResolved.invalidRedisUrlIgnored) {
+        console.warn(
+            '[session-store] REDIS_URL is set but is not redis:// or rediss:// (wrong value or REST URL pasted). ' +
+            'Ignoring it; using KV_URL or REST-derived URL if available.',
+        );
     }
-  }
+
+    if (_redisUrl) {
+        try {
+            const connectRedisPkg = require('connect-redis');
+            const RedisStore =
+                connectRedisPkg.RedisStore ||
+                connectRedisPkg.default ||
+                connectRedisPkg;
+            const {
+                createClient
+            } = require('redis');
+            const redisClient = createClient({
+                url: _redisUrl,
+                socket: {
+                    connectTimeout: 8000,
+                    reconnectStrategy: (retries) => {
+                        if (retries < 3) return Math.min(retries * 200, 1000);
+                        return new Error('[session-store] Redis reconnect exhausted');
+                    },
+                },
+            });
+            sessionRedisClient = redisClient;
+            sessionRedisEnvHint = _redisResolved.envHint;
+
+            redisClient.on('error', (err) => {
+                if (!redisClient._loggedError) {
+                    sessionRedisConnectError = err.message || String(err);
+                    console.error('[session-store] Redis wire error:', err.message);
+                    redisClient._loggedError = true;
+                }
+            });
+            redisClient.on('ready', () => {
+                console.log('[session-store] Redis wire connected and ready');
+                redisClient._loggedError = false;
+            });
+
+            _redisConnectPromise = redisClient.connect().catch((err) => {
+                sessionRedisConnectError = err.message || String(err);
+                console.error('[session-store] Redis wire initial connect failed:', err.message);
+            });
+
+            const rawStore = new RedisStore({
+                client: redisClient,
+                prefix: 'banking:sess:'
+            });
+            sessionStore = createFaultTolerantStore(rawStore, {
+                onError: (method, err) => {
+                    sessionRedisConnectError = err.message || String(err);
+                },
+            });
+            sessionStoreType = 'redis-wire';
+            console.log(`[session-store] Using Redis wire store (from ${sessionRedisEnvHint}), eager connect initiated`);
+        } catch (err) {
+            sessionRedisInitError = err.message || String(err);
+            sessionRedisClient = null;
+            console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
+        }
+    }
 }
 
 // ── Priority 3: SQLite store (local development fallback) ───────────────────
 if (!sessionStore) {
-  try {
-    const SqliteSessionStore = require('./services/sqliteSessionStore');
-    sessionStore = new SqliteSessionStore({
-      dbPath: path.join(__dirname, 'data/sessions.db'),
-      ttl: 24 * 60 * 60 * 1000, // 24 hours
-    });
-    sessionStoreType = 'sqlite';
-    console.log('[session-store] Using SQLite store for local development — sessions persist across restarts');
-  } catch (err) {
-    sessionRedisInitError = err.message || String(err);
-    console.warn('[session-store] SQLite store init failed, falling back to memory store:', err.message);
-  }
+    try {
+        const SqliteSessionStore = require('./services/sqliteSessionStore');
+        sessionStore = new SqliteSessionStore({
+            dbPath: path.join(__dirname, 'data/sessions.db'),
+            ttl: 24 * 60 * 60 * 1000, // 24 hours
+        });
+        sessionStoreType = 'sqlite';
+        console.log('[session-store] Using SQLite store for local development — sessions persist across restarts');
+    } catch (err) {
+        sessionRedisInitError = err.message || String(err);
+        console.warn('[session-store] SQLite store init failed, falling back to memory store:', err.message);
+    }
 }
 
 if (!sessionStore && (process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT)) {
-  const platform = process.env.VERCEL ? 'Vercel' : 'Replit';
-  console.warn(
-    `[session-store] WARNING: Running on ${platform} without Redis. ` +
-    'Sessions use in-memory store — they will be lost on process restart. ' +
-    'Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN for persistent sessions (HTTP — no TCP required).',
-  );
+    const platform = process.env.VERCEL ? 'Vercel' : 'Replit';
+    console.warn(
+        `[session-store] WARNING: Running on ${platform} without Redis. ` +
+        'Sessions use in-memory store — they will be lost on process restart. ' +
+        'Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN for persistent sessions (HTTP — no TCP required).',
+    );
 }
 
 // Import routes
-const authRoutes        = require('./routes/auth');
-const oauthRoutes       = require('./routes/oauth');
-const oauthUserRoutes   = require('./routes/oauthUser');
-const oauthService      = require('./services/oauthService');
-const userRoutes        = require('./routes/users');
-const accountRoutes     = require('./routes/accounts');
+const authRoutes = require('./routes/auth');
+const oauthRoutes = require('./routes/oauth');
+const oauthUserRoutes = require('./routes/oauthUser');
+const oauthService = require('./services/oauthService');
+const userRoutes = require('./routes/users');
+const accountRoutes = require('./routes/accounts');
 const sensitiveBankingRoutes = require('./routes/sensitiveBanking');
 const transactionRoutes = require('./routes/transactions');
 const demoScenarioRoutes = require('./routes/demoScenario');
-const adminRoutes       = require('./routes/admin');
+const adminRoutes = require('./routes/admin');
 const adminConfigRoutes = require('./routes/adminConfig');
 const adminManagementRoutes = require('./routes/adminManagement');
-const cibaRoutes        = require('./routes/ciba');
-const mfaRoutes         = require('./routes/mfa');
-const mfaTestRoutes     = require('./routes/mfaTest');
-const authorizeRoutes   = require('./routes/authorize');
-const setupRoutes       = require('./routes/setup');
-const setupWizardRoutes  = require('./routes/setupWizard');
+const cibaRoutes = require('./routes/ciba');
+const mfaRoutes = require('./routes/mfa');
+const mfaTestRoutes = require('./routes/mfaTest');
+const authorizeRoutes = require('./routes/authorize');
+const setupRoutes = require('./routes/setup');
+const setupWizardRoutes = require('./routes/setupWizard');
 const selfServiceUsersRoutes = require('./routes/selfServiceUsers');
-const { router: featureFlagsRoutes } = require('./routes/featureFlags');
+const {
+    router: featureFlagsRoutes
+} = require('./routes/featureFlags');
 const vercelConfigRoutes = require('./routes/vercelConfig');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const mcpAuditRouter = require('./routes/mcpAudit');
@@ -211,16 +236,27 @@ const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
 const delegationRoutes = require('./routes/delegation');
 const tokenChainRoutes = require('./routes/tokenChain');
-const { router: clientRegistrationRoutes, wellKnownHandler } = require('./routes/clientRegistration');
+const {
+    router: clientRegistrationRoutes,
+    wellKnownHandler
+} = require('./routes/clientRegistration');
 const protectedResourceMetadataRoutes = require('./routes/protectedResourceMetadata');
 const introspectRoutes = require('./routes/introspect');
 const migrationRoutes = require('./routes/migration');
 const securityMonitoringRoutes = require('./routes/securityMonitoring');
 const oauthClientsRoutes = require('./routes/oauthClients');
 const oauthTokenRoutes = require('./routes/oauthToken');
-const { getOAuthRedirectDebugInfo, getFrontendOrigin } = require('./services/oauthRedirectUris');
-const { restoreSessionFromCookie, clearAuthCookie } = require('./services/authStateCookie');
-const { migrateAccounts } = require('./services/demoDataService');
+const {
+    getOAuthRedirectDebugInfo,
+    getFrontendOrigin
+} = require('./services/oauthRedirectUris');
+const {
+    restoreSessionFromCookie,
+    clearAuthCookie
+} = require('./services/authStateCookie');
+const {
+    migrateAccounts
+} = require('./services/demoDataService');
 const appConfigRoutes = require('./routes/appConfig');
 const verticalConfigRoutes = require('./routes/verticalConfig');
 const pingoneAuditRoutes = require('./routes/pingoneAudit');
@@ -229,11 +265,22 @@ const tokenDisplayRoutes = require('./routes/tokenDisplay');
 const apiCallTrackerRoutes = require('./routes/apiCallTracker');
 
 // Import middleware
-const { authenticateToken, requireSession } = require('./middleware/auth');
-const { logActivity } = require('./middleware/activityLogger');
-const { correlationIdMiddleware } = require('./middleware/correlationId');
-const { delegationAuditMiddleware } = require('./middleware/delegationAuditLogger');
-const { refreshIfExpiring } = require('./middleware/tokenRefresh');
+const {
+    authenticateToken,
+    requireSession
+} = require('./middleware/auth');
+const {
+    logActivity
+} = require('./middleware/activityLogger');
+const {
+    correlationIdMiddleware
+} = require('./middleware/correlationId');
+const {
+    delegationAuditMiddleware
+} = require('./middleware/delegationAuditLogger');
+const {
+    refreshIfExpiring
+} = require('./middleware/tokenRefresh');
 const audValidationMiddleware = require('./middleware/audValidationMiddleware');
 
 const app = express();
@@ -241,59 +288,63 @@ const PORT = process.env.PORT || 3001;
 
 // Security middleware
 app.use(helmet({
-  // Content-Security-Policy
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc:     ["'self'"],
-      scriptSrc:      ["'self'", "'unsafe-inline'"],   // CRA requires unsafe-inline in prod build
-      styleSrc:       ["'self'", "'unsafe-inline'", "https://assets.pingone.com"],
-      imgSrc:         ["'self'", 'data:', 'https:'],
-      connectSrc:     ["'self'", 'https://*.pingone.com', 'https://*.pingidentity.com', 'wss:'],
-      fontSrc:        ["'self'", 'data:'],
-      frameAncestors: ["'none'"],
+    // Content-Security-Policy
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"], // CRA requires unsafe-inline in prod build
+            styleSrc: ["'self'", "'unsafe-inline'", "https://assets.pingone.com"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'", 'https://*.pingone.com', 'https://*.pingidentity.com', 'wss:'],
+            fontSrc: ["'self'", 'data:'],
+            frameAncestors: ["'none'"],
+        },
     },
-  },
-  // HSTS — 2 years, include subdomains
-  strictTransportSecurity: {
-    maxAge:            63072000,
-    includeSubDomains: true,
-    preload:           true,
-  },
-  // X-Frame-Options: DENY
-  frameguard: { action: 'deny' },
-  // Referrer-Policy
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-  // X-Content-Type-Options: nosniff (helmet default)
-  noSniff: true,
-  // Permissions-Policy (helmet calls this permittedCrossDomainPolicies, but we set it manually below)
-  permittedCrossDomainPolicies: false,
-  // Disable X-Powered-By
-  hidePoweredBy: true,
-  // X-XSS-Protection (legacy browsers)
-  xssFilter: true,
+    // HSTS — 2 years, include subdomains
+    strictTransportSecurity: {
+        maxAge: 63072000,
+        includeSubDomains: true,
+        preload: true,
+    },
+    // X-Frame-Options: DENY
+    frameguard: {
+        action: 'deny'
+    },
+    // Referrer-Policy
+    referrerPolicy: {
+        policy: 'strict-origin-when-cross-origin'
+    },
+    // X-Content-Type-Options: nosniff (helmet default)
+    noSniff: true,
+    // Permissions-Policy (helmet calls this permittedCrossDomainPolicies, but we set it manually below)
+    permittedCrossDomainPolicies: false,
+    // Disable X-Powered-By
+    hidePoweredBy: true,
+    // X-XSS-Protection (legacy browsers)
+    xssFilter: true,
 }));
 
 // Permissions-Policy header (not in helmet's built-in options)
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  next();
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
 });
 
 // Cache-Control: no-store for all API routes
 app.use('/api', (req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store');
-  next();
+    res.setHeader('Cache-Control', 'no-store');
+    next();
 });
 // Allow credentials (session cookies) from the configured origin.
 // In development the React CRA proxy makes requests same-origin, so CORS is
 // essentially unused. On Vercel, React and API share the same domain.
 app.use(cors({
-  // In production, CORS_ORIGIN should be set to the frontend URL.
-  // Fallback to false (block all cross-origin) rather than reflecting any Origin.
-  // The React CRA dev proxy makes requests same-origin in development, so this
-  // fallback only affects calls from a different origin without the env var set.
-  origin: process.env.CORS_ORIGIN || (isProduction ? false : ['https://api.pingdemo.com', 'https://localhost:4000']),
-  credentials: true
+    // In production, CORS_ORIGIN should be set to the frontend URL.
+    // Fallback to false (block all cross-origin) rather than reflecting any Origin.
+    // The React CRA dev proxy makes requests same-origin in development, so this
+    // fallback only affects calls from a different origin without the env var set.
+    origin: process.env.CORS_ORIGIN || (isProduction ? false : ['https://api.pingdemo.com', 'https://localhost:4000']),
+    credentials: true
 }));
 
 // Trust proxy headers from Vercel / any load balancer in front of Express.
@@ -304,37 +355,39 @@ app.set('trust proxy', 1);
 // Enforce HTTPS on Vercel and Replit — redirect any plain HTTP request.
 // Both platforms terminate TLS before Express and set x-forwarded-proto.
 if (isVercel || isReplit) {
-  app.use((req, res, next) => {
-    if (req.secure) return next();
-    return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
-  });
+    app.use((req, res, next) => {
+        if (req.secure) return next();
+        return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+    });
 }
 
 // Rate limiting — set DISABLE_RATE_LIMIT=true (or 1/yes) to turn off global + auth limits while testing locally or on a preview.
 const rateLimitDisabled = ['1', 'true', 'yes'].includes(
-  String(process.env.DISABLE_RATE_LIMIT || '').toLowerCase()
+    String(process.env.DISABLE_RATE_LIMIT || '').toLowerCase()
 );
 const _rateLimitHandler = (req, res) => {
-  // Auth routes are browser-driven redirects — send to login page with friendly error.
-  // Use an absolute URL so Vercel edge / serverless does not choke on relative redirects.
-  if (req.path.startsWith('/api/auth')) {
-    const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
-    const host  = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
-    const origin = host ? `${proto}://${host}` : (process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000');
-    return res.redirect(`${origin}/login?error=too_many_requests`);
-  }
-  res.status(429).json({ error: 'Too many requests. Please wait a few minutes and try again.' });
+    // Auth routes are browser-driven redirects — send to login page with friendly error.
+    // Use an absolute URL so Vercel edge / serverless does not choke on relative redirects.
+    if (req.path.startsWith('/api/auth')) {
+        const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+        const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+        const origin = host ? `${proto}://${host}` : (process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000');
+        return res.redirect(`${origin}/login?error=too_many_requests`);
+    }
+    res.status(429).json({
+        error: 'Too many requests. Please wait a few minutes and try again.'
+    });
 };
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  // Generous defaults for demos/testing; override with RATE_LIMIT_MAX. Production can tighten via env.
-  max: (() => {
-    const n = parseInt(process.env.RATE_LIMIT_MAX || '', 10);
-    if (Number.isFinite(n) && n > 0) return n;
-    return process.env.NODE_ENV === 'development' ? 20000 : 8000;
-  })(),
-  handler: _rateLimitHandler,
-  skip: () => rateLimitDisabled,
+    windowMs: 15 * 60 * 1000,
+    // Generous defaults for demos/testing; override with RATE_LIMIT_MAX. Production can tighten via env.
+    max: (() => {
+        const n = parseInt(process.env.RATE_LIMIT_MAX || '', 10);
+        if (Number.isFinite(n) && n > 0) return n;
+        return process.env.NODE_ENV === 'development' ? 20000 : 8000;
+    })(),
+    handler: _rateLimitHandler,
+    skip: () => rateLimitDisabled,
 });
 /**
  * Paths excluded from the global IP limiter — they have their own limits or are safe, hot paths.
@@ -343,39 +396,39 @@ const limiter = rateLimit({
  * global bucket caused 429 before auth-heavy routes could succeed.
  */
 function shouldSkipGlobalRateLimit(req) {
-  const p = req.path || '';
-  return (
-    p.startsWith('/api/logs') ||
-    p.startsWith('/api/banking-agent') ||
-    p.startsWith('/api/agent') ||
-    p.startsWith('/api/mcp') ||
-    p === '/api/accounts/my' ||
-    p === '/api/transactions/my' ||
-    p.startsWith('/api/demo-scenario') ||
-    p.startsWith('/api/tokens') ||
-    p === '/api/auth/session' ||
-    p === '/api/auth/oauth/status' ||
-    p === '/api/auth/oauth/user/status' ||
-    p.startsWith('/api/admin/config')
-  );
+    const p = req.path || '';
+    return (
+        p.startsWith('/api/logs') ||
+        p.startsWith('/api/banking-agent') ||
+        p.startsWith('/api/agent') ||
+        p.startsWith('/api/mcp') ||
+        p === '/api/accounts/my' ||
+        p === '/api/transactions/my' ||
+        p.startsWith('/api/demo-scenario') ||
+        p.startsWith('/api/tokens') ||
+        p === '/api/auth/session' ||
+        p === '/api/auth/oauth/status' ||
+        p === '/api/auth/oauth/user/status' ||
+        p.startsWith('/api/admin/config')
+    );
 }
 app.use((req, res, next) => (shouldSkipGlobalRateLimit(req) ? next() : limiter(req, res, next)));
 
 // Tighter rate limit for login/callback only — not status polling endpoints.
 // max=100 in production: enough headroom for demo testing while still preventing abuse.
 const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: (() => {
-    const n = parseInt(process.env.RATE_LIMIT_AUTH_MAX || '', 10);
-    if (Number.isFinite(n) && n > 0) return n;
-    return process.env.NODE_ENV === 'development' ? 500 : 300;
-  })(),
-  handler: _rateLimitHandler,
-  skip: () => rateLimitDisabled,
+    windowMs: 60 * 1000,
+    max: (() => {
+        const n = parseInt(process.env.RATE_LIMIT_AUTH_MAX || '', 10);
+        if (Number.isFinite(n) && n > 0) return n;
+        return process.env.NODE_ENV === 'development' ? 500 : 300;
+    })(),
+    handler: _rateLimitHandler,
+    skip: () => rateLimitDisabled,
 });
-app.use('/api/auth/oauth/login',         authLimiter);
-app.use('/api/auth/oauth/callback',      authLimiter);
-app.use('/api/auth/oauth/user/login',    authLimiter);
+app.use('/api/auth/oauth/login', authLimiter);
+app.use('/api/auth/oauth/callback', authLimiter);
+app.use('/api/auth/oauth/user/login', authLimiter);
 app.use('/api/auth/oauth/user/callback', authLimiter);
 
 // Logging middleware
@@ -387,48 +440,52 @@ app.use(morgan('combined'));
  * store is HTTP — no connection to wait for.
  */
 function awaitSessionRedisReady(req, res, next) {
-  if (sessionStoreType !== 'redis-wire') return next(); // REST/memory need no warm-up
-  if (!sessionRedisClient) return next();
-  if (sessionRedisClient.isReady) return next();
-  if (_redisConnectPromise) {
-    _redisConnectPromise.then(() => next());
-    return;
-  }
-  next();
+    if (sessionStoreType !== 'redis-wire') return next(); // REST/memory need no warm-up
+    if (!sessionRedisClient) return next();
+    if (sessionRedisClient.isReady) return next();
+    if (_redisConnectPromise) {
+        _redisConnectPromise.then(() => next());
+        return;
+    }
+    next();
 }
 
 app.use(awaitSessionRedisReady);
 
 // Session middleware
 app.use(session({
-  secret: (() => {
-    const s = process.env.SESSION_SECRET;
-    if (!s || s === 'dev-session-secret-change-in-production') {
-      if (process.env.NODE_ENV === 'production' || process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT) {
-        console.error('[FATAL] SESSION_SECRET env var is not set or is using the insecure default. Set a random 32+ character string in your deployment environment.');
-        process.exit(1);
-      }
-      console.warn('[security] SESSION_SECRET not set — using insecure default (dev only).');
+    secret: (() => {
+        const s = process.env.SESSION_SECRET;
+        if (!s || s === 'dev-session-secret-change-in-production') {
+            if (process.env.NODE_ENV === 'production' || process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT) {
+                console.error('[FATAL] SESSION_SECRET env var is not set or is using the insecure default. Set a random 32+ character string in your deployment environment.');
+                process.exit(1);
+            }
+            console.warn('[security] SESSION_SECRET not set — using insecure default (dev only).');
+        }
+        return s || 'dev-session-secret-change-in-production';
+    })(),
+    resave: false,
+    saveUninitialized: false,
+    ...(sessionStore ? {
+        store: sessionStore
+    } : {}),
+    cookie: {
+        // On Vercel / production HTTPS, secure:true is required.
+        // SameSite:none is required on Vercel because the OAuth signoff redirect
+        // comes from an external domain (PingOne) → needs to send cookie.
+        secure: isProduction,
+        httpOnly: true,
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
-    return s || 'dev-session-secret-change-in-production';
-  })(),
-  resave: false,
-  saveUninitialized: false,
-  ...(sessionStore ? { store: sessionStore } : {}),
-  cookie: {
-    // On Vercel / production HTTPS, secure:true is required.
-    // SameSite:none is required on Vercel because the OAuth signoff redirect
-    // comes from an external domain (PingOne) → needs to send cookie.
-    secure: isProduction,
-    httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
 }));
 
 // Body parsing middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({
+    extended: true
+}));
 
 // Correlation ID — attach X-Request-ID to every request/response for distributed tracing.
 app.use(correlationIdMiddleware);
@@ -442,12 +499,12 @@ app.use(delegationAuditMiddleware);
 // Ensure configStore is loaded before any request touches OAuth config.
 // The promise is memoised — this is a no-op after the first request.
 app.use((req, res, next) => {
-  configStore.ensureInitialized().then(() => next()).catch(next);
+    configStore.ensureInitialized().then(() => next()).catch(next);
 });
 
 // Migrate demo accounts to persistent storage on startup
 migrateAccounts().catch(err => {
-  console.error('[server] Demo accounts migration failed:', err.message);
+    console.error('[server] Demo accounts migration failed:', err.message);
 });
 
 // Restore session user from signed _auth cookie when in-memory session is empty.
@@ -459,27 +516,27 @@ app.use(restoreSessionFromCookie);
 // (Lambda B cold-start race), attempt one Upstash read with the session ID to
 // pull the tokens that Lambda A wrote. Non-fatal; no-op outside Upstash-REST deployments.
 app.use(async (req, _res, next) => {
-  if (!req.session?._restoredFromCookie) return next();
-  if (req.session.oauthTokens && req.session.oauthTokens.accessToken !== '_cookie_session') return next();
-  if (!sessionStore || typeof sessionStore.get !== 'function') return next();
-  const sid = req.sessionID;
-  if (!sid) return next();
-  try {
-    sessionStore.get(sid, (err, stored) => {
-      if (!err && stored?.oauthTokens && stored.oauthTokens.accessToken !== '_cookie_session') {
-        Object.assign(req.session, stored);
-        req.session._restoredFromCookie = false;
-        req.session.save((saveErr) => {
-          if (saveErr) console.warn('[session-refetch] save after Upstash re-fetch failed:', saveErr.message);
+    if (!req.session ? ._restoredFromCookie) return next();
+    if (req.session.oauthTokens && req.session.oauthTokens.accessToken !== '_cookie_session') return next();
+    if (!sessionStore || typeof sessionStore.get !== 'function') return next();
+    const sid = req.sessionID;
+    if (!sid) return next();
+    try {
+        sessionStore.get(sid, (err, stored) => {
+            if (!err && stored ? .oauthTokens && stored.oauthTokens.accessToken !== '_cookie_session') {
+                Object.assign(req.session, stored);
+                req.session._restoredFromCookie = false;
+                req.session.save((saveErr) => {
+                    if (saveErr) console.warn('[session-refetch] save after Upstash re-fetch failed:', saveErr.message);
+                });
+                console.log('[session-refetch] Tokens recovered from Upstash for cookie-only session sid=' + sid.slice(0, 8) + '…');
+            }
+            next();
         });
-        console.log('[session-refetch] Tokens recovered from Upstash for cookie-only session sid=' + sid.slice(0, 8) + '…');
-      }
-      next();
-    });
-  } catch (refetchErr) {
-    console.warn('[session-refetch] Non-fatal re-fetch error:', refetchErr.message);
-    next();
-  }
+    } catch (refetchErr) {
+        console.warn('[session-refetch] Non-fatal re-fetch error:', refetchErr.message);
+        next();
+    }
 });
 
 // RFC 6749 §6 — silently refresh near-expired end-user access tokens on
@@ -488,17 +545,17 @@ app.use(async (req, _res, next) => {
 // refresh before the handler — otherwise the SPA sees authenticated:true while
 // /api/accounts/my still gets 401 from validatePingOneCoreToken on an expired JWT.
 app.use(
-  [
-    '/api/users',
-    '/api/accounts',
-    '/api/transactions',
-    '/api/mcp',
-    '/api/banking-agent',
-    '/api/tokens',
-    '/api/demo-scenario',
-    '/api/auth/oauth',
-  ],
-  refreshIfExpiring,
+    [
+        '/api/users',
+        '/api/accounts',
+        '/api/transactions',
+        '/api/mcp',
+        '/api/banking-agent',
+        '/api/tokens',
+        '/api/demo-scenario',
+        '/api/auth/oauth',
+    ],
+    refreshIfExpiring,
 );
 
 // RFC 6750 §3 — Validate audience (aud) claim on all incoming tokens
@@ -509,55 +566,67 @@ app.use('/api', audValidationMiddleware);
 
 // Health check endpoint
 app.get('/api/healthz', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    port: PORT 
-  });
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        port: PORT
+    });
 });
 
 // P2 — Role switch: initiates an OAuth re-login to a different role without a
 // full sign-out cycle.  Stashes the current tokens in Upstash under a keyed
 // prev-session entry (60s TTL) and redirects to PingOne for the target role.
 app.post('/api/auth/switch', (req, res) => {
-  const { targetRole } = req.body || {};
-  if (!['admin', 'customer'].includes(targetRole)) {
-    return res.status(400).json({ error: 'invalid_target', message: 'targetRole must be "admin" or "customer".' });
-  }
+    const {
+        targetRole
+    } = req.body || {};
+    if (!['admin', 'customer'].includes(targetRole)) {
+        return res.status(400).json({
+            error: 'invalid_target',
+            message: 'targetRole must be "admin" or "customer".'
+        });
+    }
 
-  // Stash current tokens (non-fatal; best-effort)
-  const prevTokens = req.session?.oauthTokens;
-  const prevUser   = req.session?.user;
-  if (prevTokens && upstashSessionStoreInstance && prevUser?.id) {
-    const key = `sessions:prev:${prevUser.id}`;
-    upstashSessionStoreInstance.kv.set(key, JSON.stringify({ oauthTokens: prevTokens, user: prevUser }), { ex: 60 })
-      .catch(e => console.warn('[auth/switch] Failed to stash previous session:', e.message));
-  }
+    // Stash current tokens (non-fatal; best-effort)
+    const prevTokens = req.session ? .oauthTokens;
+    const prevUser = req.session ? .user;
+    if (prevTokens && upstashSessionStoreInstance && prevUser ? .id) {
+        const key = `sessions:prev:${prevUser.id}`;
+        upstashSessionStoreInstance.kv.set(key, JSON.stringify({
+                oauthTokens: prevTokens,
+                user: prevUser
+            }), {
+                ex: 60
+            })
+            .catch(e => console.warn('[auth/switch] Failed to stash previous session:', e.message));
+    }
 
-  // Clear current auth
-  delete req.session.oauthTokens;
-  delete req.session.user;
-  delete req.session.clientType;
-  delete req.session.oauthType;
-  clearAuthCookie(res, isProduction);
+    // Clear current auth
+    delete req.session.oauthTokens;
+    delete req.session.user;
+    delete req.session.clientType;
+    delete req.session.oauthType;
+    clearAuthCookie(res, isProduction);
 
-  // Set switch_target cookie so the OAuth callback knows where to redirect
-  const cookieOpts = {
-    httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
-    secure: isProduction,
-    maxAge: 5 * 60 * 1000, // 5 minutes
-    path: '/',
-  };
-  res.cookie('_switch_target', targetRole, cookieOpts);
+    // Set switch_target cookie so the OAuth callback knows where to redirect
+    const cookieOpts = {
+        httpOnly: true,
+        sameSite: isProduction ? 'none' : 'lax',
+        secure: isProduction,
+        maxAge: 5 * 60 * 1000, // 5 minutes
+        path: '/',
+    };
+    res.cookie('_switch_target', targetRole, cookieOpts);
 
-  // Return the appropriate login URL for the client to navigate to
-  const origin = req.headers.origin || '';
-  const loginUrl = targetRole === 'admin'
-    ? `${origin}/api/auth/oauth/login`
-    : `${origin}/api/auth/oauth/user/login`;
+    // Return the appropriate login URL for the client to navigate to
+    const origin = req.headers.origin || '';
+    const loginUrl = targetRole === 'admin' ?
+        `${origin}/api/auth/oauth/login` :
+        `${origin}/api/auth/oauth/user/login`;
 
-  req.session.save(() => res.json({ redirectUrl: loginUrl }));
+    req.session.save(() => res.json({
+        redirectUrl: loginUrl
+    }));
 });
 
 // Belt-and-suspenders cookie/session clear — called by the SPA after it detects
@@ -565,272 +634,287 @@ app.post('/api/auth/switch', (req, res) => {
 // cookie is cleared even if the 302-redirect Set-Cookie header was not honoured
 // by an intermediate redirect (e.g. PingOne signoff without id_token_hint).
 app.post('/api/auth/clear-session', (req, res) => {
-  clearAuthCookie(res, isProduction);
-  if (req.session) {
-    req.session.destroy(() => {});
-  }
-  res.json({ ok: true });
+    clearAuthCookie(res, isProduction);
+    if (req.session) {
+        req.session.destroy(() => {});
+    }
+    res.json({
+        ok: true
+    });
 });
 
 // Unified logout — destroys whichever session is active and redirects
 // browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/logout).
 // Called as a full page navigation (window.location.href), NOT via axios.
 app.get('/api/auth/logout', async (req, res) => {
-  const idToken      = req.session.oauthTokens?.idToken       || null;
-  const accessToken  = req.session.oauthTokens?.accessToken   || null;
-  const refreshToken = req.session.oauthTokens?.refreshToken  || null;
-  const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
+    const idToken = req.session.oauthTokens ? .idToken || null;
+    const accessToken = req.session.oauthTokens ? .accessToken || null;
+    const refreshToken = req.session.oauthTokens ? .refreshToken || null;
+    const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
 
-  // RFC 7009 — revoke tokens before destroying the session so they can no
-  // longer be used even if intercepted.  Runs in parallel; non-fatal on error.
-  if (accessToken  && accessToken  !== '_cookie_session') {
-    oauthService.revokeToken(accessToken,  'access_token');
-  }
-  if (refreshToken && refreshToken !== '_cookie_session') {
-    oauthService.revokeToken(refreshToken, 'refresh_token');
-  }
-
-  req.session.destroy((err) => {
-    if (err) {
-      console.error('Session destruction error during unified logout:', err);
+    // RFC 7009 — revoke tokens before destroying the session so they can no
+    // longer be used even if intercepted.  Runs in parallel; non-fatal on error.
+    if (accessToken && accessToken !== '_cookie_session') {
+        oauthService.revokeToken(accessToken, 'access_token');
+    }
+    if (refreshToken && refreshToken !== '_cookie_session') {
+        oauthService.revokeToken(refreshToken, 'refresh_token');
     }
 
-    // Clear the auth-state cookie so the session-restore middleware does not
-    // keep the user signed in on the next request.
-    clearAuthCookie(res, isProduction);
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Session destruction error during unified logout:', err);
+        }
 
-    const envId  = configStore.getEffective('pingone_environment_id');
-    const region = configStore.getEffective('pingone_region') || 'com';
-    const pingoneSignoff = `https://auth.pingone.${region}/${envId}/as/signoff`;
+        // Clear the auth-state cookie so the session-restore middleware does not
+        // keep the user signed in on the next request.
+        clearAuthCookie(res, isProduction);
 
-    const params = new URLSearchParams({ post_logout_redirect_uri: postLogoutUri });
-    if (idToken) {
-      params.set('id_token_hint', idToken);
-    }
+        const envId = configStore.getEffective('pingone_environment_id');
+        const region = configStore.getEffective('pingone_region') || 'com';
+        const pingoneSignoff = `https://auth.pingone.${region}/${envId}/as/signoff`;
 
-    res.redirect(`${pingoneSignoff}?${params.toString()}`);
-  });
+        const params = new URLSearchParams({
+            post_logout_redirect_uri: postLogoutUri
+        });
+        if (idToken) {
+            params.set('id_token_hint', idToken);
+        }
+
+        res.redirect(`${pingoneSignoff}?${params.toString()}`);
+    });
 });
 
 /**
  * Safe OAuth token summary for /api/auth/debug — no secrets or raw JWTs.
  */
 function summarizeOAuthTokensForDebug(tokens) {
-  if (!tokens || typeof tokens !== 'object') {
-    return { present: false };
-  }
-  const at = typeof tokens.accessToken === 'string' ? tokens.accessToken : '';
-  return {
-    present: true,
-    accessTokenLength: at.length,
-    accessTokenStub: at === '_cookie_session',
-    accessTokenLooksLikeJwt: at.startsWith('eyJ'),
-    hasRefreshToken:
-      typeof tokens.refreshToken === 'string' &&
-      tokens.refreshToken.length > 0 &&
-      tokens.refreshToken !== '_cookie_session',
-    hasIdToken: typeof tokens.idToken === 'string' && tokens.idToken.length > 0,
-    expiresAt: tokens.expiresAt ?? null,
-    expiresInSec:
-      typeof tokens.expiresAt === 'number'
-        ? Math.round((tokens.expiresAt - Date.now()) / 1000)
-        : null,
-  };
+    if (!tokens || typeof tokens !== 'object') {
+        return {
+            present: false
+        };
+    }
+    const at = typeof tokens.accessToken === 'string' ? tokens.accessToken : '';
+    return {
+        present: true,
+        accessTokenLength: at.length,
+        accessTokenStub: at === '_cookie_session',
+        accessTokenLooksLikeJwt: at.startsWith('eyJ'),
+        hasRefreshToken: typeof tokens.refreshToken === 'string' &&
+            tokens.refreshToken.length > 0 &&
+            tokens.refreshToken !== '_cookie_session',
+        hasIdToken: typeof tokens.idToken === 'string' && tokens.idToken.length > 0,
+        expiresAt: tokens.expiresAt ? ? null,
+        expiresInSec: typeof tokens.expiresAt === 'number' ?
+            Math.round((tokens.expiresAt - Date.now()) / 1000) : null,
+    };
 }
 
 /**
  * High-signal hints for Vercel/session issues (compare with ?deep=1 Redis probe).
  */
-function buildSessionDiagnosisHints(req, { sessionStoreHealthy, accessTokenStub, redisPersist }) {
-  const hints = [];
-  const stub = accessTokenStub === true;
+function buildSessionDiagnosisHints(req, {
+    sessionStoreHealthy,
+    accessTokenStub,
+    redisPersist
+}) {
+    const hints = [];
+    const stub = accessTokenStub === true;
 
-  if (req.session?._restoredFromCookie) {
-    hints.push(
-      'sessionRestored: express had no user before _auth cookie middleware — identity rebuilt from signed cookie.',
-    );
-  }
-  if (stub) {
-    hints.push(
-      'accessToken is _cookie_session stub — no real OAuth token in req.session (cookie restore, or session save failed after OAuth).',
-    );
-  }
-  if (sessionStoreHealthy === false) {
-    hints.push('Session store ping failed or circuit open — see sessionStoreError and sessionCircuitState.');
-  }
-  if (redisPersist && typeof redisPersist === 'object') {
-    if (redisPersist.redisReadSkipped === 'circuit_open_reads_bypass_redis') {
-      hints.push(
-        'Circuit OPEN: store.get() does not read Redis — you can get an empty session + cookie stub even if Redis has rows for other sids.',
-      );
+    if (req.session ? ._restoredFromCookie) {
+        hints.push(
+            'sessionRestored: express had no user before _auth cookie middleware — identity rebuilt from signed cookie.',
+        );
     }
-    if (redisPersist.redisKeyPresent === false) {
-      hints.push(
-        'Redis has no session row for this connect.sid — never saved, expired, or sid changed after OAuth. Sign in again.',
-      );
+    if (stub) {
+        hints.push(
+            'accessToken is _cookie_session stub — no real OAuth token in req.session (cookie restore, or session save failed after OAuth).',
+        );
     }
-    if (
-      redisPersist.redisKeyPresent === true &&
-      redisPersist.redisAccessTokenStub === false &&
-      stub
-    ) {
-      hints.push(
-        'ANOMALY: Redis row has non-stub token for this sid but req.session has stub — investigate cache/session ordering.',
-      );
+    if (sessionStoreHealthy === false) {
+        hints.push('Session store ping failed or circuit open — see sessionStoreError and sessionCircuitState.');
     }
-    if (
-      redisPersist.redisKeyPresent === true &&
-      redisPersist.redisAccessTokenStub === true &&
-      stub
-    ) {
-      hints.push('Redis row for this sid also has stub token — persisted cookie-only state.');
+    if (redisPersist && typeof redisPersist === 'object') {
+        if (redisPersist.redisReadSkipped === 'circuit_open_reads_bypass_redis') {
+            hints.push(
+                'Circuit OPEN: store.get() does not read Redis — you can get an empty session + cookie stub even if Redis has rows for other sids.',
+            );
+        }
+        if (redisPersist.redisKeyPresent === false) {
+            hints.push(
+                'Redis has no session row for this connect.sid — never saved, expired, or sid changed after OAuth. Sign in again.',
+            );
+        }
+        if (
+            redisPersist.redisKeyPresent === true &&
+            redisPersist.redisAccessTokenStub === false &&
+            stub
+        ) {
+            hints.push(
+                'ANOMALY: Redis row has non-stub token for this sid but req.session has stub — investigate cache/session ordering.',
+            );
+        }
+        if (
+            redisPersist.redisKeyPresent === true &&
+            redisPersist.redisAccessTokenStub === true &&
+            stub
+        ) {
+            hints.push('Redis row for this sid also has stub token — persisted cookie-only state.');
+        }
+        if (
+            redisPersist.redisKeyPresent === true &&
+            redisPersist.redisAccessTokenStub === false &&
+            !stub
+        ) {
+            hints.push('Redis row and req.session both have real tokens — OK.');
+        }
     }
-    if (
-      redisPersist.redisKeyPresent === true &&
-      redisPersist.redisAccessTokenStub === false &&
-      !stub
-    ) {
-      hints.push('Redis row and req.session both have real tokens — OK.');
+    if (!stub && req.session ? .oauthTokens ? .accessToken && String(req.session.oauthTokens.accessToken).startsWith('eyJ')) {
+        hints.push('req.session has JWT-shaped access token — OK for BFF-backed routes.');
     }
-  }
-  if (!stub && req.session?.oauthTokens?.accessToken && String(req.session.oauthTokens.accessToken).startsWith('eyJ')) {
-    hints.push('req.session has JWT-shaped access token — OK for BFF-backed routes.');
-  }
-  return hints;
+    return hints;
 }
 
 // Debug endpoint — shows auth state for the current request (Vercel debugging).
 // Returns cookie presence, session state, and platform flags.
 // No secrets are exposed.
 app.get('/api/auth/debug', async (req, res) => {
-  const cookieNames = Object.keys(
-    Object.fromEntries(
-      (req.headers.cookie || '').split(';').map(p => [p.split('=')[0].trim(), 1])
-    )
-  ).filter(Boolean);
+    const cookieNames = Object.keys(
+        Object.fromEntries(
+            (req.headers.cookie || '').split(';').map(p => [p.split('=')[0].trim(), 1])
+        )
+    ).filter(Boolean);
 
-  const deepProbe =
-    req.query.deep === '1' ||
-    req.query.deep === 'true' ||
-    req.query.deep === '';
+    const deepProbe =
+        req.query.deep === '1' ||
+        req.query.deep === 'true' ||
+        req.query.deep === '';
 
-  // Quick store health check — cached for 60 s to avoid burning Upstash request quota.
-  // Wire-protocol ping is skipped to avoid adding latency to the debug response.
-  let sessionStoreHealthy = null;
-  let sessionStoreError   = null;
-  if (upstashSessionStoreInstance) {
-    const now = Date.now();
-    if (!upstashSessionStoreInstance._pingCache ||
-        now - upstashSessionStoreInstance._pingCache.ts > 300_000) { // 5-minute cache
-      const pingResult = await upstashSessionStoreInstance.ping();
-      upstashSessionStoreInstance._pingCache = { ts: now, result: pingResult };
-      if (!pingResult.healthy) {
-        console.error('[session-store] Health check failed:', pingResult.error);
-      }
+    // Quick store health check — cached for 60 s to avoid burning Upstash request quota.
+    // Wire-protocol ping is skipped to avoid adding latency to the debug response.
+    let sessionStoreHealthy = null;
+    let sessionStoreError = null;
+    if (upstashSessionStoreInstance) {
+        const now = Date.now();
+        if (!upstashSessionStoreInstance._pingCache ||
+            now - upstashSessionStoreInstance._pingCache.ts > 300 _000) { // 5-minute cache
+            const pingResult = await upstashSessionStoreInstance.ping();
+            upstashSessionStoreInstance._pingCache = {
+                ts: now,
+                result: pingResult
+            };
+            if (!pingResult.healthy) {
+                console.error('[session-store] Health check failed:', pingResult.error);
+            }
+        }
+        const {
+            result
+        } = upstashSessionStoreInstance._pingCache;
+        sessionStoreHealthy = result.healthy;
+        sessionStoreError = result.error;
+        // If circuit is currently open, override healthy to false without calling ping again
+        if (upstashSessionStoreInstance._circuit ? .isOpen) {
+            sessionStoreHealthy = false;
+            sessionStoreError = upstashSessionStoreInstance._circuit.lastError || 'circuit open — Upstash bypassed';
+        }
     }
-    const { result } = upstashSessionStoreInstance._pingCache;
-    sessionStoreHealthy = result.healthy;
-    sessionStoreError   = result.error;
-    // If circuit is currently open, override healthy to false without calling ping again
-    if (upstashSessionStoreInstance._circuit?.isOpen) {
-      sessionStoreHealthy = false;
-      sessionStoreError   = upstashSessionStoreInstance._circuit.lastError || 'circuit open — Upstash bypassed';
-    }
-  }
 
-  const accessTokenStub = req.session?.oauthTokens?.accessToken === '_cookie_session';
-  const cookieOnlyBffSession =
-    req.session?._restoredFromCookie === true || accessTokenStub;
-  const token = req.session?.oauthTokens?.accessToken;
-  const hasOAuthToken = !!(token && token !== '_cookie_session');
-  const oauthUserWouldAuthenticate = !!(
-    req.session?.user &&
-    hasOAuthToken &&
-    req.session.oauthType === 'user'
-  );
-
-  let redisPersist = null;
-  if (deepProbe && upstashSessionStoreInstance && typeof upstashSessionStoreInstance.getPersistenceDebug === 'function') {
-    redisPersist = await upstashSessionStoreInstance.getPersistenceDebug(req.session?.id);
-  }
-
-  const sessionInMemoryCache =
-    upstashSessionStoreInstance &&
-    typeof upstashSessionStoreInstance.hasInMemorySessionCache === 'function'
-      ? upstashSessionStoreInstance.hasInMemorySessionCache(req.session?.id)
-      : null;
-
-  const oauthTokenSummary = summarizeOAuthTokensForDebug(req.session?.oauthTokens);
-  const diagnosisHints = buildSessionDiagnosisHints(req, {
-    sessionStoreHealthy,
-    accessTokenStub,
-    redisPersist,
-  });
-  if (sessionInMemoryCache === true && accessTokenStub) {
-    diagnosisHints.push(
-      'sessionInMemoryCache: true — this instance cached the session blob; it still has stub tokens (not a simple cold-cache miss).',
+    const accessTokenStub = req.session ? .oauthTokens ? .accessToken === '_cookie_session';
+    const cookieOnlyBffSession =
+        req.session ? ._restoredFromCookie === true || accessTokenStub;
+    const token = req.session ? .oauthTokens ? .accessToken;
+    const hasOAuthToken = !!(token && token !== '_cookie_session');
+    const oauthUserWouldAuthenticate = !!(
+        req.session ? .user &&
+        hasOAuthToken &&
+        req.session.oauthType === 'user'
     );
-  }
 
-  res.json({
-    platform: { vercel: !!process.env.VERCEL, replit: !!process.env.REPL_ID, production: isProduction },
-    request: {
-      vercelId: req.get('x-vercel-id') || null,
-      vercelDeploymentId: req.get('x-vercel-deployment-id') || null,
-      forwardedFor: (req.get('x-forwarded-for') || '').split(',')[0]?.trim() || null,
-    },
-    sessionPresent:    !!req.session,
-    sessionId:         req.session?.id ? req.session.id.slice(0, 8) + '...' : null,
-    sessionIdLength:   req.session?.id ? String(req.session.id).length : null,
-    sessionHasUser:    !!req.session?.user,
-    sessionOauthType:  req.session?.oauthType || null,
-    sessionClientType: req.session?.clientType || null,
-    sessionRestored:   !!req.session?._restoredFromCookie,
-    sessionHasTokens:  !!req.session?.oauthTokens?.accessToken,
-    accessTokenStub,
-    oauthTokenSummary,
-    cookieOnlyBffSession,
-    oauthUserWouldAuthenticate,
-    cookiesPresent:    cookieNames,
-    hasAuthCookie:     cookieNames.includes('_auth'),
-    hasPkceCookie:     cookieNames.includes('_pkce'),
-    sessionCookieName: cookieNames.includes('connect.sid') ? 'connect.sid present' : 'connect.sid MISSING',
-    /** 'upstash-rest' (HTTP, recommended) | 'redis-wire' (TCP) | 'memory' (no persistence) */
-    sessionStoreType,
-    /** Live health check result for the Upstash REST store (null if wire/memory store). */
-    sessionStoreHealthy,
-    /** Non-null when sessionStoreHealthy is false — the actual error message for debugging. */
-    sessionStoreError,
-    /** Circuit breaker state: CLOSED (normal) | OPEN (bypassing Redis) | HALF_OPEN (probing) */
-    sessionCircuitState: upstashSessionStoreInstance?._circuit?.state ?? null,
-    sessionCircuitLastError: upstashSessionStoreInstance?._circuit?.lastError ?? null,
-    /** Age of cached ping result (ms); null if not yet pinged. */
-    sessionPingCacheAgeMs: upstashSessionStoreInstance?._pingCache
-      ? Date.now() - upstashSessionStoreInstance._pingCache.ts
-      : null,
-    /** Warm Lambda: session blob served from 45s in-process cache (Upstash only). */
-    sessionInMemoryCache,
-    /** Backward-compat: 'redis' when any persistent store is active, 'memory' otherwise. */
-    bffSessionStore: sessionStore ? 'redis' : 'memory',
-    /** Which env supplied the store credentials. */
-    sessionRedisEnv: sessionRedisEnvHint,
-    /** For wire-protocol store only — null when using Upstash REST. */
-    sessionRedisClientReady: sessionRedisClient ? !!sessionRedisClient.isReady : null,
-    sessionRedisInitError:   sessionRedisInitError   || null,
-    sessionRedisConnectError: sessionRedisConnectError || null,
-    storageType:       configStore.getStorageType(),
-    isConfigured:      configStore.isConfigured(),
-    userEmail:         req.session?.user?.email || null,
-    userRole:          req.session?.user?.role || null,
-    diagnosisHints,
-    /** One Redis GET for current sid — pass ?deep=1. Omitted unless deep probe ran. */
-    redisPersist,
-    debugHelp: {
-      deepQuery:
-        'Add ?deep=1 to run one Upstash GET for this session id and compare redis row vs req.session (extra read quota).',
-      deepProbeUsed: !!(deepProbe && upstashSessionStoreInstance),
-    },
-  });
+    let redisPersist = null;
+    if (deepProbe && upstashSessionStoreInstance && typeof upstashSessionStoreInstance.getPersistenceDebug === 'function') {
+        redisPersist = await upstashSessionStoreInstance.getPersistenceDebug(req.session ? .id);
+    }
+
+    const sessionInMemoryCache =
+        upstashSessionStoreInstance &&
+        typeof upstashSessionStoreInstance.hasInMemorySessionCache === 'function' ?
+        upstashSessionStoreInstance.hasInMemorySessionCache(req.session ? .id) :
+        null;
+
+    const oauthTokenSummary = summarizeOAuthTokensForDebug(req.session ? .oauthTokens);
+    const diagnosisHints = buildSessionDiagnosisHints(req, {
+        sessionStoreHealthy,
+        accessTokenStub,
+        redisPersist,
+    });
+    if (sessionInMemoryCache === true && accessTokenStub) {
+        diagnosisHints.push(
+            'sessionInMemoryCache: true — this instance cached the session blob; it still has stub tokens (not a simple cold-cache miss).',
+        );
+    }
+
+    res.json({
+        platform: {
+            vercel: !!process.env.VERCEL,
+            replit: !!process.env.REPL_ID,
+            production: isProduction
+        },
+        request: {
+            vercelId: req.get('x-vercel-id') || null,
+            vercelDeploymentId: req.get('x-vercel-deployment-id') || null,
+            forwardedFor: (req.get('x-forwarded-for') || '').split(',')[0] ? .trim() || null,
+        },
+        sessionPresent: !!req.session,
+        sessionId: req.session ? .id ? req.session.id.slice(0, 8) + '...' : null,
+        sessionIdLength: req.session ? .id ? String(req.session.id).length : null,
+        sessionHasUser: !!req.session ? .user,
+        sessionOauthType: req.session ? .oauthType || null,
+        sessionClientType: req.session ? .clientType || null,
+        sessionRestored: !!req.session ? ._restoredFromCookie,
+        sessionHasTokens: !!req.session ? .oauthTokens ? .accessToken,
+        accessTokenStub,
+        oauthTokenSummary,
+        cookieOnlyBffSession,
+        oauthUserWouldAuthenticate,
+        cookiesPresent: cookieNames,
+        hasAuthCookie: cookieNames.includes('_auth'),
+        hasPkceCookie: cookieNames.includes('_pkce'),
+        sessionCookieName: cookieNames.includes('connect.sid') ? 'connect.sid present' : 'connect.sid MISSING',
+        /** 'upstash-rest' (HTTP, recommended) | 'redis-wire' (TCP) | 'memory' (no persistence) */
+        sessionStoreType,
+        /** Live health check result for the Upstash REST store (null if wire/memory store). */
+        sessionStoreHealthy,
+        /** Non-null when sessionStoreHealthy is false — the actual error message for debugging. */
+        sessionStoreError,
+        /** Circuit breaker state: CLOSED (normal) | OPEN (bypassing Redis) | HALF_OPEN (probing) */
+        sessionCircuitState: upstashSessionStoreInstance ? ._circuit ? .state ? ? null,
+        sessionCircuitLastError: upstashSessionStoreInstance ? ._circuit ? .lastError ? ? null,
+        /** Age of cached ping result (ms); null if not yet pinged. */
+        sessionPingCacheAgeMs: upstashSessionStoreInstance ? ._pingCache ?
+            Date.now() - upstashSessionStoreInstance._pingCache.ts :
+            null,
+        /** Warm Lambda: session blob served from 45s in-process cache (Upstash only). */
+        sessionInMemoryCache,
+        /** Backward-compat: 'redis' when any persistent store is active, 'memory' otherwise. */
+        bffSessionStore: sessionStore ? 'redis' : 'memory',
+        /** Which env supplied the store credentials. */
+        sessionRedisEnv: sessionRedisEnvHint,
+        /** For wire-protocol store only — null when using Upstash REST. */
+        sessionRedisClientReady: sessionRedisClient ? !!sessionRedisClient.isReady : null,
+        sessionRedisInitError: sessionRedisInitError || null,
+        sessionRedisConnectError: sessionRedisConnectError || null,
+        storageType: configStore.getStorageType(),
+        isConfigured: configStore.isConfigured(),
+        userEmail: req.session ? .user ? .email || null,
+        userRole: req.session ? .user ? .role || null,
+        diagnosisHints,
+        /** One Redis GET for current sid — pass ?deep=1. Omitted unless deep probe ran. */
+        redisPersist,
+        debugHelp: {
+            deepQuery: 'Add ?deep=1 to run one Upstash GET for this session id and compare redis row vs req.session (extra read quota).',
+            deepProbeUsed: !!(deepProbe && upstashSessionStoreInstance),
+        },
+    });
 });
 
 // API Routes
@@ -848,25 +932,28 @@ app.use('/api/admin/vercel-config', authenticateToken, vercelConfigRoutes);
 // PingOne redirect URI allowlist (JSON). Registered here BEFORE /api/auth so the path is not
 // handled only by routes/auth.js (avoids "Cannot GET" on some deployments).
 app.get('/api/auth/oauth/redirect-info', (req, res) => {
-  try {
-    res.json(getOAuthRedirectDebugInfo(req));
-  } catch (err) {
-    res.status(500).json({ error: 'redirect_info_failed', message: err.message });
-  }
+    try {
+        res.json(getOAuthRedirectDebugInfo(req));
+    } catch (err) {
+        res.status(500).json({
+            error: 'redirect_info_failed',
+            message: err.message
+        });
+    }
 });
 
 // Attach cached session-store health to req so /api/auth/session can include it.
 app.use('/api/auth', (req, _res, next) => {
-  const ping = upstashSessionStoreInstance?._pingCache?.result;
-  req._sessionStoreError = ping?.error ?? null;
-  req._sessionStoreHealthy = typeof ping?.healthy === 'boolean' ? ping.healthy : null;
-  next();
+    const ping = upstashSessionStoreInstance ? ._pingCache ? .result;
+    req._sessionStoreError = ping ? .error ? ? null;
+    req._sessionStoreHealthy = typeof ping ? .healthy === 'boolean' ? ping.healthy : null;
+    next();
 });
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/auth/oauth/user', oauthUserRoutes);
 app.use('/api/auth/ciba', cibaRoutes);
-app.use('/api/auth/mfa',  mfaRoutes);
+app.use('/api/auth/mfa', mfaRoutes);
 app.use('/api/mfa/test', mfaTestRoutes);
 app.use('/api/agent', agentIdentityRoutes);
 // NL/search routes: public LLM config + NL parsing. Must be mounted BEFORE bankingAgentRoutes
@@ -883,23 +970,34 @@ app.use('/api/setup', setupRoutes);
 app.use('/api/mcp/inspector', mcpInspectorRoutes);
 // MCP Audit: admin-only route — proxies to MCP server /audit internal endpoint (D-11)
 app.use('/api/mcp/audit', (req, res, next) => {
-  if (!req.session?.user || req.session.user.role !== 'admin') {
-    return res.status(401).json({ error: 'admin_required', message: 'Admin session required to access audit log.' });
-  }
-  next();
+    if (!req.session ? .user || req.session.user.role !== 'admin') {
+        return res.status(401).json({
+            error: 'admin_required',
+            message: 'Admin session required to access audit log.'
+        });
+    }
+    next();
 }, mcpAuditRouter);
 // Session preview uses session data only — no full JWT validation so it works even
 // when the session has a _cookie_session stub (Vercel cold-start / Upstash restore).
 // Must be registered BEFORE the auth-gated /api/tokens block.
 app.get('/api/tokens/session-preview', (req, res) => {
-  try {
-    const { buildSessionPreviewTokenEvents } = require('./services/agentMcpTokenService');
-    const { tokenEvents } = buildSessionPreviewTokenEvents(req);
-    res.json({ tokenEvents });
-  } catch (err) {
-    console.error('Token session-preview error:', err);
-    res.json({ tokenEvents: [] });
-  }
+    try {
+        const {
+            buildSessionPreviewTokenEvents
+        } = require('./services/agentMcpTokenService');
+        const {
+            tokenEvents
+        } = buildSessionPreviewTokenEvents(req);
+        res.json({
+            tokenEvents
+        });
+    } catch (err) {
+        console.error('Token session-preview error:', err);
+        res.json({
+            tokenEvents: []
+        });
+    }
 });
 app.use('/api/tokens', authenticateToken, tokenRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
@@ -911,8 +1009,14 @@ app.use('/api/transactions', requireSession, authenticateToken, transactionRoute
 // /demo-data page never triggers a 401 console error.  All mutating methods (PUT, PATCH)
 // still hit authenticateToken via the router below.
 app.get('/api/demo-scenario', (req, res, next) => {
-  if (req.session?.user) return next();
-  return res.json({ accounts: [], settings: {}, defaults: null, userData: {}, persistenceNote: null });
+    if (req.session ? .user) return next();
+    return res.json({
+        accounts: [],
+        settings: {},
+        defaults: null,
+        userData: {},
+        persistenceNote: null
+    });
 });
 app.use('/api/demo-scenario', authenticateToken, demoScenarioRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
@@ -937,34 +1041,46 @@ app.use('/api/health', healthRoutes);
 const validationModeConfig = require('./config/validationModeConfig');
 
 app.get('/api/config/validation-mode', (req, res) => {
-  const mode = validationModeConfig.getValidationMode();
-  res.json({
-    mode,
-    description: validationModeConfig.getModeDescription(mode),
-    metadata: validationModeConfig.getModeMetadata(mode),
-    supported: validationModeConfig.SUPPORTED_MODES,
-  });
+    const mode = validationModeConfig.getValidationMode();
+    res.json({
+        mode,
+        description: validationModeConfig.getModeDescription(mode),
+        metadata: validationModeConfig.getModeMetadata(mode),
+        supported: validationModeConfig.SUPPORTED_MODES,
+    });
 });
 
 app.post('/api/config/validation-mode', (req, res) => {
-  // Require admin session to change validation mode
-  if (!req.session?.user) {
-    return res.status(401).json({ error: 'authentication_required', message: 'Session required to change validation mode' });
-  }
-  const { mode } = req.body || {};
-  if (!mode) {
-    return res.status(400).json({ error: 'missing_mode', message: 'Request body must include "mode" field' });
-  }
-  try {
-    validationModeConfig.setValidationMode(mode);
-    res.json({
-      mode: validationModeConfig.getValidationMode(),
-      description: validationModeConfig.getModeDescription(),
-      message: `Validation mode set to: ${mode}`,
-    });
-  } catch (err) {
-    res.status(400).json({ error: 'invalid_mode', message: err.message, supported: validationModeConfig.SUPPORTED_MODES });
-  }
+    // Require admin session to change validation mode
+    if (!req.session ? .user) {
+        return res.status(401).json({
+            error: 'authentication_required',
+            message: 'Session required to change validation mode'
+        });
+    }
+    const {
+        mode
+    } = req.body || {};
+    if (!mode) {
+        return res.status(400).json({
+            error: 'missing_mode',
+            message: 'Request body must include "mode" field'
+        });
+    }
+    try {
+        validationModeConfig.setValidationMode(mode);
+        res.json({
+            mode: validationModeConfig.getValidationMode(),
+            description: validationModeConfig.getModeDescription(),
+            message: `Validation mode set to: ${mode}`,
+        });
+    } catch (err) {
+        res.status(400).json({
+            error: 'invalid_mode',
+            message: err.message,
+            supported: validationModeConfig.SUPPORTED_MODES
+        });
+    }
 });
 
 app.use('/api/logs', logsRoutes);
@@ -995,101 +1111,110 @@ app.use('/.well-known/oauth-protected-resource', protectedResourceMetadataRoutes
 app.use('/api/rfc9728', protectedResourceMetadataRoutes);
 
 // Import OAuth health check and monitoring
-const { checkOAuthProviderHealth } = require('./middleware/oauthErrorHandler');
-const { oauthMonitor } = require('./utils/oauthMonitor');
-const { logger, LOG_CATEGORIES } = require('./utils/logger');
+const {
+    checkOAuthProviderHealth
+} = require('./middleware/oauthErrorHandler');
+const {
+    oauthMonitor
+} = require('./utils/oauthMonitor');
+const {
+    logger,
+    LOG_CATEGORIES
+} = require('./utils/logger');
 const oauthConfig = require('./config/oauth');
 
 // Enhanced health check endpoint with comprehensive OAuth monitoring
 app.get('/health', async (req, res) => {
-  const startTime = Date.now();
-  
-  const healthStatus = {
-    status: 'healthy',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    service: 'banking-api-server',
-    components: {
-      api: 'healthy'
-    }
-  };
+    const startTime = Date.now();
 
-  // Check OAuth provider health with monitoring
-  try {
-    const oauthHealth = await checkOAuthProviderHealth(oauthConfig);
-    const oauthMetrics = oauthMonitor.getMetrics();
-    
-    healthStatus.components.oauth_provider = oauthHealth.healthy ? 'healthy' : 'unhealthy';
-    healthStatus.components.oauth_details = {
-      ...oauthHealth,
-      metrics: {
-        total_requests: oauthMetrics.totalRequests,
-        success_rate: oauthMetrics.successRate,
-        average_response_time: Math.round(oauthMetrics.averageResponseTime),
-        circuit_breaker_open: oauthMetrics.circuitBreaker.isOpen,
-        health_status: oauthMetrics.healthStatus,
-        recent_errors: oauthMetrics.recentErrors.slice(0, 3) // Last 3 errors
-      }
+    const healthStatus = {
+        status: 'healthy',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        service: 'banking-api-server',
+        components: {
+            api: 'healthy'
+        }
     };
-    
-    // Determine overall health based on OAuth metrics
-    if (!oauthHealth.healthy || oauthMetrics.healthStatus === 'critical') {
-      healthStatus.status = 'unhealthy';
-    } else if (oauthMetrics.healthStatus === 'degraded' || oauthMetrics.healthStatus === 'unhealthy') {
-      healthStatus.status = 'degraded';
+
+    // Check OAuth provider health with monitoring
+    try {
+        const oauthHealth = await checkOAuthProviderHealth(oauthConfig);
+        const oauthMetrics = oauthMonitor.getMetrics();
+
+        healthStatus.components.oauth_provider = oauthHealth.healthy ? 'healthy' : 'unhealthy';
+        healthStatus.components.oauth_details = {
+            ...oauthHealth,
+            metrics: {
+                total_requests: oauthMetrics.totalRequests,
+                success_rate: oauthMetrics.successRate,
+                average_response_time: Math.round(oauthMetrics.averageResponseTime),
+                circuit_breaker_open: oauthMetrics.circuitBreaker.isOpen,
+                health_status: oauthMetrics.healthStatus,
+                recent_errors: oauthMetrics.recentErrors.slice(0, 3) // Last 3 errors
+            }
+        };
+
+        // Determine overall health based on OAuth metrics
+        if (!oauthHealth.healthy || oauthMetrics.healthStatus === 'critical') {
+            healthStatus.status = 'unhealthy';
+        } else if (oauthMetrics.healthStatus === 'degraded' || oauthMetrics.healthStatus === 'unhealthy') {
+            healthStatus.status = 'degraded';
+        }
+
+    } catch (error) {
+        healthStatus.components.oauth_provider = 'unhealthy';
+        healthStatus.components.oauth_error = error.message;
+        healthStatus.status = 'unhealthy';
+
+        logger.error(LOG_CATEGORIES.PROVIDER_HEALTH, 'Health check failed for OAuth provider', {
+            error_message: error.message,
+            error_code: error.code
+        });
     }
-    
-  } catch (error) {
-    healthStatus.components.oauth_provider = 'unhealthy';
-    healthStatus.components.oauth_error = error.message;
-    healthStatus.status = 'unhealthy';
-    
-    logger.error(LOG_CATEGORIES.PROVIDER_HEALTH, 'Health check failed for OAuth provider', {
-      error_message: error.message,
-      error_code: error.code
+
+    const responseTime = Date.now() - startTime;
+    healthStatus.response_time_ms = responseTime;
+
+    // Log health check results
+    logger.debug(LOG_CATEGORIES.PROVIDER_HEALTH, 'Health check completed', {
+        overall_status: healthStatus.status,
+        oauth_status: healthStatus.components.oauth_provider,
+        response_time_ms: responseTime
     });
-  }
 
-  const responseTime = Date.now() - startTime;
-  healthStatus.response_time_ms = responseTime;
-
-  // Log health check results
-  logger.debug(LOG_CATEGORIES.PROVIDER_HEALTH, 'Health check completed', {
-    overall_status: healthStatus.status,
-    oauth_status: healthStatus.components.oauth_provider,
-    response_time_ms: responseTime
-  });
-
-  const statusCode = healthStatus.status === 'healthy' ? 200 : 
-                    healthStatus.status === 'degraded' ? 200 : 503;
-  res.status(statusCode).json(healthStatus);
+    const statusCode = healthStatus.status === 'healthy' ? 200 :
+        healthStatus.status === 'degraded' ? 200 : 503;
+    res.status(statusCode).json(healthStatus);
 });
 
 // Start periodic OAuth monitoring (skip in test environment)
 if (process.env.NODE_ENV !== 'test') {
-  oauthMonitor.startPeriodicHealthCheck();
+    oauthMonitor.startPeriodicHealthCheck();
 }
 
 // Root endpoint for API-only mode (Docker deployment)
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Banking API Server', 
-    version: '1.0.0',
-    endpoints: ['/api/auth', '/api/users', '/api/accounts', '/api/transactions', '/api/admin'],
-    mode: 'api-only'
-  });
+    res.json({
+        message: 'Banking API Server',
+        version: '1.0.0',
+        endpoints: ['/api/auth', '/api/users', '/api/accounts', '/api/transactions', '/api/admin'],
+        mode: 'api-only'
+    });
 });
 
 // Redirect /login requests to frontend
 app.get('/login', (req, res) => {
-  const frontendUrl = process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000';
-  const queryString = req.url.includes('?') ? req.url.split('?')[1] : '';
-  const redirectUrl = queryString ? `${frontendUrl}/login?${queryString}` : `${frontendUrl}/login`;
-  res.redirect(redirectUrl);
+    const frontendUrl = process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000';
+    const queryString = req.url.includes('?') ? req.url.split('?')[1] : '';
+    const redirectUrl = queryString ? `${frontendUrl}/login?${queryString}` : `${frontendUrl}/login`;
+    res.redirect(redirectUrl);
 });
 
 // Import OAuth error handler
-const { oauthErrorHandler } = require('./middleware/oauthErrorHandler');
+const {
+    oauthErrorHandler
+} = require('./middleware/oauthErrorHandler');
 
 // ─── Banking MCP Proxy ────────────────────────────────────────────────────────
 // Proxies tool calls from the React UI to the banking_mcp_server WebSocket.
@@ -1100,11 +1225,21 @@ const { oauthErrorHandler } = require('./middleware/oauthErrorHandler');
 // with `act: { client_id: <bff> }` and a scope narrowed to what the tool needs,
 // scoped to the MCP server audience — the user's raw token never leaves the Backend-for-Frontend (BFF).
 
-const { resolveMcpAccessTokenWithEvents } = require('./services/agentMcpTokenService');
+const {
+    resolveMcpAccessTokenWithEvents
+} = require('./services/agentMcpTokenService');
 const mcpToolAuthorizationService = require('./services/mcpToolAuthorizationService');
-const { mcpCallTool, getSessionAccessToken, getMcpServerUrl } = require('./services/mcpWebSocketClient');
-const { callToolLocal } = require('./services/mcpLocalTools');
-const { introspectToken } = require('./middleware/tokenIntrospection');
+const {
+    mcpCallTool,
+    getSessionAccessToken,
+    getMcpServerUrl
+} = require('./services/mcpWebSocketClient');
+const {
+    callToolLocal
+} = require('./services/mcpLocalTools');
+const {
+    introspectToken
+} = require('./middleware/tokenIntrospection');
 const mcpFlowSseHub = require('./services/mcpFlowSseHub');
 
 // Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
@@ -1113,412 +1248,527 @@ app.use('/api/mcp', mcpExchangeMode);
 
 // GET /api/mcp/tool/events?trace=<uuid> — Server-Sent Events for live MCP tool pipeline phases
 app.get('/api/mcp/tool/events', (req, res) => {
-  mcpFlowSseHub.handleSseGet(req, res);
+    mcpFlowSseHub.handleSseGet(req, res);
 });
 
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
-  // Log incoming request details for debugging 400 errors
-  const startTime = Date.now();
-  const userAgent = req.headers['user-agent'] || 'unknown';
-  const contentType = req.headers['content-type'] || 'unknown';
-  const contentLength = req.headers['content-length'] || 'unknown';
-  
-  console.log('[/api/mcp/tool] REQUEST: userAgent=%s contentType=%s contentLength=%s sessionID=%s', 
-    userAgent, contentType, contentLength, req.sessionID);
-  
-  // Log request body (safely) for debugging
-  if (req.body && Object.keys(req.body).length > 0) {
-    console.log('[/api/mcp/tool] REQUEST BODY: %j', {
-      keys: Object.keys(req.body),
-      hasTool: 'tool' in req.body,
-      toolType: typeof req.body.tool,
-      toolValue: req.body.tool,
-      hasParams: 'params' in req.body,
-      paramsKeys: req.body.params ? Object.keys(req.body.params) : null,
-      hasFlowTraceId: 'flowTraceId' in req.body
-    });
-  } else {
-    console.log('[/api/mcp/tool] REQUEST BODY: empty or undefined');
-  }
-  // Defensive re-parse: on Vercel serverless the global express.json() may not have
-  // buffered the body by the time this route handler runs (cold-start / middleware race).
-  // Re-applying express.json() inline (already declared above) handles the route-level
-  // parse, but if req.body is still empty we attempt a raw Buffer read as a last resort.
-  let parsedBody = req.body || {};
-  if (!parsedBody.tool && req.readableLength > 0) {
-    try {
-      const rawChunks = [];
-      for await (const chunk of req) rawChunks.push(chunk);
-      if (rawChunks.length) {
-        parsedBody = JSON.parse(Buffer.concat(rawChunks).toString('utf8'));
-      }
-    } catch (_) { /* leave parsedBody as-is */ }
-  }
-  const { tool, params, flowTraceId: bodyFlowTrace } = parsedBody;
-  const flowTraceId = typeof bodyFlowTrace === 'string' ? bodyFlowTrace.trim() : '';
-
-  if (!tool || typeof tool !== 'string') {
-    const bodyKeys = Object.keys(parsedBody);
+    // Log incoming request details for debugging 400 errors
+    const startTime = Date.now();
     const userAgent = req.headers['user-agent'] || 'unknown';
     const contentType = req.headers['content-type'] || 'unknown';
-    console.error('[/api/mcp/tool] 400: tool_name_required - body keys=[%s] readableLength=%d contentType=%s userAgent=%s', 
-      bodyKeys.join(','), req.readableLength, contentType, userAgent);
-    console.error('[/api/mcp/tool] 400: parsedBody=%j', parsedBody);
-    return res.status(400).json({
-      error: 'tool_name_required',
-      message: `tool name is required. Received body keys: [${bodyKeys.join(', ') || 'none'}]`,
-      debug: {
-        receivedKeys: bodyKeys,
-        readableLength: req.readableLength,
-        contentType,
-        hasTool: 'tool' in parsedBody,
-        toolType: typeof parsedBody.tool,
-        toolValue: parsedBody.tool
-      }
-    });
-  }
+    const contentLength = req.headers['content-length'] || 'unknown';
 
-  if (flowTraceId) {
-    if (mcpFlowSseHub.ensurePostTrace(flowTraceId, req.sessionID) !== 'ok') {
-      return res.status(403).json({
-        error: 'invalid_flow_trace',
-        message: 'flowTraceId is not valid for this session.',
-      });
-    }
-  }
+    console.log('[/api/mcp/tool] REQUEST: userAgent=%s contentType=%s contentLength=%s sessionID=%s',
+        userAgent, contentType, contentLength, req.sessionID);
 
-  const emit = (payload) => {
-    if (flowTraceId) {
-      mcpFlowSseHub.publish(flowTraceId, { ...payload, tool: payload.tool || tool });
-    }
-  };
-
-  if (flowTraceId) {
-    let traceEnded = false;
-    const endFlowTraceOnce = () => {
-      if (traceEnded) return;
-      traceEnded = true;
-      mcpFlowSseHub.endTrace(flowTraceId);
-    };
-    res.on('finish', endFlowTraceOnce);
-    res.on('close', endFlowTraceOnce);
-  }
-
-  emit({ phase: 'request_accepted' });
-
-  let agentToken;
-  let userSub = null;
-  let tokenEvents = [];
-  try {
-    emit({ phase: 'resolving_access_token' });
-    const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
-    agentToken = resolved.token;
-    tokenEvents = resolved.tokenEvents;
-    userSub = resolved.userSub || null;
-    const evs = tokenEvents || [];
-    emit({
-      phase: 'access_token_ready',
-      hasUserToken: evs.some((e) => e && e.id === 'user-token'),
-      exchanged: evs.some((e) => e && e.id === 'exchanged-token'),
-      exchangeRequired: evs.some((e) => e && e.id === 'exchange-required'),
-    });
-  } catch (err) {
-    console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
-    emit({ phase: 'access_token_error', code: err.code || 'token_exchange_failed' });
-
-    // When the exchange fails because the subject token lacks the required scopes
-    // (e.g. ENDUSER_AUDIENCE login path only carries banking:agent:invoke, not
-    // banking:write), PingOne returns 400 "At least one scope must be granted".
-    // In that case, fall back to the local tool handler so the operation still
-    // completes — the UI receives _exchangeFailed:true so it can show a soft
-    // informational message instead of an error toast.
-    //
-    // PingOne also returns 401 for token-exchange policy rejections such as
-    // "Request denied: Unsupported authentication method" — this happens when the
-    // exchanger client (admin OAuth app) is a PKCE Web app whose token-exchange
-    // grant or auth method is not configured correctly in PingOne.  These are
-    // server-side config errors, not invalid user tokens, so local fallback is safe.
-    // We distinguish PingOne-origin 401s from session-guard 401s via err.pingoneError
-    // (only set when the 401 response body was parsed from the PingOne token endpoint).
-    // missing_exchange_scopes: the user's access token doesn't carry the required scopes.
-    // Return a structured 403 so the UI can display an actionable config-fix modal.
-    // Do NOT fall back to local tool execution — that would hide the misconfiguration.
-    if (err.code === 'missing_exchange_scopes') {
-      const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-      return res.status(403).json({
-        error: 'missing_exchange_scopes',
-        message: err.message,
-        missingScopes: err.missingScopes || [],
-        userScopes: err.userScopes || '',
-        requiredScopes: err.requiredScopes || '',
-        tokenEvents: events,
-      });
-    }
-
-    const sessionUser = req.session?.user;
-    const isExchangeScopeError =
-      err.httpStatus === 400 ||
-      err.code === 'token_exchange_failed' ||
-      (err.httpStatus === 401 && Boolean(err.pingoneError));
-    console.error(
-      '[MCP Fallback:DEBUG] tool=%s httpStatus=%s errCode=%s pingoneError=%s ' +
-      'sessionUser.id=%s sessionUser.oauthId=%s isExchangeScopeError=%s',
-      tool,
-      err.httpStatus ?? '(none)',
-      err.code ?? '(none)',
-      err.pingoneError ?? '(none)',
-      sessionUser?.id ?? '(missing — fallback will NOT fire)',
-      sessionUser?.oauthId ?? '(none)',
-      isExchangeScopeError
-    );
-    if (sessionUser?.id && isExchangeScopeError) {
-      const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-      const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-      console.log(
-        '[MCP Local] %s — exchange failed (%s), falling back to local handler. effectiveUserId=%s',
-        tool, err.code ?? err.httpStatus, effectiveUserId
-      );
-      try {
-        emit({ phase: 'local_tool_start', path: 'exchange_failed_fallback' });
-        const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
-        emit({ phase: 'local_tool_done', path: 'exchange_failed_fallback' });
-        console.log('[MCP Local] %s — local fallback result keys=%s resultError=%s',
-          tool,
-          result ? Object.keys(result).join(',') : '(null)',
-          result?.error ?? '(none)'
-        );
-        return res.json({ result, tokenEvents: fallbackEvents, _localFallback: true, _exchangeFailed: true });
-      } catch (localErr) {
-        console.error(
-          '[MCP Local] %s — callToolLocal THREW after exchange failure: %s stack=%s',
-          tool, localErr.message, localErr.stack
-        );
-        // Fall through to original error response
-      }
-    }
-
-    const status = err.httpStatus || 502;
-    const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
-    return res.status(status).json({
-      error: err.code || 'token_exchange_failed',
-      message: err.message,
-      tokenEvents: events,
-    });
-  }
-
-  if (!agentToken) {
-    emit({ phase: 'no_bearer_token_branch' });
-    // No bearer token (cookie-only or degraded session) — use local handler if session user present.
-    // This lets the banking agent work for basic operations even without a fully-hydrated Redis session.
-    const sessionUser = req.session?.user;
-    if (sessionUser?.id) {
-      console.log(`[MCP Local] ${tool} — no bearer token (cookie-only session), using local handler`);
-      try {
-        emit({ phase: 'local_tool_start', path: 'no_bearer' });
-        // Use oauthId (PingOne sub/UUID) when available — accounts are stored under the UUID
-        // not the local sequential dataStore id, matching what authenticateToken sets on req.user.id.
-        const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-        const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
-        emit({ phase: 'local_tool_done', path: 'no_bearer' });
-        return res.json({ result, tokenEvents, _localFallback: true });
-      } catch (localErr) {
-        console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
-        emit({ phase: 'local_tool_error', path: 'no_bearer' });
-        return res.status(502).json({ error: 'mcp_error', message: localErr.message, tokenEvents });
-      }
-    }
-    emit({ phase: 'no_bearer_no_user' });
-    const r = mcpNoBearerResponse(req, tokenEvents);
-    return res.status(r.status).json(r.body);
-  }
-
-  // PingOne Authorize (or simulated) on first MCP tool use per session — docs/PINGONE_AUTHORIZE_PLAN.md §7
-  /** @type {object|undefined} */
-  let mcpAuthorizeEvaluationThisRequest;
-  try {
-    emit({ phase: 'authorize_gate_begin' });
-    const mcpAuthz = await mcpToolAuthorizationService.evaluateMcpFirstToolGate({
-      req,
-      tool,
-      agentToken,
-      userSub,
-      userAcr: req.session?.user?.acr,
-    });
-    if (mcpAuthz.ran && mcpAuthz.block) {
-      emit({ phase: 'authorize_denied', status: mcpAuthz.block.status });
-      return res.status(mcpAuthz.block.status).json({
-        ...mcpAuthz.block.body,
-        tokenEvents,
-        mcpAuthorizeEvaluation: {
-          decisionContext: mcpAuthz.block.body.decisionContext,
-          decisionId: mcpAuthz.block.body.decisionId,
-        },
-      });
-    }
-    if (mcpAuthz.ran && mcpAuthz.simulatedError) {
-      emit({ phase: 'authorize_simulated_error' });
-      console.error(`[MCP Authorize][Simulated] unexpected error: ${mcpAuthz.simulatedError.message}`);
-      return res.status(500).json({
-        error: 'mcp_authorize_error',
-        error_description: 'Simulated MCP authorization evaluation failed unexpectedly.',
-        tokenEvents,
-      });
-    }
-    if (mcpAuthz.ran && mcpAuthz.pingoneError) {
-      emit({ phase: 'authorize_unavailable' });
-      console.error(`[MCP Authorize] PingOne error — failing closed: ${mcpAuthz.pingoneError.message}`);
-      return res.status(503).json({
-        error: 'mcp_authorize_unavailable',
-        error_description: 'PingOne Authorize is unavailable for MCP tool access.',
-        tokenEvents,
-      });
-    }
-    if (mcpAuthz.ran && mcpAuthz.permit) {
-      emit({ phase: 'authorize_permitted' });
-      req.session.mcpFirstToolAuthorizeDone = true;
-      mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
-    }
-    if (!mcpAuthz.ran) {
-      emit({ phase: 'authorize_gate_skipped' });
-    }
-  } catch (mcpAuthzErr) {
-    emit({ phase: 'authorize_internal_error' });
-    console.error('[MCP Authorize] Unexpected error in gate:', mcpAuthzErr.message);
-    return res.status(500).json({
-      error: 'mcp_authorize_internal',
-      message: mcpAuthzErr.message,
-      tokenEvents,
-    });
-  }
-
-  // Introspect session token for zero-trust validation (RFC 7662)
-  const sessionAccessToken = getSessionAccessToken(req);
-  const introspectionConfigured = !!process.env.PINGONE_INTROSPECTION_ENDPOINT;
-  if (introspectionConfigured) {
-    emit({ phase: 'introspection_begin' });
-    if (!sessionAccessToken || sessionAccessToken === '_cookie_session') {
-      emit({ phase: 'introspection_skipped_no_session_token' });
-      const r = mcpNoBearerResponse(req, tokenEvents);
-      return res.status(r.status).json(r.body);
-    }
-    try {
-      const introspectionResult = await introspectToken(sessionAccessToken);
-      if (!introspectionResult.active) {
-        emit({ phase: 'introspection_inactive' });
-        console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
-        return res.status(401).json({
-          error: 'token_inactive',
-          message: 'Session token is no longer active. Please sign in again.',
-          tokenEvents,
+    // Log request body (safely) for debugging
+    if (req.body && Object.keys(req.body).length > 0) {
+        console.log('[/api/mcp/tool] REQUEST BODY: %j', {
+            keys: Object.keys(req.body),
+            hasTool: 'tool' in req.body,
+            toolType: typeof req.body.tool,
+            toolValue: req.body.tool,
+            hasParams: 'params' in req.body,
+            paramsKeys: req.body.params ? Object.keys(req.body.params) : null,
+            hasFlowTraceId: 'flowTraceId' in req.body
         });
-      }
-      emit({ phase: 'introspection_active_ok' });
-    } catch (err) {
-      emit({ phase: 'introspection_error_degraded' });
-      console.error(`[MCP Proxy] Session token introspection error for tool ${tool}:`, err.message);
-      // Continue on introspection failure (graceful degradation) but log the error
+    } else {
+        console.log('[/api/mcp/tool] REQUEST BODY: empty or undefined');
     }
-  } else {
-    emit({ phase: 'introspection_not_configured' });
-  }
-
-  // ── Try remote MCP server first; fall back to local handler if unreachable ──
-  const mcpUrl = getMcpServerUrl();
-  const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
-
-  try {
-    // Skip the WebSocket attempt entirely when running on Vercel with no MCP_SERVER_URL
-    // configured — localhost:8080 is guaranteed to be unreachable serverless.
-    if (isLocalDefault && process.env.VERCEL) {
-      emit({ phase: 'mcp_remote_skipped_vercel' });
-      throw Object.assign(new Error('MCP_SERVER_URL not configured; using local tool handler'), { useLocal: true });
+    // Defensive re-parse: on Vercel serverless the global express.json() may not have
+    // buffered the body by the time this route handler runs (cold-start / middleware race).
+    // Re-applying express.json() inline (already declared above) handles the route-level
+    // parse, but if req.body is still empty we attempt a raw Buffer read as a last resort.
+    let parsedBody = req.body || {};
+    if (!parsedBody.tool && req.readableLength > 0) {
+        try {
+            const rawChunks = [];
+            for await (const chunk of req) rawChunks.push(chunk);
+            if (rawChunks.length) {
+                parsedBody = JSON.parse(Buffer.concat(rawChunks).toString('utf8'));
+            }
+        } catch (_) {
+            /* leave parsedBody as-is */
+        }
     }
-    emit({ phase: 'mcp_remote_begin' });
-    const result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
-    emit({ phase: 'mcp_remote_done' });
-    const out = { result, tokenEvents };
-    if (mcpAuthorizeEvaluationThisRequest) {
-      out.mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
-    }
-    return res.json(out);
-  } catch (err) {
-    const isConnErr =
-      err.useLocal ||
-      err.message.includes('ECONNREFUSED') ||
-      err.message.includes('ENETUNREACH') ||
-      err.message.includes('timed out') ||
-      err.message.includes('connect ETIMEDOUT') ||
-      (err.code && ['ECONNREFUSED', 'ENETUNREACH', 'ETIMEDOUT'].includes(err.code));
+    const {
+        tool,
+        params,
+        flowTraceId: bodyFlowTrace
+    } = parsedBody;
+    const flowTraceId = typeof bodyFlowTrace === 'string' ? bodyFlowTrace.trim() : '';
 
-    if (!isConnErr) {
-      emit({ phase: 'mcp_remote_tool_error' });
-      console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
-      return res.status(502).json({ error: 'mcp_error', message: err.message, tokenEvents });
-    }
-
-    emit({ phase: 'mcp_remote_unreachable' });
-    // ── Local fallback ──────────────────────────────────────────────────────
-    const sessionUser = req.session?.user;
-    if (!sessionUser?.id) {
-      emit({ phase: 'local_fallback_blocked_no_user' });
-      const r = mcpNoBearerResponse(req, tokenEvents);
-      return res.status(r.status).json(r.body);
+    if (!tool || typeof tool !== 'string') {
+        const bodyKeys = Object.keys(parsedBody);
+        const userAgent = req.headers['user-agent'] || 'unknown';
+        const contentType = req.headers['content-type'] || 'unknown';
+        console.error('[/api/mcp/tool] 400: tool_name_required - body keys=[%s] readableLength=%d contentType=%s userAgent=%s',
+            bodyKeys.join(','), req.readableLength, contentType, userAgent);
+        console.error('[/api/mcp/tool] 400: parsedBody=%j', parsedBody);
+        return res.status(400).json({
+            error: 'tool_name_required',
+            message: `tool name is required. Received body keys: [${bodyKeys.join(', ') || 'none'}]`,
+            debug: {
+                receivedKeys: bodyKeys,
+                readableLength: req.readableLength,
+                contentType,
+                hasTool: 'tool' in parsedBody,
+                toolType: typeof parsedBody.tool,
+                toolValue: parsedBody.tool
+            }
+        });
     }
 
-    console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);
+    if (flowTraceId) {
+        if (mcpFlowSseHub.ensurePostTrace(flowTraceId, req.sessionID) !== 'ok') {
+            return res.status(403).json({
+                error: 'invalid_flow_trace',
+                message: 'flowTraceId is not valid for this session.',
+            });
+        }
+    }
+
+    const emit = (payload) => {
+        if (flowTraceId) {
+            mcpFlowSseHub.publish(flowTraceId, {
+                ...payload,
+                tool: payload.tool || tool
+            });
+        }
+    };
+
+    if (flowTraceId) {
+        let traceEnded = false;
+        const endFlowTraceOnce = () => {
+            if (traceEnded) return;
+            traceEnded = true;
+            mcpFlowSseHub.endTrace(flowTraceId);
+        };
+        res.on('finish', endFlowTraceOnce);
+        res.on('close', endFlowTraceOnce);
+    }
+
+    emit({
+        phase: 'request_accepted'
+    });
+
+    let agentToken;
+    let userSub = null;
+    let tokenEvents = [];
     try {
-      emit({ phase: 'local_tool_start', path: 'remote_fallback' });
-      // Use oauthId (PingOne sub/UUID) — accounts are keyed by UUID (same as authenticateToken / REST routes).
-      const effectiveUserId = sessionUser.oauthId || sessionUser.id;
-      const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
-      emit({ phase: 'local_tool_done', path: 'remote_fallback' });
-      return res.json({ result, tokenEvents, _localFallback: true });
-    } catch (localErr) {
-      emit({ phase: 'local_tool_error', path: 'remote_fallback' });
-      console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
-      return res.status(502).json({ error: 'mcp_error', message: localErr.message, tokenEvents });
+        emit({
+            phase: 'resolving_access_token'
+        });
+        const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
+        agentToken = resolved.token;
+        tokenEvents = resolved.tokenEvents;
+        userSub = resolved.userSub || null;
+        const evs = tokenEvents || [];
+        emit({
+            phase: 'access_token_ready',
+            hasUserToken: evs.some((e) => e && e.id === 'user-token'),
+            exchanged: evs.some((e) => e && e.id === 'exchanged-token'),
+            exchangeRequired: evs.some((e) => e && e.id === 'exchange-required'),
+        });
+    } catch (err) {
+        console.error(`[MCP Proxy] Token resolution failed for tool ${tool}:`, err.message);
+        emit({
+            phase: 'access_token_error',
+            code: err.code || 'token_exchange_failed'
+        });
+
+        // When the exchange fails because the subject token lacks the required scopes
+        // (e.g. ENDUSER_AUDIENCE login path only carries banking:agent:invoke, not
+        // banking:write), PingOne returns 400 "At least one scope must be granted".
+        // In that case, fall back to the local tool handler so the operation still
+        // completes — the UI receives _exchangeFailed:true so it can show a soft
+        // informational message instead of an error toast.
+        //
+        // PingOne also returns 401 for token-exchange policy rejections such as
+        // "Request denied: Unsupported authentication method" — this happens when the
+        // exchanger client (admin OAuth app) is a PKCE Web app whose token-exchange
+        // grant or auth method is not configured correctly in PingOne.  These are
+        // server-side config errors, not invalid user tokens, so local fallback is safe.
+        // We distinguish PingOne-origin 401s from session-guard 401s via err.pingoneError
+        // (only set when the 401 response body was parsed from the PingOne token endpoint).
+        // missing_exchange_scopes: the user's access token doesn't carry the required scopes.
+        // Return a structured 403 so the UI can display an actionable config-fix modal.
+        // Do NOT fall back to local tool execution — that would hide the misconfiguration.
+        if (err.code === 'missing_exchange_scopes') {
+            const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+            return res.status(403).json({
+                error: 'missing_exchange_scopes',
+                message: err.message,
+                missingScopes: err.missingScopes || [],
+                userScopes: err.userScopes || '',
+                requiredScopes: err.requiredScopes || '',
+                tokenEvents: events,
+            });
+        }
+
+        const sessionUser = req.session ? .user;
+        const isExchangeScopeError =
+            err.httpStatus === 400 ||
+            err.code === 'token_exchange_failed' ||
+            (err.httpStatus === 401 && Boolean(err.pingoneError));
+        console.error(
+            '[MCP Fallback:DEBUG] tool=%s httpStatus=%s errCode=%s pingoneError=%s ' +
+            'sessionUser.id=%s sessionUser.oauthId=%s isExchangeScopeError=%s',
+            tool,
+            err.httpStatus ? ? '(none)',
+            err.code ? ? '(none)',
+            err.pingoneError ? ? '(none)',
+            sessionUser ? .id ? ? '(missing — fallback will NOT fire)',
+            sessionUser ? .oauthId ? ? '(none)',
+            isExchangeScopeError
+        );
+        if (sessionUser ? .id && isExchangeScopeError) {
+            const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+            const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+            console.log(
+                '[MCP Local] %s — exchange failed (%s), falling back to local handler. effectiveUserId=%s',
+                tool, err.code ? ? err.httpStatus, effectiveUserId
+            );
+            try {
+                emit({
+                    phase: 'local_tool_start',
+                    path: 'exchange_failed_fallback'
+                });
+                const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
+                emit({
+                    phase: 'local_tool_done',
+                    path: 'exchange_failed_fallback'
+                });
+                console.log('[MCP Local] %s — local fallback result keys=%s resultError=%s',
+                    tool,
+                    result ? Object.keys(result).join(',') : '(null)',
+                    result ? .error ? ? '(none)'
+                );
+                return res.json({
+                    result,
+                    tokenEvents: fallbackEvents,
+                    _localFallback: true,
+                    _exchangeFailed: true
+                });
+            } catch (localErr) {
+                console.error(
+                    '[MCP Local] %s — callToolLocal THREW after exchange failure: %s stack=%s',
+                    tool, localErr.message, localErr.stack
+                );
+                // Fall through to original error response
+            }
+        }
+
+        const status = err.httpStatus || 502;
+        const events = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
+        return res.status(status).json({
+            error: err.code || 'token_exchange_failed',
+            message: err.message,
+            tokenEvents: events,
+        });
     }
-  }
+
+    if (!agentToken) {
+        emit({
+            phase: 'no_bearer_token_branch'
+        });
+        // No bearer token (cookie-only or degraded session) — use local handler if session user present.
+        // This lets the banking agent work for basic operations even without a fully-hydrated Redis session.
+        const sessionUser = req.session ? .user;
+        if (sessionUser ? .id) {
+            console.log(`[MCP Local] ${tool} — no bearer token (cookie-only session), using local handler`);
+            try {
+                emit({
+                    phase: 'local_tool_start',
+                    path: 'no_bearer'
+                });
+                // Use oauthId (PingOne sub/UUID) when available — accounts are stored under the UUID
+                // not the local sequential dataStore id, matching what authenticateToken sets on req.user.id.
+                const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+                const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
+                emit({
+                    phase: 'local_tool_done',
+                    path: 'no_bearer'
+                });
+                return res.json({
+                    result,
+                    tokenEvents,
+                    _localFallback: true
+                });
+            } catch (localErr) {
+                console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
+                emit({
+                    phase: 'local_tool_error',
+                    path: 'no_bearer'
+                });
+                return res.status(502).json({
+                    error: 'mcp_error',
+                    message: localErr.message,
+                    tokenEvents
+                });
+            }
+        }
+        emit({
+            phase: 'no_bearer_no_user'
+        });
+        const r = mcpNoBearerResponse(req, tokenEvents);
+        return res.status(r.status).json(r.body);
+    }
+
+    // PingOne Authorize (or simulated) on first MCP tool use per session — docs/PINGONE_AUTHORIZE_PLAN.md §7
+    /** @type {object|undefined} */
+    let mcpAuthorizeEvaluationThisRequest;
+    try {
+        emit({
+            phase: 'authorize_gate_begin'
+        });
+        const mcpAuthz = await mcpToolAuthorizationService.evaluateMcpFirstToolGate({
+            req,
+            tool,
+            agentToken,
+            userSub,
+            userAcr: req.session ? .user ? .acr,
+        });
+        if (mcpAuthz.ran && mcpAuthz.block) {
+            emit({
+                phase: 'authorize_denied',
+                status: mcpAuthz.block.status
+            });
+            return res.status(mcpAuthz.block.status).json({
+                ...mcpAuthz.block.body,
+                tokenEvents,
+                mcpAuthorizeEvaluation: {
+                    decisionContext: mcpAuthz.block.body.decisionContext,
+                    decisionId: mcpAuthz.block.body.decisionId,
+                },
+            });
+        }
+        if (mcpAuthz.ran && mcpAuthz.simulatedError) {
+            emit({
+                phase: 'authorize_simulated_error'
+            });
+            console.error(`[MCP Authorize][Simulated] unexpected error: ${mcpAuthz.simulatedError.message}`);
+            return res.status(500).json({
+                error: 'mcp_authorize_error',
+                error_description: 'Simulated MCP authorization evaluation failed unexpectedly.',
+                tokenEvents,
+            });
+        }
+        if (mcpAuthz.ran && mcpAuthz.pingoneError) {
+            emit({
+                phase: 'authorize_unavailable'
+            });
+            console.error(`[MCP Authorize] PingOne error — failing closed: ${mcpAuthz.pingoneError.message}`);
+            return res.status(503).json({
+                error: 'mcp_authorize_unavailable',
+                error_description: 'PingOne Authorize is unavailable for MCP tool access.',
+                tokenEvents,
+            });
+        }
+        if (mcpAuthz.ran && mcpAuthz.permit) {
+            emit({
+                phase: 'authorize_permitted'
+            });
+            req.session.mcpFirstToolAuthorizeDone = true;
+            mcpAuthorizeEvaluationThisRequest = mcpAuthz.evaluation;
+        }
+        if (!mcpAuthz.ran) {
+            emit({
+                phase: 'authorize_gate_skipped'
+            });
+        }
+    } catch (mcpAuthzErr) {
+        emit({
+            phase: 'authorize_internal_error'
+        });
+        console.error('[MCP Authorize] Unexpected error in gate:', mcpAuthzErr.message);
+        return res.status(500).json({
+            error: 'mcp_authorize_internal',
+            message: mcpAuthzErr.message,
+            tokenEvents,
+        });
+    }
+
+    // Introspect session token for zero-trust validation (RFC 7662)
+    const sessionAccessToken = getSessionAccessToken(req);
+    const introspectionConfigured = !!process.env.PINGONE_INTROSPECTION_ENDPOINT;
+    if (introspectionConfigured) {
+        emit({
+            phase: 'introspection_begin'
+        });
+        if (!sessionAccessToken || sessionAccessToken === '_cookie_session') {
+            emit({
+                phase: 'introspection_skipped_no_session_token'
+            });
+            const r = mcpNoBearerResponse(req, tokenEvents);
+            return res.status(r.status).json(r.body);
+        }
+        try {
+            const introspectionResult = await introspectToken(sessionAccessToken);
+            if (!introspectionResult.active) {
+                emit({
+                    phase: 'introspection_inactive'
+                });
+                console.warn(`[MCP Proxy] Session token introspection failed: token inactive for tool ${tool}`);
+                return res.status(401).json({
+                    error: 'token_inactive',
+                    message: 'Session token is no longer active. Please sign in again.',
+                    tokenEvents,
+                });
+            }
+            emit({
+                phase: 'introspection_active_ok'
+            });
+        } catch (err) {
+            emit({
+                phase: 'introspection_error_degraded'
+            });
+            console.error(`[MCP Proxy] Session token introspection error for tool ${tool}:`, err.message);
+            // Continue on introspection failure (graceful degradation) but log the error
+        }
+    } else {
+        emit({
+            phase: 'introspection_not_configured'
+        });
+    }
+
+    // ── Try remote MCP server first; fall back to local handler if unreachable ──
+    const mcpUrl = getMcpServerUrl();
+    const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
+
+    try {
+        // Skip the WebSocket attempt entirely when running on Vercel with no MCP_SERVER_URL
+        // configured — localhost:8080 is guaranteed to be unreachable serverless.
+        if (isLocalDefault && process.env.VERCEL) {
+            emit({
+                phase: 'mcp_remote_skipped_vercel'
+            });
+            throw Object.assign(new Error('MCP_SERVER_URL not configured; using local tool handler'), {
+                useLocal: true
+            });
+        }
+        emit({
+            phase: 'mcp_remote_begin'
+        });
+        const result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
+        emit({
+            phase: 'mcp_remote_done'
+        });
+        const out = {
+            result,
+            tokenEvents
+        };
+        if (mcpAuthorizeEvaluationThisRequest) {
+            out.mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
+        }
+        return res.json(out);
+    } catch (err) {
+        const isConnErr =
+            err.useLocal ||
+            err.message.includes('ECONNREFUSED') ||
+            err.message.includes('ENETUNREACH') ||
+            err.message.includes('timed out') ||
+            err.message.includes('connect ETIMEDOUT') ||
+            (err.code && ['ECONNREFUSED', 'ENETUNREACH', 'ETIMEDOUT'].includes(err.code));
+
+        if (!isConnErr) {
+            emit({
+                phase: 'mcp_remote_tool_error'
+            });
+            console.error(`[MCP Proxy] Error calling ${tool}:`, err.message);
+            return res.status(502).json({
+                error: 'mcp_error',
+                message: err.message,
+                tokenEvents
+            });
+        }
+
+        emit({
+            phase: 'mcp_remote_unreachable'
+        });
+        // ── Local fallback ──────────────────────────────────────────────────────
+        const sessionUser = req.session ? .user;
+        if (!sessionUser ? .id) {
+            emit({
+                phase: 'local_fallback_blocked_no_user'
+            });
+            const r = mcpNoBearerResponse(req, tokenEvents);
+            return res.status(r.status).json(r.body);
+        }
+
+        console.log(`[MCP Local] ${tool} — MCP server unreachable (${mcpUrl}), using local handler`);
+        try {
+            emit({
+                phase: 'local_tool_start',
+                path: 'remote_fallback'
+            });
+            // Use oauthId (PingOne sub/UUID) — accounts are keyed by UUID (same as authenticateToken / REST routes).
+            const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+            const result = await callToolLocal(tool, params || {}, effectiveUserId, req);
+            emit({
+                phase: 'local_tool_done',
+                path: 'remote_fallback'
+            });
+            return res.json({
+                result,
+                tokenEvents,
+                _localFallback: true
+            });
+        } catch (localErr) {
+            emit({
+                phase: 'local_tool_error',
+                path: 'remote_fallback'
+            });
+            console.error(`[MCP Local] Error calling ${tool}:`, localErr.message);
+            return res.status(502).json({
+                error: 'mcp_error',
+                message: localErr.message,
+                tokenEvents
+            });
+        }
+    }
 });
 
 // ── Static file serving (Replit, localhost, and any non-Vercel host) ──────────
 // On Vercel, static files are served by the CDN (vercel.json outputDirectory).
 // On Replit and localhost, Express serves the React build directly.
 if (!process.env.VERCEL) {
-  const buildPath = path.join(__dirname, '..', 'banking_api_ui', 'build');
-  const docsPath = path.join(__dirname, '..', 'docs');
-  const fs = require('fs');
-  
-  // Serve docs directory for Postman collections and documentation
-  if (fs.existsSync(docsPath)) {
-    app.use('/docs', express.static(docsPath));
-    console.log('[static] Serving docs from', docsPath);
-  }
-  
-  if (fs.existsSync(buildPath)) {
-    app.use(express.static(buildPath));
-    // SPA fallback — serve index.html for all non-API routes.
-    // Must not be cached so browsers always fetch the latest asset hashes.
-    app.get('*', (req, res) => {
-      res.set('Cache-Control', 'no-store');
-      res.sendFile(path.join(buildPath, 'index.html'));
-    });
-    console.log('[static] Serving React build from', buildPath);
-  } else {
-    console.warn('[static] React build not found at', buildPath, '— run: cd banking_api_ui && npm run build');
-    // Friendly message for unbuilt frontend
-    app.get('*', (req, res) => {
-      if (req.path.startsWith('/api')) return res.status(404).json({ error: 'not_found' });
-      res.status(503).send(`
+    const buildPath = path.join(__dirname, '..', 'banking_api_ui', 'build');
+    const docsPath = path.join(__dirname, '..', 'docs');
+    const fs = require('fs');
+
+    // Serve docs directory for Postman collections and documentation
+    if (fs.existsSync(docsPath)) {
+        app.use('/docs', express.static(docsPath));
+        console.log('[static] Serving docs from', docsPath);
+    }
+
+    if (fs.existsSync(buildPath)) {
+        app.use(express.static(buildPath));
+        // SPA fallback — serve index.html for all non-API routes.
+        // Must not be cached so browsers always fetch the latest asset hashes.
+        app.get('*', (req, res) => {
+            res.set('Cache-Control', 'no-store');
+            res.sendFile(path.join(buildPath, 'index.html'));
+        });
+        console.log('[static] Serving React build from', buildPath);
+    } else {
+        console.warn('[static] React build not found at', buildPath, '— run: cd banking_api_ui && npm run build');
+        // Friendly message for unbuilt frontend
+        app.get('*', (req, res) => {
+            if (req.path.startsWith('/api')) return res.status(404).json({
+                error: 'not_found'
+            });
+            res.status(503).send(`
         <html><body style="font-family:sans-serif;padding:2rem">
           <h2>Frontend not built</h2>
           <p>Run <code>cd banking_api_ui && npm run build</code> then restart the server.</p>
           <p>Or run the dev server: <code>cd banking_api_ui && npm start</code> (port 3000)</p>
         </body></html>
       `);
-    });
-  }
+        });
+    }
 }
 
 // OAuth error handling middleware (should be before general error handler)
@@ -1526,47 +1776,47 @@ app.use(oauthErrorHandler);
 
 // General error handling middleware
 app.use((err, req, res, _next) => {
-  console.error('Error occurred for path:', req.path);
-  console.error('Error details:', err.message);
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('Full stack:', err.stack);
-  }
-  res.status(500).json({
-    error: 'internal_server_error',
-    error_description: 'An internal server error occurred',
-    timestamp: new Date().toISOString(),
-    path: req.path,
-    method: req.method
-  });
+    console.error('Error occurred for path:', req.path);
+    console.error('Error details:', err.message);
+    if (process.env.NODE_ENV !== 'production') {
+        console.error('Full stack:', err.stack);
+    }
+    res.status(500).json({
+        error: 'internal_server_error',
+        error_description: 'An internal server error occurred',
+        timestamp: new Date().toISOString(),
+        path: req.path,
+        method: req.method
+    });
 });
 
 // Only start the server if this file is run directly (not imported for testing)
 if (require.main === module) {
-  const fs = require('fs');
-  const certDir = path.join(__dirname, '../certs');
-  const certFile = path.join(certDir, 'api.pingdemo.com+2.pem');
-  const keyFile  = path.join(certDir, 'api.pingdemo.com+2-key.pem');
+    const fs = require('fs');
+    const certDir = path.join(__dirname, '../certs');
+    const certFile = path.join(certDir, 'api.pingdemo.com+2.pem');
+    const keyFile = path.join(certDir, 'api.pingdemo.com+2-key.pem');
 
-  if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
-    const https = require('https');
-    https.createServer({
-      key:  fs.readFileSync(keyFile),
-      cert: fs.readFileSync(certFile),
-    }, app).listen(PORT, () => {
-      console.log(`Banking API server (HTTPS) running on https://api.pingdemo.com:${PORT}`);
-    });
-  } else {
-    app.listen(PORT, () => {
-      console.log(`Banking API server running on http://localhost:${PORT}`);
-      console.log('Tip: run mkcert in Banking/certs/ to enable HTTPS (see run-bank.sh)');
-    });
-  }
+    if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+        const https = require('https');
+        https.createServer({
+            key: fs.readFileSync(keyFile),
+            cert: fs.readFileSync(certFile),
+        }, app).listen(PORT, () => {
+            console.log(`Banking API server (HTTPS) running on https://api.pingdemo.com:${PORT}`);
+        });
+    } else {
+        app.listen(PORT, () => {
+            console.log(`Banking API server running on http://localhost:${PORT}`);
+            console.log('Tip: run mkcert in Banking/certs/ to enable HTTPS (see run-bank.sh)');
+        });
+    }
 }
 
 // Export app as the default (for supertest / existing requires) and attach
 // named flags so other modules can do: require('./server').isReplit etc.
 module.exports = app;
-module.exports.app         = app;
+module.exports.app = app;
 module.exports.isProduction = isProduction;
-module.exports.isVercel    = isVercel;
-module.exports.isReplit    = isReplit;
+module.exports.isVercel = isVercel;
+module.exports.isReplit = isReplit;

@@ -2136,4 +2136,14 @@ Plans:
 Plans:
 - [x] 140-01-PLAN.md — Strip ?oauth param from URL on App.js mount (one-shot useEffect matching sso_silent pattern)
 
+### Phase 141: local setup wizard — guided PingOne configuration, app/resource/scope creation, SPEL attribute mapping, worker credentials, env file generation — app runs on completion
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 140
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 141 to break down)
+
 ---
