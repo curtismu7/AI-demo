@@ -498,6 +498,44 @@ class PingOneManagementService {
   }
 
   /**
+   * Get token policies (SPEL claim mappers) for the environment
+   */
+  async getTokenPolicies() {
+    this.ensureInitialized();
+    try {
+      const response = await axios.get(`${this.baseURL}/tokenPolicies`, { headers: this.getHeaders() });
+      const policies = response.data?._embedded?.tokenPolicies || response.data?.tokenPolicies || [];
+      return { success: true, tokenPolicies: policies };
+    } catch (error) {
+      return this.handleError(error, 'getTokenPolicies');
+    }
+  }
+
+  /**
+   * Get resource grants for a specific application (app → resource → scopes matrix)
+   */
+  async getApplicationGrants(applicationId) {
+    this.ensureInitialized();
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/applications/${applicationId}/grants`,
+        { headers: this.getHeaders() }
+      );
+      const grants = response.data?._embedded?.grants || response.data?.grants || [];
+      return {
+        success: true,
+        grants: grants.map(g => ({
+          resourceId: g.resource?.id,
+          resourceName: g.resource?.name,
+          scopes: (g.scopes || []).map(s => s.scope?.name || s.name || s).filter(Boolean)
+        }))
+      };
+    } catch (error) {
+      return this.handleError(error, 'getApplicationGrants');
+    }
+  }
+
+  /**
    * Format error for logging
    */
   formatError(error) {

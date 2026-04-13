@@ -1,6 +1,27 @@
 import React, { useState } from 'react';
 import './TokenDisplay.css';
 
+const CLAIM_GLOSSARY = {
+  sub: 'Subject — unique identifier of the principal this token was issued for (user, client, or service)',
+  iss: 'Issuer — the PingOne authorization server that issued this token (URL)',
+  aud: 'Audience — the intended recipient(s). The resource server MUST verify this matches its own identifier',
+  exp: 'Expiration — Unix epoch time after which the token MUST be rejected',
+  iat: 'Issued At — Unix epoch time when the token was created',
+  nbf: 'Not Before — token must not be accepted before this time',
+  jti: 'JWT ID — unique identifier to prevent token replay attacks',
+  scope: 'Scopes — space-separated list of permissions granted to the bearer',
+  client_id: 'Client ID — the OAuth 2.0 application that requested this token',
+  env: 'PingOne Environment ID — the tenant/environment this token belongs to',
+  org: 'PingOne Organization ID — the parent organization for this environment',
+  act: 'Actor claim (RFC 8693) — identifies the party acting on behalf of the subject in a delegated flow',
+  may_act: 'May Act — allows the named client_id to perform a Token Exchange with this token as subject_token',
+  acr: 'Authentication Context Class Reference — level of authentication assurance (e.g. MFA step-up)',
+  amr: 'Authentication Methods References — how the user authenticated (e.g. pwd, otp, fido)',
+  at_hash: 'Access Token Hash — used to bind the id_token to the access_token',
+  nonce: 'Nonce — ties the id_token to a specific authentication request to prevent replay',
+  azp: 'Authorized Party — the client_id of the OAuth client that received the token',
+};
+
 /**
  * DecodedTokenPanel — Renders pre-decoded JWT claims from BFF server response.
  * Accepts { header, payload } directly — no token value needed, no API call.
@@ -68,7 +89,13 @@ export default function DecodedTokenPanel({ decoded, label }) {
             <div className="decoded-section-title">Identity</div>
             {KEY_CLAIMS.filter((k) => payload[k]).map((k) => (
               <div key={k} className="decoded-kv">
-                <span className="decoded-key">{k}:</span>
+                <span
+                  className="decoded-key"
+                  title={CLAIM_GLOSSARY[k] || k}
+                  style={{ cursor: CLAIM_GLOSSARY[k] ? 'help' : 'default', borderBottom: CLAIM_GLOSSARY[k] ? '1px dotted #94a3b8' : 'none' }}
+                >
+                  {k}:
+                </span>
                 <span className="decoded-val decoded-val--mono">
                   {typeof payload[k] === 'object'
                     ? JSON.stringify(payload[k])

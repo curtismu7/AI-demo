@@ -249,23 +249,34 @@ router.get('/verify-assets', async (req, res) => {
       'banking:transactions:write'
     ];
 
-    // Get all assets in parallel
-    const [appsResult, resourcesResult, usersResult] = await Promise.all([
+    // Get all assets in parallel (including token policies for SPEL education)
+    const [appsResult, resourcesResult, usersResult, tokenPoliciesResult] = await Promise.all([
       managementService.getApplications(),
       managementService.getResourceServers(),
-      pingOneUserService.listUsers({ limit: 50 })
+      pingOneUserService.listUsers({ limit: 50 }),
+      managementService.getTokenPolicies().catch(() => ({ success: false, tokenPolicies: [] }))
     ]);
 
-    // Enrich each app with its granted resources (parallel)
+    // Enrich each app with its granted resources and grants (parallel)
     const apps = appsResult.success ? (appsResult.applications || []) : [];
-    const appResourceResults = await Promise.all(
-      apps.map(app => managementService.getApplicationResources(app.id)
-        .then(r => ({ appId: app.id, resources: r.success ? r.resources : [] }))
-        .catch(() => ({ appId: app.id, resources: [] }))
+    const [appResourceResults, appGrantResults] = await Promise.all([
+      Promise.all(
+        apps.map(app => managementService.getApplicationResources(app.id)
+          .then(r => ({ appId: app.id, resources: r.success ? r.resources : [] }))
+          .catch(() => ({ appId: app.id, resources: [] }))
+        )
+      ),
+      Promise.all(
+        apps.map(app => managementService.getApplicationGrants(app.id)
+          .then(r => ({ appId: app.id, grants: r.success ? r.grants : [] }))
+          .catch(() => ({ appId: app.id, grants: [] }))
+        )
       )
-    );
+    ]);
     const appResourcesMap = {};
     appResourceResults.forEach(r => { appResourcesMap[r.appId] = r.resources; });
+    const appGrantsMap = {};
+    appGrantResults.forEach(r => { appGrantsMap[r.appId] = r.grants; });
 
     // Get scopes for the first resource server (for summary tile)
     let scopesAsset = { status: 'failed', count: 0, error: 'No resource servers available', data: [] };
@@ -305,7 +316,8 @@ router.get('/verify-assets', async (req, res) => {
           id: app.id,
           name: app.name,
           type: app.type,
-          grantedResources: appResourcesMap[app.id] || []
+          grantedResources: appResourcesMap[app.id] || [],
+          grants: appGrantsMap[app.id] || []
         }))
       },
       resources: {
@@ -320,6 +332,11 @@ router.get('/verify-assets', async (req, res) => {
         count: usersResult._embedded && usersResult._embedded.users ? usersResult._embedded.users.length : 0,
         error: usersResult.error,
         data: usersResult._embedded ? usersResult._embedded.users || [] : []
+      },
+      tokenPolicies: {
+        status: tokenPoliciesResult.success ? 'passed' : 'failed',
+        count: tokenPoliciesResult.tokenPolicies ? tokenPoliciesResult.tokenPolicies.length : 0,
+        data: tokenPoliciesResult.tokenPolicies || []
       },
       missing: {
         apps: missingApps,

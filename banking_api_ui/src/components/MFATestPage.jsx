@@ -68,6 +68,16 @@ export default function MFATestPage() {
   const [fidoEnrollInitStatus, setFidoEnrollInitStatus] = useState('pending');
   const [fidoEnrollInitError, setFidoEnrollInitError] = useState(null);
 
+  // FIDO2 challenge + verify state
+  const [fidoChallengeOptions, setFidoChallengeOptions] = useState(null);
+  const [fidoVerifyStatus, setFidoVerifyStatus] = useState('pending');
+  const [fidoVerifyError, setFidoVerifyError] = useState(null);
+
+  // FIDO2 enrollment complete state
+  const [fidoEnrollData, setFidoEnrollData] = useState(null);
+  const [fidoEnrollCompleteStatus, setFidoEnrollCompleteStatus] = useState('pending');
+  const [fidoEnrollCompleteError, setFidoEnrollCompleteError] = useState(null);
+
   const loadConfig = useCallback(async () => {
     try {
       const { data } = await apiClient.get('/api/mfa/test/config');
@@ -218,16 +228,24 @@ export default function MFATestPage() {
     }
   }, [emailDaId, emailDevices, emailOtp]);
 
-  // FIDO2 test functions (Task 5 - WebAuthn API integration placeholder)
+  // FIDO2 test functions
   const testFidoInitiate = useCallback(async () => {
     setFidoInitiateStatus('pending');
     setFidoInitiateError(null);
+    setFidoChallengeOptions(null);
     try {
       const { data } = await apiClient.post('/api/mfa/test/integration/initiate', { method: 'fido2' });
       if (data.success) {
         setFidoDaId(data.daId);
         setFidoInitiateStatus('passed');
-        notifySuccess('FIDO2 challenge initiated successfully');
+        notifySuccess('FIDO2 challenge initiated — polling for WebAuthn options…');
+        // Poll for publicKeyCredentialRequestOptions from challenge status
+        try {
+          const statusResp = await apiClient.get(`/api/mfa/test/integration/challenge/${data.daId}/status`);
+          if (statusResp.data.publicKeyCredentialRequestOptions) {
+            setFidoChallengeOptions(statusResp.data.publicKeyCredentialRequestOptions);
+          }
+        } catch (_e) { /* non-fatal — options may not be ready yet */ }
       } else {
         setFidoInitiateStatus('failed');
         setFidoInitiateError(data.error);
@@ -239,6 +257,51 @@ export default function MFATestPage() {
       notifyError('FIDO2 initiation failed: ' + err.message);
     }
   }, []);
+
+  const testFidoVerify = useCallback(async () => {
+    if (!fidoDaId || !fidoChallengeOptions) {
+      notifyError('Initiate FIDO2 challenge first, then use your passkey');
+      return;
+    }
+    setFidoVerifyStatus('pending');
+    setFidoVerifyError(null);
+    try {
+      if (!navigator.credentials) throw new Error('WebAuthn not supported in this browser');
+      const opts = {
+        ...fidoChallengeOptions,
+        challenge: Uint8Array.from(atob(fidoChallengeOptions.challenge), c => c.charCodeAt(0)),
+      };
+      const assertion = await navigator.credentials.get({ publicKey: opts });
+      const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const assertionPayload = {
+        id: assertion.id,
+        rawId: toB64(assertion.rawId),
+        type: assertion.type,
+        response: {
+          clientDataJSON: toB64(assertion.response.clientDataJSON),
+          authenticatorData: toB64(assertion.response.authenticatorData),
+          signature: toB64(assertion.response.signature),
+          userHandle: assertion.response.userHandle ? toB64(assertion.response.userHandle) : null,
+        },
+      };
+      const { data } = await apiClient.post('/api/mfa/test/integration/verify-fido2', {
+        daId: fidoDaId,
+        assertion: assertionPayload,
+      });
+      if (data.success) {
+        setFidoVerifyStatus(data.completed ? 'passed' : 'pending');
+        notifySuccess(data.completed ? 'FIDO2 verified ✓' : 'FIDO2 verification in progress');
+      } else {
+        setFidoVerifyStatus('failed');
+        setFidoVerifyError(data.error);
+        notifyError('FIDO2 verification failed: ' + data.error);
+      }
+    } catch (err) {
+      setFidoVerifyStatus('failed');
+      setFidoVerifyError(err.message);
+      notifyError('FIDO2 verification error: ' + err.message);
+    }
+  }, [fidoDaId, fidoChallengeOptions]);
 
   // Device enrollment functions
   const testEnrollEmail = useCallback(async () => {
@@ -265,11 +328,13 @@ export default function MFATestPage() {
   const testFidoEnrollInit = useCallback(async () => {
     setFidoEnrollInitStatus('pending');
     setFidoEnrollInitError(null);
+    setFidoEnrollData(null);
     try {
       const { data } = await apiClient.post('/api/mfa/test/integration/enroll-fido2-init');
       if (data.success) {
+        setFidoEnrollData(data);
         setFidoEnrollInitStatus('passed');
-        notifySuccess('FIDO2 enrollment initiated');
+        notifySuccess('FIDO2 enrollment initiated — click Complete Registration to register your device');
       } else {
         setFidoEnrollInitStatus('failed');
         setFidoEnrollInitError(data.error);
@@ -281,6 +346,55 @@ export default function MFATestPage() {
       notifyError('FIDO2 enrollment initiation failed: ' + err.message);
     }
   }, []);
+
+  const testFidoEnrollComplete = useCallback(async () => {
+    if (!fidoEnrollData?.deviceId || !fidoEnrollData?.publicKeyCredentialCreationOptions) {
+      notifyError('Initiate FIDO2 enrollment first');
+      return;
+    }
+    setFidoEnrollCompleteStatus('pending');
+    setFidoEnrollCompleteError(null);
+    try {
+      if (!navigator.credentials) throw new Error('WebAuthn not supported in this browser');
+      const creationOpts = fidoEnrollData.publicKeyCredentialCreationOptions;
+      const publicKey = {
+        ...creationOpts,
+        challenge: Uint8Array.from(atob(creationOpts.challenge), c => c.charCodeAt(0)),
+        user: {
+          ...creationOpts.user,
+          id: Uint8Array.from(atob(creationOpts.user.id), c => c.charCodeAt(0)),
+        },
+      };
+      const credential = await navigator.credentials.create({ publicKey });
+      const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const attestation = {
+        id: credential.id,
+        rawId: toB64(credential.rawId),
+        type: credential.type,
+        response: {
+          clientDataJSON: toB64(credential.response.clientDataJSON),
+          attestationObject: toB64(credential.response.attestationObject),
+        },
+      };
+      const { data } = await apiClient.post('/api/mfa/test/integration/enroll-fido2-complete', {
+        deviceId: fidoEnrollData.deviceId,
+        attestation,
+      });
+      if (data.success) {
+        setFidoEnrollCompleteStatus('passed');
+        notifySuccess('FIDO2 device registered ✓');
+        loadDevices();
+      } else {
+        setFidoEnrollCompleteStatus('failed');
+        setFidoEnrollCompleteError(data.error);
+        notifyError('FIDO2 registration failed: ' + data.error);
+      }
+    } catch (err) {
+      setFidoEnrollCompleteStatus('failed');
+      setFidoEnrollCompleteError(err.message);
+      notifyError('FIDO2 registration error: ' + err.message);
+    }
+  }, [fidoEnrollData, loadDevices]);
 
   if (loading) {
     return (
@@ -364,6 +478,20 @@ export default function MFATestPage() {
         {/* SMS OTP Test Section */}
         <section className="mfa-test-section">
           <h2 className="mfa-test-section-title">SMS OTP Testing</h2>
+          <WhatIsHappening
+            title="SMS OTP — One-Time Password via text message"
+            steps={[
+              'POST /api/mfa/test/integration/initiate with method=sms → PingOne creates a device authorization (DA)',
+              'PingOne sends a 6-digit OTP to the user\'s registered phone number',
+              'User enters the OTP; POST /api/mfa/test/integration/verify-otp with the code + daId',
+              'PingOne validates the OTP and marks the DA as COMPLETED',
+              'The DA ID ties all steps together — it is the session reference for this MFA challenge',
+            ]}
+            apiFlow={[
+              { method: 'POST', endpoint: '/api/mfa/test/integration/initiate', note: 'method=sms' },
+              { method: 'POST', endpoint: '/api/mfa/test/integration/verify-otp', note: 'Submit 6-digit code' },
+            ]}
+          />
           <TestCard
             title="Initiate SMS OTP Challenge"
             status={smsInitiateStatus}
@@ -372,6 +500,7 @@ export default function MFATestPage() {
           />
           {smsDaId && (
             <div className="otp-verify-section">
+              <DaResponseCard daId={smsDaId} method="sms" />
               <h3 className="otp-verify-title">Verify SMS OTP</h3>
               <div className="otp-input-group">
                 <input
@@ -404,6 +533,18 @@ export default function MFATestPage() {
         {/* Email OTP Test Section */}
         <section className="mfa-test-section">
           <h2 className="mfa-test-section-title">Email OTP Testing</h2>
+          <WhatIsHappening
+            title="Email OTP — One-Time Password via email"
+            steps={[
+              'Identical flow to SMS but OTP is sent to the user\'s registered email address',
+              'POST /api/mfa/test/integration/initiate with method=email → PingOne sends OTP email',
+              'User retrieves OTP from email and submits via verify-otp endpoint',
+            ]}
+            apiFlow={[
+              { method: 'POST', endpoint: '/api/mfa/test/integration/initiate', note: 'method=email' },
+              { method: 'POST', endpoint: '/api/mfa/test/integration/verify-otp', note: 'Submit 6-digit code' },
+            ]}
+          />
           <TestCard
             title="Initiate Email OTP Challenge"
             status={emailInitiateStatus}
@@ -412,6 +553,7 @@ export default function MFATestPage() {
           />
           {emailDaId && (
             <div className="otp-verify-section">
+              <DaResponseCard daId={emailDaId} method="email" />
               <h3 className="otp-verify-title">Verify Email OTP</h3>
               <div className="otp-input-group">
                 <input
@@ -441,9 +583,25 @@ export default function MFATestPage() {
           <SectionApiCalls />
         </section>
 
-        {/* FIDO2 Test Section - Task 5 (WebAuthn API integration placeholder) */}
+        {/* FIDO2/Passkey Test Section */}
         <section className="mfa-test-section">
           <h2 className="mfa-test-section-title">FIDO2/Passkey Testing</h2>
+          <WhatIsHappening
+            title="FIDO2/WebAuthn — Passwordless passkey authentication"
+            steps={[
+              'POST /api/mfa/test/integration/initiate with method=fido2 → PingOne returns a DA ID',
+              'GET /api/mfa/test/integration/challenge/:daId/status → returns publicKeyCredentialRequestOptions',
+              'Browser calls navigator.credentials.get({ publicKey }) — OS/browser handles biometric/PIN prompt',
+              'The authenticator signs the PingOne challenge with the private key stored on-device',
+              'POST /api/mfa/test/integration/verify-fido2 with the signed assertion → PingOne validates signature',
+              'No password is ever sent — the private key never leaves the device (FIDO2 security guarantee)',
+            ]}
+            apiFlow={[
+              { method: 'POST', endpoint: '/api/mfa/test/integration/initiate', note: 'method=fido2' },
+              { method: 'GET', endpoint: '/api/mfa/test/integration/challenge/:daId/status', note: 'Get WebAuthn options' },
+              { method: 'POST', endpoint: '/api/mfa/test/integration/verify-fido2', note: 'Submit assertion' },
+            ]}
+          />
           <TestCard
             title="Initiate FIDO2 Challenge"
             status={fidoInitiateStatus}
@@ -452,8 +610,21 @@ export default function MFATestPage() {
           />
           {fidoDaId && (
             <div className="fido-verify-section">
-              <h3 className="fido-verify-title">Verify FIDO2</h3>
-              <p className="info-text">FIDO2 verification requires WebAuthn API integration</p>
+              <DaResponseCard daId={fidoDaId} method="fido2" />
+              <h3 className="fido-verify-title">Verify FIDO2 Passkey</h3>
+              {fidoChallengeOptions ? (
+                <>
+                  <p className="info-text">WebAuthn options ready. Click below to authenticate with your passkey.</p>
+                  <TestCard
+                    title="Verify FIDO2 with Passkey"
+                    status={fidoVerifyStatus}
+                    error={fidoVerifyError}
+                    onTest={testFidoVerify}
+                  />
+                </>
+              ) : (
+                <p className="info-text">Waiting for WebAuthn credential request options from PingOne…</p>
+              )}
             </div>
           )}
           <SectionApiCalls />
@@ -474,7 +645,14 @@ export default function MFATestPage() {
             error={fidoEnrollInitError}
             onTest={testFidoEnrollInit}
           />
-          <p className="info-text">FIDO2 enrollment completion will be implemented in Task 5</p>
+          {fidoEnrollData?.publicKeyCredentialCreationOptions && (
+            <TestCard
+              title="Complete FIDO2 Registration"
+              status={fidoEnrollCompleteStatus}
+              error={fidoEnrollCompleteError}
+              onTest={testFidoEnrollComplete}
+            />
+          )}
           <SectionApiCalls />
         </section>
 
@@ -494,7 +672,12 @@ export default function MFATestPage() {
                 {devices.map((device) => (
                   <li key={device.id} className="device-item">
                     <span className="device-type">{device.type}</span>
-                    <span className="device-id">{device.id}</span>
+                    <span className="device-nickname">{device.nickname || device.email || '—'}</span>
+                    <span className={`device-status device-status--${(device.status || 'unknown').toLowerCase()}`}>
+                      {device.status || 'UNKNOWN'}
+                    </span>
+                    <span className="device-meta">ID: {device.id?.substring(0, 12)}…</span>
+                    {device.createdAt && <span className="device-meta">Enrolled: {new Date(device.createdAt).toLocaleDateString()}</span>}
                   </li>
                 ))}
               </ul>
@@ -507,7 +690,63 @@ export default function MFATestPage() {
   );
 }
 
-// Test Card Component
+function WhatIsHappening({ title, steps, apiFlow }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="what-is-happening">
+      <button type="button" className="wih-toggle" onClick={() => setOpen(o => !o)}>
+        <span className="wih-icon">{open ? '▼' : '▶'}</span>
+        <span className="wih-label">ℹ️ {title || 'What is happening here?'}</span>
+      </button>
+      {open && (
+        <div className="wih-body">
+          {steps && (
+            <ol className="wih-steps">
+              {steps.map((s, i) => <li key={i} className="wih-step">{s}</li>)}
+            </ol>
+          )}
+          {apiFlow && (
+            <div className="wih-api">
+              <div className="wih-api-title">API Calls Involved</div>
+              {apiFlow.map((a, i) => (
+                <div key={i} className="wih-api-row">
+                  <span className={`wih-method wih-method--${a.method?.toLowerCase()}`}>{a.method}</span>
+                  <code className="wih-endpoint">{a.endpoint}</code>
+                  {a.note && <span className="wih-note">{a.note}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DaResponseCard({ daId, method }) {
+  const METHOD_LABELS = { sms: 'SMS OTP', email: 'Email OTP', fido2: 'FIDO2/Passkey' };
+  return (
+    <div className="da-response-card">
+      <div className="da-response-card-title">Challenge Initiated — {METHOD_LABELS[method] || method}</div>
+      <div className="da-response-card-row">
+        <span className="da-label">DA ID</span>
+        <code className="da-value">{daId}</code>
+        <span className="da-desc">Device Authorization ID — reference for this MFA challenge session</span>
+      </div>
+      <div className="da-response-card-row">
+        <span className="da-label">Status</span>
+        <span className="da-value da-value--pending">PENDING</span>
+        <span className="da-desc">PENDING = OTP sent. COMPLETED = user verified. EXPIRED = time window passed.</span>
+      </div>
+      <div className="da-response-card-row">
+        <span className="da-label">Method</span>
+        <span className="da-value">{METHOD_LABELS[method] || method}</span>
+        <span className="da-desc">MFA method PingOne is expecting the user to satisfy</span>
+      </div>
+    </div>
+  );
+}
+
 function TestCard({ title, status, error, onTest }) {
   return (
     <div className={`test-card test-card--${status}`}>

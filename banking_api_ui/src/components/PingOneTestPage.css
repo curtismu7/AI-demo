@@ -850,3 +850,199 @@ a.pingone-test-button--primary:visited {
 .section-api-toggle:hover {
   background: var(--chase-light-gray, #f0f0f0);
 }
+
+/* ── Asset Tabs (Phase 139) ──────────────────────────────────────────── */
+.asset-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+.asset-tab {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px 6px 0 0;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.35rem 0.8rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.asset-tab:hover {
+  background: #e9f0ff;
+  color: #3b5bdb;
+}
+
+.asset-tab--active {
+  background: #fff;
+  border-bottom: 2px solid #3b5bdb;
+  color: #3b5bdb;
+  font-weight: 600;
+}
+
+/* ── SPEL / Token Policy cards (Phase 139) ───────────────────────────── */
+.spel-policy-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.spel-policy-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.4rem;
+}
+
+.spel-policy-meta {
+  margin-bottom: 0.5rem;
+}
+
+.spel-claims {
+  margin-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.5rem;
+}
+
+.spel-claims-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.spel-claim-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.spel-claim-name {
+  color: #1e40af;
+  font-weight: 500;
+  min-width: 160px;
+}
+
+.spel-claim-expr {
+  background: #eef2ff;
+  border-radius: 3px;
+  color: #312e81;
+  font-size: 0.75rem;
+  padding: 1px 5px;
+  word-break: break-all;
+}
+
+/* ── WhatIsHappening (Phase 139) ──────────────────────────────────── */
+.what-is-happening {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+}
+
+.wih-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  text-align: left;
+  width: 100%;
+}
+
+.wih-toggle:hover {
+  background: #dcfce7;
+  border-radius: 5px 5px 0 0;
+}
+
+.wih-icon {
+  color: #16a34a;
+  font-size: 0.7rem;
+}
+
+.wih-label {
+  color: #166534;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.wih-body {
+  border-top: 1px solid #bbf7d0;
+  padding: 0.75rem 1rem;
+}
+
+.wih-steps {
+  margin: 0 0 0.75rem 1.2rem;
+  padding: 0;
+}
+
+.wih-step {
+  color: #166534;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  margin-bottom: 0.25rem;
+}
+
+.wih-api {
+  margin-top: 0.5rem;
+}
+
+.wih-api-title {
+  color: #166534;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+}
+
+.wih-api-row {
+  align-items: baseline;
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.wih-method {
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  text-transform: uppercase;
+}
+
+.wih-method--get { background: #dbeafe; color: #1d4ed8; }
+.wih-method--post { background: #dcfce7; color: #15803d; }
+.wih-method--put { background: #fef9c3; color: #a16207; }
+.wih-method--delete { background: #fee2e2; color: #b91c1c; }
+
+.wih-endpoint {
+  background: #f0fdf4;
+  border-radius: 3px;
+  color: #1e3a5f;
+  font-size: 0.75rem;
+  padding: 1px 4px;
+  word-break: break-all;
+}
+
+.wih-note {
+  color: #6b7280;
+  font-size: 0.72rem;
+  font-style: italic;
+}

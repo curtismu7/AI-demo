@@ -893,6 +893,10 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 </div>
                 <AssetTable
                   apps={assetVerification.applications?.data || []}
+                  resources={assetVerification.resources?.data || []}
+                  scopes={assetVerification.scopes?.data || []}
+                  users={assetVerification.users?.data || []}
+                  tokenPolicies={assetVerification.tokenPolicies?.data || []}
                   missing={assetVerification.missing || { apps: [], scopesByApp: {}, resourcesByApp: {} }}
                   expectedApps={assetVerification.expectedApps || EXPECTED_APP_NAMES}
                   expectedScopes={assetVerification.expectedScopes || EXPECTED_BANKING_SCOPES}
@@ -907,6 +911,21 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
         {/* Token Acquisition Tests Section */}
         <section className="pingone-test-section">
           <h2 className="pingone-test-section-title">Token Acquisition Tests</h2>
+          <WhatIsHappening
+            title="Token Acquisition — Authorization Code + PKCE & Client Credentials"
+            steps={[
+              'User clicks Login → browser redirects to PingOne /as/authorize with code_challenge (S256 PKCE)',
+              'User authenticates; PingOne redirects back with one-time authorization code',
+              'BFF server exchanges code + code_verifier at POST /as/token → receives access_token, id_token, refresh_token',
+              'Tokens are stored server-side in Redis session — the browser never sees a raw JWT',
+              'Agent Token uses Client Credentials grant: POST /as/token with client_id + client_secret → access_token only (no refresh)',
+            ]}
+            apiFlow={[
+              { method: 'GET', endpoint: '/as/authorize?response_type=code&code_challenge=...&state=...', note: 'Initiates PKCE login' },
+              { method: 'POST', endpoint: '/as/token (grant_type=authorization_code)', note: 'Exchanges code for tokens' },
+              { method: 'POST', endpoint: '/as/token (grant_type=client_credentials)', note: 'Agent/worker token' },
+            ]}
+          />
           <div className="pingone-test-grid">
             <div className="test-card-col">
               <TestCard
@@ -937,6 +956,21 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
         {/* Token Exchange Tests Section */}
         <section className="pingone-test-section">
           <h2 className="pingone-test-section-title">Token Exchange Tests</h2>
+          <WhatIsHappening
+            title="RFC 8693 Token Exchange — Delegated Authorization for MCP"
+            steps={[
+              'Token Exchange (RFC 8693) lets you swap one token for a narrower-scoped token without re-authenticating',
+              'Subject Token = the user access token (T1). It contains a may_act claim authorizing the agent client',
+              'Exchange 1: T1 → MCP token (scope limited to banking:read banking:write, audience = MCP server)',
+              'Exchange 2: T1 + Agent T0 → MCP token with act claim showing both user + agent identity',
+              'Exchange 3: T1 → T2 (agent step) → T3 (MCP step) — 3-hop chain proving delegation lineage',
+              'The MCP server validates act.client_id to confirm the agent acted on behalf of the user',
+            ]}
+            apiFlow={[
+              { method: 'POST', endpoint: '/as/token (grant_type=urn:ietf:params:oauth:grant-type:token-exchange)', note: 'RFC 8693' },
+              { method: 'POST', endpoint: '/as/token?subject_token=T1&actor_token=T0&audience=mcp-server', note: 'Double exchange' },
+            ]}
+          />
           {authzTokenStatus === 'failed' && authzTokenError && authzTokenError.toLowerCase().includes('log in') && (
             <div className="pingone-test-login-banner">
               <span className="pingone-test-login-banner__text">
@@ -1092,43 +1126,6 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
           <SectionApiCalls />
         </section>
 
-        {/* Token Exchange Section */}
-        <section className="pingone-test-section">
-          <h2 className="pingone-test-section-title">Token Exchange</h2>
-          <div className="pingone-test-grid">
-            <TestCard
-              title="1-Exchange (User → MCP)"
-              value="Test single token exchange"
-              status={testResults['single-exchange']?.status || 'pending'}
-              onTest={() => runTest('single-exchange', async () => {
-                if (!workerToken) throw new Error('Worker token required');
-                const { data } = await apiClient.post('/api/pingone-test/token-exchange', {
-                  mode: 'single',
-                  subjectToken: workerToken
-                });
-                return data;
-              })}
-              onFix={() => fixIssue('single-exchange')}
-            />
-            <TestCard
-              title="2-Exchange (User + Agent → MCP)"
-              value="Test double token exchange"
-              status={testResults['double-exchange']?.status || 'pending'}
-              onTest={() => runTest('double-exchange', async () => {
-                if (!workerToken) throw new Error('Worker token required');
-                const { data } = await apiClient.post('/api/pingone-test/token-exchange', {
-                  mode: 'double',
-                  subjectToken: workerToken,
-                  actorToken: workerToken
-                });
-                return data;
-              })}
-              onFix={() => fixIssue('double-exchange')}
-            />
-          </div>
-          <SectionApiCalls />
-        </section>
-
         {/* PingOne API Tests Section */}
         <section className="pingone-test-section">
           <h2 className="pingone-test-section-title">PingOne API Tests</h2>
@@ -1271,6 +1268,39 @@ const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl
   );
 };
 
+function WhatIsHappening({ title, steps, apiFlow }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="what-is-happening">
+      <button type="button" className="wih-toggle" onClick={() => setOpen(o => !o)}>
+        <span className="wih-icon">{open ? '▼' : '▶'}</span>
+        <span className="wih-label">ℹ️ {title || 'What is happening here?'}</span>
+      </button>
+      {open && (
+        <div className="wih-body">
+          {steps && (
+            <ol className="wih-steps">
+              {steps.map((s, i) => <li key={i} className="wih-step">{s}</li>)}
+            </ol>
+          )}
+          {apiFlow && (
+            <div className="wih-api">
+              <div className="wih-api-title">API Calls Involved</div>
+              {apiFlow.map((a, i) => (
+                <div key={i} className="wih-api-row">
+                  <span className={`wih-method wih-method--${a.method?.toLowerCase()}`}>{a.method}</span>
+                  <code className="wih-endpoint">{a.endpoint}</code>
+                  {a.note && <span className="wih-note">{a.note}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AssetCard({ title, status, count, error }) {
   return (
     <div className="asset-card">
@@ -1289,87 +1319,256 @@ function AssetCard({ title, status, count, error }) {
 }
 
 
-function AssetTable({ apps, missing, expectedApps, expectedScopes }) {
+function AssetTable({ apps, resources, scopes, users, tokenPolicies, missing, expectedApps, expectedScopes }) {
+  const [activeTab, setActiveTab] = React.useState('apps');
   const missingAppNames = missing.apps || [];
+  const TABS = [
+    { id: 'apps', label: `Apps (${apps.length})` },
+    { id: 'resources', label: `Resources (${(resources || []).length})` },
+    { id: 'scopes', label: `Scopes (${(scopes || []).length})` },
+    { id: 'users', label: `Users (${(users || []).length})` },
+    { id: 'spel', label: `SPEL/Policies (${(tokenPolicies || []).length})` },
+    { id: 'grants', label: 'Grants Matrix' },
+  ];
 
   return (
     <div className="asset-table-wrapper">
-      <h3 className="asset-table-title">Application &#8594; Resource &#8594; Scope Matrix</h3>
-      <div style={{ overflowX: 'auto' }}>
-        <table className="asset-table">
-          <thead>
-            <tr>
-              <th className="asset-table-th">Application</th>
-              <th className="asset-table-th">Type</th>
-              <th className="asset-table-th">Resource Servers</th>
-              <th className="asset-table-th">Scopes Granted</th>
-              <th className="asset-table-th">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {apps.map(app => {
-              const missingScopesForApp = (missing.scopesByApp || {})[app.id] || [];
-              const hasIssue = missingScopesForApp.length > 0;
-              return (
-                <tr key={app.id} className={hasIssue ? 'asset-table-row--warn' : 'asset-table-row--ok'}>
-                  <td className="asset-table-td asset-table-td--name">{app.name}</td>
-                  <td className="asset-table-td">
-                    <span className="asset-badge asset-badge--type">{app.type || '—'}</span>
-                  </td>
-                  <td className="asset-table-td">
-                    {app.grantedResources && app.grantedResources.length > 0 ? (
-                      app.grantedResources.map(rs => (
-                        <div key={rs.id} className="asset-rs-name">{rs.name}</div>
-                      ))
-                    ) : (
-                      <span className="asset-badge asset-badge--warn">No resources assigned</span>
-                    )}
-                  </td>
-                  <td className="asset-table-td">
-                    {app.grantedResources && app.grantedResources.flatMap(rs => rs.scopes).length > 0 ? (
-                      <>
-                        {app.grantedResources.flatMap(rs => rs.scopes).map(scope => (
-                          <span
-                            key={scope}
-                            className={'asset-badge ' + (missingScopesForApp.includes(scope) ? 'asset-badge--missing' : 'asset-badge--scope')}
-                          >
-                            {scope}
-                          </span>
-                        ))}
-                        {missingScopesForApp.map(scope => (
-                          <span key={'miss-' + scope} className="asset-badge asset-badge--missing">
-                            {scope} &#x2717;
-                          </span>
-                        ))}
-                      </>
-                    ) : (
-                      <>
-                        {expectedScopes.map(scope => (
+      <h3 className="asset-table-title">PingOne Entity Explorer</h3>
+      <div className="asset-tabs">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            className={`asset-tab ${activeTab === t.id ? 'asset-tab--active' : ''}`}
+            onClick={() => setActiveTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'apps' && (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="asset-table">
+            <thead>
+              <tr>
+                <th className="asset-table-th">Application</th>
+                <th className="asset-table-th">Type</th>
+                <th className="asset-table-th">Resource Servers</th>
+                <th className="asset-table-th">Scopes Granted</th>
+                <th className="asset-table-th">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apps.map(app => {
+                const missingScopesForApp = (missing.scopesByApp || {})[app.id] || [];
+                const hasIssue = missingScopesForApp.length > 0;
+                return (
+                  <tr key={app.id} className={hasIssue ? 'asset-table-row--warn' : 'asset-table-row--ok'}>
+                    <td className="asset-table-td asset-table-td--name">{app.name}</td>
+                    <td className="asset-table-td">
+                      <span className="asset-badge asset-badge--type">{app.type || '—'}</span>
+                    </td>
+                    <td className="asset-table-td">
+                      {app.grantedResources && app.grantedResources.length > 0 ? (
+                        app.grantedResources.map(rs => (
+                          <div key={rs.id} className="asset-rs-name">{rs.name}</div>
+                        ))
+                      ) : (
+                        <span className="asset-badge asset-badge--warn">No resources assigned</span>
+                      )}
+                    </td>
+                    <td className="asset-table-td">
+                      {app.grantedResources && app.grantedResources.flatMap(rs => rs.scopes).length > 0 ? (
+                        app.grantedResources.flatMap(rs => rs.scopes).map(scope => (
+                          <span key={scope} className={'asset-badge ' + (missingScopesForApp.includes(scope) ? 'asset-badge--missing' : 'asset-badge--scope')}>{scope}</span>
+                        ))
+                      ) : (
+                        expectedScopes.map(scope => (
                           <span key={scope} className="asset-badge asset-badge--missing">{scope} &#x2717;</span>
-                        ))}
-                      </>
-                    )}
+                        ))
+                      )}
+                    </td>
+                    <td className="asset-table-td">
+                      {hasIssue
+                        ? <span className="asset-badge asset-badge--warn">&#9888; Incomplete</span>
+                        : <span className="asset-badge asset-badge--ok">&#10003; OK</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+              {missingAppNames.map(name => (
+                <tr key={name} className="asset-table-row--missing">
+                  <td className="asset-table-td asset-table-td--name" style={{ color: '#b91c1c', fontStyle: 'italic' }}>{name}</td>
+                  <td className="asset-table-td"><span className="asset-badge asset-badge--missing">App not found</span></td>
+                  <td className="asset-table-td" colSpan={2} style={{ color: '#b91c1c', fontSize: '0.8rem' }}>Expected app not found in PingOne.</td>
+                  <td className="asset-table-td"><span className="asset-badge asset-badge--missing">&#x2717; MISSING</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'resources' && (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="asset-table">
+            <thead>
+              <tr>
+                <th className="asset-table-th">Resource Server</th>
+                <th className="asset-table-th">Audience / URI</th>
+                <th className="asset-table-th">Type</th>
+                <th className="asset-table-th">ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(resources || []).map(rs => (
+                <tr key={rs.id} className="asset-table-row--ok">
+                  <td className="asset-table-td asset-table-td--name">{rs.name}</td>
+                  <td className="asset-table-td"><code style={{ fontSize: '0.75rem' }}>{rs.audience || rs.accessControl?.audience || '—'}</code></td>
+                  <td className="asset-table-td"><span className="asset-badge asset-badge--type">{rs.type || '—'}</span></td>
+                  <td className="asset-table-td"><code style={{ fontSize: '0.7rem', color: '#888' }}>{rs.id}</code></td>
+                </tr>
+              ))}
+              {(!resources || resources.length === 0) && (
+                <tr><td colSpan={4} className="asset-table-td" style={{ textAlign: 'center', color: '#888' }}>No resource servers found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'scopes' && (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="asset-table">
+            <thead>
+              <tr>
+                <th className="asset-table-th">Scope Name</th>
+                <th className="asset-table-th">Description</th>
+                <th className="asset-table-th">ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(scopes || []).map(scope => (
+                <tr key={scope.id} className="asset-table-row--ok">
+                  <td className="asset-table-td asset-table-td--name">
+                    <span className="asset-badge asset-badge--scope">{scope.name}</span>
+                  </td>
+                  <td className="asset-table-td" style={{ fontSize: '0.8rem', color: '#555' }}>{scope.description || '—'}</td>
+                  <td className="asset-table-td"><code style={{ fontSize: '0.7rem', color: '#888' }}>{scope.id}</code></td>
+                </tr>
+              ))}
+              {(!scopes || scopes.length === 0) && (
+                <tr><td colSpan={3} className="asset-table-td" style={{ textAlign: 'center', color: '#888' }}>No scopes found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="asset-table">
+            <thead>
+              <tr>
+                <th className="asset-table-th">Username</th>
+                <th className="asset-table-th">Email</th>
+                <th className="asset-table-th">Name</th>
+                <th className="asset-table-th">MFA Enabled</th>
+                <th className="asset-table-th">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(users || []).map(user => (
+                <tr key={user.id} className="asset-table-row--ok">
+                  <td className="asset-table-td asset-table-td--name">{user.username || user.email || '—'}</td>
+                  <td className="asset-table-td" style={{ fontSize: '0.8rem' }}>{user.email?.address || user.email || '—'}</td>
+                  <td className="asset-table-td" style={{ fontSize: '0.8rem' }}>{user.name?.given} {user.name?.family}</td>
+                  <td className="asset-table-td">
+                    <span className={`asset-badge ${user.mfaEnabled ? 'asset-badge--ok' : 'asset-badge--warn'}`}>
+                      {user.mfaEnabled ? '✓ Yes' : '— No'}
+                    </span>
                   </td>
                   <td className="asset-table-td">
-                    {hasIssue
-                      ? <span className="asset-badge asset-badge--warn">&#9888; Incomplete</span>
-                      : <span className="asset-badge asset-badge--ok">&#10003; OK</span>
-                    }
+                    <span className={`asset-badge ${user.enabled !== false ? 'asset-badge--ok' : 'asset-badge--missing'}`}>
+                      {user.enabled !== false ? 'Active' : 'Disabled'}
+                    </span>
                   </td>
                 </tr>
-              );
-            })}
-            {missingAppNames.map(name => (
-              <tr key={name} className="asset-table-row--missing">
-                <td className="asset-table-td asset-table-td--name" style={{ color: '#b91c1c', fontStyle: 'italic' }}>{name}</td>
-                <td className="asset-table-td"><span className="asset-badge asset-badge--missing">App not found</span></td>
-                <td className="asset-table-td" colSpan={2} style={{ color: '#b91c1c', fontSize: '0.8rem' }}>Expected app not found in PingOne.</td>
-                <td className="asset-table-td"><span className="asset-badge asset-badge--missing">&#x2717; MISSING</span></td>
+              ))}
+              {(!users || users.length === 0) && (
+                <tr><td colSpan={5} className="asset-table-td" style={{ textAlign: 'center', color: '#888' }}>No users found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'spel' && (
+        <div>
+          {(tokenPolicies || []).length === 0 ? (
+            <p style={{ padding: '1rem', color: '#888' }}>No token policies returned. Ensure worker token has <code>p1:read:environment:tokenPolicies</code> scope.</p>
+          ) : (
+            (tokenPolicies || []).map(policy => (
+              <div key={policy.id} className="spel-policy-card">
+                <div className="spel-policy-name">{policy.name}</div>
+                <div className="spel-policy-meta">
+                  <span className="asset-badge asset-badge--type">ID: {policy.id}</span>
+                </div>
+                {policy.claimAttributeMappings && policy.claimAttributeMappings.length > 0 && (
+                  <div className="spel-claims">
+                    <div className="spel-claims-title">Claim Attribute Mappings (SPEL)</div>
+                    {policy.claimAttributeMappings.map((m, i) => (
+                      <div key={i} className="spel-claim-row">
+                        <span className="spel-claim-name">{m.attributeName || m.claim || '?'}</span>
+                        <code className="spel-claim-expr">{m.attributeValue || m.value || m.expression || JSON.stringify(m)}</code>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === 'grants' && (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="asset-table">
+            <thead>
+              <tr>
+                <th className="asset-table-th">Application</th>
+                <th className="asset-table-th">Resource</th>
+                <th className="asset-table-th">Scopes</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {apps.flatMap(app =>
+                (app.grants && app.grants.length > 0)
+                  ? app.grants.map((g, i) => (
+                    <tr key={`${app.id}-${i}`} className="asset-table-row--ok">
+                      {i === 0 && <td className="asset-table-td asset-table-td--name" rowSpan={app.grants.length}>{app.name}</td>}
+                      <td className="asset-table-td">{g.resourceName || g.resourceId || '—'}</td>
+                      <td className="asset-table-td">
+                        {(g.scopes || []).map(s => (
+                          <span key={s} className="asset-badge asset-badge--scope">{s}</span>
+                        ))}
+                      </td>
+                    </tr>
+                  ))
+                  : [(
+                    <tr key={app.id} className="asset-table-row--warn">
+                      <td className="asset-table-td asset-table-td--name">{app.name}</td>
+                      <td className="asset-table-td" colSpan={2}>
+                        <span className="asset-badge asset-badge--warn">No grants configured</span>
+                      </td>
+                    </tr>
+                  )]
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
