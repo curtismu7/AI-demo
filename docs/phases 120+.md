@@ -1,5 +1,5 @@
 # Phases 120+ Status
-_Last updated: 2026-04-12 (session 5)_
+_Last updated: 2026-04-12 (session 6)_
 
 ## Audit 120–135 complete. All 4 cross-phase conflicts resolved.
 
@@ -14,7 +14,7 @@ _Last updated: 2026-04-12 (session 5)_
 | 126 | Surface sub/act as friendly names | ✅ DONE via conflict fix | `4c01430` |
 | 127 | Comprehensive Debug & Fix | ✅ DONE — PingOne test page fixed (4 bugs); MFA + Agent audited & endpoints verified live | `f8987ab` `1bdcf93` `3923546` `f8014fc` `792a91d` `c5b5432` |
 | 128 | Quality Audit 120–127 | ✅ PASS | — |
-| 129 | Audit Last 15 Todos | ❌ NOT EXECUTED | — |
+| 129 | Audit Last 15 Todos | ✅ DONE — 7 archived to done, 8 backlog (see pending/) | `02ac0e4` |
 | 130 | PingOne Asset Verification Rich Table | ✅ PASS | — |
 | 131 | Test Page Config & Resources Pass/Fail Details + Chase top nav links | ✅ DONE | `fc2498c` |
 | 132 | Full E2E Testing of PingOne Test Page | ✅ PASS | — |
@@ -88,4 +88,3 @@ _Last updated: 2026-04-12 (session 5)_
 | Phase | Description | Priority |
 |-------|-------------|----------|
 | 138 | Plan 05: human-verify checkpoint — type "approved" or describe issues | High |
-| 129 | Audit last 15 todos | Low |
