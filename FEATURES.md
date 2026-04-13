@@ -180,6 +180,7 @@ git checkout <last-version-tag> -- <key-file>
 | MFA Test Page — DaResponseCard (DA ID + status + method display) | active | `banking_api_ui/src/components/MFATestPage.jsx` (`DaResponseCard`) | — |
 | MFA Test Page — WhatIsHappening edu panels (SMS, Email, FIDO2) | active | `banking_api_ui/src/components/MFATestPage.jsx` (`WhatIsHappening`) | — |
 | DecodedTokenPanel — JWT claim glossary hover tooltips | active | `banking_api_ui/src/components/DecodedTokenPanel.jsx` (`CLAIM_GLOSSARY`) | — |
+| PingOne Test Page — TokenLineageDiff claim diff for exchange cards | active | `banking_api_ui/src/components/PingOneTestPage.jsx` (`TokenLineageDiff`), `banking_api_ui/src/components/PingOneTestPage.css` | — |
 
 ---
 
