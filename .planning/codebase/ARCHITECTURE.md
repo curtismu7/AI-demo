@@ -1,183 +1,186 @@
-# Architecture
+# Architecture — BX Finance Banking Demo
 
-**Analysis Date:** 2026-03-31
-
-## Pattern Overview
-
-**Overall:** Backend-for-Frontend (BFF) + MCP Tool Server Monorepo
-
-**Key Characteristics:**
-- All OAuth tokens are held server-side in the BFF (`banking_api_server`); the browser only holds an httpOnly session cookie (`connect.sid`)
-- The React SPA (`banking_api_ui`) calls BFF exclusively via `bffAxios` (cookie-based, no Authorization header from browser)
-- The BFF performs RFC 8693 Token Exchange to mint delegated MCP access tokens before proxying tool calls to `banking_mcp_server`
-- `banking_mcp_server` is a stateful TypeScript process (WebSocket / JSON-RPC 2.0); the BFF connects via `ws://` (not HTTP REST)
-- Vercel routes all `/api/*` traffic to `api/handler.js`, which re-exports the Express app — same codebase runs locally and serverless
-
-## Layers
-
-**React SPA (`banking_api_ui/`):**
-- Purpose: Browser client; renders admin and customer views
-- Location: `banking_api_ui/src/`
-- Contains: React components (74 in `components/`), pages, hooks, contexts, services
-- Depends on: BFF — all API traffic via `bffAxios` or `apiClient`
-- Used by: End users and admin operators in browser
-
-**BFF Express Server (`banking_api_server/`):**
-- Purpose: Token custodian, OAuth orchestrator, banking API gateway, MCP proxy
-- Location: `banking_api_server/server.js` (entry), `banking_api_server/routes/`, `banking_api_server/services/`, `banking_api_server/middleware/`
-- Contains: 20 route modules, 36 service modules, 10 middleware modules
-- Depends on: PingOne OAuth (AS), banking data store (`banking_api_server/data/store.js`), `banking_mcp_server` (WebSocket), Redis/Upstash (sessions)
-- Used by: React SPA (browser), MCP Inspector, LangChain agent
-
-**MCP Tool Server (`banking_mcp_server/`):**
-- Purpose: MCP 2025-11-25 JSON-RPC tool server; executes banking tool calls on behalf of the BFF
-- Location: `banking_mcp_server/src/index.ts` (entry), `banking_mcp_server/src/`
-- Contains: `tools/` (registry, provider, validator, auth challenge handler), `auth/`, `banking/`, `server/`, `storage/`, `utils/`
-- Depends on: `banking_api_server` HTTP API (via `BankingAPIClient`); PingOne token introspection
-- Used by: BFF (`banking_api_server`) over WebSocket (`mcpWebSocketClient.js`)
-
-**Vercel Serverless Entry (`api/handler.js`):**
-- Purpose: Thin adapter — re-exports `banking_api_server/server.js` for Vercel's `@vercel/node` runtime
-- Location: `api/handler.js`
-- Contains: One line: `module.exports = require('../banking_api_server/server')`
-- All `/api/*` requests are rewritten by `vercel.json` to this handler
-
-**LangChain Agent (`langchain_agent/`):**
-- Purpose: Optional Python agent that drives banking operations via the BFF
-- Location: `langchain_agent/`
-- Status: Optional; not part of primary Vercel deployment
-
-## Data Flow
-
-**Admin Login (Authorization Code + PKCE):**
-
-1. Browser → `GET /api/auth/oauth/login` → BFF generates PKCE pair, stores state+verifier in `_pkce` cookie
-2. BFF → 302 redirect → PingOne `/as/authorize` (admin app client)
-3. PingOne → 302 callback → `GET /api/auth/oauth/callback` → BFF exchanges code → receives access+refresh+id tokens
-4. BFF stores tokens in `req.session.oauthTokens`; session persisted to Upstash/Redis
-5. BFF writes signed `_auth` cookie (user identity only, no tokens) for cold-start recovery
-6. BFF → 302 → `/admin` (React SPA)
-
-**User Login (Authorization Code + PKCE):**
-- Same flow via `/api/auth/oauth/user/login` → `/api/auth/oauth/user/callback` (separate user-app OAuth client)
-
-**SPA → BFF API Call (authenticated):**
-
-1. Browser sends `GET /api/accounts/my` with session cookie
-2. `refreshIfExpiring` middleware checks token expiry; silently refreshes if within window
-3. `authenticateToken` middleware validates JWT from `req.session.oauthTokens.accessToken` against PingOne JWKS
-4. Route handler reads from in-memory `dataStore`, returns JSON
-
-**SPA → MCP Tool Proxy (delegated):**
-
-1. Browser → `POST /api/mcp/tool` with `{tool, params}` + session cookie
-2. BFF resolves token via `agentMcpTokenService`:
-   - Reads user access token from session
-   - If `USE_AGENT_ACTOR_FOR_MCP=true`: mints RFC 8693 delegated token (user sub + agent actor)
-   - Else: uses user token directly or performs basic exchange to MCP audience
-3. Token Resolution checks `agentMcpScopePolicy` for tool permission
-4. `mcpToolAuthorizationService.evaluateMcpFirstToolGate()` runs PingOne Authorize gate
-5. BFF calls `mcpWebSocketClient.callTool()` over WebSocket connection to `banking_mcp_server`
-6. `BankingMCPServer` receives JSON-RPC `tools/call` message
-7. `MCPMessageHandler` routes to `BankingToolProvider.executeTool()`
-8. `BankingToolProvider` validates params, checks scope, calls `BankingAPIClient` → BFF HTTP API
-9. Response flows back: MCP server → WebSocket → BFF → HTTP response with `tokenEvents` metadata
-
-**Token Exchange (RFC 8693 — 3-token chain):**
-
-1. User access token (sub=user, aud=banking API)
-2. Agent access token (Client Credentials for `AGENT_OAUTH_CLIENT_ID`)
-3. BFF calls PingOne `/as/token` with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`
-   - `subject_token` = user access token
-   - `actor_token` = agent access token (when `on_behalf` chain enabled)
-   - `requested_token_type` = `urn:ietf:params:oauth:token-type:access_token`
-   - `resource` = `MCP_RESOURCE_URI`
-4. PingOne returns MCP access token with `act` claim (agent identity) + `may_act` constraint
-
-**State Management (UI):**
-- React contexts: `SpinnerContext`, `EducationUIContext`, `TokenChainContext`, `AgentUiModeContext`, `IndustryBrandingContext`, `ThemeContext`
-- `TokenChainContext` displays live `tokenEvents` metadata from MCP proxy responses
-- Service singletons: `apiTrafficStore.js`, `mcpCallStore.js`, `toastLogStore.js` (in-memory stores for UI panels)
-
-## Key Abstractions
-
-**`configStore` (BFF):**
-- Purpose: Runtime-mutable config loaded from PingOne or env vars; all OAuth config reads go through this
-- File: `banking_api_server/services/configStore.js`
-- Pattern: Singleton with `configStore.getEffective(key)` — never read env vars directly in route handlers
-
-**`authenticateToken` (BFF):**
-- Purpose: Express middleware that validates Bearer tokens (JWT or session-backed) and sets `req.user`
-- File: `banking_api_server/middleware/auth.js`
-- Pattern: Checks `Authorization: Bearer` header first, then `req.session.oauthTokens.accessToken`; validates against PingOne JWKS via `tokenValidationService`
-
-**`BankingToolRegistry` (MCP):**
-- Purpose: Static map of all MCP tool names → definition (description, schema, required scopes, handler name)
-- File: `banking_mcp_server/src/tools/BankingToolRegistry.ts`
-- Pattern: `BankingToolRegistry.getTool(name)` → `BankingToolDefinition`; add tools by adding entries to `TOOLS` map
-
-**`BankingToolProvider` (MCP):**
-- Purpose: Executes a named tool: validates params, checks auth scopes, calls `BankingAPIClient`
-- File: `banking_mcp_server/src/tools/BankingToolProvider.ts`
-- Pattern: `provider.executeTool(toolName, params, session, agentToken)` → `BankingToolResult`
-
-**`agentMcpTokenService` (BFF):**
-- Purpose: Resolves the access token to send to MCP; handles RFC 8693 exchange chain and attaches `tokenEvents` for UI
-- File: `banking_api_server/services/agentMcpTokenService.js`
-- Pattern: `resolveAgentMcpToken(req, tool)` → `{ token, tokenEvents, userSub }`
-
-**`bffAxios` (UI):**
-- Purpose: Axios instance for all BFF calls; sends session cookie, no Authorization header
-- File: `banking_api_ui/src/services/bffAxios.js`
-- Pattern: Import and use instead of plain `axios` for any `/api/*` call
-
-**`dataStore` (BFF):**
-- Purpose: In-memory banking data (users, accounts, transactions); loaded from `bootstrapData.json` + `sampleData.js`
-- Location: `banking_api_server/data/store.js`, `banking_api_server/data/bootstrapData.json`
-- Pattern: Singleton accessed directly in route handlers
-
-## Entry Points
-
-**Local Development (BFF):**
-- Location: `banking_api_server/server.js`
-- Triggers: `node server.js` or `npm start` (default port 3001)
-- Responsibilities: Full Express app init, session store selection, middleware chain, route registration
-
-**Local Development (React SPA):**
-- Location: `banking_api_ui/src/index.js`
-- Triggers: `npm start` in `banking_api_ui/` (port 3000 or `REACT_APP_API_PORT`)
-- Proxy: `banking_api_ui/src/setupProxy.js` forwards `/api/*` to `localhost:3001` in dev
-
-**Vercel Production:**
-- Location: `api/handler.js`
-- Triggers: All `/api/*` requests via `vercel.json` rewrite rule `{ "src": "/api/(.*)", "dest": "/api/handler" }`
-- Static: React build served from `banking_api_ui/build/` as `outputDirectory`
-- SPA fallback: `{ "src": "/.*", "dest": "/index.html" }` handles client-side routing
-
-**MCP Server:**
-- Location: `banking_mcp_server/src/index.ts`
-- Triggers: `npm start` in `banking_mcp_server/` (WebSocket on default port 8080)
-- Responsibilities: Loads config, initializes `BankingAuthenticationManager`, `BankingSessionManager`, `BankingAPIClient`, `BankingToolProvider`, starts `BankingMCPServer`
-
-## Error Handling
-
-**Strategy:** Layered — middleware catches at the BFF boundary; tool errors surface in `BankingToolResult.error`
-
-**Patterns:**
-- BFF: `oauthErrorHandler.js` middleware catches OAuth-specific errors and maps to RFC 6749 JSON responses
-- Token resolution failures: `throwTokenResolutionError()` in `agentMcpTokenService.js` attaches `tokenEvents` array so the UI Token Chain panel shows exactly what failed
-- MCP tool errors: `BankingToolProvider` wraps all errors and returns `{ error: string, success: false }` — never throws to the WebSocket layer
-- Session loss: `restoreSessionFromCookie` middleware rebuilds session identity from signed `_auth` cookie on cold starts; Upstash re-fetch recovers tokens
-
-## Cross-Cutting Concerns
-
-**Logging:** `morgan('combined')` for HTTP access logs; structured `logger` utility in `banking_api_server/utils/logger.js`; `correlationIdMiddleware` attaches `X-Request-ID` to all requests
-**Validation:** JWT validation via PingOne JWKS in `tokenValidationService.js`; scope enforcement in `middleware/scopeEnforcement.js`; `requireScopes([...])` guard used on authenticated routes
-**Authentication:** Session cookie (`connect.sid`) for browser; Bearer token (`Authorization: Bearer`) for programmatic clients and MCP server; `authenticateToken` middleware handles both paths
-**Delegation Audit:** `delegationAuditMiddleware` extracts `act`/`may_act` claims from tokens on every request for audit trail (`exchangeAuditStore.js`)
-**Security Headers:** Helmet CSP, HSTS, X-Frame-Options, Referrer-Policy applied globally in `server.js`
-**Rate Limiting:** Global limiter (15 min window) + tighter auth limiter (1 min) via `express-rate-limit`; several hot polling paths are excluded from the global bucket
+*Last updated: April 2026 (Phase 140)*
 
 ---
 
-*Architecture analysis: 2026-03-31*
+## Pattern
+
+**BFF (Backend for Frontend) + SPA.** The Express server is both the BFF and the static file server. Tokens never reach the browser — all OAuth flows are server-side. The React SPA communicates only with its own BFF.
+
+```
+Browser (React SPA)
+    │  /api/* — cookie session
+    ▼
+BFF (Express — banking_api_server)
+    ├── OAuth flows → PingOne (auth.pingone.com)
+    ├── Management API → PingOne (api.pingone.com)
+    ├── Token storage → Session (Redis/SQLite)
+    ├── Agent → LangGraph (Groq/Anthropic)
+    └── MCP tools → banking_mcp_server (WS)
+```
+
+---
+
+## Layers
+
+### 1. Session Layer
+Express session middleware with a tiered store (Upstash → Redis → SQLite → memory).  
+Key session fields:
+- `req.session.user` — authenticated user object
+- `req.session.oauthTokens` — `{ accessToken, idToken, refreshToken, expiresAt }`
+- `req.session.oauthType` — `'admin'` | `'user'`
+- `req.session.postLoginReturnToPath` — SPA path for post-login redirect
+- `req.session.oauthState` / `oauthCodeVerifier` — PKCE values
+
+**Cookie restore pattern**: On Vercel cold starts, a signed `_auth` cookie (`banking_api_server/services/authStateCookie.js`) allows the `/api/auth/oauth/status` middleware to restore user identity even when the session hits a different instance. The access token in this path is a `_cookie_session` stub — not a real JWT.
+
+### 2. Middleware Layer
+Order in `server.js` (simplified):
+```
+helmet → cors → rate-limit → morgan → session →
+correlationId → logActivity → delegationAudit →
+sessionRestore (from _auth cookie) →
+audValidation → routes
+```
+
+Key middleware files:
+- `banking_api_server/middleware/auth.js` — `authenticateToken`, `requireSession`
+- `banking_api_server/middleware/actClaimValidator.js` — RFC 8693 `act`/`may_act` validation
+- `banking_api_server/middleware/agentSessionMiddleware.js` — guards agent tool calls
+- `banking_api_server/middleware/delegationAuditMiddleware.js` — logs delegation chains
+
+### 3. Route Layer (47 route files)
+All routes under `banking_api_server/routes/`. Mounted in `server.js`:
+
+| Prefix | File | Auth |
+|--------|------|------|
+| `/api/auth/oauth` | `oauth.js` | none (admin PKCE) |
+| `/api/auth/oauth/user` | `oauthUser.js` | none (user PKCE) |
+| `/api/auth/ciba` | `ciba.js` | none |
+| `/api/auth/mfa` | `mfa.js` | none |
+| `/api/mfa/test` | `mfaTest.js` | session |
+| `/api/pingone-test` | `pingoneTestRoutes.js` | session |
+| `/api/banking-agent` | `bankingAgentRoutes.js` | session |
+| `/api/banking-agent` (NL) | `bankingAgentNlRoutes.js` | session |
+| `/api/langchain` | `langchainConfig.js` | session |
+| `/api/tokens` | `tokens.js` | `authenticateToken` |
+| `/api/accounts` | `accounts.js` | `authenticateToken` |
+| `/api/transactions` | `transactions.js` | `requireSession + authenticateToken` |
+| `/api/admin` | `admin.js` | `authenticateToken` |
+| `/api/admin/management` | `adminManagement.js` | none |
+| `/api/mcp/inspector` | `mcpInspector.js` | none |
+| `/api/mcp` | `mcpExchangeMode.js` | session |
+| `/api/api-calls` | `apiCallTracker.js` | none |
+| `/api/authorize` | `authorize.js` | none |
+| `/api/introspect` | `introspect.js` | none |
+| `/.well-known/oauth-protected-resource` | `protectedResourceMetadata.js` | none |
+
+### 4. Service Layer (81 service files)
+`banking_api_server/services/` — all business logic. Key services:
+
+| Service | Role |
+|---------|------|
+| `oauthUserService.js` | Auth Code + PKCE flow, token exchange |
+| `bankingAgentLangChainService.js` | LangGraph agent executor |
+| `pingoneManagementService.js` | PingOne Management API (apps, resources, users) |
+| `pingOneUserService.js` | PingOne user read/update |
+| `configStore.js` | Runtime config (SQLite-backed, merges env + stored values) |
+| `apiCallTrackerService.js` | In-memory tracker of API calls per sessionId |
+| `agentMcpTokenService.js` | MCP token exchange + consent gate |
+| `upstashSessionStore.js` | Upstash REST session store |
+| `sqliteSessionStore.js` | SQLite session store (local dev) |
+| `tokenIntrospectionService.js` | RFC 7662 token introspection |
+| `auditLogger.js` | Structured audit log for auth events |
+| `delegationChainValidationService.js` | RFC 8693 act chain validation |
+| `bffSessionGating.js` | Validates session has real (non-stub) tokens |
+| `scopePolicyEngine.js` | Scope policy enforcement for agent tools |
+
+### 5. Frontend Layer
+
+**State management**: React context + hooks (no Redux/Zustand).
+
+Key contexts (`banking_api_ui/src/context/`):
+- `VerticalContext.js` — industry vertical (banking, insurance, etc.)
+- `ThemeContext.js` — light/dark mode
+- `AgentUiModeContext.js` — FAB vs embedded dock mode
+- `ExchangeModeContext.js` — MCP token exchange mode
+- `TokenChainContext.js` — token chain visualization state
+
+Key hooks (`banking_api_ui/src/hooks/`):
+- `useChatWidget.js` — banking agent chat state
+- `useCurrentUserTokenEvent.js` — user token change events
+- `useDemoMode.js` — demo scenario mode
+- `useResourceIndicators.js` — resource indicator RFC support
+
+**HTTP**: All API calls via `banking_api_ui/src/services/apiClient.js`. Never calls PingOne directly. Uses proxy via BFF.
+
+---
+
+## OAuth Data Flow (User Login)
+
+```
+1. User clicks Login → /api/auth/oauth/user/login?return_to=/pingone-test
+2. BFF stores return_to in session, generates state + code_verifier + nonce
+3. BFF redirects browser to PingOne /as/authorize with PKCE challenge
+4. User authenticates in PingOne
+5. PingOne redirects to /api/auth/oauth/user/callback?code=...&state=...
+6. BFF validates state, exchanges code for tokens at /as/token
+7. BFF stores tokens in req.session.oauthTokens (server-side only)
+8. BFF regenerates session (anti-fixation), sets _auth cookie
+9. BFF redirects to ${origin}${postLoginReturnToPath}?oauth=success
+10. SPA: App.js detects ?oauth=success, polls /api/auth/oauth/user/status
+11. App.js once-shot useEffect strips ?oauth from URL
+```
+
+---
+
+## Token Exchange Flow (RFC 8693)
+
+```
+Exchange 1 — User → MCP:
+  subjectToken = req.session.oauthTokens.accessToken (user)
+  actorToken = agent client_credentials token
+  audience = pingone_resource_mcp_server_uri
+  → MCP token with act.client_id = agent app
+
+Exchange 2 — User+Agent → MCP gateway:
+  Same as Exchange 1 but different audience
+
+Exchange 3 — User → Agent → MCP (3-hop):
+  Step 1: User token → Agent token (singel exchange)
+  Step 2: [User token, Agent token] → MCP token (double exchange)
+```
+
+All exchanges: `banking_api_server/routes/pingoneTestRoutes.js` + `banking_api_server/services/oauthUserService.js::performTokenExchange*`.
+
+---
+
+## Agent Architecture
+
+```
+User NL input
+    │
+    ▼
+bankingAgentNlRoutes.js → POST /api/banking-agent
+    │
+    ▼
+bankingAgentLangChainService.js
+    │ LangGraph StateGraph
+    ├── agentMcpTokenService.js (token exchange + consent)
+    ├── mcpLocalTools.js (local tool registry)
+    └── braveSearchService.js (web search)
+```
+
+The agent uses LangGraph `StateGraph` with tool nodes. Each tool call checks `bffSessionGating` to ensure real tokens exist (not `_cookie_session` stub).
+
+HITL (Human-in-the-Loop): Agent pauses for user consent before sensitive operations, using `HTTP 428` response with `X-Consent-Required` header.
+
+---
+
+## MCP Inspection / Debug
+
+`/api/mcp/inspector` — debug endpoint for viewing MCP messages.  
+`/api/api-calls` — per-session API call tracker (in-memory, `banking_api_server/services/apiCallTrackerService.js`).  
+`/pingone-test` — comprehensive test page for all OAuth flows, token exchanges, entity inspection.  
+`/mfa-test` — comprehensive MFA test page (OTP, FIDO2, enrollment, device management).

@@ -1,250 +1,201 @@
-# Coding Conventions
+# Conventions — BX Finance Banking Demo
 
-**Analysis Date:** 2026-03-31
-
-## Module Systems by Package
-
-**`banking_api_server` (Node.js / Express):**
-- CommonJS: `require()` / `module.exports = { ... }`
-- Some files open with `'use strict';`
-- No ES module syntax; no `.mjs` files
-
-**`banking_api_ui` (React CRA):**
-- ES modules: `import` / `export default` / named `export`
-- JSX in `.js` files (not `.jsx`)
-
-**`banking_mcp_server` (TypeScript):**
-- ES module syntax compiled to CJS via `tsconfig.json`
-- Barrel `index.ts` files in each subdirectory re-export everything: `export * from './server'`
+*Last updated: April 2026 (Phase 140)*
 
 ---
 
-## Naming Patterns
+## Language & Modules
 
-**Files:**
-- `banking_api_server`: camelCase for services/utils (`configStore.js`, `authStateCookie.js`); kebab-case for test files (`oauth-error-handling.test.js`, `runtime-settings-api.test.js`)
-- `banking_api_ui`: PascalCase for React components (`Accounts.js`, `BankingAgent.js`); camelCase for hooks (`useDemoMode.js`) and services (`bffAxios.js`, `configService.js`)
-- `banking_mcp_server`: PascalCase for class files (`BankingToolProvider.ts`, `BankingSessionManager.ts`)
+### Server (`banking_api_server/`)
+- **Runtime**: Node.js 20.x
+- **Module system**: CommonJS (`require` / `module.exports`)
+- **Style**: Mostly vanilla JS; no TypeScript compilation step
+- **Linting**: ESLint (`.eslintrc.js`); uses `no-console` warn for non-logger console calls
 
-**Functions:**
-- camelCase everywhere: `validateAmount`, `fetchAccounts`, `restoreAccountsFromSnapshot`, `mockAdminSession`
+### Frontend (`banking_api_ui/`)
+- **Bundler**: CRA 5 (react-scripts webpack)
+- **Module system**: ES Modules (`import` / `export default`)
+- **Primary language**: JavaScript JSX (`.js`, `.jsx`)
+- **Mixed TS**: 4+ `.tsx` files (`ActorTokenEducation.tsx`, `TokenInspector.tsx`, `ConfigTokenValidation.tsx`, `UnifiedConfigurationPage.tsx`) — compiled by CRA; no separate tsconfig enforced
+- **React version**: 18 with functional components + hooks exclusively; no class components
 
-**Variables:**
-- camelCase for locals and module-level `const`
-- SCREAMING_SNAKE_CASE for feature flags and env-derived booleans: `SKIP_TOKEN_SIGNATURE_VALIDATION`, `DEBUG_TOKENS`, `USE_KV`
-
-**Classes:**
-- PascalCase: `OAuthError`, `StructuredLogger`, `BankingToolProvider`, `BankingAPIClient`
-
-**Constants / Enums:**
-- Object-as-enum pattern with SCREAMING_SNAKE_CASE values:
-  ```js
-  const OAUTH_ERROR_TYPES = {
-    INVALID_TOKEN: 'invalid_token',
-    INSUFFICIENT_SCOPE: 'insufficient_scope',
-    ...
-  };
-  const LOG_CATEGORIES = {
-    OAUTH_VALIDATION: 'oauth_validation',
-    SCOPE_VALIDATION: 'scope_validation',
-    ...
-  };
-  ```
+### MCP Server (`banking_mcp_server/`)
+- **Language**: TypeScript strict, compiled to `dist/`
+- **Module system**: ESM output (`"type": "module"` in `package.json`)
 
 ---
 
-## Code Style
+## React Patterns
 
-**Formatting:**
-- No project-wide Prettier config; `banking_mcp_server/.eslintrc.js` is the only lint config
-- Indentation: 2 spaces throughout
+### Component structure
+```jsx
+// Functional component with hooks only; no class components
+const MyComponent = ({ prop1, prop2 }) => {
+  const [state, setState] = useState(initialValue);
+  const toast = useToast();    // or use appToast directly
 
-**Linting (`banking_mcp_server` only):**
-- Parser: `@typescript-eslint/parser`
-- Extends: `eslint:recommended` + `plugin:@typescript-eslint/recommended`
-- `@typescript-eslint/no-unused-vars`: **error** — prefix ignored params/vars with `_`
-- `@typescript-eslint/no-explicit-any`: **off** — `any` is permitted
-- `@typescript-eslint/explicit-function-return-type`: **off**
-- No lint config for `banking_api_server` or `banking_api_ui` beyond CRA defaults
+  useEffect(() => { /* side effects */ }, [dependency]);
 
-**`banking_api_ui` ESLint:**
-- `react-app` + `react-app/jest` (CRA defaults, configured in `package.json`)
+  return <div className="my-component">...</div>;
+};
 
----
-
-## Import Organization
-
-**`banking_api_server` (route files):**
-```js
-const express = require('express');
-const router  = express.Router();
-// then data/stores
-const dataStore = require('../data/store');
-// then middleware
-const { authenticateToken, requireScopes } = require('../middleware/auth');
-// then services
-const configStore = require('../services/configStore');
-// then utils
-const { logger, LOG_CATEGORIES } = require('../utils/logger');
+export default MyComponent;
 ```
 
-**`banking_api_ui` (React components):**
+### Global state
+- **React Context** — no Redux, no Zustand
+- Contexts live in `src/context/`; consumed via `useContext(ContextName)`
+- Key contexts:
+  - `VerticalContext` — industry branding (Chase vs generic)
+  - `ThemeContext` — dark/light mode
+  - `AgentUiModeContext` — agent panel open/close state
+  - `TokenChainContext` — token chain visualization
+
+### API calls
+All frontend HTTP calls go through the **axios singleton**:
 ```js
-import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';            // third-party libs
-import bffAxios from '../services/bffAxios';  // own services
-import { notifyError } from '../utils/appToast';  // own utils
-import AdminSubPageShell from './AdminSubPageShell'; // own components
+import apiClient from '../services/apiClient';
+
+// Always withCredentials (sends session cookie)
+const response = await apiClient.get('/api/endpoint');
+const response = await apiClient.post('/api/endpoint', body);
 ```
 
-**`banking_mcp_server` (TypeScript):**
-```ts
-import { BankingAPIClient } from '../banking/BankingAPIClient';
-import { BankingAuthenticationManager } from '../auth/BankingAuthenticationManager';
-import { ToolResult, AuthorizationRequest } from '../interfaces/mcp';
-import { Session, AuthErrorCodes } from '../interfaces/auth';
+`apiClient` applies:
+1. `SpinnerService` interceptor — global loading spinner
+2. `apiTrafficStore` interceptor — records for `/api-traffic` panel
+
+### Notifications
+```js
+import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
+
+notifySuccess('Action completed');
+notifyError('Something failed: ' + err.message);
+notifyInfo('Note: ...');
 ```
 
-**Path Aliases:**
-- None defined — all imports use relative paths
+Never use `toast()` directly; always use the `appToast.js` wrappers.
 
 ---
 
-## Error Handling
+## BFF (Express) Patterns
 
-**Express routes — standard `try/catch` block:**
+### Route handler shape
 ```js
-router.get('/my', authenticateToken, async (req, res) => {
+router.post('/action', authenticateToken, async (req, res) => {
+  const sessionId = req.query.sessionId || 'default';
   try {
-    // ... logic
-    res.json({ data });
-  } catch (error) {
-    console.error('Error getting user transactions:', error);
-    res.status(500).json({ error: 'Failed to get transactions' });
+    const result = await someService.doSomething(params);
+    await trackApiCall(sessionId, 'POST /action', requestData, result, 200);
+    res.json(result);
+  } catch (err) {
+    logger.error('Action failed', { error: err.message });
+    await trackApiCall(sessionId, 'POST /action', requestData, { error: err.message }, 500);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 ```
 
-**Role/scope guard — early return:**
+### Service shape
 ```js
-if (req.user.role !== 'admin') {
-  return res.status(403).json({ error: 'Access denied. Admin role required.' });
+// services/someService.js
+const { logger } = require('../utils/logger');
+
+async function doSomething(params) {
+  // business logic
+  return result;  // throws on failure
 }
+
+module.exports = { doSomething };
 ```
 
-**Auth middleware — `OAuthError` class:**
-- `middleware/auth.js` and `middleware/oauthErrorHandler.js` throw `OAuthError` instances
-- `OAuthError(type, description, statusCode, additionalData)` — see `OAUTH_ERROR_TYPES`
-- `formatOAuthErrorResponse(error, req)` serializes to RFC 6749 shape with `timestamp`, `request_id`, `path`, `method`
-
-**React components — toast helpers:**
+### Session pattern
 ```js
-} catch (error) {
-  console.error('Accounts error:', error);
-  if (error.response?.status === 401) {
-    toastAdminSessionError('Your session has expired...', navigateToAdminOAuthLogin);
-  } else if (error.response?.status === 403) {
-    notifyError('You do not have permission to view accounts.');
-  } else {
-    notifyError('Failed to load accounts');
-  }
-}
+// Session attached by express-session middleware
+req.session.userId        // current user sub
+req.session.adminToken    // admin access token (opaque)
+req.session.userTokens    // { access_token, id_token, refresh_token } for user
+req.session.adminLoggedIn // boolean
+req.session.userLoggedIn  // boolean
 ```
-- `notifyError(msg)` — `src/utils/appToast.js`
-- `toastAdminSessionError(msg, navigateFn)` — `src/utils/dashboardToast.js`
 
-**Not used:** Express `next(err)` error propagation — all errors are handled inline in routes.
+### `sessionId` pattern
+Callers pass `?sessionId=<tab-uuid>` as a query param. Routes bucket API call logs by this session ID. Default: `'pingone-test'` or `'default'`.
+
+### Error response format
+```json
+{ "success": false, "error": "Human-readable message" }
+```
+Errors always return JSON — never plain text.
+
+### Successful response format
+Returns raw data object from service (not always wrapped in `{ success: true }`). Callers check HTTP status code.
 
 ---
 
 ## Logging
 
-**`banking_api_server` routes — `console.*` (not the structured logger):**
 ```js
-console.error('Error getting transactions:', error);
-console.warn('[transactions] restoreAccountsFromSnapshot failed:', e.message);
-console.log(`💰 [Transaction] Transfer created by ${req.user.username} ...`);
-```
-- Route-level prefix in brackets: `[transactions]`, `[StepUp]`, `[Authorize]`, `[ConsentChallenge]`
-- Emoji prefixes on business-significant events (transactions, step-up)
+const { logger } = require('../utils/logger');
 
-**`banking_api_server` middleware/services — structured `logger`:**
-```js
-const { logger, LOG_CATEGORIES } = require('../utils/logger');
-
-logger.warn(LOG_CATEGORIES.SCOPE_VALIDATION, 'Error determining user type from token', {
-  error_message: error.message
-});
-logger.debug(LOG_CATEGORIES.OAUTH_VALIDATION, 'Starting OAuth token validation', {
-  method, path, token_length: token.length
-});
-```
-- Signature: `logger.level(category, message, metadata)`
-- Categories: `OAUTH_VALIDATION`, `SCOPE_VALIDATION`, `TOKEN_INTROSPECTION`,
-  `TOKEN_EXCHANGE`, `PROVIDER_HEALTH`, `AUTHENTICATION`, `AUTHORIZATION`, `ERROR_HANDLING`
-- `StructuredLogger` in `utils/logger.js` outputs JSON to console (with color) and optionally to files
-
-**Rule of thumb:**
-- Use `logger` + `LOG_CATEGORIES` in middleware and services
-- Use `console.*` in route handlers and data-layer helpers
-
----
-
-## configStore Usage Patterns
-
-`banking_api_server/services/configStore.js` is a singleton.
-
-```js
-const configStore = require('../services/configStore');
-
-// Sync read from in-memory cache — safe anywhere
-const value = configStore.get('ff_authorize_mcp_first_tool');
-
-// Read with env-var fallback (reads env first, then KV/SQLite)
-const uri = configStore.getEffective('mcp_resource_uri');
-
-// Async write — validates then persists
-await configStore.setConfig({ admin_client_id: '...' });
-
-// Must be called once before first use in cold-start routes
-await configStore.ensureInitialized();
+logger.info('Message', { key: value });
+logger.error('Failed', { error: err.message, stack: err.stack });
+logger.debug('Detail', { data });       // suppressed in prod
 ```
 
-- `.get()` is synchronous — safe in middleware and sync route code
-- `.getEffective()` resolves: env var → KV/SQLite → default
-- Call `await configStore.ensureInitialized()` at the top of routes that may be hit during Vercel cold-start (`mcpInspector.js`, `adminConfig.js`)
+Never use `console.log` in production code paths — use `logger`.
 
 ---
 
-## Function Design
+## CSS Conventions
 
-**Size:** Route handlers can be long (50–100+ lines); business logic helpers are smaller
-**Parameters:** Express routes use `(req, res)` or `(req, res, next)`; service helpers take typed args
-**Return values:** Routes always end with `res.json(...)` or `res.status(N).json(...)`
-**Async:** `async/await` throughout; no callback-style async except session `save(err => {...})`
-
----
-
-## Comments
-
-**When to comment:**
-- File-level JSDoc block describing purpose and key exports (`/** ... */`)
-- Complex business logic (step-up thresholds, delegated access RFC 8693)
-- Environment variable semantics (audience validation skip logic in `auth.js`)
-- TODO in routes for known planned changes
-
-**Do not add:** redundant "this function does X" JSDoc for obvious code
+- **Scoping**: Per-component `.css` file colocated with the component
+- **Naming**: BEM-lite kebab-case (`.my-component`, `.my-component__child`, `.my-component--modifier`)
+- **CSS Modules**: Only for `.tsx` components (4+ files) — use `styles.className`
+- **Global**: `src/styles/global.css` (Chase palette, CSS variables, card base styles)
+- **Dark mode**: CSS custom properties toggled via `data-theme="dark"` on `<body>`
 
 ---
 
-## TypeScript (MCP Server)
+## OAuth / Token Conventions
 
-- `interface` for DTO/data shapes: `ToolResult`, `Session`, `UserTokens`, `BankingAPIError`
-- `class` for service implementations: `BankingToolProvider`, `BankingSessionManager`
-- `export interface ToolExecutionContext { ... }` — named exports only, no default exports
-- Unused params prefixed with `_` to satisfy `no-unused-vars` rule
-- `any` type used freely (rule is off); prefer specific types where straightforward
+- **Tokens server-side only**: Access + refresh tokens are stored in `req.session`, never sent to frontend
+- **Frontend identity**: Read from `/api/auth/status` which returns safe user claims
+- **PKCE state**: Stored in `pkce_state` cookie via `pkceStateCookie.js`
+- **Auth cookie**: `_auth` cookie (httpOnly, SameSite=None, Secure) used for Vercel cross-instance session restore
+- **Token exchange**: All on-behalf-of exchanges happen server-side in `oauthUserService.js`
+- **Scopes**: Defined centrally in `config/oauthUser.js`; never hardcoded in routes
 
 ---
 
-*Convention analysis: 2026-03-31*
+## Authentication Middleware
+
+```js
+const { authenticateToken } = require('../middleware/auth');
+
+// Requires valid session with userTokens or _cookie_session stub
+router.get('/protected', authenticateToken, handler);
+```
+
+`authenticateToken` sets `req.user = { sub, email, ... }` claims from the access token or session.
+
+---
+
+## MCP Server (TypeScript)
+
+- Interfaces for all tool inputs/outputs (`src/types/`)
+- `BankingToolRegistry` — maps tool names to `BankingToolProvider` instances
+- Tools return `{ content: [{ type: 'text', text: JSON.stringify(result) }] }`
+- Auth challenge pattern: Tools throw `AuthChallenge` which `MCPMessageHandler` converts to `mcp.auth.challenge`
+- Session keyed on WebSocket connection ID in `BankingSessionManager`
+
+---
+
+## Testing Conventions
+
+See `TESTING.md` for full detail.
+
+- **Server**: Jest, CommonJS, `jest.mock(...)` for deps
+- **Frontend**: `@testing-library/react`, `jest-dom` matchers
+- **File location**: `src/__tests__/` for server unit; `tests/e2e/` for Playwright E2E
+- **Coverage target**: `collectCoverageFrom: ['src/**/*.js']` (server only)
