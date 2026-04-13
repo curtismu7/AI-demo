@@ -513,8 +513,6 @@ function AppWithAuth() {
               }
             />
             <Route path="/logout" element={<LogoutPage />} />
-            <Route path="/pingone-test" element={<PingOneTestPage />} />
-            <Route path="/mfa-test" element={<AdminRoute user={user}><MFATestPage /></AdminRoute>} />
 
             <Route path="*" element={
               !user ? (
@@ -558,6 +556,9 @@ function AppWithAuth() {
                     />
                     <Route path="/postman" element={<PostmanCollectionsPage user={user} onLogout={logout} />} />
                     <Route path="/scope-audit" element={<AdminRoute user={user}><ScopeAuditPage /></AdminRoute>} />
+                    {/* Test & educational pages */}
+                    <Route path="/pingone-test" element={user ? <PingOneTestPage /> : <Navigate to="/" replace />} />
+                    <Route path="/mfa-test" element={user ? <MFATestPage /> : <Navigate to="/" replace />} />
                     {/* User-friendly self-service routes */}
                     <Route path="/accounts" element={<UserAccounts user={user} />} />
                     <Route path="/transactions" element={<UserTransactions user={user} />} />

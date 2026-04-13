@@ -26,7 +26,8 @@ export default function ChaseTopNav({ user, onLogout, currentPage = 'home', onRo
     { label: 'Dashboard', path: '/dashboard', pages: ['dashboard', 'admin-dashboard'] },
     { label: 'Config', path: '/config', pages: ['config'] },
     { label: 'PingOne Test', path: '/pingone-test', pages: ['pingone-test'] },
-    ...(isAdmin ? [{ label: 'MFA Test', path: '/mfa-test', pages: ['mfa-test'] }] : []),
+    { label: 'MFA Test', path: '/mfa-test', pages: ['mfa-test'] },
+    ...(isAdmin ? [{ label: 'Agent', path: '/agent', pages: ['agent'] }] : []),
   ];
 
   return (
