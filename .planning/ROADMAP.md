@@ -2134,6 +2134,6 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 140-01-PLAN.md — Strip ?oauth param from URL on App.js mount (one-shot useEffect matching sso_silent pattern)
+- [x] 140-01-PLAN.md — Strip ?oauth param from URL on App.js mount (one-shot useEffect matching sso_silent pattern)
 
 ---
