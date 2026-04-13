@@ -388,6 +388,18 @@ function AppWithAuth() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on mount only
   }, []);
 
+  /** OAuth success landing: strip ?oauth= param from URL — same pattern as sso_silent handler above. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search || '');
+    if (!params.has('oauth')) return;
+    params.delete('oauth');
+    const newSearch = params.toString();
+    const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '');
+    window.history.replaceState(null, '', newUrl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on mount only
+  }, []);
+
   /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
   const showQuickNav = Boolean(user) && isDashboardQuickNavRoute(pathname, user);
   const isOnDashboard = pathname === '/dashboard';
