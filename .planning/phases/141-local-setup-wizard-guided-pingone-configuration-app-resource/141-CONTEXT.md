@@ -1,176 +1,114 @@
-# Phase 141: Local Setup Wizard — Context
+# Phase 141: Local Setup Wizard — Guided PingOne Configuration — Context
 
 **Gathered:** 2026-04-13
 **Status:** Ready for planning
-**Source:** /gsd-discuss-phase 141
 
 <domain>
 ## Phase Boundary
 
-A new web-based setup wizard (`/setup/wizard`) that takes a fresh clone from zero configuration to a fully running app. The wizard:
-
-1. Collects PingOne worker credentials and environment info from the user
-2. Uses the PingOne Management API to discover/create all required PingOne objects
-3. Writes a populated `.env` to the project root (merged, preserving existing keys)
-4. Saves credentials to `configStore` SQLite so they are live immediately
-5. Runs headless OAuth flow tests to confirm each worker app can obtain tokens
-6. Presents a completion summary
-
-This is a **new React UI page** — not a terminal CLI. It reuses patterns from existing `mcp-test` and `pingone-test` pages. All PingOne Management API calls go through `banking_api_server` (BFF), never directly from the browser.
-
-**Out of scope:** DaVinci flows, MFA policy creation, population management, Vercel/production setup.
+Create a multi-step guided wizard at `/setup/wizard` that walks a developer through provisioning a fresh PingOne environment for local dev. The wizard: validates credentials, creates resource servers + scopes + 4 apps + `mcp_exchanger` app + SPEL attribute mapping, creates demo users, and generates a `.env` file. App is fully runnable on completion. The existing `SetupWizardTab` (used in admin panel) is preserved alongside this new route.
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
-### D-01: Wizard surface
-- **New React page** at `/setup/wizard` route
-- Also accessible from the existing `/setup` page via a prominent "Run Setup Wizard" button
-- No authentication required — wizard runs before PingOne is configured
-- Reuse UI patterns and components from `mcp-test` (`McpInspector.js`) and `pingone-test` (`PingOneTestPage.js`) pages
+### Wizard Layout
+- **D-01:** Accordion layout — all steps visible simultaneously, each step expands/collapses. Not horizontal tabs, not card stack.
 
-### D-02: Wizard structure
-- **Accordion layout** — each section expands when active, collapses with a ✅ checkmark when complete
-- User can reopen any completed section to review or re-run it
-- Sections are gated: sections below won't activate until prerequisite sections succeed
-- Sections in order:
-  1. **Worker Credentials** — environment ID, region, worker client ID, client secret, token auth method (basic/post)
-  2. **Discovery** — probe existing PingOne objects, show what exists vs what needs creating
-  3. **Create PingOne Objects** — create all missing objects with live per-item progress
-  4. **Environment File** — generate and write `.env`, show diff of what changed
-  5. **Smoke Test** — run headless OAuth tests, show per-app pass/fail
+### Execution Mode
+- **D-02:** Hybrid — Step 1 (credentials) is filled manually by the user and validated on submit. After credentials validated, a "Run All" button fires the full SSE provisioning pipeline for all remaining steps in one shot.
 
-### D-03: PingOne object automation scope (FULL)
-The wizard creates ALL of the following via PingOne Management API:
-- **OAuth apps:**
-  - Admin WEB_APP (OIDC, Authorization Code + PKCE, redirect URIs: localhost + Vercel)
-  - User WEB_APP (OIDC, Authorization Code + PKCE, redirect URIs: localhost + Vercel)
-  - Agent WORKER app (client credentials, no redirect URIs)
-  - MCP Token Exchanger WORKER app (client credentials, AI_AGENT type, no redirect URIs)
-- **Resource servers:**
-  - Banking API resource server (`https://banking-api.banking-demo.com`) + scopes
-  - MCP server resource server (`https://banking-mcp-server.banking-demo.com`) + scopes
-  - Two-exchange resource server (`https://banking-resource-server.banking-demo.com`) + scopes
-- **User schema:**
-  - `bankingPrincipalUserId` custom attribute (string, mutable) on the default User population schema
-- **Token claim mappings:**
-  - `bankingPrincipalUserId` mapped as a token claim on both the admin and user OAuth apps
+### SPEL Attribute Mapping
+- **D-03:** Pre-built — wizard auto-creates the SPEL mapping using known claim names (`p1UserType`, `account_ids`, etc.). No user text input required. `pingoneProvisionService.js` must be extended to add this step.
 
-Reuses `setupResourceServers.js` logic and `pingoneManagementService` where applicable.
+### Secret Masking
+- **D-04:** Toggle reveal — credential fields shown as `••••••` by default with an eye icon to toggle visibility. Standard `<input type="password">` with show/hide toggle.
 
-### D-04: SPEL attribute mapping
-- Create `bankingPrincipalUserId` custom attribute on the User schema via Management API
-  - Endpoint: `POST /v1/environments/{envId}/schemas/{schemaId}/attributes`
-  - Type: `STRING`, mutable, unique: false
-- Add token claim mapping on admin WEB_APP and user WEB_APP:
-  - Claim name: `bankingPrincipalUserId`
-  - Expression: `${user.bankingPrincipalUserId}` (SPEL)
-  - Endpoint: `PATCH /v1/environments/{envId}/applications/{appId}/attributeMappings`
+### Resume Behavior
+- **D-05:** Resume step — wizard state (completed steps, created object IDs) persisted to `localStorage` key `pingoneSetupWizard.v1`. Secrets are NOT persisted. On return, user re-enters credentials then continues from last completed step.
 
-### D-05: Credential collection UX
-- All secret fields (client_secret) use password input type with show/hide toggle
-- Non-secret fields (client_id, environment_id) are plain text inputs
-- Token auth method is a dropdown: `client_secret_basic` (default) | `client_secret_post`
-- Region is a dropdown: `com` (default) | `ca` | `eu` | `com.au` | `sg` | `asia`
-- Worker credentials are collected in Section 1; created app credentials are displayed (read-only) after Section 3 completes
+### Route
+- **D-06:** New dedicated route `/setup/wizard` — new React component `SetupWizard.js`. Registered in `App.js` router alongside existing routes.
 
-### D-06: .env generation
-- Wizard writes to project root `.env`
-- **Merge strategy:** only overwrite keys the wizard generates; preserve all other existing keys (e.g. `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, custom flags)
-- If `.env` doesn't exist, create it from scratch based on `.env.example` structure
-- Write happens via a new BFF endpoint `POST /api/setup/write-env` that accepts a key-value map
-- Show a before/after diff of what changed in the UI after writing
-- **Also save** to `configStore` SQLite via `configStore.setConfig()` for each key — values are live immediately without server restart
+### Error Recovery
+- **D-07:** Per-step retry — when a provisioning step fails, only that step gets a "Retry" button. Steps after the failed step remain collapsed/locked until it succeeds.
 
-### D-07: Idempotency + Reset mode
-- **Default (idempotent):** Before creating any object, wizard probes PingOne to check if it exists by name/type
-  - Existing objects show as "already exists ✓" (grey)
-  - Missing objects are created and show as "created ✓" (green)
-  - Failed objects show as "failed ✗" with error detail (red)
-- **Reset & Recreate toggle** in the Section 3 header:
-  - When enabled: wizard deletes existing objects (with confirmation prompt) then recreates them fresh
-  - Only available after successful initial discovery (Section 2 must complete first)
+### Relationship to Existing SetupWizardTab
+- **D-08:** Alongside — `SetupWizardTab.js` is NOT modified or deleted. The new wizard is a wholly separate component at `/setup/wizard`. Both coexist.
 
-### D-08: Smoke test
-- Wizard runs headless `client_credentials` grant against each created WORKER app:
-  - Agent WORKER app
-  - MCP Token Exchanger WORKER app
-  - Worker/Management API app (if credentials provided)
-- Each grant attempt shows: app name, token endpoint, result (✅ token received | ❌ error + message)
-- Smoke test is triggered by a "Run Tests" button in Section 5
-- On pass: show "Setup complete" banner with links to `/` (app home) and `/api/auth/oauth/login` (admin login)
-- On partial failure: show which apps failed with copy-paste curl commands to debug manually
-
-### D-09: Folded todos
-- Script PingOne resource server + scope setup via Management API — wizard wires `setupResourceServers.js` logic into the creation flow
-- Add `STEP_UP_ACR_VALUE` prompt — wizard collects this in Section 1 (optional, with tooltip explanation) and includes it in the generated `.env`
-- Update AGENT_OAUTH credentials in `.env` for MCP Token Exchanger — wizard generates and writes these after creating the exchanger app in Section 3
+### MCP Exchanger App
+- **D-09:** Phase 141 adds `mcp_exchanger` application creation to `provisionEnvironment()` — a dedicated worker-type app for token exchange (needed by phase 143). This is the 5th app in the provisioning pipeline after admin, user, MCP server, and worker apps.
 
 ### Claude's Discretion
-- Exact UI component implementation (CSS, layout details, loading spinners) — follow patterns from `pingone-test` and `mcp-inspector` pages
-- BFF endpoint design for discovery and creation calls (route structure, response format)
-- Error retry logic (how many retries on transient PingOne API errors)
-- Exact PingOne Management API pagination handling when listing existing objects
+- Exact accordion animation style (CSS transition, no JS animation library)
+- Toast library: use the existing pattern in the app (check for `react-toastify` or native; use whichever is already imported)
+- Nav link to `/setup/wizard` placement: new item in existing nav or standalone — agent decides based on existing nav structure
+- Step numbering: 1-based, displayed as "Step 1", "Step 2", etc. per UI-SPEC copywriting
 
 </decisions>
+
+<specifics>
+## Specific Ideas
+
+- Copywriting is locked in `141-UI-SPEC.md` — wizard title "BX Finance — PingOne Setup", step names per copywriting contract table
+- Color system locked in `141-UI-SPEC.md` — step active `#004687`, complete `#16a34a`, error `#b91c1c`, incomplete `#d1d5db`
+- Completion screen shows checklist of what was created with green ticks, "Open Dashboard →" navigates to `/dashboard`, "Start Over" clears localStorage
+- All 5 action buttons on the Run All step should show the SSE log stream inline (the existing `streamSSEResponse` pattern from `SetupWizardTab.js` is the reference)
+- `.env` output block uses monospace, `#f8fafc` background, "📋 Copy .env" button using Clipboard API with toast feedback
+
+</specifics>
 
 <canonical_refs>
 ## Canonical References
 
 **Downstream agents MUST read these before planning or implementing.**
 
-### Existing setup infrastructure
-- `banking_api_server/scripts/setupResourceServers.js` — existing resource server + scope creation CLI (reuse logic)
-- `banking_api_server/services/pingoneManagementService.js` — Management API client (reuse for all PingOne calls)
-- `banking_api_server/routes/setup.js` — existing `/api/setup` route (extend, don't replace)
-- `banking_api_server/services/pingoneBootstrapService.js` — existing manifest-based bootstrap service
+### UI Design System
+- `.planning/phases/141-local-setup-wizard-guided-pingone-configuration-app-resource/141-UI-SPEC.md` — Full color, typography, spacing, copywriting contract, completion screen wireframe, and open questions (now resolved)
 
-### Reference UI pages (pattern sources)
-- `banking_api_ui/src/components/PingOneTestPage.js` — test-page UI pattern to reuse
-- `banking_api_ui/src/components/McpInspector.js` — inspector accordion/section pattern to reuse
-
-### Configuration and env
-- `.env.example` — canonical catalog of all env vars (wizard generates a subset of these)
-- `banking_api_server/services/configStore.js` — runtime config store (wizard writes here after creating objects)
-- `banking_api_server/scripts/check-env.js` — env validation run at server startup
+### Existing Wizard Infrastructure (read before modifying)
+- `banking_api_server/services/pingoneProvisionService.js` — `provisionEnvironment()` pipeline — add `mcp_exchanger` creation step and SPEL mapping step here
+- `banking_api_server/routes/setupWizard.js` — BFF SSE routes — `POST /api/admin/setup/run` is the endpoint the new wizard calls
+- `banking_api_ui/src/components/SetupWizardTab.js` — Existing single-form wizard — reference for `streamSSEResponse()`, `generateEnvContents()`, SSE event parsing pattern. DO NOT modify.
 
 ### Routing
-- `banking_api_ui/src/App.js` — add `/setup/wizard` route here (no auth guard)
-- `banking_api_server/server.js` — add new setup API route mount here
-
-### Project rules
-- `CLAUDE.md` — project-wide coding standards
-- `REGRESSION_PLAN.md` — do-not-break list
+- `banking_api_ui/src/App.js` — Add `/setup/wizard` route here
 
 </canonical_refs>
 
-<specifics>
-## Specific Implementation Notes
+<code_context>
+## Existing Code Insights
 
-- Wizard is accessible pre-auth — it must work when `PINGONE_ENVIRONMENT_ID` is not yet set
-- The BFF `/api/setup/write-env` endpoint must validate that it's running locally (not on Vercel) before writing to disk
-- `configStore.setConfig()` accepts key-value pairs — use this to apply wizard output without restart
-- Worker credentials (client ID + secret + auth method) are asked UP FRONT in Section 1 before any PingOne calls
-- The accordion sections should use the same card/panel visual style as `PingOneTestPage` or `McpInspector`
-- Redirect URIs to register: `http://localhost:3001/api/auth/oauth/callback` (admin), `http://localhost:3001/api/auth/oauth/user/callback` (user), plus Vercel equivalents from `PUBLIC_APP_URL` if provided
-- STEP_UP_ACR_VALUE is optional — show it with a "(optional)" label and a tooltip: "ACR value for MFA step-up. Leave blank to use app default policy."
+### Reusable Assets
+- `SetupWizardTab.js` → `streamSSEResponse(url, body, onStep, onComplete, onError)`: copy this SSE streaming pattern into the new wizard component
+- `SetupWizardTab.js` → `generateEnvContents(result, config)`: copy or import this for `.env` generation
+- `banking_api_server/routes/setupWizard.js` → `POST /api/admin/setup/run`: already accepts all needed fields (`envId`, `workerClientId`, `workerClientSecret`, `region`, `publicAppUrl`, `vercelToken`, `vercelProjectId`, `audience`, `stepUpAcrValue`)
+- `banking_api_server/services/pingoneProvisionService.js` → `provisionEnvironment()` + `recreateResource()`: extend here for `mcp_exchanger` + SPEL steps
 
-</specifics>
+### Established Patterns
+- The existing app uses `navigator.clipboard.writeText()` for copy-to-clipboard with toast notifications — match this pattern
+- Session/localStorage pattern: inspect existing usage in `SetupWizardTab.js` for any prior localStorage use; if none, use `JSON.stringify` to `localStorage.setItem('pingoneSetupWizard.v1', ...)`
+- SSE stream from `POST /run` emits `{ step, icon, message, result? }` objects — the new wizard parses these to update per-step status
+
+### Integration Points
+- `banking_api_server/services/pingoneProvisionService.js` → add `mcp_exchanger` after `worker-app` steps (~line 865), before the `config` (env file write) step
+- `banking_api_server/services/pingoneProvisionService.js` → add SPEL mapping step after `mcp_exchanger`, using known claim names from PingOne attribute mapping API
+- `banking_api_ui/src/App.js` → register `<Route path="/setup/wizard" element={<SetupWizard />} />`
+
+</code_context>
 
 <deferred>
 ## Deferred Ideas
 
-- DaVinci flow creation — too complex for automated scripting in this phase
-- MFA policy creation — requires PingOne MFA Policy API, out of scope
-- Population management (create custom populations) — out of scope
-- Vercel/production deployment wizard — separate concern, out of scope
-- Postman collection auto-population with created client IDs — nice-to-have, future phase
+- Vercel deployment wizard path (Vercel env var writing) — existing `SetupWizardTab.js` handles this; not in scope for local dev wizard
+- Dark mode — not in scope
+- i18n / multi-language — not in scope
+- Any validation of existing PingOne objects before creating (the `already exists` handling in `provisionEnvironment` covers idempotency)
 
 </deferred>
 
 ---
 
 *Phase: 141-local-setup-wizard-guided-pingone-configuration-app-resource*
-*Context gathered: 2026-04-13 via /gsd-discuss-phase 141*
+*Context gathered: 2026-04-13*
