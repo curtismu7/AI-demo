@@ -546,7 +546,11 @@ Open the existing end-user OIDC application. Verify or update:
 |-------|-------|
 | **PKCE enforcement** | `S256_REQUIRED` |
 | **Token endpoint auth method** | `CLIENT_SECRET_POST` |
-| **Redirect URIs** | `https://banking-demo-puce.vercel.app/api/auth/oauthuser/callback` |
+| **Redirect URIs** | `https://banking-demo-puce.vercel.app/api/auth/oauthuser/callback` (production) |
+| | `http://localhost:3000/api/auth/oauthuser/callback` (local dev) |
+| | `http://localhost:4000/api/auth/oauthuser/callback` (local dev — `run-bank.sh` port) |
+
+> **Note:** PingOne allows multiple redirect URIs per app. Add all environments you intend to use. The URI sent in the authorize request must exactly match one of the registered values.
 
 **Resources tab → Allowed scopes — enable:**
 
@@ -618,7 +622,7 @@ No custom mapping needed here for the token exchange. The `act` claim in the MCP
 
 ### 2c. Create: Super Banking MCP Token Exchanger  *(Client Credentials for PingOne API Token)*
 
-Click **Add Application**:
+In the PingOne console sidebar, expand **Applications** → select **AI Agents** → click **Add Application**:
 
 **Overview tab:**
 

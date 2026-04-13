@@ -598,7 +598,11 @@ Open (or create) the end-user OIDC application:
 |-------|-------|
 | **PKCE enforcement** | `S256_REQUIRED` |
 | **Token endpoint auth method** | `CLIENT_SECRET_POST` |
-| **Redirect URIs** | `https://banking-demo-puce.vercel.app/api/auth/oauthuser/callback` |
+| **Redirect URIs** | `https://banking-demo-puce.vercel.app/api/auth/oauthuser/callback` (production) |
+| | `http://localhost:3000/api/auth/oauthuser/callback` (local dev) |
+| | `http://localhost:4000/api/auth/oauthuser/callback` (local dev — `run-bank.sh` port) |
+
+> **Note:** PingOne allows multiple redirect URIs per app. Add all environments you intend to use. The URI sent in the authorize request must exactly match one of the registered values.
 
 **Resources tab → Allowed scopes — enable:**
 
@@ -618,7 +622,7 @@ This is the AI Agent's OAuth identity in PingOne. Its client ID UUID is what you
 1. Gets its own Actor Token via Client Credentials (audience: `https://agent-gateway.pingdemo.com`) — proves its identity to PingOne during the exchange
 2. Performs Exchange #1: `subject_token` = Subject Token + `actor_token` = Agent Actor Token → Agent Exchanged Token scoped to `https://mcp-server.pingdemo.com`
 
-Click **Add Application** and fill in:
+In the PingOne console sidebar, expand **Applications** → select **AI Agents** → click **Add Application**:
 
 **Overview tab:**
 
