@@ -1448,6 +1448,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       type="button"
                       className="deposit-btn"
                       onClick={() => setDepositAccount(account)}
+                      disabled={!user}
+                      title={!user ? 'Log in to deposit funds' : undefined}
                     >
                       Deposit
                     </button>
@@ -1455,6 +1457,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                       type="button"
                       className="withdraw-btn"
                       onClick={() => setWithdrawAccount(account)}
+                      disabled={!user}
+                      title={!user ? 'Log in to withdraw funds' : undefined}
                     >
                       Withdraw
                     </button>
@@ -1511,7 +1515,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   />
                 </div>
                 <div className="form-actions">
-                  <button type="submit" className="transfer-btn">Transfer</button>
+                  <button
+                    type="submit"
+                    className="transfer-btn"
+                    disabled={!user}
+                    title={!user ? 'Log in to transfer funds' : undefined}
+                  >
+                    Transfer
+                  </button>
                   <button
                     type="button"
                     className="cancel-btn"
@@ -1556,7 +1567,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   />
                 </div>
                 <div className="form-actions">
-                  <button type="submit" className="deposit-submit-btn">Deposit</button>
+                  <button
+                    type="submit"
+                    className="deposit-submit-btn"
+                    disabled={!user}
+                    title={!user ? 'Log in to deposit funds' : undefined}
+                  >
+                    Deposit
+                  </button>
                   <button
                     type="button"
                     className="cancel-btn"
@@ -1601,7 +1619,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   />
                 </div>
                 <div className="form-actions">
-                  <button type="submit" className="withdraw-submit-btn">Withdraw</button>
+                  <button
+                    type="submit"
+                    className="withdraw-submit-btn"
+                    disabled={!user}
+                    title={!user ? 'Log in to withdraw funds' : undefined}
+                  >
+                    Withdraw
+                  </button>
                   <button
                     type="button"
                     className="cancel-btn"

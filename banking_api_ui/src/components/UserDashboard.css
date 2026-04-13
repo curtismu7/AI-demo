@@ -923,7 +923,15 @@
 }
 
 .deposit-btn {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
   padding: 10px 16px;
@@ -936,12 +944,28 @@
 }
 
 .deposit-btn:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   color: #fff;
 }
 
 .withdraw-btn {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
   padding: 10px 16px;
@@ -954,7 +978,15 @@
 }
 
 .withdraw-btn:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   color: #fff;
 }
 
@@ -1066,7 +1098,15 @@
 }
 
 .transfer-btn {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
   padding: 12px 20px;
@@ -1078,7 +1118,15 @@
 }
 
 .deposit-submit-btn {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
   padding: 12px 20px;
@@ -1090,12 +1138,28 @@
 }
 
 .deposit-submit-btn:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   color: #fff;
 }
 
 .withdraw-submit-btn {
-  background: linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red-mid) 0%, var(--app-primary-red) 100%);
   color: #fff;
   border: 1px solid var(--app-primary-red-border);
   padding: 12px 20px;
@@ -1107,12 +1171,28 @@
 }
 
 .withdraw-submit-btn:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   color: #fff;
 }
 
 .transfer-btn:hover {
-  background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.25) 2px,
+      rgba(255, 255, 255, 0.25) 4px
+    ),
+    linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   color: #fff;
 }
 
@@ -1132,6 +1212,49 @@
   background: linear-gradient(180deg, var(--app-primary-red) 0%, var(--app-primary-red-hover) 100%);
   color: #fff;
 }
+
+/* ── Phase 142: Standard authz buttons — disabled + pending states ────── */
+.transfer-btn:disabled,
+.deposit-btn:disabled,
+.withdraw-btn:disabled,
+.deposit-submit-btn:disabled,
+.withdraw-submit-btn:disabled {
+  opacity: 0.5;
+  filter: grayscale(100%);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Authorization pending (PingOne MFA step-up in progress) */
+.transfer-btn.btn-pending,
+.deposit-submit-btn.btn-pending,
+.withdraw-submit-btn.btn-pending {
+  opacity: 0.7;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-pending-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+/* ─────────────────────────────────────────────────────────────────────── */
+
 
 
 /* Transaction section header + Agent Activity tab filter */
