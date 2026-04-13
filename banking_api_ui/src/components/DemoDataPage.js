@@ -1740,7 +1740,7 @@ export default function DemoDataPage({ user, onLogout }) {
                   </label>
                   {delegationMode === '2exchange' && (
                     <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 4, padding: '0.35rem 0.6rem' }}>
-                      ⚠️ Also enable the <strong>"2-Exchange Delegated Chain"</strong> feature flag and set <code>AI_AGENT_CLIENT_ID</code> + <code>AI_AGENT_CLIENT_SECRET</code> env vars.
+                      ⚠️ Also enable the <strong>"2-Exchange Delegated Chain"</strong> feature flag and set <code>AI_AGENT_CLIENT_ID</code> + <code>AI_AGENT_CLIENT_SECRET</code> in <strong>Vercel → Settings → Environment Variables</strong> (or your <code>.env</code> file for local dev).
                     </div>
                   )}
                 </div>

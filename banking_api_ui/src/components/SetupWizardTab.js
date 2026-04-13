@@ -204,7 +204,7 @@ const SetupWizardTab = () => {
       `PINGONE_WORKER_CLIENT_SECRET=${formData.workerClientSecret}`,
       '',
       '# MFA Step-up Configuration',
-      `PINGONE_STEP_UP_ACR_VALUE=${formData.stepUpAcrValue}`,
+      `STEP_UP_ACR_VALUE=${formData.stepUpAcrValue}`,
       '',
     ];
     
