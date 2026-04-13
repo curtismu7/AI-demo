@@ -2170,4 +2170,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 143 to break down)
 
+### Phase 144: Agent token exchange from ID token — agent never receives access token, only scoped to user data via RFC 8693 token exchange
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 143
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 144 to break down)
+
 ---
