@@ -2183,4 +2183,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 144 to break down)
 
+### Phase 145: MCP server audit — does the server meet spec requirements and provide the agent with tools + metadata (capabilities, descriptions, parameter schemas) to make decisions dynamically, not hardcoded tool calls
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 144
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 145 to break down)
+
 ---

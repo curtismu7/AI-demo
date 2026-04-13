@@ -125,6 +125,7 @@ Plan: unplanned (run /gsd-plan-phase 14)
 ## Accumulated Context
 
 ### Roadmap Evolution
+- Phase 145 added: MCP server audit — does the server meet spec requirements and provide the agent with tools + metadata (capabilities, descriptions, parameter schemas) to make decisions dynamically, not hardcoded tool calls
 
 - Phase 144 added: Agent token exchange from ID token — agent never receives access token, only scoped to user data via RFC 8693 token exchange
 - Phase 143 added: UX agent banking actions via MCP server — new user token scoped to agent with aud claim, then 1-token or 2-token exchange for MCP token (FF), pattern evolution from standard authz to agentic authz
