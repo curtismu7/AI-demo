@@ -28,7 +28,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 
@@ -516,14 +515,14 @@ app.use(restoreSessionFromCookie);
 // (Lambda B cold-start race), attempt one Upstash read with the session ID to
 // pull the tokens that Lambda A wrote. Non-fatal; no-op outside Upstash-REST deployments.
 app.use(async (req, _res, next) => {
-    if (!req.session ? ._restoredFromCookie) return next();
+    if (!req.session?._restoredFromCookie) return next();
     if (req.session.oauthTokens && req.session.oauthTokens.accessToken !== '_cookie_session') return next();
     if (!sessionStore || typeof sessionStore.get !== 'function') return next();
     const sid = req.sessionID;
     if (!sid) return next();
     try {
         sessionStore.get(sid, (err, stored) => {
-            if (!err && stored ? .oauthTokens && stored.oauthTokens.accessToken !== '_cookie_session') {
+            if (!err && stored ?.oauthTokens && stored.oauthTokens.accessToken !== '_cookie_session') {
                 Object.assign(req.session, stored);
                 req.session._restoredFromCookie = false;
                 req.session.save((saveErr) => {
@@ -588,9 +587,9 @@ app.post('/api/auth/switch', (req, res) => {
     }
 
     // Stash current tokens (non-fatal; best-effort)
-    const prevTokens = req.session ? .oauthTokens;
-    const prevUser = req.session ? .user;
-    if (prevTokens && upstashSessionStoreInstance && prevUser ? .id) {
+    const prevTokens = req.session ?.oauthTokens;
+    const prevUser = req.session ?.user;
+    if (prevTokens && upstashSessionStoreInstance && prevUser ?.id) {
         const key = `sessions:prev:${prevUser.id}`;
         upstashSessionStoreInstance.kv.set(key, JSON.stringify({
                 oauthTokens: prevTokens,
@@ -647,9 +646,9 @@ app.post('/api/auth/clear-session', (req, res) => {
 // browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/logout).
 // Called as a full page navigation (window.location.href), NOT via axios.
 app.get('/api/auth/logout', async (req, res) => {
-    const idToken = req.session.oauthTokens ? .idToken || null;
-    const accessToken = req.session.oauthTokens ? .accessToken || null;
-    const refreshToken = req.session.oauthTokens ? .refreshToken || null;
+    const idToken = req.session.oauthTokens ?.idToken || null;
+    const accessToken = req.session.oauthTokens ?.accessToken || null;
+    const refreshToken = req.session.oauthTokens ?.refreshToken || null;
     const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
 
     // RFC 7009 — revoke tokens before destroying the session so they can no
@@ -704,7 +703,7 @@ function summarizeOAuthTokensForDebug(tokens) {
             tokens.refreshToken.length > 0 &&
             tokens.refreshToken !== '_cookie_session',
         hasIdToken: typeof tokens.idToken === 'string' && tokens.idToken.length > 0,
-        expiresAt: tokens.expiresAt ? ? null,
+        expiresAt: tokens.expiresAt ?? null,
         expiresInSec: typeof tokens.expiresAt === 'number' ?
             Math.round((tokens.expiresAt - Date.now()) / 1000) : null,
     };
@@ -721,7 +720,7 @@ function buildSessionDiagnosisHints(req, {
     const hints = [];
     const stub = accessTokenStub === true;
 
-    if (req.session ? ._restoredFromCookie) {
+    if (req.session?._restoredFromCookie) {
         hints.push(
             'sessionRestored: express had no user before _auth cookie middleware — identity rebuilt from signed cookie.',
         );
@@ -769,7 +768,7 @@ function buildSessionDiagnosisHints(req, {
             hints.push('Redis row and req.session both have real tokens — OK.');
         }
     }
-    if (!stub && req.session ? .oauthTokens ? .accessToken && String(req.session.oauthTokens.accessToken).startsWith('eyJ')) {
+    if (!stub && req.session ?.oauthTokens ?.accessToken && String(req.session.oauthTokens.accessToken).startsWith('eyJ')) {
         hints.push('req.session has JWT-shaped access token — OK for BFF-backed routes.');
     }
     return hints;
@@ -797,7 +796,7 @@ app.get('/api/auth/debug', async (req, res) => {
     if (upstashSessionStoreInstance) {
         const now = Date.now();
         if (!upstashSessionStoreInstance._pingCache ||
-            now - upstashSessionStoreInstance._pingCache.ts > 300 _000) { // 5-minute cache
+            now - upstashSessionStoreInstance._pingCache.ts > 300_000) { // 5-minute cache
             const pingResult = await upstashSessionStoreInstance.ping();
             upstashSessionStoreInstance._pingCache = {
                 ts: now,
@@ -813,35 +812,35 @@ app.get('/api/auth/debug', async (req, res) => {
         sessionStoreHealthy = result.healthy;
         sessionStoreError = result.error;
         // If circuit is currently open, override healthy to false without calling ping again
-        if (upstashSessionStoreInstance._circuit ? .isOpen) {
+        if (upstashSessionStoreInstance._circuit ?.isOpen) {
             sessionStoreHealthy = false;
             sessionStoreError = upstashSessionStoreInstance._circuit.lastError || 'circuit open — Upstash bypassed';
         }
     }
 
-    const accessTokenStub = req.session ? .oauthTokens ? .accessToken === '_cookie_session';
+    const accessTokenStub = req.session ?.oauthTokens ?.accessToken === '_cookie_session';
     const cookieOnlyBffSession =
-        req.session ? ._restoredFromCookie === true || accessTokenStub;
-    const token = req.session ? .oauthTokens ? .accessToken;
+        req.session?._restoredFromCookie === true || accessTokenStub;
+    const token = req.session ?.oauthTokens ?.accessToken;
     const hasOAuthToken = !!(token && token !== '_cookie_session');
     const oauthUserWouldAuthenticate = !!(
-        req.session ? .user &&
+        req.session ?.user &&
         hasOAuthToken &&
         req.session.oauthType === 'user'
     );
 
     let redisPersist = null;
     if (deepProbe && upstashSessionStoreInstance && typeof upstashSessionStoreInstance.getPersistenceDebug === 'function') {
-        redisPersist = await upstashSessionStoreInstance.getPersistenceDebug(req.session ? .id);
+        redisPersist = await upstashSessionStoreInstance.getPersistenceDebug(req.session ?.id);
     }
 
     const sessionInMemoryCache =
         upstashSessionStoreInstance &&
         typeof upstashSessionStoreInstance.hasInMemorySessionCache === 'function' ?
-        upstashSessionStoreInstance.hasInMemorySessionCache(req.session ? .id) :
+        upstashSessionStoreInstance.hasInMemorySessionCache(req.session ?.id) :
         null;
 
-    const oauthTokenSummary = summarizeOAuthTokensForDebug(req.session ? .oauthTokens);
+    const oauthTokenSummary = summarizeOAuthTokensForDebug(req.session ?.oauthTokens);
     const diagnosisHints = buildSessionDiagnosisHints(req, {
         sessionStoreHealthy,
         accessTokenStub,
@@ -862,16 +861,16 @@ app.get('/api/auth/debug', async (req, res) => {
         request: {
             vercelId: req.get('x-vercel-id') || null,
             vercelDeploymentId: req.get('x-vercel-deployment-id') || null,
-            forwardedFor: (req.get('x-forwarded-for') || '').split(',')[0] ? .trim() || null,
+            forwardedFor: (req.get('x-forwarded-for') || '').split(',')[0] ?.trim() || null,
         },
         sessionPresent: !!req.session,
-        sessionId: req.session ? .id ? req.session.id.slice(0, 8) + '...' : null,
-        sessionIdLength: req.session ? .id ? String(req.session.id).length : null,
-        sessionHasUser: !!req.session ? .user,
-        sessionOauthType: req.session ? .oauthType || null,
-        sessionClientType: req.session ? .clientType || null,
-        sessionRestored: !!req.session ? ._restoredFromCookie,
-        sessionHasTokens: !!req.session ? .oauthTokens ? .accessToken,
+        sessionId: req.session ?.id ? req.session.id.slice(0, 8) + '...' : null,
+        sessionIdLength: req.session ?.id ? String(req.session.id).length : null,
+        sessionHasUser: !!req.session ?.user,
+        sessionOauthType: req.session ?.oauthType || null,
+        sessionClientType: req.session ?.clientType || null,
+        sessionRestored: !!req.session?._restoredFromCookie,
+        sessionHasTokens: !!req.session ?.oauthTokens ?.accessToken,
         accessTokenStub,
         oauthTokenSummary,
         cookieOnlyBffSession,
@@ -887,10 +886,10 @@ app.get('/api/auth/debug', async (req, res) => {
         /** Non-null when sessionStoreHealthy is false — the actual error message for debugging. */
         sessionStoreError,
         /** Circuit breaker state: CLOSED (normal) | OPEN (bypassing Redis) | HALF_OPEN (probing) */
-        sessionCircuitState: upstashSessionStoreInstance ? ._circuit ? .state ? ? null,
-        sessionCircuitLastError: upstashSessionStoreInstance ? ._circuit ? .lastError ? ? null,
+        sessionCircuitState: upstashSessionStoreInstance ?._circuit ?.state ?? null,
+        sessionCircuitLastError: upstashSessionStoreInstance ?._circuit ?.lastError ?? null,
         /** Age of cached ping result (ms); null if not yet pinged. */
-        sessionPingCacheAgeMs: upstashSessionStoreInstance ? ._pingCache ?
+        sessionPingCacheAgeMs: upstashSessionStoreInstance ?._pingCache ?
             Date.now() - upstashSessionStoreInstance._pingCache.ts :
             null,
         /** Warm Lambda: session blob served from 45s in-process cache (Upstash only). */
@@ -905,8 +904,8 @@ app.get('/api/auth/debug', async (req, res) => {
         sessionRedisConnectError: sessionRedisConnectError || null,
         storageType: configStore.getStorageType(),
         isConfigured: configStore.isConfigured(),
-        userEmail: req.session ? .user ? .email || null,
-        userRole: req.session ? .user ? .role || null,
+        userEmail: req.session ?.user ?.email || null,
+        userRole: req.session ?.user ?.role || null,
         diagnosisHints,
         /** One Redis GET for current sid — pass ?deep=1. Omitted unless deep probe ran. */
         redisPersist,
@@ -944,9 +943,9 @@ app.get('/api/auth/oauth/redirect-info', (req, res) => {
 
 // Attach cached session-store health to req so /api/auth/session can include it.
 app.use('/api/auth', (req, _res, next) => {
-    const ping = upstashSessionStoreInstance ? ._pingCache ? .result;
-    req._sessionStoreError = ping ? .error ? ? null;
-    req._sessionStoreHealthy = typeof ping ? .healthy === 'boolean' ? ping.healthy : null;
+    const ping = upstashSessionStoreInstance ?._pingCache ?.result;
+    req._sessionStoreError = ping ?.error ?? null;
+    req._sessionStoreHealthy = typeof ping ?.healthy === 'boolean' ? ping.healthy : null;
     next();
 });
 app.use('/api/auth', authRoutes);
@@ -970,7 +969,7 @@ app.use('/api/setup', setupRoutes);
 app.use('/api/mcp/inspector', mcpInspectorRoutes);
 // MCP Audit: admin-only route — proxies to MCP server /audit internal endpoint (D-11)
 app.use('/api/mcp/audit', (req, res, next) => {
-    if (!req.session ? .user || req.session.user.role !== 'admin') {
+    if (!req.session ?.user || req.session.user.role !== 'admin') {
         return res.status(401).json({
             error: 'admin_required',
             message: 'Admin session required to access audit log.'
@@ -1009,7 +1008,7 @@ app.use('/api/transactions', requireSession, authenticateToken, transactionRoute
 // /demo-data page never triggers a 401 console error.  All mutating methods (PUT, PATCH)
 // still hit authenticateToken via the router below.
 app.get('/api/demo-scenario', (req, res, next) => {
-    if (req.session ? .user) return next();
+    if (req.session ?.user) return next();
     return res.json({
         accounts: [],
         settings: {},
@@ -1052,7 +1051,7 @@ app.get('/api/config/validation-mode', (req, res) => {
 
 app.post('/api/config/validation-mode', (req, res) => {
     // Require admin session to change validation mode
-    if (!req.session ? .user) {
+    if (!req.session ?.user) {
         return res.status(401).json({
             error: 'authentication_required',
             message: 'Session required to change validation mode'
@@ -1407,7 +1406,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
             });
         }
 
-        const sessionUser = req.session ? .user;
+        const sessionUser = req.session ?.user;
         const isExchangeScopeError =
             err.httpStatus === 400 ||
             err.code === 'token_exchange_failed' ||
@@ -1416,19 +1415,19 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
             '[MCP Fallback:DEBUG] tool=%s httpStatus=%s errCode=%s pingoneError=%s ' +
             'sessionUser.id=%s sessionUser.oauthId=%s isExchangeScopeError=%s',
             tool,
-            err.httpStatus ? ? '(none)',
-            err.code ? ? '(none)',
-            err.pingoneError ? ? '(none)',
-            sessionUser ? .id ? ? '(missing — fallback will NOT fire)',
-            sessionUser ? .oauthId ? ? '(none)',
+            err.httpStatus ?? '(none)',
+            err.code ?? '(none)',
+            err.pingoneError ?? '(none)',
+            sessionUser ?.id ?? '(missing — fallback will NOT fire)',
+            sessionUser ?.oauthId ?? '(none)',
             isExchangeScopeError
         );
-        if (sessionUser ? .id && isExchangeScopeError) {
+        if (sessionUser ?.id && isExchangeScopeError) {
             const fallbackEvents = err.tokenEvents && err.tokenEvents.length ? err.tokenEvents : [];
             const effectiveUserId = sessionUser.oauthId || sessionUser.id;
             console.log(
                 '[MCP Local] %s — exchange failed (%s), falling back to local handler. effectiveUserId=%s',
-                tool, err.code ? ? err.httpStatus, effectiveUserId
+                tool, err.code ?? err.httpStatus, effectiveUserId
             );
             try {
                 emit({
@@ -1443,7 +1442,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
                 console.log('[MCP Local] %s — local fallback result keys=%s resultError=%s',
                     tool,
                     result ? Object.keys(result).join(',') : '(null)',
-                    result ? .error ? ? '(none)'
+                    result ?.error ?? '(none)'
                 );
                 return res.json({
                     result,
@@ -1475,8 +1474,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         });
         // No bearer token (cookie-only or degraded session) — use local handler if session user present.
         // This lets the banking agent work for basic operations even without a fully-hydrated Redis session.
-        const sessionUser = req.session ? .user;
-        if (sessionUser ? .id) {
+        const sessionUser = req.session ?.user;
+        if (sessionUser ?.id) {
             console.log(`[MCP Local] ${tool} — no bearer token (cookie-only session), using local handler`);
             try {
                 emit({
@@ -1528,7 +1527,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
             tool,
             agentToken,
             userSub,
-            userAcr: req.session ? .user ? .acr,
+            userAcr: req.session ?.user ?.acr,
         });
         if (mcpAuthz.ran && mcpAuthz.block) {
             emit({
@@ -1688,8 +1687,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
             phase: 'mcp_remote_unreachable'
         });
         // ── Local fallback ──────────────────────────────────────────────────────
-        const sessionUser = req.session ? .user;
-        if (!sessionUser ? .id) {
+        const sessionUser = req.session ?.user;
+        if (!sessionUser ?.id) {
             emit({
                 phase: 'local_fallback_blocked_no_user'
             });

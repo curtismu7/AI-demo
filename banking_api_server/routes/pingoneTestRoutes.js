@@ -298,7 +298,8 @@ router.get('/verify-assets', async (req, res) => {
     );
     const missingResourcesByApp = {};
     const missingScopesByApp = {};
-    apps.forEach(app => {
+    // Only check expected Super Banking apps — not every app in the environment
+    apps.filter(app => EXPECTED_APP_NAMES.includes(app.name)).forEach(app => {
       const grantedResources = appResourcesMap[app.id] || [];
       const allGrantedScopes = grantedResources.flatMap(r => r.scopes || []);
       const missingScopes = EXPECTED_BANKING_SCOPES.filter(s => !allGrantedScopes.includes(s));
@@ -334,7 +335,8 @@ router.get('/verify-assets', async (req, res) => {
         data: usersResult._embedded ? usersResult._embedded.users || [] : []
       },
       tokenPolicies: {
-        status: tokenPoliciesResult.success ? 'passed' : 'failed',
+        // not_available = worker client lacks mgmt API permission (informational only)
+        status: tokenPoliciesResult.success ? 'passed' : 'not_available',
         count: tokenPoliciesResult.tokenPolicies ? tokenPoliciesResult.tokenPolicies.length : 0,
         data: tokenPoliciesResult.tokenPolicies || []
       },
