@@ -2162,13 +2162,16 @@ Plans:
 
 ### Phase 143: UX: agent banking actions via MCP server — new user token scoped to agent with aud claim, then 1-token or 2-token exchange for MCP token (FF), showing pattern evolution from standard authz to agentic authz
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Enable agent-initiated banking transactions with user approval gates, real-time feedback, and live token exchange path demonstration.
+**Requirements**: TOKEN-01, TOKEN-02, AGENT-APPROVAL-01, AGENT-ACTIVITY-01
 **Depends on:** Phase 142
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 143 to break down)
+- [ ] 143-01-PLAN.md — Approval threshold HITL modal + error handling service
+- [ ] 143-02-PLAN.md — Token path display + real-time progress feedback
+- [ ] 143-03-PLAN.md — Agent Activity tab + feature flag for token exchange path
+- [ ] 143-04-PLAN.md — Manual verification checkpoint
 
 ### Phase 144: Agent token exchange from ID token — agent never receives access token, only scoped to user data via RFC 8693 token exchange
 
