@@ -78,6 +78,18 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-14 — Bug: Dashboard nav link displayed red instead of white
+
+- **Root cause:** `.chase-nav-link--active` CSS selector was missing explicit `color` property. While it should inherit `color: white` from `.chase-nav-link` base style, CSS cascade or specificity issues prevented proper inheritance, causing the active Dashboard menu item to render in red/orange.
+- **Fix:** 
+  1. Added `color: #ffffff;` to `.chase-nav-link--active` selector (light mode)
+  2. Added `color: var(--dash-text, #e8edf5);` to `html[data-theme='dark'] .chase-nav-link--active` selector (dark mode)
+  3. Ensures explicit color values override any inherited or cascading rules
+- **Files modified:** `banking_api_ui/src/components/ChaseTopNav.css`
+- **Commits:** `d32344a`
+- **Regression check:** `cd banking_api_ui && npm run build` → exit 0. Dashboard nav link now displays pure white (#ffffff) in light mode, matching other nav items. Dark mode uses theme variable for consistency.
+- **Do not break:** All other nav link colors and states unchanged; active state now has explicit color to prevent regression. Other nav items (Home, Config, etc.) unaffected.
+
 ### 2026-04-12 — Phase 100 start: runtime-configurable agent transaction stop limits
 
 - **Change:** Started Phase 100 implementation by wiring agent delegated transaction stop limits into live runtime settings + admin security UI.
