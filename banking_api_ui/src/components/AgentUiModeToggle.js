@@ -62,8 +62,8 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
         await applyAndReload({ placement: 'bottom', fab }, { reload: true });
         return;
       }
-      if (p === 'left-dock' || p === 'right-dock') {
-        setDashboardLayout('classic');
+      if (p === 'right-dock') {
+        setDashboardLayout('split3');
         await applyAndReload({ placement: p, fab }, { reload: true });
         return;
       }
@@ -92,7 +92,7 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
   const showFabCheckbox =
     isLandingNav
       ? placement === 'bottom'
-      : placement === 'middle' || placement === 'bottom' || placement === 'left-dock' || placement === 'right-dock';
+      : placement === 'middle' || placement === 'bottom' || placement === 'right-dock';
 
   return (
     <div
@@ -102,24 +102,13 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
         ariaLabel ||
         (isLandingNav
           ? 'AI banking agent: bottom dock or float'
-          : 'AI banking agent: left dock, middle column, right dock, bottom dock, or float; optional FAB')
+          : 'AI banking agent: middle column, right dock, bottom dock, or float; optional FAB')
       }
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
         {label}
       </span>
       <div className="agent-ui-mode-toggle__segmented" role="toolbar" aria-labelledby={`${idPrefix}-legend`}>
-        {!isLandingNav && (
-          <button
-            type="button"
-            className={`agent-ui-mode-toggle__btn${placement === 'left-dock' ? ' agent-ui-mode-toggle__btn--active' : ''}`}
-            onClick={() => void handlePlacement('left-dock')}
-            aria-pressed={placement === 'left-dock'}
-            title="Assistant in a collapsible left sidebar (all pages)"
-          >
-            Left
-          </button>
-        )}
         {!isLandingNav && (
           <button
             type="button"

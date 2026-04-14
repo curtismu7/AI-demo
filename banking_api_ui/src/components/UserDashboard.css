@@ -131,6 +131,18 @@
   border-top: 1px solid var(--chase-medium-gray);
 }
 
+/* Right-dock variant: token | banking | agent (agent on right) */
+.ud-body.ud-body--dashboard-split3-right {
+  /* Token rail | Banking | Agent (on right) */
+  grid-template-columns: minmax(240px, 260px) 1fr minmax(360px, 420px);
+}
+
+/* Right variant: agent column removes left border (it's the rightmost) */
+.ud-body--dashboard-split3-right .ud-agent-column {
+  border-left: 1px solid var(--chase-medium-gray);
+  border-right: none;
+}
+
 .ud-agent-column {
   min-width: 0;
   border-left: 1px solid var(--chase-medium-gray);

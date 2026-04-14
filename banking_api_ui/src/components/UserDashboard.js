@@ -55,6 +55,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   useCurrentUserTokenEvent(); // Seed the token chain with current user's session token on mount
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(() => agentPlacement === 'middle');
+  /** Right layout: auto-opens when placement is 'right-dock'; mirrors middle on the right column. */
+  const [rightAgentOpen, setRightAgentOpen] = useState(() => agentPlacement === 'right-dock');
   const [dashboardLayout, setDashboardLayoutState] = useState(() => getDashboardLayout());
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
@@ -279,6 +281,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   useEffect(() => {
     if (agentPlacement === 'middle') {
       setMiddleAgentOpen(true);
+      setDashboardLayoutState('split3');
+      setDashboardLayout('split3');
+    } else if (agentPlacement === 'right-dock') {
+      setRightAgentOpen(true);
       setDashboardLayoutState('split3');
       setDashboardLayout('split3');
     } else if (agentPlacement === 'bottom') {
@@ -1752,7 +1758,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     <div
       className={`user-dashboard user-dashboard--2026${
         agentPlacement === 'bottom' && dashboardLayout === 'classic' ? ' user-dashboard--embed-agent' : ''
-      }${agentPlacement === 'middle' && middleAgentOpen ? ' user-dashboard--split3' : ''}`}
+      }${(agentPlacement === 'middle' && middleAgentOpen) || (agentPlacement === 'right-dock' && rightAgentOpen) ? ' user-dashboard--split3' : ''}`}
     >
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
@@ -1858,7 +1864,34 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       </div>
 
       {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
-      {agentPlacement === 'middle' && middleAgentOpen ? (
+      {agentPlacement === 'right-dock' && rightAgentOpen ? (
+        <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3 ud-body--dashboard-split3-right">
+          <aside className="ud-token-rail" aria-label="Token chain">
+            <div className="section ud-token-rail__inner">
+              <ExchangeModeToggle />
+              <TokenChainDisplay />
+              <ApiCallDisplay sessionId="user-dashboard" />
+            </div>
+          </aside>
+
+          <main className="ud-center ud-banking-column" id="main-dashboard-content" tabIndex={-1}>
+            {renderBankingMain()}
+          </main>
+
+          <section className="ud-agent-column" ref={agentColumnRef} aria-label="AI banking assistant">
+            <div className="embedded-banking-agent ud-dashboard-inline-agent">
+              <BankingAgent
+                user={user}
+                onLogout={onLogout}
+                mode="inline"
+                embeddedFocus="banking"
+                distinctFloatingChrome
+                splitColumnChrome
+              />
+            </div>
+          </section>
+        </div>
+      ) : agentPlacement === 'middle' && middleAgentOpen ? (
         <div className="dashboard-content ud-body ud-body--2026 ud-body--dashboard-split3">
           <aside className="ud-token-rail" aria-label="Token chain">
             <div className="section ud-token-rail__inner">
@@ -1925,6 +1958,18 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
       {/* Middle-layout open FAB — shown when middle placement hasn't been expanded yet.
           App.js global float is suppressed for middle so there is exactly one FAB. */}
+      {agentPlacement === 'right-dock' && !rightAgentOpen && (
+        <button
+          type="button"
+          className="banking-agent-fab"
+          onClick={() => setRightAgentOpen(true)}
+          aria-label="Open AI banking assistant in right column"
+          title="Open AI Agent"
+        >
+          <span className="banking-agent-fab-icon">🏦</span>
+          <span className="banking-agent-fab-label">AI Agent</span>
+        </button>
+      )}
       {agentPlacement === 'middle' && !middleAgentOpen && (
         <button
           type="button"
