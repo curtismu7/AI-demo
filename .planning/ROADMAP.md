@@ -2234,11 +2234,11 @@ Plans:
 **Goal:** Fix Phase 146 gaps: scope detection targets the banking resource server by name/audience (not array index), expose missing canonical scopes in verify-assets response, and add Fix-in-PingOne action buttons to create the banking resource server and missing canonical scopes from the test page.
 **Requirements**: SCOPE-149-01, SCOPE-149-02, SCOPE-149-03
 **Depends on:** Phase 148
-**Plans:** 2 plans in 2 waves
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 149-01-PLAN.md — BFF: fix banking RS detection in verify-assets + add POST /api/pingone-test/fix-banking-resource-server
-- [ ] 149-02-PLAN.md — UI: scope-fix-panel with conditional fix buttons + scopes tab RS name + build verification
+- [x] 149-02-PLAN.md — UI: scope-fix-panel with conditional fix buttons + scopes tab RS name + build verification
 
 ### Phase 150: Evaluate Anthropic Managed Agents SDK — replace custom MCP infrastructure
 
