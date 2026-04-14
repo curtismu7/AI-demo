@@ -2179,11 +2179,11 @@ Plans:
 **Goal:** Add ff_id_token_exchange feature flag (default OFF); when ON, BFF performs RFC 8693 exchange using user ID token as subject_token so the agent never receives the user access token — only a narrowly-scoped MCP token.
 **Requirements**: REQ-144-01, REQ-144-02, REQ-144-03, REQ-144-04, REQ-144-05
 **Depends on:** Phase 143
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 144-01-PLAN.md — BFF: register ff_id_token_exchange, add performTokenExchangeFromIdToken, add /exchange-id-token-to-mcp route
-- [ ] 144-02-PLAN.md — UI: ID Token Exchange test row in PingOneTestPage + idTokenMode label in TokenChainDisplay
+- [x] 144-02-PLAN.md — UI: ID Token Exchange test row in PingOneTestPage + idTokenMode label in TokenChainDisplay
 
 ### Phase 145: MCP server audit — does the server meet spec requirements and provide the agent with tools + metadata (capabilities, descriptions, parameter schemas) to make decisions dynamically, not hardcoded tool calls
 
