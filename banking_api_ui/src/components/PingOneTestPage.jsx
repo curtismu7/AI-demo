@@ -10,7 +10,7 @@ const TEST_CONFIG = {
   authzToken: {
     appName: 'Super Banking User App',
     appType: 'WEB_APP',
-    requiredScopes: ['openid', 'profile', 'email', 'banking:accounts:read', 'banking:transactions:read'],
+    requiredScopes: ['openid', 'profile', 'email', 'banking:read', 'banking:accounts:read', 'banking:transactions:read'],
     audience: null,
     spel: null
   },
@@ -59,7 +59,7 @@ const TEST_CONFIG = {
   scopes: {
     appName: 'Super Banking MCP Server',
     appType: 'RESOURCE_SERVER',
-    requiredScopes: ['banking:accounts:read', 'banking:accounts:write', 'banking:transactions:read', 'banking:transactions:write'],
+    requiredScopes: ['banking:read', 'banking:write', 'banking:accounts:read', 'banking:accounts:write', 'banking:transactions:read', 'banking:transactions:write'],
     audience: 'https://mcp-server.pingdemo.com',
     spel: null
   },
@@ -78,7 +78,10 @@ const EXPECTED_APP_NAMES = [
   'Super Banking MCP Token Exchanger',
   'Super Banking AI Agent App',
 ];
+// Canonical scopes (per SCOPE_VOCABULARY.md) + compound scopes (PingOne resource-level, deprecated)
 const EXPECTED_BANKING_SCOPES = [
+  'banking:read',
+  'banking:write',
   'banking:accounts:read',
   'banking:accounts:write',
   'banking:transactions:read',

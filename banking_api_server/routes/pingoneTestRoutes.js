@@ -1,6 +1,12 @@
 /**
  * @file pingoneTestRoutes.js
  * @description Routes for PingOne test page - comprehensive testing of PingOne integration
+ *
+ * Canonical scope vocabulary: see SCOPE_VOCABULARY.md
+ * - banking:read, banking:write — canonical application scopes
+ * - banking:accounts:read, banking:transactions:read/write — compound (PingOne resource-level, deprecated)
+ * - Token exchange endpoints use MCP_TOKEN_EXCHANGE_SCOPES env var; fallback is compound scopes
+ *   until PingOne resource servers are migrated to canonical names.
  */
 
 const express = require('express');
@@ -242,7 +248,10 @@ router.get('/verify-assets', async (req, res) => {
       'Super Banking MCP Token Exchanger',
       'Super Banking AI Agent App'
     ];
+    // Canonical scopes (per SCOPE_VOCABULARY.md) + compound scopes (PingOne resource-level, deprecated)
     const EXPECTED_BANKING_SCOPES = [
+      'banking:read',
+      'banking:write',
       'banking:accounts:read',
       'banking:accounts:write',
       'banking:transactions:read',
