@@ -2214,4 +2214,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 147 to break down)
 
+### Phase 148: Redesign AI Agent chat UI — compact layout, grouped chips, visible prompt field
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 147
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 148 to break down)
+
 ---

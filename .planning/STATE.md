@@ -126,6 +126,8 @@ Plan: Not started
 
 ### Roadmap Evolution
 
+- Phase 148 added: Redesign AI Agent chat UI — compact layout, grouped chips, visible prompt field
+
 - Phase 147 added: Get rid of left agent. Keep the rest (UI layout removal; keep float/middle/bottom agent placements)
 
 - Phase 146 added: Scope vocabulary alignment — match code to PingOne (covers todos #11 + #13)
