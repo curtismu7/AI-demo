@@ -34,6 +34,7 @@ import DelegatedAccessPage from './components/DelegatedAccessPage';
 import DelegationPage from './components/DelegationPage';
 import FeatureFlagsPage from './components/FeatureFlagsPage';
 import ScopeAuditPage from './components/ScopeAuditPage';
+import ScopeReferencePage from './components/ScopeReferencePage';
 import LangChainPage from './pages/LangChainPage';
 import PostmanCollectionsPage from './components/PostmanCollectionsPage';
 import Profile from './components/Profile';
@@ -570,6 +571,7 @@ function AppWithAuth() {
                     />
                     <Route path="/postman" element={<PostmanCollectionsPage user={user} onLogout={logout} />} />
                     <Route path="/scope-audit" element={<AdminRoute user={user}><ScopeAuditPage /></AdminRoute>} />
+                    <Route path="/scope-reference" element={<AdminRoute user={user}><ScopeReferencePage /></AdminRoute>} />
                     {/* Test & educational pages */}
                     <Route path="/pingone-test" element={user ? <PingOneTestPage /> : <Navigate to="/" replace />} />
                     <Route path="/mfa-test" element={user ? <MFATestPage /> : <Navigate to="/" replace />} />

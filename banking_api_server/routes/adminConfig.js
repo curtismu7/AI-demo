@@ -331,4 +331,25 @@ router.put('/hostname', requireAdminOrUnconfigured, async (req, res) => {
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/scope-vocabulary — Canonical scope registry (Phase 146)
+// ---------------------------------------------------------------------------
+
+router.get('/scope-vocabulary', configReadLimiter, async (req, res) => {
+  try {
+    const path = require('path');
+    const fs = require('fs').promises;
+    const vocabPath = path.join(__dirname, '..', 'SCOPE_VOCABULARY.md');
+    const markdown = await fs.readFile(vocabPath, 'utf-8');
+    res.json({ success: true, markdown, timestamp: new Date().toISOString() });
+  } catch (error) {
+    console.error('[scope-vocabulary]', error.message);
+    if (error.code === 'ENOENT') {
+      return res.status(404).json({ success: false, error: 'SCOPE_VOCABULARY.md not found' });
+    }
+    res.status(500).json({ success: false, error: 'Failed to read scope vocabulary' });
+  }
+});
+
 module.exports = router;

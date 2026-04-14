@@ -9,7 +9,7 @@ import {
   MdDeploy, MdBook, MdPerson, MdDescription, MdListAlt, 
   MdSwapHoriz, MdSwapCalls, MdAccountBalance, 
   MdMoneyExchange, MdPlug, MdFileText, MdSecurity, MdApps,
-  MdOutlineChat, MdManageAccounts
+  MdOutlineChat, MdManageAccounts, MdMenuBook
 } from 'react-icons/md';
 import { 
   HiOutlineUsers, HiOutlineBarChart3
@@ -63,6 +63,7 @@ const ADMIN_NAV = [
       { to: '/oauth-debug-logs',   label: 'OAuth Logs',       icon: 'MdSearch' },
       { to: '/scope-audit',        label: 'Scope Audit',      icon: 'MdSecurity' },
       { to: '/client-registration',label: 'Client Reg.',      icon: 'MdFileText' },
+      { to: '/scope-reference',   label: 'Scope Ref.',       icon: 'MdMenuBook' },
     ],
   },
 ];
@@ -104,7 +105,7 @@ export default function SideNav({ user, onLogout }) {
       MdOutlineChat, MdListAlt, HiOutlineUsers, MdAccountBalance,
       MdSwapHoriz, MdSettings, MdLock, MdDataUsage, MdDeploy, MdBook, MdPerson,
       MdPlug, MdSearch, MdFileText, HiOutlineBarChart3, MdMoneyExchange, MdSecurity,
-      MdApps, MdDescription, MdSwapCalls, MdManageAccounts
+      MdApps, MdDescription, MdSwapCalls, MdManageAccounts, MdMenuBook
     };
     
     const IconComponent = iconMap[iconName];
