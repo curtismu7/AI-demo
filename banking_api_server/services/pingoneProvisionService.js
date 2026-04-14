@@ -903,17 +903,19 @@ class PingOneProvisionService {
       // Step 23: Create MCP Exchanger WORKER application
       steps.push({ step: 'mcp-exchanger-app', icon: '🔧', message: 'Creating MCP Exchanger application...' });
       onStep(steps[steps.length - 1]);
-      const mcpExchangerResult = await this.createApplication(
-        'Super Banking MCP Exchanger',
-        'Worker application for on-behalf-of token exchange (Phase 143)',
-        'WORKER',
-        ['client_credentials', 'token_exchange']
-      );
-      provisioned.mcpExchangerApp = mcpExchangerResult.application;
-      if (mcpExchangerResult.exists) {
-        steps.push({ step: 'mcp-exchanger-app', icon: '⚠️', message: 'MCP Exchanger application already exists', resourceKey: mcpExchangerResult.resourceKey });
-      } else {
-        steps.push({ step: 'mcp-exchanger-app', icon: '✅', message: 'MCP Exchanger application created' });
+      {
+        const mcpExchangerResult = await this.createApplication(
+          'Super Banking MCP Exchanger',
+          'Worker application for on-behalf-of token exchange (Phase 143)',
+          'WORKER',
+          ['client_credentials', 'token_exchange']
+        );
+        provisioned.mcpExchangerApp = mcpExchangerResult.application;
+        if (mcpExchangerResult.exists) {
+          steps.push({ step: 'mcp-exchanger-app', icon: '⚠️', message: 'MCP Exchanger application already exists', resourceKey: mcpExchangerResult.resourceKey });
+        } else {
+          steps.push({ step: 'mcp-exchanger-app', icon: '✅', message: 'MCP Exchanger application created' });
+        }
       }
       onStep(steps[steps.length - 1]);
 
