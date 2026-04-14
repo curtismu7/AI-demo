@@ -598,10 +598,15 @@ function fmtAud(aud) {
   const flat = Array.isArray(aud) ? aud[aud.length - 1] : String(aud);
   return flat.split('/').pop() || flat;
 }
-function fmtScope(scope) {
+function fmtScope(scope, injectedScopeNames) {
   if (!scope) return null;
   const s = String(scope);
-  return s.length > 60 ? s.slice(0, 58) + '…' : s;
+  // If no injection info, return simple formatted string
+  if (!injectedScopeNames || injectedScopeNames.length === 0) {
+    return s.length > 60 ? s.slice(0, 58) + '…' : s;
+  }
+  // Return raw string — ClaimsStrip will render per-scope badges
+  return s;
 }
 function fmtExpiry(exp) {
   if (!exp) return null;
@@ -639,14 +644,15 @@ function ClaimsStrip({ event, hints }) {
   const act    = fmtAct(cl.act, hints);
   const mayAct = cl.may_act && cl.may_act.client_id ? String(cl.may_act.client_id) : null;
   const aud    = fmtAud(cl.aud);
-  const scope  = fmtScope(cl.scope);
+  const injectedScopeNames = event.injectedScopeNames || cl.injected_scope_names || [];
+  const scope  = fmtScope(cl.scope, injectedScopeNames);
   const expiry = fmtExpiry(cl.exp);
   const rows = [
     sub    ? { key: 'sub',     val: sub,    cls: '' }             : null,
     act    ? { key: 'act',     val: act,    cls: 'tcd-cs-act' }   : null,
     mayAct ? { key: 'may_act', val: mayAct, cls: 'tcd-cs-may' }   : null,
     aud    ? { key: 'aud',     val: aud,    cls: 'tcd-cs-aud' }   : null,
-    scope  ? { key: 'scope',   val: scope,  cls: 'tcd-cs-scope' } : null,
+    scope  ? { key: 'scope',   val: scope,  cls: 'tcd-cs-scope', injectedScopeNames } : null,
     expiry ? { key: 'exp',     val: expiry, cls: expiry.includes('ago') ? 'tcd-cs-expired' : '' } : null,
   ].filter(Boolean);
   if (rows.length === 0) return null;
@@ -655,7 +661,17 @@ function ClaimsStrip({ event, hints }) {
       {rows.map(r => (
         <span key={r.key} className={'tcd-cs-item' + (r.cls ? ' ' + r.cls : '')}>
           <span className="tcd-cs-key">{r.key}</span>
-          <span className="tcd-cs-val">{r.val}</span>
+          {r.key === 'scope' && r.injectedScopeNames && r.injectedScopeNames.length > 0 ? (
+            <span className="tcd-cs-val tcd-scope-badges">
+              {String(r.val).split(/\s+/).filter(Boolean).map((s, i) => (
+                <span key={i} className={r.injectedScopeNames.includes(s) ? 'tcd-scope-badge tcd-scope-badge--injected' : 'tcd-scope-badge tcd-scope-badge--real'}>
+                  {s}{r.injectedScopeNames.includes(s) && <span className="tcd-scope-injected-tag"> ⚡ INJECTED</span>}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span className="tcd-cs-val">{r.val}</span>
+          )}
         </span>
       ))}
     </div>
@@ -691,6 +707,11 @@ function EventRow({ event, isLast, onInspect, hints }) {
     event.actPresent === true  ? { text: '✅ act claimed', cls: 'ok' }
     : event.actPresent === false ? { text: '⚠️ no act claim', cls: 'warn' }
     : null;
+  // scope injection hint — shows when scopes were BFF-injected (demo mode)
+  const scopeInjectedHint =
+    event.scopeInjected === true
+      ? { text: '⚡ Scopes INJECTED (demo)', cls: 'warn' }
+      : null;
   // aud hint — only on tokens where we have explicit validation data
   const audHintRaw = event.claims?.aud;
   const audShort = audHintRaw
@@ -795,6 +816,7 @@ function EventRow({ event, isLast, onInspect, hints }) {
               {audHint    && <span className={`tcd-event-hint tcd-event-hint--${audHint.cls}`}>{audHint.text}</span>}
               {mayActHint && <span className={`tcd-event-hint tcd-event-hint--${mayActHint.cls}`}>{mayActHint.text}</span>}
               {actHint    && <span className={`tcd-event-hint tcd-event-hint--${actHint.cls}`}>{actHint.text}</span>}
+              {scopeInjectedHint && <span className={`tcd-event-hint tcd-event-hint--${scopeInjectedHint.cls}`}>{scopeInjectedHint.text}</span>}
             </div>
           )}
           <ClaimsStrip event={event} hints={hints} />

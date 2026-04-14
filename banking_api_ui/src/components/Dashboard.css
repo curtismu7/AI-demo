@@ -1,0 +1,23 @@
+
+/* ── Scope injection warning banner (Phase 146) ─────────────────────────── */
+.dash-scope-injection-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.12);
+  border-left: 4px solid #f59e0b;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.dash-scope-injection-banner__icon { font-size: 1.2rem; flex-shrink: 0; }
+.dash-scope-injection-banner__text { flex: 1; }
+.dash-scope-injection-banner__text strong { display: block; color: #d97706; margin-bottom: 2px; }
+.dash-scope-injection-banner__text span { color: #92400e; font-size: 0.82rem; }
+.dash-scope-injection-banner__close {
+  background: none; border: none; font-size: 1.1rem; color: #d97706;
+  cursor: pointer; padding: 0 4px; flex-shrink: 0; opacity: 0.7;
+}
+.dash-scope-injection-banner__close:hover { opacity: 1; }

@@ -43,6 +43,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [txLookupLoading, setTxLookupLoading] = useState(false);
   const [apiCallsModalOpen, setApiCallsModalOpen] = useState(false);
   const fetchingRef = React.useRef(false);
+  const [scopeInjectionEnabled, setScopeInjectionEnabled] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
   const handleDashThemeToggle = useCallback(() => {
@@ -298,6 +299,16 @@ const Dashboard = ({ user, onLogout }) => {
     setShowTokenModal(true);
   };
 
+  // Check if scope injection is enabled (Phase 146 — D-04)
+  useEffect(() => {
+    bffAxios.get('/api/admin/config')
+      .then(res => {
+        const cfg = res.data;
+        setScopeInjectionEnabled(cfg.ff_inject_scopes === 'true' || cfg.ff_inject_scopes === true);
+      })
+      .catch(() => { /* non-critical */ });
+  }, []);
+
   if (loading) {
     return (
       <div className="loading">
@@ -319,6 +330,21 @@ const Dashboard = ({ user, onLogout }) => {
           className={`ud-shell ${agentPlacement === 'bottom' ? 'ud-shell--embed-bottom' : 'ud-shell--floating-only'}`}
         >
         <SplitPaneLayout archPanel={<ArchitectureTabsPanel />}>
+        {scopeInjectionEnabled && (
+          <div className="dash-scope-injection-banner" role="alert">
+            <span className="dash-scope-injection-banner__icon">⚠️</span>
+            <div className="dash-scope-injection-banner__text">
+              <strong>SCOPE INJECTION ENABLED — Demo Mode</strong>
+              <span>Banking scopes are being injected by the BFF (not from PingOne). Check Token Chain for ⚡ INJECTED badges.</span>
+            </div>
+            <button
+              className="dash-scope-injection-banner__close"
+              onClick={() => setScopeInjectionEnabled(false)}
+              aria-label="Dismiss"
+              type="button"
+            >✕</button>
+          </div>
+        )}
         <div className="app-page-toolbar" role="toolbar" aria-label="Admin actions">
           <button
             type="button"
