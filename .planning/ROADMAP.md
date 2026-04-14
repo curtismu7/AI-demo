@@ -2229,14 +2229,14 @@ Plans:
 - [x] 148-03-PLAN.md — Visual verification checkpoint across all placement modes
 
 ### Phase 149: Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne
-### Phase 149: Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Fix Phase 146 gaps: scope detection targets the banking resource server by name/audience (not array index), expose missing canonical scopes in verify-assets response, and add Fix-in-PingOne action buttons to create the banking resource server and missing canonical scopes from the test page.
+**Requirements**: SCOPE-149-01, SCOPE-149-02, SCOPE-149-03
 **Depends on:** Phase 148
-**Plans:** 0 plans
+**Plans:** 2 plans in 2 waves
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 149 to break down)
+- [ ] 149-01-PLAN.md — BFF: fix banking RS detection in verify-assets + add POST /api/pingone-test/fix-banking-resource-server
+- [ ] 149-02-PLAN.md — UI: scope-fix-panel with conditional fix buttons + scopes tab RS name + build verification
 
 ---
