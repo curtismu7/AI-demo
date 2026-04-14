@@ -6,7 +6,7 @@
   --sn-bg-active:   var(--chase-blue, #0066CC);
   --sn-accent:      var(--chase-blue, #0066CC);
   --sn-text:        #FFFFFF;
-  --sn-muted:       #B8C9E0;
+  --sn-muted:       #D9D9E0;
   --sn-border:      rgba(255,255,255,0.15);
   --sn-width:       220px;
   --sn-width-col:   60px;
@@ -177,7 +177,7 @@
   gap: 8px;
   padding: 12px 14px;
   text-decoration: none;
-  color: #CCCCCC;
+  color: #E0E0E0;
   font-size: 13px;
   font-weight: 500;
   border-radius: 6px;
@@ -229,7 +229,7 @@
   cursor: pointer;
   font-family: inherit;
   font-size: inherit;
-  color: #CCCCCC;
+  color: #E0E0E0;
   text-align: left;
   width: 100%;
 }
@@ -290,7 +290,7 @@ html[data-theme='dark'] .sidenav {
   --sn-bg-hover:  #141a24;
   --sn-bg-active: #1a2230;
   --sn-text:      #e8edf5;
-  --sn-muted:     #94a3b8;
+  --sn-muted:     #C0CDD9;
   --sn-border:    rgb(148 163 184 / 0.14);
 }
 
