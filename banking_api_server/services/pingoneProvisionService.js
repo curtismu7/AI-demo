@@ -934,65 +934,6 @@ class PingOneProvisionService {
       }
       onStep(steps[steps.length - 1]);
 
-      // Step 22: Create bankingPrincipalUserId schema attribute
-      steps.push({ step: 'schema-attr', icon: '🔧', message: 'Creating bankingPrincipalUserId schema attribute...' });
-      onStep(steps[steps.length - 1]);
-      try {
-        const schemasResp = await this.makeRequest('GET', '/schemas?filter=name eq "User"');
-        const schemaId = schemasResp.data?._embedded?.schemas?.[0]?.id;
-        if (schemaId) {
-          await this.makeRequest('POST', `/schemas/${schemaId}/attributes`, {
-            name: 'bankingPrincipalUserId',
-            displayName: 'Banking Principal User ID',
-            type: 'STRING',
-            enabled: true,
-            required: false,
-            unique: false
-          });
-          steps.push({ step: 'schema-attr', icon: '✅', message: 'bankingPrincipalUserId attribute created' });
-        } else {
-          steps.push({ step: 'schema-attr', icon: '⚠️', message: 'Could not find User schema — attribute skipped' });
-        }
-      } catch (schemaErr) {
-        // Attribute may already exist
-        steps.push({ step: 'schema-attr', icon: '⚠️', message: `Schema attribute step: ${schemaErr.message}` });
-      }
-      onStep(steps[steps.length - 1]);
-
-      // Step 23: Create MCP Exchanger WORKER application
-      steps.push({ step: 'mcp-exchanger-app', icon: '🔧', message: 'Creating MCP Exchanger application...' });
-      onStep(steps[steps.length - 1]);
-      const mcpExchangerResult = await this.createApplication(
-        'Super Banking MCP Exchanger',
-        'Worker application for on-behalf-of token exchange (Phase 143)',
-        'WORKER',
-        ['client_credentials', 'token_exchange']
-      );
-      provisioned.mcpExchangerApp = mcpExchangerResult.application;
-      if (mcpExchangerResult.exists) {
-        steps.push({ step: 'mcp-exchanger-app', icon: '⚠️', message: 'MCP Exchanger application already exists', resourceKey: mcpExchangerResult.resourceKey });
-      } else {
-        steps.push({ step: 'mcp-exchanger-app', icon: '✅', message: 'MCP Exchanger application created' });
-      }
-      onStep(steps[steps.length - 1]);
-
-      // Step 24: Add bankingPrincipalUserId SPEL token claim on user app
-      steps.push({ step: 'spel-claim', icon: '🔧', message: 'Adding SPEL token claim on User application...' });
-      onStep(steps[steps.length - 1]);
-      try {
-        await this.enableTokenCustomization(userAppResult.application.id);
-        await this.addTokenClaim(
-          userAppResult.application.id,
-          'bankingPrincipalUserId',
-          'EXPRESSION',
-          "${user.bankingPrincipalUserId}"
-        );
-        steps.push({ step: 'spel-claim', icon: '✅', message: 'bankingPrincipalUserId SPEL claim added' });
-      } catch (spelErr) {
-        steps.push({ step: 'spel-claim', icon: '⚠️', message: `SPEL claim step: ${spelErr.message}` });
-      }
-      onStep(steps[steps.length - 1]);
-
       // Step 21: Write configuration
       steps.push({ step: 'config', icon: '📝', message: config.isVercel ? 'Setting Vercel environment variables...' : 'Writing .env file...' });
       onStep(steps[steps.length - 1]);
