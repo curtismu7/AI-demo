@@ -2176,13 +2176,14 @@ Plans:
 
 ### Phase 144: Agent token exchange from ID token — agent never receives access token, only scoped to user data via RFC 8693 token exchange
 
-**Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
-**Requirements**: TBD
+**Goal:** Add ff_id_token_exchange feature flag (default OFF); when ON, BFF performs RFC 8693 exchange using user ID token as subject_token so the agent never receives the user access token — only a narrowly-scoped MCP token.
+**Requirements**: REQ-144-01, REQ-144-02, REQ-144-03, REQ-144-04, REQ-144-05
 **Depends on:** Phase 143
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 144 to break down)
+- [ ] 144-01-PLAN.md — BFF: register ff_id_token_exchange, add performTokenExchangeFromIdToken, add /exchange-id-token-to-mcp route
+- [ ] 144-02-PLAN.md — UI: ID Token Exchange test row in PingOneTestPage + idTokenMode label in TokenChainDisplay
 
 ### Phase 145: MCP server audit — does the server meet spec requirements and provide the agent with tools + metadata (capabilities, descriptions, parameter schemas) to make decisions dynamically, not hardcoded tool calls
 
@@ -2238,5 +2239,16 @@ Plans:
 Plans:
 - [ ] 149-01-PLAN.md — BFF: fix banking RS detection in verify-assets + add POST /api/pingone-test/fix-banking-resource-server
 - [ ] 149-02-PLAN.md — UI: scope-fix-panel with conditional fix buttons + scopes tab RS name + build verification
+
+### Phase 150: Evaluate Anthropic Managed Agents SDK — replace custom MCP infrastructure
+
+**Goal:** Research and evaluate whether Anthropic's Claude Managed Agents SDK can simplify or replace the current custom MCP server infrastructure, handling agent loop, context management, session continuity, and tool execution automatically.
+
+**Requirements**: EVAL-150-01, EVAL-150-02
+**Depends on:** Phase 149
+**Plans:** TBD (run /gsd-plan-phase 150 to break down)
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 150 to break down)
 
 ---
