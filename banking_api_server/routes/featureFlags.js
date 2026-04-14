@@ -165,6 +165,22 @@ const FLAG_REGISTRY = [
     warnIfEnabled: true,
   },
   {
+    id:           'ff_inject_scopes',
+    name:         'Inject Banking Scopes (Demo Mode)',
+    category:     'OAuth Scopes',
+    description:
+      'When enabled and the user access token lacks banking scopes (most common when PingOne custom resource server is not configured), ' +
+      'the BFF injects `banking:read banking:write` scopes into the token claims before attempting MCP exchange. ' +
+      'Injected scopes are marked with INJECTED labels in the Token Chain panel. This is **demo mode only** — not for production. ' +
+      'In production, scopes come directly from PingOne via a properly configured resource server.',
+    impact:
+      'OFF (default) = no injection (real scopes only, empty if resource server missing). ' +
+      'ON = scopes injected to allow demo to function without resource server setup. Marked as INJECTED in UI.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: true,
+  },
+  {
     id:           'ff_skip_token_exchange',
     name:         'Token Exchange — Skip RFC 8693 (direct user token)',
     category:     'Token Exchange',

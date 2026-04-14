@@ -444,6 +444,55 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     configStore.getEffective('enableMayActSupport') === 'true';
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── ff_inject_scopes — Demo Scope Injection (Phase 146 — D-04) ───────────
+  // When ON and the user access token lacks banking:* scopes, the BFF injects
+  // banking:read and banking:write into the local claim snapshot. This lets the
+  // demo flow proceed without a PingOne custom resource server. All injections are
+  // logged to tokenEvents with [BFF-INJECTED] labels (visible in Token Chain UI).
+  // Pattern mirrors ff_inject_may_act and ff_inject_audience.
+  const ffInjectScopes =
+    configStore.getEffective('ff_inject_scopes') === true ||
+    configStore.getEffective('ff_inject_scopes') === 'true';
+  if (ffInjectScopes && userAccessTokenClaims) {
+    const existingScopes = (typeof userAccessTokenClaims.scope === 'string'
+      ? userAccessTokenClaims.scope.split(' ')
+      : (userAccessTokenClaims.scope || []))
+      .filter(Boolean);
+    const hasBankingScopes = existingScopes.some(s => s.startsWith('banking:'));
+    if (!hasBankingScopes) {
+      const injectedScopeNames = ['banking:read', 'banking:write'];
+      userAccessTokenClaims = {
+        ...userAccessTokenClaims,
+        scope: (userAccessTokenClaims.scope || '') + ' ' + injectedScopeNames.join(' '),
+        injected_scope_names: injectedScopeNames,
+      };
+      const utEvent = tokenEvents.find(e => e.id === 'user-token');
+      if (utEvent) {
+        utEvent.scopeInjected = true;
+        utEvent.injectedScopeNames = injectedScopeNames;
+        utEvent.explanation =
+          (utEvent.explanation || '') +
+          ` [BFF-INJECTED scopes: ${injectedScopeNames.join(', ')} — ff_inject_scopes is ON]`;
+      }
+      tokenEvents.push(buildTokenEvent(
+        'scopes-injected',
+        'Banking Scopes — BFF synthetic injection (Demo Mode)',
+        'active',
+        null,
+        `ff_inject_scopes is ON. The user access token had no banking:* scopes so the BFF has ` +
+          `injected ${injectedScopeNames.join(', ')} in memory before attempting RFC 8693 token exchange. ` +
+          'This is a demo/dev shortcut. In production, configure a PingOne custom resource server to issue tokens with banking scopes.',
+        { synthetic: true, injectedScopes: injectedScopeNames }
+      ));
+      warnLog(
+        `[SCOPE_INJECTION] Banking scopes injected: ${injectedScopeNames.join(', ')}. ` +
+        `User token had no banking scopes. ff_inject_scopes = true (demo mode).`
+      );
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+
   // ── ff_skip_token_exchange — direct user token path (no RFC 8693) ────────
   // When ON the user access token is forwarded to MCP unchanged. No actor token
   // is acquired and no exchange is performed. Useful when PingOne is not yet
