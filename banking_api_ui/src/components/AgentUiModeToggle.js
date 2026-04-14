@@ -38,11 +38,7 @@ export default function AgentUiModeToggle({ variant = 'config', className = '', 
       notifyInfo('Applying agent layout…', { autoClose: 1200 });
       if (opts.reload) {
         window.setTimeout(() => {
-          if (next.placement === 'bottom') {
-            window.location.href = '/';
-          } else {
-            window.location.reload();
-          }
+          window.location.reload();
         }, 350);
       }
     },
