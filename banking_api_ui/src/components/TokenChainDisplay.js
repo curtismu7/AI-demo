@@ -357,18 +357,19 @@ function ExchangeCheckList({ event }) {
 function EventDetail({ event }) {
   return (
     <>
-      {/* Claims + JWT decode first — most useful content visible without scrolling */}
-      {event.claims && (
-        <>
-          <div className="tcd-section-title">Decoded JWT claims</div>
-          <ClaimsPanel claims={event.claims} alg={event.alg} />
-        </>
-      )}
+      {/* Full JWT JSON first — most comprehensive view */}
       {event.jwtFullDecode && (
-        <div className="tcd-exchange-req">
-          <div className="tcd-exchange-req-title">JWT decode — full JSON (header + claims)</div>
+        <div className="tcd-full-jwt">
+          <div className="tcd-section-title">🔓 Full Decoded Token (JSON)</div>
           <pre className="tcd-jwt-dump">{JSON.stringify(event.jwtFullDecode, null, 2)}</pre>
         </div>
+      )}
+      {/* Claims table — quick reference */}
+      {event.claims && (
+        <>
+          <div className="tcd-section-title">JWT Claims (Quick Reference)</div>
+          <ClaimsPanel claims={event.claims} alg={event.alg} />
+        </>
       )}
       {event.exchangeRequest && (
         <div className="tcd-exchange-req">
@@ -395,21 +396,19 @@ function EventDetail({ event }) {
  * The user can move that window to any physical screen.
  */
 function openInNewWindow(event) {
+  const fullJwtJson = event.jwtFullDecode ? JSON.stringify(event.jwtFullDecode, null, 2) : '';
+  
   const claimsHtml = event.claims
     ? Object.entries(event.claims).map(([k, v]) => {
         const highlight = { may_act: 'var(--chase-navy)', act: '#0f766e', scope: '#6d28d9', aud: '#166534' }[k] || '';
         const bg = highlight ? `background:${highlight}22;` : '';
+        const valStr = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
         return `<div class="claim" style="${bg}">
           <span class="key">${k}</span>
           <span class="sep">:</span>
-          <span class="val">${typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+          <span class="val">${valStr}</span>
         </div>`;
       }).join('')
-    : '';
-
-  const jwtHtml = event.jwtFullDecode
-    ? `<div class="section-title">JWT Decode — full JSON (header + claims)</div>
-       <pre class="pre">${JSON.stringify(event.jwtFullDecode, null, 2)}</pre>`
     : '';
 
   const exchangeHtml = event.exchangeRequest
@@ -435,18 +434,20 @@ function openInNewWindow(event) {
     .title{font-size:1rem;font-weight:800;color:#fff}
     .subtitle{font-size:0.78rem;color:#93c5fd}
     .body{padding:16px;display:flex;flex-direction:column;gap:14px;overflow:auto;height:calc(100vh - 70px)}
-    .section-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:4px}
+    .section-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;margin-top:12px;margin-bottom:6px;border-bottom:1px solid #1e293b;padding-bottom:4px}
+    .full-jwt{background:linear-gradient(135deg,#0f172a,#1e293b);border:2px solid #2dd4bf;border-radius:10px;padding:14px;margin-bottom:8px}
+    .full-jwt .section-title{margin-top:0}
     .claims{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:2px}
-    .claim{display:flex;gap:6px;padding:3px 6px;border-radius:5px;font-size:.8rem}
-    .key{color:#93c5fd;font-weight:700;font-family:monospace;white-space:nowrap}
+    .claim{display:flex;gap:8px;padding:4px 8px;border-radius:5px;font-size:.79rem}
+    .key{color:#93c5fd;font-weight:700;font-family:monospace;white-space:nowrap;min-width:100px}
     .sep{color:#475569}
-    .val{color:#e2e8f0;font-family:monospace;word-break:break-all}
-    .pre{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;font-size:.76rem;color:#86efac;white-space:pre-wrap;word-break:break-all;font-family:monospace;max-height:600px;overflow:auto}
+    .val{color:#e2e8f0;font-family:'Courier New',monospace;word-break:break-word;flex:1;white-space:pre-wrap}
+    .pre{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;font-size:.76rem;color:#86efac;white-space:pre-wrap;word-break:break-all;font-family:'Courier New',monospace;max-height:700px;overflow:auto;line-height:1.5}
     .pill{font-size:.75rem;font-weight:600;padding:5px 12px;border-radius:8px;width:fit-content}
     .pill-may{background:rgba(37,99,235,.2);color:#bfdbfe;border:1px solid rgba(37,99,235,.4)}
     .pill-act{background:rgba(20,184,166,.15);color:#99f6e4;border:1px solid rgba(20,184,166,.3)}
     .pill-warn{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
-    .explanation{font-size:.82rem;color:#94a3b8;line-height:1.6}
+    .explanation{font-size:.82rem;color:#94a3b8;line-height:1.6;margin-top:8px}
     .alg{font-size:.7rem;color:#475569;margin-bottom:4px}
     ::-webkit-scrollbar{width:6px;height:6px}
     ::-webkit-scrollbar-track{background:#1e293b}
@@ -459,12 +460,15 @@ function openInNewWindow(event) {
     <div class="subtitle">${event.label}${event.status ? ` · ${event.status}` : ''}</div>
   </div>
   <div class="body">
+    ${fullJwtJson ? `<div class="full-jwt">
+      <div class="section-title">🔓 Full Decoded Token (JSON)</div>
+      <pre class="pre">${fullJwtJson}</pre>
+    </div>` : ''}
     ${event.claims ? `<div>
       ${event.alg ? `<div class="alg">alg: ${event.alg}</div>` : ''}
-      <div class="section-title">Decoded JWT claims</div>
+      <div class="section-title">Claims (Quick Reference)</div>
       <div class="claims">${claimsHtml}</div>
     </div>` : ''}
-    ${jwtHtml}
     ${exchangeHtml}
     ${pillHtml}
     ${event.explanation ? `<div class="explanation">${event.explanation}</div>` : ''}
@@ -909,7 +913,7 @@ function ExchangeModeBanner({ events }) {
   );
 }
 
-const TokenChainDisplay = () => {
+const TokenChainDisplay = ({ idTokenMode = false }) => {
   const ctx = useTokenChainOptional();
   const [tab, setTab] = useState('current');
   const [sessionPreviewEvents, setSessionPreviewEvents] = useState(null);
@@ -921,26 +925,11 @@ const TokenChainDisplay = () => {
   /** Fetch session preview (called on mount, on login, and when live events reset). */
   const fetchSessionPreview = useCallback(async () => {
     try {
-      // Use new token-chain API
-      const res = await fetch('/api/token-chain', { credentials: 'include' });
+      const res = await fetch('/api/tokens/session-preview', { credentials: 'include' });
       if (!res.ok) return;
       const data = await res.json();
-      if (Array.isArray(data.tokenChain) && data.tokenChain.length > 0) {
-        // Transform tokenChain events to match expected format
-        const transformedEvents = data.tokenChain.map(event => ({
-          ...event,
-          claims: {
-            sub: event.tokenSub,
-            act: event.tokenAct,
-            scope: event.scopes?.join(' ') || '',
-            aud: event.audience,
-            iss: event.issuer,
-            exp: event.expiry ? Math.floor(new Date(event.expiry).getTime() / 1000) : undefined
-          },
-          tokenType: event.tokenType,
-          description: event.description
-        }));
-        setSessionPreviewEvents(transformedEvents);
+      if (Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
+        setSessionPreviewEvents(data.tokenEvents);
       }
     } catch (_err) {
       /* non-fatal — keep placeholder */
@@ -1005,7 +994,15 @@ const TokenChainDisplay = () => {
 
   const isLive = ctx && ctx.events.length > 0;
   const isSessionPreview = !isLive && Array.isArray(sessionPreviewEvents) && sessionPreviewEvents.length > 0;
-  const currentEvents = isLive ? ctx.events : (isSessionPreview ? sessionPreviewEvents : PLACEHOLDER_EVENTS);
+  const effectivePlaceholders = React.useMemo(() => {
+    if (!idTokenMode) return PLACEHOLDER_EVENTS;
+    return PLACEHOLDER_EVENTS.map(ev => {
+      if (ev.id === 'user-token') return { ...ev, label: 'User ID token' };
+      if (ev.id === 'exchange') return { ...ev, label: 'Token exchange (RFC 8693): user ID token \u2192 MCP access token' };
+      return ev;
+    });
+  }, [idTokenMode]);
+  const currentEvents = isLive ? ctx.events : (isSessionPreview ? sessionPreviewEvents : effectivePlaceholders);
   const isPlaceholder = !isLive && !isSessionPreview;
   const history = ctx ? ctx.history : [];
 
@@ -1080,7 +1077,7 @@ const TokenChainDisplay = () => {
               {isSessionPreview && (
                 <span
                   className="tcd-session-dot"
-                  title="User access token loaded from your Backend-for-Frontend (BFF) session. Use the AI Agent to run RFC 8693 exchange and see MCP access token claims."
+                  title={idTokenMode ? 'User ID token loaded from your Backend-for-Frontend (BFF) session. Use the AI Agent to run RFC 8693 exchange and see MCP access token claims.' : 'User access token loaded from your Backend-for-Frontend (BFF) session. Use the AI Agent to run RFC 8693 exchange and see MCP access token claims.'}
                 />
               )}
             </div>
@@ -1095,7 +1092,7 @@ const TokenChainDisplay = () => {
             </button>
           </div>
           <p className="tcd-header-sub">
-            User access token stays in Backend-for-Frontend (BFF) → RFC 8693 exchange → MCP access token → MCP server → Banking API
+            {idTokenMode ? 'User ID token stays in Backend-for-Frontend (BFF) → RFC 8693 exchange → MCP access token → MCP server → Banking API' : 'User access token stays in Backend-for-Frontend (BFF) → RFC 8693 exchange → MCP access token → MCP server → Banking API'}
           </p>
         </div>
 
