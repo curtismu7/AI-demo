@@ -563,8 +563,14 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     // No path — fail fast, never silently downgrade
     const userScopesStr = [...userTokenScopes].join(' ') || '(none)';
     const requiredBase = 'banking:ai:agent:read (delegation) or one of: ' + toolCandidateScopes.join(', ');
+    const tokenSub = userAccessTokenClaims?.sub || '(unknown)';
+    const tokenAud = Array.isArray(userAccessTokenClaims?.aud)
+      ? userAccessTokenClaims.aud.join(', ')
+      : (userAccessTokenClaims?.aud || '(unknown)');
+    const tokenClientId = userAccessTokenClaims?.client_id || '(unknown)';
     const err = new Error(
       `Token exchange blocked: user token [${userScopesStr}] lacks required scopes for tool ${tool}. ` +
+      `Token: sub=${tokenSub}, aud=${tokenAud}, client_id=${tokenClientId}. ` +
       `Need ${requiredBase}. Sign in again with the correct PingOne app and scopes.`
     );
     err.code = 'missing_exchange_scopes';
@@ -572,6 +578,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     err.tokenEvents = tokenEvents;
     err.missingScopes = toolCandidateScopes;
     err.userScopes = userScopesStr;
+    err.tokenSub = tokenSub;
+    err.tokenAud = tokenAud;
+    err.tokenClientId = tokenClientId;
     throw err;
   }
 
