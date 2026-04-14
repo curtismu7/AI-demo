@@ -6,7 +6,7 @@
   --sn-bg-active:   var(--chase-blue, #0066CC);
   --sn-accent:      var(--chase-blue, #0066CC);
   --sn-text:        #FFFFFF;
-  --sn-muted:       #D9D9E0;
+  --sn-muted:       #FFFFFF;
   --sn-border:      rgba(255,255,255,0.15);
   --sn-width:       220px;
   --sn-width-col:   60px;
@@ -290,7 +290,7 @@ html[data-theme='dark'] .sidenav {
   --sn-bg-hover:  #141a24;
   --sn-bg-active: #1a2230;
   --sn-text:      #e8edf5;
-  --sn-muted:     #C0CDD9;
+  --sn-muted:     #E0E8F0;
   --sn-border:    rgb(148 163 184 / 0.14);
 }
 
