@@ -37,12 +37,15 @@ const ADMIN_NAV = [
   {
     group: 'Configuration',
     items: [
+      { to: '/configure',           label: 'Configure',        icon: 'MdTune' },
       { to: '/config',             label: 'App Config',       icon: 'MdSettings' },
       { to: '/settings',           label: 'Security',         icon: 'MdLock' },
       { to: '/demo-data',          label: 'Demo Data',        icon: 'MdDataUsage' },
       { to: '/onboarding',         label: 'Setup Guide',      icon: 'MdDeploy' },
       { to: '/setup/pingone',      label: 'PingOne Ref.',     icon: 'MdBook' },
       { to: '/setup/wizard',       label: 'Setup Wizard',     icon: 'MdDeploy' },
+      { to: '/pingone-test',       label: 'PingOne Test',     icon: 'MdBuild' },
+      { to: '/mfa-test',           label: 'P1MFA Test',       icon: 'MdLock' },
     ],
   },
   {
