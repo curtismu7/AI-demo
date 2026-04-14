@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-14T11:15:00.000Z"
+last_updated: "2026-04-14T11:45:00.000Z"
 progress:
   total_phases: 153
   completed_phases: 74
@@ -20,61 +20,35 @@ progress:
 
 ## Current Position
 
-Phase: 147 (get-rid-of-left-agent-keep-the-rest) — ✅ COMPLETE
-Plan: 1 of 1 (147-01) — ✅ COMPLETE
-**Previous:** Phase 146 (scope-vocabulary-alignment-match-code-to-pingone) — ✅ COMPLETE
-**Next:** Phase 148 (/gsd-plan-phase 148)
-**Status:** Ready to begin Phase 148
+Phase: 148 (redesign-ai-agent-chat-ui-compact-layout-grouped-chips-visible-prompt-field) — CONTEXT GATHERED
+**Previous:** Phase 147 (get-rid-of-left-agent-keep-the-rest) — ✅ COMPLETE
+**Next:** /gsd-plan-phase 148
+**Status:** Ready for planning
+
+---
+
+## Phase 148 Context Captured
+
+**Six decisions locked:**
+- D-01: Group chips by category (Account operations | Transaction operations | Admin)
+- D-02: Collapsible emoji-only chips for compact layout
+- D-03: Inline split-column rendering (like middle agent on dashboard)
+- D-04: Prompt field pinned to bottom, more prominent
+- D-05: Condensed message display (smaller font, tighter line-height)
+- D-06: Smart default state (Account expanded, others collapsed, persisted in localStorage)
+
+**Phase Goal:** Redesign BankingAgent UI for compactness and clarity while maintaining full functionality across all placement modes.
 
 ---
 
 ## Completed Phases
 
-- Phase 1 (auth-flows) — complete
-- Phase 2 (token-exchange) — complete
-- Phase 3 (vercel-stability) — complete
-- Phase 4 (education-content) — complete
-- Phase 6 (token-exchange-fix) — complete
-- Phase 7 (rfc-9728-protected-resource-metadata) — complete
-- Phase 8 (banking-transaction-integrity) — complete
-- Phase 12 (ui-button-consistency) — complete
-- Phase 19 (demo-config-page-audit) — complete
-- Phase 20 (postman-collections) — complete
-- Phase 52 (pingone-mfa-step-up) — complete
-- Phase 53 (debug-testing-and-bug-fixes-for-phase-52-mfa-step-up) — complete
-- Phase 21 (customer-diagrams) — complete
-- Phase 22 (agent-capability-audit) — complete
-- Phase 23 (langchain-modernization) — complete
-- Phase 29 (use-case-c-sensitive-data-access) — complete
-- Phase 48 (remove-invalid-spel-act-expression) — complete
-- Phase 85 (chase-dashboard-styling) — complete
-- Phase 146 (scope-vocabulary-alignment-match-code-to-pingone) — complete
-- Phase 147 (get-rid-of-left-agent-keep-the-rest) — complete ✅
+Phase 146, Phase 147 (most recent)
 
 ---
 
-## Phase 147 Details
+## Recent Commits
 
-**Phase Goal:** Remove left-dock placement mode from agent UI to prevent conflicts with dashboard sidebar
-
-**Completed:** 2026-04-14 06:15 UTC
-
-**What Was Built:**
-- Removed 'left-dock' from AgentUiModeContext.js validation (all placement checks updated)
-- Removed Left button from AgentUiModeToggle.js UI tab bar
-- Implemented right-dock as inline column layout (matching middle mode structure)
-- Verified CSS cleanup (0 orphaned left-dock rules)
-- Verified e2e test updates (0 left-dock references)
-- Build verification: npm run build ✓ (exit code 0)
-
-**Key Commits:**
-- 580ae8c: docs(147): complete phase 147 — SUMMARY.md
-- 4116e2a: fix(147-01): right-dock as inline column; remove Left button
-- a1fc875: fix(147-01): remove left-dock placement mode from AgentUiModeContext
-
-**Verification:**
-✅ All modes functional (middle, right, bottom, float)
-✅ ba-left-col preserved in all modes
-✅ Right mode renders inline, not overlay
-✅ Build successful
-✅ No double-rendering
+- 699f88b: docs(148): capture phase context and discussion log
+- c9f9474: fix(dashboard): fix bottom agent button navigation and styling
+- 98192d0: docs(147): mark phase 147 complete in ROADMAP
