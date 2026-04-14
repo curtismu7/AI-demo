@@ -6,7 +6,7 @@
 
 'use strict';
 const configStore = require('../services/configStore');
-const { getScopesForUserType } = require('./scopes');
+const { getScopesForUserType, BANKING_SCOPES } = require('./scopes');
 
 const config = {
   get environmentId()         { return configStore.getEffective('pingone_environment_id'); },
@@ -45,7 +45,9 @@ const config = {
     // invocation and the AI Agent resource server injects the may_act claim.
     const enduserAudience = process.env.ENDUSER_AUDIENCE;
     if (enduserAudience) {
-      return ['profile', 'email', 'offline_access', 'banking:ai:agent:read'];
+      // All banking scopes are on the same resource server (enduserAudience),
+      // so PingOne will not reject with "May not request scopes for multiple resources".
+      return ['openid', 'profile', 'email', 'offline_access', 'banking:read', 'banking:write', BANKING_SCOPES.AI_AGENT];
     }
     const role = configStore.getEffective('user_role') || 'customer';
     const banking = getScopesForUserType(role);
