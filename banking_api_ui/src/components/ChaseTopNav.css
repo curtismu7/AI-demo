@@ -57,6 +57,7 @@
 }
 
 .chase-nav-link--active {
+  color: #ffffff;
   opacity: 1;
   border-bottom-color: white;
 }
@@ -157,6 +158,7 @@ html[data-theme='dark'] .chase-nav-link {
 
 html[data-theme='dark'] .chase-nav-link:hover,
 html[data-theme='dark'] .chase-nav-link--active {
+  color: var(--dash-text, #e8edf5);
   opacity: 1;
   border-bottom-color: var(--dash-text, #e8edf5);
 }
