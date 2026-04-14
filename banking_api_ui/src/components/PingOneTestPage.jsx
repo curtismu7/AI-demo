@@ -10,28 +10,28 @@ const TEST_CONFIG = {
   authzToken: {
     appName: 'Super Banking User App',
     appType: 'WEB_APP',
-    requiredScopes: ['openid', 'profile', 'email', 'banking:read', 'banking:accounts:read', 'banking:transactions:read'],
+    requiredScopes: ['openid', 'profile', 'email', 'banking:read', 'banking:write', 'banking:ai:agent'],
     audience: null,
     spel: null
   },
   agentToken: {
     appName: 'Super Banking MCP Token Exchanger',
     appType: 'WORKER',
-    requiredScopes: ['openid'],
+    requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: null,
     spel: null
   },
   exchange1: {
     appName: 'Super Banking MCP Token Exchanger',
     appType: 'WORKER',
-    requiredScopes: ['openid'],
+    requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: 'https://mcp-server.pingdemo.com',
     spel: 'T1 (user token) → MCP token'
   },
   exchange2: {
     appName: 'Super Banking MCP Token Exchanger',
     appType: 'WORKER',
-    requiredScopes: ['openid'],
+    requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: 'https://mcp-gateway.pingdemo.com',
     spel: 'T1 (user token) + T2 (agent token) → MCP token'
   },
@@ -59,7 +59,7 @@ const TEST_CONFIG = {
   scopes: {
     appName: 'Super Banking MCP Server',
     appType: 'RESOURCE_SERVER',
-    requiredScopes: ['banking:read', 'banking:write', 'banking:accounts:read', 'banking:accounts:write', 'banking:transactions:read', 'banking:transactions:write'],
+    requiredScopes: ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: 'https://mcp-server.pingdemo.com',
     spel: null
   },
@@ -78,14 +78,13 @@ const EXPECTED_APP_NAMES = [
   'Super Banking MCP Token Exchanger',
   'Super Banking AI Agent App',
 ];
-// Canonical scopes (per SCOPE_VOCABULARY.md) + compound scopes (PingOne resource-level, deprecated)
+// Canonical flat scopes (per SCOPE_VOCABULARY.md)
 const EXPECTED_BANKING_SCOPES = [
   'banking:read',
   'banking:write',
-  'banking:accounts:read',
-  'banking:accounts:write',
-  'banking:transactions:read',
-  'banking:transactions:write',
+  'banking:admin',
+  'banking:sensitive',
+  'banking:ai:agent',
 ];
 
 // Metadata for each config/resource key: env var name, format hint, inline fix message
@@ -164,6 +163,8 @@ export default function PingOneTestPage() {
   // Asset verification state
   const [assetVerification, setAssetVerification] = useState(null);
   const [verifyingAssets, setVerifyingAssets] = useState(false);
+  const [fixingScopes, setFixingScopes] = useState(false);
+  const [scopeFixResult, setScopeFixResult] = useState(null);
   
   // Token acquisition tests state
   const [authzTokenStatus, setAuthzTokenStatus] = useState('pending');
@@ -178,12 +179,21 @@ export default function PingOneTestPage() {
   const [exchange1Error, setExchange1Error] = useState(null);
   const [exchange2Error, setExchange2Error] = useState(null);
   const [exchange3Error, setExchange3Error] = useState(null);
+  const [exchangeIdTokenStatus, setExchangeIdTokenStatus] = useState('pending');
+  const [exchangeIdTokenError, setExchangeIdTokenError] = useState(null);
+  const [exchangeIdTokenDecoded, setExchangeIdTokenDecoded] = useState(null);
+  const [exchangeIdTokenSubjectDecoded, setExchangeIdTokenSubjectDecoded] = useState(null);
+  const [ffIdTokenExchange, setFfIdTokenExchange] = useState(false);
 
   // Decoded token claims from BFF (server-side decode — no raw JWT in browser)
   const [authzDecoded, setAuthzDecoded] = useState(null);
   const [agentDecoded, setAgentDecoded] = useState(null);
   const [exchange1Decoded, setExchange1Decoded] = useState(null);
   const [exchange2Decoded, setExchange2Decoded] = useState(null);
+  const [exchange1SubjectDecoded, setExchange1SubjectDecoded] = useState(null);
+  const [exchange1ActorDecoded, setExchange1ActorDecoded] = useState(null);
+  const [exchange2SubjectDecoded, setExchange2SubjectDecoded] = useState(null);
+  const [exchange2ActorDecoded, setExchange2ActorDecoded] = useState(null);
   const [exchange3AgentDecoded, setExchange3AgentDecoded] = useState(null);
   const [exchange3McpDecoded, setExchange3McpDecoded] = useState(null);
   const [workerDecoded, setWorkerDecoded] = useState(null);
@@ -246,6 +256,7 @@ export default function PingOneTestPage() {
             clientSecret: data.config.mgmtClientSecret || '',
             authMethod: data.config.mgmtTokenAuthMethod || 'basic'
           });
+          setFfIdTokenExchange(data.config.ffIdTokenExchange || false);
         }
       } catch (err) {
         console.warn('Failed to load existing worker config:', err.message);
@@ -416,8 +427,8 @@ export default function PingOneTestPage() {
       resourceMcpServerUri:      { msg: 'Set PINGONE_RESOURCE_MCP_SERVER_URI — copy the Audience URI from PingOne → Connections → Resource Servers → Super Banking MCP Server.', url: `${consoleBase}/foundation/Resource/list` },
       resourceMcpGatewayUri:     { msg: 'Set PINGONE_RESOURCE_MCP_GATEWAY_URI — Audience URI for the MCP Gateway resource server.', url: `${consoleBase}/foundation/Resource/list` },
       resourceAgentGatewayUri:   { msg: 'Set PINGONE_RESOURCE_AGENT_GATEWAY_URI — Audience URI for the Agent Gateway resource server.', url: `${consoleBase}/foundation/Resource/list` },
-      'single-exchange':         { msg: 'Open the MCP Token Exchanger app in PingOne → enable Token Exchange grant → set audience to PINGONE_RESOURCE_MCP_SERVER_URI.', url: `${consoleBase}/application/list` },
-      'double-exchange':         { msg: 'Enable Token Exchange with actor tokens on the MCP Token Exchanger app. Check may_act / actor policy in PingOne.', url: `${consoleBase}/application/list` },
+      'single-exchange':         { msg: 'PingOne error: "At least one scope must be granted" means the MCP Token Exchanger app is missing banking scopes. Fix: PingOne → Applications → Super Banking MCP Token Exchanger → Resources tab → add banking:read, banking:write, banking:admin, banking:sensitive, banking:ai:agent from the Banking resource server. Also enable Token Exchange grant type.', url: `${consoleBase}/application/list` },
+      'double-exchange':         { msg: 'Same as Exchange 1 — MCP Token Exchanger app needs banking scopes. Also verify may_act claim on the user token and actor_token policy in PingOne. Fix: Applications → MCP Token Exchanger → Resources tab.', url: `${consoleBase}/application/list` },
       apps:                      { msg: 'In PingOne → Worker App → Roles → assign Read Clients / Applications role.', url: `${consoleBase}/application/list` },
       resources:                 { msg: 'In PingOne → Worker App → Roles → assign Read Resource Servers role.', url: `${consoleBase}/foundation/Resource/list` },
       scopes:                    { msg: 'In PingOne → Worker App → Roles → assign Read Scopes role.', url: `${consoleBase}/foundation/Resource/list` },
@@ -498,6 +509,27 @@ export default function PingOneTestPage() {
     }
   }, []);
 
+  const fixBankingResourceServer = useCallback(async () => {
+    setFixingScopes(true);
+    setScopeFixResult(null);
+    try {
+      const { data } = await apiClient.post('/api/pingone-test/fix-banking-resource-server');
+      setScopeFixResult({ success: data.success, message: data.message, scopeResults: data.scopeResults });
+      if (data.success) {
+        notifyInfo('Fix applied — re-running verification...');
+        await verifyAssets();
+      } else {
+        notifyError(data.error || 'Fix failed');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Fix request failed';
+      setScopeFixResult({ success: false, message: msg });
+      notifyError(msg);
+    } finally {
+      setFixingScopes(false);
+    }
+  }, [verifyAssets]);
+
   const testAuthzToken = useCallback(async () => {
     setAuthzTokenStatus('running');
     setAuthzTokenError(null);
@@ -550,6 +582,8 @@ export default function PingOneTestPage() {
       if (data.success) {
         setExchange1Status('passed');
         setExchange1Decoded(data.decoded || null);
+        setExchange1SubjectDecoded(data.subjectTokenDecoded || null);
+        setExchange1ActorDecoded(data.actorTokenDecoded || null);
         notifySuccess('User → MCP token exchange succeeded ✓');
       } else {
         setExchange1Status('failed');
@@ -572,6 +606,8 @@ export default function PingOneTestPage() {
       if (data.success) {
         setExchange2Status('passed');
         setExchange2Decoded(data.decoded || null);
+        setExchange2SubjectDecoded(data.subjectTokenDecoded || null);
+        setExchange2ActorDecoded(data.actorTokenDecoded || null);
         notifySuccess('User + Agent → MCP token exchange succeeded ✓');
       } else {
         setExchange2Status('failed');
@@ -605,6 +641,25 @@ export default function PingOneTestPage() {
       setExchange3Status('failed');
       setExchange3Error(err.message);
       notifyError(`Exchange 3 error: ${err.message}`);
+    }
+  }, []);
+
+  const testExchangeIdToken = useCallback(async () => {
+    setExchangeIdTokenStatus('running');
+    setExchangeIdTokenError(null);
+    try {
+      notifyInfo('Testing ID Token → MCP Token exchange…', { toastId: 'test-exchange-id' });
+      const { data } = await apiClient.get('/api/pingone-test/exchange-id-token-to-mcp', {
+        params: { sessionId: 'pingone-test' }
+      });
+      setExchangeIdTokenStatus(data.success ? 'passed' : 'failed');
+      setExchangeIdTokenError(data.success ? null : data.error);
+      if (data.decoded) setExchangeIdTokenDecoded(data.decoded);
+      if (data.subjectDecoded) setExchangeIdTokenSubjectDecoded(data.subjectDecoded);
+      if (data.success) notifySuccess('ID Token → MCP token exchange succeeded ✓');
+    } catch (err) {
+      setExchangeIdTokenStatus('failed');
+      setExchangeIdTokenError(err.message);
     }
   }, []);
 
@@ -898,12 +953,37 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   apps={assetVerification.applications?.data || []}
                   resources={assetVerification.resources?.data || []}
                   scopes={assetVerification.scopes?.data || []}
+                  scopesMeta={{ isBankingRS: assetVerification.scopes?.isBankingRS, resourceServerName: assetVerification.scopes?.resourceServerName }}
                   users={assetVerification.users?.data || []}
                   tokenPolicies={assetVerification.tokenPolicies?.data || []}
                   missing={assetVerification.missing || { apps: [], scopesByApp: {}, resourcesByApp: {} }}
                   expectedApps={assetVerification.expectedApps || EXPECTED_APP_NAMES}
                   expectedScopes={assetVerification.expectedScopes || EXPECTED_BANKING_SCOPES}
                 />
+                {(assetVerification.missingCanonicalScopes?.length > 0) && (
+                  <div className="scope-fix-panel">
+                    <div className="scope-fix-panel__heading">⚠️ Scope Alignment Issues Detected</div>
+                    <p className="scope-fix-panel__desc">
+                      {assetVerification.missingCanonicalScopes.length} canonical scope(s) missing from the banking resource server:
+                      {' '}<strong>{assetVerification.missingCanonicalScopes.join(', ')}</strong>
+                    </p>
+                    <button
+                      type="button"
+                      className="pingone-test-button pingone-test-button--fix"
+                      onClick={fixBankingResourceServer}
+                      disabled={fixingScopes}
+                    >
+                      {fixingScopes ? 'Fixing…' : assetVerification.scopes?.isBankingRS
+                        ? '🔧 Fix: Add Missing Scopes'
+                        : '🔧 Fix: Create Banking Resource Server'}
+                    </button>
+                    {scopeFixResult && (
+                      <div className={`scope-fix-result scope-fix-result--${scopeFixResult.success ? 'ok' : 'err'}`}>
+                        {scopeFixResult.message}
+                      </div>
+                    )}
+                  </div>
+                )}
                 </>
               )}
             </div>
@@ -947,6 +1027,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 status={agentTokenStatus}
                 error={agentTokenError}
                 onTest={testAgentToken}
+                onFix={agentTokenStatus === 'failed' ? () => fixIssue('single-exchange') : undefined}
                 config={TEST_CONFIG.agentToken}
                 testLabel="Get Token"
               />
@@ -994,9 +1075,16 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 status={exchange1Status}
                 error={exchange1Error}
                 onTest={testExchange1}
+                onFix={exchange1Status === 'failed' ? () => fixIssue('single-exchange') : undefined}
                 config={TEST_CONFIG.exchange1}
               />
               <DecodedTokenPanel decoded={exchange1Decoded} label="MCP Token (User Exchange)" />
+              {(exchange1SubjectDecoded || exchange1ActorDecoded) && (
+                <>
+                  <DecodedTokenPanel decoded={exchange1SubjectDecoded} label="Subject: User Access Token (T1)" />
+                  <DecodedTokenPanel decoded={exchange1ActorDecoded} label="Actor: MCP Token Exchanger (CC)" />
+                </>
+              )}
               <TokenLineageDiff
                 fromDecoded={authzDecoded}
                 toDecoded={exchange1Decoded}
@@ -1010,9 +1098,16 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 status={exchange2Status}
                 error={exchange2Error}
                 onTest={testExchange2}
+                onFix={exchange2Status === 'failed' ? () => fixIssue('double-exchange') : undefined}
                 config={TEST_CONFIG.exchange2}
               />
               <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Token (User+Agent Exchange)" />
+              {(exchange2SubjectDecoded || exchange2ActorDecoded) && (
+                <>
+                  <DecodedTokenPanel decoded={exchange2SubjectDecoded} label="Subject: User Access Token (T1)" />
+                  <DecodedTokenPanel decoded={exchange2ActorDecoded} label="Actor: Agent Token (T0)" />
+                </>
+              )}
               <TokenLineageDiff
                 fromDecoded={authzDecoded}
                 toDecoded={exchange2Decoded}
@@ -1043,6 +1138,43 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 toLabel="MCP Token (T3)"
               />
             </div>
+            {/* ID Token Exchange (ff_id_token_exchange) */}
+            {ffIdTokenExchange ? (
+              <div className="test-card-col">
+                <TestCard
+                  title="ID Token → MCP Token"
+                  status={exchangeIdTokenStatus}
+                  error={exchangeIdTokenError}
+                  onTest={testExchangeIdToken}
+                  config={{
+                    appName: 'Super Banking MCP Token Exchanger',
+                    appType: 'WORKER',
+                    requiredScopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'],
+                    audience: 'https://mcp-server.pingdemo.com',
+                    spel: 'ID token (not access token) → MCP token',
+                  }}
+                />
+                <DecodedTokenPanel decoded={exchangeIdTokenDecoded} label="MCP Token (ID Token Exchange)" />
+                {exchangeIdTokenSubjectDecoded && (
+                  <DecodedTokenPanel decoded={exchangeIdTokenSubjectDecoded} label="Subject: User ID Token" />
+                )}
+              </div>
+            ) : (
+              <div className="test-card-col">
+                <TestCard
+                  title="ID Token → MCP Token"
+                  status="disabled"
+                  error="Enable ff_id_token_exchange in Feature Flags to activate this pattern."
+                  config={{
+                    appName: 'Super Banking MCP Token Exchanger',
+                    appType: 'WORKER',
+                    requiredScopes: null,
+                    audience: 'https://mcp-server.pingdemo.com',
+                    spel: 'ID token (not access token) → MCP token',
+                  }}
+                />
+              </div>
+            )}
           </div>
           <SectionApiCalls />
         </section>
@@ -1426,9 +1558,12 @@ function AssetCard({ title, status, count, error }) {
 }
 
 
-function AssetTable({ apps, resources, scopes, users, tokenPolicies, missing, expectedApps, expectedScopes }) {
+function AssetTable({ apps, resources, scopes, scopesMeta, users, tokenPolicies, missing, expectedApps, expectedScopes }) {
   const [activeTab, setActiveTab] = React.useState('apps');
   const missingAppNames = missing.apps || [];
+  const rsBankingLabel = scopesMeta?.resourceServerName
+    ? `${scopesMeta.resourceServerName}${scopesMeta.isBankingRS ? ' (banking)' : ''}`
+    : null;
   const TABS = [
     { id: 'apps', label: `Apps (${apps.length})` },
     { id: 'resources', label: `Resources (${(resources || []).length})` },
@@ -1547,6 +1682,11 @@ function AssetTable({ apps, resources, scopes, users, tokenPolicies, missing, ex
 
       {activeTab === 'scopes' && (
         <div style={{ overflowX: 'auto' }}>
+          {rsBankingLabel && (
+            <div className="asset-rs-banner asset-rs-banner--banking">
+              Resource Server: <strong>{rsBankingLabel}</strong>
+            </div>
+          )}
           <table className="asset-table">
             <thead>
               <tr>
@@ -1566,7 +1706,7 @@ function AssetTable({ apps, resources, scopes, users, tokenPolicies, missing, ex
                 </tr>
               ))}
               {(!scopes || scopes.length === 0) && (
-                <tr><td colSpan={3} className="asset-table-td" style={{ textAlign: 'center', color: '#888' }}>No scopes found</td></tr>
+                <tr><td colSpan={3} className="asset-table-td" style={{ textAlign: 'center', color: '#888' }}>No scopes found{rsBankingLabel ? ` on ${rsBankingLabel}` : ''}</td></tr>
               )}
             </tbody>
           </table>
