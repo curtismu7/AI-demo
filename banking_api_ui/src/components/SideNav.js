@@ -42,6 +42,7 @@ const ADMIN_NAV = [
       { to: '/demo-data',          label: 'Demo Data',        icon: 'MdDataUsage' },
       { to: '/onboarding',         label: 'Setup Guide',      icon: 'MdDeploy' },
       { to: '/setup/pingone',      label: 'PingOne Ref.',     icon: 'MdBook' },
+      { to: '/setup/wizard',       label: 'Setup Wizard',     icon: 'MdDeploy' },
     ],
   },
   {

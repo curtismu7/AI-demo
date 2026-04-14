@@ -17,6 +17,7 @@ import SecuritySettings from './components/SecuritySettings';
 import Onboarding from './components/Onboarding';
 import SetupPage from './components/SetupPage';
 import PingOneSetupGuidePage from './components/PingOneSetupGuidePage';
+import SetupWizard from './components/SetupWizard';
 import CIBAPanel from './components/CIBAPanel';
 import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
@@ -474,6 +475,7 @@ function AppWithAuth() {
           <DashboardQuickNav user={user} />
           <Routes>
             <Route path="/setup/pingone" element={<PingOneSetupGuidePage />} />
+            <Route path="/setup/wizard" element={<SetupWizard />} />
             <Route path="/setup" element={<SetupPage />} />
             {/* Demo config accessible without login - needed to configure flags before PingOne is set up */}
             <Route path="/configure" element={
