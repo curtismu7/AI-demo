@@ -2224,4 +2224,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 148 to break down)
 
+### Phase 149: Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 148
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 149 to break down)
+
 ---

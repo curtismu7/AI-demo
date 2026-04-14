@@ -126,6 +126,8 @@ Plan: Not started
 
 ### Roadmap Evolution
 
+- Phase 149 added: Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne
+
 - Phase 148 added: Redesign AI Agent chat UI — compact layout, grouped chips, visible prompt field
 
 - Phase 147 added: Get rid of left agent. Keep the rest (UI layout removal; keep float/middle/bottom agent placements)
