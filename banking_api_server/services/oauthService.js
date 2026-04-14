@@ -299,6 +299,63 @@ class OAuthService {
   }
 
   /**
+   * RFC 8693 Token Exchange using an ID token as the subject token.
+   * Uses subject_token_type: urn:ietf:params:oauth:token-type:id_token.
+   * This pattern ensures the agent never holds the user's access token — only the
+   * ID token is passed, and the BFF exchanges it for a narrowly-scoped MCP token.
+   *
+   * @param {string} idToken - User's ID token (from session.oauthTokens.idToken)
+   * @param {string} audience - Target resource server URI (e.g. https://mcp-server.pingdemo.com)
+   * @param {string|string[]} scopes - Scopes to request on the output token
+   */
+  async performTokenExchangeFromIdToken(idToken, audience, scopes) {
+    const scopeStr = Array.isArray(scopes) ? scopes.join(' ') : scopes;
+    const body = new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      subject_token: idToken,
+      subject_token_type: 'urn:ietf:params:oauth:token-type:id_token',
+      requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      audience: audience,
+      scope: scopeStr,
+      client_id: this.config.clientId,
+    });
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyAdminTokenEndpointClientAuth(this.config, body, headers);
+    console.log(
+      '[TokenExchange:ID_TOKEN:REQUEST] endpoint=%s client_id=%s audience=%s scope="%s"',
+      this.config.tokenEndpoint,
+      this.config.clientId,
+      audience,
+      scopeStr
+    );
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
+      const exchanged = response.data.access_token;
+      if (!exchanged) throw new Error('ID token exchange response missing access_token');
+      console.log(`[TokenExchange:ID_TOKEN] Issued delegated token for audience=${audience} scope="${scopeStr}"`);
+      return exchanged;
+    } catch (error) {
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[TokenExchange:ID_TOKEN:FAILED] httpStatus=%s error=%s description=%s audience=%s scope="%s"',
+        httpStatus,
+        pingoneData.error ?? error.message,
+        pingoneData.error_description ?? '(none)',
+        audience,
+        scopeStr
+      );
+      const richErr = new Error(
+        `ID token exchange failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.requestContext          = { audience, scope: scopeStr };
+      throw richErr;
+    }
+  }
+
+  /**
    * RFC 8693 Token Exchange with both subject (end user) and actor (agent OAuth client) tokens.
    * The issued access token represents the user (subject) with the agent acting on their behalf.
    * Requires PingOne token-exchange grant on the Backend-for-Frontend (BFF) client and compatible may_act / actor policy.
@@ -371,6 +428,12 @@ class OAuthService {
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
     });
+    // Request banking scopes so the actor token can be used in RFC 8693 token exchange.
+    // These must also be configured on the MCP Token Exchanger app in PingOne.
+    const agentScopes = (process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SCOPES || '').trim();
+    if (agentScopes) {
+      body.set('scope', agentScopes);
+    }
     if (agentAuthMethod === 'post') {
       body.set('client_id', clientId);
     }
@@ -382,6 +445,7 @@ class OAuthService {
       const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const at = response.data.access_token;
       if (!at) throw new Error('Client credentials response missing access_token');
+      console.log('[AgentClientCredentials] Token obtained, requested scopes:', agentScopes || '(none)');
       return at;
     } catch (error) {
       const pingoneData = error.response?.data || {};
@@ -389,6 +453,59 @@ class OAuthService {
       console.error('[AgentClientCredentials] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
       const richErr = new Error(
         `Agent client credentials failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { client_id: clientId };
+      throw richErr;
+    }
+  }
+
+  /**
+   * Client-credentials token for the MCP Token Exchanger app (PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID).
+   * Used exclusively as actor_token in RFC 8693 token exchanges — distinct from
+   * getAgentClientCredentialsToken which resolves to the management worker app first.
+   *
+   * Throws if PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID + SECRET are not configured.
+   */
+  async getMcpExchangerToken() {
+    const clientId =
+      configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
+      process.env.AGENT_OAUTH_CLIENT_ID;
+    const clientSecret =
+      configStore.getEffective('pingone_mcp_token_exchanger_client_secret') ||
+      process.env.AGENT_OAUTH_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      throw new Error(
+        'MCP Token Exchanger credentials not configured. ' +
+        'Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID + PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET.'
+      );
+    }
+    const method = (
+      process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD ||
+      process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD ||
+      'basic'
+    ).toLowerCase();
+    const scopeStr = (configStore.getEffective('pingone_mcp_token_exchanger_client_scopes') || '').trim();
+    const body = new URLSearchParams({ grant_type: 'client_credentials' });
+    if (scopeStr) body.set('scope', scopeStr);
+    if (method === 'post') body.set('client_id', clientId);
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
+      const at = response.data.access_token;
+      if (!at) throw new Error('MCP Exchanger client credentials response missing access_token');
+      console.log('[McpExchangerToken] Token obtained for client:', clientId.substring(0, 8) + '...');
+      return at;
+    } catch (error) {
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[McpExchangerToken] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      const richErr = new Error(
+        `MCP Exchanger token failed: ${pingoneData.error_description || pingoneData.error || error.message}`
       );
       richErr.httpStatus              = httpStatus;
       richErr.pingoneError            = pingoneData.error;

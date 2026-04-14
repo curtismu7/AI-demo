@@ -236,6 +236,16 @@ const FLAG_REGISTRY = [
     defaultValue: false,
     warnIfEnabled: false,
   },
+  {
+    id:           'ff_id_token_exchange',
+    name:         'ID Token Exchange Mode',
+    category:     'Token Exchange',
+    description:  'When ON, the agent receives only the user\'s ID token (not the access token). The BFF performs RFC 8693 token exchange using the ID token as subject_token (subject_token_type: urn:ietf:params:oauth:token-type:id_token). Agent never holds broad user access token — scoped delegation only.',
+    impact:       'OFF (default) = standard access token flows unchanged. ON = ID token used as exchange subject; set subject_token_type to id_token in exchange request.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: false,
+  },
 ];
 
 // ---------------------------------------------------------------------------
