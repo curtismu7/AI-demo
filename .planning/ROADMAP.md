@@ -2204,4 +2204,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 146 to break down)
 
+### Phase 147: Get rid of left agent. Keep the rest
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 146
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 147 to break down)
+
 ---

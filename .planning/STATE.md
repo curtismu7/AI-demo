@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-14T00:18:14.432Z"
+last_updated: "2026-04-14T09:51:10.313Z"
 progress:
-  total_phases: 149
+  total_phases: 151
   completed_phases: 72
-  total_plans: 251
+  total_plans: 256
   completed_plans: 187
 ---
 
@@ -20,11 +20,11 @@ progress:
 
 ## Current Position
 
-Phase: 142 (ux-clear-separation-of-banking-action-buttons-standard-authz-transfer-deposit-vs-token-exchange-visual-distinction-for-pingone-oauth-actions) — EXECUTING
-Plan: 1 of 3
+Phase: 146 (scope-vocabulary-alignment-match-code-to-pingone) — EXECUTING
+Plan: 1 of 5
 **Previous:** Phase 13 (dashboard-first-impression-overhaul) — ✅ COMPLETE
 **Next:** /gsd-plan-phase 14
-**Status:** Executing Phase 142
+**Status:** Executing Phase 146
 
 ---
 
@@ -125,6 +125,8 @@ Plan: 1 of 3
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- Phase 147 added: Get rid of left agent. Keep the rest (UI layout removal; keep float/middle/bottom agent placements)
 
 - Phase 146 added: Scope vocabulary alignment — match code to PingOne (covers todos #11 + #13)
 

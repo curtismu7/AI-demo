@@ -1,0 +1,14 @@
+{
+  "doc_path": "docs/PINGONE_RESOURCES_AND_SCOPES_MATRIX.md",
+  "claims_checked": 12,
+  "claims_passed": 11,
+  "claims_failed": 1,
+  "failures": [
+    {
+      "line": 37,
+      "claim": "banking:ai:agent:read scope",
+      "expected": "Code defines scope as 'banking:ai:agent:read'",
+      "actual": "banking_api_server/config/scopes.js defines AI_AGENT as 'banking:ai:agent' (no :read suffix)"
+    }
+  ]
+}
