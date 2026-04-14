@@ -1190,3 +1190,74 @@ a.pingone-test-button--primary:visited {
   padding: 0.2rem 0;
   user-select: none;
 }
+
+/* ── Phase 149: Scope fix panel ─────────────────────────────────── */
+.scope-fix-panel {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scope-fix-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #fca5a5;
+}
+.scope-fix-panel__icon {
+  line-height: 1;
+}
+.scope-fix-panel__desc {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fix-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fix-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25);
+}
+.fix-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.scope-fix-result {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+.scope-fix-result--ok { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+.scope-fix-result--err { background: rgba(239, 68, 68, 0.1); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+/* ── Phase 149: Asset RS banner ─────────────────────────────────── */
+.asset-rs-banner {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+.asset-rs-banner--banking {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}

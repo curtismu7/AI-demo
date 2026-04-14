@@ -163,7 +163,7 @@ export default function PingOneTestPage() {
   // Asset verification state
   const [assetVerification, setAssetVerification] = useState(null);
   const [verifyingAssets, setVerifyingAssets] = useState(false);
-  const [fixingScopes, setFixingScopes] = useState(false);
+  const [scopeFixing, setScopeFixing] = useState(false);
   const [scopeFixResult, setScopeFixResult] = useState(null);
   
   // Token acquisition tests state
@@ -510,23 +510,24 @@ export default function PingOneTestPage() {
   }, []);
 
   const fixBankingResourceServer = useCallback(async () => {
-    setFixingScopes(true);
+    setScopeFixing(true);
     setScopeFixResult(null);
     try {
-      const { data } = await apiClient.post('/api/pingone-test/fix-banking-resource-server');
-      setScopeFixResult({ success: data.success, message: data.message, scopeResults: data.scopeResults });
+      const { data } = await apiClient.post('/api/pingone-test/fix-banking-resource-server', {}, {
+        params: { sessionId: 'pingone-test' }
+      });
+      setScopeFixResult(data);
       if (data.success) {
-        notifyInfo('Fix applied — re-running verification...');
+        notifySuccess('Banking resource server updated — re-verifying…');
         await verifyAssets();
       } else {
-        notifyError(data.error || 'Fix failed');
+        notifyError(`Fix failed: ${data.error}`);
       }
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Fix request failed';
-      setScopeFixResult({ success: false, message: msg });
-      notifyError(msg);
+      setScopeFixResult({ success: false, error: err.message });
+      notifyError(`Fix failed: ${err.message}`);
     } finally {
-      setFixingScopes(false);
+      setScopeFixing(false);
     }
   }, [verifyAssets]);
 
@@ -960,26 +961,35 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   expectedApps={assetVerification.expectedApps || EXPECTED_APP_NAMES}
                   expectedScopes={assetVerification.expectedScopes || EXPECTED_BANKING_SCOPES}
                 />
-                {(assetVerification.missingCanonicalScopes?.length > 0) && (
+                {/* Scope fix panel */}
+                {assetVerification && (assetVerification.missingCanonicalScopes?.length > 0 || assetVerification.scopes?.isBankingRS === false) && (
                   <div className="scope-fix-panel">
-                    <div className="scope-fix-panel__heading">⚠️ Scope Alignment Issues Detected</div>
-                    <p className="scope-fix-panel__desc">
-                      {assetVerification.missingCanonicalScopes.length} canonical scope(s) missing from the banking resource server:
-                      {' '}<strong>{assetVerification.missingCanonicalScopes.join(', ')}</strong>
-                    </p>
+                    <div className="scope-fix-panel__header">
+                      <span className="scope-fix-panel__icon">⚠️</span>
+                      <strong>Scope Alignment Issues Detected</strong>
+                    </div>
+                    {assetVerification.scopes?.isBankingRS === false && (
+                      <p className="scope-fix-panel__desc">Banking resource server not found in PingOne. Click below to create it with canonical scopes.</p>
+                    )}
+                    {assetVerification.missingCanonicalScopes?.length > 0 && (
+                      <p className="scope-fix-panel__desc">
+                        Missing scopes: {assetVerification.missingCanonicalScopes.map(s => (
+                          <span key={s} className="asset-badge asset-badge--missing">{s}</span>
+                        ))}
+                      </p>
+                    )}
                     <button
-                      type="button"
-                      className="pingone-test-button pingone-test-button--fix"
+                      className="fix-btn"
                       onClick={fixBankingResourceServer}
-                      disabled={fixingScopes}
+                      disabled={scopeFixing}
                     >
-                      {fixingScopes ? 'Fixing…' : assetVerification.scopes?.isBankingRS
-                        ? '🔧 Fix: Add Missing Scopes'
-                        : '🔧 Fix: Create Banking Resource Server'}
+                      {scopeFixing ? 'Fixing…' : assetVerification.scopes?.isBankingRS === false ? 'Fix: Create Banking Resource Server' : 'Fix: Add Missing Scopes'}
                     </button>
                     {scopeFixResult && (
-                      <div className={`scope-fix-result scope-fix-result--${scopeFixResult.success ? 'ok' : 'err'}`}>
-                        {scopeFixResult.message}
+                      <div className={`scope-fix-result ${scopeFixResult.success ? 'scope-fix-result--ok' : 'scope-fix-result--err'}`}>
+                        {scopeFixResult.success
+                          ? `✓ Done — created: ${scopeFixResult.created ? 'new RS' : 'existing RS'}, scopes added: ${scopeFixResult.scopeResults?.filter(r => r.success).length ?? 0}`
+                          : `✗ ${scopeFixResult.error}`}
                       </div>
                     )}
                   </div>
