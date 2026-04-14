@@ -3,6 +3,7 @@ import apiClient from '../services/apiClient';
 import DecodedTokenPanel from './DecodedTokenPanel';
 import ApiCallDisplay from './ApiCallDisplay';
 import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
+import { useTokenChainOptional } from '../context/TokenChainContext';
 import './PingOneTestPage.css';
 
 // Configuration details for each test - what users need to verify in PingOne
@@ -142,6 +143,7 @@ const CONFIG_META = {
  * Chase.com-style UI with fix buttons for each test
  */
 export default function PingOneTestPage() {
+  const tokenChainCtx = useTokenChainOptional();
   const [workerToken, setWorkerToken] = useState(null);
   const [workerTokenExpiry, setWorkerTokenExpiry] = useState(null);
   const [workerTokenError, setWorkerTokenError] = useState(null);
@@ -585,6 +587,9 @@ export default function PingOneTestPage() {
         setExchange1Decoded(data.decoded || null);
         setExchange1SubjectDecoded(data.subjectTokenDecoded || null);
         setExchange1ActorDecoded(data.actorTokenDecoded || null);
+        if (data.tokenEvents && tokenChainCtx?.setTokenEvents) {
+          tokenChainCtx.setTokenEvents('exchange-user-to-mcp', data.tokenEvents);
+        }
         notifySuccess('User → MCP token exchange succeeded ✓');
       } else {
         setExchange1Status('failed');
@@ -609,6 +614,9 @@ export default function PingOneTestPage() {
         setExchange2Decoded(data.decoded || null);
         setExchange2SubjectDecoded(data.subjectTokenDecoded || null);
         setExchange2ActorDecoded(data.actorTokenDecoded || null);
+        if (data.tokenEvents && tokenChainCtx?.setTokenEvents) {
+          tokenChainCtx.setTokenEvents('exchange-user-agent-to-mcp', data.tokenEvents);
+        }
         notifySuccess('User + Agent → MCP token exchange succeeded ✓');
       } else {
         setExchange2Status('failed');
@@ -632,6 +640,9 @@ export default function PingOneTestPage() {
         setExchange3Status('passed');
         setExchange3AgentDecoded(data.agentTokenDecoded || null);
         setExchange3McpDecoded(data.mcpTokenDecoded || null);
+        if (data.tokenEvents && tokenChainCtx?.setTokenEvents) {
+          tokenChainCtx.setTokenEvents('exchange-user-to-agent-to-mcp', data.tokenEvents);
+        }
         notifySuccess('User → Agent → MCP three-step exchange succeeded ✓');
       } else {
         setExchange3Status('failed');
