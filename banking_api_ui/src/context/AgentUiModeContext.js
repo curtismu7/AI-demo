@@ -6,7 +6,7 @@ const STORAGE_KEY_V2 = 'banking_agent_ui_v2';
 
 /**
  * @typedef {object} AgentUiState
- * @property {'middle' | 'bottom' | 'none' | 'left-dock' | 'right-dock'} placement — Middle = split column agent; Bottom = dock; none = float-only; left-dock = collapsible left sidebar (width-resizable); right-dock = collapsible right sidebar (width-resizable).
+ * @property {'middle' | 'bottom' | 'none' | 'right-dock'} placement — Middle = split column agent; Bottom = dock; none = float-only; right-dock = collapsible right sidebar (width-resizable).
  * @property {boolean} fab — Also show floating FAB on dashboard routes (invalid with placement none unless true).
  */
 
@@ -45,10 +45,6 @@ function syncLegacyString(state) {
       localStorage.setItem(STORAGE_KEY_LEGACY, 'embedded');
       return;
     }
-    if (state.placement === 'left-dock') {
-      localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
-      return;
-    }
     if (state.placement === 'right-dock') {
       localStorage.setItem(STORAGE_KEY_LEGACY, 'both');
       return;
@@ -70,7 +66,7 @@ function readState() {
       const p = o?.placement;
       const fab = o?.fab;
       if (
-        (p === 'middle' || p === 'bottom' || p === 'none' || p === 'left-dock' || p === 'right-dock') &&
+        (p === 'middle' || p === 'bottom' || p === 'none' || p === 'right-dock') &&
         typeof fab === 'boolean'
       ) {
         if (p === 'none' && !fab) {
@@ -79,7 +75,7 @@ function readState() {
         return { placement: p, fab };
       }
       // Dock types with non-boolean fab default to true
-      if ((p === 'left-dock' || p === 'right-dock') && typeof fab !== 'boolean') {
+      if (p === 'right-dock' && typeof fab !== 'boolean') {
         return { placement: p, fab: true };
       }
     }
@@ -99,7 +95,7 @@ const AgentUiModeContext = createContext({
  * Middle — embedded assistant in dashboard split column (token | agent | banking).
  * Bottom — full-width bottom dock on dashboard routes (+ /config).
  * Float — corner FAB only (no embedded chrome); fab is always true.
- * Left-dock — agent in collapsible left sidebar (width-resizable). Right-dock — agent in collapsible right sidebar (width-resizable).
+ * Right-dock — agent in collapsible right sidebar (width-resizable).
  * fab — when Middle or Bottom, also show the floating FAB (Middle+Float or Bottom+Float; never Middle+Bottom).
  */
 export function AgentUiModeProvider({ children }) {
