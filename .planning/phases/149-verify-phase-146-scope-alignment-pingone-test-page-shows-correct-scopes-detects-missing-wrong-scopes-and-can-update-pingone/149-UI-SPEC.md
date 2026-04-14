@@ -1,7 +1,8 @@
 ---
 phase: 149
 slug: verify-phase-146-scope-alignment-pingone-test-page-shows-correct-scopes-detects-missing-wrong-scopes-and-can-update-pingone
-status: draft
+status: approved
+reviewed_at: 2026-04-14
 shadcn_initialized: false
 preset: none
 created: 2026-04-14
@@ -57,11 +58,13 @@ Source: `PingOneTestPage.css` measured values — pre-populated from codebase.
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px (0.875rem) | 400 (regular) | 1.5 |
-| Label / badge | 12px (0.75rem) | 500 (medium) | 1.4 |
+| Label / badge | 12px (0.75rem) | 400 (regular) | 1.4 |
 | Card heading | 17.6px (1.1rem) | 600 (semibold) | 1.2 |
 | Section heading | 24px (1.5rem) | 600 (semibold) | 1.2 |
 
-Source: `PingOneTestPage.css` — `.test-card-title` at 1.1rem/600, `.pingone-test-section-title` at 1.5rem/600, `.test-card-value` at 0.95rem/400, badge text at 0.72–0.78rem/500. Pre-populated from codebase.
+Source: `PingOneTestPage.css` — `.test-card-title` at 1.1rem/600, `.pingone-test-section-title` at 1.5rem/600, `.test-card-value` at 0.95rem/400, badge text at 0.72–0.78rem/400. Pre-populated from codebase.
+
+Label/badge text visual distinction from body is provided by size (12px vs 14px) — weight 400 is sufficient; weight 500 is not used.
 
 New elements added in Phase 149 (fix button tooltip / result inline message) must use:
 - Inline result message: 14px / weight 400 / line-height 1.5 (matches `.test-card-value`)
@@ -89,6 +92,8 @@ Source: `PingOneTestPage.css` and `index.css` CSS custom properties — pre-popu
 Accent (`#003366`) reserved for: page title, section headings, card titles, form labels, primary action buttons (`.pingone-test-button--primary`). Not for body text, badge text, or table data cells.
 
 Fix button color (`#d32f2f`) is reserved exclusively for: "Fix: Create Banking Resource Server" and "Fix: Add Missing Scopes" buttons. No other element in the page uses this fill.
+
+Primary visual anchor for the fix panel: the red-fill fix button(s) (`.pingone-test-button--fix`) which are the only elements using `#d32f2f` fill on the page.
 
 ---
 
