@@ -639,11 +639,61 @@ export class BankingMCPServer extends EventEmitter {
       await this.handleAuthStatus(req, res, url);
     } else if (pathname === '/auth/token-exchange') {
       await this.handleTokenExchange(req, res, url);
+    } else if (pathname === '/health') {
+      this.handleHealth(res);
+    } else if (pathname === '/inspector/mcp-host') {
+      await this.handleInspectorMcpHost(res);
     } else {
       // Default response for other paths
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
     }
+  }
+
+  /**
+   * GET /health — basic liveness check
+   */
+  private handleHealth(res: any): void {
+    const body = JSON.stringify({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      server: 'banking_mcp_server',
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(body);
+  }
+
+  /**
+   * GET /inspector/mcp-host — tool registry snapshot for MCP Inspector UI.
+   * Provides the same data the LangChain agent health server would return,
+   * so the inspector works even when only the Node MCP server is running.
+   */
+  private async handleInspectorMcpHost(res: any): Promise<void> {
+    const { BankingToolRegistry } = await import('../tools/BankingToolRegistry');
+    const allTools = BankingToolRegistry.getAllTools();
+    const payload = {
+      source: 'banking_mcp_server',
+      timestamp: new Date().toISOString(),
+      protocolVersion: '2024-11-05',
+      tools: allTools.map(t => ({
+        name: t.name,
+        description: t.description,
+        requiresUserAuth: t.requiresUserAuth,
+        requiredScopes: t.requiredScopes,
+        readOnly: t.readOnly,
+        inputSchema: t.inputSchema,
+      })),
+      toolCount: allTools.length,
+      readOnlyTools: allTools.filter(t => t.readOnly).map(t => t.name),
+      authenticatedTools: allTools.filter(t => !t.readOnly).map(t => t.name),
+    };
+    const body = JSON.stringify(payload, null, 2);
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-cache',
+    });
+    res.end(body);
   }
 
   /**
