@@ -2204,12 +2204,13 @@ Plans:
 Plans:
 - [x] TBD (run /gsd-plan-phase 146 to break down) (completed 2026-04-14)
 
-### Phase 147: Get rid of left agent. Keep the rest
+### Phase 147: Get rid of left agent. Keep the rest — ✅ COMPLETE
 
 **Goal:** Remove left-dock placement mode for agent component to prevent conflicts with dashboard sidebar buttons. Agent remains fully functional in all other modes.
 **Requirements**: None (bug fix / UX improvement)
 **Depends on:** Phase 146
-**Plans:** 1 plan
+**Plans:** 1/1 ✅ Complete
+**Status:** ✅ Completed 2026-04-14
 
 Plans:
 - [x] 147-01-PLAN.md — Remove left-dock placement mode from agent
