@@ -2217,14 +2217,18 @@ Plans:
 
 ### Phase 148: Redesign AI Agent chat UI — compact layout, grouped chips, visible prompt field
 
-**Goal:** [To be planned]
+**Goal:** Redesign BankingAgent UI for compactness and clarity while maintaining full functionality across all placement modes. Users can intuitively navigate action buttons organized by category (Account, Transaction, Admin), see more chat messages on screen, and have easy access to the prompt input.
+
 **Requirements**: TBD
 **Depends on:** Phase 147
-**Plans:** 0 plans
+**Plans:** 3 plans in 1 wave
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 148 to break down)
+- [x] 148-01-PLAN.md — Group ACTIONS by semantic categories and add collapsible state management with localStorage persistence
+- [x] 148-02-PLAN.md — Implement emoji-only chip rendering, condensed messages, prominent sticky prompt field, and collapsible group CSS
+- [x] 148-03-PLAN.md — Visual verification checkpoint across all placement modes
 
+### Phase 149: Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne
 ### Phase 149: Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne
 
 **Goal:** [To be planned]
