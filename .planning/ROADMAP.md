@@ -2206,13 +2206,13 @@ Plans:
 
 ### Phase 147: Get rid of left agent. Keep the rest
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Remove left-dock placement mode for agent component to prevent conflicts with dashboard sidebar buttons. Agent remains fully functional in all other modes.
+**Requirements**: None (bug fix / UX improvement)
 **Depends on:** Phase 146
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 147 to break down)
+- [x] 147-01-PLAN.md — Remove left-dock placement mode from agent
 
 ### Phase 148: Redesign AI Agent chat UI — compact layout, grouped chips, visible prompt field
 
