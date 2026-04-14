@@ -2194,4 +2194,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 145 to break down)
 
+### Phase 146: Scope vocabulary alignment — match code to PingOne
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 145
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 146 to break down)
+
 ---

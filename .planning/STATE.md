@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-13T21:32:33.463Z"
+last_updated: "2026-04-14T00:18:14.432Z"
 progress:
   total_phases: 149
   completed_phases: 72
-  total_plans: 247
-  completed_plans: 184
+  total_plans: 251
+  completed_plans: 187
 ---
 
 # State — Super Banking AI Banking Demo
@@ -125,6 +125,8 @@ Plan: 1 of 3
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- Phase 146 added: Scope vocabulary alignment — match code to PingOne (covers todos #11 + #13)
 
 - Phase 145 added: MCP server audit — does the server meet spec requirements and provide the agent with tools + metadata (capabilities, descriptions, parameter schemas) to make decisions dynamically, not hardcoded tool calls
 
