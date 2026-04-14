@@ -19,8 +19,8 @@ const EXPECTED_SCOPES = {
     requiredScopes: ['banking:read', 'banking:write'],
     optionalScopes: [
       'banking:accounts:read', 'banking:transactions:read',
-      'banking:transactions:write', 'banking:general:read',
-      'banking:general:write',
+      'banking:transactions:write', 'banking:read',
+      'banking:write',
     ],
   },
   'agent gateway': {

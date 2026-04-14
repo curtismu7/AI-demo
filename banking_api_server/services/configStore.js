@@ -708,8 +708,8 @@ function buildAllowedScopesByAudience() {
       'banking:accounts:read',
       'banking:transactions:read',
       'banking:transactions:write',
-      'banking:general:read',
-      'banking:general:write',
+      'banking:read',
+      'banking:write',
       'banking:admin', // Allow admin scopes here too for role-based access
     ];
   }

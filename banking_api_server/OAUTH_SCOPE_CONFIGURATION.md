@@ -1,5 +1,9 @@
 # OAuth Scope Configuration Guide
 
+
+> **📚 Canonical Scope Reference:** This guide covers **OAuth setup** (PingOne configuration, env vars).
+> For **scope definitions, resource server mapping, and enforcement patterns**, see [SCOPE_VOCABULARY.md](SCOPE_VOCABULARY.md).
+
 This document provides comprehensive guidance for configuring OAuth scopes in the Banking API system for different environments and user types.
 
 ## Overview

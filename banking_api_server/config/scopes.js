@@ -1,5 +1,19 @@
-// OAuth Scope Configuration for Banking API
-// This file defines scope mappings for different environments and user types
+/**
+ * Banking API Scope Configuration
+ *
+ * **Single source of truth:** See SCOPE_VOCABULARY.md for canonical scope registry,
+ * resource server mapping, route enforcement index, and deprecation path.
+ *
+ * This file defines scope constants used throughout the BFF. Scope names are canonical
+ * per D-02 (Phase 146 Scope Vocabulary Alignment).
+ *
+ * Canonical scopes issued by PingOne resource server:
+ * - banking:read — read access (accounts, transactions)
+ * - banking:write — write access (deposits, withdrawals, transfers)
+ * - banking:admin — full admin access
+ * - banking:ai:agent — AI agent identification
+ * - ai_agent — identity marker for agent clients (legacy OIDC scope)
+ */
 
 /**
  * Default space-separated OIDC scopes for PingOne (authorize, CIBA, client metadata fallbacks).
@@ -8,9 +22,9 @@
 const PINGONE_OIDC_DEFAULT_SCOPES_SPACE = 'openid profile email offline_access';
 
 const BANKING_SCOPES = {
-  // Core banking scopes (consolidated)
-  BANKING_READ: 'banking:general:read',
-  BANKING_WRITE: 'banking:general:write',
+  // Core banking scopes — canonical names per D-02 (Phase 146)
+  BANKING_READ: 'banking:read',
+  BANKING_WRITE: 'banking:write',
   
   // Administrative scope (consolidated from admin:full, admin:read, admin:write)
   ADMIN: 'banking:admin',
@@ -25,35 +39,43 @@ const BANKING_SCOPES = {
   AI_AGENT_IDENTITY: 'ai_agent'
 };
 
-// User type to scope mappings
+// Compound scopes (backward compatibility — to be deprecated in a future phase)
+// See SCOPE_VOCABULARY.md § Deprecation Path
+const COMPOUND_SCOPES = {
+  ACCOUNTS_READ: 'banking:accounts:read',
+  TRANSACTIONS_READ: 'banking:transactions:read',
+  TRANSACTIONS_WRITE: 'banking:transactions:write'
+};
+
+// User type to canonical scope mappings (reference: SCOPE_VOCABULARY.md § User Type Scope Assignments)
 const USER_TYPE_SCOPES = {
   // Admin users get full access
   admin: [
-    BANKING_SCOPES.ADMIN,
-    BANKING_SCOPES.BANKING_READ,
-    BANKING_SCOPES.BANKING_WRITE,
-    BANKING_SCOPES.SENSITIVE,
-    BANKING_SCOPES.AI_AGENT
+    BANKING_SCOPES.ADMIN,         // Full admin access
+    BANKING_SCOPES.BANKING_READ,  // Read all accounts + transactions
+    BANKING_SCOPES.BANKING_WRITE, // Write all banking operations
+    BANKING_SCOPES.SENSITIVE,     // Sensitive data access
+    BANKING_SCOPES.AI_AGENT       // AI agent identification
   ],
   
   // Customer users get read/write access but no admin
   customer: [
-    BANKING_SCOPES.BANKING_READ,
-    BANKING_SCOPES.BANKING_WRITE,
-    BANKING_SCOPES.AI_AGENT
+    BANKING_SCOPES.BANKING_READ,  // Read own accounts + transactions
+    BANKING_SCOPES.BANKING_WRITE, // Write banking operations
+    BANKING_SCOPES.AI_AGENT       // AI agent identification
   ],
   
   // Read-only users get only read access
   readonly: [
-    BANKING_SCOPES.BANKING_READ
+    BANKING_SCOPES.BANKING_READ   // Read-only access
   ],
   
   // AI agents get full access including AI agent scope
   ai_agent: [
-    BANKING_SCOPES.AI_AGENT,
-    BANKING_SCOPES.AI_AGENT_IDENTITY,
-    BANKING_SCOPES.BANKING_READ,
-    BANKING_SCOPES.BANKING_WRITE
+    BANKING_SCOPES.AI_AGENT,          // AI agent identification (resource server)
+    BANKING_SCOPES.AI_AGENT_IDENTITY, // AI agent identity (OIDC)
+    BANKING_SCOPES.BANKING_READ,      // Read accounts + transactions
+    BANKING_SCOPES.BANKING_WRITE      // Write banking operations
   ]
 };
 
@@ -206,9 +228,23 @@ const getOAuthProviderConfig = (provider = 'pingone_ai_core') => {
   return OAUTH_PROVIDER_SCOPE_CONFIGS[provider] || OAUTH_PROVIDER_SCOPE_CONFIGS.pingone_ai_core;
 };
 
+/**
+ * DEPRECATION NOTICE (Phase 146)
+ *
+ * Old scope naming:
+ * - 'banking:general:read' → now 'banking:read'
+ * - 'banking:general:write' → now 'banking:write'
+ *
+ * Compound scopes (banking:accounts:read, banking:transactions:read/write) are
+ * kept for backward compatibility via COMPOUND_SCOPES but marked for deprecation.
+ *
+ * See SCOPE_VOCABULARY.md for full deprecation path.
+ */
+
 module.exports = {
   PINGONE_OIDC_DEFAULT_SCOPES_SPACE,
   BANKING_SCOPES,
+  COMPOUND_SCOPES,
   USER_TYPE_SCOPES,
   ENVIRONMENT_CONFIGS,
   ROUTE_SCOPE_MAP,

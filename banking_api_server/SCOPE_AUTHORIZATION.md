@@ -1,5 +1,9 @@
 # Scope-Based Authorization
 
+
+> **📚 Scope Definitions:** For canonical scope names and resource server mapping, see [SCOPE_VOCABULARY.md](SCOPE_VOCABULARY.md).
+> This guide covers **enforcement patterns and middleware usage**.
+
 This document describes the scope-based authorization system implemented for the banking API server.
 
 ## Overview

@@ -1,5 +1,12 @@
 # Banking API Scope Configuration
 
+
+## See Also
+
+- [SCOPE_VOCABULARY.md](SCOPE_VOCABULARY.md) — Canonical scope registry
+- [OAUTH_SCOPE_CONFIGURATION.md](OAUTH_SCOPE_CONFIGURATION.md) — PingOne setup
+- [SCOPE_AUTHORIZATION.md](SCOPE_AUTHORIZATION.md) — Enforcement patterns
+
 This document provides a quick reference for the OAuth scope-based authorization system implemented in the Banking API.
 
 ## Quick Start
