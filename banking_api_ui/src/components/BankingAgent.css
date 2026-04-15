@@ -2908,3 +2908,168 @@ html[data-theme='dark'] .App--marketing-page .embedded-agent-dock[data-agent-the
 .split-pane-agent-pane .banking-agent-float-root .banking-agent-fab {
   position: fixed !important; /* Keep FAB fixed globally */
 }
+
+/* ─── Phase 148: Grouped Action Layout & Compact Redesign ──────────────────────── */
+
+/** Grouped action container — organizes actions by category */
+.ba-action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 0;
+}
+
+/** Group header button — clickable to toggle expand/collapse */
+.ba-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ba-chip-txt);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.ba-group-header:hover {
+  background: rgba(65, 105, 225, 0.08);
+  border-radius: 4px;
+}
+
+.ba-group-header:active {
+  transform: scale(0.98);
+}
+
+/** Group icon (emoji representing the category) */
+.ba-group-icon {
+  display: inline-block;
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+/** Group name text */
+.ba-group-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/** Group toggle arrow */
+.ba-group-toggle {
+  display: inline-block;
+  font-size: 10px;
+  width: 12px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+
+.ba-group-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+/** Group content container — shows/hides actions */
+.ba-group-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 1000px;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.25s ease;
+  opacity: 1;
+}
+
+.ba-group-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/** Emoji-only action buttons — show emoji, hide text, keep width compact */
+.ba-action-item--emoji {
+  padding: 6px 8px;
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+  min-height: 32px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ba-chip-txt);
+  background: var(--ba-chip-bg);
+  border: 1px solid var(--ba-chip-bd);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  /* Show emoji character only, hide text */
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+}
+
+.ba-action-item--emoji:hover:not(:disabled) {
+  background: var(--ba-accent);
+  border-color: var(--ba-accent);
+  transform: scale(1.08);
+}
+
+.ba-action-item--emoji:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/** Condensed message display — reduce line-height and padding for more history visible */
+.banking-agent-messages--condensed {
+  line-height: 1.4;
+}
+
+.banking-agent-messages--condensed .ba-message {
+  padding: 6px 10px;
+  margin-bottom: 4px;
+}
+
+.banking-agent-messages--condensed .ba-message-content {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.banking-agent-messages--condensed .ba-message-title {
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+/** Prominent prompt field — visually distinct, always visible at bottom */
+.ba-prompt-field--prominent {
+  padding: 10px;
+  margin: 8px 0 0 0;
+  background: var(--ba-accent-light, rgba(65, 105, 225, 0.08));
+  border: 2px solid var(--ba-accent, #4169e1);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(65, 105, 225, 0.15);
+}
+
+.ba-prompt-field--prominent:focus {
+  outline: none;
+  border-color: var(--ba-accent, #4169e1);
+  background: rgba(65, 105, 225, 0.12);
+  box-shadow: 0 4px 12px rgba(65, 105, 225, 0.2);
+}
+
+.ba-prompt-field--prominent::placeholder {
+  color: var(--ba-muted);
+  opacity: 0.8;
+}
+
+/* End Phase 148 CSS */

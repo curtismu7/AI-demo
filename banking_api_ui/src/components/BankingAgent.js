@@ -905,6 +905,67 @@ export default function BankingAgent({
       [groupName]: !prev[groupName],
     }));
   };
+
+
+  /** Render a single action button with optional emoji-only styling. */
+  const renderChip = (action, groupName) => {
+    const isEmojiOnly = true; // Per D-02: always show emoji only for chips
+    const emoji = action.label.match(/^./u)?.[0] || '•'; // Extract first character (emoji)
+    const textLabel = action.label.replace(/^./, '').trim(); // Remove emoji from label
+    
+    return (
+      <button
+        key={action.id}
+        type="button"
+        className={isEmojiOnly ? "ba-action-item ba-action-item--emoji" : "ba-action-item"}
+        onClick={() => handleActionClick(action.id)}
+        disabled={loading || (consentBlocked && action.id !== 'logout')}
+        title={textLabel || action.desc}
+      >
+        {isEmojiOnly ? emoji : action.label}
+      </button>
+    );
+  };
+
+  /** Render ACTION_GROUPS with collapsible headers and grouped chips. */
+  const renderActionGroups = () => {
+    // Filter groups based on config mode
+    let groupsToRender = { ...ACTION_GROUPS };
+    if (isConfigEmbeddedFocus) {
+      // In config mode, only show admin actions
+      groupsToRender = { admin: ACTION_GROUPS.admin || [] };
+    }
+    
+    return Object.entries(groupsToRender).map(([groupName, actions]) => {
+      const isExpanded = chipGroupsState[groupName];
+      const capitalizedName = groupName.charAt(0).toUpperCase() + groupName.slice(1);
+      const groupEmoji = {
+        account: '🏦',
+        transaction: '💳',
+        admin: '🛠️',
+      }[groupName] || '•';
+      
+      return (
+        <div key={groupName} className={}>
+          <button
+            className="ba-group-header"
+            onClick={() => toggleGroupExpanded(groupName)}
+            type="button"
+            title={`${isExpanded ? 'Collapse' : 'Expand'} ${capitalizedName} actions`}
+          >
+            <span className="ba-group-icon">${groupEmoji}</span>
+            <span className="ba-group-name">${capitalizedName}</span>
+            <span className={}>
+              {isExpanded ? '▼' : '▶'}
+            </span>
+          </button>
+          <div className={}>
+            {actions.map(action => renderChip(action, groupName))}
+          </div>
+        </div>
+      );
+    });
+  };
   /** True when the user has accepted the in-app agent consent agreement. */
   /** Missing-scopes error from token exchange — shows config-fix modal. */
   const [scopeErrorModal, setScopeErrorModal] = useState(null);
@@ -2966,7 +3027,7 @@ export default function BankingAgent({
 
               {isLoggedIn ? (
                 <>
-                  {actionsList.map(a => (
+                  {isLoggedIn && renderActionGroups()}
                     <button
                       key={a.id}
                       type="button"
