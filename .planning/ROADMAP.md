@@ -2359,6 +2359,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 160 to break down)
+- [ ] 160-01-PLAN.md — TRiSM panel infrastructure: main slide-out + 6 principle slides + navigation
+- [ ] 160-02-PLAN.md — Integration: Learn button in top nav, glossary component, build verification
 
 ---
