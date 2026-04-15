@@ -2310,14 +2310,14 @@ Plans:
 **Goal:** Improve error messages to teach WHY security decisions were made: every rejection includes what failed, why it failed, how to fix it, and a teaching moment about security principles.
 **Requirements**: TBD
 **Depends on:** Phase 155
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 156 to break down)
+- [ ] 156-01-PLAN.md — BFF middleware + error schema service (token, scope, delegation validation)
+- [ ] 156-02-PLAN.md — MCP server validation + JsonRpc error formatting
+- [ ] 156-03-PLAN.md — Frontend error display (modals, toasts, audit log)
 
-### Phase 157: Audit and align AI agent security with PingOne Identity for AI best practices — delegation, consent flow, custom resources, attribute mapping, error messaging
 
-**Goal:** Audit current AI agent security implementation against Gartner's AI TRiSM guide (Trust, Risk Management, Security, Governance, Lifecycle, IAM). Document alignment gaps and recommend follow-up phases for compliance.
 **Requirements**: TBD
 **Depends on:** Phase 156
 **Plans:** 0 plans
