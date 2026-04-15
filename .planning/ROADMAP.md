@@ -2343,4 +2343,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 159 to break down)
 
+### Phase 160: AI TRiSM Training Panel — educational slide-out explaining Trust, Risk Management, Security, Governance, Lifecycle, and IAM principles for AI agents
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 159
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 160 to break down)
+
 ---

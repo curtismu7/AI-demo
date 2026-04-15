@@ -68,3 +68,4 @@ Phase 146, Phase 147 (most recent)
 - Phase 157 added: Audit and align AI agent security with PingOne Identity for AI best practices
 - Phase 158 added: Add token validation test scenarios with educational error messages
 - Phase 159 added: AI Safety Red Button Kill Switch for TRiSM compliance
+- Phase 160 added: AI TRiSM Training Panel demonstrating all six principles with live demos
