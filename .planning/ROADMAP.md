@@ -2359,7 +2359,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 160-01-PLAN.md — TRiSM panel infrastructure: main slide-out + 6 principle slides + navigation
-- [ ] 160-02-PLAN.md — Integration: Learn button in top nav, glossary component, build verification
+- [x] 160-01-PLAN.md — TRiSM panel infrastructure: main slide-out + 6 principle slides + navigation
+- [x] 160-02-PLAN.md — Integration: Learn button in top nav, glossary component, build verification
 
 ---
