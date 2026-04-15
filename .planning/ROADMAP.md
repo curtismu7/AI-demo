@@ -2291,4 +2291,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 154 to break down)
 
+### Phase 155: Redesign left sidebar as unified navigation menu with icon + label styling
+
+**Goal:** Convert scattered side buttons (Sign in, Dashboard, Admin, Account) and top toolbar items (Theme toggle, Auto-refresh, Token modal, Switch role) into a unified left sidebar menu with icon-label pairs. Apply design styling from screenshot: color palette, font sizing, icon sizing (16-18px), label typography. Consolidate navigation in one location so toolbar is simplified to task-specific actions only.
+
+**Requirements**: SIDE-155-01 (sidebar menu component), SIDE-155-02 (icon + label styling), SIDE-155-03 (responsive layout), SIDE-155-04 (toolbar consolidation)
+**Depends on:** Phase 154
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 155 to break down)
+
+
 ---
