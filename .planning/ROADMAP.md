@@ -2084,7 +2084,7 @@ Plans:
 **Goal:** Audit every place the token chain can break or go silent — missing events after login, chain not updating after agent tool calls, UI stuck on placeholder, identity hints not resolving, session preview stale — and fix each one. Add automated smoke tests and a visible error state when the chain fails so breakages are immediately obvious.
 **Requirements**: TBD
 **Depends on:** Phase 134 (audit 120+), Phase 132 (decoded token panels)
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 136 to break down)
@@ -2190,7 +2190,7 @@ Plans:
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: TBD
 **Depends on:** Phase 144
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 145 to break down)
@@ -2256,7 +2256,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 150
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 151 to break down)
@@ -2266,7 +2266,7 @@ Plans:
 **Goal:** Test all /api/pingone-test/* endpoints against live PingOne, fix bugs discovered during integration testing. Covers: managementService.initialize() token passing, enableResourceServer() PingOne grants API payload format (scope format, 400/409 conflict handling, PUT vs PATCH, duplicate scope name detection), and full pi.flow OAuth chain validation (Steps 1-5: authorize, credentials, resume, token, exchange).
 **Requirements**: TEST-152-01 (live endpoint testing), TEST-152-02 (enableResourceServer bug fixes), TEST-152-03 (pi.flow chain validation)
 **Depends on:** Phase 151
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 152 to break down)
@@ -2276,7 +2276,7 @@ Plans:
 **Goal:** Fix both Postman collections: (1) Super Banking PingOne Test collection — replace broken login GET requests with browser-based auth + sessionCookie variable, add Cookie headers to session-dependent requests. (2) PingOne Authorization Code pi.flow collection — fix redirect_uri from Vercel production to local (api.pingdemo.com:4000), fix callback path (/oauthuser/ → /oauth/user/). Rename BX Finance → Super Banking in pi.flow collection.
 **Requirements**: POST-153-01 (test collection auth fix), POST-153-02 (pi.flow redirect_uri fix), POST-153-03 (BX Finance rename in pi.flow)
 **Depends on:** Phase 152
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 153 to break down)
@@ -2286,7 +2286,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 153
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 154 to break down)
@@ -2318,19 +2318,25 @@ Plans:
 - [ ] 156-03-PLAN.md — Frontend error display (modals, toasts, audit log)
 
 
+### Phase 157: Audit and align AI agent security with PingOne Identity for AI best practices — delegation, consent flow, custom resources, attribute mapping, error messaging
+
+**Goal:** Audit current AI agent security implementation against PingOne's "Securing AI agents with PingOne using delegation and least privilege" guide and plan alignment improvements.
+
+
 **Requirements**: TBD
 **Depends on:** Phase 156
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 157 to break down)
+- [ ] 157-01-PLAN.md — Comprehensive security audit (7 areas against PingOne guide)
+- [ ] 157-02-PLAN.md — Gap analysis with severities, dependencies, and follow-up phases
 
 ### Phase 158: Add token validation test scenarios — demonstrate MCP server rejecting wrong tokens (user token with wrong scope/aud) and educational error messages
 
 **Goal:** Add UI/API test scenarios to demonstrate how the MCP server rejects wrong tokens (user token with incorrect scope/audience) and displays educational error messages explaining the rejection and why it matters.
 **Requirements**: TBD
 **Depends on:** Phase 157
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 158 to break down)
@@ -2340,7 +2346,7 @@ Plans:
 **Goal:** Implement red button kill switch demonstrating AI TRiSM principles: immediate OAuth token revocation (< 2 sec), rate limiting to cap blast radius, state capture for forensics, and immutable audit trail for compliance.
 **Requirements**: TBD
 **Depends on:** Phase 158
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 159 to break down)
@@ -2350,7 +2356,7 @@ Plans:
 **Goal:** Create interactive training panel explaining all six AI TRiSM principles with live demos from the app showing how each principle is implemented: Trust, Risk Management, Security, Governance, Lifecycle, and IAM.
 **Requirements**: TBD
 **Depends on:** Phase 159
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 160 to break down)
