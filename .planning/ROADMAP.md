@@ -2349,8 +2349,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 159-01-PLAN.md — Kill switch backend: token revocation, rate limiting, state capture, audit logging
-- [ ] 159-02-PLAN.md — Red button UI: confirmation modal, forensic audit dashboard integration
+- [x] 159-01-PLAN.md — Kill switch backend: token revocation, rate limiting, state capture, audit logging
+- [x] 159-02-PLAN.md — Red button UI: confirmation modal, forensic audit dashboard integration
 ### Phase 160: AI TRiSM Training Panel — educational slide-out explaining Trust, Risk Management, Security, Governance, Lifecycle, and IAM principles for AI agents
 
 **Goal:** Create interactive training panel explaining all six AI TRiSM principles with live demos from the app showing how each principle is implemented: Trust, Risk Management, Security, Governance, Lifecycle, and IAM.
