@@ -2333,4 +2333,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 158 to break down)
 
+### Phase 159: AI Safety Red Button Kill Switch — immediate agent revocation, rate limiting, state capture, and forensic audit trail for TRiSM compliance
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 158
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 159 to break down)
+
 ---
