@@ -84,17 +84,27 @@ function SessionExpiryTimer({ sessionInfo, className = '' }) {
 
 // ─── Action definitions ────────────────────────────────────────────────────────
 
-const ACTIONS = [
-  { id: 'accounts',     label: '🏦 My Accounts',       desc: 'List all your accounts' },
-  { id: 'transactions', label: '📋 Recent Transactions', desc: 'View recent activity' },
-  { id: 'balance',      label: '💰 Check Balance',      desc: 'Balance for an account' },
-  { id: 'deposit',      label: '⬇ Deposit',             desc: 'Deposit into an account' },
-  { id: 'withdraw',     label: '⬆ Withdraw',            desc: 'Withdraw from an account' },
-  { id: 'transfer',     label: '↔ Transfer',            desc: 'Transfer between accounts' },
-  { id: 'sensitive-account-details', label: '👁 View Sensitive Account Details', desc: 'View full account number and routing number (requires consent)' },
-  { id: 'mcp_tools',   label: '🔧 MCP Tools',           desc: 'List all available MCP banking tools' },
-  { id: 'logout',       label: '🚪 Log Out',             desc: 'Sign out of your account' },
-];
+const ACTION_GROUPS = {
+  account: [
+    { id: "accounts",     label: "🏦 My Accounts",       desc: "List all your accounts" },
+    { id: "balance",      label: "💰 Check Balance",      desc: "Balance for an account" },
+    { id: "sensitive-account-details", label: "👁 View Sensitive Account Details", desc: "View full account number and routing number (requires consent)" },
+  ],
+  transaction: [
+    { id: "transactions", label: "📋 Recent Transactions", desc: "View recent activity" },
+    { id: "deposit",      label: "⬇ Deposit",             desc: "Deposit into an account" },
+    { id: "withdraw",     label: "⬆ Withdraw",            desc: "Withdraw from an account" },
+    { id: "transfer",     label: "↔ Transfer",            desc: "Transfer between accounts" },
+  ],
+  admin: [
+    { id: "mcp_tools",    label: "🔧 MCP Tools",          desc: "List all available MCP banking tools" },
+    { id: "logout",       label: "🚪 Log Out",             desc: "Sign out of your account" },
+  ],
+};
+
+// Backwards compatibility: flat ACTIONS array from ACTION_GROUPS
+const ACTIONS = Object.values(ACTION_GROUPS).flat();
+
 
 // ─── Fake account data generator ────────────────────────────────────────────────
 
@@ -861,6 +871,40 @@ export default function BankingAgent({
   // Always start false — the block is session-scoped, not page-load-scoped.
   // Clear any stale localStorage value immediately so refresh/login never shows the banner.
   const [consentBlocked, setConsentBlocked] = useState(false);
+  /** Group expand/collapse state for chip categories — defaults per D-06, persisted in localStorage. */
+  const [chipGroupsState, setChipGroupsState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ba_chip_groups_state');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load ba_chip_groups_state from localStorage:', e);
+    }
+    // Default state per D-06: Account expanded, Transaction and Admin collapsed
+    return {
+      account: true,
+      transaction: false,
+      admin: false,
+    };
+  });
+
+  /** Persist chipGroupsState changes to localStorage. */
+  useEffect(() => {
+    try {
+      localStorage.setItem('ba_chip_groups_state', JSON.stringify(chipGroupsState));
+    } catch (e) {
+      console.warn('Failed to save ba_chip_groups_state to localStorage:', e);
+    }
+  }, [chipGroupsState]);
+
+  /** Toggle expanded/collapsed state for a group. */
+  const toggleGroupExpanded = (groupName) => {
+    setChipGroupsState(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }));
+  };
   /** True when the user has accepted the in-app agent consent agreement. */
   /** Missing-scopes error from token exchange — shows config-fix modal. */
   const [scopeErrorModal, setScopeErrorModal] = useState(null);
@@ -1199,7 +1243,6 @@ export default function BankingAgent({
         } else {
           setMessages([welcome]);
         }
-        window.dispatchEvent(new CustomEvent('userAuthenticated'));
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
