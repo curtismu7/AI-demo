@@ -2305,7 +2305,7 @@ Plans:
 
 ### Phase 156: Improve security error messages for token scope violations and delegation failures
 
-**Goal:** [To be planned]
+**Goal:** Improve error messages to teach WHY security decisions were made: every rejection includes what failed, why it failed, how to fix it, and a teaching moment about security principles.
 **Requirements**: TBD
 **Depends on:** Phase 155
 **Plans:** 0 plans
@@ -2315,7 +2315,7 @@ Plans:
 
 ### Phase 157: Audit and align AI agent security with PingOne Identity for AI best practices — delegation, consent flow, custom resources, attribute mapping, error messaging
 
-**Goal:** [To be planned]
+**Goal:** Audit current AI agent security implementation against Gartner's AI TRiSM guide (Trust, Risk Management, Security, Governance, Lifecycle, IAM). Document alignment gaps and recommend follow-up phases for compliance.
 **Requirements**: TBD
 **Depends on:** Phase 156
 **Plans:** 0 plans
@@ -2325,7 +2325,7 @@ Plans:
 
 ### Phase 158: Add token validation test scenarios — demonstrate MCP server rejecting wrong tokens (user token with wrong scope/aud) and educational error messages
 
-**Goal:** [To be planned]
+**Goal:** Add UI/API test scenarios to demonstrate how the MCP server rejects wrong tokens (user token with incorrect scope/audience) and displays educational error messages explaining the rejection and why it matters.
 **Requirements**: TBD
 **Depends on:** Phase 157
 **Plans:** 0 plans
@@ -2335,7 +2335,7 @@ Plans:
 
 ### Phase 159: AI Safety Red Button Kill Switch — immediate agent revocation, rate limiting, state capture, and forensic audit trail for TRiSM compliance
 
-**Goal:** [To be planned]
+**Goal:** Implement red button kill switch demonstrating AI TRiSM principles: immediate OAuth token revocation (< 2 sec), rate limiting to cap blast radius, state capture for forensics, and immutable audit trail for compliance.
 **Requirements**: TBD
 **Depends on:** Phase 158
 **Plans:** 0 plans
@@ -2345,7 +2345,7 @@ Plans:
 
 ### Phase 160: AI TRiSM Training Panel — educational slide-out explaining Trust, Risk Management, Security, Governance, Lifecycle, and IAM principles for AI agents
 
-**Goal:** [To be planned]
+**Goal:** Create interactive training panel explaining all six AI TRiSM principles with live demos from the app showing how each principle is implemented: Trust, Risk Management, Security, Governance, Lifecycle, and IAM.
 **Requirements**: TBD
 **Depends on:** Phase 159
 **Plans:** 0 plans
