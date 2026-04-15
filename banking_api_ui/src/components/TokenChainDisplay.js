@@ -5,6 +5,12 @@ import { useTokenChainOptional } from '../context/TokenChainContext';
 import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import './TokenChainDisplay.css';
 
+
+// Module-level request deduplication
+let sessionPreviewPromise = null;
+let lastFetchTime = 0;
+const FETCH_COOLDOWN_MS = 5000; // Don't fetch more than once per 5 seconds
+
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
@@ -924,16 +930,32 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
 
   /** Fetch session preview (called on mount, on login, and when live events reset). */
   const fetchSessionPreview = useCallback(async () => {
-    try {
-      const res = await fetch('/api/tokens/session-preview', { credentials: 'include' });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
-        setSessionPreviewEvents(data.tokenEvents);
-      }
-    } catch (_err) {
-      /* non-fatal — keep placeholder */
+    const now = Date.now();
+    // Skip if another fetch is in flight
+    if (sessionPreviewPromise) {
+      return sessionPreviewPromise;
     }
+    // Skip if we just fetched recently (cooldown)
+    if (now - lastFetchTime < FETCH_COOLDOWN_MS) {
+      return;
+    }
+    
+    lastFetchTime = now;
+    sessionPreviewPromise = (async () => {
+      try {
+        const res = await fetch('/api/tokens/session-preview', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
+          setSessionPreviewEvents(data.tokenEvents);
+        }
+      } catch (_err) {
+        /* non-fatal — keep placeholder */
+      } finally {
+        sessionPreviewPromise = null;
+      }
+    })();
+    return sessionPreviewPromise;
   }, []);
 
   /**
