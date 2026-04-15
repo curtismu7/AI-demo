@@ -66,3 +66,4 @@ Phase 146, Phase 147 (most recent)
 - 98192d0: docs(147): mark phase 147 complete in ROADMAP
 - Phase 156 added: Improve security error messages for token scope violations and delegation failures
 - Phase 157 added: Audit and align AI agent security with PingOne Identity for AI best practices
+- Phase 158 added: Add token validation test scenarios with educational error messages

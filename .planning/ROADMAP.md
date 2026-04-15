@@ -2323,4 +2323,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 157 to break down)
 
+### Phase 158: Add token validation test scenarios — demonstrate MCP server rejecting wrong tokens (user token with wrong scope/aud) and educational error messages
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 157
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 158 to break down)
+
 ---
