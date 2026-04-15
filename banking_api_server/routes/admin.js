@@ -767,6 +767,176 @@ router.get(
       });
     }
   }
+
+/**
+ * AI Safety Red Button Kill Switch Endpoints
+ * REQ-159-01/02/07/08: Kill switch accessible via API, token revoked at OAuth server
+ */
+
+const killSwitchService = require('../services/killSwitchService');
+const auditLogService = require('../services/auditLogService');
+
+/**
+ * POST /api/admin/agent/:agentId/kill-switch
+ * Kill switch endpoint: immediate agent revocation
+ */
+router.post(
+  '/agent/:agentId/kill-switch',
+  requireAdmin,
+  requireScopes(['banking:admin']),
+  async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { reason = 'manual_red_button' } = req.body;
+
+      // Validation
+      if (!agentId || typeof agentId !== 'string' || agentId.trim().length === 0) {
+        return res.status(400).json({
+          error: 'invalid_agent_id',
+          message: 'agentId is required and must be a non-empty string',
+        });
+      }
+
+      if (!reason || typeof reason !== 'string') {
+        return res.status(400).json({
+          error: 'invalid_reason',
+          message: 'reason must be a string',
+        });
+      }
+
+      // Check if already revoked
+      const isRevoked = await killSwitchService.isAgentRevoked(agentId);
+      if (isRevoked) {
+        return res.status(403).json({
+          error: 'agent_already_revoked',
+          message: `Agent ${agentId} is already revoked`,
+        });
+      }
+
+      // Execute kill switch
+      const result = await killSwitchService.killAgent(agentId, reason);
+
+      return res.status(200).json({
+        success: true,
+        revoked_at: result.revoked_at,
+        state_snapshot_id: result.state_snapshot_id,
+        time_to_revoke_ms: result.time_to_revoke_ms,
+        message: `Agent ${agentId} has been revoked. Token invalid within ${result.time_to_revoke_ms}ms.`,
+      });
+
+    } catch (error) {
+      console.error('[admin] Kill switch error:', error.message);
+      return res.status(500).json({
+        error: 'kill_switch_failed',
+        message: `Failed to execute kill switch: ${error.message}`,
+      });
+    }
+  }
 );
+
+/**
+ * GET /api/admin/agent/:agentId/status
+ * Get current agent status (running or revoked)
+ */
+router.get(
+  '/agent/:agentId/status',
+  requireAdmin,
+  requireScopes(['banking:admin']),
+  async (req, res) => {
+    try {
+      const { agentId } = req.params;
+
+      const isRevoked = await killSwitchService.isAgentRevoked(agentId);
+
+      return res.status(200).json({
+        agent_id: agentId,
+        status: isRevoked ? 'revoked' : 'running',
+        revoked_at: isRevoked ? new Date().toISOString() : null,
+      });
+
+    } catch (error) {
+      console.error('[admin] Agent status error:', error.message);
+      return res.status(500).json({
+        error: 'status_check_failed',
+        message: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/audit-trail
+ * Forensic audit trail: kill events and rate limit violations
+ */
+router.get(
+  '/audit-trail',
+  requireAdmin,
+  requireScopes(['banking:admin']),
+  async (req, res) => {
+    try {
+      const { agentId, hours = 24, limit = 100 } = req.query;
+
+      if (!agentId || typeof agentId !== 'string' || agentId.trim().length === 0) {
+        return res.status(400).json({
+          error: 'invalid_agent_id',
+          message: 'agentId query parameter is required',
+        });
+      }
+
+      const hoursBack = Math.min(parseInt(hours) || 24, 720); // Max 30 days
+      const eventLimit = Math.min(parseInt(limit) || 100, 500); // Max 500 per query
+
+      const events = await auditLogService.getAuditTrail(agentId, hoursBack, eventLimit);
+
+      return res.status(200).json({
+        agent_id: agentId,
+        query_hours: hoursBack,
+        events_count: events.length,
+        events,
+      });
+
+    } catch (error) {
+      console.error('[admin] Audit trail error:', error.message);
+      return res.status(500).json({
+        error: 'audit_trail_failed',
+        message: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/audit-event/:auditId
+ * Get detailed information about a specific audit event
+ */
+router.get(
+  '/audit-event/:auditId',
+  requireAdmin,
+  requireScopes(['banking:admin']),
+  async (req, res) => {
+    try {
+      const { auditId } = req.params;
+
+      const event = await auditLogService.getAuditEventById(auditId);
+
+      if (!event) {
+        return res.status(404).json({
+          error: 'audit_event_not_found',
+          message: `Audit event ${auditId} not found`,
+        });
+      }
+
+      return res.status(200).json(event);
+
+    } catch (error) {
+      console.error('[admin] Audit event detail error:', error.message);
+      return res.status(500).json({
+        error: 'audit_event_failed',
+        message: error.message,
+      });
+    }
+  }
+);
+
 
 module.exports = router;
