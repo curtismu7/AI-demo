@@ -1,7 +1,8 @@
 // banking_api_ui/src/components/ChaseTopNav.js
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
+import TRiSMTrainingPanel from './TRiSMTrainingPanel';
 import { useTheme } from '../context/ThemeContext';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import './ChaseTopNav.css';
@@ -18,6 +19,7 @@ import './ChaseTopNav.css';
 export default function ChaseTopNav({ user, onLogout, currentPage = 'home', onRoleSwitch }) {
   const { theme, toggleTheme } = useTheme();
   const { preset } = useIndustryBranding();
+  const [showTRiSMPanel, setShowTRiSMPanel] = useState(false);
   
   const isAdmin = user?.role === 'admin';
 
@@ -53,7 +55,7 @@ export default function ChaseTopNav({ user, onLogout, currentPage = 'home', onRo
         ))}
       </div>
 
-      {/* RIGHT: User Actions (Greeting, Theme Toggle, Role Switch, Logout) */}
+      {/* RIGHT: User Actions (Greeting, Learn, Theme Toggle, Role Switch, Logout) */}
       <div className="chase-top-nav__right">
         {/* User Greeting */}
         {user && (
@@ -68,6 +70,16 @@ export default function ChaseTopNav({ user, onLogout, currentPage = 'home', onRo
             </span>
           </div>
         )}
+
+        {/* AI TRiSM Training Button */}
+        <button
+          className={`chase-nav-button chase-nav-button--learn ${showTRiSMPanel ? 'active' : ''}`}
+          onClick={() => setShowTRiSMPanel(!showTRiSMPanel)}
+          title="AI TRiSM Training"
+          aria-label="Open AI TRiSM Training Panel"
+        >
+          📚 Learn
+        </button>
 
         {/* Theme Toggle Button */}
         <button
@@ -101,6 +113,12 @@ export default function ChaseTopNav({ user, onLogout, currentPage = 'home', onRo
           Sign Out
         </button>
       </div>
+
+      {/* TRiSM Training Panel (Phase 160) */}
+      <TRiSMTrainingPanel
+        isOpen={showTRiSMPanel}
+        onClose={() => setShowTRiSMPanel(false)}
+      />
     </nav>
   );
 }
