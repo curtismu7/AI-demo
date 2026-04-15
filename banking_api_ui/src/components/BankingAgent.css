@@ -2995,7 +2995,51 @@ html[data-theme='dark'] .App--marketing-page .embedded-agent-dock[data-agent-the
 }
 
 /** Emoji-only action buttons — show emoji, hide text, keep width compact */
+.ba-action-item--icon-text {
+  padding: 6px 10px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  color: var(--ba-chip-txt);
+  background: var(--ba-chip-bg);
+  border: 1px solid var(--ba-chip-bd);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+
+.ba-action-item__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+}
+
+.ba-action-item__text {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ba-action-item--icon-text:hover:not(:disabled) {
+  background: var(--ba-accent);
+  border-color: var(--ba-accent);
+  transform: scale(1.05);
+}
+
+.ba-action-item--icon-text:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .ba-action-item--emoji {
+  /* Legacy emoji-only style - kept for compatibility */
   padding: 6px 8px;
   font-size: 16px;
   line-height: 1;
@@ -3011,7 +3055,6 @@ html[data-theme='dark'] .App--marketing-page .embedded-agent-dock[data-agent-the
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
-  /* Show emoji character only, hide text */
   font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 }
 

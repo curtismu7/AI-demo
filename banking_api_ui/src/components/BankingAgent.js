@@ -909,7 +909,6 @@ export default function BankingAgent({
 
   /** Render a single action button with optional emoji-only styling. */
   const renderChip = (action, groupName) => {
-    const isEmojiOnly = true; // Per D-02: always show emoji only for chips
     const emoji = action.label.match(/^./u)?.[0] || '•'; // Extract first character (emoji)
     const textLabel = action.label.replace(/^./, '').trim(); // Remove emoji from label
     
@@ -917,12 +916,13 @@ export default function BankingAgent({
       <button
         key={action.id}
         type="button"
-        className={isEmojiOnly ? "ba-action-item ba-action-item--emoji" : "ba-action-item"}
+        className="ba-action-item ba-action-item--icon-text"
         onClick={() => handleActionClick(action.id)}
         disabled={loading || (consentBlocked && action.id !== 'logout')}
         title={textLabel || action.desc}
       >
-        {isEmojiOnly ? emoji : action.label}
+        <span className="ba-action-item__icon">{emoji}</span>
+        <span className="ba-action-item__text">{textLabel}</span>
       </button>
     );
   };
