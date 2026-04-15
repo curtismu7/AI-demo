@@ -2303,4 +2303,14 @@ Plans:
 - [ ] TBD (run /gsd-plan-phase 155 to break down)
 
 
+### Phase 156: Improve security error messages for token scope violations and delegation failures
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 155
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 156 to break down)
+
 ---

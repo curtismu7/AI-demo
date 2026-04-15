@@ -29,6 +29,8 @@ Plan: 1 of 3
 - Phase 152 added: PingOne Test Page — live integration testing and bug fixes
 - Phase 153 added: Postman collections — fix auth flow and add session cookie support
 - Phase 154 added: Create plan to implement DPoP, research if PingOne SSO supports it, if not how can we simulate it
+- Phase 155 added: Redesign left sidebar as unified navigation menu with icon + label styling
+- Phase 156 added: Improve security error messages for token scope violations and delegation failures
 
 **Previous:** Phase 147 (get-rid-of-left-agent-keep-the-rest) — ✅ COMPLETE
 **Next:** /gsd-plan-phase 148
