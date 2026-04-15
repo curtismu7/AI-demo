@@ -2336,21 +2336,21 @@ Plans:
 **Goal:** Add UI/API test scenarios to demonstrate how the MCP server rejects wrong tokens (user token with incorrect scope/audience) and displays educational error messages explaining the rejection and why it matters.
 **Requirements**: TBD
 **Depends on:** Phase 157
-**Plans:** 2 plans
+**Plans:** 1/0 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 158 to break down)
+- [x] TBD (run /gsd-plan-phase 158 to break down) (completed 2026-04-15)
 
 ### Phase 159: AI Safety Red Button Kill Switch — immediate agent revocation, rate limiting, state capture, and forensic audit trail for TRiSM compliance
 
 **Goal:** Implement red button kill switch demonstrating AI TRiSM principles: immediate OAuth token revocation (< 2 sec), rate limiting to cap blast radius, state capture for forensics, and immutable audit trail for compliance.
-**Requirements**: TBD
+**Requirements**: REQ-159-01 through REQ-159-08 (AI TRiSM compliance)
 **Depends on:** Phase 158
 **Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 159 to break down)
-
+- [ ] 159-01-PLAN.md — Kill switch backend: token revocation, rate limiting, state capture, audit logging
+- [ ] 159-02-PLAN.md — Red button UI: confirmation modal, forensic audit dashboard integration
 ### Phase 160: AI TRiSM Training Panel — educational slide-out explaining Trust, Risk Management, Security, Governance, Lifecycle, and IAM principles for AI agents
 
 **Goal:** Create interactive training panel explaining all six AI TRiSM principles with live demos from the app showing how each principle is implemented: Trust, Risk Management, Security, Governance, Lifecycle, and IAM.
