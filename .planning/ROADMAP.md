@@ -2313,4 +2313,14 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 156 to break down)
 
+### Phase 157: Audit and align AI agent security with PingOne Identity for AI best practices — delegation, consent flow, custom resources, attribute mapping, error messaging
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 156
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 157 to break down)
+
 ---
