@@ -2297,10 +2297,12 @@ Plans:
 
 **Requirements**: SIDE-155-01 (sidebar menu component), SIDE-155-02 (icon + label styling), SIDE-155-03 (responsive layout), SIDE-155-04 (toolbar consolidation)
 **Depends on:** Phase 154
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 155 to break down)
+- [ ] 155-01-PLAN.md — Sidebar component + CSS styling
+- [ ] 155-02-PLAN.md — Integrate sidebar into App layout with responsive visibility
+- [ ] 155-03-PLAN.md — Consolidate toolbar items, clean up header, simplify TopNav
 
 
 ### Phase 156: Improve security error messages for token scope violations and delegation failures
