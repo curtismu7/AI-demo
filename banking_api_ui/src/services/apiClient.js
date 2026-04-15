@@ -12,6 +12,7 @@ class ApiClient {
     });
 
     this.setupInterceptors();
+    this.cachedStatusGet = cachedStatusGet.bind(this);
   }
 
   setupInterceptors() {
@@ -231,7 +232,42 @@ class ApiClient {
   }
 
   // Convenience methods that use the configured client
-  get(url, config) { return this.client.get(url, config); }
+// Module-level cache for expensive status endpoint calls
+// Each key maps to { promise, expires }. Requests within TTL share the same promise.
+const statusCache = {};
+const STATUS_CACHE_TTL = 3000; // 3 second TTL for status endpoints
+
+/**
+ * Cached wrapper for status endpoints (oauth/status, oauth/user/status, session, etc).
+ * Deduplicates in-flight requests and caches results for 3 seconds.
+ * Prevents rapid cascading calls from multiple components.
+ */
+function cachedStatusGet(url) {
+  const now = Date.now();
+  const cached = statusCache[url];
+  
+  // Return cached promise if still valid
+  if (cached && cached.expires > now) {
+    return cached.promise;
+  }
+  
+  // Fetch and cache
+  const promise = this.client.get(url).then(r => {
+    // Cache the successful response
+    statusCache[url] = { promise: Promise.resolve(r), expires: now + STATUS_CACHE_TTL };
+    return r;
+  }).catch(err => {
+    // Don't cache errors; allow retry on next call
+    delete statusCache[url];
+    throw err;
+  });
+  
+  statusCache[url] = { promise, expires: now + STATUS_CACHE_TTL };
+  return promise;
+}
+
+
+    get(url, config) { return this.client.get(url, config); }
   post(url, data, config) { return this.client.post(url, data, config); }
   put(url, data, config) { return this.client.put(url, data, config); }
   delete(url, config) { return this.client.delete(url, config); }
