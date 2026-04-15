@@ -88,7 +88,7 @@ const customerUser = () =>
     username: 'customer',
     email: 'c@bank.com',
     role: 'user',
-    scopes: ['banking:transactions:read'],
+    scopes: ['banking:read'],
     acr: null,
   });
 

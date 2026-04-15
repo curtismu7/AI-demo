@@ -232,9 +232,9 @@ describe('RFC 9728 Educational Content Verification', () => {
             'banking:read',
             'banking:write',
             'banking:admin',
-            'banking:accounts:read',
-            'banking:transactions:read',
-            'banking:transactions:write'
+            'banking:read',
+            'banking:read',
+            'banking:write'
           ],
           bearer_methods_supported: ['header'],
           resource_name: 'Super Banking Banking API',

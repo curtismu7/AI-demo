@@ -1,383 +1,322 @@
 # PingOne Resources × Applications × Scopes — Complete Matrix
 
-**📋 AUTHORITATIVE SOURCE OF TRUTH** for PingOne resource servers, OAuth applications, and scope configurations in the Super Banking demo.
-
-**This document is the single source of truth for:**
-- All PingOne resource servers and their scopes
-- All OAuth applications (Admin, User, Worker, Agent)
-- Scope naming standards (Phase 69.1)
-- Environment variable mappings
-- Verification checklists
-
-**End-user documentation that references this source of truth:**
-- [SETUP.md](./SETUP.md) — Complete setup guide for developers
-- [PINGONE_APP_CONFIG.md](./PINGONE_APP_CONFIG.md) — App configuration reference
-
-**Related technical docs:**
-- [PINGONE_APP_SCOPE_MATRIX.md](./PINGONE_APP_SCOPE_MATRIX.md) — Application setup guide (grant types, redirect URIs, PingOne console directions)
-- [PINGONE_NAMING_STANDARDIZATION_AUDIT.md](./PINGONE_NAMING_STANDARDIZATION_AUDIT.md) — Phase 69.1 scope naming conventions (**authoritative**)
-- [ENVIRONMENT_MAPPING_AUD_AUDIT.md](./ENVIRONMENT_MAPPING_AUD_AUDIT.md) — Audience validation by component
+**Canonical as of Phase 146 (Scope Vocabulary Alignment, D-02).**  
+Code source of truth: `banking_api_server/config/scopes.js`, `config/oauth.js`, `config/oauthUser.js`, `banking_api_server/SCOPE_VOCABULARY.md`.
 
 ---
 
-## 1. PingOne Resource Servers
+## 1. Resource Servers
 
-### Main Banking Resource Server
+### 1a. Banking Resource Server
 
 | Property | Value |
 |----------|-------|
-| **PingOne Console Path** | Applications → Resources (or **APIs** in some versions) |
-| **Resource Name** | Main Banking API (or custom name, e.g., "Super Banking API") |
-| **Resource URI (Audience)** | `https://resource.pingdemo.com` (example; yours may differ) |
+| **Name** | Super Banking API |
+| **Audience / Resource URI** | Value of `ENDUSER_AUDIENCE` env var (e.g. `https://resource.pingdemo.com`) |
 | **Type** | Custom resource server |
-| **Purpose** | OAuth token audience for end-user (customer/admin) login + RFC 8693 token exchange |
-| **Token Audience** | Set on user access tokens via `resource=...` parameter at `/authorize` and `/token` |
+| **Purpose** | Audience for end-user (customer / admin) tokens + RFC 8693 subject token |
 
-**Scopes Defined on This Resource:**
+**Scopes — define exactly these on this RS:**
 
-| Scope | Description | User Types |
-|-------|-------------|-----------|
-|-------|-------------|-----------|
-| `openid` | OIDC scope (built-in) | All |
-| `profile` | User profile claims | All |
-| `email` | Email claim | All |
-| `offline_access` | Refresh token support | Admin, Customer, AI_Agent |
-| `banking:general:read` | Read all banking data (accounts, transactions, users) | All |
-| `banking:general:write` | Write all banking data (create transactions, modify accounts) | Admin, Customer, AI_Agent |
-| `banking:admin` | Admin operations (full access including sensitive data) | Admin only |
-| `banking:sensitive` | Sensitive data access (read+write) | Admin only |
-| `banking:ai:agent` | Agent delegation (full agent access) | Admin, AI_Agent, Customer (2-exchange) |
-| `ai_agent` | Agent identity marker | AI_Agent only |
+| Scope | Purpose | Who gets it |
+|-------|---------|-------------|
+| `banking:read` | Read accounts & transactions | Admin, Customer, AI Agent |
+| `banking:write` | Write banking operations (deposits, transfers) | Admin, Customer, AI Agent |
+| `banking:admin` | Full admin access | Admin only |
+| `banking:sensitive` | Sensitive data read/write | Admin only |
+| `banking:ai:agent` | AI agent delegation marker | Admin, AI Agent, Customer (2-exchange) |
+| `ai_agent` | Agent identity marker (legacy OIDC scope) | AI Agent clients only |
 
-**Note:** Consolidated from 14 scopes to 6 scopes (57% reduction) to simplify configuration without losing functionality. All capabilities preserved through broader scopes.
+> **Do not create:** `banking:general:read`, `banking:admin:full`, `banking:ai:agent:read`, `agent:invoke`, `banking:agent:invoke` — stale names, not used by the code.
 
 ---
 
-### MCP Resource Server
+### 1b. MCP Resource Server
 
 | Property | Value |
 |----------|-------|
-| **PingOne Console Path** | Applications → Resources |
-| **Resource Name** | MCP Server (or custom name, e.g., "Super Banking MCP Server") |
-| **Resource URI (Audience)** | Via `MCP_SERVER_RESOURCE_URI` env var; example: `https://banking-mcp-server.banking-demo.com` |
+| **Name** | Super Banking MCP Server |
+| **Audience / Resource URI** | Value of `PINGONE_RESOURCE_MCP_SERVER_URI` (e.g. `https://mcp-server.pingdemo.com`) |
 | **Type** | Custom resource server |
-| **Purpose** | RFC 8693 exchanged token audience (narrowed scopes for MCP server) |
-| **Token Audience** | Set by BFF during RFC 8693 exchange when `MCP_SERVER_RESOURCE_URI` is configured |
+| **Purpose** | Audience for RFC 8693 exchanged (narrowed) MCP tokens |
 
-**Scopes Defined:**
+**Scopes — define exactly these on this RS:**
 
-| Scope | Description | Used By |
-|-------|-------------|---------|
-| `admin:read` | Read admin/system data | Exchanged tokens for MCP |
-| `admin:write` | Modify admin settings | Exchanged tokens for MCP |
-| `admin:delete` | Delete resources | Exchanged tokens for MCP |
-| `users:read` | Read user profiles | Exchanged tokens for MCP |
-| `users:manage` | Manage user accounts | Exchanged tokens for MCP |
-| `banking:general:read` | Read banking data | Exchanged tokens for MCP |
-| `banking:general:write` | Write banking data | Exchanged tokens for MCP |
+| Scope | Purpose |
+|-------|---------|
+| `banking:read` | Read access in MCP context |
+| `banking:write` | Write access in MCP context |
+| `banking:mcp:invoke` | Permission to invoke MCP tools |
+
+> Must match `MCP_TOKEN_EXCHANGE_SCOPES` env var (default: `banking:read banking:write banking:mcp:invoke`).
 
 ---
 
-### PingOne API (Built-in)
+### 1c. PingOne API (built-in)
 
 | Property | Value |
 |----------|-------|
-| **PingOne Console Path** | Applications → Resources (built-in; cannot modify scopes) |
-| **Resource Name** | PingOne API |
-| **Resource URI** | `https://api.pingone.com` (built-in, fixed) |
-| **Type** | Built-in OIDC resource |
-| **Purpose** | Management API access for worker/admin tools |
-| **Token Audience** | Automatic when app requests PingOne API scopes |
+| **Name** | PingOne API |
+| **Audience** | `https://api.pingone.com` (fixed) |
+| **Type** | Built-in |
+| **Purpose** | Management API calls from the BFF (**Super Banking Worker Token App**) |
 
-**Scopes Used** (from PingOne's built-in set):
+**Scopes used:**
 
-| Scope | Description |
-|-------|-------------|
-| `p1:read:user` | Read user profiles |
-| `p1:update:user` | Update user profiles |
-| `p1:read:environment` | Read environment metadata |
-| `p1:create:user` | Create new users |
-| `p1:delete:user` | Delete users |
+| Scope |
+|-------|
+| `p1:read:user` |
+| `p1:update:user` |
+| `p1:create:user` |
+| `p1:delete:user` |
+| `p1:read:environment` |
 
 ---
 
-## 2. Applications × Resources × Scopes
+## 2. Applications
 
-### Admin OAuth Application
+### 2a. Super Banking User App (Customer login)
 
 | Property | Value |
 |----------|-------|
-| **App Name** | Super Banking Admin App |
-| **Client ID Config** | `admin_client_id` (env var or Admin UI → Config) |
-| **Grant Types** | Authorization Code (+ PKCE if public client) |
-| **Redirect URI Config** | `admin_redirect_uri` |
-| **Example Redirect** | `https://yourdomain.com/api/auth/oauth/callback` |
-| **Token Endpoint Auth** | `basic` or `post` (per `admin_token_endpoint_auth_method` config) |
-| **RFC 8693 Token Exchange** | ✅ Enabled (BFF uses this app for exchange to MCP) |
-| **Resource** | Main Banking Resource Server |
+| **Type** | WEB_APP |
+| **Grant types** | Authorization Code + PKCE |
+| **Client ID config key** | `user_client_id` |
+| **Redirect URI** | `https://<host>/api/auth/oauth/user/callback` |
+| **Token endpoint auth** | `none` (PKCE public client) |
+| **RFC 8693 exchange** | Not required on this app |
+| **Resource server** | Banking RS |
 
-**Scopes Requested at `/authorize`:**
+**Scopes to grant (Banking RS):**
 
-```
-openid profile email offline_access banking:general:read banking:general:write banking:admin:full banking:accounts:read banking:transactions:read banking:transactions:write
-```
-
-**Scopes on App (granted in PingOne Console):**
-
-All scopes on **Main Banking Resource Server**:
-
-- ✅ `openid`, `profile`, `email`, `offline_access` (Main Banking Resource)
-- ✅ `banking:general:read`, `banking:general:write`, `banking:admin:full`, `banking:admin:read`, `banking:admin:write` (Main Banking Resource)
-- ✅ `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` (Main Banking Resource)
-- ✅ RFC 8693 token exchange **enabled** on this app
-
-**Uses Audience:** `https://resource.pingdemo.com` (or value of `ENDUSER_AUDIENCE` if set)
+| Scope | Required? |
+|-------|-----------|
+| `openid` | ✅ |
+| `profile` | ✅ |
+| `email` | ✅ |
+| `offline_access` | ✅ |
+| `banking:read` | ✅ |
+| `banking:write` | ✅ |
+| `banking:ai:agent` | ✅ required for agent delegation |
 
 ---
 
-### Customer OAuth Application
+### 2b. Super Banking Admin App (Admin login)
 
 | Property | Value |
 |----------|-------|
-| **App Name** | Super Banking User App |
-| **Client ID Config** | `user_client_id` (env var or Admin UI → Config) |
-| **Grant Types** | Authorization Code + PKCE (public client — no secret) |
-| **Redirect URI Config** | `user_redirect_uri` |
-| **Example Redirect** | `https://yourdomain.com/api/auth/oauth/user/callback` |
-| **Refresh Token Support** | ✅ If `offline_access` enabled in sign-on policy |
-| **RFC 8693 Token Exchange** | ✅ Can use exchanged token for 2-exchange delegation |
-| **Resource** | Main Banking Resource Server |
+| **Type** | WEB_APP |
+| **Grant types** | Authorization Code (+ PKCE optional) |
+| **Client ID config key** | `admin_client_id` |
+| **Redirect URI** | `https://<host>/api/auth/oauth/callback` |
+| **Token endpoint auth** | `basic` or `post` (per `admin_token_endpoint_auth_method`) |
+| **RFC 8693 exchange** | ✅ Enable Token Exchange grant |
+| **Resource server** | Banking RS |
 
-**Scopes Requested at `/authorize`:**
+**Scopes to grant (Banking RS):**
 
-```
-openid profile email offline_access banking:ai:agent:read banking:general:read banking:general:write banking:accounts:read banking:transactions:read banking:transactions:write
-```
-
-**Critical:** Must include **`banking:ai:agent:read`** for agent delegation to work.
-
-**Scopes on App (granted in PingOne):**
-
-Based on `user_role` config:
-
-| `user_role` | Scopes Granted (on Main Banking Resource Server) |
-|---|---|
-| `customer` ✅ | `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
-| `readonly` | `banking:general:read`, `banking:accounts:read`, `banking:transactions:read` |
-| `admin` | `banking:admin:full`, `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
-| `ai_agent` | **`banking:ai:agent:read`**, `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
-
-**Uses Audience:** `https://resource.pingdemo.com` or value of `ENDUSER_AUDIENCE` (if set)
+| Scope | Required? |
+|-------|-----------|
+| `openid` | ✅ |
+| `profile` | ✅ |
+| `email` | ✅ |
+| `offline_access` | ✅ |
+| `banking:read` | ✅ |
+| `banking:write` | ✅ |
+| `banking:admin` | ✅ |
+| `banking:sensitive` | ✅ |
+| `banking:ai:agent` | ✅ |
 
 ---
 
-### Management Worker Application
+### 2c. Super Banking MCP Token Exchanger (RFC 8693 exchange client)
 
 | Property | Value |
 |----------|-------|
-| **App Name** | Worker App (or custom, e.g., "Super Banking Worker") |
-| **Client ID Config** | `pingone_client_id` (env var or Admin UI → Config) |
-| **Client Type** | Worker (confidential) |
-| **Grant Type** | Client Credentials (server-to-server only) |
-| **Token Endpoint Auth** | Basic auth (client_id:client_secret) |
-| **Resource** | PingOne API |
-| **RFC 8693 Token Exchange** | ❌ Not used for exchange (management only) |
+| **Type** | AI_AGENT |
+| **Grant types** | Client Credentials + Token Exchange (RFC 8693) |
+| **Client ID env var** | `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` |
+| **Client Secret env var** | `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET` |
+| **Token endpoint auth** | `client_secret_post` — AI_AGENT apps use `post` for ALL grant types |
+| **RFC 8693 exchange** | ✅ Enable |
+| **Resource servers** | Banking RS **and** MCP RS |
 
-**Scopes Granted:**
+**Scopes to grant — Banking RS:**
 
-- `p1:read:user`
-- `p1:update:user`
-- (+ any other Management API scopes required by your bootstrap/admin tools)
+| Scope |
+|-------|
+| `openid` |
+| `banking:read` |
+| `banking:write` |
+| `banking:admin` |
+| `banking:sensitive` |
+| `banking:ai:agent` |
 
-**Uses Audience:** `https://api.pingone.com` (fixed/built-in)
+**Scopes to grant — MCP RS:**
+
+| Scope |
+|-------|
+| `banking:read` |
+| `banking:write` |
+| `banking:mcp:invoke` |
+
+> Both RS grants must exist for Exchange 1/2/3 to succeed. The Auto-Fix button on the PingOne Test page creates these.
 
 ---
 
-### Optional: Agent MCP Exchanger Application
+### 2d. Super Banking Worker Token App (Management API)
 
 | Property | Value |
 |----------|-------|
-| **App Name** | Agent MCP Exchanger (or custom) |
-| **Client ID Config** | `AGENT_OAUTH_CLIENT_ID` (env var only) |
-| **Client Type** | Worker (confidential) |
-| **Grant Type** | Client Credentials (server-to-server only) |
-| **Resources** | Main Banking Resource Server + MCP Resource Server |
-| **RFC 8693 Token Exchange** | ✅ Can act as exchange client |
-| **Purpose** | Optional actor token for 2→3-step exchange chains |
+| **Type** | WORKER |
+| **Grant type** | Client Credentials only |
+| **Client ID env var** | `PINGONE_WORKER_TOKEN_CLIENT_ID` |
+| **Client Secret env var** | `PINGONE_WORKER_TOKEN_CLIENT_SECRET` |
+| **Token endpoint auth** | `basic` (configurable via `PINGONE_WORKER_TOKEN_AUTH_METHOD`) |
+| **RFC 8693 exchange** | ❌ Not required |
+| **Resource server** | PingOne API (built-in) |
 
-**Scopes Granted:**
-
-- `banking:ai:agent:read`, `banking:general:read`, `banking:general:write`, `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` (Main Banking)
-- `admin:read`, `admin:write`, `users:read`, `users:manage`, `banking:general:read`, `banking:general:write` (MCP Resource)
-
-**Uses Audiences:**
-- Main: `https://resource.pingdemo.com`
-- MCP: Value of `MCP_SERVER_RESOURCE_URI` env var
+**Scopes to grant (PingOne API):**
+`p1:read:user` `p1:update:user` `p1:create:user` `p1:delete:user` `p1:read:environment`
 
 ---
 
-## 3. Scope Standardization (Phase 69.1)
+### 2e. Super Banking AI Agent App (Exchange #2 actor — optional)
 
-Per **[PINGONE_NAMING_STANDARDIZATION_AUDIT.md](./PINGONE_NAMING_STANDARDIZATION_AUDIT.md)** Phase 69.1, scopes are **standardized** as follows:
+| Property | Value |
+|----------|-------|
+| **Type** | AI_AGENT |
+| **Grant types** | Client Credentials + Token Exchange |
+| **Client ID env var** | `PINGONE_AI_AGENT_CLIENT_ID` |
+| **Token endpoint auth** | `client_secret_post` |
+| **RFC 8693 exchange** | ✅ Enable |
+| **Resource server** | Banking RS |
 
-### Naming Convention
-
-| Concept | Scope Name | Notes |
-|---------|-----------|-------|
-| **Agent delegation** (Phase 69.1) | `banking:ai:agent:read` | NOT `agent:invoke`, NOT `banking:agent:invoke` |
-| Agent write | `banking:ai:agent:write` | Full write permission for agent |
-| Agent admin | `banking:ai:agent:admin` | Admin permission for agent |
-| AI Agent identity | `ai_agent` | Marker scope; used in `act` claims |
-
-### Why Phase 69.1 Names Matter
-
-- **Consistency** across all banking scopes: `banking:*` prefix
-- **Clarity** that scopes apply to the "ai agent" subdomain: `ai:agent`
-- **Direction** for future enhancements: `banking:ai:*`, `banking:compliance:*`, etc.
-- **Avoids confusion** with short names like `agent:invoke`
-
-### Legacy/Wrong Names (DO NOT USE)
-
-| ❌ Wrong Name | ✅ Correct Name | Why Wrong |
-|---|---|---|
-| `agent:invoke` | `banking:ai:agent:read` | No banking prefix; unclear scope purpose |
-| `banking:agent:invoke` | `banking:ai:agent:read` | Inconsistent naming (no `ai:` subdomain); "invoke" implies RPC, not OAuth |
-| `ai_agent` (as delegation scope) | `banking:ai:agent:read` | `ai_agent` is an identity scope, not a permission scope |
+**Scopes to grant (Banking RS):**
+`openid` `banking:read` `banking:write` `banking:ai:agent`
 
 ---
 
-## 4. Multi-Resource Scope Requests
+## 3. Token Exchange Flow Summary
 
-When the BFF requests scopes from **multiple resource servers** in a single `/authorize` call:
+| Exchange | Subject token `aud` | Result token `aud` | Auth client |
+|----------|--------------------|--------------------|-------------|
+| Exchange 1: User → MCP | `ENDUSER_AUDIENCE` | `PINGONE_RESOURCE_MCP_SERVER_URI` | MCP Token Exchanger (`post`) |
+| Exchange 2: User+Actor → MCP Gateway | `ENDUSER_AUDIENCE` | `PINGONE_RESOURCE_MCP_GATEWAY_URI` | MCP Token Exchanger (`post`) |
+| Exchange 3: Agent CC → MCP | AI Agent CC token | `PINGONE_RESOURCE_MCP_SERVER_URI` | MCP Token Exchanger (`post`) |
 
-**Pattern:** Combining OIDC + custom banking scopes
+### `act` and `may_act` claim lifecycle
 
-```
-openid profile email offline_access banking:general:read banking:general:write banking:accounts:read banking:transactions:read
-```
+| Token | `aud` | `act` | `may_act` | Set by |
+|-------|-------|-------|-----------|--------|
+| User login token (Banking RS) | `ENDUSER_AUDIENCE` | — | `{ sub: PINGONE_AI_AGENT_CLIENT_ID }` (optional — set via PingOne RS attribute mapping) | PingOne on authorize |
+| MCP token (1-exchange result) | `PINGONE_RESOURCE_MCP_SERVER_URI` | `{ sub: PINGONE_ADMIN_CLIENT_ID }` | — | PingOne on token exchange |
+| AI Agent intermediate token (2-exchange step 1) | `AI_AGENT_INTERMEDIATE_AUDIENCE` | `{ sub: PINGONE_AI_AGENT_CLIENT_ID }` | — | PingOne on token exchange |
+| Final 2-exchange token | `PINGONE_RESOURCE_TWO_EXCHANGE_URI` | `{ sub: PINGONE_ADMIN_CLIENT_ID, act: { sub: PINGONE_AI_AGENT_CLIENT_ID } }` | — | PingOne on token exchange |
 
-**PingOne Behavior:**
-- OIDC scopes belong to the **built-in OIDC resource**
-- Banking scopes belong to the **custom Main Banking Resource Server**
-- Without explicit `resource=` parameter, PingOne may return **`invalid_scope`** error: *"May not request scopes for multiple resources"*
+**`aud` validation in BFF (`middleware/auth.js`):** Tokens are rejected if their `aud` does not include one of `ENDUSER_AUDIENCE`, `AI_AGENT_AUDIENCE`, or `MCP_RESOURCE_URI` (when those env vars are set — fail-open if unset).
 
-**Solution (Implemented in BFF):**
+**`may_act.sub` ≠ gating check.** `may_act` is extracted for audit logging only (`actClaimValidator.js`, `delegationAuditLogger.js`). Admin role is derived from `azp`/`client_id == PINGONE_ADMIN_CLIENT_ID`, not from `may_act`.
 
-Per `banking_api_server/utils/oauthAuthorizeResource.js`:
-- When **both** OIDC + custom banking scopes are in the request, do **NOT** append `&resource=` to the authorize URL
-- PingOne accepts this mixed-scope pattern without the parameter
-- For single-resource requests (all OIDC or all banking), `&resource=` is **optional** but recommended
+### Scope ↔ Audience binding (`services/configStore.js::buildAllowedScopesByAudience`)
 
-**Important:** This is NOT a `ENDUSER_AUDIENCE` issue. See [PINGONE_APP_SCOPE_MATRIX.md](./PINGONE_APP_SCOPE_MATRIX.md) §3 for details.
-
----
-
-## 5. Audience (RFC 8707) Binding
-
-Each access token issued by PingOne carries an `aud` claim that **binds** the token to a specific resource server:
-
-### At OAuth Token Issuance
-
-| Situation | `aud` Value | Set By |
-|-----------|-----------|--------|
-| `resource=https://resource.pingdemo.com` on `/authorize` | `https://resource.pingdemo.com` | PingOne (RFC 8707) |
-| No `resource=` parameter | PingOne app's default audience (varies) | PingOne |
-| `resource=https://api.pingone.com` | `https://api.pingone.com` | PingOne (built-in) |
-
-### At RFC 8693 Token Exchange
-
-The BFF **exchanges** a user token (Main Banking audience) for a **narrowed token** (MCP audience) when `MCP_SERVER_RESOURCE_URI` is set:
-
-| Step | Subject Token `aud` | Exchanged Token `aud` | Resource Used |
-|---|---|---|---|
-| 1. User login | `https://resource.pingdemo.com` | — | Main Banking |
-| 2. BFF exchange request | (sent as `subject_token`) | — | — |
-| 3. PingOne processes exchange | — | `https://banking-mcp-server.banking-demo.com` (or value of `MCP_SERVER_RESOURCE_URI`) | MCP Resource |
-| 4. MCP server validates `aud` | — | Must match `MCP_SERVER_RESOURCE_URI` | MCP Resource |
+| Audience env var | Allowed scopes |
+|------------------|----------------|
+| `ENDUSER_AUDIENCE` (Banking RS) | `banking:read` `banking:write` `banking:admin` `banking:sensitive` `banking:ai:agent` |
+| `PINGONE_RESOURCE_AGENT_GATEWAY_URI` | `banking:ai:agent` `ai_agent` |
+| `AI_AGENT_INTERMEDIATE_AUDIENCE` | `banking:read` `banking:write` `banking:ai:agent` |
+| `PINGONE_RESOURCE_MCP_GATEWAY_URI` | `banking:mcp:invoke` `banking:ai:agent` |
+| `PINGONE_RESOURCE_MCP_SERVER_URI` (MCP RS) | `banking:read` `banking:write` `banking:mcp:invoke` |
+| `PINGONE_RESOURCE_TWO_EXCHANGE_URI` | `banking:read` `banking:write` `banking:mcp:invoke` |
 
 ---
 
-## 6. Environment Variable Reference
+## 4. Environment Variable Reference
 
-| Variable | Scope | Value | Used By | Notes |
-|----------|-------|-------|---------|-------|
-| `admin_client_id` | Admin OAuth | PingOne app client ID | BFF (oauthService) | RFC 8693 token exchange client |
-| `admin_redirect_uri` | Admin OAuth | `https://yourdomain.com/api/auth/oauth/callback` | BFF | Registered in PingOne app |
-| `user_client_id` | Customer OAuth | PingOne app client ID | BFF (oauthUser service) | PKCE public client |
-| `user_redirect_uri` | Customer OAuth | `https://yourdomain.com/api/auth/oauth/user/callback` | BFF | Registered in PingOne app |
-| `pingone_client_id` | Management | PingOne worker app client ID | Admin tools, bootstrap | For `p1:*` scopes |
-| `ENDUSER_AUDIENCE` | User Token | Example: `banking_jk_enduser` | BFF + Auth middleware | Optional: JWT `aud` validation |
-| `PINGONE_RESOURCE_MCP_SERVER_URI` | MCP Exchange | Example: `https://banking-mcp-server.banking-demo.com` | BFF (agentMcpTokenService) | RFC 8693 exchanged token audience |
-| `AGENT_OAUTH_CLIENT_ID` | Agent Actor | PingOne worker app client ID | BFF (optional) | For 2→3-step exchange chain |
-| `AGENT_OAUTH_CLIENT_SCOPES` | Agent Actor | Space-separated scopes | BFF | Defaults to `openid` if unset |
-| `user_role` | Customer Scopes | `customer` (default), `readonly`, `admin`, `ai_agent` | BFF (config/scopes.js) | Determines scope set per config/USER_TYPE_SCOPES |
-
----
-
-## 7. Quick Verification Checklist
-
-### In PingOne Admin Console
-
-#### Main Banking Resource Server
-
-- [ ] Exists with correct name (e.g., "Super Banking API")
-- [ ] URI matches `PINGONE_RESOURCE_*` or `ENDUSER_AUDIENCE` (if set)
-- [ ] All `banking:*` scopes defined (see §1 table above)
-- [ ] `banking:ai:agent:read` ✅ present (NOT `agent:invoke`, NOT `banking:agent:invoke`)
-- [ ] `ai_agent` scope defined
-
-#### MCP Resource Server
-
-- [ ] Exists with correct name
-- [ ] URI matches `MCP_SERVER_RESOURCE_URI` env var
-- [ ] All `admin:*` and `users:*` scopes defined
-
-#### Super Banking Admin App
-
-- [ ] Granted **all** Main Banking Resource Server scopes
-- [ ] RFC 8693 token exchange **enabled**
-- [ ] Redirect URI matches `admin_redirect_uri` config
-
-#### Super Banking User App
-
-- [ ] Granted `banking:ai:agent:read` ✅ (critical for agent delegation)
-- [ ] Granted all other required Main Banking scopes per `user_role`
-- [ ] Redirect URI matches `user_redirect_uri` config
-- [ ] **NOT** granted `agent:invoke` ❌ or `banking:agent:invoke` ❌
-
-#### Worker App
-
-- [ ] Granted `p1:read:user`, `p1:update:user` on PingOne API resource
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `ENDUSER_AUDIENCE` | Banking RS audience URI | `https://resource.pingdemo.com` |
+| `PINGONE_RESOURCE_MCP_SERVER_URI` | MCP RS audience URI | `https://mcp-server.pingdemo.com` |
+| `MCP_TOKEN_EXCHANGE_SCOPES` | Scopes on exchanged MCP token | `banking:read banking:write banking:mcp:invoke` |
+| `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` | Exchanger app client ID | UUID |
+| `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET` | Exchanger app secret | — |
+| `PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD` | CC grant auth method | `post` |
+| `PINGONE_TOKEN_EXCHANGE_AUTH_METHOD` | Token exchange auth method | `post` |
+| `PINGONE_WORKER_TOKEN_CLIENT_ID` | **Super Banking Worker Token App** client ID | UUID |
+| `PINGONE_WORKER_TOKEN_CLIENT_SECRET` | **Super Banking Worker Token App** secret | — |
+| `PINGONE_WORKER_TOKEN_AUTH_METHOD` | Worker CC auth method | `basic` |
+| `admin_client_id` / `PINGONE_ADMIN_CLIENT_ID` | **Super Banking Admin App** client ID | UUID |
+| `user_client_id` / `PINGONE_USER_CLIENT_ID` | **Super Banking User App** client ID | UUID |
 
 ---
 
-## 8. Troubleshooting
+## 5. PingOne Admin Console Checklist
 
-### "Agent scope not in token"
+### Banking RS
+- [ ] Audience matches `ENDUSER_AUDIENCE`
+- [ ] Scopes defined: `banking:read` `banking:write` `banking:admin` `banking:sensitive` `banking:ai:agent` `ai_agent`
+- [ ] **Do NOT create:** `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write`, `banking:ai:agent:read`
 
-**Symptom:** Modal shows "Missing Required Scopes: banking:ai:agent:read" when customer tries agent action
+### MCP RS
+- [ ] Audience matches `PINGONE_RESOURCE_MCP_SERVER_URI`
+- [ ] Scopes defined: `banking:read` `banking:write` `banking:mcp:invoke`
 
-**Check:**
-1. Does Super Banking User App have `banking:ai:agent:read` in PingOne Console? (NOT `agent:invoke`)
-2. If added recently, customer must **sign out and back in** to get new token
-3. Use Token Chain panel on dashboard to verify `banking:ai:agent:read` is in the token
+### Super Banking User App
+- [ ] WEB_APP, Auth Code + PKCE, no client secret
+- [ ] Redirect URI registered
+- [ ] Banking RS granted: `openid profile email offline_access banking:read banking:write banking:ai:agent`
 
-### "Invalid scope" at authorization
+### Super Banking Admin App
+- [ ] WEB_APP, Auth Code
+- [ ] Redirect URI registered
+- [ ] Token Exchange grant enabled
+- [ ] Banking RS granted: all 9 scopes above
 
-**Symptom:** PingOne returns `invalid_scope` error on `/authorize` request
+### Super Banking MCP Token Exchanger
+- [ ] AI_AGENT type
+- [ ] Client Credentials + Token Exchange grants enabled
+- [ ] Token endpoint auth: `client_secret_post`
+- [ ] **Banking RS** granted: `openid banking:read banking:write banking:admin banking:sensitive banking:ai:agent`
+- [ ] **MCP RS** granted: `banking:read banking:write banking:mcp:invoke`
 
-**Check:**
-1. Are you mixing OIDC + custom banking scopes?
-2. Does the app have those scopes **granted** in PingOne Console?
-3. Are scope names spelled exactly as defined in the Resource?
+### Super Banking Worker Token App
+- [ ] WORKER type, Client Credentials only
+- [ ] PingOne API RS granted: `p1:read:user p1:update:user p1:create:user p1:delete:user p1:read:environment`
 
 ---
 
-## 9. Related Files
+## 6. Route Enforcement — What Scopes Are Actually Enforced in Code
 
-- `banking_api_server/config/scopes.js` — Code-based scope definitions
-- `banking_api_server/config/oauthUser.js` — Customer OAuth scope requests
-- `banking_api_server/config/oauth.js` — Admin OAuth scope requests
-- `services/agentMcpScopePolicy.js` — Scope narrowing policy for MCP exchange
-- `banking_api_server/utils/oauthAuthorizeResource.js` — `resource=` parameter handling
-- `banking_api_server/middleware/auth.js` — Scope validation + audience checking
+Derived from `routes/accounts.js`, `routes/transactions.js`, `routes/users.js`, and `config/scopes.js`. Verified by test suite (Phase 146 scope audit).
+
+| Route | `requireScopes` gate | Additional guards | Notes |
+|-------|----------------------|-------------------|-------|
+| `GET /api/accounts` | `banking:read` | Admin role check → 403 for non-admin | All accounts |
+| `GET /api/accounts/my` | `banking:read` | — | Returns only caller's accounts |
+| `GET /api/accounts/:id` | `banking:read` | Ownership check | |
+| `GET /api/accounts/:id/balance` | `banking:read` | — | |
+| `POST /api/accounts` | `banking:write` | Admin role check → 403 for non-admin | |
+| `PUT /api/accounts/:id` | `banking:write` | — | |
+| `DELETE /api/accounts/:id` | `banking:write` | — | |
+| `GET /api/transactions` | `banking:read` | Admin role check → 403 for non-admin | All transactions |
+| `GET /api/transactions/my` | _(none — auth only)_ | Row-level ownership | **No scope gate.** Any valid token works |
+| `GET /api/transactions/:id` | `banking:read` | — | |
+| `POST /api/transactions` | _(none — auth only)_ | Phase 122 session check + HITL consent + Step-up MFA | **No scope gate.** Requires browser login session (`req.session?.user`). Bearer token alone returns 401. Amounts > $500 HITL consent required. |
+| `PUT /api/transactions/:id` | `banking:write` | — | |
+| `DELETE /api/transactions/:id` | `banking:write` | — | |
+| `GET /api/admin/*` | `banking:admin` | — | |
+| `POST /api/admin/*` | `banking:admin` | — | |
+| `PUT /api/admin/*` | `banking:admin` | — | |
+| `DELETE /api/admin/*` | `banking:admin` | — | |
+| `GET /api/users` | `banking:read` | — | |
+| `GET /api/users/me` | `banking:read` | — | |
+| `GET /api/users/:id` | `banking:read` | Ownership check | |
+| `POST /api/users` | `requireAdmin` (role check) | — | `banking:write` is insufficient; admin role required |
+| `PUT /api/users/:id` | `banking:write` | — | |
+| `DELETE /api/users/:id` | `banking:write` | — | |
+
+### `banking:admin` scope vs. admin role
+
+- **`banking:admin` scope** → grants access to `GET/POST/PUT/DELETE /api/admin/*` routes
+- **Admin role** (`req.user.role === 'admin'`) → set by BFF when token was issued by the admin client app (`admin_client_id`) or when session records admin role
+- `GET /api/accounts`, `GET /api/transactions`, `POST /api/accounts`, `POST /api/users` additionally require admin role — holding `banking:read` alone is insufficient for those routes

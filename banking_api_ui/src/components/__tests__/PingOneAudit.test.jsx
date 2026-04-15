@@ -80,8 +80,8 @@ describe('PingOneAudit Component', () => {
         scopeAudit: [
           {
             resourceName: 'Super Banking AI Agent',
-            expectedScopes: ['banking:agent:invoke'],
-            currentScopes: ['banking:agent:invoke'],
+            expectedScopes: ['banking:ai:agent'],
+            currentScopes: ['banking:ai:agent'],
             status: 'CORRECT'
           }
         ]
@@ -94,7 +94,7 @@ describe('PingOneAudit Component', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Scope Audit')).toBeInTheDocument();
-        expect(screen.getByText('banking:agent:invoke')).toBeInTheDocument();
+        expect(screen.getByText('banking:ai:agent')).toBeInTheDocument();
       });
     });
 
@@ -163,8 +163,8 @@ describe('PingOneAudit Component', () => {
         scopeAudit: [
           {
             resourceName: 'Super Banking AI Agent',
-            expectedScopes: ['banking:agent:invoke'],
-            currentScopes: ['banking:agent:invoke'],
+            expectedScopes: ['banking:ai:agent'],
+            currentScopes: ['banking:ai:agent'],
             status: 'CORRECT'
           }
         ]
@@ -260,11 +260,11 @@ describe('PingOneAudit Component', () => {
         scopeAudit: [
           {
             resourceName: 'Super Banking MCP Server',
-            expectedScopes: ['banking:accounts:read', 'banking:transactions:read'],
-            currentScopes: ['banking:accounts:read', 'extra:scope'],
+            expectedScopes: ['banking:read', 'banking:read'],
+            currentScopes: ['banking:read', 'extra:scope'],
             status: 'MISMATCH',
             mismatches: {
-              missing: ['banking:transactions:read'],
+              missing: ['banking:read'],
               extra: ['extra:scope']
             }
           }

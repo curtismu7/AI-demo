@@ -163,7 +163,7 @@ export class HttpMCPTransport {
       authorization_servers: [this.config.authServerUrl],
       bearer_methods_supported: ['header'],
       scopes_supported: BANKING_SCOPES,
-      resource_name: 'BX Finance Banking MCP Server',
+      resource_name: 'Super Banking MCP Server',
       resource_documentation:
         'https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization',
     };
@@ -186,7 +186,7 @@ export class HttpMCPTransport {
     const readOnlyToolNames = allTools.filter(t => t.readOnly).map(t => t.name);
     const authenticatedToolNames = allTools.filter(t => !t.readOnly).map(t => t.name);
     const manifest = {
-      name: 'BX Finance Banking MCP Server',
+      name: 'Super Banking MCP Server',
       description:
         'MCP server providing banking tools for AI agents — account access, transactions, transfers, ' +
         'and balance queries. Implements MCP 2025-11-05 with OAuth 2.0 / PingOne authorization.',
@@ -474,7 +474,7 @@ export class HttpMCPTransport {
     res.writeHead(401, {
       'Content-Type': 'application/json',
       'WWW-Authenticate': 
-        `Bearer realm="BX Finance Banking MCP Server"${scopePart}, ` +
+        `Bearer realm="Super Banking MCP Server"${scopePart}, ` +
         `error="unauthorized", ` +
         `error_description="${detail}", ` +
         `resource_metadata="${base}/.well-known/oauth-protected-resource"`
@@ -507,7 +507,7 @@ export class HttpMCPTransport {
     res.writeHead(403, {
       'Content-Type': 'application/json',
       'WWW-Authenticate': 
-        `Bearer realm="BX Finance Banking MCP Server", ` +
+        `Bearer realm="Super Banking MCP Server", ` +
         `error="insufficient_scope", ` +
         `scope="${requiredScopes.join(' ')}", ` +
         `error_description="Token is missing required scope(s): ${requiredScopes.join(', ')}", ` +
@@ -540,7 +540,7 @@ export class HttpMCPTransport {
           details: data,
           timestamp: new Date().toISOString(),
           request_id: typeof id === 'string' ? id : undefined,
-          server: 'BX Finance Banking MCP Server',
+          server: 'Super Banking MCP Server',
           version: process.env.npm_package_version || '1.0.0'
         }
       }

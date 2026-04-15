@@ -124,31 +124,26 @@ function requireScopes(requiredScopes, options = {}) {
 }
 
 /**
- * Scope definitions for different resources
+ * Scope definitions — canonical Phase 146 names (D-02).
+ * These must exactly match the scope strings issued by PingOne.
  */
 const Scopes = {
-  // Account scopes
-  ACCOUNTS_READ: 'banking:accounts:read',
-  ACCOUNTS_WRITE: 'banking:accounts:write',
-  ACCOUNTS_DELETE: 'banking:accounts:delete',
-  
-  // Transaction scopes
-  TRANSACTIONS_READ: 'banking:transactions:read',
-  TRANSACTIONS_CREATE: 'banking:transactions:create',
-  
-  // Transfer scopes
-  TRANSFERS_CREATE: 'banking:transfers:create',
-  TRANSFERS_READ: 'banking:transfers:read',
-  
-  // Admin scopes
+  // Core banking access
+  READ: 'banking:read',
+  WRITE: 'banking:write',
+
+  // Admin access
   ADMIN: 'banking:admin',
-  ADMIN_USERS: 'banking:admin:users',
-  ADMIN_AUDIT: 'banking:admin:audit',
-  
-  // MCP scopes
-  MCP_TOOLS: 'banking:mcp:tools',
-  MCP_ADMIN: 'banking:mcp:admin',
-  
+
+  // Sensitive data
+  SENSITIVE: 'banking:sensitive',
+
+  // AI agent delegation marker
+  AI_AGENT: 'banking:ai:agent',
+
+  // MCP tool invocation (on MCP resource server)
+  MCP_INVOKE: 'banking:mcp:invoke',
+
   // OpenID scopes
   OPENID: 'openid',
   PROFILE: 'profile',
@@ -159,37 +154,37 @@ const Scopes = {
  * Predefined middleware for common scope requirements
  */
 const ScopeMiddleware = {
-  // Account operations
-  readAccounts: requireScopes(Scopes.ACCOUNTS_READ),
-  writeAccounts: requireScopes(Scopes.ACCOUNTS_WRITE),
-  deleteAccounts: requireScopes(Scopes.ACCOUNTS_DELETE),
-  
+  // Account / transaction read
+  readAccounts: requireScopes(Scopes.READ),
+  writeAccounts: requireScopes(Scopes.WRITE),
+  deleteAccounts: requireScopes(Scopes.WRITE),
+
   // Transaction operations
-  readTransactions: requireScopes(Scopes.TRANSACTIONS_READ),
-  createTransactions: requireScopes(Scopes.TRANSACTIONS_CREATE),
-  
+  readTransactions: requireScopes(Scopes.READ),
+  createTransactions: requireScopes(Scopes.WRITE),
+
   // Transfer operations
-  createTransfers: requireScopes(Scopes.TRANSFERS_CREATE),
-  readTransfers: requireScopes(Scopes.TRANSFERS_READ),
-  
+  createTransfers: requireScopes(Scopes.WRITE),
+  readTransfers: requireScopes(Scopes.READ),
+
   // Admin operations
   adminOnly: requireScopes(Scopes.ADMIN),
-  adminUsers: requireScopes(Scopes.ADMIN_USERS),
-  adminAudit: requireScopes(Scopes.ADMIN_AUDIT),
-  
+  adminUsers: requireScopes(Scopes.ADMIN),
+  adminAudit: requireScopes(Scopes.ADMIN),
+
   // MCP operations
-  mcpTools: requireScopes(Scopes.MCP_TOOLS),
-  mcpAdmin: requireScopes(Scopes.MCP_ADMIN),
-  
+  mcpTools: requireScopes(Scopes.MCP_INVOKE),
+  mcpAdmin: requireScopes(Scopes.ADMIN),
+
   // Combined requirements (require all)
   accountsFullAccess: requireScopes(
-    [Scopes.ACCOUNTS_READ, Scopes.ACCOUNTS_WRITE],
+    [Scopes.READ, Scopes.WRITE],
     { requireAll: true }
   ),
-  
+
   // Flexible requirements (require any)
   accountsAnyAccess: requireScopes(
-    [Scopes.ACCOUNTS_READ, Scopes.ACCOUNTS_WRITE, Scopes.ADMIN],
+    [Scopes.READ, Scopes.ADMIN],
     { requireAll: false }
   )
 };

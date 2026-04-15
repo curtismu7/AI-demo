@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# run-bank.sh — Start the full Banking app on api.pingdemo.com (HTTPS) so it
-# can run alongside MasterFlow (OAuth Playground) on :3000 / :3001.
+# run-bank.sh — Primary startup script for the Banking Digital Assistant.
+# Runs on api.pingdemo.com (HTTPS) so it can coexist with MasterFlow
+# (OAuth Playground) on :3000 / :3001.
 #
 # Port layout:
 #   Banking API Server  → https://api.pingdemo.com:3002
@@ -14,12 +15,16 @@
 #
 # Usage:
 #   ./run-bank.sh              # start all services (optional: tail prompt at end if TTY)
-#   ./run-bank.sh stop       # stop all services (process trees + listeners on :3002 :4000 :8080 :8888)
-#   ./run-bank.sh tail       # pick 1–4 (one log) or 5 / all (all logs at once)
-#   ./run-bank.sh tail 2     # tail UI log directly (no prompt)
-#   ./run-bank.sh tail all   # tail -f all log files together (interleaved)
+#   ./run-bank.sh stop         # stop all services (process trees + listeners)
+#   ./run-bank.sh restart      # stop then start
+#   ./run-bank.sh status       # live service health check
+#   ./run-bank.sh tail         # pick 1–4 (one log) or 5 / all (all logs at once)
+#   ./run-bank.sh tail 2       # tail UI log directly (no prompt)
+#   ./run-bank.sh tail all     # tail -f all log files together (interleaved)
+#   ./run-bank.sh test         # run full test suite
+#   ./run-bank.sh help         # show this help message
 
-set -e
+set -euo pipefail
 
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -81,6 +86,62 @@ WHITE='\033[1;37m'
 RED='\033[1;31m'
 DIM='\033[2m'
 RESET='\033[0m'
+
+NODE_MIN_VERSION=16
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+ok()   { echo -e "  ${GREEN}✓${RESET}  $1"; }
+warn() { echo -e "  ${YELLOW}⚠${RESET}  $1"; }
+err()  { echo -e "  ${RED}✗${RESET}  $1" >&2; }
+
+# Check if a TCP port is listening locally
+port_listening() {
+  local port="$1"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1
+}
+
+# ── Pre-flight checks ───────────────────────────────────────────────────────
+preflight_checks() {
+  echo ""
+  echo -e "${WHITE}${BOLD}  PRE-FLIGHT CHECKS${RESET}"
+
+  # Node.js
+  if ! command -v node >/dev/null 2>&1; then
+    err "Node.js is not installed. Install from https://nodejs.org"
+    exit 1
+  fi
+  local node_version
+  node_version=$(node -e "process.stdout.write(process.version.replace('v','').split('.')[0])")
+  if [[ "${node_version}" -lt "${NODE_MIN_VERSION}" ]]; then
+    err "Node.js v${NODE_MIN_VERSION}+ required (found v${node_version})"
+    exit 1
+  fi
+  ok "Node.js $(node --version)"
+
+  # npm
+  if ! command -v npm >/dev/null 2>&1; then
+    err "npm is not installed"
+    exit 1
+  fi
+  ok "npm $(npm --version)"
+
+  # .env files
+  if [[ ! -f "${BASEDIR}/banking_api_server/.env" ]]; then
+    warn "banking_api_server/.env not found — copy env.example and fill in PingOne credentials"
+  else
+    ok "banking_api_server/.env exists"
+  fi
+
+  # Port conflicts (check for non-Banking listeners)
+  for port in "${API_PORT}" "${UI_PORT}" 8080 8888; do
+    if port_listening "${port}"; then
+      warn "Port ${port} is already in use (will be stopped before start)"
+    fi
+  done
+
+  ok "Pre-flight checks passed"
+  echo ""
+}
 
 # ── Tail logs (one log 1–4, or all at once: 5 / all) ─────────────────────────
 tail_bank_logs() {
@@ -184,12 +245,6 @@ force_kill_listeners_on_banking_ports() {
   done
 }
 
-# Check if a TCP port is listening locally
-port_listening() {
-  local port="$1"
-  lsof -nP -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1
-}
-
 # Wait for a port with a timeout; prints 'up' or 'timeout'
 wait_for_port() {
   local port="$1" timeout="${2:-25}" i=0
@@ -224,8 +279,8 @@ print_status_table() {
   fi
 }
 
-# ── Stop mode ───────────────────────────────────────────────────────────────
-if [[ "${1}" == "stop" ]]; then
+# ── Subcommand: stop ─────────────────────────────────────────────────────────
+cmd_stop() {
   echo "🛑 Stopping Banking services (run-bank.sh)..."
   set +e
   for pid_file in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
@@ -239,42 +294,163 @@ if [[ "${1}" == "stop" ]]; then
     fi
   done
   sleep 1
-  echo "   Sweeping ports (API :3002, UI :4000, MCP :8080, Agent :8888)…"
+  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, Agent :8888)…"
   stop_listeners_on_banking_ports
   sleep 1
   force_kill_listeners_on_banking_ports
-  set -e
+  set -euo pipefail
   echo "✅ All Banking listeners stopped (or none were running)."
-  exit 0
-fi
+}
 
-# ── Status subcommand ───────────────────────────────────────────────────────
-if [[ "${1}" == "status" ]]; then
+# ── Subcommand: test ─────────────────────────────────────────────────────────
+cmd_test() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   🏦  BX FINANCE — SERVICE STATUS                                ${RESET}"
+  echo -e "${CYAN}${BOLD}   🏦  BX FINANCE — TEST SUITE                                   ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
-  print_status_table
-  echo ""
-  echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${RESET}"
-  echo -e "${GREEN}${BOLD}  │${RESET}  🌐  App           ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
-  echo -e "${GREEN}${BOLD}  │${RESET}  ⚙️   Admin Config  ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
-  echo -e "${GREEN}${BOLD}  │${RESET}  🔐  Admin Login   ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
-  echo -e "${GREEN}${BOLD}  │${RESET}  👤  User Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
-  echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
-  echo ""
-  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo ""
-  exit 0
-fi
 
-# ── Tail-only mode ──────────────────────────────────────────────────────────
-if [[ "${1}" == "tail" ]]; then
-  shift
-  tail_bank_logs "${1:-}"
-  exit 0
-fi
+  local failed=0
+
+  if [[ -d "${BASEDIR}/banking_api_server" ]]; then
+    echo -e "  ${CYAN}→${RESET}  Running banking_api_server tests..."
+    if (cd "${BASEDIR}/banking_api_server" && npm test -- --passWithNoTests 2>&1); then
+      ok "banking_api_server tests passed"
+    else
+      err "banking_api_server tests FAILED"
+      failed=$((failed + 1))
+    fi
+  fi
+
+  if [[ -d "${BASEDIR}/banking_api_ui" ]]; then
+    if grep -q '"test"' "${BASEDIR}/banking_api_ui/package.json" 2>/dev/null; then
+      echo -e "  ${CYAN}→${RESET}  Running banking_api_ui tests..."
+      if (cd "${BASEDIR}/banking_api_ui" && CI=true npm test -- --watchAll=false --passWithNoTests 2>&1); then
+        ok "banking_api_ui tests passed"
+      else
+        err "banking_api_ui tests FAILED"
+        failed=$((failed + 1))
+      fi
+    fi
+  fi
+
+  if [[ -d "${BASEDIR}/banking_mcp_server" ]]; then
+    if grep -q '"test"' "${BASEDIR}/banking_mcp_server/package.json" 2>/dev/null; then
+      echo -e "  ${CYAN}→${RESET}  Running banking_mcp_server tests..."
+      if (cd "${BASEDIR}/banking_mcp_server" && npm test -- --passWithNoTests 2>&1); then
+        ok "banking_mcp_server tests passed"
+      else
+        err "banking_mcp_server tests FAILED"
+        failed=$((failed + 1))
+      fi
+    fi
+  fi
+
+  echo ""
+  if [[ "${failed}" -eq 0 ]]; then
+    ok "All test suites passed"
+  else
+    err "${failed} test suite(s) failed"
+    exit 1
+  fi
+  echo ""
+}
+
+# ── Subcommand: help ─────────────────────────────────────────────────────────
+cmd_help() {
+  echo ""
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+  echo -e "${CYAN}${BOLD}   🏦  BX FINANCE BANKING DEMO — run-bank.sh                      ${RESET}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+  echo ""
+  echo -e "${WHITE}${BOLD}  Usage:${RESET} ./run-bank.sh <command>"
+  echo ""
+  echo -e "${WHITE}${BOLD}  Commands:${RESET}"
+  echo "    (default)  Start all services (HTTPS on api.pingdemo.com)"
+  echo "    stop       Stop all services gracefully (process tree + port sweep)"
+  echo "    restart    Stop then start all services"
+  echo "    status     Show running/stopped status with ports and URLs"
+  echo "    tail       Pick a log to follow (1–4 for individual, 5/all for all)"
+  echo "    tail N     Tail a specific log directly (1=API, 2=UI, 3=MCP, 4=Agent)"
+  echo "    test       Run full test suite (API, UI, MCP)"
+  echo "    help       Show this message"
+  echo ""
+  echo -e "${WHITE}${BOLD}  Port Layout:${RESET}"
+  echo "    Banking API Server   :${API_PORT}  (HTTPS)"
+  echo "    Banking UI (React)   :${UI_PORT}  (HTTPS)"
+  echo "    Banking MCP Server   :8080"
+  echo "    LangChain Agent      :8888"
+  echo ""
+  echo -e "${WHITE}${BOLD}  Log Files:${RESET}"
+  echo "    ${LOG_API}"
+  echo "    ${LOG_UI}"
+  echo "    ${LOG_MCP}"
+  echo "    ${LOG_AGENT}"
+  echo ""
+  echo -e "${WHITE}${BOLD}  One-time Setup:${RESET}"
+  echo "    echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts"
+  echo "    mkcert -install && cd certs && mkcert api.pingdemo.com localhost 127.0.0.1"
+  echo ""
+}
+
+# ── Subcommand dispatch ─────────────────────────────────────────────────────
+COMMAND="${1:-start}"
+
+case "${COMMAND}" in
+  stop)
+    cmd_stop
+    exit 0
+    ;;
+  restart)
+    cmd_stop
+    # fall through to start below
+    ;;
+  status)
+    echo ""
+    echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "${CYAN}${BOLD}   🏦  BX FINANCE — SERVICE STATUS                                ${RESET}"
+    echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+    print_status_table
+    echo ""
+    echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${RESET}"
+    echo -e "${GREEN}${BOLD}  │${RESET}  🌐  App           ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
+    echo -e "${GREEN}${BOLD}  │${RESET}  ⚙️   Admin Config  ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
+    echo -e "${GREEN}${BOLD}  │${RESET}  🔐  Admin Login   ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${RESET}"
+    echo -e "${GREEN}${BOLD}  │${RESET}  👤  User Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${RESET}"
+    echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
+    echo ""
+    echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+    exit 0
+    ;;
+  tail)
+    tail_bank_logs "${2:-}"
+    exit 0
+    ;;
+  test)
+    cmd_test
+    exit 0
+    ;;
+  help|--help|-h)
+    cmd_help
+    exit 0
+    ;;
+  start)
+    # fall through to start below
+    ;;
+  *)
+    err "Unknown command: ${COMMAND}"
+    cmd_help
+    exit 1
+    ;;
+esac
+
+# ══════════════════════════════════════════════════════════════════════════════
+# START SERVICES
+# ══════════════════════════════════════════════════════════════════════════════
+
+preflight_checks
 
 # ── Auto-kill any existing Banking services before (re)starting ─────────────
 _any_running=false
@@ -297,7 +473,7 @@ if [[ "$_any_running" == "true" ]]; then
   stop_listeners_on_banking_ports
   sleep 1
   force_kill_listeners_on_banking_ports
-  set -e
+  set -euo pipefail
   echo -e "${GREEN}  ✅  Previous services stopped.${RESET}"
   echo ""
 fi

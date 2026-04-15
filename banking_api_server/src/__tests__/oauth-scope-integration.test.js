@@ -127,8 +127,8 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
   });
 
   describe('Read Operations Scope Validation (Requirement 2.4)', () => {
-    it('should allow account access with banking:accounts:read scope', async () => {
-      const token = createOAuthToken(['banking:accounts:read']);
+    it('should allow account access with banking:read scope', async () => {
+      const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
         .get('/api/accounts/my')
@@ -150,8 +150,8 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('accounts');
     });
 
-    it('should allow transaction access with banking:transactions:read scope', async () => {
-      const token = createOAuthToken(['banking:transactions:read']);
+    it('should allow transaction access with banking:read scope', async () => {
+      const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
         .get('/api/transactions/my')
@@ -185,7 +185,7 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
     it('should allow GET /api/transactions/my with any authenticated token (no banking:* scope required)', async () => {
       // /transactions/my intentionally has no requireScopes() — standard PingOne tokens
       // without a custom resource server only carry openid/profile/email, not banking:* scopes.
-      const token = createOAuthToken(['banking:accounts:read']);
+      const token = createOAuthToken(['banking:read']);
       const response = await request(app)
         .get('/api/transactions/my')
         .set('Authorization', `Bearer ${token}`);
@@ -195,8 +195,8 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
   });
 
   describe('Write Operations Scope Validation (Requirement 3.3)', () => {
-    it('should allow transaction creation with banking:transactions:write scope', async () => {
-      const token = createOAuthToken(['banking:transactions:write']);
+    it('should allow transaction creation with banking:write scope', async () => {
+      const token = createOAuthToken(['banking:write']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -233,8 +233,8 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should allow transfer operations with banking:transactions:write scope', async () => {
-      const token = createOAuthToken(['banking:transactions:write']);
+    it('should allow transfer operations with banking:write scope', async () => {
+      const token = createOAuthToken(['banking:write']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -274,7 +274,7 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
 
     it('POST /api/transactions transfer proceeds to data layer with read-only scope (no scope block)', async () => {
       // See route comment: no requireScopes() on POST /transactions.
-      const token = createOAuthToken(['banking:accounts:read']);
+      const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -451,13 +451,13 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
     });
 
     it('should handle multiple scope requirements correctly', async () => {
-      const token = createOAuthToken(['banking:accounts:read']);
+      const token = createOAuthToken(['banking:read']);
       const response = await request(app)
         .get('/api/transactions')
         .set('Authorization', `Bearer ${token}`);
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:transactions:read', 'banking:read']);
+      expect(response.body.requiredScopes).toEqual(['banking:read']);
     });
   });
 
@@ -492,9 +492,9 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
 
     it('should work with granular scopes', async () => {
       const token = createOAuthToken([
-        'banking:accounts:read',
-        'banking:transactions:read',
-        'banking:transactions:write',
+        'banking:read',
+        'banking:read',
+        'banking:write',
       ]);
       
       // Should allow account read
@@ -531,7 +531,7 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
       expect(response.body).toMatchObject({
         error: 'insufficient_scope',
         providedScopes: [],
-        requiredScopes: ['banking:accounts:read', 'banking:read']
+        requiredScopes: ['banking:read']
       });
     });
 
@@ -690,9 +690,9 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
     it('should handle very long scope lists', async () => {
       const manyScopes = [
         'banking:read', 'banking:write', 'banking:admin',
-        'banking:accounts:read', 'banking:accounts:write',
-        'banking:transactions:read', 'banking:transactions:write',
-        'banking:users:read', 'banking:users:write',
+        'banking:read', 'banking:write',
+        'banking:read', 'banking:write',
+        'banking:read', 'banking:write',
         'banking:reports:read', 'banking:audit:read'
       ];
       

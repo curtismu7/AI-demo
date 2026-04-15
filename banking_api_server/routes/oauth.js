@@ -184,7 +184,9 @@ router.get('/callback', async (req, res) => {
     if (!state || state !== resolvedState) {
       console.error('[oauth/callback] Invalid state parameter. session:', sessionState, 'cookie:', pkceCookie?.state, 'received:', state);
       clearPkceCookie(res, _isProd());
-      return res.redirect(`${getFrontendOrigin(req)}/login?error=invalid_state`);
+      // Auto-retry login instead of showing error (multi-tab race)
+      console.log('[oauth/callback] Auto-retrying login after invalid_state (multi-tab race)');
+      return res.redirect(`${req.baseUrl}/login`);
     }
 
     // Clear state, code_verifier and redirect URI from session and cookie
@@ -359,6 +361,9 @@ router.get('/logout', (req, res) => {
   // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
   if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
   if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
+
+  // Clear any stale PKCE cookie so re-login doesn't hit invalid_state
+  clearPkceCookie(res, _isProd());
 
   req.session.destroy((err) => {
     if (err) {

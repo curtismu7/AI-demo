@@ -239,8 +239,8 @@ describe('End-to-End OAuth Integration Tests', () => {
     it('should allow /api/transactions/my for any authenticated token (no banking:* scope required)', async () => {
       // /transactions/my intentionally has no requireScopes() — standard PingOne tokens
       // without a custom resource server only carry openid/profile/email, not banking:* scopes.
-      // /api/transactions (collection) still requires banking:transactions:read | banking:read.
-      const writeOnlyToken = createOAuthToken(['banking:transactions:write']);
+      // /api/transactions (collection) still requires banking:read | banking:read.
+      const writeOnlyToken = createOAuthToken(['banking:write']);
 
       const accountsMyResponse = await agent
         .get('/api/accounts/my')
@@ -255,7 +255,7 @@ describe('End-to-End OAuth Integration Tests', () => {
         .expect(200);
       expect(transactionsMyResponse.body).toHaveProperty('transactions');
 
-      // Collection endpoint still enforces banking:transactions:read | banking:read
+      // Collection endpoint still enforces banking:read | banking:read
       const allTransactionsResponse = await agent
         .get('/api/transactions')
         .set('Authorization', `Bearer ${writeOnlyToken}`)
@@ -386,8 +386,8 @@ describe('End-to-End OAuth Integration Tests', () => {
 
     it('should provide detailed error information for scoped endpoints (collection, not /my)', async () => {
       // /transactions/my has no scope gate — returns 200 for any authenticated token.
-      // /transactions (collection) still requires banking:transactions:read | banking:read.
-      const limitedToken = createOAuthToken(['banking:accounts:read']);
+      // /transactions (collection) still requires banking:read | banking:read.
+      const limitedToken = createOAuthToken(['banking:read']);
 
       // /transactions/my is open
       const myResponse = await agent
@@ -405,9 +405,9 @@ describe('End-to-End OAuth Integration Tests', () => {
       expect(response.body).toMatchObject({
         error: 'insufficient_scope',
         error_description: expect.stringContaining('At least one of the following scopes is required'),
-        requiredScopes: ['banking:transactions:read', 'banking:read'],
-        providedScopes: ['banking:accounts:read'],
-        missingScopes: ['banking:transactions:read', 'banking:read'],
+        requiredScopes: ['banking:read', 'banking:read'],
+        providedScopes: ['banking:read'],
+        missingScopes: ['banking:read', 'banking:read'],
         validationMode: 'any_required',
         hint: expect.any(String),
         timestamp: expect.any(String),

@@ -10,8 +10,9 @@
 |---|---|---|---|---|
 | **Super Banking User App** | End-user OIDC login; generates Subject Token | `b2752071-2d03-4927-b865-089dc40b9c85` | `PINGONE_USER_CLIENT_ID` | `PINGONE_USER_CLIENT_SECRET` |
 | **Super Banking Admin App** | BFF/Server app; performs RFC 8693 Token Exchange #1; issues MCP Token | `14cefa5b-d9d6-4e51-8749-e938d4edd1c0` | `PINGONE_ADMIN_CLIENT_ID` | `PINGONE_ADMIN_CLIENT_SECRET` |
-| **Super Banking MCP Token Exchanger** | Worker app; holds Client Credentials for PingOne Management API access (list/audit resources) | `630b065f-0c28-41c2-81ed-1daee811285` | `PINGONE_CLIENT_ID` | `PINGONE_CLIENT_SECRET` |
-| **Super Banking AI Agent App** | (Informational) AI Agent identity in token chain; referenced in `act` claims and `may_act` | `2533a614-fcb6-4ab9-82cc-9ab407f1dbda` | *(Used in delegation logic, not as direct credential)* | *(No direct secret needed; identity only)* |
+| **Super Banking MCP Token Exchanger** | Type: `AI_AGENT`. Performs RFC 8693 token exchange(s); actor credential for 1-exchange and 2-exchange chain. Auth method: `client_secret_post`. | `6380065f-f328-41c2-81ed-1daeec811285` | `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` | `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET` |
+| **Super Banking AI Agent App** | Type: `AI_AGENT`. Exchange #1 actor in the 2-exchange delegated chain; Client Credentials only. | `2533a614-fcb6-4ab9-82cc-9ab407f1dbda` | `PINGONE_AI_AGENT_CLIENT_ID` | `PINGONE_AI_AGENT_CLIENT_SECRET` |
+| **Super Banking Worker Token App** | Type: `WORKER`. PingOne Management API access (read/update users, audit resources). Auth method: `basic`. | `95dc946f-5e0a-4a8b-a8ba-b587b244e005` | `PINGONE_WORKER_TOKEN_CLIENT_ID` | `PINGONE_WORKER_TOKEN_CLIENT_SECRET` |
 
 ---
 
@@ -19,10 +20,9 @@
 
 | PingOne Resource Name | Purpose | Audience URI | .env Variable | Scopes |
 |---|---|---|---|---|
-| **Super Banking AI Agent** | Subject Token audience; carries `may_act` claim for delegation | `https://ai-agent.pingdemo.com` | `ENDUSER_AUDIENCE` | `banking:agent:invoke` |
-| **Super Banking MCP Server** | MCP Token audience; carries `act` claim; validates delegation | `https://mcp-server.pingdemo.com` | `MCP_RESOURCE_URI` | `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
-| **Super Banking Agent Gateway** | Actor token audience for 2-exchange delegation | `https://agent-gateway.pingdemo.com` | `AGENT_GATEWAY_AUDIENCE` | *(none)* |
-| **Super Banking Banking API** | API resource server | `https://banking-api.pingdemo.com` | `BFF_RESOURCE_URI` | `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write` |
+| **Super Banking AI Agent** | Subject Token audience (Banking RS); carries `may_act` claim for delegation | `https://ai-agent.pingdemo.com` | `ENDUSER_AUDIENCE` | `banking:read` `banking:write` `banking:admin` `banking:sensitive` `banking:ai:agent` |
+| **Super Banking MCP Server** | MCP Token audience; carries `act` claim; validates delegation | `https://mcp-server.pingdemo.com` | `AI_AGENT_AUDIENCE` / `PINGONE_RESOURCE_MCP_SERVER_URI` | `banking:read` `banking:write` `banking:mcp:invoke` |
+| **Super Banking Agent Gateway** | Actor CC token audience for Exchange #1 in 2-exchange chain | `https://agent-gateway.pingdemo.com` | `AGENT_GATEWAY_AUDIENCE` | *(actor CC — no custom scopes required)* |
 | **PingOne API** | Built-in; Management API access (read users, audit resources, etc.) | `https://api.pingone.com` | `PINGONE_API_AUDIENCE` | `p1:read:user`, `p1:update:user` |
 
 ---
@@ -48,17 +48,20 @@ PINGONE_ENVIRONMENT_ID=d02d2305-f445-406d-82ee-7cdbf6eeabfd
 PINGONE_REGION=com
 ```
 
-### ❌ Incorrect / Missing (Need Fixes)
+### ✅ All Variables Verified
 
 | Current .env | Issue | Correct Value | Reason |
 |---|---|---|---|
-| `AI_AGENT_CLIENT_ID` | Confusing name; appears to be a credential but `AI_AGENT_CLIENT_ID: 2533a614-fcb6-4ab9-82cc-9ab407f1dbda` is actually the Super Banking AI Agent App identity reference (not a usable credential) | **REMOVE** or rename to `AI_AGENT_APP_ID` (reference only, not a secret) | Super Banking AI Agent App is referenced in token claims (`act.sub`, `may_act.sub`), not used as an exchanging client. The credential needing .env is the **Super Banking MCP Token Exchanger** (630b065f-0c28-41c2-81ed-1daee811285) |
-| `AI_AGENT_CLIENT_SECRET` | Paired with above; confusing | **REMOVE** | Same reason |
-| `MCP_RESOURCE_URI` | Current value: `https://ai-agent.pingdemo.com` ← **WRONG** | `https://mcp-server.pingdemo.com` | MCP tokens must have audience = Super Banking **MCP Server**, not AI Agent server |
-| `AGENT_OAUTH_CLIENT_ID` | Redundant; same value (`6380065f-f328-41c2-81ed-1daeec811285`) appears to be Super Banking Agent Gateway but purpose unclear | Clarify usage or consolidate | Possible duplicate of another app ID; needs audit |
-| *(missing)* | No Management API credentials to call PingOne for resource/scope audit | Add `PINGONE_CLIENT_ID` and `PINGONE_CLIENT_SECRET` | Required for Feature: PingOne Configuration Audit (resourceValidationService, scopeAuditService) |
-| *(missing)* | No reference to Super Banking MCP Token Exchanger credentials | Add `PINGONE_CLIENT_ID` + `PINGONE_CLIENT_SECRET` | The MCP Token Exchanger app (`630b065f-0c28-41c2-81ed-1daee811285`) holds Client Credentials for Management API calls |
-| `ENDUSER_AUDIENCE` | Current value: `banking_api_enduser` ← **WRONG** | `https://ai-agent.pingdemo.com` | Must match Super Banking AI Agent resource server audience |
+All env vars are correctly mapped as of the current codebase. Verified alignments:
+
+| Env var | Status | Note |
+|---------|--------|------|
+| `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` | ✅ Correct | Primary env var for MCP Token Exchanger. `AGENT_OAUTH_CLIENT_ID` is a supported legacy alias. |
+| `PINGONE_AI_AGENT_CLIENT_ID` | ✅ Correct | Credential for Super Banking AI Agent App (2-exchange actor). `AI_AGENT_CLIENT_ID` is a supported legacy alias. |
+| `PINGONE_WORKER_TOKEN_CLIENT_ID` | ✅ Correct | Used by `mfaService`; now also aliased in configStore for `pingone_client_id` / `pingone_mgmt_client_id` so Management API services resolve it. |
+| `ENDUSER_AUDIENCE` | ✅ Correct | `https://ai-agent.pingdemo.com` — Banking RS audience. |
+| `AI_AGENT_AUDIENCE` / `PINGONE_RESOURCE_MCP_SERVER_URI` | ✅ Correct | `https://mcp-server.pingdemo.com` — MCP RS audience. |
+| `MCP_RESOURCE_URI` | ✅ Alias | Supported fallback for `pingone_resource_mcp_server_uri` in configStore. |
 
 ---
 
@@ -67,20 +70,31 @@ PINGONE_REGION=com
 ### Services / Routes Using .env Variables
 
 **`banking_api_server/services/resourceValidationService.js`**
-- Reads: `configStore.getEffective('pingone_client_id')` → Maps to `.env: PINGONE_CLIENT_ID`
-- Reads: `configStore.getEffective('pingone_client_secret')` → Maps to `.env: PINGONE_CLIENT_SECRET`
-- **Purpose:** Authenticate to PingOne Management API using Super Banking MCP Token Exchanger credentials
-- **PingOne App:** Super Banking MCP Token Exchanger (`630b065f-0c28-41c2-81ed-1daee811285`)
+- Reads: `configStore.getEffective('pingone_client_id')` → resolves `PINGONE_MANAGEMENT_CLIENT_ID` → `PINGONE_WORKER_TOKEN_CLIENT_ID` (fallback)
+- **Purpose:** Authenticate to PingOne Management API to audit resources
+- **PingOne App:** **Super Banking Worker Token App** (`PINGONE_WORKER_TOKEN_CLIENT_ID`)
 
 **`banking_api_server/services/scopeAuditService.js`**
-- Same as above; also uses Management API credentials
+- Same credential chain as above
 - **Purpose:** List and audit scopes on PingOne resource servers
-- **PingOne App:** Super Banking MCP Token Exchanger (same)
+- **PingOne App:** **Super Banking Worker Token App**
+
+**`banking_api_server/services/pingOneClientService.js`**
+- Reads: `PINGONE_MGMT_CLIENT_ID` → `PINGONE_MANAGEMENT_CLIENT_ID` → `PINGONE_WORKER_TOKEN_CLIENT_ID` (fallback)
+- **Purpose:** General PingOne Management API calls (users, MFA, etc.)
+- **PingOne App:** **Super Banking Worker Token App**
+
+**`banking_api_server/services/mfaService.js`**
+- Reads: `process.env.PINGONE_WORKER_TOKEN_CLIENT_ID` directly
+- **Purpose:** PingOne MFA device management
+- **PingOne App:** **Super Banking Worker Token App**
 
 **`banking_api_server/services/delegationClaimsService.js`** (token exchange, delegation validation)
-- Validates: `may_act.sub == PINGONE_ADMIN_CLIENT_ID` (Super Banking Admin App)
-- Validates: `act.sub` contains Super Banking Admin App client ID or nested actor chain
-- **PingOne Apps:** Super Banking Admin App + Super Banking AI Agent App
+**`banking_api_server/middleware/auth.js`**
+- **`aud` check:** `ENDUSER_AUDIENCE` and `AI_AGENT_AUDIENCE` are read from `process.env` at module load; if set, `authenticateToken` rejects tokens whose `aud` doesn't include a known audience (`ENDUSER_AUDIENCE`, `AI_AGENT_AUDIENCE`, or `MCP_RESOURCE_URI`).
+- **`act` claim:** Extracted from `decoded.act` and attached to `req.user.actor`; `req.user.isDelegated = !!decoded.act`.
+- **`may_act` claim:** Extracted by `actClaimValidator.js` for audit logging only; not used as a gating condition in `auth.js`.
+- **Admin role detection:** Compares token `azp`/`client_id` to `oauthConfig.clientId` (`PINGONE_ADMIN_CLIENT_ID`). `may_act.sub` is **not** used for role gating.
 
 **`banking_api_server/routes/oauthRoutes.js`** (user login, token exchange)
 - Uses: `PINGONE_USER_CLIENT_ID` / `PINGONE_USER_CLIENT_SECRET` → Super Banking User App

@@ -53,7 +53,7 @@ describe('Scope Audit Service', () => {
           data: {
             _embedded: {
               scopes: [
-                { name: 'banking:agent:invoke' }
+                { name: 'banking:ai:agent' }
               ]
             }
           }
@@ -62,9 +62,9 @@ describe('Scope Audit Service', () => {
           data: {
             _embedded: {
               scopes: [
-                { name: 'banking:accounts:read' },
-                { name: 'banking:transactions:read' },
-                { name: 'banking:transactions:write' }
+                { name: 'banking:read' },
+                { name: 'banking:read' },
+                { name: 'banking:write' }
               ]
             }
           }
@@ -135,7 +135,7 @@ describe('Scope Audit Service', () => {
         data: {
           _embedded: {
             scopes: [
-              { name: 'banking:agent:invoke' }
+              { name: 'banking:ai:agent' }
             ]
           }
         }
@@ -221,21 +221,21 @@ describe('Scope Audit Service', () => {
 
     it('should have correct scopes for AI Agent', () => {
       const aiAgentScopes = SCOPE_REFERENCE_TABLE['Super Banking AI Agent'];
-      expect(aiAgentScopes).toContain('banking:agent:invoke');
+      expect(aiAgentScopes).toContain('banking:ai:agent');
     });
 
     it('should have correct scopes for MCP Server', () => {
       const mcpScopes = SCOPE_REFERENCE_TABLE['Super Banking MCP Server'];
-      expect(mcpScopes).toContain('banking:accounts:read');
-      expect(mcpScopes).toContain('banking:transactions:read');
-      expect(mcpScopes).toContain('banking:transactions:write');
+      expect(mcpScopes).toContain('banking:read');
+      expect(mcpScopes).toContain('banking:read');
+      expect(mcpScopes).toContain('banking:write');
     });
 
     it('should have correct scopes for Banking API', () => {
       const bankingApiScopes = SCOPE_REFERENCE_TABLE['Super Banking Banking API'];
-      expect(bankingApiScopes).toContain('banking:accounts:read');
-      expect(bankingApiScopes).toContain('banking:transactions:read');
-      expect(bankingApiScopes).toContain('banking:transactions:write');
+      expect(bankingApiScopes).toContain('banking:read');
+      expect(bankingApiScopes).toContain('banking:read');
+      expect(bankingApiScopes).toContain('banking:write');
     });
 
     it('should have empty scopes for Agent Gateway', () => {

@@ -3,7 +3,7 @@
   "version": 1,
   "publicUrlTemplate": "https://{your-production-host}",
   "resourceServer": {
-    "name": "BX Finance Banking API",
+    "name": "Super Banking API",
     "audience": "https://api.example.com/banking",
     "scopes": [
       { "name": "banking:accounts:read", "description": "Read account balances" },
@@ -13,17 +13,17 @@
   },
   "applications": {
     "admin_oidc": {
-      "name": "BX Finance — Admin sign-in",
+      "name": "Super Banking — Admin sign-in",
       "type": "WEB_APP",
       "note": "Redirect: {PUBLIC_URL}/api/auth/oauth/callback"
     },
     "user_oidc": {
-      "name": "BX Finance — Customer sign-in",
+      "name": "Super Banking — Customer sign-in",
       "type": "WEB_APP",
       "note": "Redirect: {PUBLIC_URL}/api/auth/oauth/user/callback"
     },
     "authorize_worker": {
-      "name": "BX Finance — Authorize worker",
+      "name": "Super Banking — Authorize worker",
       "type": "WORKER",
       "note": "Client credentials for PingOne Authorize + decision endpoint bootstrap"
     }

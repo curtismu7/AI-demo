@@ -66,12 +66,32 @@ function trackApiCall(sessionId, req, res, startTime, responseData, category, de
 }
 
 /**
+ * Build a token event for the UI Token Chain panel from a decoded JWT display object.
+ * Mirrors the shape produced by agentMcpTokenService.buildTokenEvent.
+ */
+function buildExchangeTokenEvent(id, label, status, decoded, explanation) {
+  const claims = decoded?.payload || decoded?.claims || null;
+  const header = decoded?.header || null;
+  const jwtFullDecode = claims != null ? { header, claims } : null;
+  return {
+    id,
+    label,
+    status,
+    timestamp: new Date().toISOString(),
+    alg: header?.alg || null,
+    claims,
+    explanation,
+    ...(jwtFullDecode ? { jwtFullDecode } : {}),
+  };
+}
+
+/**
  * POST /api/pingone-test/worker-config
  * Save worker token configuration to .env and Vercel variables
  */
 router.post('/worker-config', async (req, res) => {
   try {
-    const { clientId, clientSecret, authMethod } = req.body;
+    const { clientId, clientSecret, authMethod, tokenExchangeAuthMethod } = req.body;
 
     if (!clientId || !clientSecret) {
       return res.json({
@@ -87,7 +107,8 @@ router.post('/worker-config', async (req, res) => {
     await configStore.setConfig({
       pingone_worker_token_client_id: clientId,
       pingone_worker_token_client_secret: clientSecret,
-      pingone_worker_token_auth_method: authMethod || 'basic'
+      pingone_worker_token_auth_method: authMethod || 'basic',
+      pingone_token_exchange_auth_method: tokenExchangeAuthMethod || 'post'
     });
 
     let updateDetails = {};
@@ -118,6 +139,7 @@ router.post('/worker-config', async (req, res) => {
         let foundClientId = false;
         let foundClientSecret = false;
         let foundAuthMethod = false;
+        let foundExchangeAuthMethod = false;
 
         for (let line of lines) {
           if (line.startsWith('PINGONE_WORKER_TOKEN_CLIENT_ID=')) {
@@ -129,6 +151,9 @@ router.post('/worker-config', async (req, res) => {
           } else if (line.startsWith('PINGONE_WORKER_TOKEN_AUTH_METHOD=')) {
             updatedLines.push(`PINGONE_WORKER_TOKEN_AUTH_METHOD=${authMethod || 'basic'}`);
             foundAuthMethod = true;
+          } else if (line.startsWith('PINGONE_TOKEN_EXCHANGE_AUTH_METHOD=')) {
+            updatedLines.push(`PINGONE_TOKEN_EXCHANGE_AUTH_METHOD=${tokenExchangeAuthMethod || 'post'}`);
+            foundExchangeAuthMethod = true;
           } else if (line.startsWith('PINGONE_MGMT_CLIENT_ID=') || line.startsWith('PINGONE_MGMT_CLIENT_SECRET=') || line.startsWith('PINGONE_MGMT_TOKEN_AUTH_METHOD=')) {
             // Skip old MGMT variables - we're migrating to WORKER_TOKEN
           } else {
@@ -145,6 +170,9 @@ router.post('/worker-config', async (req, res) => {
         }
         if (!foundAuthMethod) {
           updatedLines.push(`PINGONE_WORKER_TOKEN_AUTH_METHOD=${authMethod || 'basic'}`);
+        }
+        if (!foundExchangeAuthMethod) {
+          updatedLines.push(`PINGONE_TOKEN_EXCHANGE_AUTH_METHOD=${tokenExchangeAuthMethod || 'post'}`);
         }
 
         fs.writeFileSync(envPath, updatedLines.join('\n'));
@@ -307,6 +335,26 @@ router.get('/verify-assets', async (req, res) => {
       const scopesResult = await managementService.getScopes(resourceServerId);
       const scopeNames = (scopesResult.scopes || []).map(s => s.name || s.value || s);
       missingCanonicalScopes = CANONICAL_BANKING_SCOPES.filter(s => !scopeNames.includes(s));
+
+      // Build id→name map across ALL resource servers so grant scope IDs resolve correctly
+      // (PingOne /grants returns scope entries as {id} only — no name)
+      const scopeIdToName = {};
+      const allRSIds = (resourcesResult.resourceServers || []).map(rs => rs.id).filter(Boolean);
+      const allScopeResults = await Promise.all(
+        allRSIds.map(rsId => managementService.getScopes(rsId).catch(() => ({ scopes: [] })))
+      );
+      allScopeResults.forEach(r => {
+        (r.scopes || []).forEach(s => {
+          if (s.id && (s.name || s.value)) scopeIdToName[s.id] = s.name || s.value;
+        });
+      });
+      // Post-process all apps' grants: replace scope IDs with resolved names where possible
+      for (const appId of Object.keys(appGrantsMap)) {
+        appGrantsMap[appId] = appGrantsMap[appId].map(grant => ({
+          ...grant,
+          scopes: grant.scopes.map(s => scopeIdToName[s] || s)
+        }));
+      }
       scopesAsset = {
         status: scopesResult.success ? 'passed' : 'failed',
         count: scopesResult.scopes ? scopesResult.scopes.length : 0,
@@ -425,11 +473,26 @@ router.get('/authz-token', async (req, res) => {
       return res.json(responseData);
     }
 
+    const decoded = oauthTokens.accessToken ? decodeJwtForDisplay(oauthTokens.accessToken) : null;
+
+    // Derive login type from token scopes + session clientType for UI labelling
+    const sessionClientType = req.session.clientType || null;
+    const scopes = (decoded?.payload?.scope || '').split(' ');
+    let loginType;
+    if (scopes.includes('banking:admin')) {
+      loginType = 'admin';
+    } else if (sessionClientType === 'ai_agent' || scopes.includes('banking:ai:agent')) {
+      loginType = 'ai_agent';
+    } else {
+      loginType = 'customer';
+    }
+
     const responseData = {
       success: true,
       token: oauthTokens.accessToken ? oauthTokens.accessToken.substring(0, 20) + '...' : 'undefined',
-      decoded: oauthTokens.accessToken ? decodeJwtForDisplay(oauthTokens.accessToken) : null,
-      expiresAt: oauthTokens.expiresAt
+      decoded,
+      expiresAt: oauthTokens.expiresAt,
+      loginType,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-acquisition', 'Get Authorization Code token from user session');
     res.json(responseData);
@@ -497,39 +560,40 @@ router.get('/exchange-user-to-mcp', async (req, res) => {
 
     await configStore.ensureInitialized();
 
-    // Get actor token using MCP Token Exchanger client (not management worker)
-    const agentToken = await oauthService.getMcpExchangerToken();
-
-    // Perform token exchange with actor token
     const mcpScopes1 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
-
-    // Debug: log decoded subject + actor token claims before exchange
     const subjectDecoded1 = decodeJwtForDisplay(oauthTokens.accessToken);
-    const actorDecoded1   = decodeJwtForDisplay(agentToken);
     console.log('[PingOneTest] Exchange1 subject scope:', subjectDecoded1?.payload?.scope);
-    console.log('[PingOneTest] Exchange1 actor   scope:', actorDecoded1?.payload?.scope);
     console.log('[PingOneTest] Exchange1 requesting mcp scopes:', mcpScopes1.join(' '));
 
-    // Authenticate the exchange with the MCP Token Exchanger client (has MCP resource scopes in PingOne)
-    const mcpExchangerClientId1 = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
-    const mcpExchangerSecret1   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    // Use MCP Token Exchanger credentials to authenticate the exchange.
+    // The BFF admin client doesn't have MCP resource server scopes granted in PingOne;
+    // only the MCP Token Exchanger app does.
+    const mcpExchangerClientId1 = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
+    const mcpExchangerSecret1   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET;
+    const mcpExchangerAuthMethod1 = (configStore.getEffective('pingone_token_exchange_auth_method') || process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || 'post').toLowerCase();
+    const mcpAudience1 = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
+
     const exchangedToken = (mcpExchangerClientId1 && mcpExchangerSecret1)
       ? await oauthService.performTokenExchangeAs(
-          oauthTokens.accessToken, agentToken, mcpExchangerClientId1, mcpExchangerSecret1,
-          configStore.getEffective('pingone_resource_mcp_server_uri'), mcpScopes1
+          oauthTokens.accessToken, null, mcpExchangerClientId1, mcpExchangerSecret1,
+          mcpAudience1, mcpScopes1, mcpExchangerAuthMethod1
         )
-      : await oauthService.performTokenExchangeWithActor(
-          oauthTokens.accessToken, agentToken,
-          configStore.getEffective('pingone_resource_mcp_server_uri'), mcpScopes1
+      : await oauthService.performTokenExchange(
+          oauthTokens.accessToken, mcpAudience1, mcpScopes1
         );
 
+    const mcpDecoded1 = exchangedToken ? decodeJwtForDisplay(exchangedToken) : null;
+    const tokenEvents1 = [
+      buildExchangeTokenEvent('user-token', 'User access token', 'active', subjectDecoded1, 'Authorization Code token from user login (subject token for exchange)'),
+      buildExchangeTokenEvent('mcp-token', 'MCP access token', exchangedToken ? 'active' : 'failed', mcpDecoded1, 'RFC 8693 exchanged token — narrowly scoped to MCP server audience'),
+    ];
     const responseData = {
       success: true,
       token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined',
-      decoded: exchangedToken ? decodeJwtForDisplay(exchangedToken) : null,
+      decoded: mcpDecoded1,
       subjectTokenDecoded: subjectDecoded1,
-      actorTokenDecoded: actorDecoded1,
       requestedScopes: mcpScopes1,
+      tokenEvents: tokenEvents1,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) for MCP token');
     res.json(responseData);
@@ -637,23 +701,31 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
 
     const mcpExchangerClientId2 = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
     const mcpExchangerSecret2   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const mcpExchangerAuthMethod2 = (configStore.getEffective('pingone_token_exchange_auth_method') || process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || 'post').toLowerCase();
     const exchangedToken = (mcpExchangerClientId2 && mcpExchangerSecret2)
       ? await oauthService.performTokenExchangeAs(
           oauthTokens.accessToken, agentToken, mcpExchangerClientId2, mcpExchangerSecret2,
-          configStore.getEffective('pingone_resource_mcp_gateway_uri'), mcpScopes2
+          configStore.getEffective('pingone_resource_mcp_gateway_uri'), mcpScopes2, mcpExchangerAuthMethod2
         )
       : await oauthService.performTokenExchangeWithActor(
           oauthTokens.accessToken, agentToken,
           configStore.getEffective('pingone_resource_mcp_gateway_uri'), mcpScopes2
         );
 
+    const mcpDecoded2 = exchangedToken ? decodeJwtForDisplay(exchangedToken) : null;
+    const tokenEvents2 = [
+      buildExchangeTokenEvent('user-token', 'User access token', 'active', subjectDecoded2, 'Authorization Code token from user login (subject token for exchange)'),
+      buildExchangeTokenEvent('actor-token', 'Agent actor token', 'active', actorDecoded2, 'Client Credentials token from MCP Token Exchanger (actor in RFC 8693)'),
+      buildExchangeTokenEvent('mcp-token', 'MCP access token', exchangedToken ? 'active' : 'failed', mcpDecoded2, 'RFC 8693 exchanged token — narrowly scoped to MCP gateway audience'),
+    ];
     const responseData = {
       success: true,
       token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined',
-      decoded: exchangedToken ? decodeJwtForDisplay(exchangedToken) : null,
+      decoded: mcpDecoded2,
       subjectTokenDecoded: subjectDecoded2,
       actorTokenDecoded: actorDecoded2,
       requestedScopes: mcpScopes2,
+      tokenEvents: tokenEvents2,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
     res.json(responseData);
@@ -693,29 +765,39 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
     const agentToken = await oauthService.performTokenExchange(
       oauthTokens.accessToken,
       configStore.getEffective('pingone_resource_agent_gateway_uri'),
-      ['banking:ai:agent:read']
+      ['banking:ai:agent']
     );
 
     // Step 2: Use both user token and agent token to exchange for MCP token
     const mcpScopes3 = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
     const mcpExchangerClientId3 = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
     const mcpExchangerSecret3   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const mcpExchangerAuthMethod3 = (configStore.getEffective('pingone_token_exchange_auth_method') || process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || 'post').toLowerCase();
     const mcpToken = (mcpExchangerClientId3 && mcpExchangerSecret3)
       ? await oauthService.performTokenExchangeAs(
           oauthTokens.accessToken, agentToken, mcpExchangerClientId3, mcpExchangerSecret3,
-          configStore.getEffective('pingone_resource_mcp_server_uri'), mcpScopes3
+          configStore.getEffective('pingone_resource_mcp_server_uri'), mcpScopes3, mcpExchangerAuthMethod3
         )
       : await oauthService.performTokenExchangeWithActor(
           oauthTokens.accessToken, agentToken,
           configStore.getEffective('pingone_resource_mcp_server_uri'), mcpScopes3
         );
 
+    const agentDecoded3 = agentToken ? decodeJwtForDisplay(agentToken) : null;
+    const mcpDecoded3 = mcpToken ? decodeJwtForDisplay(mcpToken) : null;
+    const subjectDecoded3 = oauthTokens?.accessToken ? decodeJwtForDisplay(oauthTokens.accessToken) : null;
+    const tokenEvents3 = [
+      buildExchangeTokenEvent('user-token', 'User access token', 'active', subjectDecoded3, 'Authorization Code token from user login (T1 subject)'),
+      buildExchangeTokenEvent('agent-token', 'Agent token (T2)', 'active', agentDecoded3, 'First exchange: user token → agent-scoped token'),
+      buildExchangeTokenEvent('mcp-token', 'MCP access token', mcpToken ? 'active' : 'failed', mcpDecoded3, 'Second exchange: user + agent tokens → MCP-scoped token (RFC 8693 delegation chain)'),
+    ];
     const responseData = {
       success: true,
       agentToken: agentToken ? agentToken.substring(0, 20) + '...' : 'undefined',
       mcpToken: mcpToken ? mcpToken.substring(0, 20) + '...' : 'undefined',
-      agentTokenDecoded: agentToken ? decodeJwtForDisplay(agentToken) : null,
-      mcpTokenDecoded: mcpToken ? decodeJwtForDisplay(mcpToken) : null
+      agentTokenDecoded: agentDecoded3,
+      mcpTokenDecoded: mcpDecoded3,
+      tokenEvents: tokenEvents3,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token for Agent Token, then use those 2 for MCP token');
     res.json(responseData);
@@ -788,6 +870,7 @@ router.get('/config', async (req, res) => {
       mgmtClientId: process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || configStore.getEffective('pingone_worker_token_client_id') || configStore.getEffective('pingone_mgmt_client_id'),
       mgmtClientSecret: process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || configStore.getEffective('pingone_worker_token_client_secret') || configStore.getEffective('pingone_mgmt_client_secret'),
       mgmtTokenAuthMethod: process.env.PINGONE_WORKER_TOKEN_AUTH_METHOD || configStore.getEffective('pingone_worker_token_auth_method') || configStore.getEffective('pingone_mgmt_token_auth_method') || 'basic',
+      tokenExchangeAuthMethod: process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || configStore.getEffective('pingone_token_exchange_auth_method') || 'post',
       // Two-exchange delegation (RFC 8693 double-hop)
       twoExchangeResourceUri: process.env.PINGONE_RESOURCE_TWO_EXCHANGE_URI || configStore.getEffective('pingone_resource_two_exchange_uri') || null,
       ffTwoExchangeDelegation: (process.env.FF_TWO_EXCHANGE_DELEGATION === 'true') || (configStore.getEffective('ff_two_exchange_delegation') === 'true') || false,
@@ -885,9 +968,10 @@ router.get('/apps', async (req, res) => {
   try {
     await configStore.ensureInitialized();
 
-    // Initialize management service
+    // Get worker token and initialize management service
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
     try {
-      managementService.initialize();
+      managementService.initialize(workerToken);
     } catch (initError) {
       const responseData = {
         success: false,
@@ -931,9 +1015,10 @@ router.get('/resources', async (req, res) => {
   try {
     await configStore.ensureInitialized();
 
-    // Initialize management service
+    // Get worker token and initialize management service
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
     try {
-      managementService.initialize();
+      managementService.initialize(workerToken);
     } catch (initError) {
       const responseData = {
         success: false,
@@ -977,9 +1062,10 @@ router.get('/scopes', async (req, res) => {
   try {
     await configStore.ensureInitialized();
 
-    // Initialize management service
+    // Get worker token and initialize management service
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
     try {
-      managementService.initialize();
+      managementService.initialize(workerToken);
     } catch (initError) {
       const responseData = {
         success: false,
@@ -1194,6 +1280,653 @@ router.post('/fix-banking-resource-server', async (req, res) => {
   } catch (error) {
     console.error('[PingOneTest] fix-banking-resource-server error:', error.message);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/pingone-test/diagnose-mcp-exchange
+ * Diagnoses why token exchange fails: checks MCP RS exists, what scopes it has,
+ * and what the MCP Token Exchanger app has assigned.
+ */
+router.get('/diagnose-mcp-exchange', async (req, res) => {
+  try {
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    if (!workerToken) {
+      return res.status(503).json({ success: false, error: 'Worker token unavailable' });
+    }
+    managementService.initialize(workerToken);
+
+    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
+    const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
+    const requestedScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || '').trim().split(/\s+/).filter(Boolean);
+
+    // 1. Find the MCP resource server — audience match is authoritative;
+    //    name fallback requires both "mcp" and "server" and excludes "gateway"
+    const rsResult = await managementService.getResourceServers();
+    const allRS = rsResult.resourceServers || [];
+    const mcpRS = allRS.find(rs => {
+      const aud = rs.audience || (rs.accessControl && rs.accessControl.audience) || '';
+      if (aud === mcpUri) return true;
+      const n = (rs.name || '').toLowerCase();
+      return n.includes('mcp') && n.includes('server') && !n.includes('gateway');
+    });
+
+    let mcpRSScopes = [];
+    if (mcpRS) {
+      const scopesResult = await managementService.getScopes(mcpRS.id);
+      mcpRSScopes = (scopesResult.scopes || []).map(s => ({ id: s.id, name: s.name || s.value }));
+    }
+
+    // 2. Find the exchanger app and its grants
+    const appsResult = await managementService.getApplications();
+    const allApps = appsResult.applications || [];
+    const exchangerApp = allApps.find(a => a.id === exchangerClientId || a.oidcOptions?.clientId === exchangerClientId);
+
+    let exchangerGrants = [];
+    let exchangerHasMcpRS = false;
+    let exchangerMcpScopes = [];
+    if (exchangerApp) {
+      const grantsResult = await managementService.getApplicationGrants(exchangerApp.id);
+      exchangerGrants = grantsResult.grants || [];
+      const mcpGrant = exchangerGrants.find(g => g.resourceId === mcpRS?.id || g.name === (mcpRS?.name));
+      exchangerHasMcpRS = !!mcpGrant;
+      exchangerMcpScopes = mcpGrant?.scopes || [];
+    }
+
+    const missingFromRS = requestedScopes.filter(s => !mcpRSScopes.some(r => r.name === s));
+
+    // exchangerMcpScopes may contain scope IDs (UUIDs) if PingOne didn't return names in the grant.
+    // Resolve IDs → names using the RS scope list so comparison against requestedScopes works.
+    const resolvedExchangerScopes = exchangerMcpScopes.map(idOrName => {
+      const match = mcpRSScopes.find(r => r.id === idOrName || r.name === idOrName);
+      return match ? match.name : idOrName;
+    });
+    const missingFromApp = requestedScopes.filter(s => !resolvedExchangerScopes.includes(s));
+
+    res.json({
+      success: true,
+      mcpUri,
+      mcpResourceServer: mcpRS ? { id: mcpRS.id, name: mcpRS.name, audience: mcpRS.audience } : null,
+      mcpRSScopes,
+      exchangerApp: exchangerApp ? { id: exchangerApp.id, name: exchangerApp.name } : null,
+      exchangerHasMcpRS,
+      exchangerMcpScopes: resolvedExchangerScopes,
+      requestedScopes,
+      missingFromRS,
+      missingFromApp,
+      canExchange: missingFromRS.length === 0 && missingFromApp.length === 0 && exchangerHasMcpRS,
+    });
+  } catch (error) {
+    console.error('[PingOneTest] diagnose-mcp-exchange error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/pingone-test/fix-mcp-exchange
+ * 1. Find/create MCP resource server at PINGONE_RESOURCE_MCP_SERVER_URI
+ * 2. Create any missing scopes on it
+ * 3. Enable Token Exchange grant on the MCP Token Exchanger app
+ * 4. Assign MCP RS + scopes to the MCP Token Exchanger app via /resources
+ */
+router.post('/fix-mcp-exchange', async (req, res) => {
+  try {
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    if (!workerToken) {
+      return res.status(503).json({ success: false, error: 'Worker token unavailable' });
+    }
+    managementService.initialize(workerToken);
+
+    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
+    const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
+    const requestedScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/).filter(Boolean);
+
+    const steps = [];
+
+    // Step 1: Find or create MCP resource server
+    const rsResult = await managementService.getResourceServers();
+    const allRS = rsResult.resourceServers || [];
+    // Audience match is authoritative; name fallback excludes 'gateway'
+    let mcpRS = allRS.find(rs => {
+      const aud = rs.audience || (rs.accessControl && rs.accessControl.audience) || '';
+      if (aud === mcpUri) return true;
+      const n = (rs.name || '').toLowerCase();
+      return n.includes('mcp') && n.includes('server') && !n.includes('gateway');
+    });
+
+    let mcpRSCreated = false;
+    if (!mcpRS) {
+      const createRS = await managementService.createResourceServer({
+        name: 'Super Banking MCP Server',
+        audience: mcpUri,
+        description: 'MCP Server resource server for token exchange audience',
+      });
+      if (!createRS.success) {
+        return res.status(502).json({ success: false, error: `Could not create MCP RS: ${createRS.error}`, steps });
+      }
+      mcpRS = createRS.resourceServer;
+      mcpRSCreated = true;
+      steps.push({ step: 'create-mcp-rs', status: 'created', detail: `Created MCP RS with audience ${mcpUri}` });
+    } else {
+      steps.push({ step: 'find-mcp-rs', status: 'found', detail: `Found MCP RS: ${mcpRS.name} (${mcpRS.id})` });
+    }
+
+    // Step 2: Ensure all requested scopes exist on MCP RS
+    const scopesResult = await managementService.getScopes(mcpRS.id);
+    const existingNames = (scopesResult.scopes || []).map(s => s.name || s.value);
+    const missingScopesOnRS = requestedScopes.filter(s => !existingNames.includes(s));
+    const scopeCreateResults = await Promise.all(
+      missingScopesOnRS.map(s =>
+        managementService.createScopes(mcpRS.id, [{ name: s, description: `MCP scope: ${s}` }])
+          .then(r => ({ scope: s, success: r[0]?.success ?? false, error: r[0]?.error }))
+          .catch(e => ({ scope: s, success: false, error: e.message }))
+      )
+    );
+    steps.push({ step: 'ensure-scopes', created: missingScopesOnRS, results: scopeCreateResults });
+
+    // Step 3: Assign MCP RS + scopes to MCP Token Exchanger app
+    // Re-fetch scopes to get actual names (may include ones just created)
+    const freshScopesResult = await managementService.getScopes(mcpRS.id);
+    const freshScopeNames = (freshScopesResult.scopes || [])
+      .map(s => s.name || s.value)
+      .filter(n => requestedScopes.includes(n));
+
+    const apps = (await managementService.getApplications()).applications || [];
+    const exchangerApp = apps.find(a => a.id === exchangerClientId || a.oidcOptions?.clientId === exchangerClientId);
+    if (!exchangerApp) {
+      steps.push({ step: 'assign-to-exchanger-app', status: 'skipped', detail: `Exchanger app ${exchangerClientId} not found` });
+    } else {
+      const assignResult = await managementService.enableResourceServer(exchangerApp.id, mcpRS.id, freshScopeNames);
+      console.log('[fix-mcp-exchange] enableResourceServer result:', JSON.stringify(assignResult));
+      steps.push({
+        step: 'assign-to-exchanger-app',
+        status: assignResult.success ? 'ok' : 'failed',
+        detail: assignResult.success
+          ? `Assigned ${freshScopeNames.join(', ')} on MCP RS to ${exchangerApp.name}${assignResult.patched ? ' (patched existing grant)' : ''}`
+          : assignResult.error,
+      });
+    }
+
+    // Step 4: Ensure "act" attribute mapping on MCP RS so the exchanged token
+    // contains the act claim (who is acting on behalf of the user).
+    // The SpEL pulls may_act from the subject token and emits it as "act".
+    const axios = require('axios');
+    const region = configStore.getEffective('pingone_region') || 'com';
+    const envId = configStore.getEffective('pingone_environment_id');
+    const apiBase = `https://api.pingone.${region}/v1/environments/${envId}`;
+    const mgmtHeaders = { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' };
+    const ACT_SPEL = '${#root.context.requestData.subjectToken.may_act}';
+
+    try {
+      const attrsRes = await axios.get(`${apiBase}/resources/${mcpRS.id}/attributes`, { headers: mgmtHeaders, timeout: 10000 });
+      const rsAttrs = attrsRes.data?._embedded?.attributes || [];
+      const existingAct = rsAttrs.find(a => a.name === 'act');
+
+      if (existingAct) {
+        // Check if the SpEL expression is the correct simple form
+        if (existingAct.value === ACT_SPEL) {
+          steps.push({ step: 'act-mapping', status: 'already_exists', detail: `act → ${ACT_SPEL}` });
+        } else {
+          // Fix: update to the correct SpEL (old expression may have a broken conditional)
+          await axios.put(`${apiBase}/resources/${mcpRS.id}/attributes/${existingAct.id}`, {
+            name: 'act',
+            value: ACT_SPEL,
+          }, { headers: mgmtHeaders, timeout: 10000 });
+          steps.push({ step: 'act-mapping', status: 'fixed', detail: `Updated act SpEL from "${existingAct.value}" to "${ACT_SPEL}"` });
+        }
+      } else {
+        await axios.post(`${apiBase}/resources/${mcpRS.id}/attributes`, {
+          name: 'act',
+          value: ACT_SPEL,
+        }, { headers: mgmtHeaders, timeout: 10000 });
+        steps.push({ step: 'act-mapping', status: 'created', detail: `act mapping added → ${ACT_SPEL}` });
+      }
+    } catch (actErr) {
+      steps.push({ step: 'act-mapping', status: 'failed', detail: actErr.response?.data?.message || actErr.message });
+    }
+
+    // Step 5: Also ensure "may_act" attribute mapping on MCP RS so the
+    // exchanged token can carry may_act if needed for downstream delegation.
+    const MAY_ACT_SPEL = '${user.mayAct}';
+    try {
+      const attrsRes2 = await axios.get(`${apiBase}/resources/${mcpRS.id}/attributes`, { headers: mgmtHeaders, timeout: 10000 });
+      const rsAttrs2 = attrsRes2.data?._embedded?.attributes || [];
+      const existingMayAct = rsAttrs2.find(a => a.name === 'may_act');
+      const existingCamel = rsAttrs2.find(a => a.name === 'mayAct');
+
+      if (existingMayAct) {
+        steps.push({ step: 'may_act-mapping-mcp', status: 'already_exists', detail: `may_act → ${existingMayAct.value}` });
+      } else if (existingCamel) {
+        // Fix camelCase → snake_case
+        await axios.put(`${apiBase}/resources/${mcpRS.id}/attributes/${existingCamel.id}`, {
+          name: 'may_act', value: MAY_ACT_SPEL,
+        }, { headers: mgmtHeaders, timeout: 10000 });
+        steps.push({ step: 'may_act-mapping-mcp', status: 'fixed', detail: 'Renamed "mayAct" → "may_act"' });
+      }
+      // Don't create may_act on MCP RS if not present — act is the primary claim here
+    } catch (mayActErr) {
+      steps.push({ step: 'may_act-mapping-mcp', status: 'failed', detail: mayActErr.response?.data?.message || mayActErr.message });
+    }
+
+    res.json({ success: true, mcpUri, mcpRSCreated, requestedScopes, steps });
+  } catch (error) {
+    console.error('[PingOneTest] fix-mcp-exchange error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/pingone-test/ai-agent-apps
+ * Fetch all applications from PingOne, filter to type=AI_AGENT,
+ * and cross-reference against the known Super Banking AI app names.
+ */
+router.get('/ai-agent-apps', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+  try {
+    await configStore.ensureInitialized();
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    try { managementService.initialize(workerToken); } catch (e) {
+      return res.json({ success: false, error: 'Management API not configured: ' + e.message, apps: [] });
+    }
+
+    const result = await managementService.getApplications();
+    const allApps = result.applications || [];
+    const aiAgentApps = allApps.filter(a => a.type === 'AI_AGENT' || a.applicationType === 'AI_AGENT');
+
+    const KNOWN_SUPER_BANKING_AI_APPS = [
+      'Super Banking MCP Token Exchanger',
+      'Super Banking AI Agent App',
+    ];
+    const enriched = aiAgentApps.map(app => ({
+      id: app.id,
+      name: app.name,
+      type: app.type || app.applicationType,
+      isSuperBanking: KNOWN_SUPER_BANKING_AI_APPS.includes(app.name),
+      clientId: app.oidcOptions?.clientId || app.clientId || null,
+    }));
+    const missing = KNOWN_SUPER_BANKING_AI_APPS.filter(n => !aiAgentApps.some(a => a.name === n));
+
+    const responseData = {
+      success: result.success,
+      apps: enriched,
+      count: enriched.length,
+      totalApps: allApps.length,
+      missingExpected: missing,
+      error: result.error || null,
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Fetch AI_AGENT type applications from PingOne');
+    res.json(responseData);
+  } catch (error) {
+    console.error('[PingOneTest] ai-agent-apps error:', error.message);
+    const responseData = { success: false, error: error.message, apps: [] };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Fetch AI_AGENT type applications from PingOne');
+    res.json(responseData);
+  }
+});
+
+/**
+ * POST /api/pingone-test/update-resources
+ * Idempotently ensure both resource servers exist with correct audiences:
+ *   - Banking RS  (ENDUSER_AUDIENCE) with canonical banking:* scopes
+ *   - MCP RS      (PINGONE_RESOURCE_MCP_SERVER_URI) with MCP scopes
+ */
+router.post('/update-resources', async (req, res) => {
+  try {
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    if (!workerToken) {
+      return res.status(503).json({ success: false, error: 'Worker token unavailable' });
+    }
+    managementService.initialize(workerToken);
+
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
+    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || 'https://mcp-server.pingdemo.com';
+
+    const RS_TARGETS = [
+      { key: 'banking', name: 'Super Banking AI Agent', audience: audienceEnduser,
+        scopes: ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'] },
+      { key: 'mcp',     name: 'Super Banking MCP Server', audience: mcpUri,
+        scopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'] },
+    ];
+
+    const rsResult = await managementService.getResourceServers();
+    const allRS = rsResult.resourceServers || [];
+    const steps = [];
+
+    for (const target of RS_TARGETS) {
+      const existing = allRS.find(rs => {
+        const aud = rs.audience || (rs.accessControl && rs.accessControl.audience) || '';
+        return aud === target.audience || (rs.name || '').toLowerCase().includes(target.key);
+      });
+
+      let rsId;
+      if (!existing) {
+        const cr = await managementService.createResourceServer({ name: target.name, audience: target.audience, description: `${target.name} resource server` });
+        if (!cr.success) { steps.push({ rs: target.name, status: 'failed', detail: cr.error }); continue; }
+        rsId = cr.resourceServer?.id || cr.id;
+        steps.push({ rs: target.name, status: 'created', audience: target.audience });
+      } else {
+        rsId = existing.id;
+        steps.push({ rs: target.name, status: 'found', audience: existing.audience });
+      }
+
+      const existingScopes = await managementService.getScopes(rsId);
+      const existingNames = (existingScopes.scopes || []).map(s => s.name || s.value || s);
+      const toAdd = target.scopes.filter(s => !existingNames.includes(s));
+      if (toAdd.length > 0) {
+        const scopeResults = await Promise.all(
+          toAdd.map(s => managementService.createScopes(rsId, [{ name: s, description: `Scope: ${s}` }])
+            .then(r => ({ scope: s, success: r[0]?.success ?? false, error: r[0]?.error }))
+            .catch(e => ({ scope: s, success: false, error: e.message })))
+        );
+        steps.push({ rs: target.name, scopesAdded: toAdd, scopeResults });
+      } else {
+        steps.push({ rs: target.name, scopesAdded: [], detail: 'All canonical scopes already present' });
+      }
+    }
+
+    res.json({ success: true, steps });
+  } catch (error) {
+    console.error('[PingOneTest] update-resources error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/pingone-test/update-scopes
+ * Add any missing canonical scopes to the Banking RS and MCP RS.
+ * Non-destructive: only adds, never removes.
+ */
+router.post('/update-scopes', async (req, res) => {
+  try {
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    if (!workerToken) {
+      return res.status(503).json({ success: false, error: 'Worker token unavailable' });
+    }
+    managementService.initialize(workerToken);
+
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
+    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || 'https://mcp-server.pingdemo.com';
+    const SCOPE_MAP = {
+      banking: { audience: audienceEnduser, scopes: ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'] },
+      mcp:     { audience: mcpUri,         scopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'] },
+    };
+
+    const rsResult = await managementService.getResourceServers();
+    const allRS = rsResult.resourceServers || [];
+    const results = [];
+
+    for (const [key, target] of Object.entries(SCOPE_MAP)) {
+      const rs = allRS.find(r => {
+        const aud = r.audience || (r.accessControl && r.accessControl.audience) || '';
+        return aud === target.audience || (r.name || '').toLowerCase().includes(key);
+      });
+      if (!rs) { results.push({ rs: key, status: 'not_found', audience: target.audience }); continue; }
+
+      const existing = await managementService.getScopes(rs.id);
+      const existingNames = (existing.scopes || []).map(s => s.name || s.value || s);
+      const toAdd = target.scopes.filter(s => !existingNames.includes(s));
+
+      const scopeResults = await Promise.all(
+        toAdd.map(s => managementService.createScopes(rs.id, [{ name: s, description: `Scope: ${s}` }])
+          .then(r => ({ scope: s, success: r[0]?.success ?? false }))
+          .catch(e => ({ scope: s, success: false, error: e.message })))
+      );
+      results.push({ rs: rs.name, added: toAdd, alreadyPresent: existingNames.filter(n => target.scopes.includes(n)), scopeResults });
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('[PingOneTest] update-scopes error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/pingone-test/update-apps
+ * For each Super Banking app, ensure it has the correct banking RS scopes granted.
+ * Also finds all AI_AGENT apps and includes them in the response.
+ */
+router.post('/update-apps', async (req, res) => {
+  try {
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    if (!workerToken) {
+      return res.status(503).json({ success: false, error: 'Worker token unavailable' });
+    }
+    managementService.initialize(workerToken);
+
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
+    const CANONICAL_BANKING_SCOPES = ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'];
+
+    // App name → required banking scope subset
+    const APP_SCOPE_REQUIREMENTS = {
+      'Super Banking Admin App':          ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
+      'Super Banking User App':           ['banking:read', 'banking:write', 'banking:ai:agent'],
+      'Super Banking MCP Token Exchanger':['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
+      'Super Banking AI Agent App':       ['banking:read', 'banking:write', 'banking:ai:agent'],
+    };
+
+    // Find banking RS
+    const rsResult = await managementService.getResourceServers();
+    const allRS = rsResult.resourceServers || [];
+    const bankingRS = allRS.find(rs => {
+      const aud = rs.audience || (rs.accessControl && rs.accessControl.audience) || '';
+      return aud === audienceEnduser || (rs.name || '').toLowerCase().includes('banking');
+    });
+    if (!bankingRS) {
+      return res.json({ success: false, error: 'Banking resource server not found. Run Update Resources first.' });
+    }
+
+    // Get all RS scopes for name lookup
+    const rsScopesResult = await managementService.getScopes(bankingRS.id);
+    const rsScopesList = rsScopesResult.scopes || [];
+
+    // Get apps
+    const appsResult = await managementService.getApplications();
+    const allApps = appsResult.applications || [];
+
+    // AI_AGENT apps — discovery
+    const aiAgentApps = allApps.filter(a => a.type === 'AI_AGENT' || a.applicationType === 'AI_AGENT');
+
+    const steps = [];
+    for (const [appName, requiredScopes] of Object.entries(APP_SCOPE_REQUIREMENTS)) {
+      const app = allApps.find(a => a.name === appName);
+      if (!app) { steps.push({ app: appName, status: 'not_found' }); continue; }
+
+      const assignResult = await managementService.enableResourceServer(app.id, bankingRS.id, requiredScopes);
+      steps.push({
+        app: appName,
+        appId: app.id,
+        status: assignResult.success ? 'ok' : 'failed',
+        detail: assignResult.success
+          ? `Granted: ${requiredScopes.join(', ')} on ${bankingRS.name}${assignResult.patched ? ' (patched)' : ''}`
+          : assignResult.error,
+      });
+    }
+
+    res.json({
+      success: true,
+      steps,
+      aiAgentApps: aiAgentApps.map(a => ({ id: a.id, name: a.name, type: a.type || a.applicationType })),
+    });
+  } catch (error) {
+    console.error('[PingOneTest] update-apps error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/pingone-test/update-user-spel
+ * Two-step setup so may_act actually appears in the user's access token:
+ *   1. PATCH the user's `mayAct` custom attribute  → PingOne stores the value.
+ *   2. Ensure a `may_act` attribute mapping exists on the OIDC app(s)
+ *      (Super Banking User App + Super Banking Admin App) so PingOne
+ *      serialises the stored value into the access token's `may_act` claim.
+ *
+ * Both steps are idempotent. Without step 2 the user attribute is set but
+ * the token never contains `may_act` — which is the most common "still no
+ * may_act" scenario.
+ *
+ * Body: { enabled: boolean, userId?: string }
+ */
+router.post('/update-user-spel', async (req, res) => {
+  try {
+    await configStore.ensureInitialized();
+
+    const { enabled = true, userId } = req.body;
+    const sessionUser = req.session?.user;
+    const pingOneUserId = userId || sessionUser?.oauthId || sessionUser?.id;
+
+    if (!pingOneUserId) {
+      return res.json({ success: false, error: 'No user ID available. User must be logged in or supply userId.' });
+    }
+
+    const region  = configStore.getEffective('pingone_region') || 'com';
+    const envId   = configStore.getEffective('pingone_environment_id');
+    // may_act.sub must point to the MCP Token Exchanger — it's the app that
+    // performs the RFC 8693 token exchange on behalf of the user.
+    const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id')
+      || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
+    // Fallback to admin/agent client if exchanger not configured
+    const bffClientId = exchangerClientId
+      || configStore.getEffective('admin_client_id')
+      || configStore.getEffective('pingone_ai_agent_client_id');
+
+    if (!bffClientId) {
+      return res.json({ success: false, error: 'MCP Token Exchanger client ID not set — cannot determine may_act.sub value.' });
+    }
+
+    const workerToken = await oauthService.getAgentClientCredentialsToken();
+    if (!workerToken) {
+      return res.status(503).json({ success: false, error: 'Worker token unavailable' });
+    }
+
+    const axios = require('axios');
+    const base = `https://api.pingone.${region}/v1/environments/${envId}`;
+    const headers = { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' };
+    const steps = [];
+
+    // ── Step 1: PATCH mayAct on user record ──────────────────────────────────
+    const patch = { mayAct: enabled ? { sub: bffClientId } : null };
+    await axios.patch(`${base}/users/${pingOneUserId}`, patch, { headers });
+    steps.push({ step: 'user-attribute', status: 'ok', detail: enabled ? `mayAct.sub = "${bffClientId}"` : 'mayAct cleared' });
+
+    // ── Step 2: Ensure may_act attribute mapping on Resource Servers ─────────
+    // For custom RS access tokens, attribute mappings must be on the RESOURCE
+    // SERVER, not the OIDC app. App-level mappings only go to idToken/userInfo.
+    // The RS attribute name becomes the JWT claim name, so it must be "may_act"
+    // (snake_case per RFC 8693), NOT "mayAct" (camelCase).
+    if (enabled) {
+      const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE;
+      const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI;
+
+      // Discover all resource servers
+      managementService.initialize(workerToken);
+      const rsResult = await managementService.getResourceServers();
+      const allRS = rsResult.resourceServers || [];
+
+      // RS targets that need may_act: Banking API RS and AI Agent RS
+      // (MCP Server RS needs "act" not "may_act" — handled by fix-mcp-exchange)
+      const rsTargets = [];
+      for (const rs of allRS) {
+        const aud = rs.audience || (rs.accessControl && rs.accessControl.audience) || '';
+        const name = (rs.name || '').toLowerCase();
+        // Match Banking API RS, AI Agent RS, or any RS with a banking/agent audience
+        if (aud === audienceEnduser || aud === 'https://resource-server.pingdemo.com'
+            || aud === 'https://ai-agent.pingdemo.com'
+            || name.includes('banking') || name.includes('ai agent')) {
+          rsTargets.push(rs);
+        }
+      }
+
+      for (const rs of rsTargets) {
+        const rsAttrsRes = await axios.get(`${base}/resources/${rs.id}/attributes`, { headers, timeout: 10000 });
+        const rsAttrs = rsAttrsRes.data?._embedded?.attributes || [];
+
+        // Check for existing may_act (correct name) or mayAct (wrong camelCase name)
+        const existingCorrect = rsAttrs.find(a => a.name === 'may_act');
+        const existingCamel = rsAttrs.find(a => a.name === 'mayAct');
+
+        if (existingCorrect) {
+          steps.push({ step: 'rs-mapping', rs: rs.name, status: 'already_exists', detail: `may_act → ${existingCorrect.value}` });
+        } else if (existingCamel) {
+          // Fix: rename mayAct → may_act (PingOne uses attribute name as JWT claim name)
+          try {
+            await axios.put(`${base}/resources/${rs.id}/attributes/${existingCamel.id}`, {
+              name: 'may_act',
+              value: '${user.mayAct}',
+            }, { headers, timeout: 10000 });
+            steps.push({ step: 'rs-mapping', rs: rs.name, status: 'fixed', detail: 'Renamed "mayAct" → "may_act" (RFC 8693 snake_case)' });
+          } catch (fixErr) {
+            steps.push({ step: 'rs-mapping', rs: rs.name, status: 'fix_failed', detail: fixErr.response?.data?.message || fixErr.message });
+          }
+        } else {
+          // Create may_act attribute mapping on this RS
+          try {
+            await axios.post(`${base}/resources/${rs.id}/attributes`, {
+              name: 'may_act',
+              value: '${user.mayAct}',
+            }, { headers, timeout: 10000 });
+            steps.push({ step: 'rs-mapping', rs: rs.name, status: 'created', detail: 'may_act mapping added → ${user.mayAct}' });
+          } catch (mapErr) {
+            steps.push({ step: 'rs-mapping', rs: rs.name, status: 'failed', detail: mapErr.response?.data?.message || mapErr.message });
+          }
+        }
+      }
+
+      if (rsTargets.length === 0) {
+        steps.push({ step: 'rs-mapping', status: 'skipped', detail: 'No Banking/AI Agent resource servers found to map may_act on' });
+      }
+
+      // ── Step 3: Ensure may_act attribute mapping on OIDC apps (id_token/userinfo) ──
+      const userClientId  = configStore.getEffective('user_client_id');
+      const adminClientId = configStore.getEffective('admin_client_id');
+      const targetClientIds = [...new Set([userClientId, adminClientId].filter(Boolean))];
+
+      const appsRes = await axios.get(`${base}/applications?limit=100`, { headers, timeout: 10000 });
+      const apps = appsRes.data?._embedded?.applications || [];
+
+      for (const clientId of targetClientIds) {
+        const app = apps.find(a => a.protocol === 'OPENID_CONNECT' && (a.oidcOptions?.clientId === clientId || a.id === clientId));
+        if (!app) {
+          steps.push({ step: 'app-mapping', appClientId: clientId, status: 'skipped', detail: `OIDC app not found for clientId "${clientId}"` });
+          continue;
+        }
+
+        const mappingsRes = await axios.get(`${base}/applications/${app.id}/attributes`, { headers, timeout: 10000 });
+        const mappings = mappingsRes.data?._embedded?.attributes || [];
+        const existing = mappings.find(m => m.name === 'may_act');
+
+        if (existing) {
+          steps.push({ step: 'app-mapping', app: app.name, status: 'already_exists', detail: `Mapping expression: "${existing.value}"` });
+        } else {
+          try {
+            await axios.post(`${base}/applications/${app.id}/attributes`, {
+              name: 'may_act',
+              value: '(#root.user.mayAct != null ? #root.user.mayAct : null)',
+              required: false,
+            }, { headers, timeout: 10000 });
+            steps.push({ step: 'app-mapping', app: app.name, status: 'created', detail: 'may_act mapping added for id_token/userinfo' });
+          } catch (mapErr) {
+            steps.push({ step: 'app-mapping', app: app.name, status: 'failed', detail: mapErr.response?.data?.message || mapErr.message });
+          }
+        }
+      }
+    }
+
+    console.log(`[PingOneTest] mayAct ${enabled ? 'set' : 'cleared'} on user ${pingOneUserId} → sub: ${bffClientId} (exchanger)`);
+    res.json({
+      success: true,
+      userId: pingOneUserId,
+      mayAct: patch.mayAct,
+      steps,
+      message: enabled
+        ? `mayAct.sub set to "${bffClientId}" (exchanger app) on user ${pingOneUserId}. Attribute mapping ensured on resource servers + OIDC apps. User must re-login for token to reflect this.`
+        : `mayAct cleared on user ${pingOneUserId}.`,
+    });
+  } catch (error) {
+    console.error('[PingOneTest] update-user-spel error:', error.message);
+    res.status(500).json({ success: false, error: error.response?.data?.message || error.message });
   }
 });
 

@@ -78,6 +78,26 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-15 — Bug: Token audience mismatch → 401 on /api/accounts/my and /api/transactions/my
+
+- **Root cause:** PingOne issues end-user access tokens with `aud: https://resource-server.pingdemo.com` (the Banking API resource server). However, `validatePingOneCoreToken()` in `middleware/auth.js` only checked `ENDUSER_AUDIENCE` (`https://ai-agent.pingdemo.com`), `AI_AGENT_AUDIENCE` (`https://mcp-server.pingdemo.com`), and `MCP_RESOURCE_URI`. The Banking API RS audience was configured in `.env` as `BANKING_API_RESOURCE_URI` but never read by `auth.js`, causing every `/api/accounts/my` and `/api/transactions/my` call to fail with "Token audience does not match any known audience."
+- **Fix:** Added `BANKING_API_RESOURCE_URI` env var to `auth.js` and included it in the `knownAudiences` array in `validatePingOneCoreToken()`.
+- **Files modified:** `banking_api_server/middleware/auth.js`
+- **Regression check:** `npm run build` → exit 0. JWKS validation still active (`SKIP_TOKEN_SIGNATURE_VALIDATION=false`). All 4 audience values now checked: ENDUSER_AUDIENCE, AI_AGENT_AUDIENCE, MCP_RESOURCE_URI, BANKING_API_RESOURCE_URI.
+- **Do not break:** JWKS signature validation; audience enforcement for agent/MCP tokens; OAuth callback flow.
+
+### 2026-04-15 — Bug: "Cannot find module './logger'" crashes agent token exchange
+
+- **Root cause:** `configStore.js` line 607 had `require('./logger')` — wrong relative path. Logger is at `utils/logger.js` but configStore is in `services/`. Every other service file uses `require('../utils/logger')`. The bad require was inside `validateTwoExchangeConfig()`, which is only called during agent token exchange, so it didn't crash at startup.
+- **Fix:** Changed `require('./logger')` → `require('../utils/logger')` with destructured import matching the rest of the codebase.
+- **Files modified:** `banking_api_server/services/configStore.js`
+- **New tests added:**
+  1. `agent-module-smoke.test.js` — 18 tests: Smoke-tests every module in the agent flow (configStore, agentSessionMiddleware, agentMcpTokenService, agentTokenService, oauthService, logger, mcpWebSocketClient). Validates require() succeeds, exports exist, singleton consistency, and scope-audience integration.
+  2. `configStore-tokenExchange.test.js` — 25 tests: Unit tests for `validateTwoExchangeConfig()`, `buildAllowedScopesByAudience()`, `validateScopeAudience()`, and `mapErrorToCode()`. Covers missing credentials, missing audiences, error collection, scope narrowing, graceful degradation for unknown audiences.
+  3. `agentSessionMiddleware.test.js` — 8 tests: Unit tests for session validation, 401 responses (missing session, missing tokens, _cookie_session stub), token refresh, agentContext attachment, tokenEvents recording.
+- **Regression check:** All 51 new tests pass. `npm run build` → exit 0. Existing 40 pingoneTestRoutes tests still pass. Server restarts cleanly.
+- **Do not break:** Agent token exchange flow; configStore singleton; session middleware auth gates.
+
 ### 2026-04-14 — Bug: Dashboard nav link displayed red instead of white
 
 - **Root cause:** `.chase-nav-link--active` CSS selector was missing explicit `color` property. While it should inherit `color: white` from `.chase-nav-link` base style, CSS cascade or specificity issues prevented proper inheritance, causing the active Dashboard menu item to render in red/orange.
@@ -1027,6 +1047,27 @@
 - **Root cause:** `REACT_APP_API_PORT` env var not passed through or `.env` overrode it
 - **Fix:** Hardcoded `REACT_APP_API_PORT=3002` in `banking_api_ui/.env`
 - **Regression check:** `tail -f /tmp/bank-ui.log` — must NOT show `Could not proxy request ... to http://localhost:3001` after startup.
+
+### 2026-04-14 — PingOneTestPage Update buttons + AI Agent Apps + tests (Phase 151)
+- **Symptom:** No way to programmatically set up PingOne RS / scopes / app grants from the demo; AI_AGENT apps not discovered; no `may_act` setter.
+- **Root cause:** `/pingone-test` page was read-only; new PingOne AI_AGENT app type not fetched.
+- **Fix:** 5 new BFF endpoints (`ai-agent-apps`, `update-resources`, `update-scopes`, `update-apps`, `update-user-spel`); frontend Update buttons on each test card; new AI Agent Apps + User SPEL cards. 40-test Jest suite (`pingoneTestRoutes.test.js`).
+- **Files modified:** `routes/pingoneTestRoutes.js`, `PingOneTestPage.jsx`, `PingOneTestPage.css`, `src/__tests__/pingoneTestRoutes.test.js`, `docs/PINGONE_APP_SCOPE_MATRIX.md`.
+- **Regression check:** `cd banking_api_server && npx jest --testPathPattern=pingoneTestRoutes --forceExit` → 40 passed. `cd banking_api_ui && npm run build` → compiled.
+
+### 2026-04-14 — `may_act` missing from token despite user attribute set
+- **Symptom:** `mayAct.sub` set on PingOne user record, but `may_act` claim never appeared in access tokens.
+- **Root cause:** PingOne requires **both** the user attribute AND an **app attribute mapping** (`may_act` → `${user.mayAct}`) on the OIDC application. The `update-user-spel` endpoint only did step 1.
+- **Fix:** `POST /api/pingone-test/update-user-spel` now does two steps: (1) PATCH `mayAct.sub` on user, (2) ensure `may_act` attribute mapping exists on User App + Admin App OIDC applications. Both steps idempotent.
+- **Files modified:** `routes/pingoneTestRoutes.js`, `src/__tests__/pingoneTestRoutes.test.js`, `docs/PINGONE_APP_SCOPE_MATRIX.md`.
+- **Regression check:** `cd banking_api_server && npx jest --testPathPattern=pingoneTestRoutes --forceExit` → 40 passed (includes mapping creation + already-exists + broken-mapping auto-fix + clear-skips-mapping tests).
+
+### 2026-04-15 — Test coverage gaps: exchanger app lookup + diagnose/fix-mcp-exchange
+- **Symptom:** `fix-mcp-exchange` "must have an id" error not caught by tests; SpEL `value` not asserted; `diagnose-mcp-exchange` and `fix-mcp-exchange` had zero test coverage.
+- **Root cause:** (1) Tests only asserted `{ name: 'may_act' }` without checking the SpEL `value` property. (2) `diagnose-mcp-exchange` and `fix-mcp-exchange` were older endpoints never added to the test suite. (3) Mock fixture had `oidcOptions.clientId` but route lookup used `a.id === configClientId` — test passed because both were wrong in the same way.
+- **Fix:** Tightened SpEL value assertion; added 8 new tests for `diagnose-mcp-exchange` (4) and `fix-mcp-exchange` (4) covering: exchanger lookup by `oidcOptions.clientId`, clientId-not-found path, `canExchange` flag, MCP RS create-on-missing, `enableResourceServer` called with PingOne `app.id`. Fixed mock fixture to include both User and Admin apps with correct `protocol: 'OPENID_CONNECT'` and distinct `clientId` values.
+- **Files modified:** `src/__tests__/pingoneTestRoutes.test.js`, `docs/PINGONE_APP_SCOPE_MATRIX.md`, `REGRESSION_PLAN.md`.
+- **Regression check:** `cd banking_api_server && npx jest --testPathPattern=pingoneTestRoutes --forceExit` → 40 passed.
 
 ---
 

@@ -65,7 +65,7 @@ async function saveTransactionSnapshot(userId) {
 }
 
 // Get all transactions (admin only)
-router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
+router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -228,7 +228,7 @@ router.get(
 );
 
 // Get transaction by ID (admin or transaction owner)
-router.get('/:id', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
+router.get('/:id', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
     const transaction = dataStore.getTransactionById(req.params.id);
     if (!transaction) {
@@ -597,7 +597,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update transaction (admin only)
-router.put('/:id', blockInDemoMode('transaction update'), authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
+router.put('/:id', blockInDemoMode('transaction update'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -616,7 +616,7 @@ router.put('/:id', blockInDemoMode('transaction update'), authenticateToken, req
 });
 
 // Delete transaction (admin only)
-router.delete('/:id', blockInDemoMode('transaction deletion'), authenticateToken, requireScopes(['banking:transactions:write', 'banking:write']), async (req, res) => {
+router.delete('/:id', blockInDemoMode('transaction deletion'), authenticateToken, requireScopes(['banking:write']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {

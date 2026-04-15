@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { sampleUsers, sampleAccounts, sampleTransactions, sampleActivityLogs } = require('./sampleData');
 
 const DEFAULT_BOOTSTRAP_PATH = path.join(__dirname, 'bootstrapData.json');
+const RUNTIME_DATA_PATH = path.join(__dirname, 'runtimeData.json');
 
 class DataStore {
   constructor() {
@@ -26,19 +27,24 @@ class DataStore {
   }
 
   loadBootstrapSnapshot() {
-    const bootstrapFile = process.env.BANKING_BOOTSTRAP_FILE || DEFAULT_BOOTSTRAP_PATH;
-    try {
-      const raw = fs.readFileSync(bootstrapFile, 'utf8');
-      const parsed = JSON.parse(raw);
-      return this.normalizeBootstrap(parsed);
-    } catch {
-      return this.normalizeBootstrap({
-        users: sampleUsers,
-        accounts: sampleAccounts,
-        transactions: sampleTransactions,
-        activityLogs: sampleActivityLogs,
-      });
+    // Prefer runtime data (persisted across restarts) over committed bootstrap seed
+    for (const candidate of [RUNTIME_DATA_PATH, process.env.BANKING_BOOTSTRAP_FILE || DEFAULT_BOOTSTRAP_PATH]) {
+      try {
+        const raw = fs.readFileSync(candidate, 'utf8');
+        const parsed = JSON.parse(raw);
+        console.log(`[DataStore] Loaded data from ${path.basename(candidate)}`);
+        return this.normalizeBootstrap(parsed);
+      } catch {
+        // Try next candidate
+      }
     }
+    console.log('[DataStore] No persisted data found, using built-in sample data');
+    return this.normalizeBootstrap({
+      users: sampleUsers,
+      accounts: sampleAccounts,
+      transactions: sampleTransactions,
+      activityLogs: sampleActivityLogs,
+    });
   }
 
   normalizeBootstrap(snapshot) {
@@ -76,8 +82,13 @@ class DataStore {
   }
 
   async persistAllData() {
-    // In-memory runtime only by design: source-of-truth is committed JSON bootstrap.
-    return;
+    try {
+      const snapshot = this.getSnapshot();
+      const json = JSON.stringify(snapshot, null, 2);
+      fs.writeFileSync(RUNTIME_DATA_PATH, json, 'utf8');
+    } catch (err) {
+      console.error('[DataStore] Failed to persist data:', err.message);
+    }
   }
 
   getSnapshot() {

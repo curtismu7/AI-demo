@@ -138,7 +138,7 @@ const userA = (overrides = {}) =>
     username: 'alice',
     email: 'alice@bank.com',
     role: 'user',
-    scopes: ['banking:transactions:write', 'banking:transactions:read', 'banking:accounts:read', 'banking:read'],
+    scopes: ['banking:write', 'banking:read', 'banking:read', 'banking:read'],
     acr: 'Multi_factor',
     ...overrides,
   });

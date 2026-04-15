@@ -25,7 +25,7 @@ function loadVerticals() {
   } catch (err) {
     console.error('[verticalConfigService] Failed to load verticals:', err.message);
     // Provide a minimal banking fallback
-    verticalCache.banking = { id: 'banking', displayName: 'BX Finance', tagline: 'AI-Powered Banking Demo' };
+    verticalCache.banking = { id: 'banking', displayName: 'Super Banking', tagline: 'AI-Powered Banking Demo' };
   }
   return verticalCache;
 }

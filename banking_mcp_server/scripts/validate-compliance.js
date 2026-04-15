@@ -21,7 +21,7 @@ const sampleResponses = [
       details: { missingToken: true },
       timestamp: '2025-04-07T17:00:00.000Z',
       requestId: 'req-123',
-      server: 'BX Finance Banking MCP Server',
+      server: 'Super Banking MCP Server',
       version: '1.0.0'
     }
   },
@@ -40,7 +40,7 @@ const sampleResponses = [
       details: { requiredScopes: ['banking:accounts:write'] },
       timestamp: '2025-04-07T17:00:00.000Z',
       requestId: 'req-456',
-      server: 'BX Finance Banking MCP Server',
+      server: 'Super Banking MCP Server',
       version: '1.0.0'
     }
   },
@@ -57,7 +57,7 @@ const sampleResponses = [
         details: { originalError: 'Invalid JSON' },
         timestamp: '2025-04-07T17:00:00.000Z',
         requestId: '1',
-        server: 'BX Finance Banking MCP Server',
+        server: 'Super Banking MCP Server',
         version: '1.0.0'
       }
     }
@@ -75,7 +75,7 @@ const sampleResponses = [
         details: { method: 'unknown_method' },
         timestamp: '2025-04-07T17:00:00.000Z',
         requestId: '2',
-        server: 'BX Finance Banking MCP Server',
+        server: 'Super Banking MCP Server',
         version: '1.0.0'
       }
     }
@@ -93,7 +93,7 @@ const sampleResponses = [
         details: { account_id: 'invalid-account-id' },
         timestamp: '2025-04-07T17:00:00.000Z',
         requestId: '3',
-        server: 'BX Finance Banking MCP Server',
+        server: 'Super Banking MCP Server',
         version: '1.0.0'
       }
     }

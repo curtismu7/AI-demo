@@ -26,6 +26,8 @@ jest.mock('../../middleware/auth', () => ({
     }
     try {
       req.user = JSON.parse(h);
+      req.session = req.session || {};
+      req.session.user = req.user;
       return next();
     } catch {
       return res.status(401).json({ error: 'invalid_token' });
@@ -117,7 +119,7 @@ const customerUser = (overrides = {}) =>
     username: 'customer',
     email: 'customer@bank.com',
     role: 'user',
-    scopes: ['banking:transactions:write', 'banking:accounts:read'],
+    scopes: ['banking:write', 'banking:read'],
     acr: 'Multi_factor', // satisfy step-up gate so it doesn't interfere
     ...overrides,
   });

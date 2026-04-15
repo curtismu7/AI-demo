@@ -223,25 +223,71 @@ class PingOneManagementService {
   /**
    * Enable resource server for an application
    */
-  async enableResourceServer(applicationId, resourceServerId, scopes) {
+  async enableResourceServer(applicationId, resourceServerId, scopeNames) {
     this.ensureInitialized();
 
     try {
+      // PingOne requires scope IDs, not names — resolve names to IDs first
+      const scopesResult = await this.getScopes(resourceServerId);
+      const allScopes = scopesResult.scopes || [];
+      const scopeIds = scopeNames
+        .map(name => allScopes.find(s => (s.name || s.value) === name)?.id)
+        .filter(Boolean);
+
       const payload = {
-        resourceId: resourceServerId,
-        scopes
+        resource: { id: resourceServerId },
+        scopes: scopeIds.map(id => ({ id })),
       };
 
-      const response = await axios.post(
-        `${this.baseURL}/applications/${applicationId}/resources`,
-        payload,
-        { headers: this.getHeaders() }
-      );
+      try {
+        const response = await axios.post(
+          `${this.baseURL}/applications/${applicationId}/grants`,
+          payload,
+          { headers: this.getHeaders() }
+        );
+        return { success: true, resourceServer: response.data };
+      } catch (postError) {
+        // PingOne returns 409 OR 400 with "grant to given resource already exists"
+        // or 400 "Multiple scopes with the same name" if another RS grant has same scope names
+        const status = postError.response?.status;
+        const errorMsg = JSON.stringify(postError.response?.data || '');
+        const isConflict = status === 409 ||
+          (status === 400 && errorMsg.includes('already exists'));
+        const isDuplicateScopeName = status === 400 && errorMsg.includes('same name');
 
-      return {
-        success: true,
-        resourceServer: response.data
-      };
+        if (isDuplicateScopeName) {
+          // App already has these scope names from a different RS — treat as satisfied
+          return { success: true, alreadyGranted: true, note: 'Scopes already granted via another resource server' };
+        }
+        if (!isConflict) throw postError;
+
+        // Grant already exists for this RS — GET the grant ID, then PATCH to update scopes
+        const grantsResponse = await axios.get(
+          `${this.baseURL}/applications/${applicationId}/grants`,
+          { headers: this.getHeaders() }
+        );
+        const rawGrants = grantsResponse.data?._embedded?.grants || grantsResponse.data?.grants || [];
+        const existing = rawGrants.find(g => g.resource?.id === resourceServerId);
+        if (!existing) {
+          return { success: true, alreadyGranted: true };
+        }
+
+        // Merge existing scope IDs with the ones we want to add
+        const existingIds = (existing.scopes || []).map(s => s.id || s.scope?.id).filter(Boolean);
+        const mergedIds = [...new Set([...existingIds, ...scopeIds])];
+
+        // If scopes are already identical, nothing to patch
+        if (mergedIds.length === existingIds.length && mergedIds.every(id => existingIds.includes(id))) {
+          return { success: true, alreadyGranted: true, patched: false };
+        }
+
+        const patchResponse = await axios.put(
+          `${this.baseURL}/applications/${applicationId}/grants/${existing.id}`,
+          { resource: { id: resourceServerId }, scopes: mergedIds.map(id => ({ id })) },
+          { headers: this.getHeaders() }
+        );
+        return { success: true, patched: true, resourceServer: patchResponse.data };
+      }
     } catch (error) {
       return this.handleError(error, 'enableResourceServer');
     }
@@ -435,7 +481,7 @@ class PingOneManagementService {
         ],
         applications: [
           {
-            name: 'BX Finance AI Agent App',
+            name: 'Super Banking AI Agent App',
             description: 'AI agent application for token exchange',
             type: 'worker',
             grantTypes: ['client_credentials'],
@@ -459,7 +505,7 @@ class PingOneManagementService {
         ],
         applications: [
           {
-            name: 'BX Finance AI Agent App',
+            name: 'Super Banking AI Agent App',
             description: 'Agent application for 2-exchange token delegation',
             type: 'worker',
             grantTypes: ['client_credentials'],
@@ -525,9 +571,15 @@ class PingOneManagementService {
       return {
         success: true,
         grants: grants.map(g => ({
+          id: g.resource?.id,
+          name: g.resource?.name,
           resourceId: g.resource?.id,
           resourceName: g.resource?.name,
-          scopes: (g.scopes || []).map(s => s.scope?.name || s.name || s).filter(Boolean)
+          scopes: (g.scopes || []).map(s => {
+            if (typeof s === 'string') return s;
+            // PingOne grants return scope objects as {scope:{id}} — preserve id for name resolution
+            return s.scope?.name || s.name || s.scope?.id || s.id || null;
+          }).filter(Boolean)
         }))
       };
     } catch (error) {

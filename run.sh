@@ -1,122 +1,198 @@
 #!/usr/bin/env bash
 # =============================================================================
-# run.sh — Banking Digital Assistant — Unified Entry Point
+# run.sh — Banking Digital Assistant — Default Port Layout
 # =============================================================================
 #
-# Usage:
-#   ./run.sh start    Start all services (UI, API, MCP server)
-#   ./run.sh stop     Stop all services gracefully
-#   ./run.sh restart  Stop then start
-#   ./run.sh status   Show running/stopped status with PIDs
-#   ./run.sh logs     Tail logs from all services
-#   ./run.sh test     Run full test suite
-#   ./run.sh help     Show this help message
+# Default ports (for standalone use — no MasterFlow / OAuth Playground).
+# If you need to run alongside MasterFlow on :3000/:3001, use ./run-bank.sh
+# instead (which uses :3002/:4000).
 #
-# Ports: UI=4000, API=3001, MCP=8081, LangChain=8889
-# Hostname: api.pingdemo.com (fallback to localhost if not resolvable)
-# Config: banking_api_server/.env and banking_api_ui/.env
-# Logs:   .logs/ directory
-# PIDs:   .pids/ directory
+# Port layout:
+#   Banking API Server  → https://api.pingdemo.com:3001
+#   Banking UI (React)  → https://api.pingdemo.com:3000
+#   Banking MCP Server  → localhost:8080
+#   LangChain Agent     → localhost:8888
+#
+# One-time setup (run once each, requires sudo for /etc/hosts):
+#   echo '127.0.0.1  api.pingdemo.com' | sudo tee -a /etc/hosts
+#   mkcert -install   # install local CA (once per machine)
+#
+# Usage:
+#   ./run.sh               # start all services
+#   ./run.sh start         # start all services (same as default)
+#   ./run.sh stop          # stop all services gracefully
+#   ./run.sh restart       # stop then start
+#   ./run.sh status        # show running/stopped status with ports
+#   ./run.sh logs          # tail all logs
+#   ./run.sh logs N        # tail specific log (1=API, 2=UI, 3=MCP, 4=Agent)
+#   ./run.sh test          # run full test suite
+#   ./run.sh help          # show this help message
 # =============================================================================
 
 set -euo pipefail
 
-# ── Constants ──────────────────────────────────────────────────────────────
+# ── Constants ────────────────────────────────────────────────────────────────
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
+
+API_HOST="api.pingdemo.com"
+API_PORT=3001
+UI_PORT=3000
+MCP_PORT=8080
+AGENT_PORT=8888
+NODE_MIN_VERSION=16
+
+CERT_DIR="${BASEDIR}/certs"
+CERT_FILE="${CERT_DIR}/api.pingdemo.com+2.pem"
+KEY_FILE="${CERT_DIR}/api.pingdemo.com+2-key.pem"
+
+# URLs — updated below based on /etc/hosts and cert availability
+API_URL="https://${API_HOST}:${API_PORT}"
+CLIENT_URL="https://${API_HOST}:${UI_PORT}"
+USE_HTTPS=true
+
+# PID and log files
 PIDS_DIR="${BASEDIR}/.pids"
 LOGS_DIR="${BASEDIR}/.logs"
 
-API_PORT=3001
-UI_PORT=4000
-MCP_PORT=8081
-AGENT_PORT=8889
-NODE_MIN_VERSION=16
-
-# Hostname resolution: try api.pingdemo.com first, fallback to localhost
-DEFAULT_HOST="api.pingdemo.com"
-if nslookup "${DEFAULT_HOST}" >/dev/null 2>&1 || host "${DEFAULT_HOST}" >/dev/null 2>&1 || dig "${DEFAULT_HOST}" +short >/dev/null 2>&1; then
-  HOSTNAME="${DEFAULT_HOST}"
-else
-  HOSTNAME="localhost"
-fi
-
-# Log file paths
-LOG_API="${LOGS_DIR}/banking-api.log"
-LOG_UI="${LOGS_DIR}/banking-ui.log"
-LOG_MCP="${LOGS_DIR}/banking-mcp.log"
-LOG_AGENT="${LOGS_DIR}/banking-agent.log"
-
-# PID file paths
 PID_API="${PIDS_DIR}/api.pid"
 PID_UI="${PIDS_DIR}/ui.pid"
 PID_MCP="${PIDS_DIR}/mcp.pid"
 PID_AGENT="${PIDS_DIR}/agent.pid"
 
-# ── Colours ────────────────────────────────────────────────────────────────
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
+LOG_API="${LOGS_DIR}/banking-api.log"
+LOG_UI="${LOGS_DIR}/banking-ui.log"
+LOG_MCP="${LOGS_DIR}/banking-mcp.log"
+LOG_AGENT="${LOGS_DIR}/banking-agent.log"
+
+# ── Colours ──────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
+CYAN='\033[1;36m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+MAGENTA='\033[1;35m'
+WHITE='\033[1;37m'
+RED='\033[1;31m'
+DIM='\033[2m'
 NC='\033[0m'
 
-ok()   { echo -e "${GREEN}✓${NC} $1"; }
-warn() { echo -e "${YELLOW}⚠${NC}  $1"; }
-err()  { echo -e "${RED}✗${NC}  $1" >&2; }
-info() { echo -e "${CYAN}→${NC}  $1"; }
+ok()   { echo -e "  ${GREEN}✓${NC}  $1"; }
+warn() { echo -e "  ${YELLOW}⚠${NC}  $1"; }
+err()  { echo -e "  ${RED}✗${NC}  $1" >&2; }
+info() { echo -e "  ${CYAN}→${NC}  $1"; }
 
-# ── Helpers ────────────────────────────────────────────────────────────────
+# ── /etc/hosts check ────────────────────────────────────────────────────────
+if ! grep -q "${API_HOST}" /etc/hosts 2>/dev/null; then
+  echo -e "${YELLOW}⚠  ${API_HOST} is not in /etc/hosts.${NC}"
+  echo "   Run this once:  echo '127.0.0.1  ${API_HOST}' | sudo tee -a /etc/hosts"
+  echo "   Continuing with localhost fallback..."
+  API_URL="https://localhost:${API_PORT}"
+  CLIENT_URL="https://localhost:${UI_PORT}"
+fi
 
-# Check if a PID is currently running
-pid_running() {
-  local pid_file="$1"
-  if [ -f "${pid_file}" ]; then
-    local pid
-    pid=$(cat "${pid_file}")
-    if kill -0 "${pid}" 2>/dev/null; then
-      echo "${pid}"
-      return 0
-    fi
+# ── SSL cert check / auto-generate ──────────────────────────────────────────
+if [[ ! -f "${CERT_FILE}" ]] || [[ ! -f "${KEY_FILE}" ]]; then
+  if command -v mkcert &>/dev/null; then
+    echo -e "${CYAN}🔐 Generating SSL certs for ${API_HOST}...${NC}"
+    mkdir -p "${CERT_DIR}"
+    (cd "${CERT_DIR}" && mkcert "${API_HOST}" localhost 127.0.0.1)
+    echo -e "${GREEN}✅ Certs created in ${CERT_DIR}${NC}"
+  else
+    echo -e "${YELLOW}⚠  mkcert not found — install with: brew install mkcert && mkcert -install${NC}"
+    echo "   Falling back to HTTP..."
+    USE_HTTPS=false
+    API_URL="http://${API_HOST}:${API_PORT}"
+    CLIENT_URL="http://${API_HOST}:${UI_PORT}"
   fi
+fi
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+# Check if a TCP port is listening locally
+port_listening() {
+  local port="$1"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1
+}
+
+# Kill a PID and every descendant (npm/node/uvicorn survive a plain kill)
+kill_process_tree() {
+  local pid="$1"
+  [[ -z "$pid" ]] && return 0
+  case "$pid" in
+    ''|*[!0-9]*) return 0 ;;
+  esac
+  [[ "$pid" -le 1 ]] && return 0
+  local c
+  for c in $(pgrep -P "$pid" 2>/dev/null); do
+    kill_process_tree "$c"
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid" 2>/dev/null || true
+  fi
+}
+
+# Stop anything still listening on our ports
+stop_listeners_on_ports() {
+  local port pid pids
+  for port in "${API_PORT}" "${UI_PORT}" "${MCP_PORT}" "${AGENT_PORT}"; do
+    pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
+    for pid in $pids; do
+      [[ -z "$pid" ]] && continue
+      echo "   Stopping listener on :${port} (PID ${pid})"
+      kill_process_tree "$pid"
+    done
+  done
+}
+
+force_kill_listeners_on_ports() {
+  local port pid pids
+  for port in "${API_PORT}" "${UI_PORT}" "${MCP_PORT}" "${AGENT_PORT}"; do
+    pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
+    for pid in $pids; do
+      [[ -z "$pid" ]] && continue
+      if kill -KILL "$pid" 2>/dev/null; then
+        echo "   Force-killed PID ${pid} still on :${port}"
+      fi
+    done
+  done
+}
+
+# Wait for a port with a timeout
+wait_for_port() {
+  local port="$1" timeout="${2:-25}" i=0
+  while [[ $i -lt $timeout ]]; do
+    port_listening "$port" && return 0
+    sleep 1
+    (( i++ )) || true
+  done
   return 1
 }
 
-# Kill a process by PID file, gracefully then forcefully
-kill_pid_file() {
-  local pid_file="$1"
-  local name="$2"
-  if [ -f "${pid_file}" ]; then
-    local pid
-    pid=$(cat "${pid_file}")
-    if kill -0 "${pid}" 2>/dev/null; then
-      info "Stopping ${name} (PID ${pid})..."
-      kill -TERM "${pid}" 2>/dev/null || true
-      local wait=0
-      while kill -0 "${pid}" 2>/dev/null && [ "${wait}" -lt 10 ]; do
-        sleep 0.5
-        wait=$((wait + 1))
-      done
-      if kill -0 "${pid}" 2>/dev/null; then
-        warn "${name} did not stop; sending SIGKILL"
-        kill -KILL "${pid}" 2>/dev/null || true
-      else
-        ok "${name} stopped"
-      fi
-    fi
-    rm -f "${pid_file}"
+# Print a single-line status row for a service
+service_status_line() {
+  local label="$1" port="$2" url="${3:-}"
+  if port_listening "$port"; then
+    printf "  ${GREEN}${BOLD}  ✅  %-24s${NC}  ${MAGENTA}:%-6s${NC}  ${YELLOW}%s${NC}\n" "$label" "$port" "$url"
+  else
+    printf "  ${RED}${BOLD}  ❌  %-24s${NC}  ${MAGENTA}:%-6s${NC}  ${DIM}not running${NC}\n" "$label" "$port"
   fi
 }
 
-# Check if a port is in use
-port_in_use() {
-  lsof -i :"$1" -sTCP:LISTEN -t >/dev/null 2>&1
+print_status_table() {
+  echo -e "${WHITE}${BOLD}  SERVICES${NC}"
+  service_status_line "Banking API Server"  "${API_PORT}"   "${API_URL}"
+  service_status_line "Banking MCP Server"  "${MCP_PORT}"   "ws://localhost:${MCP_PORT}"
+  service_status_line "LangChain Agent"     "${AGENT_PORT}" "http://localhost:${AGENT_PORT}"
+  if port_listening "${UI_PORT}"; then
+    printf "  ${GREEN}${BOLD}  ✅  %-24s${NC}  ${MAGENTA}:%-6s${NC}  ${YELLOW}%s${NC}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+  else
+    printf "  ${YELLOW}  ⏳  %-24s${NC}  ${MAGENTA}:%-6s${NC}  ${DIM}compiling… %s${NC}\n" "Banking UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+  fi
 }
 
-# ── Pre-flight Checks ──────────────────────────────────────────────────────
+# ── Pre-flight checks ───────────────────────────────────────────────────────
 preflight_checks() {
   echo ""
-  echo -e "${BOLD}Pre-flight checks${NC}"
+  echo -e "${WHITE}${BOLD}  PRE-FLIGHT CHECKS${NC}"
 
   # Node.js
   if ! command -v node >/dev/null 2>&1; then
@@ -125,7 +201,7 @@ preflight_checks() {
   fi
   local node_version
   node_version=$(node -e "process.stdout.write(process.version.replace('v','').split('.')[0])")
-  if [ "${node_version}" -lt "${NODE_MIN_VERSION}" ]; then
+  if [[ "${node_version}" -lt "${NODE_MIN_VERSION}" ]]; then
     err "Node.js v${NODE_MIN_VERSION}+ required (found v${node_version})"
     exit 1
   fi
@@ -138,26 +214,26 @@ preflight_checks() {
   fi
   ok "npm $(npm --version)"
 
-  # node_modules — warn if missing, offer to install
-  for svc in banking_api_server banking_api_ui banking_mcp_server; do
-    if [ -d "${BASEDIR}/${svc}" ] && [ ! -d "${BASEDIR}/${svc}/node_modules" ]; then
-      warn "${svc}/node_modules missing — installing dependencies..."
+  # node_modules — auto-install if missing
+  for svc in banking_api_server banking_mcp_server banking_api_ui; do
+    if [[ -d "${BASEDIR}/${svc}" ]] && [[ ! -d "${BASEDIR}/${svc}/node_modules" ]]; then
+      warn "${svc}/node_modules missing — installing..."
       (cd "${BASEDIR}/${svc}" && npm install --silent)
       ok "${svc} dependencies installed"
     fi
   done
 
   # .env files
-  if [ ! -f "${BASEDIR}/banking_api_server/.env" ]; then
-    warn "banking_api_server/.env not found — copy .env.example and fill in PingOne credentials"
+  if [[ ! -f "${BASEDIR}/banking_api_server/.env" ]]; then
+    warn "banking_api_server/.env not found — copy env.example and fill in PingOne credentials"
   else
     ok "banking_api_server/.env exists"
   fi
 
-  # Ports
-  for port in "${UI_PORT}" "${API_PORT}" "${MCP_PORT}"; do
-    if port_in_use "${port}"; then
-      warn "Port ${port} is already in use — a service may already be running. Use ./run.sh stop first."
+  # Port conflicts
+  for port in "${API_PORT}" "${UI_PORT}" "${MCP_PORT}" "${AGENT_PORT}"; do
+    if port_listening "${port}"; then
+      warn "Port ${port} is already in use (will be stopped before start)"
     fi
   done
 
@@ -165,177 +241,255 @@ preflight_checks() {
   echo ""
 }
 
-# ── Start ──────────────────────────────────────────────────────────────────
-cmd_start() {
-  echo ""
-  echo -e "${BOLD}🏦  Banking Digital Assistant — Starting...${NC}"
+# ── Tail logs ────────────────────────────────────────────────────────────────
+cmd_logs() {
+  local pre="${1:-}"
+  [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
+  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent")
+  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}")
+  local choice=""
 
-  # Stop any existing services first to avoid conflicts
-  cmd_stop
-
-  preflight_checks
-
-  mkdir -p "${PIDS_DIR}" "${LOGS_DIR}"
-
-  # Banking API Server (port 3001)
-  info "Starting Banking API Server on :${API_PORT}..."
-  (cd "${BASEDIR}/banking_api_server" && npm start > "${LOG_API}" 2>&1) &
-  echo $! > "${PID_API}"
-  ok "Banking API Server started (PID $(cat "${PID_API}"))"
-
-  sleep 1
-
-  # Banking MCP Server (port 8081)
-  if [ -d "${BASEDIR}/banking_mcp_server" ]; then
-    info "Starting Banking MCP Server on :${MCP_PORT}..."
-    (cd "${BASEDIR}/banking_mcp_server" && MCP_SERVER_PORT=${MCP_PORT} npm start > "${LOG_MCP}" 2>&1) &
-    echo $! > "${PID_MCP}"
-    ok "Banking MCP Server started (PID $(cat "${PID_MCP}"))"
+  # If a specific log number was passed, use it directly
+  if [[ -n "${pre}" && "${pre}" != "all" ]]; then
+    choice="${pre}"
+  elif [[ -n "${pre}" ]]; then
+    choice="${pre}"
+  else
+    echo ""
+    echo -e "${CYAN}Pick a log to follow (tail -f). Ctrl+C stops tail only.${NC}"
+    for i in 0 1 2 3; do
+      echo "  $((i + 1))) ${names[i]}  (${logs[i]})"
+    done
+    echo "  5) All of the above (interleaved)"
+    read -r -p "Number [1-5] or 'all': " choice
   fi
+  [[ "${choice}" == "ALL" || "${choice}" == "All" ]] && choice="all"
 
-  # LangChain Agent (port 8888)
-  if [ -f "${BASEDIR}/langchain_agent/main.py" ] || [ -f "${BASEDIR}/langchain_agent/server.py" ]; then
-    info "Starting LangChain Agent on :${AGENT_PORT}..."
-    local agent_main="main"
-    [ -f "${BASEDIR}/langchain_agent/server.py" ] && agent_main="server"
-    (cd "${BASEDIR}/langchain_agent" && python3 -m uvicorn "${agent_main}:app" --port "${AGENT_PORT}" > "${LOG_AGENT}" 2>&1) &
-    echo $! > "${PID_AGENT}"
-    ok "LangChain Agent started (PID $(cat "${PID_AGENT}"))"
-  fi
-
-  # Banking UI (port 3000)
-  if [ -d "${BASEDIR}/banking_api_ui" ]; then
-    info "Starting Banking UI on :${UI_PORT}..."
-    (cd "${BASEDIR}/banking_api_ui" && npm start > "${LOG_UI}" 2>&1) &
-    echo $! > "${PID_UI}"
-    ok "Banking UI started (PID $(cat "${PID_UI}"))"
-  fi
-
-  # Post-start banner
-  echo ""
-  echo -e "${BOLD}${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
-  echo -e "${BOLD}${GREEN}║${NC}  ${BOLD}${GREEN}✅ All Services Started Successfully${NC}                           ${BOLD}${GREEN}║${NC}"
-  echo -e "${BOLD}${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
-  echo ""
-  echo -e "${BOLD}📡 Server URLs:${NC}"
-  echo ""
-  echo -e "  ${CYAN}➜ Banking UI:${NC}       ${BOLD}http://${HOSTNAME}:${UI_PORT}${NC}"
-  echo -e "  ${CYAN}➜ Banking API:${NC}      ${BOLD}http://${HOSTNAME}:${API_PORT}/api${NC}"
-  echo -e "  ${CYAN}➜ MCP Server:${NC}       ${BOLD}ws://${HOSTNAME}:${MCP_PORT}${NC}"
-  echo -e "  ${CYAN}➜ LangChain Agent:${NC}  ${BOLD}http://${HOSTNAME}:${AGENT_PORT}${NC}"
-  echo ""
-  echo -e "${BOLD}📋 Management Commands:${NC}"
-  echo ""
-  echo -e "  ${CYAN}• View logs:${NC}   ./run.sh logs"
-  echo -e "  ${CYAN}• Check status:${NC} ./run.sh status"
-  echo -e "  ${CYAN}• Stop services:${NC} ./run.sh stop"
-  echo -e "  ${CYAN}• Restart:${NC}      ./run.sh restart"
-  echo ""
-  echo -e "${BOLD}📁 Log Files:${NC}"
-  echo ""
-  echo -e "  ${CYAN}• API:${NC}     ${LOG_API}"
-  echo -e "  ${CYAN}• UI:${NC}      ${LOG_UI}"
-  echo -e "  ${CYAN}• MCP:${NC}     ${LOG_MCP}"
-  echo -e "  ${CYAN}• Agent:${NC}   ${LOG_AGENT}"
-  echo ""
+  case "${choice}" in
+    1|2|3|4)
+      local idx=$((choice - 1))
+      local f="${logs[$idx]}"
+      if [[ ! -f "${f}" ]]; then
+        warn "Log file does not exist yet: ${f}"
+        exit 1
+      fi
+      echo "📜 Tailing ${names[$idx]} ..."
+      tail -f "${f}"
+      ;;
+    5|all)
+      local existing=()
+      for f in "${logs[@]}"; do
+        [[ -f "${f}" ]] && existing+=("${f}")
+      done
+      if [[ ${#existing[@]} -eq 0 ]]; then
+        warn "No log files found yet. Start services first."
+        exit 1
+      fi
+      echo "📜 Tailing ${#existing[@]} log file(s). Ctrl+C stops."
+      tail -f "${existing[@]}"
+      ;;
+    *)
+      echo "Invalid choice (use 1–5, or 'all')."
+      exit 1
+      ;;
+  esac
 }
 
-# ── Stop ───────────────────────────────────────────────────────────────────
+# ── Stop ─────────────────────────────────────────────────────────────────────
 cmd_stop() {
   echo ""
   echo -e "${BOLD}🛑  Stopping Banking Digital Assistant...${NC}"
-  echo ""
-
-  kill_pid_file "${PID_UI}"    "Banking UI"
-  kill_pid_file "${PID_AGENT}" "LangChain Agent"
-  kill_pid_file "${PID_MCP}"   "Banking MCP Server"
-  kill_pid_file "${PID_API}"   "Banking API Server"
-
-  # Also kill any processes using our ports (more robust than PID files)
-  for port in "${UI_PORT}" "${API_PORT}" "${MCP_PORT}" "${AGENT_PORT}"; do
-    if port_in_use "${port}"; then
-      info "Killing process using port ${port}..."
-      lsof -ti :${port} | xargs kill -9 2>/dev/null || true
+  set +e
+  for pid_file in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
+    if [[ -f "$pid_file" ]]; then
+      local PID
+      PID=$(cat "$pid_file" 2>/dev/null || true)
+      rm -f "$pid_file"
+      if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
+        kill_process_tree "$PID"
+        echo "   Stopped process tree from PID ${PID} ($(basename "$pid_file" .pid))"
+      fi
     fi
   done
-
+  sleep 1
+  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :${MCP_PORT}, Agent :${AGENT_PORT})…"
+  stop_listeners_on_ports
+  sleep 1
+  force_kill_listeners_on_ports
+  set -euo pipefail
   echo ""
   ok "All services stopped"
   echo ""
 }
 
-# ── Restart ────────────────────────────────────────────────────────────────
-cmd_restart() {
-  cmd_stop
-  cmd_start
-  # Show logs after restart
-  cmd_logs
-}
+# ── Start ────────────────────────────────────────────────────────────────────
+cmd_start() {
+  preflight_checks
 
-# ── Status ─────────────────────────────────────────────────────────────────
-cmd_status() {
-  echo ""
-  echo -e "${BOLD}Banking Digital Assistant — Status${NC}"
-  echo ""
+  mkdir -p "${PIDS_DIR}" "${LOGS_DIR}"
 
-  local pid
-  local all_stopped=true
-
-  for entry in "Banking UI:${PID_UI}:${UI_PORT}" "Banking API:${PID_API}:${API_PORT}" "MCP Server:${PID_MCP}:${MCP_PORT}" "LangChain:${PID_AGENT}:${AGENT_PORT}"; do
-    local name="${entry%%:*}"
-    local pf="${entry#*:}"
-    pf="${pf%%:*}"
-    local port="${entry##*:}"
-
-    if pid=$(pid_running "${pf}"); then
-      echo -e "  ${GREEN}● RUNNING${NC}  ${name} (PID ${pid}, port :${port})"
-      all_stopped=false
-    else
-      echo -e "  ${RED}○ STOPPED${NC}  ${name} (port :${port})"
+  # Auto-kill any existing services before starting
+  local _any_running=false
+  for _chk_port in "${API_PORT}" "${UI_PORT}" "${MCP_PORT}" "${AGENT_PORT}"; do
+    if port_listening "$_chk_port"; then
+      _any_running=true
+      break
     fi
   done
+  if [[ "$_any_running" == "true" ]]; then
+    echo -e "${YELLOW}  ⟳  Stopping existing services…${NC}"
+    set +e
+    for _pf in "$PID_API" "$PID_MCP" "$PID_AGENT" "$PID_UI"; do
+      if [[ -f "$_pf" ]]; then
+        local _pid
+        _pid=$(cat "$_pf" 2>/dev/null || true)
+        rm -f "$_pf"
+        [[ -n "$_pid" ]] && kill_process_tree "$_pid" 2>/dev/null || true
+      fi
+    done
+    stop_listeners_on_ports
+    sleep 1
+    force_kill_listeners_on_ports
+    set -euo pipefail
+    ok "Previous services stopped"
+    echo ""
+  fi
+
+  # ── Banking API Server ───────────────────────────────────────────────────
+  info "Starting Banking API Server on :${API_PORT}..."
+  (
+    cd "${BASEDIR}/banking_api_server"
+    PORT=${API_PORT} \
+    REACT_APP_CLIENT_URL=${CLIENT_URL} \
+    FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
+    FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
+    npm start > "${LOG_API}" 2>&1
+  ) &
+  echo $! > "${PID_API}"
+
+  sleep 1
+
+  # ── Banking MCP Server ──────────────────────────────────────────────────
+  if [[ -d "${BASEDIR}/banking_mcp_server" ]]; then
+    info "Starting Banking MCP Server on :${MCP_PORT}..."
+    (
+      cd "${BASEDIR}/banking_mcp_server"
+      cp .env.development .env 2>/dev/null || true
+      MCP_SERVER_PORT=${MCP_PORT} npm start > "${LOG_MCP}" 2>&1
+    ) &
+    echo $! > "${PID_MCP}"
+  fi
+
+  # ── LangChain Agent ────────────────────────────────────────────────────
+  if [[ -f "${BASEDIR}/langchain_agent/main.py" ]] || [[ -f "${BASEDIR}/langchain_agent/server.py" ]]; then
+    local ENTRY="main"
+    [[ -f "${BASEDIR}/langchain_agent/server.py" ]] && ENTRY="server"
+    info "Starting LangChain Agent on :${AGENT_PORT}..."
+    (
+      cd "${BASEDIR}/langchain_agent"
+      [[ -d venv ]] && source venv/bin/activate
+      if [[ "${USE_HTTPS}" == "true" ]] && [[ -f "${CERT_FILE}" ]] && [[ -f "${KEY_FILE}" ]]; then
+        python3 -m uvicorn "${ENTRY}:app" --port "${AGENT_PORT}" \
+          --ssl-keyfile "${KEY_FILE}" --ssl-certfile "${CERT_FILE}" \
+          > "${LOG_AGENT}" 2>&1
+      else
+        python3 -m uvicorn "${ENTRY}:app" --port "${AGENT_PORT}" > "${LOG_AGENT}" 2>&1
+      fi
+    ) &
+    echo $! > "${PID_AGENT}"
+  fi
+
+  # ── Banking UI (CRA) ──────────────────────────────────────────────────
+  info "Starting Banking UI on ${CLIENT_URL}..."
+  (
+    cd "${BASEDIR}/banking_api_ui"
+    if [[ "${USE_HTTPS}" == "true" ]] && [[ -f "${CERT_FILE}" ]] && [[ -f "${KEY_FILE}" ]]; then
+      HOST=0.0.0.0 \
+      PORT=${UI_PORT} \
+      HTTPS=true \
+      SSL_CRT_FILE=${CERT_FILE} \
+      SSL_KEY_FILE=${KEY_FILE} \
+      REACT_APP_API_URL=${API_URL} \
+      REACT_APP_API_PORT=${API_PORT} \
+      REACT_APP_API_HTTPS=true \
+      REACT_APP_CLIENT_URL=${CLIENT_URL} \
+      DANGEROUSLY_DISABLE_HOST_CHECK=true \
+      WDS_SOCKET_PORT=0 \
+      npm start > "${LOG_UI}" 2>&1
+    else
+      HOST=0.0.0.0 \
+      PORT=${UI_PORT} \
+      REACT_APP_API_URL=${API_URL} \
+      REACT_APP_API_PORT=${API_PORT} \
+      REACT_APP_CLIENT_URL=${CLIENT_URL} \
+      DANGEROUSLY_DISABLE_HOST_CHECK=true \
+      WDS_SOCKET_PORT=0 \
+      npm start > "${LOG_UI}" 2>&1
+    fi
+  ) &
+  echo $! > "${PID_UI}"
+
+  # ── Health check + Banner ──────────────────────────────────────────────
+  echo ""
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${CYAN}${BOLD}   🏦  BANKING DIGITAL ASSISTANT — STARTING                       ${NC}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  echo -e "${DIM}  Waiting for API and MCP Server to come up…${NC}"
+
+  wait_for_port "${API_PORT}" 25 || warn "API Server did not start in time — check ${LOG_API}"
+  wait_for_port "${MCP_PORT}" 25 || warn "MCP Server did not start in time — check ${LOG_MCP}"
+  sleep 1
 
   echo ""
-  if "${all_stopped}"; then
-    info "No services running. Start with: ./run.sh start"
-  else
-    info "Logs: ./run.sh logs | Stop: ./run.sh stop"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${CYAN}${BOLD}   🏦  BANKING DIGITAL ASSISTANT — STATUS                         ${NC}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  print_status_table
+  echo ""
+  echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${NC}"
+  echo -e "${GREEN}${BOLD}  │${NC}  🌐  App            ${YELLOW}${BOLD}${CLIENT_URL}${NC}"
+  echo -e "${GREEN}${BOLD}  │${NC}  ⚙️   Admin Config   ${YELLOW}${BOLD}${CLIENT_URL}/config${NC}"
+  echo -e "${GREEN}${BOLD}  │${NC}  🔐  Admin Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${NC}"
+  echo -e "${GREEN}${BOLD}  │${NC}  👤  User Login     ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${NC}"
+  echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${NC}"
+  echo ""
+  echo -e "${WHITE}${BOLD}  ┌─ MANAGE ────────────────────────────────────────────────────┐${NC}"
+  echo -e "${WHITE}${BOLD}  │${NC}  ${BOLD}./run.sh status${NC}   — live service health check"
+  echo -e "${WHITE}${BOLD}  │${NC}  ${BOLD}./run.sh logs${NC}     — pick log to follow (${DIM}./run.sh logs all${NC} for all)"
+  echo -e "${WHITE}${BOLD}  │${NC}  ${BOLD}./run.sh stop${NC}     — stop all services"
+  echo -e "${WHITE}${BOLD}  │${NC}  ${BOLD}./run.sh test${NC}     — run test suite"
+  echo -e "${WHITE}${BOLD}  │${NC}  ${DIM}tail -f ${LOG_API}${NC}"
+  echo -e "${WHITE}${BOLD}  │${NC}  ${DIM}tail -f ${LOG_UI}${NC}"
+  echo -e "${WHITE}${BOLD}  └─────────────────────────────────────────────────────────────┘${NC}"
+  echo ""
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+
+  # Optional: offer to tail a log when run interactively
+  if [[ -t 0 ]]; then
+    read -r -p "Tail a log now? Enter 1–5, all, or Enter to skip: " _tail_choice || true
+    case "${_tail_choice:-}" in
+      1|2|3|4|5|all|ALL|All) cmd_logs "${_tail_choice}" ;;
+      "") ;;
+      *) echo "Skipped (use: ./run.sh logs)" ;;
+    esac
   fi
   echo ""
 }
 
-# ── Logs ───────────────────────────────────────────────────────────────────
-cmd_logs() {
-  local log_files=()
-  for lf in "${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}"; do
-    [ -f "${lf}" ] && log_files+=("${lf}")
-  done
-
-  if [ "${#log_files[@]}" -eq 0 ]; then
-    warn "No log files found. Start services first: ./run.sh start"
-    exit 0
-  fi
-
-  echo ""
-  info "Tailing logs (Ctrl-C to stop):"
-  for lf in "${log_files[@]}"; do
-    echo "  ${lf}"
-  done
-  echo ""
-  tail -f "${log_files[@]}"
-}
-
-# ── Test ───────────────────────────────────────────────────────────────────
+# ── Test ─────────────────────────────────────────────────────────────────────
 cmd_test() {
-  local mode="${1:-api}"
   echo ""
-  echo -e "${BOLD}Banking Digital Assistant — Test Suite${NC}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${CYAN}${BOLD}   🏦  BANKING DIGITAL ASSISTANT — TEST SUITE                     ${NC}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
 
   local failed=0
 
-  # API tests
-  if [ -d "${BASEDIR}/banking_api_server" ]; then
+  if [[ -d "${BASEDIR}/banking_api_server" ]]; then
     info "Running banking_api_server tests..."
     if (cd "${BASEDIR}/banking_api_server" && npm test -- --passWithNoTests 2>&1); then
       ok "banking_api_server tests passed"
@@ -345,11 +499,10 @@ cmd_test() {
     fi
   fi
 
-  # UI tests (if present)
-  if [ -d "${BASEDIR}/banking_api_ui" ]; then
+  if [[ -d "${BASEDIR}/banking_api_ui" ]]; then
     if grep -q '"test"' "${BASEDIR}/banking_api_ui/package.json" 2>/dev/null; then
       info "Running banking_api_ui tests..."
-      if (cd "${BASEDIR}/banking_api_ui" && npm test -- --watchAll=false --passWithNoTests 2>&1); then
+      if (cd "${BASEDIR}/banking_api_ui" && CI=true npm test -- --watchAll=false --passWithNoTests 2>&1); then
         ok "banking_api_ui tests passed"
       else
         err "banking_api_ui tests FAILED"
@@ -358,8 +511,7 @@ cmd_test() {
     fi
   fi
 
-  # MCP server tests
-  if [ -d "${BASEDIR}/banking_mcp_server" ]; then
+  if [[ -d "${BASEDIR}/banking_mcp_server" ]]; then
     if grep -q '"test"' "${BASEDIR}/banking_mcp_server/package.json" 2>/dev/null; then
       info "Running banking_mcp_server tests..."
       if (cd "${BASEDIR}/banking_mcp_server" && npm test -- --passWithNoTests 2>&1); then
@@ -372,7 +524,7 @@ cmd_test() {
   fi
 
   echo ""
-  if [ "${failed}" -eq 0 ]; then
+  if [[ "${failed}" -eq 0 ]]; then
     ok "All test suites passed"
   else
     err "${failed} test suite(s) failed"
@@ -381,46 +533,71 @@ cmd_test() {
   echo ""
 }
 
-# ── Help ───────────────────────────────────────────────────────────────────
+# ── Help ─────────────────────────────────────────────────────────────────────
 cmd_help() {
   echo ""
-  echo -e "${BOLD}Banking Digital Assistant — run.sh${NC}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${CYAN}${BOLD}   🏦  BANKING DIGITAL ASSISTANT — run.sh                         ${NC}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
-  echo "Usage: ./run.sh <command>"
+  echo -e "${WHITE}${BOLD}  Usage:${NC} ./run.sh <command>"
   echo ""
-  echo -e "${BOLD}Commands:${NC}"
-  echo "  start    Start all services (UI :${UI_PORT}, API :${API_PORT}, MCP :${MCP_PORT})"
-  echo "  stop     Stop all services gracefully"
-  echo "  restart  Stop then start all services"
-  echo "  status   Show running/stopped status with PIDs"
-  echo "  logs     Tail logs from all running services"
-  echo "  test     Run the full test suite"
-  echo "  help     Show this message"
+  echo -e "${WHITE}${BOLD}  Commands:${NC}"
+  echo "    start      Start all services (default if no command given)"
+  echo "    stop       Stop all services gracefully (process tree + port sweep)"
+  echo "    restart    Stop then start all services"
+  echo "    status     Show running/stopped status with ports and URLs"
+  echo "    logs       Pick a log to follow (1=API, 2=UI, 3=MCP, 4=Agent, 5=all)"
+  echo "    logs N     Tail a specific log directly (no prompt)"
+  echo "    test       Run full test suite (API, UI, MCP)"
+  echo "    help       Show this message"
   echo ""
-  echo -e "${BOLD}Files:${NC}"
-  echo "  PIDs:  .pids/  (api.pid, ui.pid, mcp.pid, agent.pid)"
-  echo "  Logs:  .logs/  (banking-api.log, banking-ui.log, banking-mcp.log)"
-  echo "  Env:   banking_api_server/.env"
+  echo -e "${WHITE}${BOLD}  Port Layout (default):${NC}"
+  echo "    Banking API Server   :${API_PORT}  (HTTPS if certs available)"
+  echo "    Banking UI (React)   :${UI_PORT}  (HTTPS if certs available)"
+  echo "    Banking MCP Server   :${MCP_PORT}"
+  echo "    LangChain Agent      :${AGENT_PORT}"
   echo ""
-  echo -e "${BOLD}Examples:${NC}"
-  echo "  ./run.sh start          # Start everything"
-  echo "  ./run.sh status         # Check what's running"
-  echo "  ./run.sh logs           # View all logs"
-  echo "  ./run.sh test           # Run all tests"
-  echo "  ./run.sh stop           # Stop everything"
+  echo -e "${WHITE}${BOLD}  Alternative:${NC}"
+  echo "    ./run-bank.sh  — Uses :3002/:4000 to coexist with MasterFlow on :3000/:3001"
+  echo ""
+  echo -e "${WHITE}${BOLD}  Files:${NC}"
+  echo "    PIDs:  ${PIDS_DIR}/"
+  echo "    Logs:  ${LOGS_DIR}/"
+  echo "    Env:   banking_api_server/.env"
   echo ""
 }
 
-# ── Dispatch ───────────────────────────────────────────────────────────────
-COMMAND="${1:-restart}"
+# ── Status ───────────────────────────────────────────────────────────────────
+cmd_status() {
+  echo ""
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${CYAN}${BOLD}   🏦  BANKING DIGITAL ASSISTANT — STATUS                         ${NC}"
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  print_status_table
+  echo ""
+  echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${NC}"
+  echo -e "${GREEN}${BOLD}  │${NC}  🌐  App           ${YELLOW}${BOLD}${CLIENT_URL}${NC}"
+  echo -e "${GREEN}${BOLD}  │${NC}  ⚙️   Admin Config  ${YELLOW}${BOLD}${CLIENT_URL}/config${NC}"
+  echo -e "${GREEN}${BOLD}  │${NC}  🔐  Admin Login   ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/login${NC}"
+  echo -e "${GREEN}${BOLD}  │${NC}  👤  User Login    ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${NC}"
+  echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${NC}"
+  echo ""
+  echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+}
+
+# ── Dispatch ─────────────────────────────────────────────────────────────────
+COMMAND="${1:-start}"
 
 case "${COMMAND}" in
-  start)   cmd_start ;;
-  stop)    cmd_stop ;;
-  restart) cmd_restart ;;
-  status)  cmd_status ;;
-  logs)    cmd_logs ;;
-  test)    cmd_test "${2:-api}" ;;
+  start)        cmd_start ;;
+  stop)         cmd_stop ;;
+  restart)      cmd_stop; cmd_start ;;
+  status)       cmd_status ;;
+  logs)         cmd_logs "${2:-}" ;;
+  test)         cmd_test ;;
   help|--help|-h) cmd_help ;;
   *)
     err "Unknown command: ${COMMAND}"

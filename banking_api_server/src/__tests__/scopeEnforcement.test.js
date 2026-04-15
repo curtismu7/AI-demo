@@ -150,14 +150,14 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should allow access with required scope', () => {
       jwt.decode.mockReturnValue({
-        scope: 'openid profile banking:accounts:read'
+        scope: 'openid profile banking:read'
       });
 
-      const middleware = requireScopes('banking:accounts:read');
+      const middleware = requireScopes('banking:read');
       middleware(req, res, next);
 
       expect(next).toHaveBeenCalled();
-      expect(req.tokenScopes).toEqual(['openid', 'profile', 'banking:accounts:read']);
+      expect(req.tokenScopes).toEqual(['openid', 'profile', 'banking:read']);
     });
 
     it('should deny access without required scope', () => {
@@ -165,7 +165,7 @@ describe('Scope Enforcement Middleware', () => {
         scope: 'openid profile'
       });
 
-      const middleware = requireScopes('banking:accounts:write');
+      const middleware = requireScopes('banking:write');
       middleware(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(403);
@@ -243,11 +243,12 @@ describe('Scope Enforcement Middleware', () => {
 
   describe('Scopes constants', () => {
     it('should have all expected scope definitions', () => {
-      expect(Scopes.ACCOUNTS_READ).toBe('banking:accounts:read');
-      expect(Scopes.ACCOUNTS_WRITE).toBe('banking:accounts:write');
-      expect(Scopes.TRANSACTIONS_READ).toBe('banking:transactions:read');
+      expect(Scopes.READ).toBe('banking:read');
+      expect(Scopes.WRITE).toBe('banking:write');
       expect(Scopes.ADMIN).toBe('banking:admin');
-      expect(Scopes.MCP_TOOLS).toBe('banking:mcp:tools');
+      expect(Scopes.SENSITIVE).toBe('banking:sensitive');
+      expect(Scopes.AI_AGENT).toBe('banking:ai:agent');
+      expect(Scopes.MCP_INVOKE).toBe('banking:mcp:invoke');
     });
   });
 
@@ -270,7 +271,7 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should have readAccounts middleware', () => {
       jwt.decode.mockReturnValue({
-        scope: 'banking:accounts:read'
+        scope: 'banking:read'
       });
 
       ScopeMiddleware.readAccounts(req, res, next);
@@ -280,7 +281,7 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should have writeAccounts middleware', () => {
       jwt.decode.mockReturnValue({
-        scope: 'banking:accounts:write'
+        scope: 'banking:write'
       });
 
       ScopeMiddleware.writeAccounts(req, res, next);
@@ -300,7 +301,7 @@ describe('Scope Enforcement Middleware', () => {
 
     it('should have mcpTools middleware', () => {
       jwt.decode.mockReturnValue({
-        scope: 'banking:mcp:tools'
+        scope: 'banking:mcp:invoke'
       });
 
       ScopeMiddleware.mcpTools(req, res, next);

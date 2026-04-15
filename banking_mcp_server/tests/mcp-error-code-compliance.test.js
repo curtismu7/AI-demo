@@ -328,7 +328,7 @@ describe('MCP Spec Error Code Compliance Tests', () => {
       
       expect(response.body.error.data.type).toBe('json_rpc');
       expect(response.body.error.data.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
-      expect(response.body.error.data.server).toBe('BX Finance Banking MCP Server');
+      expect(response.body.error.data.server).toBe('Super Banking MCP Server');
     });
 
     test('should include request ID in error response when provided', async () => {

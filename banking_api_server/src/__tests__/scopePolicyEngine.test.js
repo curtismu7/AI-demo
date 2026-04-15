@@ -161,13 +161,13 @@ describe('Scope Policy Engine', () => {
   describe('Tool Scope Validation', () => {
     test('should validate scopes for known tools', () => {
       const toolName = 'get_my_accounts';
-      const requestedScopes = ['banking:accounts:read'];
+      const requestedScopes = ['banking:read'];
       const result = validateScopesForTool(toolName, requestedScopes);
 
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
-      expect(result.requiredScopes).toContain('banking:accounts:read');
-      expect(result.matchedScopes).toContain('banking:accounts:read');
+      expect(result.requiredScopes).toContain('banking:read');
+      expect(result.matchedScopes).toContain('banking:read');
     });
 
     test('should validate scopes with broad alternatives', () => {
@@ -194,7 +194,7 @@ describe('Scope Policy Engine', () => {
       const result = validateScopesForTool(toolName, requestedScopes);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Tool create_transfer requires one of: banking:transactions:write, banking:write');
+      expect(result.errors).toContain('Tool create_transfer requires one of: banking:write, banking:write');
     });
 
     test('should validate admin tools with admin scopes', () => {
@@ -419,7 +419,7 @@ describe('Scope Policy Engine', () => {
     });
 
     test('should validate scope hierarchy', () => {
-      const specificScopes = ['banking:accounts:read'];
+      const specificScopes = ['banking:read'];
       const broadScopes = ['banking:read'];
 
       const specificRisk = calculateRiskScore(specificScopes);
@@ -540,8 +540,8 @@ describe('Scope Policy Engine', () => {
 
     test('should validate tool-specific scope requirements', () => {
       const testCases = [
-        { tool: 'get_my_accounts', scopes: ['banking:accounts:read'] },
-        { tool: 'create_transfer', scopes: ['banking:transactions:write'] },
+        { tool: 'get_my_accounts', scopes: ['banking:read'] },
+        { tool: 'create_transfer', scopes: ['banking:write'] },
         { tool: 'query_user_by_email', scopes: ['ai_agent'] },
         { tool: 'admin_list_all_users', scopes: ['admin:read'] }
       ];

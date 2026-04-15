@@ -91,7 +91,7 @@ describe('Complete Flow Integration Tests', () => {
       // Mock token decode
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'openid profile banking:accounts:read',
+        scope: 'openid profile banking:read',
         act: {
           client_id: 'bff-client',
           iss: 'https://auth.pingone.com'
@@ -116,7 +116,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should enforce scopes and reject insufficient permissions', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'openid profile' // Missing banking:accounts:read
+        scope: 'openid profile' // Missing banking:read
       });
 
       await request(app)
@@ -128,7 +128,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should validate delegation chain and attach to request', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:accounts:read',
+        scope: 'banking:read',
         act: { client_id: 'bff-client' }
       });
 
@@ -143,7 +143,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should generate correlation ID if not provided', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:accounts:read'
+        scope: 'banking:read'
       });
 
       const response = await request(app)
@@ -160,14 +160,14 @@ describe('Complete Flow Integration Tests', () => {
 
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:accounts:read'
+        scope: 'banking:read'
       });
 
       axios.post.mockResolvedValue({
         data: {
           active: true,
           sub: 'user123',
-          scope: 'banking:accounts:read'
+          scope: 'banking:read'
         }
       });
 
@@ -188,7 +188,7 @@ describe('Complete Flow Integration Tests', () => {
 
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:accounts:read'
+        scope: 'banking:read'
       });
 
       axios.post.mockResolvedValue({
@@ -225,7 +225,7 @@ describe('Complete Flow Integration Tests', () => {
 
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:accounts:read'
+        scope: 'banking:read'
       });
 
       // Make request that should trigger refresh
@@ -240,7 +240,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should handle write operations with delegation', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:accounts:write',
+        scope: 'banking:write',
         act: { client_id: 'bff-client' }
       });
 
@@ -256,7 +256,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should reject write with read-only scope', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:accounts:read' // No write scope
+        scope: 'banking:read' // No write scope
       });
 
       await request(app)
@@ -306,7 +306,7 @@ describe('Complete Flow Integration Tests', () => {
     it('should log all requests with delegation info', async () => {
       jwt.decode.mockReturnValue({
         sub: 'user123',
-        scope: 'banking:accounts:read',
+        scope: 'banking:read',
         act: { client_id: 'bff-client' }
       });
 

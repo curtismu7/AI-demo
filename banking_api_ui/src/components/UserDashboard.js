@@ -10,7 +10,6 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
-import ApiCallDisplay from './ApiCallDisplay';
 import ExchangeModeToggle from './ExchangeModeToggle';
 import TransactionConsentModal from './TransactionConsentModal';
 import BankingAgent from './BankingAgent';
@@ -33,7 +32,7 @@ const fmt = (n) =>
     : '$0.00';
 
 /** Account types whose balances represent money owed (liabilities), not assets. */
-const DEBT_TYPES = new Set(['car_loan', 'mortgage', 'credit']);
+const DEBT_TYPES = new Set(['loan', 'car_loan', 'mortgage', 'credit']);
 
 const DEMO_ACCOUNTS = [
   { id: 'demo-chk', name: 'Checking Account', accountType: 'checking', accountNumber: 'CHK-DEMO-0001', balance: 3000.00, _demo: true },
@@ -1255,13 +1254,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                   : 'Your balances update automatically. Ask the assistant below for transfers, explanations, or spending patterns.'}
             </p>
           </div>
-          <p className="ud-hero__balance-label">Total balance</p>
+          <p className="ud-hero__balance-label">Total accounts</p>
           <p className="ud-hero__balance" aria-live="polite">
             {fmt(totalBalance)}
           </p>
           {totalDebt > 0 && (
             <p className="ud-hero__debt" aria-live="polite">
-              <span className="ud-hero__debt-label">Debt</span>
+              <span className="ud-hero__debt-label">Total loans</span>
               {fmt(totalDebt)}
             </p>
           )}
@@ -1870,7 +1869,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             <div className="section ud-token-rail__inner">
               <ExchangeModeToggle />
               <TokenChainDisplay />
-              <ApiCallDisplay sessionId="user-dashboard" />
             </div>
           </aside>
 
@@ -1897,7 +1895,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             <div className="section ud-token-rail__inner">
               <ExchangeModeToggle />
               <TokenChainDisplay />
-              <ApiCallDisplay sessionId="user-dashboard" />
             </div>
           </aside>
 
@@ -1926,7 +1923,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               <div className="section ud-token-rail__inner">
                 <ExchangeModeToggle />
                 <TokenChainDisplay />
-                <ApiCallDisplay sessionId="user-dashboard" />
               </div>
             </aside>
 

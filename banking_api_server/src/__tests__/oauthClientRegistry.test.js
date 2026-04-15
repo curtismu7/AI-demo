@@ -102,14 +102,14 @@ describe('OAuth Client Registry Service', () => {
         client_type: 'confidential',
         grant_types: ['client_credentials'],
         scope: [
-          'banking:accounts:read',
-          'banking:transactions:write',
+          'banking:read',
+          'banking:write',
           'ai_agent'
         ]
       };
 
       const client = await registerOAuthClient(request);
-      expect(client.scope).toBe('banking:accounts:read banking:transactions:write ai_agent');
+      expect(client.scope).toBe('banking:read banking:write ai_agent');
     });
 
     test('should handle registration with admin scopes', async () => {

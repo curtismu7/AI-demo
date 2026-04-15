@@ -17,21 +17,21 @@ const TEST_CONFIG = {
   },
   agentToken: {
     appName: 'Super Banking MCP Token Exchanger',
-    appType: 'WORKER',
+    appType: 'AI_AGENT',
     requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: null,
     spel: null
   },
   exchange1: {
     appName: 'Super Banking MCP Token Exchanger',
-    appType: 'WORKER',
+    appType: 'AI_AGENT',
     requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: 'https://mcp-server.pingdemo.com',
     spel: 'T1 (user token) → MCP token'
   },
   exchange2: {
     appName: 'Super Banking MCP Token Exchanger',
-    appType: 'WORKER',
+    appType: 'AI_AGENT',
     requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: 'https://mcp-gateway.pingdemo.com',
     spel: 'T1 (user token) + T2 (agent token) → MCP token'
@@ -39,7 +39,7 @@ const TEST_CONFIG = {
   exchange3: {
     appName: 'Super Banking AI Agent App',
     appType: 'AI_AGENT',
-    requiredScopes: ['openid'],
+    requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:ai:agent'],
     audience: 'https://agent-gateway.pingdemo.com',
     spel: 'T1 (user token) → T2 (agent token) → MCP token'
   },
@@ -60,7 +60,7 @@ const TEST_CONFIG = {
   scopes: {
     appName: 'Super Banking MCP Server',
     appType: 'RESOURCE_SERVER',
-    requiredScopes: ['banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
+    requiredScopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'],
     audience: 'https://mcp-server.pingdemo.com',
     spel: null
   },
@@ -156,7 +156,8 @@ export default function PingOneTestPage() {
   const [workerConfig, setWorkerConfig] = useState({
     clientId: '',
     clientSecret: '',
-    authMethod: 'basic'
+    authMethod: 'basic',
+    tokenExchangeAuthMethod: 'post'
   });
   const [savingConfig, setSavingConfig] = useState(false);
   const [configSaveError, setConfigSaveError] = useState(null);
@@ -167,7 +168,15 @@ export default function PingOneTestPage() {
   const [verifyingAssets, setVerifyingAssets] = useState(false);
   const [scopeFixing, setScopeFixing] = useState(false);
   const [scopeFixResult, setScopeFixResult] = useState(null);
+
+  // MCP exchange diagnostics
+  const [mcpExchangeDiag, setMcpExchangeDiag] = useState(null);
+  const [mcpExchangeFixing, setMcpExchangeFixing] = useState(false);
+  const [mcpExchangeFixResult, setMcpExchangeFixResult] = useState(null);
   
+  // Login type from session ('admin' | 'customer' | 'ai_agent') — set when authz token loads
+  const [loginType, setLoginType] = useState(null);
+
   // Token acquisition tests state
   const [authzTokenStatus, setAuthzTokenStatus] = useState('pending');
   const [agentTokenStatus, setAgentTokenStatus] = useState('pending');
@@ -256,7 +265,8 @@ export default function PingOneTestPage() {
           setWorkerConfig({
             clientId: data.config.mgmtClientId || '',
             clientSecret: data.config.mgmtClientSecret || '',
-            authMethod: data.config.mgmtTokenAuthMethod || 'basic'
+            authMethod: data.config.mgmtTokenAuthMethod || 'basic',
+            tokenExchangeAuthMethod: data.config.tokenExchangeAuthMethod || 'post'
           });
           setFfIdTokenExchange(data.config.ffIdTokenExchange || false);
         }
@@ -358,6 +368,7 @@ export default function PingOneTestPage() {
         setAuthzTokenStatus('passed');
         setAuthzDecoded(data.decoded || null);
         setAuthzTokenError(null);
+        setLoginType(data.loginType || null);
       } else {
         setAuthzTokenStatus('failed');
         setAuthzTokenError(data.error);
@@ -457,7 +468,8 @@ export default function PingOneTestPage() {
       const { data } = await apiClient.post('/api/pingone-test/worker-config', {
         clientId: workerConfig.clientId,
         clientSecret: workerConfig.clientSecret,
-        authMethod: workerConfig.authMethod
+        authMethod: workerConfig.authMethod,
+        tokenExchangeAuthMethod: workerConfig.tokenExchangeAuthMethod
       });
 
       if (data.success) {
@@ -533,6 +545,44 @@ export default function PingOneTestPage() {
     }
   }, [verifyAssets]);
 
+  const diagnoseMcpExchange = useCallback(async () => {
+    setMcpExchangeDiag(null);
+    try {
+      const { data } = await apiClient.get('/api/pingone-test/diagnose-mcp-exchange');
+      setMcpExchangeDiag(data);
+      if (data.canExchange) {
+        notifySuccess('MCP exchange looks correctly configured ✓');
+      } else {
+        notifyError('MCP exchange has config issues — see diagnostic panel');
+      }
+    } catch (err) {
+      setMcpExchangeDiag({ success: false, error: err.message });
+      notifyError(`Diagnose failed: ${err.message}`);
+    }
+  }, []);
+
+  const fixMcpExchange = useCallback(async () => {
+    setMcpExchangeFixing(true);
+    setMcpExchangeFixResult(null);
+    try {
+      const { data } = await apiClient.post('/api/pingone-test/fix-mcp-exchange', {});
+      setMcpExchangeFixResult(data);
+      if (data.success) {
+        notifySuccess('MCP exchange config fixed — re-diagnosing…');
+        const { data: diag } = await apiClient.get('/api/pingone-test/diagnose-mcp-exchange');
+        setMcpExchangeDiag(diag);
+      } else {
+        notifyError(`Fix failed: ${data.error}`);
+        setMcpExchangeDiag(data);
+      }
+    } catch (err) {
+      notifyError(`Fix failed: ${err.message}`);
+      setMcpExchangeFixResult({ success: false, error: err.message });
+    } finally {
+      setMcpExchangeFixing(false);
+    }
+  }, []);
+
   const testAuthzToken = useCallback(async () => {
     setAuthzTokenStatus('running');
     setAuthzTokenError(null);
@@ -541,6 +591,8 @@ export default function PingOneTestPage() {
       const { data } = await apiClient.get('/api/pingone-test/authz-token');
       if (data.success) {
         setAuthzTokenStatus('passed');
+        setAuthzDecoded(data.decoded || null);
+        setLoginType(data.loginType || null);
         notifySuccess('Authorization token found in session ✓');
       } else {
         setAuthzTokenStatus('failed');
@@ -679,6 +731,36 @@ export default function PingOneTestPage() {
     const { data } = await apiClient.get('/api/pingone-test/apps');
     if (!data.success) throw new Error(data.error);
     return { count: data.count, apps: data.apps };
+  }, []);
+
+  const testAiAgentApps = useCallback(async () => {
+    const { data } = await apiClient.get('/api/pingone-test/ai-agent-apps');
+    if (!data.success) throw new Error(data.error);
+    return { count: data.count, apps: data.apps, missingExpected: data.missingExpected, totalApps: data.totalApps };
+  }, []);
+
+  const updateResources = useCallback(async () => {
+    const { data } = await apiClient.post('/api/pingone-test/update-resources');
+    if (!data.success) throw new Error(data.error);
+    return { steps: data.steps };
+  }, []);
+
+  const updateScopes = useCallback(async () => {
+    const { data } = await apiClient.post('/api/pingone-test/update-scopes');
+    if (!data.success) throw new Error(data.error);
+    return { results: data.results };
+  }, []);
+
+  const updateApps = useCallback(async () => {
+    const { data } = await apiClient.post('/api/pingone-test/update-apps');
+    if (!data.success) throw new Error(data.error);
+    return { steps: data.steps, aiAgentApps: data.aiAgentApps };
+  }, []);
+
+  const updateUserSpel = useCallback(async () => {
+    const { data } = await apiClient.post('/api/pingone-test/update-user-spel', { enabled: true });
+    if (!data.success) throw new Error(data.error);
+    return { message: data.message, userId: data.userId, mayAct: data.mayAct };
   }, []);
 
   const testResources = useCallback(async () => {
@@ -858,7 +940,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="worker-auth-method">Token Auth Method</label>
+                  <label htmlFor="worker-auth-method">Worker Token Auth Method (CC Grant)</label>
                   <select
                     id="worker-auth-method"
                     className="form-select"
@@ -869,6 +951,20 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                     <option value="post">Post (body parameters)</option>
                     <option value="none">None (no authentication)</option>
                   </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="exchange-auth-method">Token Exchange Auth Method</label>
+                  <select
+                    id="exchange-auth-method"
+                    className="form-select"
+                    value={workerConfig.tokenExchangeAuthMethod}
+                    onChange={(e) => setWorkerConfig(prev => ({ ...prev, tokenExchangeAuthMethod: e.target.value }))}
+                  >
+                    <option value="post">Post (body parameters) — PingOne AI_AGENT default</option>
+                    <option value="basic">Basic (Authorization header)</option>
+                    <option value="none">None (no authentication)</option>
+                  </select>
+                  <p className="form-hint">Used for RFC 8693 token exchange calls (Exchange 1 / 2 / 3). PingOne AI_AGENT apps typically require <code>post</code>.</p>
                 </div>
                 <div className="form-actions">
                   <button
@@ -1032,15 +1128,25 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
           />
           <div className="pingone-test-grid">
             <div className="test-card-col">
-              <TestCard
-                title="Authorization Code Token"
-                status={authzTokenStatus}
-                error={authzTokenError}
-                onTest={testAuthzToken}
-                config={TEST_CONFIG.authzToken}
-                loginUrl={authzTokenStatus !== 'passed' ? '/api/auth/oauth/user/login?return_to=/pingone-test' : null}
-              />
-              <DecodedTokenPanel decoded={authzDecoded} label="Authorization Code Token" />
+              {(() => {
+                const authzLabel = loginType === 'admin' ? 'Admin Token'
+                  : loginType === 'ai_agent' ? 'AI Agent Token'
+                  : loginType === 'customer' ? 'Customer Token'
+                  : 'Authorization Code Token';
+                return (
+                  <>
+                    <TestCard
+                      title={authzLabel}
+                      status={authzTokenStatus}
+                      error={authzTokenError}
+                      onTest={testAuthzToken}
+                      config={TEST_CONFIG.authzToken}
+                      loginUrl={authzTokenStatus !== 'passed' ? '/api/auth/oauth/user/login?return_to=/pingone-test' : null}
+                    />
+                    <DecodedTokenPanel decoded={authzDecoded} label={authzLabel} />
+                  </>
+                );
+              })()}
             </div>
             <div className="test-card-col">
               <TestCard
@@ -1066,7 +1172,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             steps={[
               'Token Exchange (RFC 8693) lets you swap one token for a narrower-scoped token without re-authenticating',
               'Subject Token = the user access token (T1). It contains a may_act claim authorizing the agent client',
-              'Exchange 1: T1 → MCP token (scope limited to banking:read banking:write, audience = MCP server)',
+              'Exchange 1: T1 → MCP token (scope limited to banking:read banking:write banking:mcp:invoke, audience = MCP server)',
               'Exchange 2: T1 + Agent T0 → MCP token with act claim showing both user + agent identity',
               'Exchange 3: T1 → T2 (agent step) → T3 (MCP step) — 3-hop chain proving delegation lineage',
               'The MCP server validates act.client_id to confirm the agent acted on behalf of the user',
@@ -1089,75 +1195,167 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               </a>
             </div>
           )}
+          {/* MCP Exchange Diagnostic Panel */}
+          <div className="scope-fix-panel" style={{ marginBottom: '1rem' }}>
+            <div className="scope-fix-panel__header">
+              <span>MCP Exchange Diagnostics</span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="pingone-test-button pingone-test-button--secondary" onClick={diagnoseMcpExchange}>
+                  Diagnose
+                </button>
+                {mcpExchangeDiag && !mcpExchangeDiag.canExchange && (
+                  <button className="pingone-test-button pingone-test-button--danger" onClick={fixMcpExchange} disabled={mcpExchangeFixing}>
+                    {mcpExchangeFixing ? 'Fixing…' : 'Auto-Fix in PingOne'}
+                  </button>
+                )}
+              </div>
+            </div>
+            {mcpExchangeDiag && (
+              <div style={{ fontSize: '1rem', marginTop: '0.5rem' }}>
+                {mcpExchangeDiag.error && <div className="scope-fix-result--err">Error: {mcpExchangeDiag.error}</div>}
+                {mcpExchangeDiag.success && (
+                  <>
+                    <div style={{ marginBottom: '0.4rem' }}>
+                      <strong>MCP RS:</strong>{' '}
+                      {mcpExchangeDiag.mcpResourceServer
+                        ? <span className="asset-badge asset-badge--ok">{mcpExchangeDiag.mcpResourceServer.name}</span>
+                        : <span className="asset-badge asset-badge--warn">Not found for {mcpExchangeDiag.mcpUri}</span>}
+                    </div>
+                    <div style={{ marginBottom: '0.4rem' }}>
+                      <strong>Exchanger App:</strong>{' '}
+                      {mcpExchangeDiag.exchangerApp
+                        ? <span className="asset-badge asset-badge--ok">{mcpExchangeDiag.exchangerApp.name}</span>
+                        : <span className="asset-badge asset-badge--warn">Not found</span>}
+                      {' '}
+                      <strong>MCP RS Assigned:</strong>{' '}
+                      {mcpExchangeDiag.exchangerHasMcpRS
+                        ? <span className="asset-badge asset-badge--ok">Yes</span>
+                        : <span className="asset-badge asset-badge--warn">No — will fail</span>}
+                    </div>
+                    <div style={{ marginBottom: '0.4rem' }}>
+                      <strong>Requested scopes:</strong>{' '}
+                      {(mcpExchangeDiag.requestedScopes || []).map(s => (
+                        <span key={s} className={'asset-badge ' + (mcpExchangeDiag.missingFromApp?.includes(s) ? 'asset-badge--missing' : 'asset-badge--scope')}>{s}</span>
+                      ))}
+                    </div>
+                    {mcpExchangeDiag.missingFromRS?.length > 0 && (
+                      <div className="scope-fix-result--err">Missing on MCP RS: {mcpExchangeDiag.missingFromRS.join(', ')}</div>
+                    )}
+                    {mcpExchangeDiag.missingFromApp?.length > 0 && (
+                      <div className="scope-fix-result--err">Not assigned to exchanger app: {mcpExchangeDiag.missingFromApp.join(', ')}</div>
+                    )}
+                    {mcpExchangeDiag.canExchange && (
+                      <div className="scope-fix-result--ok">✓ Exchange should work</div>
+                    )}
+                    {mcpExchangeFixResult && (
+                      <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '0.5rem' }}>
+                        <strong>Last Fix Result:</strong>{' '}
+                        <span className={mcpExchangeFixResult.success ? 'asset-badge asset-badge--ok' : 'asset-badge asset-badge--warn'}>
+                          {mcpExchangeFixResult.success ? '✓ Success' : `✗ ${mcpExchangeFixResult.error || 'Failed'}`}
+                        </span>
+                        {mcpExchangeFixResult.steps && mcpExchangeFixResult.steps.map((s, i) => (
+                          <div key={i} style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>
+                            <code>{s.step}</code>: <span className={s.status === 'ok' || s.status === 'found' || s.status === 'created' ? 'asset-badge asset-badge--ok' : 'asset-badge asset-badge--warn'}>{s.status || '?'}</span>{' '}
+                            {s.detail || s.error || ''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <div className="pingone-test-grid">
             <div className="test-card-col">
-              <TestCard
-                title="User Token → MCP Token"
-                status={exchange1Status}
-                error={exchange1Error}
-                onTest={testExchange1}
-                onFix={exchange1Status === 'failed' ? () => fixIssue('single-exchange') : undefined}
-                config={TEST_CONFIG.exchange1}
-              />
-              <DecodedTokenPanel decoded={exchange1Decoded} label="MCP Token (User Exchange)" />
-              {(exchange1SubjectDecoded || exchange1ActorDecoded) && (
-                <>
-                  <DecodedTokenPanel decoded={exchange1SubjectDecoded} label="Subject: User Access Token (T1)" />
-                  <DecodedTokenPanel decoded={exchange1ActorDecoded} label="Actor: MCP Token Exchanger (CC)" />
-                </>
-              )}
-              <TokenLineageDiff
-                fromDecoded={authzDecoded}
-                toDecoded={exchange1Decoded}
-                fromLabel="User Token (T1)"
-                toLabel="MCP Token (Exchange 1)"
-              />
+              {(() => {
+                const t1Label = loginType === 'admin' ? 'Admin Token (T1)' : loginType === 'ai_agent' ? 'AI Agent Token (T1)' : 'User Token (T1)';
+                return (
+                  <>
+                    <TestCard
+                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token → MCP Token`}
+                      status={exchange1Status}
+                      error={exchange1Error}
+                      onTest={testExchange1}
+                      onFix={exchange1Status === 'failed' ? () => fixIssue('single-exchange') : undefined}
+                      config={TEST_CONFIG.exchange1}
+                    />
+                    <DecodedTokenPanel decoded={exchange1Decoded} label="MCP Token (Exchange 1)" />
+                    {(exchange1SubjectDecoded || exchange1ActorDecoded) && (
+                      <>
+                        <DecodedTokenPanel decoded={exchange1SubjectDecoded} label={`Subject: ${t1Label}`} />
+                        <DecodedTokenPanel decoded={exchange1ActorDecoded} label="Actor: MCP Token Exchanger (CC)" />
+                      </>
+                    )}
+                    <TokenLineageDiff
+                      fromDecoded={authzDecoded}
+                      toDecoded={exchange1Decoded}
+                      fromLabel={t1Label}
+                      toLabel="MCP Token (Exchange 1)"
+                    />
+                  </>
+                );
+              })()}
             </div>
             <div className="test-card-col">
-              <TestCard
-                title="User Token + Agent Token → MCP Token"
-                status={exchange2Status}
-                error={exchange2Error}
-                onTest={testExchange2}
-                onFix={exchange2Status === 'failed' ? () => fixIssue('double-exchange') : undefined}
-                config={TEST_CONFIG.exchange2}
-              />
-              <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Token (User+Agent Exchange)" />
-              {(exchange2SubjectDecoded || exchange2ActorDecoded) && (
-                <>
-                  <DecodedTokenPanel decoded={exchange2SubjectDecoded} label="Subject: User Access Token (T1)" />
-                  <DecodedTokenPanel decoded={exchange2ActorDecoded} label="Actor: Agent Token (T0)" />
-                </>
-              )}
-              <TokenLineageDiff
-                fromDecoded={authzDecoded}
-                toDecoded={exchange2Decoded}
-                fromLabel="User Token (T1)"
-                toLabel="MCP Token with act (Exchange 2)"
-              />
+              {(() => {
+                const t1Label = loginType === 'admin' ? 'Admin Token (T1)' : loginType === 'ai_agent' ? 'AI Agent Token (T1)' : 'User Token (T1)';
+                return (
+                  <>
+                    <TestCard
+                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token + Agent Token → MCP Token`}
+                      status={exchange2Status}
+                      error={exchange2Error}
+                      onTest={testExchange2}
+                      onFix={exchange2Status === 'failed' ? () => fixIssue('double-exchange') : undefined}
+                      config={TEST_CONFIG.exchange2}
+                    />
+                    <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Token (Exchange 2)" />
+                    {(exchange2SubjectDecoded || exchange2ActorDecoded) && (
+                      <>
+                        <DecodedTokenPanel decoded={exchange2SubjectDecoded} label={`Subject: ${t1Label}`} />
+                        <DecodedTokenPanel decoded={exchange2ActorDecoded} label="Actor: Agent Token (T0)" />
+                      </>
+                    )}
+                    <TokenLineageDiff
+                      fromDecoded={authzDecoded}
+                      toDecoded={exchange2Decoded}
+                      fromLabel={t1Label}
+                      toLabel="MCP Token with act (Exchange 2)"
+                    />
+                  </>
+                );
+              })()}
             </div>
             <div className="test-card-col">
-              <TestCard
-                title="User Token → Agent Token → MCP Token"
-                status={exchange3Status}
-                error={exchange3Error}
-                onTest={testExchange3}
-                config={TEST_CONFIG.exchange3}
-              />
-              <DecodedTokenPanel decoded={exchange3AgentDecoded} label="Agent Token (User→Agent step)" />
-              <TokenLineageDiff
-                fromDecoded={authzDecoded}
-                toDecoded={exchange3AgentDecoded}
-                fromLabel="User Token (T1)"
-                toLabel="Agent Token (T2)"
-              />
-              <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
-              <TokenLineageDiff
-                fromDecoded={exchange3AgentDecoded}
-                toDecoded={exchange3McpDecoded}
-                fromLabel="Agent Token (T2)"
-                toLabel="MCP Token (T3)"
-              />
+              {(() => {
+                const t1Label = loginType === 'admin' ? 'Admin Token (T1)' : loginType === 'ai_agent' ? 'AI Agent Token (T1)' : 'User Token (T1)';
+                return (
+                  <>
+                    <TestCard
+                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token → Agent Token → MCP Token`}
+                      status={exchange3Status}
+                      error={exchange3Error}
+                      onTest={testExchange3}
+                      config={TEST_CONFIG.exchange3}
+                    />
+                    <DecodedTokenPanel decoded={exchange3AgentDecoded} label={`Agent Token (${t1Label}→Agent step)`} />
+                    <TokenLineageDiff
+                      fromDecoded={authzDecoded}
+                      toDecoded={exchange3AgentDecoded}
+                      fromLabel={t1Label}
+                      toLabel="Agent Token (T2)"
+                    />
+                    <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
+                    <TokenLineageDiff
+                      fromDecoded={exchange3AgentDecoded}
+                      toDecoded={exchange3McpDecoded}
+                      fromLabel="Agent Token (T2)"
+                      toLabel="MCP Token (T3)"
+                    />
+                  </>
+                );
+              })()}
             </div>
             {/* ID Token Exchange (ff_id_token_exchange) */}
             {ffIdTokenExchange ? (
@@ -1169,7 +1367,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   onTest={testExchangeIdToken}
                   config={{
                     appName: 'Super Banking MCP Token Exchanger',
-                    appType: 'WORKER',
+                    appType: 'AI_AGENT',
                     requiredScopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'],
                     audience: 'https://mcp-server.pingdemo.com',
                     spel: 'ID token (not access token) → MCP token',
@@ -1188,7 +1386,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   error="Enable ff_id_token_exchange in Feature Flags to activate this pattern."
                   config={{
                     appName: 'Super Banking MCP Token Exchanger',
-                    appType: 'WORKER',
+                    appType: 'AI_AGENT',
                     requiredScopes: null,
                     audience: 'https://mcp-server.pingdemo.com',
                     spel: 'ID token (not access token) → MCP token',
@@ -1316,6 +1514,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={testResults['apps']?.status || 'pending'}
               onTest={() => runTest('apps', testApps)}
               onFix={() => fixIssue('apps')}
+              onUpdate={() => runTest('update-apps', updateApps)}
+              updateLabel="Update Apps"
+              updateResult={testResults['update-apps']}
             />
             <TestCard
               title="Resource Servers"
@@ -1323,6 +1524,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={testResults['resources']?.status || 'pending'}
               onTest={() => runTest('resources', testResources)}
               onFix={() => fixIssue('resources')}
+              onUpdate={() => runTest('update-resources', updateResources)}
+              updateLabel="Update Resources"
+              updateResult={testResults['update-resources']}
             />
             <TestCard
               title="Scopes"
@@ -1330,6 +1534,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={testResults['scopes']?.status || 'pending'}
               onTest={() => runTest('scopes', testScopes)}
               onFix={() => fixIssue('scopes')}
+              onUpdate={() => runTest('update-scopes', updateScopes)}
+              updateLabel="Update Scopes"
+              updateResult={testResults['update-scopes']}
             />
             <TestCard
               title="Users"
@@ -1337,6 +1544,29 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               status={testResults['users']?.status || 'pending'}
               onTest={() => runTest('users', testUsers)}
               onFix={() => fixIssue('users')}
+            />
+            <TestCard
+              title="AI Agent Apps"
+              value={(() => {
+                const r = testResults['ai-agent-apps']?.result;
+                if (!r) return 'Fetch AI_AGENT type apps from PingOne';
+                const missing = r.missingExpected?.length ? ` — missing: ${r.missingExpected.join(', ')}` : '';
+                return `${r.count} AI_AGENT apps (of ${r.totalApps} total)${missing}`;
+              })()}
+              status={testResults['ai-agent-apps']?.status || 'pending'}
+              onTest={() => runTest('ai-agent-apps', testAiAgentApps)}
+              onFix={() => fixIssue('apps')}
+              onUpdate={() => runTest('update-apps', updateApps)}
+              updateLabel="Update AI Apps"
+              updateResult={testResults['update-apps']}
+            />
+            <TestCard
+              title="User SPEL / may_act"
+              value={testResults['update-user-spel']?.result?.message || 'Set mayAct.sub on current user record'}
+              status={testResults['update-user-spel']?.status || 'pending'}
+              onUpdate={() => runTest('update-user-spel', updateUserSpel)}
+              updateLabel="Set may_act"
+              updateResult={testResults['update-user-spel']}
             />
           </div>
           <SectionApiCalls />
@@ -1362,8 +1592,9 @@ function SectionApiCalls() {
   );
 }
 
-const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl, testLabel, envVar, format, failMsg }) => {
+const TestCard = ({ title, status, error, onTest, onFix, onUpdate, updateLabel, updateResult, value, config, loginUrl, testLabel, envVar, format, failMsg }) => {
   const [testing, setTesting] = React.useState(false);
+  const [updating, setUpdating] = React.useState(false);
 
   const handleTest = async () => {
     if (!onTest) return;
@@ -1375,7 +1606,18 @@ const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl
     }
   };
 
+  const handleUpdate = async () => {
+    if (!onUpdate) return;
+    setUpdating(true);
+    try {
+      await onUpdate();
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const statusLabel = { passed: '✓ passed', failed: '✗ failed', running: '⟳ testing', pending: '— pending' };
+  const updateStatus = updateResult?.status;
 
   return (
     <div className={`test-card test-card--${status}`}>
@@ -1386,6 +1628,15 @@ const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl
         </span>
       </div>
       {value && <p className="test-card-value">{value}</p>}
+      {updateResult?.result && (
+        <div className={`test-card-update-result test-card-update-result--${updateStatus}`}>
+          {updateStatus === 'passed' ? '✓ ' : updateStatus === 'failed' ? '✗ ' : ''}
+          {updateResult.result.message
+            || (updateResult.result.steps?.map(s => `${s.rs || s.app || s.step}: ${s.status || s.detail || (s.added?.length ? `+${s.added.join(', ')}` : 'ok')}`).join('; '))
+            || (updateResult.result.results?.map(r => `${r.rs}: +${(r.added || []).join(', ') || 'none'}`).join('; '))
+            || (updateStatus === 'passed' ? 'Done' : updateResult.error || '')}
+        </div>
+      )}
       {(envVar || format) && (
         <div className="test-card-detail">
           {envVar && (
@@ -1432,6 +1683,17 @@ const TestCard = ({ title, status, error, onTest, onFix, value, config, loginUrl
             disabled={testing || status === 'running'}
           >
             {testing || status === 'running' ? 'Testing…' : (testLabel || 'Test')}
+          </button>
+        )}
+        {onUpdate && (
+          <button
+            type="button"
+            className="pingone-test-button pingone-test-button--update"
+            onClick={handleUpdate}
+            disabled={updating}
+            title={`Apply changes to PingOne: ${updateLabel || 'Update'}`}
+          >
+            {updating ? 'Updating…' : (updateLabel || 'Update')}
           </button>
         )}
         {onFix && (
@@ -1642,8 +1904,8 @@ function AssetTable({ apps, resources, scopes, scopesMeta, users, tokenPolicies,
                       )}
                     </td>
                     <td className="asset-table-td">
-                      {app.grantedResources && app.grantedResources.flatMap(rs => rs.scopes).length > 0 ? (
-                        app.grantedResources.flatMap(rs => rs.scopes).map(scope => (
+                      {app.grantedResources && app.grantedResources.flatMap(rs => rs.scopes || []).filter(s => typeof s === 'string').length > 0 ? (
+                        app.grantedResources.flatMap(rs => rs.scopes || []).filter(s => typeof s === 'string').map(scope => (
                           <span key={scope} className={'asset-badge ' + (missingScopesForApp.includes(scope) ? 'asset-badge--missing' : 'asset-badge--scope')}>{scope}</span>
                         ))
                       ) : (

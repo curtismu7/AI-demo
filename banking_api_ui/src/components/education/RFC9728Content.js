@@ -51,7 +51,7 @@ Response:
     "banking:accounts:write",
     "banking:sensitive:read"
   ],
-  "resource_name": "BX Finance Banking MCP Server",
+  "resource_name": "Super Banking MCP Server",
   "resource_documentation": "https://github.com/curtismu7/banking-demo/docs/MCP_SERVER_EDUCATION.md"
 }`}
       </pre>
@@ -62,7 +62,7 @@ Response:
 
 Response:
 {
-  "name": "BX Finance Banking MCP Server",
+  "name": "Super Banking MCP Server",
   "description": "MCP server providing banking tools for AI agents...",
   "version": "1.0.0",
   "tools": [

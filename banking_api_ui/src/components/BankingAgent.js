@@ -946,20 +946,20 @@ export default function BankingAgent({
       }[groupName] || '•';
       
       return (
-        <div key={groupName} className={}>
+        <div key={groupName} className={"ba-action-group ba-action-group--" + groupName}>
           <button
             className="ba-group-header"
             onClick={() => toggleGroupExpanded(groupName)}
             type="button"
-            title={`${isExpanded ? 'Collapse' : 'Expand'} ${capitalizedName} actions`}
+            title={(isExpanded ? 'Collapse' : 'Expand') + " " + capitalizedName + " actions"}
           >
-            <span className="ba-group-icon">${groupEmoji}</span>
-            <span className="ba-group-name">${capitalizedName}</span>
-            <span className={}>
+            <span className="ba-group-icon">{groupEmoji}</span>
+            <span className="ba-group-name">{capitalizedName}</span>
+            <span className={"ba-group-toggle " + (isExpanded ? 'expanded' : 'collapsed')}>
               {isExpanded ? '▼' : '▶'}
             </span>
           </button>
-          <div className={}>
+          <div className={"ba-group-content " + (isExpanded ? '' : 'collapsed')}>
             {actions.map(action => renderChip(action, groupName))}
           </div>
         </div>
@@ -3028,17 +3028,8 @@ export default function BankingAgent({
               {isLoggedIn ? (
                 <>
                   {isLoggedIn && renderActionGroups()}
-                    <button
-                      key={a.id}
-                      type="button"
-                      className="ba-action-item"
-                      onClick={() => handleActionClick(a.id)}
-                      disabled={loading || (consentBlocked && a.id !== 'logout')}
-                      title={a.desc}
-                    >
-                      {a.label}
-                    </button>
-                  ))}
+
+                  <div className="ba-left-divider" />
 
                   <div className="ba-left-divider" />
 

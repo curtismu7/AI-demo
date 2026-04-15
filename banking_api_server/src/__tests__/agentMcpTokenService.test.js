@@ -24,7 +24,7 @@ const USER_SUB = 'user-sub-abc123';
 const sampleJwtUserAccessToken = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
-  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  scope: 'openid profile email offline_access banking:read banking:read',
   iss: 'https://auth.pingone.com/test-env/as',
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
@@ -33,7 +33,7 @@ const sampleJwtUserAccessToken = makeJwt({
 const sampleJwtUserAccessNarrowScopes = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
-  scope: 'openid profile banking:accounts:read',
+  scope: 'openid profile banking:read',
   iss: 'https://auth.pingone.com/test-env/as',
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
@@ -62,7 +62,7 @@ const sampleJwtAgentAccessToken = makeJwt({
 const sampleJwtMcpAccessToken = makeJwt({
   sub: USER_SUB,
   aud: 'mcp-resource-uri',
-  scope: 'banking:accounts:read',
+  scope: 'banking:read',
   act: { client_id: 'bff-client-id' },
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
@@ -88,8 +88,8 @@ jest.mock('../../services/oauthService', () => ({
 jest.mock('../../services/mcpWebSocketClient', () => ({
   MCP_TOOL_SCOPES: {
     // Reflect the new dual-scope structure (specific + broad)
-    get_my_accounts:  ['banking:accounts:read', 'banking:read'],
-    create_transfer:  ['banking:transactions:write', 'banking:write'],
+    get_my_accounts:  ['banking:read', 'banking:read'],
+    create_transfer:  ['banking:write', 'banking:write'],
   },
   getSessionAccessToken: (req) => req._mockToken || null,
   getSessionBearerForMcp: (req) => {
@@ -199,7 +199,7 @@ describe('resolveMcpAccessTokenWithEvents — agent MCP scope policy', () => {
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       if (key === 'agent_mcp_allowed_scopes') {
-        return 'banking:accounts:read banking:transactions:read';
+        return 'banking:read banking:read';
       }
       return null;
     });
@@ -283,7 +283,7 @@ describe('resolveMcpAccessTokenWithEvents — RFC 8693 exchange, subject-only (P
     expect(mockPerformTokenExchange).toHaveBeenCalledWith(
       sampleJwtUserAccessToken,
       'https://mcp.example.com/api',
-      expect.arrayContaining(['banking:accounts:read'])
+      expect.arrayContaining(['banking:read'])
     );
   });
 
@@ -345,7 +345,7 @@ describe('resolveMcpAccessTokenWithEvents — on_behalf_of (PINGONE_MCP_TOKEN_EX
       sampleJwtUserAccessToken,
       sampleJwtAgentAccessToken,
       'https://mcp.example.com/api',
-      expect.arrayContaining(['banking:accounts:read'])
+      expect.arrayContaining(['banking:read'])
     );
     expect(mockPerformTokenExchange).not.toHaveBeenCalled();
   });
@@ -456,7 +456,7 @@ describe('buildSessionPreviewTokenEvents', () => {
 
 // ── Broad scope (banking:read / banking:write) support ───────────────────────
 
-/** User token that has banking:read but NOT banking:accounts:read */
+/** User token that has banking:read but NOT banking:read */
 const sampleJwtUserAccessBroadRead = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
@@ -476,7 +476,7 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       // Allow all scopes including broad ones
       if (key === 'agent_mcp_allowed_scopes')
-        return 'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write ai_agent';
+        return 'banking:read banking:write banking:read banking:read banking:write ai_agent';
       return null;
     });
     mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
@@ -496,7 +496,7 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
     );
     // Specific scope not in user token — must NOT be requested
     const callArgs = mockPerformTokenExchange.mock.calls[0][2];
-    expect(callArgs).not.toContain('banking:accounts:read');
+    expect(callArgs).not.toContain('banking:read');
   });
 
   it('calls performTokenExchange with banking:write for write tool when user has broad scope', async () => {
@@ -507,7 +507,7 @@ describe('resolveMcpAccessTokenWithEvents — banking:read broad scope in token'
       expect.arrayContaining(['banking:write'])
     );
     const callArgs = mockPerformTokenExchange.mock.calls[0][2];
-    expect(callArgs).not.toContain('banking:transactions:write');
+    expect(callArgs).not.toContain('banking:write');
   });
 
   it('returns the exchanged token (not user token) for broad-scope token', async () => {
@@ -536,7 +536,7 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
     expect(mockPerformTokenExchange).toHaveBeenCalledTimes(1);
   });
 
-  it('denies create_transfer when neither banking:write nor banking:transactions:write is allowed', async () => {
+  it('denies create_transfer when neither banking:write nor banking:write is allowed', async () => {
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       if (key === 'agent_mcp_allowed_scopes') return 'banking:read ai_agent'; // write intentionally excluded
@@ -549,9 +549,9 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
   });
 });
 
-// ─── ENDUSER_AUDIENCE delegation-scope-only token (banking:agent:invoke) ────
-// Regression: when ENDUSER_AUDIENCE restricts login to only banking:agent:invoke,
-// the fallback must NOT use banking:agent:invoke as the exchange scope (it lives
+// ─── ENDUSER_AUDIENCE delegation-scope-only token (banking:ai:agent) ────
+// Regression: when ENDUSER_AUDIENCE restricts login to only banking:ai:agent,
+// the fallback must NOT use banking:ai:agent as the exchange scope (it lives
 // on the enduser resource, not the MCP resource).  The exchange should be attempted
 // with the tool's actual scopes so PingOne can evaluate its exchange policy.
 
@@ -559,13 +559,13 @@ describe('resolveMcpAccessTokenWithEvents — OR policy: broad scope enables too
 const sampleJwtAgentInvokeOnly = makeJwt({
   sub: USER_SUB,
   aud: 'banking_api_enduser',
-  scope: 'profile email offline_access banking:agent:invoke',
+  scope: 'profile email offline_access banking:ai:agent',
   iss: 'https://auth.pingone.com/test-env/as',
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
 });
 
-describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:agent:invoke only token', () => {
+describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:ai:agent only token', () => {
   const origClientId = process.env.AGENT_OAUTH_CLIENT_ID;
 
   beforeEach(() => {
@@ -574,7 +574,7 @@ describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:agent:inv
     configStore.getEffective.mockImplementation((key) => {
       if (key === 'pingone_resource_mcp_server_uri' || key === 'mcp_resource_uri') return 'https://mcp.example.com/api';
       if (key === 'agent_mcp_allowed_scopes')
-        return 'banking:read banking:write banking:accounts:read banking:transactions:read banking:transactions:write banking:agent:invoke ai_agent';
+        return 'banking:read banking:write banking:read banking:read banking:write banking:ai:agent ai_agent';
       return null;
     });
     mockPerformTokenExchange.mockResolvedValue(sampleJwtMcpAccessToken);
@@ -585,19 +585,19 @@ describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:agent:inv
     else delete process.env.AGENT_OAUTH_CLIENT_ID;
   });
 
-  it('uses tool candidate scopes (not banking:agent:invoke) for write tool exchange', async () => {
+  it('uses tool candidate scopes (not banking:ai:agent) for write tool exchange', async () => {
     await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAgentInvokeOnly), 'create_transfer');
     const callArgs = mockPerformTokenExchange.mock.calls[0][2];
     // Must request actual MCP resource scopes, not the delegation scope
-    expect(callArgs).not.toContain('banking:agent:invoke');
-    expect(callArgs).toEqual(expect.arrayContaining(['banking:transactions:write', 'banking:write']));
+    expect(callArgs).not.toContain('banking:ai:agent');
+    expect(callArgs).toEqual(expect.arrayContaining(['banking:write', 'banking:write']));
   });
 
-  it('uses tool candidate scopes (not banking:agent:invoke) for read tool exchange', async () => {
+  it('uses tool candidate scopes (not banking:ai:agent) for read tool exchange', async () => {
     await resolveMcpAccessTokenWithEvents(makeReq(sampleJwtAgentInvokeOnly), 'get_my_accounts');
     const callArgs = mockPerformTokenExchange.mock.calls[0][2];
-    expect(callArgs).not.toContain('banking:agent:invoke');
-    expect(callArgs).toEqual(expect.arrayContaining(['banking:accounts:read', 'banking:read']));
+    expect(callArgs).not.toContain('banking:ai:agent');
+    expect(callArgs).toEqual(expect.arrayContaining(['banking:read', 'banking:read']));
   });
 });
 
@@ -607,7 +607,7 @@ describe('resolveMcpAccessTokenWithEvents — ENDUSER_AUDIENCE banking:agent:inv
 const sampleJwtNoMayAct = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
-  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  scope: 'openid profile email offline_access banking:read banking:read',
   iss: 'https://auth.pingone.com/test-env/as',
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
@@ -618,7 +618,7 @@ const sampleJwtNoMayAct = makeJwt({
 const sampleJwtWithMayAct = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',
-  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  scope: 'openid profile email offline_access banking:read banking:read',
   may_act: { client_id: 'bff-client-id' },
   iss: 'https://auth.pingone.com/test-env/as',
   exp: Math.floor(Date.now() / 1000) + 3600,
@@ -685,7 +685,7 @@ describe('resolveMcpAccessTokenWithEvents — ff_inject_may_act', () => {
 const sampleJwtAudMismatch = makeJwt({
   sub: USER_SUB,
   aud: 'banking_enduser',  // only the admin client; not the MCP URI
-  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  scope: 'openid profile email offline_access banking:read banking:read',
   iss: 'https://auth.pingone.com/test-env/as',
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
@@ -695,7 +695,7 @@ const sampleJwtAudMismatch = makeJwt({
 const sampleJwtAudIncludes = makeJwt({
   sub: USER_SUB,
   aud: ['banking_enduser', 'https://mcp.example.com/api'],
-  scope: 'openid profile email offline_access banking:accounts:read banking:transactions:read',
+  scope: 'openid profile email offline_access banking:read banking:read',
   iss: 'https://auth.pingone.com/test-env/as',
   exp: Math.floor(Date.now() / 1000) + 3600,
   iat: Math.floor(Date.now() / 1000),
@@ -871,7 +871,7 @@ const agentActorJwt = makeJwt({
 const agentExchangedJwt = makeJwt({
   sub: USER_SUB,
   aud: 'https://mcp-server.pingdemo.com',
-  scope: 'banking:accounts:read',
+  scope: 'banking:read',
   act: { sub: AI_AGENT_CLIENT },
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
@@ -889,7 +889,7 @@ const TWO_EX_MCP_RESOURCE = 'https://mcp-server.pingdemo.com';
 const finalMcpJwt = makeJwt({
   sub: USER_SUB,
   aud: TWO_EX_MCP_RESOURCE,
-  scope: 'banking:accounts:read',
+  scope: 'banking:read',
   act: {
     sub: MCP_EXCHANGER_CLIENT,
     act: { sub: AI_AGENT_CLIENT },
@@ -1184,7 +1184,7 @@ describe('RFC 8693 Compliance - Subject Preservation & may_act Validation', () =
     const userTokenNoMayAct = makeJwt({
       sub: USER_SUB,
       aud: 'banking_enduser',
-      scope: 'banking:accounts:read banking:transactions:read',
+      scope: 'banking:read banking:read',
       // NO may_act claim
       iss: 'https://auth.pingone.com/test-env/as',
       exp: Math.floor(Date.now() / 1000) + 3600,
@@ -1237,7 +1237,7 @@ describe('Scope & Audience Mapping (RFC 8707)', () => {
   it('should narrow scopes to audience allowlist', () => {
     const testAudience = 'https://ai-agent-gateway.example.com';
     const result = require('../../services/configStore').validateScopeAudience(
-      ['banking:read', 'banking:agent:invoke', 'invalid:scope'],
+      ['banking:read', 'banking:ai:agent', 'invalid:scope'],
       testAudience
     );
     expect(result.valid).toBe(true);
@@ -1292,7 +1292,7 @@ describe('Scope & Audience Mapping (RFC 8707)', () => {
 
   it('should narrow scopes to audience allowlist', () => {
     const result = require('../../services/configStore').validateScopeAudience(
-      ['banking:read', 'banking:agent:invoke', 'invalid:scope'],
+      ['banking:read', 'banking:ai:agent', 'invalid:scope'],
       testAudience
     );
     expect(result.valid).toBe(true);

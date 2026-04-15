@@ -41,7 +41,9 @@
   justify-content: center;
 }
 
-.chase-nav-link {
+.chase-nav-link,
+a.chase-nav-link:link,
+a.chase-nav-link:visited {
   color: white;
   text-decoration: none;
   font-size: 14px;

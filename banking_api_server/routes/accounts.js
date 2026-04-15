@@ -33,7 +33,7 @@ async function restoreAccountsFromSnapshot(userId) {
 }
 
 // Get all accounts (admin only)
-router.get('/', authenticateToken, requireScopes(['banking:accounts:read', 'banking:read']), async (req, res) => {
+router.get('/', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
@@ -51,6 +51,7 @@ async function provisionDemoAccounts(userId) {
   const uid = userId.replace(/-/g, '').slice(0, 10);
   const checkingId = `chk-${uid}`;
   const savingsId  = `sav-${uid}`;
+  const loanId     = `loan-${uid}`;
 
   // Remove existing accounts for this user so we can reset balances cleanly
   const existing = dataStore.getAccountsByUserId(userId);
@@ -74,9 +75,11 @@ async function provisionDemoAccounts(userId) {
   const _acctN = parseInt(_acctDigits, 16) % 9999999999;
   const checkingFull = '01' + String(_acctN).padStart(10, '0');
   const savingsFull  = '02' + String(_acctN).padStart(10, '0');
+  const loanFull     = '03' + String(_acctN).padStart(10, '0');
   const _ibanBase    = parseInt(uid.replace(/[^0-9a-f]/gi, '').slice(0, 8) || '0', 16);
   const _ibanSfx1    = String(_ibanBase % 100000000).padStart(8, '0');
   const _ibanSfx2    = String((_ibanBase + 1) % 100000000).padStart(8, '0');
+  const _ibanSfx3    = String((_ibanBase + 2) % 100000000).padStart(8, '0');
 
   const checking = await dataStore.createAccount({
     id: checkingId, userId,
@@ -108,6 +111,21 @@ async function provisionDemoAccounts(userId) {
     accountHolderName: '',
     createdAt: new Date('2024-01-15'),
   });
+  const carLoan = await dataStore.createAccount({
+    id: loanId, userId,
+    accountNumberFull: loanFull,
+    accountNumber: `****${loanFull.slice(-4)}`,
+    accountType: 'loan',
+    balance: -12000.00, currency: 'USD', name: 'Car Loan',
+    routingNumber: '026073150',
+    swiftCode: 'CHASUS33',
+    iban: `US12CHAS${_ibanSfx3}`,
+    branchName: 'Super Banking Main Branch',
+    branchCode: '001',
+    openedDate: '2023-06-01',
+    accountHolderName: '',
+    createdAt: new Date('2024-01-15'),
+  });
 
   const sampleTxns = [
     { fromAccountId: null,        toAccountId: checkingId, amount: 3500.00, type: 'deposit',    description: 'Direct deposit – Payroll',    createdAt: new Date('2024-03-01T09:00:00Z') },
@@ -117,12 +135,14 @@ async function provisionDemoAccounts(userId) {
     { fromAccountId: checkingId,  toAccountId: null,       amount:   85.50, type: 'withdrawal', description: 'Grocery store',              createdAt: new Date('2024-03-14T17:45:00Z') },
     { fromAccountId: checkingId,  toAccountId: null,       amount:  200.00, type: 'withdrawal', description: 'Utility bill – Electric',    createdAt: new Date('2024-03-18T08:00:00Z') },
     { fromAccountId: null,        toAccountId: checkingId, amount:   75.00, type: 'deposit',    description: 'Reimbursement',              createdAt: new Date('2024-03-20T13:00:00Z') },
+    { fromAccountId: checkingId,  toAccountId: loanId,     amount:  450.00, type: 'payment',    description: 'Car loan payment',           createdAt: new Date('2024-03-05T08:00:00Z') },
+    { fromAccountId: checkingId,  toAccountId: loanId,     amount:  450.00, type: 'payment',    description: 'Car loan payment',           createdAt: new Date('2024-02-05T08:00:00Z') },
   ];
   for (const txn of sampleTxns) {
     await dataStore.createTransaction({ ...txn, userId, status: 'completed' });
   }
 
-  return [checking, savings];
+  return [checking, savings, carLoan];
 }
 
 // Get user's own accounts — auto-provisions demo accounts on first load
@@ -215,7 +235,7 @@ router.post('/reset-all-demo', authenticateToken, requireScopes(['banking:write'
 });
 
 // Get account by ID (admin only)
-router.get('/:id', authenticateToken, requireScopes(['banking:accounts:read', 'banking:read']), async (req, res) => {
+router.get('/:id', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
     // Check if user is admin
     if (req.user.role !== 'admin') {
@@ -234,7 +254,7 @@ router.get('/:id', authenticateToken, requireScopes(['banking:accounts:read', 'b
 });
 
 // Get account balance (admin or account owner)
-router.get('/:id/balance', authenticateToken, requireScopes(['banking:accounts:read', 'banking:read']), async (req, res) => {
+router.get('/:id/balance', authenticateToken, requireScopes(['banking:read']), async (req, res) => {
   try {
     const account = dataStore.getAccountById(req.params.id);
     if (!account) {

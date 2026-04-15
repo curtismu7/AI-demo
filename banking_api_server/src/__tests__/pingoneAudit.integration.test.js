@@ -70,16 +70,16 @@ describe('GET /api/pingone/audit', () => {
 
     // Mock scope fetches for each resource (5 resources)
     const scopeResponses = [
-      { data: { _embedded: { scopes: [{ name: 'banking:agent:invoke' }] } } },
+      { data: { _embedded: { scopes: [{ name: 'banking:ai:agent' }] } } },
       { data: { _embedded: { scopes: [
-        { name: 'banking:accounts:read' },
-        { name: 'banking:transactions:read' },
-        { name: 'banking:transactions:write' }
+        { name: 'banking:read' },
+        { name: 'banking:read' },
+        { name: 'banking:write' }
       ] } } },
       { data: { _embedded: { scopes: [
-        { name: 'banking:accounts:read' },
-        { name: 'banking:transactions:read' },
-        { name: 'banking:transactions:write' }
+        { name: 'banking:read' },
+        { name: 'banking:read' },
+        { name: 'banking:write' }
       ] } } },
       { data: { _embedded: { scopes: [] } } },
       { data: { _embedded: { scopes: [
@@ -123,7 +123,7 @@ describe('GET /api/pingone/audit', () => {
     });
 
     axios.get.mockResolvedValueOnce({
-      data: { _embedded: { scopes: [{ name: 'banking:agent:invoke' }] } }
+      data: { _embedded: { scopes: [{ name: 'banking:ai:agent' }] } }
     });
 
     const response = await request(app)
@@ -160,7 +160,7 @@ describe('GET /api/pingone/audit', () => {
     });
 
     axios.get.mockResolvedValueOnce({
-      data: { _embedded: { scopes: [{ name: 'banking:agent:invoke' }] } }
+      data: { _embedded: { scopes: [{ name: 'banking:ai:agent' }] } }
     });
 
     const response = await request(app)

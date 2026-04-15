@@ -27,6 +27,8 @@ jest.mock('../../middleware/auth', () => ({
     }
     try {
       req.user = JSON.parse(userHeader);
+      req.session = req.session || {};
+      req.session.user = req.user;
       return next();
     } catch {
       return res.status(401).json({ error: 'invalid_token' });
@@ -63,6 +65,13 @@ jest.mock('../../middleware/auth', () => ({
   },
     requireSession: (req, res, next) => next(),
   hashPassword: (p) => p,
+}));
+
+// ─── Bypass HITL consent gate so step-up gate tests can reach the step-up logic ──
+// The HITL consent check runs before step-up. For amounts > $500 we skip it here.
+jest.mock('../../services/transactionConsentChallenge', () => ({
+  ...jest.requireActual('../../services/transactionConsentChallenge'),
+  verifyAndConsumeChallenge: jest.fn(() => ({ ok: true })),
 }));
 
 // ─── Mock the data store with a test user + account ───────────────────────────
@@ -112,7 +121,7 @@ const customerUser = (overrides = {}) =>
     username: 'customer',
     email: 'customer@bank.com',
     role: 'user',
-    scopes: ['banking:transactions:write', 'banking:accounts:read'],
+    scopes: ['banking:write', 'banking:read'],
     acr: null,
     ...overrides,
   });

@@ -450,11 +450,11 @@ class ConfigStore {
         'PINGONE_CORE_USER_REDIRECT_URI',
         'PINGONE_USER_REDIRECT_URI',
       ],
-      pingone_client_id:     ['PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_CIMD_CLIENT_ID'],
-      pingone_client_secret: ['PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_CIMD_CLIENT_SECRET'],
-      pingone_mgmt_client_id:          ['PINGONE_MGMT_CLIENT_ID', 'PINGONE_MANAGEMENT_CLIENT_ID'],
-      pingone_mgmt_client_secret:      ['PINGONE_MGMT_CLIENT_SECRET', 'PINGONE_MANAGEMENT_CLIENT_SECRET'],
-      pingone_mgmt_token_auth_method:  ['PINGONE_MGMT_TOKEN_AUTH_METHOD'],
+      pingone_client_id:     ['PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_CIMD_CLIENT_ID', 'PINGONE_WORKER_TOKEN_CLIENT_ID'],
+      pingone_client_secret: ['PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_CIMD_CLIENT_SECRET', 'PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
+      pingone_mgmt_client_id:          ['PINGONE_MGMT_CLIENT_ID', 'PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_WORKER_TOKEN_CLIENT_ID'],
+      pingone_mgmt_client_secret:      ['PINGONE_MGMT_CLIENT_SECRET', 'PINGONE_MANAGEMENT_CLIENT_SECRET', 'PINGONE_WORKER_TOKEN_CLIENT_SECRET'],
+      pingone_mgmt_token_auth_method:  ['PINGONE_MGMT_TOKEN_AUTH_METHOD', 'PINGONE_WORKER_TOKEN_AUTH_METHOD'],
       admin_pingone_authorize_pi_flow: ['PINGONE_ADMIN_AUTHORIZE_PI_FLOW'],
       user_pingone_authorize_pi_flow:  ['PINGONE_USER_AUTHORIZE_PI_FLOW'],
       admin_role:             ['ADMIN_ROLE'],
@@ -604,7 +604,7 @@ class ConfigStore {
 function validateTwoExchangeConfig() {
   const errors = [];
   const warnings = [];
-  const logger = require('./logger') || console;
+  const { logger } = require('../utils/logger');
   
   // Require explicit AI Agent credentials (no fallbacks)
   const aiAgentClientId = configStore.get('PINGONE_AI_AGENT_CLIENT_ID') || process.env.PINGONE_AI_AGENT_CLIENT_ID || process.env.AI_AGENT_CLIENT_ID;
@@ -612,17 +612,18 @@ function validateTwoExchangeConfig() {
   if (!aiAgentClientId) errors.push('Missing: PINGONE_AI_AGENT_CLIENT_ID (or AI_AGENT_CLIENT_ID)');
   if (!aiAgentSecret) errors.push('Missing: PINGONE_AI_AGENT_CLIENT_SECRET (or AI_AGENT_CLIENT_SECRET)');
   
-  // Require explicit MCP Exchanger credentials (no fallbacks)
+  // Require explicit MCP Exchanger credentials — use configStore fallback chain
   const mcpClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
-  const mcpSecret = process.env.AGENT_OAUTH_CLIENT_SECRET;
+  const mcpSecret = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
   if (!mcpClientId) errors.push('Missing: AGENT_OAUTH_CLIENT_ID (MCP Token Exchanger client ID)');
   if (!mcpSecret) errors.push('Missing: AGENT_OAUTH_CLIENT_SECRET (MCP Token Exchanger client secret)');
   
   // Require explicit audiences (NO hard-coded pingdemo.com defaults)
-  const agentGatewayAud = configStore.getEffective('PINGONE_RESOURCE_AGENT_GATEWAY_URI') || process.env.PINGONE_RESOURCE_AGENT_GATEWAY_URI;
-  const mcpGatewayAud = configStore.getEffective('PINGONE_RESOURCE_MCP_GATEWAY_URI') || process.env.PINGONE_RESOURCE_MCP_GATEWAY_URI;
-  const intermediateAud = configStore.getEffective('AI_AGENT_INTERMEDIATE_AUDIENCE') || process.env.AI_AGENT_INTERMEDIATE_AUDIENCE;
-  const finalAud = configStore.getEffective('PINGONE_RESOURCE_TWO_EXCHANGE_URI') || process.env.PINGONE_RESOURCE_TWO_EXCHANGE_URI;
+  // IMPORTANT: use lowercase keys — envFallbackMap keys are lowercase; uppercase skips the map.
+  const agentGatewayAud = configStore.getEffective('pingone_resource_agent_gateway_uri') || process.env.PINGONE_RESOURCE_AGENT_GATEWAY_URI;
+  const mcpGatewayAud = configStore.getEffective('pingone_resource_mcp_gateway_uri') || process.env.PINGONE_RESOURCE_MCP_GATEWAY_URI;
+  const intermediateAud = configStore.getEffective('ai_agent_intermediate_audience') || process.env.AI_AGENT_INTERMEDIATE_AUDIENCE;
+  const finalAud = configStore.getEffective('pingone_resource_two_exchange_uri') || process.env.PINGONE_RESOURCE_TWO_EXCHANGE_URI;
   
   if (!agentGatewayAud) errors.push('Missing: PINGONE_RESOURCE_AGENT_GATEWAY_URI (Step 1: audience for AI Agent token acquisition)');
   if (!mcpGatewayAud) errors.push('Missing: PINGONE_RESOURCE_MCP_GATEWAY_URI (Step 3: audience for MCP token acquisition)');
@@ -701,80 +702,62 @@ function buildAllowedScopesByAudience() {
   const mapping = {};
 
   // User End-User banking API (standard 1-exchange)
-  const endUserAudience = store.get('PINGONE_AUDIENCE_ENDUSER') || 'https://banking-api.banking-demo.com';
+  const endUserAudience = configStore.get('PINGONE_AUDIENCE_ENDUSER') || 'https://banking-api.banking-demo.com';
   if (endUserAudience) {
     mapping[endUserAudience] = [
       'banking:read',
       'banking:write',
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
-      'banking:read',
-      'banking:write',
-      'banking:admin', // Allow admin scopes here too for role-based access
+      'banking:admin',
+      'banking:sensitive',
+      'banking:ai:agent',
     ];
   }
 
   // Agent Gateway (Step 1 actor token) — 2-exchange only
-  const agentGatewayUri = store.get('PINGONE_RESOURCE_AGENT_GATEWAY_URI') || 'https://banking-agent-gateway.banking-demo.com';
+  const agentGatewayUri = configStore.get('PINGONE_RESOURCE_AGENT_GATEWAY_URI') || 'https://banking-agent-gateway.banking-demo.com';
   if (agentGatewayUri) {
     mapping[agentGatewayUri] = [
-      'banking:agent:invoke',
+      'banking:ai:agent',
       'ai_agent',
     ];
   }
 
   // AI Agent Intermediate (Step 2 exchange output) — 2-exchange delegation
-  const aiAgentAudience = store.get('AI_AGENT_INTERMEDIATE_AUDIENCE') || store.get('PINGONE_AUDIENCE_AI_AGENT') || 'https://banking-ai-agent.banking-demo.com';
+  const aiAgentAudience = configStore.get('AI_AGENT_INTERMEDIATE_AUDIENCE') || configStore.get('PINGONE_AUDIENCE_AI_AGENT') || 'https://banking-ai-agent.banking-demo.com';
   if (aiAgentAudience) {
     mapping[aiAgentAudience] = [
       'banking:read',
       'banking:write',
-      'banking:agent:invoke',
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
+      'banking:ai:agent',
     ];
   }
 
   // MCP Gateway (Step 3 actor token) — 2-exchange only
-  const mcpGatewayUri = store.get('PINGONE_RESOURCE_MCP_GATEWAY_URI') || 'https://banking-mcp-gateway.banking-demo.com';
+  const mcpGatewayUri = configStore.get('PINGONE_RESOURCE_MCP_GATEWAY_URI') || 'https://banking-mcp-gateway.banking-demo.com';
   if (mcpGatewayUri) {
     mapping[mcpGatewayUri] = [
       'banking:mcp:invoke',
-      'mcp_resource_access',
-      'banking:ai:agent:read',
-      'banking:ai:agent:write',
+      'banking:ai:agent',
     ];
   }
 
   // MCP Resource Server (1-exchange final) — standard 1-exchange
-  const mcpServerUri = store.get('PINGONE_RESOURCE_MCP_SERVER_URI') || 'https://banking-mcp-server.banking-demo.com';
+  const mcpServerUri = configStore.get('PINGONE_RESOURCE_MCP_SERVER_URI') || 'https://banking-mcp-server.banking-demo.com';
   if (mcpServerUri) {
     mapping[mcpServerUri] = [
-      'get_accounts:read',
-      'transfer:execute',
-      'check:read',
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
-      'banking:ai:agent:read',
-      'banking:ai:agent:write',
+      'banking:read',
+      'banking:write',
+      'banking:mcp:invoke',
     ];
   }
 
   // 2-Exchange final resource
-  const twoExchangeUri = store.get('PINGONE_RESOURCE_TWO_EXCHANGE_URI') || 'https://banking-resource-server.banking-demo.com';
+  const twoExchangeUri = configStore.get('PINGONE_RESOURCE_TWO_EXCHANGE_URI') || 'https://banking-resource-server.banking-demo.com';
   if (twoExchangeUri) {
     mapping[twoExchangeUri] = [
-      'get_accounts:read',
-      'transfer:execute',
-      'check:read',
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
-      'banking:ai:agent:read',
-      'banking:ai:agent:write',
+      'banking:read',
+      'banking:write',
+      'banking:mcp:invoke',
     ];
   }
 

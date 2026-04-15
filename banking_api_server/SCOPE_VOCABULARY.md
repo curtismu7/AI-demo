@@ -13,13 +13,14 @@
 | `banking:write` | Core | Write access for deposits, withdrawals, transfers | Main Banking API |
 | `banking:admin` | Core | Full administrative access (admin UI, stats, settings) | Main Banking API |
 | `banking:sensitive` | Core | Sensitive data access (PII, account details) | Main Banking API |
-| `banking:ai:agent` | Core | AI agent identification on banking resource tokens | Main Banking API |
-| `ai_agent` | Identity | Legacy identity marker for agent OAuth clients | OIDC (no resource server) |
-| `banking:accounts:read` | Compound | Read-only accounts view | Main Banking API |
-| `banking:transactions:read` | Compound | Read-only transactions view | Main Banking API |
-| `banking:transactions:write` | Compound | Write transactions (deposits, withdrawals, transfers) | Main Banking API |
+| `banking:ai:agent` | Core | AI agent delegation marker on banking resource tokens | Main Banking API |
+| `banking:mcp:invoke` | Core | Permission to invoke MCP tools (MCP RS only) | MCP Resource Server |
+| `ai_agent` | Identity | Agent identity marker (OIDC scope, no RS needed) | OIDC (built-in) |
 
-**Core scopes** are the canonical names used in new code. **Compound scopes** are kept for backward compatibility and will be deprecated in a future phase.
+> **Deprecated — do not create in PingOne or request in code:**
+> `banking:accounts:read`, `banking:transactions:read`, `banking:transactions:write`, `banking:agent:invoke`, `banking:ai:agent:read`, `banking:general:read`, `banking:admin:full`
+>
+> These names were removed in Phase 146. The `Scopes.ACCOUNTS_READ` / `Scopes.TRANSACTIONS_READ` / `Scopes.MCP_TOOLS` constants in `middleware/scopeEnforcement.js` were replaced with `Scopes.READ`, `Scopes.WRITE`, `Scopes.MCP_INVOKE`.
 
 ---
 
@@ -27,43 +28,59 @@
 
 ### Main Banking API
 
-- **Audience URI:** Configured via `PINGONE_AUDIENCE_ENDUSER` env var (default: `https://banking-api.banking-demo.com`)
-- **PingOne Resource:** Custom resource server created via PingOne Management API or admin console
-- **Scopes issued:** `banking:read`, `banking:write`, `banking:admin`, `banking:sensitive`, `banking:ai:agent`, plus compound variants
-- **Enforcement:** BFF middleware `requireScopes()` + row-level ownership checks on transaction routes
+- **Audience URI:** Value of `ENDUSER_AUDIENCE` env var (e.g. `https://resource.pingdemo.com`)
+- **PingOne Resource:** Custom resource server — create in PingOne Admin → Resources
+- **Scopes issued:** `banking:read`, `banking:write`, `banking:admin`, `banking:sensitive`, `banking:ai:agent`
+- **Enforcement:** BFF middleware `requireScopes()` + row-level ownership checks
 
-### Agent Gateway (2-Exchange)
+### MCP Resource Server
 
-- **Audience URI:** Configured via `PINGONE_RESOURCE_AGENT_GATEWAY_URI` env var
-- **Scopes issued:** `banking:agent:invoke`, `ai_agent`
-- **Purpose:** Step 1 of 2-exchange flow (actor token for RFC 8693)
-
-### MCP Server
-
-- **Audience URI:** Configured via `pingone_resource_mcp_server_uri` in configStore
-- **Scopes issued:** Narrowed via RFC 8693 token exchange from Main Banking API scopes
-- **Purpose:** Delegated access token for MCP tool execution
+- **Audience URI:** Value of `PINGONE_RESOURCE_MCP_SERVER_URI` env var
+- **Scopes issued:** `banking:read`, `banking:write`, `banking:mcp:invoke`
+- **Purpose:** Narrowed delegated tokens for MCP tool execution (RFC 8693 exchange output)
 
 ---
 
 ## Route Enforcement Index
 
-> **Note:** Transaction `/my` routes intentionally skip `requireScopes()` — see [REGRESSION_PLAN.md §1](../REGRESSION_PLAN.md).
-> Tokens without a custom resource server lack `banking:*` scopes, so row-level ownership checks are used instead.
+Two sources govern route access:
+1. **`ROUTE_SCOPE_MAP`** (`config/scopes.js`) — the intended policy, used by `auth.test.js`
+2. **Route middleware** — what is actually wired in `routes/*.js` (may differ; see Notes)
 
-| Route | Required Scope(s) | Enforcement | Notes |
-|-------|-------------------|-------------|-------|
-| `GET /api/accounts` | `banking:read` | `requireScopes()` | All accounts (admin) or own accounts (customer) |
-| `GET /api/accounts/my` | `banking:read` | `requireScopes()` | User's own accounts |
-| `POST /api/transactions/deposit` | `banking:write` | `requireScopes()` | Deposit to own account |
-| `POST /api/transactions/withdraw` | `banking:write` | `requireScopes()` | Withdraw from own account |
-| `POST /api/transactions/transfer` | `banking:write` | `requireScopes()` | Transfer between accounts |
-| `GET /api/transactions/my` | _(none)_ | Row-level ownership | Intentional — no `requireScopes()` per REGRESSION_PLAN §1 |
-| `GET /api/admin/*` | `banking:admin` | `requireScopes()` | Admin-only endpoints |
-| `POST /api/admin/*` | `banking:admin` | `requireScopes()` | Admin-only endpoints |
-| `GET /api/users/me` | `banking:read` | `requireScopes()` | Current user profile |
+| Route | Scope Gate (`requireScopes`) | Additional Gate | Notes |
+|-------|------------------------------|-----------------|-------|
+| `GET /api/accounts` | `banking:read` | Admin role check (403 for non-admin) | All accounts; non-admin users get 403 even with correct scope |
+| `GET /api/accounts/my` | `banking:read` | — | Returns only caller's rows |
+| `GET /api/accounts/:id` | `banking:read` | Ownership check | |
+| `GET /api/accounts/:id/balance` | `banking:read` | — | |
+| `POST /api/accounts` | `banking:write` | Admin role check (403 for non-admin) | |
+| `PUT /api/accounts/:id` | `banking:write` | — | |
+| `DELETE /api/accounts/:id` | `banking:write` | — | |
+| `GET /api/transactions` | `banking:read` | Admin role check (403 for non-admin) | All transactions; non-admin users get 403 |
+| `GET /api/transactions/my` | _(none — just auth)_ | Row-level ownership | No `requireScopes()` wired in route. Any authenticated token works |
+| `GET /api/transactions/:id` | `banking:read` | — | |
+| `POST /api/transactions` | _(none — just auth)_ | **Phase 122 session check** + HITL consent + Step-up MFA | No scope gate. Requires `req.session?.user` (login session, not just Bearer token). Amounts > $500 require HITL consent challenge. Amounts ≥ $250 (configurable) trigger step-up MFA |
+| `POST /api/transactions/deposit` | `banking:write` | — | |
+| `POST /api/transactions/withdraw` | `banking:write` | — | |
+| `POST /api/transactions/transfer` | `banking:write` | — | |
+| `PUT /api/transactions/:id` | `banking:write` | — | |
+| `DELETE /api/transactions/:id` | `banking:write` | — | |
+| `GET /api/admin/*` | `banking:admin` | — | |
+| `POST /api/admin/*` | `banking:admin` | — | |
+| `PUT /api/admin/*` | `banking:admin` | — | |
+| `DELETE /api/admin/*` | `banking:admin` | — | |
+| `GET /api/users` | `banking:read` | — | |
+| `GET /api/users/me` | `banking:read` | — | |
+| `GET /api/users/:id` | `banking:read` | Ownership check | |
+| `POST /api/users` | Admin role via `requireAdmin` | — | Scope `banking:write` insufficient alone; admin role required |
+| `PUT /api/users/:id` | `banking:write` | — | |
+| `DELETE /api/users/:id` | `banking:write` | — | |
 
-See [SCOPE_AUTHORIZATION.md](SCOPE_AUTHORIZATION.md) for middleware usage patterns and code examples.
+### Phase 122 session check on POST /api/transactions
+
+`POST /api/transactions` checks `req.session?.user` before executing. A valid Bearer token alone is not enough — the caller must have a full login session. This affects:
+- **API-only callers** (no browser session): will receive `401 unauthenticated`
+- **MCP tool calls** that go through the BFF: succeed only when the BFF session carries the delegated user context
 
 ---
 

@@ -416,6 +416,42 @@ a.pingone-test-button--primary:visited {
   transform: translateY(-1px);
 }
 
+.pingone-test-button--update {
+  background: #1565c0;
+  color: white;
+}
+
+.pingone-test-button--update:hover {
+  background: #0d47a1;
+  transform: translateY(-1px);
+}
+
+.test-card-update-result {
+  margin: 0.5rem 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.test-card-update-result--passed {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-left: 3px solid #43a047;
+}
+
+.test-card-update-result--failed {
+  background: #ffebee;
+  color: #c62828;
+  border-left: 3px solid #ef5350;
+}
+
+.test-card-update-result--running {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-left: 3px solid #42a5f5;
+}
+
 .pingone-test-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -742,9 +778,13 @@ a.pingone-test-button--primary:visited {
 }
 
 .asset-table-td {
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   vertical-align: top;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.asset-table tr:last-child .asset-table-td {
+  border-bottom: none;
 }
 
 .asset-table-td--name {
@@ -775,7 +815,7 @@ a.pingone-test-button--primary:visited {
   display: inline-block;
   padding: 0.1rem 0.45rem;
   border-radius: 3px;
-  font-size: 0.72rem;
+  font-size: 0.875rem;
   font-weight: 500;
   margin: 2px 2px 2px 0;
   white-space: nowrap;
@@ -1213,7 +1253,7 @@ a.pingone-test-button--primary:visited {
   line-height: 1;
 }
 .scope-fix-panel__desc {
-  font-size: 13px;
+  font-size: 1rem;
   color: #94a3b8;
   margin: 0;
   display: flex;
@@ -1241,7 +1281,7 @@ a.pingone-test-button--primary:visited {
   cursor: not-allowed;
 }
 .scope-fix-result {
-  font-size: 12px;
+  font-size: 1rem;
   padding: 6px 10px;
   border-radius: 4px;
   margin-top: 4px;

@@ -114,8 +114,8 @@ describe('Scope-based Authorization Integration Tests', () => {
   });
 
   describe('Account Routes Scope Authorization', () => {
-    it('should allow access to GET /api/accounts with banking:accounts:read scope', async () => {
-      const token = createOAuthToken(['banking:accounts:read']);
+    it('should allow access to GET /api/accounts with banking:read scope', async () => {
+      const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
         .get('/api/accounts')
@@ -149,11 +149,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:accounts:read', 'banking:read']);
+      expect(response.body.requiredScopes).toEqual(['banking:read']);
     });
 
-    it('should allow access to GET /api/accounts/my with banking:accounts:read scope', async () => {
-      const token = createOAuthToken(['banking:accounts:read']);
+    it('should allow access to GET /api/accounts/my with banking:read scope', async () => {
+      const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
         .get('/api/accounts/my')
@@ -232,7 +232,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should return detailed error information for insufficient scopes', async () => {
-      const token = createOAuthToken(['banking:transactions:read'], { roles: ['admin'] });
+      const token = createOAuthToken(['banking:read'], { roles: ['admin'] });
       
       const response = await request(app)
         .get('/api/accounts')
@@ -242,9 +242,9 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body).toMatchObject({
         error: 'insufficient_scope',
         error_description: expect.stringContaining('At least one of the following scopes is required'),
-        requiredScopes: ['banking:accounts:read', 'banking:read'],
-        providedScopes: ['banking:transactions:read'],
-        missingScopes: ['banking:accounts:read', 'banking:read'],
+        requiredScopes: ['banking:read'],
+        providedScopes: ['banking:read'],
+        missingScopes: ['banking:read'],
         validationMode: 'any_required',
         hint: expect.any(String),
         timestamp: expect.any(String),
@@ -270,8 +270,8 @@ describe('Scope-based Authorization Integration Tests', () => {
   });
 
   describe('Transaction Routes Scope Authorization', () => {
-    it('should allow access to GET /api/transactions with banking:transactions:read scope', async () => {
-      const token = createOAuthToken(['banking:transactions:read']);
+    it('should allow access to GET /api/transactions with banking:read scope', async () => {
+      const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
         .get('/api/transactions')
@@ -305,11 +305,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:transactions:read', 'banking:read']);
+      expect(response.body.requiredScopes).toEqual(['banking:read']);
     });
 
-    it('should allow access to GET /api/transactions/my with banking:transactions:read scope', async () => {
-      const token = createOAuthToken(['banking:transactions:read']);
+    it('should allow access to GET /api/transactions/my with banking:read scope', async () => {
+      const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
         .get('/api/transactions/my')
@@ -346,8 +346,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body).toHaveProperty('transactions');
     });
 
-    it('should allow access to POST /api/transactions with banking:transactions:write scope', async () => {
-      const token = createOAuthToken(['banking:transactions:write']);
+    it('should allow access to POST /api/transactions with banking:write scope', async () => {
+      const token = createOAuthToken(['banking:write']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -404,8 +404,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should test transfer operations with banking:transactions:write scope', async () => {
-      const token = createOAuthToken(['banking:transactions:write']);
+    it('should test transfer operations with banking:write scope', async () => {
+      const token = createOAuthToken(['banking:write']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -427,7 +427,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     it('POST /api/transactions transfer proceeds to data layer regardless of read-only scope', async () => {
       // No banking:transaction:write scope required — see route comment.
       // Request reaches handler and fails at account lookup, not at scope check.
-      const token = createOAuthToken(['banking:transactions:read']);
+      const token = createOAuthToken(['banking:read']);
       
       const response = await request(app)
         .post('/api/transactions')
@@ -444,8 +444,8 @@ describe('Scope-based Authorization Integration Tests', () => {
       expect(response.body.error).not.toBe('insufficient_scope');
     });
 
-    it('should allow access to PUT /api/transactions/:id with banking:transactions:write scope', async () => {
-      const token = createOAuthToken(['banking:transactions:write']);
+    it('should allow access to PUT /api/transactions/:id with banking:write scope', async () => {
+      const token = createOAuthToken(['banking:write']);
       
       const response = await request(app)
         .put('/api/transactions/test-transaction-123')
@@ -472,11 +472,11 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:transactions:write', 'banking:write']);
+      expect(response.body.requiredScopes).toEqual(['banking:write']);
     });
 
-    it('should allow access to DELETE /api/transactions/:id with banking:transactions:write scope', async () => {
-      const token = createOAuthToken(['banking:transactions:write']);
+    it('should allow access to DELETE /api/transactions/:id with banking:write scope', async () => {
+      const token = createOAuthToken(['banking:write']);
       
       const response = await request(app)
         .delete('/api/transactions/test-transaction-123')
@@ -497,7 +497,7 @@ describe('Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:transactions:write', 'banking:write']);
+      expect(response.body.requiredScopes).toEqual(['banking:write']);
     });
   });
 
@@ -514,7 +514,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should work with granular scopes', async () => {
-      const token = createOAuthToken(['banking:accounts:read', 'banking:transactions:write']);
+      const token = createOAuthToken(['banking:read', 'banking:write']);
       
       // Should allow account read access
       const accountResponse = await request(app)
@@ -533,7 +533,7 @@ describe('Scope-based Authorization Integration Tests', () => {
     });
 
     it('should allow transaction operations with specific transaction scopes', async () => {
-      const token = createOAuthToken(['banking:transactions:read', 'banking:transactions:write']);
+      const token = createOAuthToken(['banking:read', 'banking:write']);
       
       // Should allow transaction read access
       const readResponse = await request(app)

@@ -119,10 +119,12 @@ function sanitizeClaims(claims) {
   if (claims.azp)    result.azp    = claims.azp;
   if (claims.jti)    result.jti    = claims.jti;
   if (claims.email) result.email = claims.email;
+  if (claims.name) result.name = claims.name;
   if (claims.preferred_username) result.preferred_username = claims.preferred_username;
   if (claims.given_name) result.given_name = claims.given_name;
   if (claims.family_name) result.family_name = claims.family_name;
   if (claims.acr) result.acr = claims.acr;
+  if (claims.auth_time) result.auth_time = claims.auth_time;
   return result;
 }
 
@@ -138,8 +140,8 @@ function sanitizeClaims(claims) {
 function buildTokenEvent(id, label, status, decoded, explanation, extra = {}) {
   /** Full JWT decode (header + payload) for Token Chain JSON dump — never includes the raw token string. */
   const jwtFullDecode =
-    decoded?.header != null && decoded?.claims != null
-      ? { header: decoded.header, claims: decoded.claims }
+    decoded?.claims != null
+      ? { header: decoded.header ?? null, claims: decoded.claims }
       : null;
   return {
     id,
@@ -783,16 +785,19 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   let actorToken = null;
   if (useActor) {
     try {
-      actorToken = await oauthService.getAgentClientCredentialsToken();
+      actorToken = await oauthService.getMcpExchangerToken();
       const a0Decoded = decodeJwtClaims(actorToken);
+      const exchangerClientId =
+        configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
+        process.env.AGENT_OAUTH_CLIENT_ID;
       tokenEvents.push(buildTokenEvent(
         'agent-actor-token',
         'Agent access token (client credentials)',
         'active',
         a0Decoded,
-        `Client-credentials token for the dedicated Agent OAuth client (${process.env.AGENT_OAUTH_CLIENT_ID}). ` +
+        `Client-credentials token for the MCP Token Exchanger OAuth client (${exchangerClientId}). ` +
         'Used as actor_token in the RFC 8693 exchange — the resulting MCP access token will carry ' +
-        'act: { client_id: agent-client } identifying the Agent as the current actor.',
+        'act: { client_id: exchanger-client } identifying the Agent as the current actor.',
         { rfc: 'RFC 8693 §2.1 (actor_token)' }
       ));
     } catch (err) {
@@ -838,9 +843,24 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
 
   try {
     if (actorToken) {
-      exchangedToken = await oauthService.performTokenExchangeWithActor(
-        userToken, actorToken, mcpResourceUri, finalScopes
-      );
+      // Use MCP Token Exchanger credentials to authenticate the exchange when available.
+      // This ensures the exchange-performing client has MCP resource scopes in PingOne,
+      // not the admin web app (which lacks token-exchange grant + MCP resource scopes).
+      const exchangerClientId =
+        configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
+        process.env.AGENT_OAUTH_CLIENT_ID;
+      const exchangerClientSecret =
+        configStore.getEffective('pingone_mcp_token_exchanger_client_secret') ||
+        process.env.AGENT_OAUTH_CLIENT_SECRET;
+      if (exchangerClientId && exchangerClientSecret) {
+        exchangedToken = await oauthService.performTokenExchangeAs(
+          userToken, actorToken, exchangerClientId, exchangerClientSecret, mcpResourceUri, finalScopes
+        );
+      } else {
+        exchangedToken = await oauthService.performTokenExchangeWithActor(
+          userToken, actorToken, mcpResourceUri, finalScopes
+        );
+      }
       exchangeMethod = 'with-actor';
     } else {
       exchangedToken = await oauthService.performTokenExchange(
@@ -1065,9 +1085,9 @@ async function _performTwoExchangeDelegation(
   const mcpGatewayAud         = configResult.audiences.mcpGatewayAud;
   const twoExFinalAud         = configResult.audiences.finalAud;
   const aiAgentClientSecret   = process.env.PINGONE_AI_AGENT_CLIENT_SECRET || process.env.AI_AGENT_CLIENT_SECRET;
-  const mcpExchangerSecret    = process.env.AGENT_OAUTH_CLIENT_SECRET;
+  const mcpExchangerSecret    = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
   const aiAgentAuthMethod     = (configStore.get('ai_agent_token_endpoint_auth_method') || process.env.AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
-  const mcpExchangerAuthMethod = (configStore.get('mcp_exchanger_token_endpoint_auth_method') || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
+  const mcpExchangerAuthMethod = (configStore.get('mcp_exchanger_token_endpoint_auth_method') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD || process.env.PINGONE_MCP_TOKEN_EXCHANGER_AUTH_METHOD || process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD || 'basic').toLowerCase();
 
   // ─ Step 1: AI Agent Actor Token (Client Credentials) ───────────────────────────
   tokenEvents.push(buildTokenEvent(

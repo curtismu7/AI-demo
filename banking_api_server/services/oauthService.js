@@ -483,10 +483,13 @@ class OAuthService {
         'Set PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID + PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET.'
       );
     }
+    // CC grant for the MCP Exchanger app — PingOne AI_AGENT apps use client_secret_post
     const method = (
+      process.env.PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD ||
+      process.env.PINGONE_MCP_TOKEN_EXCHANGER_AUTH_METHOD ||
       process.env.MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD ||
       process.env.AGENT_TOKEN_ENDPOINT_AUTH_METHOD ||
-      'basic'
+      'post'
     ).toLowerCase();
     const scopeStr = (configStore.getEffective('pingone_mcp_token_exchanger_client_scopes') || '').trim();
     const body = new URLSearchParams({ grant_type: 'client_credentials' });
@@ -588,6 +591,7 @@ class OAuthService {
    * @param {string} audience  Resource server audience URI (returned token will have aud=[audience])
    */
   async getClientCredentialsTokenAs(clientId, clientSecret, audience, method = 'basic') {
+    console.log(`[CC-As] Request: client=${clientId} audience=${audience} method=${method} endpoint=${this.config.tokenEndpoint} secret_len=${clientSecret?.length || 0}`);
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: clientId,
@@ -595,6 +599,7 @@ class OAuthService {
     });
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
+    console.log(`[CC-As] Body params: ${[...body.keys()].join(', ')} | has_auth_header=${!!headers.Authorization}`);
     try {
       const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const at = response.data.access_token;
@@ -604,7 +609,7 @@ class OAuthService {
     } catch (error) {
       const pingoneData = error.response?.data || {};
       const httpStatus  = error.response?.status;
-      console.error('[CC-As] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message });
+      console.error('[CC-As] Failed:', { httpStatus, ...pingoneData, rawMessage: error.message, method, audience });
       const richErr = new Error(
         `Client credentials failed for ${clientId}: ${pingoneData.error_description || pingoneData.error || error.message}`
       );
@@ -628,19 +633,23 @@ class OAuthService {
    * @param {string}   audience       - Requested token audience
    * @param {string[]} scopes         - Requested scopes
    */
+  // Standard: token exchange always uses client_secret_basic (RFC 8693 + PingOne convention)
   async performTokenExchangeAs(subjectToken, actorToken, clientId, clientSecret, audience, scopes, method = 'basic') {
     const scopeStr = Array.isArray(scopes) ? scopes.join(' ') : scopes;
     const body = new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
       subject_token: subjectToken,
       subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-      actor_token: actorToken,
-      actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       audience,
       scope: scopeStr,
       client_id: clientId,
     });
+    // Only include actor_token when provided (Exchange 1 is delegation-only, no actor)
+    if (actorToken) {
+      body.set('actor_token', actorToken);
+      body.set('actor_token_type', 'urn:ietf:params:oauth:token-type:access_token');
+    }
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     applyTokenEndpointAuth(clientId, clientSecret, method, body, headers);
     try {

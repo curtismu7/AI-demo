@@ -134,7 +134,7 @@ Required in PingOne: enable the token-exchange grant type on the Backend-for-Fro
 
 In your PingOne environment (`b9817c16-9910-4415-b67e-4ac687da74d9`), you need:
 
-1. **Worker App** (client_credentials) — for MCP server & agent token
+1. **Super Banking Worker Token App** (client_credentials, type: `WORKER`) — PingOne Management API access
    - Already configured: `66a4686b-9222-4ad2-91b6-03113711c9aa`
 
 2. **Web Application** (auth_code + PKCE) — for user login

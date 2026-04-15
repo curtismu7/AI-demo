@@ -90,7 +90,7 @@ const customerUser = () =>
     username: 'customer',
     email: 'customer@bank.com',
     role: 'user',
-    scopes: ['banking:transactions:write', 'banking:accounts:read'],
+    scopes: ['banking:write', 'banking:read'],
     acr: 'Multi_factor',
   });
 

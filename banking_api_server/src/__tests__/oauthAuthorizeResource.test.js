@@ -23,9 +23,9 @@ describe('buildPingOneAuthorizeResourceQueryParam (PingOne /authorize resource)'
       'offline_access',
       'banking:read',
       'banking:write',
-      'banking:accounts:read',
-      'banking:transactions:read',
-      'banking:transactions:write',
+      'banking:read',
+      'banking:read',
+      'banking:write',
     ];
     expect(buildPingOneAuthorizeResourceQueryParam(audience, scopes)).toBe('');
   });
@@ -37,7 +37,7 @@ describe('buildPingOneAuthorizeResourceQueryParam (PingOne /authorize resource)'
   it('still appends resource for API-only scope lists (single resource)', () => {
     const suffix = buildPingOneAuthorizeResourceQueryParam(audience, [
       'banking:read',
-      'banking:transactions:read',
+      'banking:read',
     ]);
     expect(suffix).toBe(`&resource=${encodeURIComponent(audience)}`);
   });

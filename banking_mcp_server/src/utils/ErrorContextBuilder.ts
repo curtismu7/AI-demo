@@ -50,7 +50,7 @@ export class ErrorContextBuilder {
         sessionId: context?.sessionId,
         toolName: context?.toolName,
         requestPath: context?.requestPath,
-        server: 'BX Finance Banking MCP Server',
+        server: 'Super Banking MCP Server',
         version: process.env.npm_package_version || '1.0.0'
       }
     };
@@ -147,7 +147,7 @@ export class ErrorLogger {
       details: error.data?.details,
       context,
       level: this.getLogLevel(error.code || error.error_code),
-      server: error.data?.server || 'BX Finance Banking MCP Server',
+      server: error.data?.server || 'Super Banking MCP Server',
       version: error.data?.version || '1.0.0'
     };
     

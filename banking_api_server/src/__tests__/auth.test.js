@@ -58,7 +58,7 @@ describe('Scope-based Authorization', () => {
   });
 
   describe('hasRequiredScopes', () => {
-    const userScopes = ['banking:read', 'banking:accounts:read', 'banking:transactions:write'];
+    const userScopes = ['banking:read', 'banking:write'];
 
     it('should return true when user has required scope (OR logic)', () => {
       const result = hasRequiredScopes(userScopes, ['banking:read'], false);
@@ -71,12 +71,12 @@ describe('Scope-based Authorization', () => {
     });
 
     it('should return false when user lacks all required scopes (OR logic)', () => {
-      const result = hasRequiredScopes(userScopes, ['banking:admin', 'banking:write'], false);
+      const result = hasRequiredScopes(userScopes, ['banking:admin', 'banking:sensitive'], false);
       expect(result).toBe(false);
     });
 
     it('should return true when user has all required scopes (AND logic)', () => {
-      const result = hasRequiredScopes(userScopes, ['banking:read', 'banking:accounts:read'], true);
+      const result = hasRequiredScopes(userScopes, ['banking:read'], true);
       expect(result).toBe(true);
     });
 
@@ -107,7 +107,7 @@ describe('Scope-based Authorization', () => {
           id: 'user123',
           username: 'testuser',
           tokenType: 'oauth',
-          scopes: ['banking:read', 'banking:accounts:read']
+          scopes: ['banking:read']
         }
       };
       res = {
@@ -142,7 +142,7 @@ describe('Scope-based Authorization', () => {
         error: 'insufficient_scope',
         error_description: expect.stringContaining('banking:admin'),
         requiredScopes: ['banking:admin'],
-        providedScopes: ['banking:read', 'banking:accounts:read']
+        providedScopes: ['banking:read']
       }));
       expect(next).not.toHaveBeenCalled();
     });
@@ -171,8 +171,8 @@ describe('Scope-based Authorization', () => {
     });
 
     it('should support AND logic when requireAll is true', () => {
-      req.user.scopes = ['banking:read', 'banking:accounts:read'];
-      const middleware = requireScopes(['banking:read', 'banking:accounts:read'], true);
+      req.user.scopes = ['banking:read'];
+      const middleware = requireScopes(['banking:read'], true);
       middleware(req, res, next);
 
       expect(next).toHaveBeenCalled();
@@ -212,16 +212,16 @@ describe('Scope-based Authorization', () => {
 
   describe('ROUTE_SCOPE_MAP configuration', () => {
     it('should define scopes for account routes', () => {
-      expect(ROUTE_SCOPE_MAP['GET /api/accounts']).toEqual(['banking:accounts:read', 'banking:read']);
+      expect(ROUTE_SCOPE_MAP['GET /api/accounts']).toEqual(['banking:read']);
       expect(ROUTE_SCOPE_MAP['POST /api/accounts']).toEqual(['banking:write']);
-      expect(ROUTE_SCOPE_MAP['GET /api/accounts/my']).toEqual(['banking:accounts:read', 'banking:read']);
-      expect(ROUTE_SCOPE_MAP['GET /api/accounts/:id/balance']).toEqual(['banking:accounts:read', 'banking:read']);
+      expect(ROUTE_SCOPE_MAP['GET /api/accounts/my']).toEqual(['banking:read']);
+      expect(ROUTE_SCOPE_MAP['GET /api/accounts/:id/balance']).toEqual(['banking:read']);
     });
 
     it('should define scopes for transaction routes', () => {
-      expect(ROUTE_SCOPE_MAP['GET /api/transactions']).toEqual(['banking:transactions:read', 'banking:read']);
-      expect(ROUTE_SCOPE_MAP['POST /api/transactions']).toEqual(['banking:transactions:write', 'banking:write']);
-      expect(ROUTE_SCOPE_MAP['GET /api/transactions/my']).toEqual(['banking:transactions:read', 'banking:read']);
+      expect(ROUTE_SCOPE_MAP['GET /api/transactions']).toEqual(['banking:read']);
+      expect(ROUTE_SCOPE_MAP['POST /api/transactions']).toEqual(['banking:write']);
+      expect(ROUTE_SCOPE_MAP['GET /api/transactions/my']).toEqual(['banking:read']);
     });
 
     it('should define scopes for admin routes', () => {
@@ -240,8 +240,8 @@ describe('Scope-based Authorization', () => {
     it('should define write scopes for modification operations', () => {
       expect(ROUTE_SCOPE_MAP['PUT /api/accounts/:id']).toEqual(['banking:write']);
       expect(ROUTE_SCOPE_MAP['DELETE /api/accounts/:id']).toEqual(['banking:write']);
-      expect(ROUTE_SCOPE_MAP['PUT /api/transactions/:id']).toEqual(['banking:transactions:write', 'banking:write']);
-      expect(ROUTE_SCOPE_MAP['DELETE /api/transactions/:id']).toEqual(['banking:transactions:write', 'banking:write']);
+      expect(ROUTE_SCOPE_MAP['PUT /api/transactions/:id']).toEqual(['banking:write']);
+      expect(ROUTE_SCOPE_MAP['DELETE /api/transactions/:id']).toEqual(['banking:write']);
     });
   });
 
@@ -278,7 +278,7 @@ describe('Scope-based Authorization', () => {
     });
 
     it('should validate specific scopes for granular access control', () => {
-      const userScopes = ['banking:accounts:read', 'banking:transactions:write'];
+      const userScopes = ['banking:read', 'banking:write'];
       
       // Should allow account read operations
       expect(hasRequiredScopes(userScopes, ROUTE_SCOPE_MAP['GET /api/accounts'])).toBe(true);
@@ -288,11 +288,11 @@ describe('Scope-based Authorization', () => {
       expect(hasRequiredScopes(userScopes, ROUTE_SCOPE_MAP['POST /api/transactions'])).toBe(true);
       expect(hasRequiredScopes(userScopes, ROUTE_SCOPE_MAP['PUT /api/transactions/:id'])).toBe(true);
       
-      // Should not allow general read access to transactions (needs banking:transactions:read or banking:read)
-      expect(hasRequiredScopes(userScopes, ROUTE_SCOPE_MAP['GET /api/transactions'])).toBe(false);
+      // Should allow general read access to transactions (needs banking:read, user has banking:read)
+      expect(hasRequiredScopes(userScopes, ROUTE_SCOPE_MAP['GET /api/transactions'])).toBe(true);
       
-      // Should not allow account write operations (needs banking:write)
-      expect(hasRequiredScopes(userScopes, ROUTE_SCOPE_MAP['POST /api/accounts'])).toBe(false);
+      // Should allow account write operations (needs banking:write, user has banking:write)
+      expect(hasRequiredScopes(userScopes, ROUTE_SCOPE_MAP['POST /api/accounts'])).toBe(true);
     });
   });
 });

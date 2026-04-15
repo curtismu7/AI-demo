@@ -298,7 +298,10 @@ router.get('/callback', async (req, res) => {
     if (!state || state !== resolvedState) {
       console.error('[oauth/user/callback] Invalid state. session:', sessionState, 'cookie:', pkceCookie?.state, 'received:', state);
       clearPkceCookie(res, _isProd());
-      return redirectEndUserOAuthSpaFailure(req, res, { error: 'invalid_state' });
+      // Instead of showing an error, auto-retry login — the user clearly intended to sign in.
+      // This handles the multi-tab race where tab B's login overwrites tab A's PKCE state.
+      console.log('[oauth/user/callback] Auto-retrying login after invalid_state (multi-tab race)');
+      return res.redirect(`${req.baseUrl}/login`);
     }
 
     // Validate code parameter
@@ -498,6 +501,14 @@ router.get('/callback', async (req, res) => {
       req.session.user = authedUser;
       req.session.clientType = clientType;
       req.session.oauthType = 'user';
+
+      // ── DEBUG: log raw tokens to server console (remove before production) ──
+      console.log('[oauth/user/callback] === USER TOKENS ===');
+      console.log('[oauth/user/callback] access_token  :', oauthTokens.accessToken  || '(none)');
+      console.log('[oauth/user/callback] id_token      :', oauthTokens.idToken      || '(none)');
+      console.log('[oauth/user/callback] refresh_token :', oauthTokens.refreshToken || '(none)');
+      console.log('[oauth/user/callback] =================');
+
       // Consent gate: store ACR and may_act from the user access token so the
       // MCP token-exchange guard can check them without re-decoding the JWT.
       req.session.consentAcr = accessTokenAcr;
@@ -736,6 +747,9 @@ router.get('/logout', (req, res) => {
   // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
   if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
   if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
+
+  // Clear any stale PKCE cookie so re-login doesn't hit invalid_state
+  clearPkceCookie(res, _isProd());
 
   req.session.destroy((err) => {
     if (err) {

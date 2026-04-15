@@ -2,14 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-last_updated: "2026-04-14T17:10:19.348Z"
+status: executing
+last_updated: "2026-04-15T15:03:39.477Z"
 progress:
-  total_phases: 153
+  total_phases: 157
   completed_phases: 75
   total_plans: 265
   completed_plans: 198
-  percent: 75
 ---
 
 # State — Super Banking AI Banking Demo
@@ -21,11 +20,19 @@ progress:
 
 ## Current Position
 
-Phase: 149 (Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne) — EXECUTING
-Plan: 2 of 2
+Phase: 148 (redesign-ai-agent-chat-ui-compact-layout-grouped-chips-visible-prompt-field) — EXECUTING
+Plan: 1 of 3
+
+## Roadmap Evolution
+
+- Phase 151 added: Scope vocabulary audit — review docs, code, tests, and PingOne Test page for clean scope alignment
+- Phase 152 added: PingOne Test Page — live integration testing and bug fixes
+- Phase 153 added: Postman collections — fix auth flow and add session cookie support
+- Phase 154 added: Create plan to implement DPoP, research if PingOne SSO supports it, if not how can we simulate it
+
 **Previous:** Phase 147 (get-rid-of-left-agent-keep-the-rest) — ✅ COMPLETE
 **Next:** /gsd-plan-phase 148
-**Status:** Phase complete — ready for verification
+**Status:** Executing Phase 148
 
 ---
 

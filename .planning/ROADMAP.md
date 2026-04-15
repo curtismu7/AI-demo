@@ -2251,4 +2251,44 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 150 to break down)
 
+### Phase 151: Scope vocabulary audit — review docs, code, tests, and PingOne Test page for clean scope alignment
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 150
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 151 to break down)
+
+### Phase 152: PingOne Test Page — live integration testing and bug fixes
+
+**Goal:** Test all /api/pingone-test/* endpoints against live PingOne, fix bugs discovered during integration testing. Covers: managementService.initialize() token passing, enableResourceServer() PingOne grants API payload format (scope format, 400/409 conflict handling, PUT vs PATCH, duplicate scope name detection), and full pi.flow OAuth chain validation (Steps 1-5: authorize, credentials, resume, token, exchange).
+**Requirements**: TEST-152-01 (live endpoint testing), TEST-152-02 (enableResourceServer bug fixes), TEST-152-03 (pi.flow chain validation)
+**Depends on:** Phase 151
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 152 to break down)
+
+### Phase 153: Postman collections — fix auth flow and add session cookie support
+
+**Goal:** Fix both Postman collections: (1) Super Banking PingOne Test collection — replace broken login GET requests with browser-based auth + sessionCookie variable, add Cookie headers to session-dependent requests. (2) PingOne Authorization Code pi.flow collection — fix redirect_uri from Vercel production to local (api.pingdemo.com:4000), fix callback path (/oauthuser/ → /oauth/user/). Rename BX Finance → Super Banking in pi.flow collection.
+**Requirements**: POST-153-01 (test collection auth fix), POST-153-02 (pi.flow redirect_uri fix), POST-153-03 (BX Finance rename in pi.flow)
+**Depends on:** Phase 152
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 153 to break down)
+
+### Phase 154: Create plan to implement DPoP, research if PingOne SSO supports it, if not how can we simulate it
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 153
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 154 to break down)
+
 ---

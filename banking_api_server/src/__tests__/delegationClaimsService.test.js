@@ -292,7 +292,7 @@ describe('Delegation Claims Service', () => {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
         },
-        scope: 'banking:read banking:agent:invoke'
+        scope: 'banking:read banking:ai:agent'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -308,7 +308,7 @@ describe('Delegation Claims Service', () => {
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
-        scope: 'banking:read banking:agent:invoke'
+        scope: 'banking:read banking:ai:agent'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -326,7 +326,7 @@ describe('Delegation Claims Service', () => {
         act: {
           sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp'
         },
-        scope: 'banking:read banking:agent:invoke'
+        scope: 'banking:read banking:ai:agent'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -343,7 +343,7 @@ describe('Delegation Claims Service', () => {
         exp: 1640993400,
         iat: 1640991700,
         act: 'invalid-string',
-        scope: 'banking:read banking:agent:invoke'
+        scope: 'banking:read banking:ai:agent'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -364,7 +364,7 @@ describe('Delegation Claims Service', () => {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
         },
-        scope: 'banking:read banking:agent:invoke'
+        scope: 'banking:read banking:ai:agent'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -386,7 +386,7 @@ describe('Delegation Claims Service', () => {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
         },
-        scope: 'banking:read banking:agent:invoke'
+        scope: 'banking:read banking:ai:agent'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -409,7 +409,7 @@ describe('Delegation Claims Service', () => {
             sub: 'legacy-agent'
           }
         },
-        scope: 'banking:read banking:agent:invoke'
+        scope: 'banking:read banking:ai:agent'
       };
 
       const result = validateExchangedTokenAct(exchangedToken);
@@ -599,7 +599,7 @@ describe('Delegation Claims Service', () => {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
         },
-        scope: 'banking:read banking:agent:invoke'
+        scope: 'banking:read banking:ai:agent'
       };
 
       const result = validateDelegationClaims(token, 'exchanged');
