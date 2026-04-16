@@ -3,6 +3,22 @@
 const oauthUserService = require('../services/oauthUserService');
 
 /**
+ * In-memory guards to prevent thundering-herd refresh attempts.
+ *
+ * _refreshInFlight: Set of session IDs currently attempting a refresh.
+ *   Concurrent requests for the same session skip the refresh and let the
+ *   first one finish (its session.save() will propagate to later requests).
+ *
+ * _refreshBlacklist: Map<sessionId, expireTimestamp>.  When a refresh token
+ *   is rejected by PingOne (invalid_grant / does not exist / revoked), the
+ *   session is blacklisted so we stop retrying on every poll hit.
+ *   Entries auto-expire after BLACKLIST_TTL so a fresh login can work again.
+ */
+const _refreshInFlight = new Set();
+const _refreshBlacklist = new Map();
+const BLACKLIST_TTL = 10 * 60 * 1000; // 10 minutes
+
+/**
  * Effective access-token expiry (ms). Uses session.expiresAt when set; otherwise
  * decodes JWT `exp` so we still refresh when expiresAt was never persisted.
  */
@@ -42,37 +58,58 @@ async function refreshIfExpiring(req, res, next) {
     if (!tokens?.refreshToken) return next();
     if (tokens.accessToken === '_cookie_session') return next();
 
+    const sid = req.sessionID;
+
+    // Skip if this session's refresh token was recently rejected by PingOne
+    const blacklistExpiry = _refreshBlacklist.get(sid);
+    if (blacklistExpiry) {
+      if (Date.now() < blacklistExpiry) return next();
+      _refreshBlacklist.delete(sid); // expired — allow retry
+    }
+
     const MARGIN = 5 * 60 * 1000; // 5 minutes
     const effectiveExp = getAccessTokenExpiryMs(tokens);
     if (!effectiveExp) return next();
     if ((Date.now() + MARGIN) < effectiveExp) return next();
 
-    console.log('[tokenRefresh] Access token expiring soon (or expired), refreshing...');
-    const tokenData = await oauthUserService.refreshAccessToken(tokens.refreshToken);
+    // Only one concurrent refresh per session — others skip and continue
+    if (_refreshInFlight.has(sid)) return next();
+    _refreshInFlight.add(sid);
 
-    req.session.oauthTokens = {
-      ...tokens,
-      accessToken:  tokenData.access_token,
-      refreshToken: tokenData.refresh_token || tokens.refreshToken,
-      idToken:      tokenData.id_token      || tokens.idToken,
-      expiresAt:    Date.now() + ((tokenData.expires_in || 3600) * 1000),
-      tokenType:    tokenData.token_type    || 'Bearer',
-    };
+    try {
+      console.log('[tokenRefresh] Access token expiring soon (or expired), refreshing...');
+      const tokenData = await oauthUserService.refreshAccessToken(tokens.refreshToken);
 
-    req.session.save((err) => {
-      if (err) console.error('[tokenRefresh] Session save error:', err);
-    });
+      req.session.oauthTokens = {
+        ...tokens,
+        accessToken:  tokenData.access_token,
+        refreshToken: tokenData.refresh_token || tokens.refreshToken,
+        idToken:      tokenData.id_token      || tokens.idToken,
+        expiresAt:    Date.now() + ((tokenData.expires_in || 3600) * 1000),
+        tokenType:    tokenData.token_type    || 'Bearer',
+      };
+
+      req.session.save((err) => {
+        if (err) console.error('[tokenRefresh] Session save error:', err);
+      });
+    } finally {
+      _refreshInFlight.delete(sid);
+    }
 
     next();
   } catch (err) {
     console.warn('[tokenRefresh] Auto-refresh failed (continuing):', err.message);
-    // If the refresh token is invalid/revoked/expired, clear it so we stop retrying
-    // every request. The user will need to re-authenticate.
+    // If the refresh token is invalid/revoked/expired, blacklist + clear so we
+    // stop retrying on every poll hit. The user will need to re-authenticate.
     if (err.message && /does not exist|invalid_grant|revoked|expired/i.test(err.message)) {
+      const sid = req.sessionID;
+      _refreshBlacklist.set(sid, Date.now() + BLACKLIST_TTL);
+      _refreshInFlight.delete(sid);
+
       const tokens = req.session?.oauthTokens;
       if (tokens) {
         delete tokens.refreshToken;
-        req.session.save(() => {}); // best-effort
+        req.session.save(() => {}); // best-effort persist
       }
     }
     next(); // Don't block the request on a refresh failure
