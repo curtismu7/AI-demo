@@ -24,6 +24,8 @@ Phase: 166
 Plan: Not started
 
 ## Roadmap Evolution
+- Phase 169 added: Add OAuth token display page — show user info from token or PingOne userinfo endpoint
+
 
 - Phase 168 added: support HTTP2 stream from Agent to mcp servers
 

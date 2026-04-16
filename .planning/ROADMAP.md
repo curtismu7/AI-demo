@@ -1984,6 +1984,16 @@ Plans:
 - [x] 127-04: Fix identified issues — all PingOne test bugs, build, UI, and agentBuilder fixed
 - [x] 127-05: Verify end-to-end functionality — worker-token, agent-token, verify-assets, config all pass
 
+### Phase 169: Add OAuth token display page — show user info from token or PingOne userinfo endpoint
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 168
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 169 to break down)
+
 ---
 
 ### Phase 128: Quality Audit and Fix — Phases 120–127 Code Review and Professional Polish
