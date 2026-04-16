@@ -5,13 +5,6 @@
  * Cache auto-clears on login/logout events (userAuthenticated / userLoggedOut).
  */
 
-let _spinnerActivity = null;
-try {
-  // Lazy import — failure must not break caching
-  const mod = require('./spinnerActivityService');
-  _spinnerActivity = mod.spinnerActivity;
-} catch (_) { /* non-fatal */ }
-
 const cache = {};
 const CACHE_TTL_MS = 3000; // 3 seconds
 
@@ -37,22 +30,21 @@ export async function getCachedStatus(url, config = {}) {
     return cached.promise;
   }
 
-  // Make request and cache it — measure timing for fresh requests
-  const fetchStart = Date.now();
-  const promise = fetch(url, {
+  // Status checks are background operations — silent by default to avoid triggering the spinner.
+  // Callers can pass { _silent: false } to explicitly opt-in to spinner visibility.
+  const silent = config._silent !== false;
+  const requestConfig = {
     credentials: 'include',
-    ...(config._silent && { _silent: true }),
-  })
+    ...(silent && { _silent: true }),
+  };
+
+  // Make request and cache it. Silent status endpoints must stay silent.
+  const promise = fetch(url, requestConfig)
     .then((r) => {
       if (!r.ok) throw new Error(`${url} returned ${r.status}`);
       return r.json();
     })
     .then((data) => {
-      const duration = Date.now() - fetchStart;
-      // Log non-cached request timing to spinner activity feed
-      if (_spinnerActivity) {
-        try { _spinnerActivity.addClientEvent('⏱', `${url} ${duration}ms`); } catch (_) {}
-      }
       // Cache the successful response
       cache[cacheKey] = { promise: Promise.resolve(data), expires: now + CACHE_TTL_MS };
       return data;

@@ -715,7 +715,8 @@ function EventRow({ event, isLast, onInspect, hints }) {
         : null;
   const actHint =
     event.actPresent === true  ? { text: '✅ act claimed', cls: 'ok' }
-    : event.actPresent === false ? { text: '⚠️ no act claim', cls: 'warn' }
+    : event.actPresent === false && event.actExpectedHere !== false ? { text: '⚠️ no act claim', cls: 'warn' }
+    : event.actPresent === false && event.actExpectedHere === false ? { text: 'ℹ️ act added after Exchange #2', cls: 'info' }
     : null;
   // scope injection hint — shows when scopes were BFF-injected (demo mode)
   const scopeInjectedHint =
@@ -943,7 +944,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
     lastFetchTime = now;
     sessionPreviewPromise = (async () => {
       try {
-        const res = await fetch('/api/tokens/session-preview', { credentials: 'include' });
+        const res = await fetch('/api/tokens/session-preview', { credentials: 'include', _silent: true });
         if (!res.ok) return;
         const data = await res.json();
         if (Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
@@ -973,8 +974,8 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
     async function loadIdentityHints() {
       try {
         const [sessionRes, configRes] = await Promise.all([
-          fetch('/api/auth/session', { credentials: 'include' }),
-          fetch('/api/pingone-test/config', { credentials: 'include' }),
+          fetch('/api/auth/session', { credentials: 'include', _silent: true }),
+          fetch('/api/pingone-test/config', { credentials: 'include', _silent: true }),
         ]);
         if (cancelled) return;
         const sessionData = sessionRes.ok ? await sessionRes.json() : null;

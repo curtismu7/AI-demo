@@ -66,11 +66,13 @@ const SPINNER_COLORS = [
 
 const MIN_DISPLAY_MS = 1500; // readable; well inside 10 s Axios timeout
 const DEBOUNCE_MS    = 200;  // suppress spinner for instant responses
+const STUCK_TIMEOUT_MS = 30000; // safety: force-hide if spinner stuck for 30s
 
 let _pending   = 0;
 let _visible   = false;
 let _showTimer = null;
 let _hideTimer = null;
+let _stuckTimer = null;
 /** @type {{ message: string, color: string, endpoint: string|null }|null} */
 let _current   = null;
 const _listeners = new Set();
@@ -100,12 +102,25 @@ function resolveMessage(method, url) {
 function show(message, color, endpoint) {
   _showTimer = null;
   _visible = true;
+  // Safety: force-hide if spinner stays visible too long (pending counter leak)
+  if (_stuckTimer) clearTimeout(_stuckTimer);
+  _stuckTimer = setTimeout(() => {
+    if (_visible && _pending > 0) {
+      console.warn('[spinner] Safety timeout: force-hiding after ' + STUCK_TIMEOUT_MS + 'ms (_pending was ' + _pending + ')');
+      _pending = 0;
+      _visible = false;
+      _current = null;
+      _stuckTimer = null;
+      notify();
+    }
+  }, STUCK_TIMEOUT_MS);
   _current = { message, color, endpoint };
   notify();
 }
 
 /** Start hiding — immediately or after min display */
 function scheduleHide(immediate) {
+  if (_stuckTimer) { clearTimeout(_stuckTimer); _stuckTimer = null; }
   if (_hideTimer) return; // already scheduled
   const delay = immediate || !_visible ? 0 : MIN_DISPLAY_MS;
   _hideTimer = setTimeout(() => {
@@ -127,6 +142,14 @@ export const spinner = {
     _pending++;
     // Cancel any pending hide from a previous cycle
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+
+    // Record every API call in the activity feed (lazy import avoids circular dep)
+    if (method && url) {
+      try {
+        const { spinnerActivity } = require('./spinnerActivityService');
+        spinnerActivity.addClientEvent(method.toUpperCase(), url);
+      } catch (_) { /* spinnerActivityService not loaded yet */ }
+    }
 
     if (!_visible && !_showTimer) {
       const message = resolveMessage(method.toUpperCase(), url);

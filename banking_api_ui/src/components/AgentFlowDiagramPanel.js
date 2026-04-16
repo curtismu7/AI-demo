@@ -99,7 +99,10 @@ export default function AgentFlowDiagramPanel() {
   // Load token chain data
   const loadTokenChain = useCallback(async () => {
     try {
-      const res = await fetch('/api/token-chain/current', { credentials: 'include' });
+      const res = await fetch('/api/token-chain/current', {
+        credentials: 'include',
+        _silent: true,
+      });
       if (res.ok) {
         const data = await res.json();
         setTokenChain(data.currentTokens || []);

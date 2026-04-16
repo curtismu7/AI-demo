@@ -12,8 +12,9 @@
 import axios from 'axios';
 import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl';
 
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 1500;
 const MAX_EVENTS = 20;
+const IDLE_TIMEOUT_MS = 15000; // stop polling after 15s with no server events
 
 /** Category → emoji icon mapping */
 const CATEGORY_ICONS = {
@@ -28,6 +29,47 @@ const CATEGORY_ICONS = {
   config:         '⚙️',
 };
 
+/** Routes that are background polls — skip from the activity feed */
+const SILENT_ROUTES = new Set([
+  '/api/auth/oauth/user/status',
+  '/api/auth/oauth/status',
+  '/api/auth/ciba/status',
+  '/api/auth/session',
+  '/api/token-chain/current',
+  '/api/tokens/session-preview',
+  '/api/admin/config',
+  '/api/config/vertical',
+  '/api/app-events',
+  '/api/admin/app-events',
+]);
+
+/** Friendly labels for client-side API calls (longest-prefix match wins) */
+const CLIENT_LABELS = {
+  'POST /api/mcp/tool':             '🤖 Calling MCP tool',
+  'GET /api/mcp':                   '🤖 Connecting to MCP server',
+  'POST /api/transactions':         '💳 Submitting transaction',
+  'GET /api/transactions':          '📜 Loading transactions',
+  'GET /api/accounts':              '🏦 Loading accounts',
+  'POST /api/auth/ciba':            '📱 Initiating CIBA push',
+  'POST /api/tokens':               '🔄 Exchanging tokens',
+  'GET /api/tokens':                '🔑 Loading token info',
+  'GET /api/token-chain':           '⛓️ Loading token chain',
+  'POST /api/delegated':            '🔄 Requesting delegated access',
+  'GET /api/authorize':             '⚖️ Checking authorization',
+  'POST /api/authorize':            '⚖️ Evaluating access policy',
+  'POST /api/admin/setup':          '⚙️ Running PingOne setup',
+  'GET /api/admin/setup':           '⚙️ Checking PingOne config',
+  'POST /api/clients':              '🔐 Creating OAuth app in PingOne',
+};
+
+function resolveClientLabel(method, url) {
+  const key = `${method} ${url}`;
+  const match = Object.keys(CLIENT_LABELS)
+    .filter(k => key.startsWith(k))
+    .sort((a, b) => b.length - a.length)[0];
+  return match ? CLIENT_LABELS[match] : null;
+}
+
 /** Private axios instance — no spinner interceptors */
 const _http = axios.create({
   baseURL: resolveApiBaseUrl(),
@@ -40,6 +82,8 @@ let _pollTimer = null;
 let _startedAt = null;
 let _sinceTimestamp = null;
 let _stopped = false;
+let _lastServerEventAt = null;
+let _idleCheckCount = 0;
 const _listeners = new Set();
 
 function notify() {
@@ -57,12 +101,25 @@ function iconFor(category) {
   return CATEGORY_ICONS[category] || '📋';
 }
 
-function truncate(str, max = 80) {
+/** Strip origin (https://host:port) from URLs to save horizontal space */
+function stripOrigin(url) {
+  try {
+    const u = new URL(url);
+    return u.pathname + u.search;
+  } catch (_) {
+    return url; // not a full URL, return as-is
+  }
+}
+
+function truncate(str, max = 120) {
   if (!str) return '';
   return str.length > max ? str.slice(0, max) + '…' : str;
 }
 
 function pushEvent(evt) {
+  if (evt.source === 'server') {
+    _events = _events.filter(event => event.source === 'server');
+  }
   _events.push(evt);
   if (_events.length > MAX_EVENTS) _events = _events.slice(-MAX_EVENTS);
   notify();
@@ -73,7 +130,7 @@ async function poll() {
   try {
     const params = { limit: 20 };
     if (_sinceTimestamp) params.since = _sinceTimestamp;
-    const res = await _http.get('/api/admin/app-events', { params });
+    const res = await _http.get('/api/app-events', { params });
     const serverEvents = res.data?.events || [];
 
     for (const e of serverEvents) {
@@ -91,6 +148,15 @@ async function poll() {
     // Advance since cursor to latest event
     if (serverEvents.length > 0) {
       _sinceTimestamp = serverEvents[serverEvents.length - 1].timestamp;
+      _lastServerEventAt = Date.now();
+      _idleCheckCount = 0;
+    } else {
+      _idleCheckCount++;
+      // Auto-stop polling if no events for IDLE_TIMEOUT_MS
+      if (_lastServerEventAt === null && _idleCheckCount > (IDLE_TIMEOUT_MS / POLL_INTERVAL_MS)) {
+        spinnerActivity.stop();
+        return;
+      }
     }
   } catch (err) {
     const status = err?.response?.status;
@@ -112,10 +178,16 @@ export const spinnerActivity = {
   start() {
     if (_pollTimer) return; // already running
     _stopped = false;
-    _startedAt = Date.now();
-    _sinceTimestamp = new Date(_startedAt).toISOString();
-    _events = [];
-    _clientEventId = 0;
+    // Preserve events buffered by addClientEvent before start()
+    if (!_startedAt) {
+      _startedAt = Date.now();
+      _events = [];
+      _clientEventId = 0;
+    }
+    _lastServerEventAt = null;
+    _idleCheckCount = 0;
+    // Look back 5 seconds to catch events that triggered the spinner
+    _sinceTimestamp = new Date(_startedAt - 5000).toISOString();
     notify();
 
     // First poll immediately, then on interval
@@ -128,6 +200,7 @@ export const spinnerActivity = {
    */
   stop() {
     _stopped = true;
+    _startedAt = null;
     if (_pollTimer) {
       clearInterval(_pollTimer);
       _pollTimer = null;
@@ -136,17 +209,32 @@ export const spinnerActivity = {
 
   /**
    * Add a client-side event (e.g. in-flight API call) instantly.
+   * Auto-initializes timing if called before start() (race with debounce).
    * @param {string} method - HTTP method
    * @param {string} url - Request URL
    */
   addClientEvent(method, url) {
-    if (_stopped || !_startedAt) return;
+    // Skip background polling routes — they're noise, not signal
+    const path = stripOrigin(url).split('?')[0];
+    if (SILENT_ROUTES.has(path)) return;
+
+    // Auto-initialize if called before start() (spinner debounce hasn't fired yet)
+    if (!_startedAt) {
+      _startedAt = Date.now();
+      _stopped = false;
+      _events = [];
+      _clientEventId = 0;
+    }
+    if (_stopped) return;
+    if (_events.some(event => event.source === 'server')) return;
     _clientEventId++;
+    const label = resolveClientLabel(method.toUpperCase(), path)
+      || truncate(`${method.toUpperCase()} ${path}`);
     pushEvent({
       id: `client-${_clientEventId}`,
       icon: iconFor('client'),
       timeDelta: timeDelta(new Date().toISOString()),
-      message: truncate(`${method} ${url}`),
+      message: label,
       source: 'client',
     });
   },

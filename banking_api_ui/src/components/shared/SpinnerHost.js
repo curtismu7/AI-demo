@@ -16,13 +16,16 @@ export default function SpinnerHost() {
   const { visible, message, color, endpoint } = useSpinner();
   const [activityEvents, setActivityEvents] = useState([]);
   const feedRef = useRef(null);
-  const prevEndpointRef = useRef(null);
 
   // Start/stop activity polling when spinner visibility changes
   useEffect(() => {
     if (visible) {
-      spinnerActivity.start();
+      // Subscribe FIRST so we don't miss the notify() inside start()
       const unsub = spinnerActivity.subscribe(setActivityEvents);
+      spinnerActivity.start();
+      // Seed with any events buffered before subscription (from addClientEvent)
+      const buffered = spinnerActivity.getEvents();
+      if (buffered.length > 0) setActivityEvents(buffered);
       return () => {
         unsub();
         spinnerActivity.stop();
@@ -32,20 +35,6 @@ export default function SpinnerHost() {
       setActivityEvents([]);
     }
   }, [visible]);
-
-  // Add client-side event when endpoint changes (in-flight API call)
-  useEffect(() => {
-    if (visible && endpoint && endpoint !== prevEndpointRef.current) {
-      // Extract method and url from "METHOD url" format
-      const spaceIdx = endpoint.indexOf(' ');
-      if (spaceIdx > 0) {
-        const method = endpoint.slice(0, spaceIdx);
-        const url = endpoint.slice(spaceIdx + 1);
-        spinnerActivity.addClientEvent(method, url);
-      }
-    }
-    prevEndpointRef.current = endpoint;
-  }, [visible, endpoint]);
 
   // Auto-scroll feed to bottom when new events arrive
   useEffect(() => {
@@ -57,6 +46,13 @@ export default function SpinnerHost() {
   if (!visible) return null;
 
   const accentColor = color || 'var(--chase-navy)';
+
+  // Strip origin from endpoint for compact display: "GET https://host:4000/api/foo" → "GET /api/foo"
+  const shortEndpoint = endpoint ? endpoint.replace(/^(\w+\s+)https?:\/\/[^/]+/, '$1') : null;
+  const latestServerEvent = [...activityEvents].reverse().find((event) => event.source === 'server');
+  const activityLabel = latestServerEvent
+    ? `${latestServerEvent.icon} ${latestServerEvent.message}`
+    : shortEndpoint;
 
   return ReactDOM.createPortal(
     <div
@@ -75,8 +71,8 @@ export default function SpinnerHost() {
           aria-hidden="true"
         />
         <p className="lo-message">{message || 'Please wait…'}</p>
-        {endpoint && (
-          <code className="lo-endpoint">{endpoint}</code>
+        {activityLabel && (
+          <code className="lo-endpoint">{activityLabel}</code>
         )}
         {activityEvents.length > 0 && (
           <div className="lo-activity-feed" ref={feedRef}>

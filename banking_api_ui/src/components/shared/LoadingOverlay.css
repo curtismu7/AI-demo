@@ -27,7 +27,8 @@
   background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  min-width: 220px;
+  min-width: 420px;
+  max-width: 560px;
   text-align: center;
   animation: lo-slide-up 0.2s ease;
 }
@@ -81,7 +82,7 @@
   border-radius: 4px;
   letter-spacing: 0.02em;
   word-break: break-all;
-  max-width: 320px;
+  max-width: 480px;
   text-align: center;
 }
 
@@ -100,7 +101,7 @@
 /* ── Activity feed (Phase 162) ─────────────────────────────────────────── */
 
 .lo-card {
-  max-width: 420px;
+  max-width: 560px;
 }
 
 .lo-activity-feed {
