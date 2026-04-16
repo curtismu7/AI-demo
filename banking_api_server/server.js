@@ -1274,6 +1274,7 @@ const {
     introspectToken
 } = require('./middleware/tokenIntrospection');
 const mcpFlowSseHub = require('./services/mcpFlowSseHub');
+const http2McpBridge = require("./services/http2McpBridge");
 
 // Session-scoped exchange mode toggle (GET/POST /api/mcp/exchange-mode)
 const mcpExchangeMode = require('./routes/mcpExchangeMode');
@@ -1670,6 +1671,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
     // ── Try remote MCP server first; fall back to local handler if unreachable ──
     const mcpUrl = getMcpServerUrl();
     const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
+    const useHttp2 = mcpUrl.startsWith("http://") || mcpUrl.startsWith("https://");
 
     try {
         // Skip the WebSocket attempt entirely when running on Vercel with no MCP_SERVER_URL
@@ -1686,7 +1688,13 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
             phase: 'mcp_remote_begin'
         });
         _appEvents.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, mcpServerUrl: getMcpServerUrl() } });
-        const result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
+        let result;
+        if (useHttp2) {
+            const h2Session = http2McpBridge.createHttp2Session(mcpUrl, agentToken);
+            result = await http2McpBridge.forwardToolCall(h2Session, tool, params || {}, agentToken, userSub, req.correlationId);
+        } else {
+            result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
+        }
         _appEvents.logEvent('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
         emit({
             phase: 'mcp_remote_done'
