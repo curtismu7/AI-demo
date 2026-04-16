@@ -1986,13 +1986,23 @@ Plans:
 
 ### Phase 169: Add OAuth token display page — show user info from token or PingOne userinfo endpoint
 
-**Goal:** [To be planned]
+**Goal:** Create a dedicated OAuth token display page that serves as the final destination after successful authentication. Display user's JWT token claims and optionally call PingOne userinfo endpoint for enriched profile data.
 **Requirements**: TBD
 **Depends on:** Phase 168
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 169 to break down)
+- [x] 169-01-PLAN.md — Create React component displaying JWT token claims in organized card layout
+- [x] 169-02-PLAN.md — Add BFF route for PingOne userinfo enrichment + enhanced display with additional user attributes
+- [x] 169-03-PLAN.md — Wire OAuth callback to redirect to token display page + end-to-end testing + REGRESSION_PLAN update
+
+**Success criteria:**
+1. New page at `/oauth/token-display` displays token claims and PingOne user info
+2. OAuth flow automatically redirects to token display page after authentication
+3. Both JWT and enriched PingOne data displayed (graceful fallback if enrichment unavailable)
+4. All existing OAuth flows (admin, user) unaffected
+5. Build passes with no errors
+6. REGRESSION_PLAN.md updated with implementation notes
 
 ---
 
