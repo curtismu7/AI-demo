@@ -3,13 +3,13 @@
 .lo-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 200000;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   animation: lo-fade-in 0.15s ease;
 }
 
@@ -95,4 +95,86 @@
   .lo-sub      { color: #94a3b8; }
   .lo-spinner  { border-color: var(--chase-dark-gray); border-top-color: var(--chase-navy-light); }
   .lo-endpoint { background: #1e3a5f; color: #93c5fd; }
+}
+
+/* ── Activity feed (Phase 162) ─────────────────────────────────────────── */
+
+.lo-card {
+  max-width: 420px;
+}
+
+.lo-activity-feed {
+  max-height: 160px;
+  overflow-y: auto;
+  margin-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 8px;
+  width: 100%;
+}
+
+.lo-activity-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 2px 0;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #475569;
+  animation: lo-feed-in 0.2s ease;
+}
+
+@keyframes lo-feed-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.lo-activity-icon {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.lo-activity-time {
+  flex-shrink: 0;
+  width: 44px;
+  text-align: right;
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.lo-activity-msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Subtle scrollbar for the feed */
+.lo-activity-feed::-webkit-scrollbar {
+  width: 4px;
+}
+.lo-activity-feed::-webkit-scrollbar-track {
+  background: transparent;
+}
+.lo-activity-feed::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+}
+
+/* Dark-mode overrides for activity feed */
+@media (prefers-color-scheme: dark) {
+  .lo-activity-feed {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+  .lo-activity-line {
+    color: rgba(255, 255, 255, 0.85);
+  }
+  .lo-activity-time {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  .lo-activity-feed::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+  }
 }
