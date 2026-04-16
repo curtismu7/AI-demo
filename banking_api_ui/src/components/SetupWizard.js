@@ -111,10 +111,10 @@ export default function SetupWizard() {
   const [credErrors, setCredErrors] = useState({});
   const [activeStep, setActiveStep] = useState(0);
   const [stepStatuses, setStepStatuses] = useState({});
-  const [stepMessages, setStepMessages] = useState({});
+  const [_stepMessages, setStepMessages] = useState({});
   const [logEntries, setLogEntries] = useState([]);
   const [running, setRunning] = useState(false);
-  const [provisionResult, setProvisionResult] = useState(null);
+  const [_provisionResult, setProvisionResult] = useState(null);
   const [envContents, setEnvContents] = useState('');
   const [copyToast, setCopyToast] = useState('');
   const [verifyError, setVerifyError] = useState('');

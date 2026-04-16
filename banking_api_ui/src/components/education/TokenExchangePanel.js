@@ -1,6 +1,5 @@
 // banking_api_ui/src/components/education/TokenExchangePanel.js
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { getCachedJson } from '../../services/cachedStatusService';
 import EducationDrawer from '../shared/EducationDrawer';
 import {
