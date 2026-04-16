@@ -4,7 +4,7 @@ import './AdminSideNav.css';
 
 
 /**
- * AdminSideNav — PingIdentity-style persistent left sidebar for admin navigation.
+ * AdminSideNav — PingIdentity-style persistent left sidebar for navigation.
  * 
  * Based on PingIdentity console design:
  * - Dark background sidebar (left)
@@ -15,17 +15,21 @@ import './AdminSideNav.css';
  * - Responsive on mobile
  * 
  * Updated Phase 155: All routes verified against App.js; broken links fixed
+ * Updated Phase 163: Role-aware — renders for ALL logged-in users, filters items by role
  */
-export default function AdminSideNav() {
+export default function AdminSideNav({ user }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
 
+  const isAdmin = user?.role === 'admin';
+
   // Main navigation items (some with submenus) — ALL ROUTES VERIFIED
-  const adminNavItems = [
+  // Items with adminOnly: true are hidden for non-admin users
+  const allNavItems = [
     { label: 'Home', path: '/marketing', icon: '🏠' },
-    { label: 'Dashboard', path: '/admin', icon: '📊' },
+    { label: 'Dashboard', path: isAdmin ? '/admin' : '/dashboard', icon: '📊' },
     {
       label: 'Users & Accounts',
       icon: '📑',
@@ -38,19 +42,21 @@ export default function AdminSideNav() {
     {
       label: 'Monitoring',
       icon: '📋',
+      adminOnly: true,
       children: [
-        { label: 'Activity Logs', path: '/activity', icon: '📝' },  // FIXED: was /activity-logs
+        { label: 'Activity Logs', path: '/activity', icon: '📝' },
         { label: 'Audit Trail', path: '/audit', icon: '🔍' },
-        { label: 'API Traffic', path: '/api-traffic', icon: '📡' },  // ADDED: useful for debugging
+        { label: 'API Traffic', path: '/api-traffic', icon: '📡' },
       ],
     },
     {
       label: 'OAuth & Security',
       icon: '🔐',
+      adminOnly: true,
       children: [
-        { label: 'Security Settings', path: '/settings', icon: '⚙️' },  // FIXED: was /security-settings
-        { label: 'OAuth Debug', path: '/oauth-debug-logs', icon: '🔑' },  // FIXED: was /oauth-debug
-        { label: 'Client Registration', path: '/client-registration', icon: '📝' },  // FIXED: was /client-reg
+        { label: 'Security Settings', path: '/settings', icon: '⚙️' },
+        { label: 'OAuth Debug', path: '/oauth-debug-logs', icon: '🔑' },
+        { label: 'Client Registration', path: '/client-registration', icon: '📝' },
         { label: 'Scope Audit', path: '/scope-audit', icon: '🔎' },
         { label: 'Scope Reference', path: '/scope-reference', icon: '📚' },
       ],
@@ -58,12 +64,18 @@ export default function AdminSideNav() {
     {
       label: 'System Tools',
       icon: '⚙️',
+      adminOnly: true,
       children: [
         { label: 'Feature Flags', path: '/feature-flags', icon: '🚩' },
         { label: 'MCP Inspector', path: '/mcp-inspector', icon: '🔬' },
       ],
     },
+    { label: 'PingOne Test', path: '/pingone-test', icon: '🧪' },
+    { label: 'MFA Test', path: '/mfa-test', icon: '🔒' },
   ];
+
+  // Filter by role
+  const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin);
 
   // Action items (buttons, not navigation links)
   const actionItems = [
@@ -73,7 +85,7 @@ export default function AdminSideNav() {
   ];
 
   const isActive = (path) => {
-    if (path === '/admin') return location.pathname === '/admin';
+    if (path === '/admin' || path === '/dashboard') return location.pathname === path;
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
@@ -92,7 +104,7 @@ export default function AdminSideNav() {
         if (agentRoutes.includes(norm)) {
           window.dispatchEvent(new CustomEvent('banking-agent-open'));
         } else {
-          navigate('/admin', { state: { openAgent: true } });
+          navigate(isAdmin ? '/admin' : '/dashboard', { state: { openAgent: true } });
         }
         break;
       }
@@ -184,7 +196,7 @@ export default function AdminSideNav() {
       <nav className="admin-side-nav__menu">
         {/* Main Navigation Section */}
         <div className="admin-side-nav__section">
-          {adminNavItems.map((item, idx) => renderNavItem(item, 'nav', idx))}
+          {navItems.map((item, idx) => renderNavItem(item, 'nav', idx))}
         </div>
 
         {/* Divider */}
