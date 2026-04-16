@@ -348,17 +348,28 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
-    // ── High-value HITL consent (session-bound) ─────────────────────────────
+    // ── HITL consent (session-bound) ────────────────────────────────────────
+    // Phase 170: ALL transfers require HITL consent regardless of amount.
+    // Withdrawals/deposits still use the high-value threshold ($500).
     const hitlAmount = parseFloat(req.body.amount);
-    if (
+    const requiresHitl =
       req.user.role !== 'admin' &&
       ['deposit', 'withdrawal', 'transfer'].includes(type) &&
-      hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD
-    ) {
+      (type === 'transfer' || hitlAmount > txConsent.HIGH_VALUE_CONSENT_USD);
+    if (requiresHitl) {
+      if (!req.body.consentChallengeId) {
+        return res.status(428).json({
+          error: 'consent_challenge_required',
+          error_description: type === 'transfer'
+            ? 'All transfers require explicit HITL approval. Create a consent challenge first.'
+            : `Transactions over $${txConsent.HIGH_VALUE_CONSENT_USD} require explicit HITL approval. Create a consent challenge first.`,
+        });
+      }
       const consumed = txConsent.verifyAndConsumeChallenge(req, req.body.consentChallengeId, req.body);
       if (!consumed.ok) {
         return res.status(consumed.status).json(consumed.json);
       }
+      console.log(`[Transactions] ${type} ${req.body.fromAccountId || ''}→${req.body.toAccountId || ''} $${hitlAmount} consent verified`);
     }
 
     // ── Session check for conditional authentication (Phase 122) ───────────────

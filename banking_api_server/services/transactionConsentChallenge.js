@@ -174,7 +174,11 @@ function createChallenge(req, rawBody) {
     return { ok: false, status: 400, json: { error: 'invalid_type', message: 'Consent challenges apply to transfer, withdrawal, or deposit only.' } };
   }
 
-  if (v.normalized.amount <= HIGH_VALUE_CONSENT_USD) {
+  // Transfer type ALWAYS requires consent challenge regardless of amount (Phase 170)
+  if (v.normalized.type === 'transfer') {
+    console.log(`[ConsentChallenge] TRANSFER requires HITL: user=${req.user.id} amount=${v.normalized.amount}`);
+    // Skip amount check — proceed directly to challenge creation
+  } else if (v.normalized.amount <= HIGH_VALUE_CONSENT_USD) {
     return {
       ok: false,
       status: 400,
