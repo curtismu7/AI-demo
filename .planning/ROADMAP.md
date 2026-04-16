@@ -2430,45 +2430,23 @@ Plans:
 
 ### Phase 168: support HTTP2 stream from Agent to mcp servers
 
-**Goal:** [To be planned]
+**Goal:** Enable full HTTP/2 streaming support for Agent ↔ MCP Server communication. Replace polling-based patterns with true multiplexed streams for efficient resource usage, real-time updates, and improved latency.
+
 **Requirements**: TBD
 **Depends on:** Phase 167
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 168 to break down)
+- [x] 168-01-PLAN.md — HTTP/2 bridge service + BFF routing (Wave 1: connection pooling, MCP proxy)
+- [x] 168-02-PLAN.md — Agent streaming response parsing + flow event integration (Wave 2: streamed responses, real-time events)
+- [x] 168-03-PLAN.md — Comprehensive testing, performance verification, REGRESSION_PLAN update (Wave 3: validation, documentation)
 
----
+**Success criteria:**
+1. HTTP/2 bridge created with persistent connection pooling to MCP server
+2. Agent service parses embedded flow events from streaming responses (no polling)
+3. Multiplexing verified: 3+ concurrent tool calls on single HTTP/2 connection
+4. Latency improvement: tool response time reduced by ~1s (eliminated polling delay)
+5. Backward compatible: HTTP/1.1 clients still work
+6. Full test coverage with performance baseline documented
+7. REGRESSION_PLAN.md updated with implementation notes and known limitations
 
-### Phase 166: Replace Gemini with Anthropic in NL intent chain
-
-**Goal:** Replace Gemini with Anthropic Claude as the 3rd LLM fallback in the BFF natural language intent chain. New order: Groq → LM Studio → Anthropic → heuristic (chips/presets).
-**Requirements**: INTENT-CHAIN-01
-**Depends on:** Phase 165
-**Plans:** 1/1 plans complete
-
-Plans:
-- [x] 166-01-PLAN.md — Replace parseWithGemini with parseWithAnthropic, update chain order
-
-
-
-
-
-
-
-
-
-
-
-
-
-### Phase 163: Universal sidebar navigation — show sidebar for all logged-in users, strip redundant top nav links
-
-**Goal:** Extend AdminSideNav to render for ALL logged-in users with role-filtered menu items. Strip navigation links from TopNav and ChaseTopNav (keep brand bar only). Remove DashboardQuickNav. Sidebar becomes the single source of page navigation.
-**Requirements**: NAV-163-01 (role-aware sidebar), NAV-163-02 (universal render), NAV-163-03 (role-filtered menus), NAV-163-04 (strip top nav links), NAV-163-05 (remove DashboardQuickNav)
-**Depends on:** Phase 155
-**Plans:** 2/2 plans complete
-
-Plans:
-- [x] 163-01-PLAN.md — Make AdminSideNav role-aware, render for all logged-in users
-- [x] 163-02-PLAN.md — Strip nav links from TopNav/ChaseTopNav, remove DashboardQuickNav, visual verify
