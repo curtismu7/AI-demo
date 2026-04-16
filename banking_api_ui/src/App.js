@@ -21,6 +21,7 @@ import SetupWizard from './components/SetupWizard';
 import CIBAPanel from './components/CIBAPanel';
 import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
+import { MCPToolsEducation } from './components/MCPToolsEducation';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
@@ -438,6 +439,7 @@ function AppWithAuth() {
     '/scope-reference',
     '/feature-flags',
     '/mcp-inspector',
+    '/mcp-tools',
     '/security-settings',
     '/marketing',
     '/dashboard',
@@ -619,6 +621,7 @@ function AppWithAuth() {
                     <Route path="/langchain" element={<LangChainPage />} />
                     <Route path="/settings" element={<AdminRoute user={user}><SecuritySettings user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
+                    <Route path="/mcp-tools" element={user ? <MCPToolsEducation /> : <Navigate to="/" replace />} />
                     <Route path="/oauth-debug-logs"
                       element={<AdminRoute user={user}><OAuthDebugLogViewer /></AdminRoute>}
                     />
