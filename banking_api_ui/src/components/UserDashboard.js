@@ -14,8 +14,6 @@ import ExchangeModeToggle from './ExchangeModeToggle';
 import TransactionConsentModal from './TransactionConsentModal';
 import BankingAgent from './BankingAgent';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
-import AgentUiModeToggle from './AgentUiModeToggle';
-import DashboardLayoutToggle from './DashboardLayoutToggle';
 
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
@@ -1764,10 +1762,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
-          <div className="dashboard-toolbar__agent-layout">
-            <AgentUiModeToggle variant="eduBar" />
-            <DashboardLayoutToggle />
-          </div>
+
           <div className="dashboard-toolbar-toggle">
             <label className="toggle-label toggle-label--toolbar">
               <span className="toggle-text">Auto-refresh</span>

@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useAgentUiMode } from '../context/AgentUiModeContext';
+import { persistBankingAgentUi } from '../services/demoScenarioService';
+import { setDashboardLayout } from '../utils/dashboardLayout';
 import './AdminSideNav.css';
 
 
@@ -19,11 +22,39 @@ import './AdminSideNav.css';
  */
 export default function AdminSideNav({ user }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
 
   const isAdmin = user?.role === 'admin';
+  const { placement, fab } = useAgentUiMode();
+
+  const handleAgentPlacement = useCallback(async (p) => {
+    if (p === placement) return;
+    let next;
+    if (p === 'middle') {
+      setDashboardLayout('split3');
+      next = { placement: 'middle', fab };
+    } else if (p === 'bottom') {
+      setDashboardLayout('classic');
+      next = { placement: 'bottom', fab };
+    } else if (p === 'right-dock') {
+      setDashboardLayout('split3');
+      next = { placement: 'right-dock', fab };
+    } else {
+      next = { placement: 'none', fab: true };
+    }
+    try { localStorage.setItem('banking_agent_ui_v2', JSON.stringify(next)); } catch (_e) { /* noop */ }
+    await persistBankingAgentUi(next);
+    window.setTimeout(() => window.location.reload(), 250);
+  }, [placement, fab]);
+
+  const handleFabToggle = useCallback(async () => {
+    if (placement === 'none') return;
+    const next = { placement, fab: !fab };
+    try { localStorage.setItem('banking_agent_ui_v2', JSON.stringify(next)); } catch (_e) { /* noop */ }
+    await persistBankingAgentUi(next);
+    window.setTimeout(() => window.location.reload(), 250);
+  }, [placement, fab]);
 
   // Main navigation items (some with submenus) — ALL ROUTES VERIFIED
   // Items with adminOnly: true are hidden for non-admin users
@@ -77,9 +108,16 @@ export default function AdminSideNav({ user }) {
   // Filter by role
   const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin);
 
+  // Agent UI placement options for the expandable dropdown
+  const agentPlacementOptions = [
+    { key: 'middle', label: 'Middle column', icon: '┃' },
+    { key: 'right-dock', label: 'Right dock', icon: '◥' },
+    { key: 'bottom', label: 'Bottom dock', icon: '▁' },
+    { key: 'none', label: 'Float only', icon: '💬' },
+  ];
+
   // Action items (buttons, not navigation links)
   const actionItems = [
-    { label: 'Agent', action: 'agent', icon: '🤖' },
     { label: 'Dark Mode', action: 'dark-mode', icon: '🌙' },
     { label: 'Log Out', action: 'logout', icon: '🚪' },
   ];
@@ -98,16 +136,6 @@ export default function AdminSideNav({ user }) {
 
   const handleAction = (action) => {
     switch (action) {
-      case 'agent': {
-        const agentRoutes = ['/', '/admin', '/dashboard', '/marketing'];
-        const norm = location.pathname.replace(/\/$/, '') || '/';
-        if (agentRoutes.includes(norm)) {
-          window.dispatchEvent(new CustomEvent('banking-agent-open'));
-        } else {
-          navigate(isAdmin ? '/admin' : '/dashboard', { state: { openAgent: true } });
-        }
-        break;
-      }
       case 'dark-mode': {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -197,6 +225,49 @@ export default function AdminSideNav({ user }) {
         {/* Main Navigation Section */}
         <div className="admin-side-nav__section">
           {navItems.map((item, idx) => renderNavItem(item, 'nav', idx))}
+        </div>
+
+        {/* Agent UI Placement — expandable dropdown */}
+        {!collapsed && <div className="admin-side-nav__divider" />}
+        <div className="admin-side-nav__section">
+          <div>
+            <button
+              className="admin-side-nav__item admin-side-nav__item--parent"
+              onClick={() => toggleSection('agent-ui-placement')}
+              title={collapsed ? 'Agent UI Placement' : undefined}
+            >
+              <span className="admin-side-nav__icon">🤖</span>
+              {!collapsed && (
+                <>
+                  <span className="admin-side-nav__label">Agent UI</span>
+                  <span className={`admin-side-nav__chevron ${expandedSections['agent-ui-placement'] ? 'admin-side-nav__chevron--expanded' : ''}`}>
+                    ▶
+                  </span>
+                </>
+              )}
+            </button>
+            {expandedSections['agent-ui-placement'] && !collapsed && (
+              <div className="admin-side-nav__submenu">
+                {agentPlacementOptions.map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => void handleAgentPlacement(opt.key)}
+                    className={`admin-side-nav__item admin-side-nav__item--child${placement === opt.key ? ' admin-side-nav__item--active' : ''}`}
+                    title={opt.label}
+                  >
+                    <span className="admin-side-nav__icon">{opt.icon}</span>
+                    <span className="admin-side-nav__label">{opt.label}</span>
+                  </button>
+                ))}
+                {placement !== 'none' && (
+                  <label className="admin-side-nav__item admin-side-nav__item--child admin-side-nav__fab-toggle">
+                    <input type="checkbox" checked={fab} onChange={() => void handleFabToggle()} />
+                    <span className="admin-side-nav__label">+ Show FAB</span>
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Divider */}

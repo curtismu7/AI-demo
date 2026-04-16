@@ -253,3 +253,15 @@
 .admin-side-nav::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* Agent UI FAB toggle in sidebar */
+.admin-side-nav__fab-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.admin-side-nav__fab-toggle input[type="checkbox"] {
+  accent-color: #4a90d9;
+  margin-left: 4px;
+}
