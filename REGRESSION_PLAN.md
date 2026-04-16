@@ -1431,3 +1431,12 @@ cd ..
 - **Files modified:** `banking_api_server/services/sqliteSessionStore.js`
 - **Regression check:** `node -e "require('./banking_api_server/services/sqliteSessionStore')"` loads clean. `npm run build` → exit 0. Server starts and `/api/health` returns 200.
 - **Do not break:** Session persistence on fresh starts; OAuth callback session save; Upstash Redis store (production) is unaffected.
+
+### Phase 169 — OAuth Token Display Page
+
+- **Feature:** New page at `/oauth/token-display` showing decoded JWT claims, authorization scopes, token validity, provider metadata, and enriched PingOne userinfo data.
+- **Files added:** `banking_api_ui/src/components/OAuthTokenDisplayPage.jsx`, `OAuthTokenDisplayPage.css`, `banking_api_ui/src/services/userInfoService.js`
+- **Files modified:** `banking_api_ui/src/App.js` (route), `banking_api_server/routes/tokens.js` (GET `/api/tokens/userinfo`)
+- **BFF route:** `GET /api/tokens/userinfo` — calls PingOne userinfo endpoint with session access token. Token never exposed to frontend. Uses `oauthUserConfig.userInfoEndpoint` and `getSessionAccessToken(req)`.
+- **Regression check:** `cd banking_api_ui && npm run build` → exit 0. No changes to OAuth callback redirect logic, session management, or PKCE flows.
+- **Do not break:** OAuth callback redirect to `/dashboard` / `postLoginReturnToPath` (unchanged). Admin callback to `/admin` (unchanged). Session creation and `req.session.save()` before redirect (unchanged). PingOne userinfo is optional — page gracefully falls back to JWT-only if the endpoint fails.
