@@ -147,9 +147,6 @@ const SUGGESTIONS_ADMIN = [
   'What is step-up auth?',
 ];
 
-/** Embedded dock on `/config` — setup / OAuth / env, not day-to-day banking. */
-const CONFIG_ACTION_IDS = ['mcp_tools', 'logout'];
-
 const SUGGESTIONS_CONFIG_CUSTOMER = [
   'How do I change industry branding (e.g. FunnyBank) on the config page?',
   'How do Agent MCP scopes limit transfers vs read-only?',
@@ -1192,13 +1189,6 @@ export default function BankingAgent({
     }
     return effectiveUser?.role === 'admin' ? SUGGESTIONS_ADMIN : SUGGESTIONS_CUSTOMER;
   }, [isConfigEmbeddedFocus, effectiveUser?.role]);
-
-  const actionsList = useMemo(() => {
-    if (isConfigEmbeddedFocus) {
-      return ACTIONS.filter(a => CONFIG_ACTION_IDS.includes(a.id));
-    }
-    return ACTIONS;
-  }, [isConfigEmbeddedFocus]);
 
   /**
    * Independently check auth endpoints.  Called on mount, on panel open, and

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
-import axios from 'axios';
 import { getCachedJson } from '../services/cachedStatusService';
 import { toast, notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
 import bffAxios from '../services/bffAxios';
@@ -14,7 +13,6 @@ import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
-import { useTheme } from '../context/ThemeContext';
 // Phase 163: ChaseTopNav removed — sidebar provides all navigation
 import SplitPaneLayout from './SplitPaneLayout';
 import ArchitectureTabsPanel from './ArchitectureTabsPanel';
@@ -45,7 +43,6 @@ const Dashboard = ({ user, onLogout }) => {
   const [apiCallsModalOpen, setApiCallsModalOpen] = useState(false);
   const fetchingRef = React.useRef(false);
   const [scopeInjectionEnabled, setScopeInjectionEnabled] = useState(false);
-  const { theme } = useTheme();
 
   const isLocalApiHost =
     typeof window !== 'undefined' &&

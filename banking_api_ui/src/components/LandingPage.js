@@ -18,13 +18,6 @@ export default function LandingPage({ user, onLogout }) {
     window.location.href = '/api/auth/oauth/user/login';
   };
 
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      navigate('/logout');
-    }
-  };
 
   return (
     <div className="landing-page">

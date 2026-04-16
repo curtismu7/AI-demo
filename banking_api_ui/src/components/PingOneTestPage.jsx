@@ -653,7 +653,7 @@ export default function PingOneTestPage() {
       setExchange1Error(err.message);
       notifyError(`Exchange 1 error: ${err.message}`);
     }
-  }, []);
+  }, [tokenChainCtx]);
 
   const testExchange2 = useCallback(async () => {
     setExchange2Status('running');
@@ -680,7 +680,7 @@ export default function PingOneTestPage() {
       setExchange2Error(err.message);
       notifyError(`Exchange 2 error: ${err.message}`);
     }
-  }, []);
+  }, [tokenChainCtx]);
 
   const testExchange3 = useCallback(async () => {
     setExchange3Status('running');
@@ -706,7 +706,7 @@ export default function PingOneTestPage() {
       setExchange3Error(err.message);
       notifyError(`Exchange 3 error: ${err.message}`);
     }
-  }, []);
+  }, [tokenChainCtx]);
 
   const testExchangeIdToken = useCallback(async () => {
     setExchangeIdTokenStatus('running');

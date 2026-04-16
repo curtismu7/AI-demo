@@ -111,9 +111,11 @@ export default function SetupWizard() {
   const [credErrors, setCredErrors] = useState({});
   const [activeStep, setActiveStep] = useState(0);
   const [stepStatuses, setStepStatuses] = useState({});
+  // eslint-disable-next-line no-unused-vars
   const [_stepMessages, setStepMessages] = useState({});
   const [logEntries, setLogEntries] = useState([]);
   const [running, setRunning] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [_provisionResult, setProvisionResult] = useState(null);
   const [envContents, setEnvContents] = useState('');
   const [copyToast, setCopyToast] = useState('');
