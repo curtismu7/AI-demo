@@ -28,14 +28,14 @@ const SUPPORTED_PROTOCOL_VERSIONS = new Set(['2025-11-25', '2024-11-05']);
  *  banking:read  = view own data (accounts, balances, transactions)
  *  banking:write = mutate data (transfer, deposit, withdrawal) */
 const MCP_TOOL_SCOPES = {
-  // Read tools — specific scope OR broad banking:read
-  get_my_accounts:             ['banking:accounts:read', 'banking:read'],
-  get_account_balance:         ['banking:accounts:read', 'banking:read'],
-  get_my_transactions:         ['banking:transactions:read', 'banking:read'],
-  // Write tools — specific scope OR broad banking:write
-  create_transfer:             ['banking:transactions:write', 'banking:write'],
-  create_deposit:              ['banking:transactions:write', 'banking:write'],
-  create_withdrawal:           ['banking:transactions:write', 'banking:write'],
+  // Read tools — flat scope per Phase 146
+  get_my_accounts:             ['banking:read'],
+  get_account_balance:         ['banking:read'],
+  get_my_transactions:         ['banking:read'],
+  // Write tools — flat scope per Phase 146
+  create_transfer:             ['banking:write'],
+  create_deposit:              ['banking:write'],
+  create_withdrawal:           ['banking:write'],
   // Query tool — agent identity lookup scope
   query_user_by_email:         ['ai_agent'],
   
@@ -48,13 +48,13 @@ const MCP_TOOL_SCOPES = {
   admin_system_status:          ['admin:read'],
   
   // Legacy aliases (if still used anywhere)
-  list_accounts:               ['banking:accounts:read', 'banking:read'],
-  list_transactions:           ['banking:transactions:read', 'banking:read'],
-  transfer:                    ['banking:transactions:write', 'banking:write'],
-  deposit:                     ['banking:transactions:write', 'banking:write'],
-  withdraw:                    ['banking:transactions:write', 'banking:write'],
-  banking_get_account_balance: ['banking:accounts:read', 'banking:read'],
-  banking_create_transfer:     ['banking:transactions:write', 'banking:write'],
+  list_accounts:               ['banking:read'],
+  list_transactions:           ['banking:read'],
+  transfer:                    ['banking:write'],
+  deposit:                     ['banking:write'],
+  withdraw:                    ['banking:write'],
+  banking_get_account_balance: ['banking:read'],
+  banking_create_transfer:     ['banking:write'],
 };
 
 function getMcpServerUrl() {

@@ -252,7 +252,8 @@ router.get('/login', (req, res) => {
       if (err) {
         console.warn('[oauth/user] Session save failed before PingOne redirect (PKCE cookie is fallback):', err.message);
       }
-      console.log('Redirecting end user to PingOne Core:', url);
+      console.log('Redirecting end user to PingOne SSO:', url);
+      appEventService.logEvent('oauth', 'info', 'Redirecting → PingOne Authorization', { tag: 'oauth/user/login' });
       res.redirect(url);
     });
   } catch (error) {
@@ -324,6 +325,7 @@ router.get('/callback', async (req, res) => {
     // Exchange code for token (with PKCE verifier)
     const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri);
     console.debug('Token received for end user');
+    appEventService.logEvent('token_exchange', 'info', 'OAuth token received ← PingOne', { tag: 'oauth/user/callback' });
 
     // Decode ID token claims — used for nonce verification and as a fallback for userinfo gaps.
     let idTokenClaims = {};
@@ -482,6 +484,7 @@ router.get('/callback', async (req, res) => {
     } catch (_) { /* non-fatal — acr / may_act stay null */ }
 
     console.log('End user OAuth login successful for:', authedUser.username);
+    appEventService.logEvent('auth_lifecycle', 'info', `User authenticated: ${authedUser.username}`, { tag: 'oauth/user/callback', username: authedUser.username });
 
     // Regenerate session before storing credentials to prevent session fixation.
     // P3 — failure is now fatal (abort login) to eliminate the session fixation risk.

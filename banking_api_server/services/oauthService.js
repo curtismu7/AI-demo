@@ -1,6 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const oauthConfig = require('../config/oauth');
+const appEventService = require('./appEventService');
 const { isOAuthVerboseDebug } = require('../utils/oauthDebugFlags');
 const { verboseOAuthLog } = require('../utils/oauthVerboseLogger');
 const { trackTokenEvent } = require('./tokenChainService');
@@ -269,10 +270,16 @@ class OAuthService {
       audience,
       scopeStr
     );
+    appEventService.logEvent('token_exchange', 'info',
+      `POST ${this.config.tokenEndpoint} (RFC 8693 token exchange → ${audience})`,
+      { tag: 'token-exchange', metadata: { audience, scope: scopeStr } });
     try {
       const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
       const exchanged = response.data.access_token;
       if (!exchanged) throw new Error('Token exchange response missing access_token');
+      appEventService.logEvent('token_exchange', 'info',
+        `Token exchange ← PingOne OK (audience=${audience})`,
+        { tag: 'token-exchange', metadata: { audience } });
       console.log(`[TokenExchange] Issued delegated token for audience=${audience} scope="${scopeStr}"`);
       return exchanged;
     } catch (error) {
@@ -830,7 +837,7 @@ class OAuthService {
       role: 'customer', // Default role, will be overridden in OAuth callback if needed
       isActive: true,
       createdAt: new Date(),
-      oauthProvider: 'pingone_ai_core',
+      oauthProvider: 'pingone_sso',
       oauthId: userInfo.sub || userInfo.id,
     };
   }

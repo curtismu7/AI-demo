@@ -1288,6 +1288,7 @@ app.get('/api/mcp/tool/events', (req, res) => {
 app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
     // Log incoming request details for debugging 400 errors
     const startTime = Date.now();
+    const _appEvents = require('./services/appEventService');
     const userAgent = req.headers['user-agent'] || 'unknown';
     const contentType = req.headers['content-type'] || 'unknown';
     const contentLength = req.headers['content-length'] || 'unknown';
@@ -1684,7 +1685,9 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         emit({
             phase: 'mcp_remote_begin'
         });
+        _appEvents.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, mcpServerUrl: getMcpServerUrl() } });
         const result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
+        _appEvents.logEvent('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
         emit({
             phase: 'mcp_remote_done'
         });

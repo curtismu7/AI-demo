@@ -1173,6 +1173,7 @@ async function _performTwoExchangeDelegation(
         'act.sub records that the AI Agent performed this exchange. Now performing Exchange #2.',
       { rfc: 'RFC 8693', exchangeStep: '1-exchange',
         actPresent: !!agentExchangedClaims?.act,
+        actExpectedHere: false,
         actDetails: agentExchangedClaims?.act ? JSON.stringify(agentExchangedClaims.act) : null }
     ));
   } catch (err) {
@@ -1360,6 +1361,7 @@ module.exports = {
   resolveMcpAccessTokenWithEvents,
   buildSessionPreviewTokenEvents,
   decodeJwtClaims,
+  buildTokenEvent,
   sanitizeClaims,
   countJwtScopes,
   MIN_USER_SCOPES_FOR_MCP,

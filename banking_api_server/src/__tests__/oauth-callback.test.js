@@ -61,7 +61,7 @@ describe('OAuth Callback Token Storage (Task 7)', () => {
       firstName: 'Test',
       lastName: 'User',
       role: 'admin',
-      oauthProvider: 'pingone_ai_core',
+      oauthProvider: 'pingone_sso',
       oauthId: 'test-user-id'
     });
     
@@ -73,7 +73,7 @@ describe('OAuth Callback Token Storage (Task 7)', () => {
       firstName: 'Test',
       lastName: 'User',
       role: 'admin',
-      oauthProvider: 'pingone_ai_core',
+      oauthProvider: 'pingone_sso',
       oauthId: 'test-user-id'
     });
     
@@ -96,7 +96,7 @@ describe('OAuth Callback Token Storage (Task 7)', () => {
         firstName: 'Test',
         lastName: 'User',
         role: 'admin',
-        oauthProvider: 'pingone_ai_core'
+        oauthProvider: 'pingone_sso'
       },
       oauthTokens: {
         accessToken: 'test-oauth-access-token',
@@ -155,7 +155,7 @@ describe('OAuth Callback Token Storage (Task 7)', () => {
         lastName: 'User',
         role: 'admin'
       },
-      oauthProvider: 'pingone_ai_core',
+      oauthProvider: 'pingone_sso',
       accessToken: 'test-oauth-access-token',
       tokenType: 'Bearer',
       clientType: 'enduser'
@@ -180,7 +180,7 @@ describe('OAuth Callback Token Storage (Task 7)', () => {
         firstName: 'Test',
         lastName: 'Customer',
         role: 'customer',
-        oauthProvider: 'pingone_ai_core'
+        oauthProvider: 'pingone_sso'
       },
       oauthTokens: {
         accessToken: 'test-oauth-access-token-customer',
@@ -235,7 +235,7 @@ describe('OAuth Callback Token Storage (Task 7)', () => {
         lastName: 'Customer',
         role: 'customer'
       },
-      oauthProvider: 'pingone_ai_core',
+      oauthProvider: 'pingone_sso',
       accessToken: 'test-oauth-access-token-customer',
       tokenType: 'Bearer',
       clientType: 'enduser'

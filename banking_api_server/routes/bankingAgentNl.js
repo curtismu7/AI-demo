@@ -38,7 +38,7 @@ router.get('/nl/status', (req, res) => {
   const activeProvider = groq ? 'groq' : gemini ? 'gemini' : 'heuristic';
   return res.json({
     groqConfigured: groq,
-    groqModel: groq ? (process.env.GROQ_MODEL || 'llama-3.1-8b-instant') : null,
+    groqModel: groq ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile') : null,
     geminiConfigured: gemini,
     geminiModel: gemini ? (process.env.GEMINI_MODEL || 'gemini-1.5-flash') : null,
     activeProvider,

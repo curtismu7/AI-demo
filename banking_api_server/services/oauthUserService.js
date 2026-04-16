@@ -270,7 +270,7 @@ class OAuthUserService {
       role: this.config.userRole, // End users get customer role
       isActive: true,
       createdAt: new Date(),
-      oauthProvider: 'pingone_ai_core',
+      oauthProvider: 'pingone_sso',
       oauthId: userInfo.sub || userInfo.id
     };
   }

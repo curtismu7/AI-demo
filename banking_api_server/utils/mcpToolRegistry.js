@@ -7,7 +7,7 @@ const { tool } = require('@langchain/core/tools');
 const { z } = require('zod/v4');
 const { explainTopic } = require('../services/educationTopics.js');
 const { mcpCallTool } = require('../services/mcpWebSocketClient');
-const { decodeJwtClaims } = require('../services/agentMcpTokenService');
+const { decodeJwtClaims, buildTokenEvent } = require('../services/agentMcpTokenService');
 
 
 const braveSearchService = require('../services/braveSearchService');
@@ -32,14 +32,15 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
 
     // Track token event
     if (tokenEvents) {
-      tokenEvents.push({
-        type: 'agent_token_used',
-        timestamp: new Date().toISOString(),
-        tool: toolName,
-        status: 'success',
-        actor: 'agent',
-        onBehalfOf: userId,
-      });
+      const decoded = agentToken ? { claims: decodeJwtClaims(agentToken)?.claims, header: decodeJwtClaims(agentToken)?.header } : null;
+      tokenEvents.push(buildTokenEvent(
+        'mcp-agent-token-presented',
+        `Agent Token → MCP Tool: ${toolName}`,
+        'active',
+        decoded,
+        `Agent presenting delegated token to call MCP tool "${toolName}" on behalf of user ${userId}.`,
+        { type: 'agent_token_used', tool: toolName, actor: 'agent', onBehalfOf: userId }
+      ));
       console.log('[MCP_TOOL] Added agent_token_used event');
     }
 
@@ -53,14 +54,14 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
 
     // Track tool call event
     if (tokenEvents) {
-      tokenEvents.push({
-        type: 'tool_call',
-        timestamp: new Date().toISOString(),
-        tool: toolName,
-        status: 'success',
-        actor: 'agent',
-        onBehalfOf: userId,
-      });
+      tokenEvents.push(buildTokenEvent(
+        'mcp-tool-result',
+        `MCP Tool Result: ${toolName}`,
+        'exchanged',
+        null,
+        `MCP tool "${toolName}" executed successfully on behalf of user ${userId}.`,
+        { type: 'tool_call', tool: toolName, actor: 'agent', onBehalfOf: userId }
+      ));
       console.log('[MCP_TOOL] Added tool_call event');
     }
 
