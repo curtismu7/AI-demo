@@ -2396,7 +2396,28 @@ Plans:
 - [ ] 164-01-PLAN.md — Fix SQLite DBMOVED, route auth callers through cachedStatusService, slow AgentFlowDiagramPanel
 - [ ] 164-02-PLAN.md — Server timing middleware, UI timing integration, end-to-end verification
 
+### Phase 165: Add LM Studio as local model provider — fallback when Groq quota exceeded
+
+**Goal:** Add LM Studio (OpenAI-compatible local server) as a fallback model provider when Groq quota is exceeded, keeping the demo functional without cloud API dependencies.
+**Requirements**: LMSTUDIO-01, LMSTUDIO-02
+**Depends on:** Phase 164
+**Plans:** 1 plan
+
+Plans:
+- [ ] 165-01-PLAN.md — Add LM Studio fallback to BFF NL intent chain and LangChain agent factory
+
 ---
+
+
+
+
+
+
+
+
+
+
+
 
 ### Phase 163: Universal sidebar navigation — show sidebar for all logged-in users, strip redundant top nav links
 
