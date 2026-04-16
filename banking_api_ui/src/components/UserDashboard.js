@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getCachedJson } from '../services/cachedStatusService';
 import { toast, notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
 import { toastCustomerError } from '../utils/dashboardToast';
 import { navigateToCustomerOAuthLogin } from '../utils/authUi';
@@ -154,11 +155,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       // ── 1. Resolve session ────────────────────────────────────────────────
       let sessionUser = null;
       try {
-        const userRes = await axios.get('/api/auth/oauth/user/status');
+        const userRes = await getCachedJson('/api/auth/oauth/user/status');
         if (userRes.data.authenticated) {
           sessionUser = userRes.data.user;
         } else {
-          const adminRes = await axios.get('/api/auth/oauth/status');
+          const adminRes = await getCachedJson('/api/auth/oauth/status');
           if (adminRes.data.authenticated) sessionUser = adminRes.data.user;
         }
       } catch (sessionErr) {

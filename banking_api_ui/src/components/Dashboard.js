@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { getCachedJson } from '../services/cachedStatusService';
 import { toast, notifySuccess, notifyError, notifyWarning, notifyInfo } from '../utils/appToast';
 import bffAxios from '../services/bffAxios';
 import { resolveSessionUser } from '../services/sessionResolver';
@@ -256,14 +257,14 @@ const Dashboard = ({ user, onLogout }) => {
       // Try both admin and user status endpoints using axios directly
       let response;
       try {
-        response = await axios.get('/api/auth/oauth/status');
+        response = await getCachedJson('/api/auth/oauth/status');
         console.debug('Admin OAuth response:', response.data);
         if (!response.data.authenticated) {
-          response = await axios.get('/api/auth/oauth/user/status');
+          response = await getCachedJson('/api/auth/oauth/user/status');
           console.debug('User OAuth response:', response.data);
         }
       } catch (error) {
-        response = await axios.get('/api/auth/oauth/user/status');
+        response = await getCachedJson('/api/auth/oauth/user/status');
         console.debug('User OAuth response:', response.data);
       }
       

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { getCachedStatus } from '../services/cachedStatusService';
 import { createPortal } from 'react-dom';
 import { toast, notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
@@ -1094,9 +1095,9 @@ export default function BankingAgent({
       retryDelays.forEach((delay, i) => {
         const t = setTimeout(async () => {
           const result = await Promise.all([
-            fetch('/api/auth/oauth/status',      { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
-            fetch('/api/auth/oauth/user/status', { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
-            fetch('/api/auth/session',           { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+            getCachedStatus('/api/auth/oauth/status').catch(() => null),
+            getCachedStatus('/api/auth/oauth/user/status').catch(() => null),
+            getCachedStatus('/api/auth/session').catch(() => null),
           ]);
           const [admin, endUser, session] = result;
           const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
@@ -1209,9 +1210,9 @@ export default function BankingAgent({
    */
   const checkSelfAuth = useCallback(() => {
     Promise.all([
-      fetch('/api/auth/oauth/status',      { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/oauth/user/status', { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/session',           { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+      getCachedStatus('/api/auth/oauth/status').catch(() => null),
+      getCachedStatus('/api/auth/oauth/user/status').catch(() => null),
+      getCachedStatus('/api/auth/session').catch(() => null),
     ]).then(([admin, endUser, session]) => {
       const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
       setCookieOnlyBffSession(cookieOnly);
@@ -1279,9 +1280,9 @@ export default function BankingAgent({
   // Check on mount — auto-open if already authenticated (e.g. page refresh after login)
   useEffect(() => {
     Promise.all([
-      fetch('/api/auth/oauth/status',      { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/oauth/user/status', { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/auth/session',           { credentials: 'include', _silent: true }).then(r => r.ok ? r.json() : null).catch(() => null),
+      getCachedStatus('/api/auth/oauth/status').catch(() => null),
+      getCachedStatus('/api/auth/oauth/user/status').catch(() => null),
+      getCachedStatus('/api/auth/session').catch(() => null),
     ]).then(([admin, endUser, session]) => {
       const { found, cookieOnlyBffSession: cookieOnly } = resolveSessionFromAuthTrio(admin, endUser, session);
       setCookieOnlyBffSession(cookieOnly);

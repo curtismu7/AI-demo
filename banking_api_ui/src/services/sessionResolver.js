@@ -1,19 +1,18 @@
 // banking_api_ui/src/services/sessionResolver.js
-import bffAxios from './bffAxios';
+import { getCachedJson } from './cachedStatusService';
 
 /**
  * Resolve current authenticated user from all supported session endpoints.
  * Order matches App/session behavior: admin OAuth -> user OAuth -> generic session.
- * 
- * NOTE: Auth endpoints are NOT cached intentionally.
- * Token/scope data must be fresh every time for MCP agent token exchange to work.
- * Stale cached auth data causes 401 errors on agent tool calls.
+ *
+ * Cached with 3s TTL + in-flight dedup via cachedStatusService.
+ * Cache cleared on login/logout events. BFF cookie auth means cached status is safe.
  */
 export async function resolveSessionUser() {
   const [admin, endUser, session] = await Promise.allSettled([
-    bffAxios.get('/api/auth/oauth/status'),
-    bffAxios.get('/api/auth/oauth/user/status'),
-    bffAxios.get('/api/auth/session'),
+    getCachedJson('/api/auth/oauth/status'),
+    getCachedJson('/api/auth/oauth/user/status'),
+    getCachedJson('/api/auth/session'),
   ]);
 
   const adminUser = admin.status === 'fulfilled' && admin.value?.data?.authenticated ? admin.value.data.user : null;

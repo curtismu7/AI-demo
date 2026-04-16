@@ -136,7 +136,7 @@ export default function AgentFlowDiagramPanel() {
   // Also poll every 3s while panel is visible so step transitions update the chain
   useEffect(() => {
     if (!snap.visible) return undefined;
-    const id = setInterval(loadTokenChain, 3000);
+    const id = setInterval(loadTokenChain, 10000); // 10s poll — chain only changes during active agent ops
     return () => clearInterval(id);
   }, [snap.visible, loadTokenChain]);
 

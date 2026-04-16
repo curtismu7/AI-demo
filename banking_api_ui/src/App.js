@@ -49,6 +49,7 @@ import AdminLayout from './components/AdminLayout';
 import AdminSideNav from './components/AdminSideNav';
 
 import { savePublicConfig } from './services/configService';
+import { getCachedJson } from './services/cachedStatusService';
 import { SpinnerProvider } from './context/SpinnerContext';
 import SpinnerHost from './components/shared/SpinnerHost';
 import { EducationUIProvider } from './context/EducationUIContext';
@@ -249,19 +250,19 @@ function AppWithAuth() {
     };
 
     try {
-      const adminResponse = await axios.get('/api/auth/oauth/status');
+      const adminResponse = await getCachedJson('/api/auth/oauth/status');
       if (adminResponse.data.authenticated) {
         applyUser(adminResponse.data.user);
         return true;
       }
 
-      const userResponse = await axios.get('/api/auth/oauth/user/status');
+      const userResponse = await getCachedJson('/api/auth/oauth/user/status');
       if (userResponse.data.authenticated) {
         applyUser(userResponse.data.user);
         return true;
       }
 
-      const sessionResponse = await axios.get('/api/auth/session');
+      const sessionResponse = await getCachedJson('/api/auth/session');
       if (sessionResponse.data.authenticated) {
         applyUser(sessionResponse.data.user);
         return true;
@@ -538,6 +539,27 @@ function AppWithAuth() {
                 </main>
               </>
             } />
+            {/* Test & educational pages — accessible without login */}
+            <Route path="/pingone-test" element={
+              <>
+                {user && <AdminSideNav user={user} />}
+
+                <TopNav user={user} onLogout={logout} />
+                <main className="main-content">
+                  <PingOneTestPage />
+                </main>
+              </>
+            } />
+            <Route path="/mfa-test" element={
+              <>
+                {user && <AdminSideNav user={user} />}
+
+                <TopNav user={user} onLogout={logout} />
+                <main className="main-content">
+                  <MFATestPage />
+                </main>
+              </>
+            } />
             <Route
               path="/onboarding"
               element={
@@ -606,9 +628,6 @@ function AppWithAuth() {
                     <Route path="/postman" element={<PostmanCollectionsPage user={user} onLogout={logout} />} />
                     <Route path="/scope-audit" element={<AdminRoute user={user}><ScopeAuditPage /></AdminRoute>} />
                     <Route path="/scope-reference" element={<AdminRoute user={user}><ScopeReferencePage /></AdminRoute>} />
-                    {/* Test & educational pages */}
-                    <Route path="/pingone-test" element={user ? <PingOneTestPage /> : <Navigate to="/" replace />} />
-                    <Route path="/mfa-test" element={user ? <MFATestPage /> : <Navigate to="/" replace />} />
                     {/* User-friendly self-service routes */}
                     <Route path="/accounts" element={<UserAccounts user={user} />} />
                     <Route path="/transactions" element={<UserTransactions user={user} />} />
@@ -651,7 +670,7 @@ function AppWithAuth() {
           )}
           {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
               order directly above the footer on marketing and other non-dashboard routes. */}
-          {!onUserDashboardRoute && (
+          {!loading && !onUserDashboardRoute && (
             <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
           )}
           {!isApiTrafficOnlyPage && <Footer user={user} />}

@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/education/TokenExchangePanel.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { getCachedJson } from '../../services/cachedStatusService';
 import EducationDrawer from '../shared/EducationDrawer';
 import {
   EduImplIntro,
@@ -201,8 +202,8 @@ export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
     (async () => {
       setLive((s) => ({ ...s, loading: true, error: null }));
       try {
-        let r = await axios.get('/api/auth/oauth/status');
-        if (!r.data?.authenticated) r = await axios.get('/api/auth/oauth/user/status');
+        let r = await getCachedJson('/api/auth/oauth/status');
+        if (!r.data?.authenticated) r = await getCachedJson('/api/auth/oauth/user/status');
         if (cancelled) return;
         if (r.data?.authenticated && r.data?.accessToken) {
           const parts = r.data.accessToken.split('.');

@@ -2,10 +2,17 @@
  * Cached status endpoint service
  * Deduplicates and caches common status endpoint calls to reduce excessive polling.
  * Each status endpoint has a 3-second TTL — requests within that window reuse cached results.
+ * Cache auto-clears on login/logout events (userAuthenticated / userLoggedOut).
  */
 
 const cache = {};
 const CACHE_TTL_MS = 3000; // 3 seconds
+
+// Auto-invalidate cache on auth transitions
+if (typeof window !== 'undefined') {
+  window.addEventListener('userAuthenticated', () => clearStatusCache());
+  window.addEventListener('userLoggedOut', () => clearStatusCache());
+}
 
 /**
  * Get cached status with request deduplication.
@@ -46,6 +53,15 @@ export async function getCachedStatus(url, config = {}) {
   // Store the promise immediately so subsequent calls get the same one
   cache[cacheKey] = { promise, expires: now + CACHE_TTL_MS };
   return promise;
+}
+
+/**
+ * Convenience wrapper returning { data: parsedJson } shape (axios-compatible).
+ * Uses same-origin fetch with credentials. Cached with 3s TTL + in-flight dedup.
+ */
+export async function getCachedJson(url) {
+  const data = await getCachedStatus(url);
+  return { data };
 }
 
 /**
