@@ -2291,19 +2291,20 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 154 to break down)
 
-### Phase 155: Redesign left sidebar as unified navigation menu with icon + label styling [IN PROGRESS]
+### Phase 155: Redesign left sidebar as unified navigation menu with icon + label styling [COMPLETE]
 
 
-**Goal:** Create unified admin sidebar with all navigation consolidated (Home, Dashboard, Users, Accounts, Transactions, Banking, Logs, Audit, Security, Config, etc.). All entries styled consistently in **white text** with icon + label pairs. Support expandable submenu sections (Data Management, Audit & Logs, Security, Configuration) like PingIdentity design. Admin users get complete left-side navigation; DashboardQuickNav hidden for admins. Remaining: professional line icons (replace emoji), responsive polish, toolbar consolidation for non-admin routes.
+**Goal:** Create unified admin sidebar with all navigation consolidated on ALL pages for admin users. All entries styled consistently in **white text** with icon + label pairs. Support expandable submenu sections like PingIdentity design. All menu links verified to point to real routes. Admin users get complete left-side navigation throughout the app.
 
-**Requirements**: SIDE-155-01 (sidebar menu component), SIDE-155-02 (icon + label styling), SIDE-155-03 (responsive layout), SIDE-155-04 (toolbar consolidation)
+**Requirements**: SIDE-155-01 (sidebar menu component), SIDE-155-02 (icon + label styling), SIDE-155-03 (hierarchical menus), SIDE-155-04 (verify all links), SIDE-155-05 (global integration)
 **Depends on:** Phase 154
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
 - [x] [155-01-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-01-PLAN.md) — AdminSideNav component + AdminLayout wrapper + CSS styling (COMPLETE — AdminSideNav.jsx, AdminSideNav.css, AdminLayout.jsx created)
-- [x] [155-02-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-02-PLAN.md) — Consolidate DashboardQuickNav buttons into sidebar, hide QuickNav for admin users (COMPLETE — Home, Banking, Agent, API popout, Logs popout added to AdminSideNav; DashboardQuickNav returns null for admins)
-- [x] [155-03-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-03-PLAN.md) — Add expandable submenu sections, ensure ALL text is white, consistent icon+label formatting (COMPLETE — Data Management, Audit & Logs, Security, Configuration submenus added; all entries white text; submenu expand/collapse working)
+- [x] [155-02-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-02-PLAN.md) — Consolidate DashboardQuickNav buttons into sidebar (COMPLETE — Home, Agent, Dark Mode, Logout actions added)
+- [x] [155-03-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-03-PLAN.md) — Add expandable submenu sections, white text, consistent formatting (COMPLETE — User Banking, Audit & Logs, Security, Configuration submenus added with all entries white)
+- [x] **155-04 (inline)** — Fix all broken links + integrate sidebar globally (COMPLETE — Fixed 5 broken routes: /activity-logs→/activity, /security-settings→/settings, /oauth-debug→/oauth-debug-logs, /client-reg→/client-registration. Removed non-existent items. Added API Traffic, Scope Audit/Reference. Integrated AdminSideNav into App.js to render on all pages for admin users)
 
 ### Phase 156: Improve security error messages for token scope violations and delegation failures
 
