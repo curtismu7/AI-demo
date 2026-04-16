@@ -14,7 +14,7 @@ import { toastAdminSessionError } from '../utils/dashboardToast';
 import '../styles/appShellPages.css';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { useTheme } from '../context/ThemeContext';
-import ChaseTopNav from './ChaseTopNav';
+// Phase 163: ChaseTopNav removed — sidebar provides all navigation
 import SplitPaneLayout from './SplitPaneLayout';
 import ArchitectureTabsPanel from './ArchitectureTabsPanel';
 import ApiCallsModal from './ApiCallsModal';
@@ -318,7 +318,7 @@ const Dashboard = ({ user, onLogout }) => {
       <a href="#admin-dashboard-main" className="dash-skip-link">
         Skip to admin content
       </a>
-      <ChaseTopNav user={user} />
+
       <div
         className={`app-page-shell__body app-page-shell__body--wide ${agentPlacement === 'bottom' ? 'app-page-shell__body--embed-agent' : ''}`}
       >
