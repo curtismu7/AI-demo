@@ -192,7 +192,6 @@ function AppWithAuth() {
   const demoMode = useDemoMode();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  // eslint-disable-next-line no-unused-vars
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   /** On-page session prompt (replaces toast-only for “log in again” flows). */
@@ -543,7 +542,7 @@ function AppWithAuth() {
               path="/marketing"
               element={
                 !user ? (
-                  <LandingPage />
+                  loading ? null : <LandingPage />
                 ) : (
                   <>
                     <AdminSideNav user={user} />
@@ -558,7 +557,7 @@ function AppWithAuth() {
 
             <Route path="*" element={
               !user ? (
-                <LandingPage />
+                loading ? null : <LandingPage />
               ) : (
                 <>
                   {user && <AdminSideNav user={user} />}

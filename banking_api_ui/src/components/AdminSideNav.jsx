@@ -30,16 +30,18 @@ export default function AdminSideNav({ user }) {
   const [expandedSections, setExpandedSections] = useState({});
 
   const isAdmin = user?.role === 'admin';
-  const { placement, fab } = useAgentUiMode();
+  const { placement, fab, setAgentUi } = useAgentUiMode();
   const { open: openEdu } = useEducationUI();
   const tour = useDemoTour();
 
   const handleAgentPlacement = useCallback(async (p) => {
     if (p === placement) return;
     let next;
+    let needsReload = true;
     if (p === 'middle') {
       setDashboardLayout('split3');
       next = { placement: 'middle', fab };
+      needsReload = false;          // live context update — no flash
     } else if (p === 'bottom') {
       setDashboardLayout('classic');
       next = { placement: 'bottom', fab };
@@ -49,10 +51,15 @@ export default function AdminSideNav({ user }) {
     } else {
       next = { placement: 'none', fab: true };
     }
-    try { localStorage.setItem('banking_agent_ui_v2', JSON.stringify(next)); } catch (_e) { /* noop */ }
-    await persistBankingAgentUi(next);
-    window.setTimeout(() => window.location.reload(), 250);
-  }, [placement, fab]);
+    if (needsReload) {
+      try { localStorage.setItem('banking_agent_ui_v2', JSON.stringify(next)); } catch (_e) { /* noop */ }
+      await persistBankingAgentUi(next);
+      window.setTimeout(() => window.location.reload(), 250);
+    } else {
+      setAgentUi(next);
+      await persistBankingAgentUi(next);
+    }
+  }, [placement, fab, setAgentUi]);
 
   const handleFabToggle = useCallback(async () => {
     if (placement === 'none') return;
