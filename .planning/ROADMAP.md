@@ -1566,7 +1566,7 @@ Plans:
 ### Phase 98: update diagrams and docs to reflect new token validation options including introspection vs local jwt selection
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 97
 **Plans:** 2/2 plans complete
 
@@ -1576,7 +1576,7 @@ Plans:
 ### Phase 99: test local server and make sure it all works
 
 **Goal:** Verify that the local server starts cleanly, all OAuth flows work end-to-end, and features from phases 95-98 (actor token terminology, aud validation, introspection/JWT config toggle) function correctly without regressions.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 98
 **Plans:** 2 plans
 
@@ -1587,7 +1587,7 @@ Plans:
 ### Phase 100: configurable step-up MFA threshold and agent transaction stop limit
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 99
 **Plans:** 1 plan
 
@@ -1619,7 +1619,7 @@ Plans:
 ### Phase 101: token exchange flow diagram UI - single and double exchange with AI agent bubble on responses
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 100
 **Plans:** 3/2 plans complete
 
@@ -1629,7 +1629,7 @@ Plans:
 ### Phase 102: redesign app UI to match Ping Operations Fabric style - split-pane layout with architecture diagram panel and chat agent panel, PingIdentity branding, red accents, solution architecture section with token flow steps
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 101
 **Plans:** 1 plan
 
@@ -1681,7 +1681,7 @@ Plans:
 ### Phase 105: make dashboards match the color scheme and general look of chase.com main page
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 104
 **Plans:** 1 plan
 
@@ -1691,7 +1691,7 @@ Plans:
 ### Phase 106: RFC 8693 §4.4 delegation claims - nested act for delegation chains - ensure compliance and implementation
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 105
 **Plans:** 1 plan
 
@@ -1701,7 +1701,7 @@ Plans:
 ### Phase 107: Make hostname and redirect URI configurable via admin config page
 
 **Goal:** Enable runtime hostname configuration via admin config page, eliminating manual `.env` edits for deployments across localhost, staging, and production domains. All API calls and OAuth redirect URIs automatically use the configured hostname.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 106
 **Plans:** 3/3 plans complete
 
@@ -1728,7 +1728,7 @@ Plans:
 ### Phase 109: Demo-data agent placement buttons should only configure state, not move agent
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 108
 **Plans:** 1/1 plans complete
 
@@ -1738,7 +1738,7 @@ Plans:
 ### Phase 110: Fix demo-data page layout: add may_act demo button, fix Config button overflow, improve discoverability
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 109
 **Plans:** 2/2 plans complete
 
@@ -1748,7 +1748,7 @@ Plans:
 ### Phase 112: marketing and dashboard ui polish - ensure consistent light and dark mode
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 111
 **Plans:** 4/4 plans complete
 
@@ -1758,7 +1758,7 @@ Plans:
 ### Phase 113: Redesign UI to match Chase.com look and feel (preserve all functionality) for all pages
 
 **Goal:** Apply Chase.com visual design (navy + blues, system fonts, horizontal top nav) to LandingPage, UserDashboard, Dashboard, and high-traffic admin pages while preserving all OAuth/MCP/education functionality.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 112
 **Plans:** 4/4 plans complete ✅
 
@@ -1785,7 +1785,7 @@ Plans:
 
 **Goal:** Integrate LangChain as the agent framework for BankingAgent, replacing custom agent loop with LangChain agent executor. Preserve all current functionality (MCP tool integration, OAuth + RFC 8693 token exchange, HITL consent gates, token event tracking). Improve maintainability and enable multi-turn agentic patterns.
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 114
 **Plans:** 3 plans (Wave 1: 115-01, 115-02 parallel; Wave 2: 115-03)
 
@@ -1807,7 +1807,7 @@ Plans:
 ### Phase 116: Full LangChain native agent rebuild — replace retrofit with real framework agent across all surfaces
 
 **Goal:** Replace deprecated createStructuredChatAgent + NL-intent dispatch with langchain 1.x createAgent() API across JS BFF and React UI. All user messages route through /api/banking-agent/message. 7-tool registry (banking + education + search). Per-request executor with session history. HITL consent gates wired.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 115
 **Plans:** 3 plans (Wave 1: 116-01, 116-02 parallel; Wave 2: 116-03)
 
@@ -1819,7 +1819,7 @@ Plans:
 ### Phase 117: LangChain production-quality agent with pluggable model interface (Groq default, OpenAI/Anthropic/HuggingFace support)
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 116
 **Plans:** 1 plan
 
@@ -1829,7 +1829,7 @@ Plans:
 ### Phase 118: Research and plan HuggingFace integration with LangChain for cost-effective model deployment — evaluate ecosystem, licensing, model selection, deployment options
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 117
 **Plans:** 1 plan
 
@@ -1860,7 +1860,7 @@ Plans:
 ### Phase 120: UI/UX: Audit all buttons and navigation; make sidebar and nav more bank-like
 
 **Goal:** Audit all interactive buttons and navigation elements across the app (sidebar, top nav, bottom sections). Verify buttons work and are visible to correct roles. Redesign sidebar and top navigation to look more bank-like: tighter spacing, professional line icons (not emoji), prominent section headers, smooth animations, and softer color palette.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 119
 **Plans:** 1 plan
 
@@ -1871,7 +1871,7 @@ Plans:
 
 **Goal:** Integrate new API display service into dashboards and marketing page as a draggable, resizable modal for educational purposes. The modal should be able to be dragged off-monitor and resized from all corners.
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 120
 **Plans:** 1 plan
 
@@ -1882,7 +1882,7 @@ Plans:
 
 **Goal:** Implement conditional authentication flow where logged-in users only require MFA for banking transactions, while non-logged-in users require both login and MFA.
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 
 **Depends on:** Phase 1 (auth-flows), Phase 100 (configurable-step-up-mfa-threshold), Phase 94 (explicit-hitl-for-agent-consent)
 
@@ -1905,7 +1905,7 @@ Plans:
 
 **Goal:** Create a comprehensive test page for PingOne MFA functionality including OTP (SMS, email), FIDO2/passkey, registration, and authentication testing.
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 
 **Depends on:** Phase 52 (PingOne MFA step-up implementation), Phase 1 (auth-flows)
 
@@ -1932,7 +1932,7 @@ Plans:
 
 **Goal:** Add clear Human-in-the-Loop (HITL) indication to MFA prompts so users understand when they need to manually approve a transaction.
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 
 **Depends on:** Phase 122 (conditional-step-up-authentication), Phase 52 (pingone-mfa-step-up)
 
@@ -1949,7 +1949,7 @@ Plans:
 ### Phase 125: 124
 
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 124
 **Plans:** 1 plan
 
@@ -1960,7 +1960,7 @@ Plans:
 
 **Goal:** Surface the `sub` claim as the human-readable user ID in the token chain display and education panels. Use `act` claim to show the agent/actor identity. Make identity visible in chain so users can see who is acting on whose behalf.
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 124
 **Plans:** 1 plan
 
@@ -1971,7 +1971,7 @@ Plans:
 
 **Goal:** Systematically debug and fix critical issues preventing the app from working: pingone-test page failures, mfa-test page failures, and agent failures.
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 116 (full-langchain-native-agent-rebuild), Phase 122 (conditional-step-up-authentication), Phase 52 (pingone-mfa-step-up)
 
 **Plans:** 1/1 plans complete
@@ -2010,7 +2010,7 @@ Plans:
 ### Phase 129: Audit last 15 todos — verify completed correctly, no errors, working
 
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 128
 **Plans:** 1 plan
 
@@ -2031,7 +2031,7 @@ Plans:
 ### Phase 131: PingOne test page — config and resources sections: show pass/fail details and explain why
 
 **Goal:** Enhance Configuration and Resources TestCards to show inline env var name, format hint, and amber fix message when failed — so operators understand why each item passes or fails without clicking Fix buttons.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 130
 **Plans:** 1 plan
 
@@ -2041,7 +2041,7 @@ Plans:
 ### Phase 132: Full end-to-end testing of pingone-test page — verify all token acquisition, token exchange, config, assets, and decoded token display
 
 **Goal:** Fix the `decodeJwtForDisplay is not defined` ReferenceError that breaks all token endpoints on the test page, then verify the full /pingone-test page end-to-end: worker token, authz token, agent token, all 3 token exchanges, configuration section inline details (Phase 131), asset table (Phase 130), and decoded token panels.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 131
 **Plans:** 2/2 plans complete
 
@@ -2052,7 +2052,7 @@ Plans:
 ### Phase 133: PingOne test page UX — add Test/Get Token button to Agent Token card, add decoded token panel and Show API call to every section on the page
 
 **Goal:** UX improvements on /pingone-test: rename Agent Token button to "Get Token", add collapsible "Show API Calls" toggle to every major section (replacing the single global API Calls section).
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 132
 **Plans:** 1 plan
 
@@ -2062,7 +2062,7 @@ Plans:
 ### Phase 134: Audit all phases 120+ — verify code quality, plan completeness, no regressions, no cross-phase conflicts; plan and execute any unplanned or unexecuted phases
 
 **Goal:** Audit all phases 120 and above: verify each delivered its goal, no regressions introduced, no cross-phase conflicts, and any unplanned or unexecuted phases are identified and resolved.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 133
 **Plans:** 1 plan
 
@@ -2072,7 +2072,7 @@ Plans:
 ### Phase 135: MFA test page UX — add decoded token panels and Show API Calls toggle to every section (mirror Phase 133 for MFA page)
 
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 134
 **Plans:** 1 plan
 
@@ -2082,7 +2082,7 @@ Plans:
 ### Phase 136: Token chain reliability audit and hardening - make foolproof
 
 **Goal:** Audit every place the token chain can break or go silent — missing events after login, chain not updating after agent tool calls, UI stuck on placeholder, identity hints not resolving, session preview stale — and fix each one. Add automated smoke tests and a visible error state when the chain fails so breakages are immediately obvious.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 134 (audit 120+), Phase 132 (decoded token panels)
 **Plans:** 2 plans
 
@@ -2092,7 +2092,7 @@ Plans:
 ### Phase 137: Configure page complete redesign — Chase.com style, functional PingOne config, full review and testing
 
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 136
 **Plans:** 5/5 plans complete
 
@@ -2139,7 +2139,7 @@ Plans:
 ### Phase 141: local setup wizard — guided PingOne configuration, app/resource/scope creation, SPEL attribute mapping, worker credentials, env file generation — app runs on completion
 
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 140
 **Plans:** 4 plans
 
@@ -2152,7 +2152,7 @@ Plans:
 ### Phase 142: UX: clear separation of banking action buttons — standard authz (transfer, deposit) vs token exchange — visual distinction for PingOne OAuth actions
 
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 141
 **Plans:** 2/3 plans executed
 
@@ -2188,7 +2188,7 @@ Plans:
 ### Phase 145: MCP server audit — does the server meet spec requirements and provide the agent with tools + metadata (capabilities, descriptions, parameter schemas) to make decisions dynamically, not hardcoded tool calls
 
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 144
 **Plans:** 2 plans
 
@@ -2197,8 +2197,8 @@ Plans:
 
 ### Phase 146: Scope vocabulary alignment — match code to PingOne
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Curated admin activity feed showing meaningful OAuth, token exchange, session, and JWKS events with timeline UI, replacing raw API noise
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 145
 **Plans:** 5/5 plans complete
 
@@ -2220,7 +2220,7 @@ Plans:
 
 **Goal:** Redesign BankingAgent UI for compactness and clarity while maintaining full functionality across all placement modes. Users can intuitively navigate action buttons organized by category (Account, Transaction, Admin), see more chat messages on screen, and have easy access to the prompt input.
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 147
 **Plans:** 3 plans in 1 wave
 
@@ -2253,8 +2253,8 @@ Plans:
 
 ### Phase 151: Scope vocabulary audit — review docs, code, tests, and PingOne Test page for clean scope alignment
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Curated admin activity feed showing meaningful OAuth, token exchange, session, and JWKS events with timeline UI, replacing raw API noise
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 150
 **Plans:** 2 plans
 
@@ -2283,8 +2283,8 @@ Plans:
 
 ### Phase 154: Create plan to implement DPoP, research if PingOne SSO supports it, if not how can we simulate it
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Curated admin activity feed showing meaningful OAuth, token exchange, session, and JWKS events with timeline UI, replacing raw API noise
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 153
 **Plans:** 2 plans
 
@@ -2308,7 +2308,7 @@ Plans:
 ### Phase 156: Improve security error messages for token scope violations and delegation failures
 
 **Goal:** Improve error messages to teach WHY security decisions were made: every rejection includes what failed, why it failed, how to fix it, and a teaching moment about security principles.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 155
 **Plans:** 3 plans
 
@@ -2323,7 +2323,7 @@ Plans:
 **Goal:** Audit current AI agent security implementation against PingOne's "Securing AI agents with PingOne using delegation and least privilege" guide and plan alignment improvements.
 
 
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 156
 **Plans:** 2/2 plans complete
 
@@ -2334,7 +2334,7 @@ Plans:
 ### Phase 158: Add token validation test scenarios — demonstrate MCP server rejecting wrong tokens (user token with wrong scope/aud) and educational error messages
 
 **Goal:** Add UI/API test scenarios to demonstrate how the MCP server rejects wrong tokens (user token with incorrect scope/audience) and displays educational error messages explaining the rejection and why it matters.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 157
 **Plans:** 1/0 plans complete
 
@@ -2354,12 +2354,24 @@ Plans:
 ### Phase 160: AI TRiSM Training Panel — educational slide-out explaining Trust, Risk Management, Security, Governance, Lifecycle, and IAM principles for AI agents
 
 **Goal:** Create interactive training panel explaining all six AI TRiSM principles with live demos from the app showing how each principle is implemented: Trust, Risk Management, Security, Governance, Lifecycle, and IAM.
-**Requirements**: TBD
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 159
 **Plans:** 2 plans
 
 Plans:
 - [x] 160-01-PLAN.md — TRiSM panel infrastructure: main slide-out + 6 principle slides + navigation
 - [x] 160-02-PLAN.md — Integration: Learn button in top nav, glossary component, build verification
+
+### Phase 161: Add thin activity log showing meaningful app events like JWKS validation OAuth redirects token exchange and session state instead of raw API calls and debug noise
+
+**Goal:** Curated admin activity feed showing meaningful OAuth, token exchange, session, and JWKS events with timeline UI, replacing raw API noise
+**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
+**Depends on:** Phase 160
+**Plans:** 3 plans
+
+Plans:
+- [ ] 161-01-PLAN.md — appEventService backend + API endpoint
+- [ ] 161-02-PLAN.md — Instrument OAuth, token exchange, session, JWKS event sources
+- [ ] 161-03-PLAN.md — Enhanced ActivityLogs UI with timeline, icons, flow groups
 
 ---
