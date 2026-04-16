@@ -49,7 +49,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 104 | pingone-test-security-audit | Security audit and hardening of PingOne test page to ensure worker tokens stay on backend | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05 | 1 plan |
 | 121 | api-display-modal-enhancement | Integrate API display service into dashboards and marketing page as draggable, resizable modal | TBD | 0 plans |
 | 122 | conditional-step-up-auth | Conditional step-up authentication: logged-in users only need MFA for banking transactions, non-logged-in users need login + MFA | TBD | 0 plans |
-| 166 | replace-gemini-with-anthropic | Replace Gemini with Anthropic in NL intent chain: Groq → LM Studio → Anthropic → heuristic | INTENT-CHAIN-01 | 1 plan |
+| 166 | replace-gemini-with-anthropic | 1/1 | Complete    | 2026-04-16 |
 
 ---
 
@@ -2414,10 +2414,10 @@ Plans:
 **Goal:** Replace Gemini with Anthropic Claude as the 3rd LLM fallback in the BFF natural language intent chain. New order: Groq → LM Studio → Anthropic → heuristic (chips/presets).
 **Requirements**: INTENT-CHAIN-01
 **Depends on:** Phase 165
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 166-01-PLAN.md — Replace parseWithGemini with parseWithAnthropic, update chain order
+- [x] 166-01-PLAN.md — Replace parseWithGemini with parseWithAnthropic, update chain order
 
 
 
