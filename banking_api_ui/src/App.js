@@ -64,13 +64,11 @@ import ServerRestartModal from './components/ServerRestartModal';
 import { monitorApiHealth } from './services/bankingRestartNotificationService';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
-import DashboardQuickNav from './components/DashboardQuickNav';
 import EmbeddedAgentDock from './components/EmbeddedAgentDock';
 import SideAgentDock from './components/SideAgentDock';
 import TopNav from './components/TopNav';
 import {
   isBankingAgentDashboardRoute,
-  isDashboardQuickNavRoute,
   isEmbeddedAgentDockRoute,
   isMarketingEmbeddedDockSurface,
   isPublicMarketingAgentPath,
@@ -406,7 +404,6 @@ function AppWithAuth() {
   }, []);
 
   /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
-  const showQuickNav = Boolean(user) && isDashboardQuickNavRoute(pathname, user);
   const isOnDashboard = pathname === '/dashboard';
 
   /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
@@ -489,7 +486,7 @@ function AppWithAuth() {
     <EducationUIProvider>
       <TokenChainProvider>
         <div
-          className={`App end-user-nano${showQuickNav ? ' App--has-quick-nav' : ''}${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}${isMarketingEmbeddedDockSurface(pathname, user) ? ' App--marketing-page' : ''}`}
+          className={`App end-user-nano${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}${isMarketingEmbeddedDockSurface(pathname, user) ? ' App--marketing-page' : ''}`}
         >
           <ToastContainer position="top-right" autoClose={toastContainerAutoCloseMs} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {sessionReauth && (
@@ -500,7 +497,6 @@ function AppWithAuth() {
               onDismiss={() => setSessionReauth(null)}
             />
           )}
-          <DashboardQuickNav user={user} />
           <Routes>
             <Route path="/setup/pingone" element={<PingOneSetupGuidePage />} />
             <Route path="/setup/wizard" element={<SetupWizard />} />

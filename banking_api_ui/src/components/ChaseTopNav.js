@@ -1,6 +1,5 @@
 // banking_api_ui/src/components/ChaseTopNav.js
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
 import TRiSMTrainingPanel from './TRiSMTrainingPanel';
 import { useTheme } from '../context/ThemeContext';
@@ -8,29 +7,19 @@ import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import './ChaseTopNav.css';
 
 /**
- * ChaseTopNav — Horizontal top navigation bar styled to match Chase.com design.
+ * ChaseTopNav — Brand-only horizontal top bar (Phase 163: nav links moved to sidebar).
  * 
  * Props:
  *   user: Current user object (for greeting and role)
  *   onLogout: Callback function for logout
- *   currentPage: String for active link highlighting (e.g., 'landing', 'dashboard', 'admin-dashboard')
  *   onRoleSwitch: (optional) Callback for admin/user role toggling
  */
-export default function ChaseTopNav({ user, onLogout, currentPage = 'home', onRoleSwitch }) {
+export default function ChaseTopNav({ user, onLogout, onRoleSwitch }) {
   const { theme, toggleTheme } = useTheme();
   const { preset } = useIndustryBranding();
   const [showTRiSMPanel, setShowTRiSMPanel] = useState(false);
   
   const isAdmin = user?.role === 'admin';
-
-  const navLinks = [
-    { label: 'Home', path: '/', pages: ['landing', 'home'] },
-    { label: 'Dashboard', path: '/dashboard', pages: ['dashboard', 'admin-dashboard'] },
-    { label: 'Config', path: '/config', pages: ['config'] },
-    { label: 'PingOne Test', path: '/pingone-test', pages: ['pingone-test'] },
-    { label: 'MFA Test', path: '/mfa-test', pages: ['mfa-test'] },
-    ...(isAdmin ? [{ label: 'Agent', path: '/agent', pages: ['agent'] }] : []),
-  ];
 
   return (
     <nav className="chase-top-nav">
@@ -40,19 +29,6 @@ export default function ChaseTopNav({ user, onLogout, currentPage = 'home', onRo
           <BrandLogo height={32} width={32} />
           <span className="chase-brand-name">{preset.shortName}</span>
         </div>
-      </div>
-
-      {/* CENTER: Navigation Links */}
-      <div className="chase-top-nav__center">
-        {navLinks.map((link) => (
-          <Link
-            key={link.path}
-            to={link.path}
-            className={`chase-nav-link ${link.pages.includes(currentPage) ? 'chase-nav-link--active' : ''}`}
-          >
-            {link.label}
-          </Link>
-        ))}
       </div>
 
       {/* RIGHT: User Actions (Greeting, Learn, Theme Toggle, Role Switch, Logout) */}

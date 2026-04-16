@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LandingPage.css';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
-import ChaseTopNav from './ChaseTopNav';
 
 export default function LandingPage({ user, onLogout }) {
   const navigate = useNavigate();
@@ -29,10 +28,8 @@ export default function LandingPage({ user, onLogout }) {
 
   return (
     <div className="landing-page">
-      {/* Logged-in: Chase navy top nav; logged-out: white marketing header */}
-      {user ? (
-        <ChaseTopNav user={user} onLogout={handleLogout} currentPage="landing" />
-      ) : (
+      {/* Logged-out: white marketing header; logged-in: no top nav (sidebar + App.js TopNav handles it) */}
+      {!user && (
         <header className="landing-header" role="banner">
         <div className="landing-header-content">
           <div className="landing-logo">
