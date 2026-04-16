@@ -418,6 +418,26 @@ function AppWithAuth() {
     Boolean(user) &&
     pathname === '/dashboard';
 
+  // Check if we're on an admin-managed route (AdminSideNav is visible)
+  const adminRoutePatterns = [
+    '/admin',
+    '/activity',
+    '/audit',
+    '/users',
+    '/accounts',
+    '/transactions',
+    '/settings',
+    '/oauth-debug',
+    '/client-registration',
+    '/scope-audit',
+    '/scope-reference',
+    '/feature-flags',
+    '/mcp-inspector',
+    '/security-settings',
+  ];
+  const isOnAdminRoute = adminRoutePatterns.some(pattern => pathname.startsWith(pattern)) || 
+                         (user?.role === 'admin' && pathname === '/');
+
   // Marketing home (/ or /marketing): show floating agent even when signed out; signed-in /marketing too.
   // Suppress float on signed-in / only when UserDashboard owns middle placement.
   const marketingAgentSurface =
@@ -598,7 +618,7 @@ function AppWithAuth() {
           {!isApiTrafficOnlyPage && <CimdSimPanel />}
           {!isApiTrafficOnlyPage && <AgentFlowDiagramPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {user && demoMode !== true && !isApiTrafficOnlyPage && (
+          {user && demoMode !== true && !isApiTrafficOnlyPage && !isOnAdminRoute && (
             <button
               type="button"
               className="demo-config-fab"

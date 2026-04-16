@@ -2291,19 +2291,19 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 154 to break down)
 
-### Phase 155: Redesign left sidebar as unified navigation menu with icon + label styling
+### Phase 155: Redesign left sidebar as unified navigation menu with icon + label styling [IN PROGRESS]
 
-**Goal:** Convert scattered side buttons (Sign in, Dashboard, Admin, Account) and top toolbar items (Theme toggle, Auto-refresh, Token modal, Switch role) into a unified left sidebar menu with icon-label pairs. Apply design styling from screenshot: color palette, font sizing, icon sizing (16-18px), label typography. Consolidate navigation in one location so toolbar is simplified to task-specific actions only.
+
+**Goal:** Create unified admin sidebar with all navigation consolidated (Home, Dashboard, Users, Accounts, Transactions, Banking, Logs, Audit, Security, Config, etc.). All entries styled consistently in **white text** with icon + label pairs. Support expandable submenu sections (Data Management, Audit & Logs, Security, Configuration) like PingIdentity design. Admin users get complete left-side navigation; DashboardQuickNav hidden for admins. Remaining: professional line icons (replace emoji), responsive polish, toolbar consolidation for non-admin routes.
 
 **Requirements**: SIDE-155-01 (sidebar menu component), SIDE-155-02 (icon + label styling), SIDE-155-03 (responsive layout), SIDE-155-04 (toolbar consolidation)
 **Depends on:** Phase 154
 **Plans:** 3 plans
 
 Plans:
-- [ ] 155-01-PLAN.md — Sidebar component + CSS styling
-- [ ] 155-02-PLAN.md — Integrate sidebar into App layout with responsive visibility
-- [ ] 155-03-PLAN.md — Consolidate toolbar items, clean up header, simplify TopNav
-
+- [x] 155-01-PLAN.md — AdminSideNav component + AdminLayout wrapper + CSS styling (COMPLETE — AdminSideNav.jsx, AdminSideNav.css, AdminLayout.jsx created)
+- [x] 155-02-PLAN.md — Consolidate DashboardQuickNav buttons into sidebar, hide QuickNav for admin users (COMPLETE — Home, Banking, Agent, API popout, Logs popout added to AdminSideNav; DashboardQuickNav returns null for admins)
+- [x] 155-03-PLAN.md — Add expandable submenu sections, ensure ALL text is white, consistent icon+label formatting (COMPLETE — Data Management, Audit & Logs, Security, Configuration submenus added; all entries white text; submenu expand/collapse working)
 
 ### Phase 156: Improve security error messages for token scope violations and delegation failures
 

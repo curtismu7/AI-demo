@@ -26,7 +26,8 @@ export default function DashboardQuickNav({ user }) {
     if (appEl) appEl.style.setProperty('--quick-nav-stack-height', `${height}px`);
   }, [isAdmin, user, pathname]);
 
-  if (!user || !isDashboardQuickNavRoute(pathname, user)) {
+  // Admin users get AdminSideNav instead — hide DashboardQuickNav for them
+  if (!user || isAdmin || !isDashboardQuickNavRoute(pathname, user)) {
     return null;
   }
 
