@@ -73,3 +73,11 @@ Phase 146, Phase 147 (most recent)
 - Phase 158 added: Add token validation test scenarios with educational error messages
 - Phase 159 added: AI Safety Red Button Kill Switch for TRiSM compliance
 - Phase 160 added: AI TRiSM Training Panel demonstrating all six principles with live demos
+
+---
+
+## Accumulated Context
+
+### Pending Todos
+
+- Fix spinner backend activity visibility and performance — .planning/todos/pending/2026-04-16-fix-spinner-backend-activity-visibility-and-performance.md
