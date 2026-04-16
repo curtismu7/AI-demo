@@ -56,7 +56,6 @@ import { TokenChainProvider } from './context/TokenChainContext';
 import { AgentUiModeProvider, useAgentUiMode } from './context/AgentUiModeContext';
 import { IndustryBrandingProvider } from './context/IndustryBrandingContext';
 import { VerticalProvider } from './context/VerticalContext';
-import EducationBar from './components/EducationBar';
 import { DemoTourProvider } from './context/DemoTourContext';
 import { ExchangeModeProvider } from './context/ExchangeModeContext';
 import DemoTourModal from './components/tour/DemoTourModal';
@@ -508,7 +507,6 @@ function AppWithAuth() {
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
-                  <EducationBar />
                   <UnifiedConfigurationPage user={user} onLogout={logout} />
                 </main>
               </>
@@ -519,7 +517,6 @@ function AppWithAuth() {
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
-                  <EducationBar />
                   <DemoDataPage user={user} onLogout={logout} />
                 </main>
               </>
@@ -531,7 +528,6 @@ function AppWithAuth() {
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
-                  <EducationBar />
                   <SelfServicePage />
                 </main>
               </>
@@ -552,8 +548,7 @@ function AppWithAuth() {
                   <>
                     <AdminSideNav user={user} />
                     <main className="main-content">
-                      <EducationBar />
-                      <LandingPage user={user} onLogout={logout} />
+                          <LandingPage user={user} onLogout={logout} />
                     </main>
                   </>
                 )
@@ -570,8 +565,7 @@ function AppWithAuth() {
 
                   <TopNav user={user} onLogout={logout} />
                   <main className="main-content">
-                    <EducationBar />
-                    <Routes location={backgroundLocation || fullLocation}>
+                      <Routes location={backgroundLocation || fullLocation}>
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <LandingPage user={user} onLogout={logout} />} />
                     <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />

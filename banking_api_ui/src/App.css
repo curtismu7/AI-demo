@@ -991,3 +991,39 @@
 .otp-step-up-modal--fido2 .otp-step-up-modal__actions {
   justify-content: center;
 }
+
+/* ── Phase 163: Sidebar layout offset ─────────────────────────────────────────
+   Push main content right so the fixed sidebar doesn't overlay it.
+   Only applies when sidebar is rendered (user is logged in).
+   Sidebar width: 280px expanded, 80px collapsed. */
+.App {
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 80px;
+}
+
+/* When sidebar is present (user is logged in), offset all content containers */
+.App:has(.admin-side-nav) .main-content,
+.App:has(.admin-side-nav) .topnav,
+.App:has(.admin-side-nav) .chase-top-nav,
+.App:has(.admin-side-nav) > .footer {
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease-in-out;
+}
+
+/* When sidebar is collapsed */
+.App:has(.admin-side-nav--collapsed) .main-content,
+.App:has(.admin-side-nav--collapsed) .topnav,
+.App:has(.admin-side-nav--collapsed) .chase-top-nav,
+.App:has(.admin-side-nav--collapsed) > .footer {
+  margin-left: var(--sidebar-collapsed-width);
+}
+
+/* Responsive: on small screens sidebar auto-collapses to icon-only */
+@media (max-width: 768px) {
+  .App:has(.admin-side-nav) .main-content,
+  .App:has(.admin-side-nav) .topnav,
+  .App:has(.admin-side-nav) .chase-top-nav,
+  .App:has(.admin-side-nav) > .footer {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+}

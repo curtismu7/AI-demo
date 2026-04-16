@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { persistBankingAgentUi } from '../services/demoScenarioService';
 import { setDashboardLayout } from '../utils/dashboardLayout';
+import { useEducationUI } from '../context/EducationUIContext';
+import { EDU } from './education/educationIds';
+import { useDemoTour } from '../context/DemoTourContext';
 import './AdminSideNav.css';
 
 
@@ -28,6 +31,8 @@ export default function AdminSideNav({ user }) {
 
   const isAdmin = user?.role === 'admin';
   const { placement, fab } = useAgentUiMode();
+  const { open: openEdu } = useEducationUI();
+  const tour = useDemoTour();
 
   const handleAgentPlacement = useCallback(async (p) => {
     if (p === placement) return;
@@ -110,6 +115,21 @@ export default function AdminSideNav({ user }) {
 
   // Filter by role
   const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin);
+
+  // Learn & education expandable section
+  const learnItems = [
+    { label: 'Guided Demo Tour', icon: '🗺', action: () => tour.start() },
+    { label: 'Best Practices', icon: '⭐', action: () => openEdu(EDU.BEST_PRACTICES, 'overview') },
+    { label: 'Auth Code + PKCE', icon: '🔑', action: () => openEdu(EDU.LOGIN_FLOW, 'what') },
+    { label: 'CIBA (OOB)', icon: '📲', action: () => { window.dispatchEvent(new CustomEvent('education-open-ciba', { detail: { tab: 'what' } })); } },
+    { label: 'Token Exchange', icon: '🔄', action: () => openEdu(EDU.TOKEN_EXCHANGE, 'why') },
+    { label: 'MCP Protocol', icon: '🔬', action: () => openEdu(EDU.MCP_PROTOCOL, 'what') },
+    { label: 'Human-in-the-loop', icon: '🤝', action: () => openEdu(EDU.HUMAN_IN_LOOP, 'what') },
+    { label: 'Agent Gateway', icon: '🌐', action: () => openEdu(EDU.AGENT_GATEWAY, 'overview') },
+    { label: 'Introspection', icon: '🔍', action: () => openEdu(EDU.INTROSPECTION, 'why') },
+    { label: 'RFC Index', icon: '📚', action: () => openEdu(EDU.RFC_INDEX, 'index') },
+    { label: 'Agent flow diagram', icon: '📊', action: () => { window.dispatchEvent(new CustomEvent('agent-flow-diagram-open')); } },
+  ];
 
   // Agent UI placement options for the expandable dropdown
   const agentPlacementOptions = [
@@ -285,6 +305,43 @@ export default function AdminSideNav({ user }) {
                     <span className="admin-side-nav__label">+ Show FAB</span>
                   </label>
                 )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Learn & Education */}
+        {!collapsed && <div className="admin-side-nav__divider" />}
+        <div className="admin-side-nav__section">
+          <div>
+            <button
+              className="admin-side-nav__item admin-side-nav__item--parent"
+              onClick={() => toggleSection('learn')}
+              title={collapsed ? 'Learn' : undefined}
+            >
+              <span className="admin-side-nav__icon">📚</span>
+              {!collapsed && (
+                <>
+                  <span className="admin-side-nav__label">Learn</span>
+                  <span className={`admin-side-nav__chevron ${expandedSections['learn'] ? 'admin-side-nav__chevron--expanded' : ''}`}>
+                    ▶
+                  </span>
+                </>
+              )}
+            </button>
+            {expandedSections['learn'] && !collapsed && (
+              <div className="admin-side-nav__submenu">
+                {learnItems.map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={item.action}
+                    className="admin-side-nav__item admin-side-nav__item--child"
+                    title={item.label}
+                  >
+                    <span className="admin-side-nav__icon">{item.icon}</span>
+                    <span className="admin-side-nav__label">{item.label}</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>
