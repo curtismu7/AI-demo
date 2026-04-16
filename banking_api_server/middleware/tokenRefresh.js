@@ -66,6 +66,15 @@ async function refreshIfExpiring(req, res, next) {
     next();
   } catch (err) {
     console.warn('[tokenRefresh] Auto-refresh failed (continuing):', err.message);
+    // If the refresh token is invalid/revoked/expired, clear it so we stop retrying
+    // every request. The user will need to re-authenticate.
+    if (err.message && /does not exist|invalid_grant|revoked|expired/i.test(err.message)) {
+      const tokens = req.session?.oauthTokens;
+      if (tokens) {
+        delete tokens.refreshToken;
+        req.session.save(() => {}); // best-effort
+      }
+    }
     next(); // Don't block the request on a refresh failure
   }
 }
