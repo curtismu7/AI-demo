@@ -6,6 +6,10 @@ const { sampleUsers, sampleAccounts, sampleTransactions, sampleActivityLogs } = 
 
 const DEFAULT_BOOTSTRAP_PATH = path.join(__dirname, 'bootstrapData.json');
 const RUNTIME_DATA_PATH = path.join(__dirname, 'runtimeData.json');
+const BACKUP_DIR = path.join(__dirname, 'backups');
+const MAX_BACKUPS = 3;
+const MAX_ACTIVITY_LOGS = 1000;
+const BACKUP_INTERVAL_MS = 15 * 60 * 1000;
 
 class DataStore {
   constructor() {
@@ -13,7 +17,9 @@ class DataStore {
     this.accounts = new Map();
     this.transactions = new Map();
     this.activityLogs = new Map();
+    this._persistPending = false;
     this.initializeData();
+    this._startAutoBackup();
   }
 
   initializeData() {
@@ -26,17 +32,45 @@ class DataStore {
     }
   }
 
+  _isValidSnapshot(parsed) {
+    return parsed && Array.isArray(parsed.users) && parsed.users.length > 0;
+  }
+
+  _tryReadJson(filePath) {
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.size === 0) return null;
+      const raw = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
   loadBootstrapSnapshot() {
-    // Prefer runtime data (persisted across restarts) over committed bootstrap seed
-    for (const candidate of [RUNTIME_DATA_PATH, process.env.BANKING_BOOTSTRAP_FILE || DEFAULT_BOOTSTRAP_PATH]) {
-      try {
-        const raw = fs.readFileSync(candidate, 'utf8');
-        const parsed = JSON.parse(raw);
-        console.log(`[DataStore] Loaded data from ${path.basename(candidate)}`);
-        return this.normalizeBootstrap(parsed);
-      } catch {
-        // Try next candidate
+    const runtime = this._tryReadJson(RUNTIME_DATA_PATH);
+    if (this._isValidSnapshot(runtime)) {
+      console.log('[DataStore] Loaded data from runtimeData.json (' + runtime.users.length + ' users, ' + (runtime.accounts || []).length + ' accounts)');
+      return this.normalizeBootstrap(runtime);
+    }
+    if (runtime !== null) {
+      console.warn('[DataStore] runtimeData.json exists but is empty or corrupt — trying backups');
+    }
+    const restored = this._tryRestoreFromBackup();
+    if (restored) return this.normalizeBootstrap(restored);
+
+    const customBootstrap = process.env.BANKING_BOOTSTRAP_FILE;
+    if (customBootstrap) {
+      const custom = this._tryReadJson(customBootstrap);
+      if (this._isValidSnapshot(custom)) {
+        console.log('[DataStore] Loaded data from ' + path.basename(customBootstrap));
+        return this.normalizeBootstrap(custom);
       }
+    }
+    const bootstrap = this._tryReadJson(DEFAULT_BOOTSTRAP_PATH);
+    if (this._isValidSnapshot(bootstrap)) {
+      console.log('[DataStore] Loaded data from bootstrapData.json (seed data)');
+      return this.normalizeBootstrap(bootstrap);
     }
     console.log('[DataStore] No persisted data found, using built-in sample data');
     return this.normalizeBootstrap({
@@ -45,6 +79,32 @@ class DataStore {
       transactions: sampleTransactions,
       activityLogs: sampleActivityLogs,
     });
+  }
+
+  _tryRestoreFromBackup() {
+    try {
+      if (!fs.existsSync(BACKUP_DIR)) return null;
+      const files = fs.readdirSync(BACKUP_DIR)
+        .filter(f => f.startsWith('runtimeData-') && f.endsWith('.json'))
+        .sort().reverse();
+      for (const file of files) {
+        const filePath = path.join(BACKUP_DIR, file);
+        const parsed = this._tryReadJson(filePath);
+        if (this._isValidSnapshot(parsed)) {
+          console.log('[DataStore] Restored from backup: ' + file + ' (' + parsed.users.length + ' users, ' + (parsed.accounts || []).length + ' accounts)');
+          try {
+            this._atomicWrite(RUNTIME_DATA_PATH, JSON.stringify(parsed, null, 2));
+            console.log('[DataStore] Restored runtimeData.json from backup');
+          } catch (writeErr) {
+            console.warn('[DataStore] Could not restore runtimeData.json:', writeErr.message);
+          }
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn('[DataStore] Backup scan failed:', err.message);
+    }
+    return null;
   }
 
   normalizeBootstrap(snapshot) {
@@ -81,22 +141,67 @@ class DataStore {
     activityLogs.forEach((log) => this.activityLogs.set(log.id, { ...log, timestamp: log.timestamp ? new Date(log.timestamp) : log.timestamp }));
   }
 
+  _atomicWrite(filePath, data) {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const tmpPath = filePath + '.tmp';
+    fs.writeFileSync(tmpPath, data, 'utf8');
+    fs.renameSync(tmpPath, filePath);
+  }
+
   async persistAllData() {
     try {
       const snapshot = this.getSnapshot();
       const json = JSON.stringify(snapshot, null, 2);
-      fs.writeFileSync(RUNTIME_DATA_PATH, json, 'utf8');
+      this._atomicWrite(RUNTIME_DATA_PATH, json);
     } catch (err) {
       console.error('[DataStore] Failed to persist data:', err.message);
     }
   }
 
+  createBackup() {
+    try {
+      if (!fs.existsSync(RUNTIME_DATA_PATH)) return;
+      const stat = fs.statSync(RUNTIME_DATA_PATH);
+      if (stat.size === 0) return;
+      const parsed = this._tryReadJson(RUNTIME_DATA_PATH);
+      if (!this._isValidSnapshot(parsed)) {
+        console.warn('[DataStore] Skipping backup — runtimeData.json invalid');
+        return;
+      }
+      if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(BACKUP_DIR, 'runtimeData-' + timestamp + '.json');
+      fs.copyFileSync(RUNTIME_DATA_PATH, backupPath);
+      const files = fs.readdirSync(BACKUP_DIR)
+        .filter(f => f.startsWith('runtimeData-') && f.endsWith('.json'))
+        .sort();
+      while (files.length > MAX_BACKUPS) {
+        const oldest = files.shift();
+        fs.unlinkSync(path.join(BACKUP_DIR, oldest));
+      }
+      console.log('[DataStore] Backup created: ' + path.basename(backupPath) + ' (' + parsed.users.length + ' users, ' + (parsed.accounts || []).length + ' accounts, ' + (parsed.transactions || []).length + ' txns)');
+    } catch (err) {
+      console.error('[DataStore] Backup failed:', err.message);
+    }
+  }
+
+  _startAutoBackup() {
+    this.createBackup();
+    this._backupTimer = setInterval(() => this.createBackup(), BACKUP_INTERVAL_MS);
+    if (this._backupTimer.unref) this._backupTimer.unref();
+  }
+
   getSnapshot() {
+    const allLogs = Array.from(this.activityLogs.values());
+    const cappedLogs = allLogs.length > MAX_ACTIVITY_LOGS
+      ? allLogs.slice(-MAX_ACTIVITY_LOGS)
+      : allLogs;
     return {
       users: Array.from(this.users.values()),
       accounts: Array.from(this.accounts.values()),
       transactions: Array.from(this.transactions.values()),
-      activityLogs: Array.from(this.activityLogs.values()),
+      activityLogs: cappedLogs,
     };
   }
 

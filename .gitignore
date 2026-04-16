@@ -110,3 +110,4 @@ test-results/
 # Postman environment files contain secrets — collection is safe to commit
 postman/*.postman_environment.json
 banking_api_server/data/runtimeData.json
+banking_api_server/data/backups/
