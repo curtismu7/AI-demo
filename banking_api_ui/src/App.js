@@ -45,6 +45,7 @@ import SelfServicePage from './components/SelfServicePage';
 import LogoutPage from './components/LogoutPage';
 import PingOneTestPage from './components/PingOneTestPage';
 import MFATestPage from './components/MFATestPage';
+import AdminLayout from './components/AdminLayout';
 
 import { savePublicConfig } from './services/configService';
 import { SpinnerProvider } from './context/SpinnerContext';
@@ -136,7 +137,7 @@ function AdminRoute({ user, children }) {
     }
   }, [isAdmin]);
 
-  if (isAdmin) return children;
+  if (isAdmin) return <AdminLayout>{children}</AdminLayout>;
 
   if (dismissed) {
     navigate(-1);

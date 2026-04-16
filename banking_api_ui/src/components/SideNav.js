@@ -32,6 +32,7 @@ const ADMIN_NAV = [
       { to: '/accounts',     label: 'Accounts',        icon: 'MdAccountBalance' },
       { to: '/admin/banking', label: 'Banking admin',   icon: 'MdAccountBalance' },
       { to: '/transactions', label: 'Transactions',    icon: 'MdSwapHoriz' },
+      { to: '/delegation',   label: 'Manage Delegates', icon: 'HiOutlineUsers' },
     ],
   },
   {
@@ -86,6 +87,7 @@ const USER_NAV = [
       { to: '/transactions', label: 'Transfer Money', icon: 'MdMoneyExchange' },
       { to: '/profile',      label: 'Profile Settings', icon: 'MdPerson' },
       { to: '/security',     label: 'Security Center', icon: 'MdSecurity' },
+      { to: '/delegation',   label: 'Manage Delegates', icon: 'HiOutlineUsers' },
     ],
   },
 ];

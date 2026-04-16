@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-last_updated: "2026-04-15T21:56:16.292Z"
+last_updated: "2026-04-15T22:52:01.510Z"
 progress:
-  total_phases: 163
+  total_phases: 164
   completed_phases: 76
-  total_plans: 273
-  completed_plans: 202
+  total_plans: 275
+  completed_plans: 204
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,10 +20,11 @@ progress:
 
 ## Current Position
 
-Phase: 158
+Phase: 159
 Plan: Not started
 
 ## Roadmap Evolution
+- Phase 161 added: Add thin activity log — meaningful app events (JWKS validation, OAuth redirects, token exchange, session state) instead of raw API calls and debug noise
 
 - Phase 151 added: Scope vocabulary audit — review docs, code, tests, and PingOne Test page for clean scope alignment
 - Phase 152 added: PingOne Test Page — live integration testing and bug fixes

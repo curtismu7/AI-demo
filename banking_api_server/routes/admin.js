@@ -766,7 +766,7 @@ router.get(
         message: error.message
       });
     }
-  }
+  });
 
 /**
  * AI Safety Red Button Kill Switch Endpoints

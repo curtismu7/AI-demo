@@ -3,6 +3,10 @@
  * Stores express-session data in SQLite database
  * Intended for local development only; use Redis/Upstash for production
  *
+ * Auto-recovery: detects SQLITE_READONLY_DBMOVED (inode changed while handle
+ * was open) and transparently reopens the database so sessions keep working
+ * without a server restart.
+ *
  * Database driver priority:
  *   1. better-sqlite3  — synchronous, fast, supports Node 20/22 LTS
  *   2. node:sqlite     — built-in since Node 22.5; experimental but works on Node 25+
@@ -10,6 +14,7 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 const Store = require('express-session').Store;
 
 /** Load a compatible SQLite driver: better-sqlite3 first, node:sqlite fallback. */
@@ -82,6 +87,7 @@ class SqliteSessionStore extends Store {
       ...options
     };
 
+    this._reconnecting = false;
     this.db = new Database(this.options.dbPath);
     this.initDatabase();
     this.cleanupInterval = setInterval(() => this.cleanupExpiredSessions(), 60 * 60 * 1000); // Cleanup every hour
@@ -96,6 +102,40 @@ class SqliteSessionStore extends Store {
       );
       CREATE INDEX IF NOT EXISTS idx_expire ON ${this.options.table}(expire);
     `);
+  }
+
+  /**
+   * Detect SQLITE_READONLY_DBMOVED (file inode changed under open handle).
+   */
+  _isDbMovedError(error) {
+    return error && (error.code === 'SQLITE_READONLY_DBMOVED' ||
+      (error.message && error.message.includes('readonly database')));
+  }
+
+  /**
+   * Close stale handle, reopen DB, re-init schema. Returns true on success.
+   * The _reconnecting guard prevents infinite recursion if reconnect itself
+   * fails with the same error class.
+   */
+  _reconnect() {
+    if (this._reconnecting) return false;
+    this._reconnecting = true;
+    try {
+      try { this.db.close(); } catch (_) {}
+      const dir = path.dirname(this.options.dbPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      this.db = new Database(this.options.dbPath);
+      this.initDatabase();
+      console.log('[sqlite-session-store] Reconnected to SQLite after DBMOVED error');
+      return true;
+    } catch (reconnectErr) {
+      console.error('[sqlite-session-store] Reconnect failed:', reconnectErr.message);
+      return false;
+    } finally {
+      this._reconnecting = false;
+    }
   }
 
   get(sid, callback) {
@@ -113,6 +153,9 @@ class SqliteSessionStore extends Store {
       const session = JSON.parse(row.sess);
       callback(null, session);
     } catch (error) {
+      if (this._isDbMovedError(error) && this._reconnect()) {
+        return this.get(sid, callback);
+      }
       callback(error);
     }
   }
@@ -127,6 +170,9 @@ class SqliteSessionStore extends Store {
 
       callback(null);
     } catch (error) {
+      if (this._isDbMovedError(error) && this._reconnect()) {
+        return this.set(sid, sess, callback);
+      }
       callback(error);
     }
   }
@@ -139,6 +185,9 @@ class SqliteSessionStore extends Store {
 
       callback(null);
     } catch (error) {
+      if (this._isDbMovedError(error) && this._reconnect()) {
+        return this.destroy(sid, callback);
+      }
       callback(error);
     }
   }
@@ -152,6 +201,9 @@ class SqliteSessionStore extends Store {
       const sessions = rows.map(row => JSON.parse(row.sess));
       callback(null, sessions);
     } catch (error) {
+      if (this._isDbMovedError(error) && this._reconnect()) {
+        return this.all(callback);
+      }
       callback(error);
     }
   }
@@ -164,6 +216,9 @@ class SqliteSessionStore extends Store {
 
       callback(null, row.count);
     } catch (error) {
+      if (this._isDbMovedError(error) && this._reconnect()) {
+        return this.length(callback);
+      }
       callback(error);
     }
   }
@@ -176,6 +231,9 @@ class SqliteSessionStore extends Store {
 
       callback(null);
     } catch (error) {
+      if (this._isDbMovedError(error) && this._reconnect()) {
+        return this.clear(callback);
+      }
       callback(error);
     }
   }
@@ -191,6 +249,9 @@ class SqliteSessionStore extends Store {
         console.log(`[sqlite-session-store] Cleaned up ${result.changes} expired sessions`);
       }
     } catch (error) {
+      if (this._isDbMovedError(error) && this._reconnect()) {
+        return this.cleanupExpiredSessions();
+      }
       console.error('[sqlite-session-store] Cleanup error:', error);
     }
   }

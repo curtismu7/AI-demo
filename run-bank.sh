@@ -306,7 +306,7 @@ cmd_stop() {
 cmd_test() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   🏦  BX FINANCE — TEST SUITE                                   ${RESET}"
+  echo -e "${CYAN}${BOLD}   🏦  SUPER BANK — TEST SUITE                                   ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
 
@@ -360,7 +360,7 @@ cmd_test() {
 cmd_help() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   🏦  BX FINANCE BANKING DEMO — run-bank.sh                      ${RESET}"
+  echo -e "${CYAN}${BOLD}   🏦  SUPER BANK BANKING DEMO — run-bank.sh                      ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
   echo -e "${WHITE}${BOLD}  Usage:${RESET} ./run-bank.sh <command>"
@@ -408,7 +408,7 @@ case "${COMMAND}" in
   status)
     echo ""
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "${CYAN}${BOLD}   🏦  BX FINANCE — SERVICE STATUS                                ${RESET}"
+    echo -e "${CYAN}${BOLD}   🏦  SUPER BANK — SERVICE STATUS                                ${RESET}"
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
     print_status_table
@@ -556,7 +556,7 @@ echo $! > "$PID_UI"
 # ── Banner + health check ────────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${CYAN}${BOLD}   🏦  BX FINANCE BANKING DEMO — STARTING                         ${RESET}"
+echo -e "${CYAN}${BOLD}   🏦  SUPER BANK BANKING DEMO — STARTING                         ${RESET}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 echo -e "${DIM}  Waiting for Banking API and MCP Server to come up…${RESET}"
@@ -567,7 +567,7 @@ sleep 1   # give LangChain agent a moment too
 
 echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${CYAN}${BOLD}   🏦  BX FINANCE BANKING DEMO — STATUS                           ${RESET}"
+echo -e "${CYAN}${BOLD}   🏦  SUPER BANK BANKING DEMO — STATUS                           ${RESET}"
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 print_status_table

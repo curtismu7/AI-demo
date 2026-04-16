@@ -1,0 +1,180 @@
+/* AdminSideNav.css - PingIdentity-style admin sidebar with clean text entries */
+
+.admin-side-nav {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 280px;
+  background: linear-gradient(135deg, #1a2332 0%, #2d3e4f 100%);
+  padding-top: 0;
+  z-index: 999;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+  transition: width 0.3s ease-in-out;
+}
+
+.admin-side-nav--collapsed {
+  width: 80px;
+}
+
+/* Collapse/Expand Toggle Button */
+.admin-side-nav__toggle {
+  position: absolute;
+  top: 16px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.admin-side-nav__toggle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.admin-side-nav__toggle:active {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(0.95);
+}
+
+/* Navigation Menu Container */
+.admin-side-nav__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 80px 12px 24px 12px;
+  list-style: none;
+  margin: 0;
+}
+
+/* Sections with spacing */
+.admin-side-nav__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Divider between sections */
+.admin-side-nav__divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 12px 0;
+}
+
+/* Individual Navigation Item - Clean White Text */
+.admin-side-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 400;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  background: none !important;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+}
+
+/* Hover state - subtle left border and brighter text */
+.admin-side-nav__item:hover {
+  background: none !important;
+  color: #fff;
+  border-left: 3px solid rgba(52, 152, 219, 0.5);
+  padding-left: 13px;
+}
+
+/* Active state - full blue highlight */
+.admin-side-nav__item--active {
+  background: rgba(52, 152, 219, 0.15) !important;
+  color: #fff;
+  border-left: 3px solid #3498db;
+  padding-left: 13px;
+}
+
+/* Icons */
+.admin-side-nav__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  font-size: 16px;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+}
+
+.admin-side-nav__item:hover .admin-side-nav__icon {
+  opacity: 1;
+}
+
+/* Labels */
+.admin-side-nav__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Action items (buttons without link styling) */
+.admin-side-nav__item--action {
+  cursor: pointer;
+}
+
+.admin-side-nav__item--action:hover {
+  background: none !important;
+}
+
+/* Responsive - collapse on smaller screens */
+@media (max-width: 768px) {
+  .admin-side-nav {
+    width: 80px;
+  }
+
+  .admin-side-nav__divider {
+    display: none;
+  }
+
+  .admin-side-nav__label {
+    display: none;
+  }
+
+  .admin-side-nav__toggle {
+    display: none;
+  }
+}
+
+/* Scrollbar styling */
+.admin-side-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-side-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-side-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.admin-side-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

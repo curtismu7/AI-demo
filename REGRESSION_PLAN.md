@@ -1394,3 +1394,11 @@ cd ..
 - All E2E specs: 0 failures
 - Manual smoke: all 7 steps pass
 - Pre-deploy checklist: all boxes checked
+
+### 2026-04-15 — Bug: SQLITE_READONLY_DBMOVED kills all session writes until server restart
+
+- **Root cause:** When the SQLite sessions DB file inode changes (git operations, file replacements, backup tools), `better-sqlite3` / `node:sqlite` keeps the stale file descriptor and every subsequent write fails with `SQLITE_READONLY_DBMOVED`. The hourly cleanup timer compounds this by logging the error every hour forever. The OAuth callback's `req.session.save()` fails → `session_persist_failed` → user data never loads.
+- **Fix:** Added `_isDbMovedError()` detection and `_reconnect()` auto-recovery to `SqliteSessionStore`. On any `SQLITE_READONLY_DBMOVED` error, the store closes the stale handle, reopens the DB file (creating the directory if needed), re-initializes the schema, and retries the operation once. A `_reconnecting` guard prevents infinite recursion. All 7 store methods (`get`, `set`, `destroy`, `all`, `length`, `clear`, `cleanupExpiredSessions`) now self-heal.
+- **Files modified:** `banking_api_server/services/sqliteSessionStore.js`
+- **Regression check:** `node -e "require('./banking_api_server/services/sqliteSessionStore')"` loads clean. `npm run build` → exit 0. Server starts and `/api/health` returns 200.
+- **Do not break:** Session persistence on fresh starts; OAuth callback session save; Upstash Redis store (production) is unaffected.
