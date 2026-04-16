@@ -8,6 +8,7 @@ import { useEducationUI } from '../../context/EducationUIContext';
 import { useIndustryBranding } from '../../context/IndustryBrandingContext';
 import { useTheme } from '../../context/ThemeContext';
 import './UnifiedConfigurationPage.css';
+import { MCPToolsEducation } from '../MCPToolsEducation';
 
 // Configuration tab definitions
 const CONFIGURATION_TABS = [
@@ -42,7 +43,7 @@ const CONFIGURATION_TABS = [
     icon: 'robot',
     description: 'Configure AI agent behavior and integration',
     requiresAuth: true,
-    sections: ['agent-ui-mode', 'mcp-scopes', 'education-settings', 'token-chain']
+    sections: ['agent-ui-mode', 'mcp-scopes', 'mcp-tools', 'education-settings', 'token-chain']
   },
   {
     id: 'advanced',
@@ -346,6 +347,7 @@ const SectionNavigation: FC<{
     'agent-modes': 'Agent Modes',
     'agent-ui-mode': 'Agent UI Mode',
     'mcp-scopes': 'MCP Scopes',
+    'mcp-tools': 'MCP Tools',
     'education-settings': 'Education Settings',
     'token-chain': 'Token Chain',
     'vercel-config': 'Vercel Configuration',
@@ -956,6 +958,13 @@ const UnifiedConfigurationPage: FC<{
       </div>
     );
 
+
+    if (s === 'mcp-tools') return (
+      <div className="cfg-section">
+        <p className="cfg-section-desc">Browse the MCP banking tools available to AI agents, including required scopes and parameters.</p>
+        <MCPToolsEducation />
+      </div>
+    );
     if (s === 'education-settings') return (
       <div className="cfg-section">
         <p className="cfg-section-desc">Control the educational overlays and annotations shown during the demo.</p>
