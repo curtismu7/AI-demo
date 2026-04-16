@@ -269,7 +269,7 @@ export class AuthenticationIntegration {
         uiHints: {
           popupWidth: 500,
           popupHeight: 650,
-          popupTitle: "Sign in with PingOne AIC"
+          popupTitle: "Authenticate with PingOne"
         }
       }
     };
