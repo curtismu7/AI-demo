@@ -1691,6 +1691,31 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         emit({
             phase: 'mcp_remote_done'
         });
+
+        // Detect auth challenge from MCP server — fall back to local handler
+        // instead of surfacing the redirect challenge to the client. The BFF
+        // already has the user's session so local execution is preferred.
+        const mcpContent = result?.content;
+        const hasAuthChallenge = Array.isArray(mcpContent)
+            && mcpContent.some(c => c && c.authChallenge);
+        if (hasAuthChallenge) {
+            emit({ phase: 'mcp_auth_challenge_intercepted' });
+            console.log(`[MCP Proxy] ${tool} — MCP server returned auth challenge, using local fallback`);
+            const sessionUser = req.session?.user;
+            if (sessionUser?.id) {
+                try {
+                    const effectiveUserId = sessionUser.oauthId || sessionUser.id;
+                    emit({ phase: 'local_tool_start', path: 'auth_challenge_fallback' });
+                    const localResult = await callToolLocal(tool, params || {}, effectiveUserId, req);
+                    emit({ phase: 'local_tool_done', path: 'auth_challenge_fallback' });
+                    return res.json({ result: localResult, tokenEvents, _localFallback: true });
+                } catch (localErr) {
+                    console.error(`[MCP Local] ${tool} — auth-challenge fallback failed:`, localErr.message);
+                    emit({ phase: 'local_tool_error', path: 'auth_challenge_fallback' });
+                }
+            }
+        }
+
         const out = {
             result,
             tokenEvents

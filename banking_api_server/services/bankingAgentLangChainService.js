@@ -47,10 +47,34 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     // Invoke the LangGraph with the user message
     console.log('[processAgentMessage] Invoking LangGraph agent...');
     appEventService.logEvent('agent', 'info', 'LLM reasoning…', { tag: 'agent/invoke' });
-    const finalState = await graph.invoke({
-      ...initialState,
-      messages: [{ role: 'user', content: message }],
-    });
+    let finalState;
+    try {
+      finalState = await graph.invoke({
+        ...initialState,
+        messages: [{ role: 'user', content: message }],
+      });
+    } catch (invokeErr) {
+      // 429 / rate-limit from primary model — retry once with Anthropic fallback
+      const is429 = invokeErr.message?.includes('429') || invokeErr.message?.includes('rate_limit') || invokeErr.message?.includes('Rate limit') || invokeErr.status === 429;
+      if (is429 && process.env.ANTHROPIC_API_KEY) {
+        console.warn('[processAgentMessage] Primary LLM rate-limited, retrying with Anthropic fallback');
+        appEventService.logEvent('agent', 'warning', 'LLM rate-limited — retrying with Anthropic', { tag: 'agent/fallback' });
+        // Force Anthropic by temporarily hiding GROQ_API_KEY
+        const savedGroqKey = process.env.GROQ_API_KEY;
+        delete process.env.GROQ_API_KEY;
+        try {
+          const fallback = await createBankingAgent({ userId, userToken, sessionId, tokenEvents });
+          finalState = await fallback.graph.invoke({
+            ...fallback.initialState,
+            messages: [{ role: 'user', content: message }],
+          });
+        } finally {
+          if (savedGroqKey) process.env.GROQ_API_KEY = savedGroqKey;
+        }
+      } else {
+        throw invokeErr;
+      }
+    }
     console.log('[processAgentMessage] Agent invoke completed');
     appEventService.logEvent('agent', 'info', 'Agent response ready', { tag: 'agent/complete' });
     console.log('[processAgentMessage] Final state keys:', Object.keys(finalState || {}));
