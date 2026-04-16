@@ -2428,6 +2428,16 @@ Plans:
 4. MCPToolsEducation accessible from Admin Config page as a tab
 5. Build passes without errors
 
+### Phase 168: support HTTP2 stream from Agent to mcp servers
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 167
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 168 to break down)
+
 ---
 
 ### Phase 166: Replace Gemini with Anthropic in NL intent chain

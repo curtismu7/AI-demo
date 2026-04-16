@@ -5,7 +5,7 @@ milestone_name: milestone
 status: completed
 last_updated: "2026-04-16T18:20:32.439Z"
 progress:
-  total_phases: 171
+  total_phases: 172
   completed_phases: 82
   total_plans: 289
   completed_plans: 217
@@ -24,6 +24,10 @@ Phase: 166
 Plan: Not started
 
 ## Roadmap Evolution
+
+- Phase 168 added: support HTTP2 stream from Agent to mcp servers
+
+- Phase 167 added: Show tools in MCP server — education slide out page displaying available tools
 
 - Phase 165 added: Add LM Studio as local model provider — fallback when Groq quota exceeded
 
