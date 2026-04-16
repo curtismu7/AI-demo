@@ -283,6 +283,9 @@ const {
 const audValidationMiddleware = require('./middleware/audValidationMiddleware');
 
 const app = express();
+
+// Response timing instrumentation
+app.use(require('./middleware/timing'));
 const PORT = process.env.PORT || 3001;
 
 // Security middleware
@@ -1008,6 +1011,25 @@ app.get('/api/tokens/session-preview', (req, res) => {
         res.json({
             tokenEvents: []
         });
+    }
+});
+
+// Public app-events endpoint — available to ALL pages (not just admin)
+// so the spinner activity feed works for customer dashboards too.
+app.get('/api/app-events', (req, res) => {
+    try {
+        const appEventService = require('./services/appEventService');
+        const { category, severity, limit = 100, since } = req.query;
+        const events = appEventService.getEvents({
+            category,
+            severity,
+            limit: Math.min(parseInt(limit) || 100, 500),
+            since,
+        });
+        res.json({ events, total: events.length });
+    } catch (error) {
+        console.error('Get public app-events error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 app.use('/api/tokens', authenticateToken, tokenRoutes);
