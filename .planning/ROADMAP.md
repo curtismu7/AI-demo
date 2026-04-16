@@ -2385,6 +2385,17 @@ Plans:
 Plans:
 - [ ] 162-01-PLAN.md — Create spinnerActivityService, enhance SpinnerHost with activity feed, update CSS
 
+### Phase 164: Performance evaluation and optimization — diagnose slow spinners, long API waits, and overall responsiveness
+
+**Goal:** Fix SQLite/server blockers, eliminate auth status polling storm (120 req/min to <20), add timing instrumentation with <5s target for all request paths
+**Requirements**: PERF-164-01 (fix blockers), PERF-164-02 (polling dedup), PERF-164-03 (timing instrumentation), PERF-164-04 (idle rate <20 req/min)
+**Depends on:** Phase 163
+**Plans:** 2 plans
+
+Plans:
+- [ ] 164-01-PLAN.md — Fix SQLite DBMOVED, route auth callers through cachedStatusService, slow AgentFlowDiagramPanel
+- [ ] 164-02-PLAN.md — Server timing middleware, UI timing integration, end-to-end verification
+
 ---
 
 ### Phase 163: Universal sidebar navigation — show sidebar for all logged-in users, strip redundant top nav links
