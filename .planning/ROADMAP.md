@@ -2407,6 +2407,27 @@ Plans:
 Plans:
 - [ ] 165-01-PLAN.md — Add LM Studio fallback to BFF NL intent chain and LangChain agent factory
 
+### Phase 167: MCP Tools Education Page
+
+**Goal:** Display all available MCP tools from the BankingToolRegistry in an interactive, educational page/panel with descriptions, required scopes, and input schemas.
+
+**Requirements**: EDU-05 (MCP tools education display)
+
+**Depends on:** Phase 166
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 167-01-PLAN.md — MCPToolsEducation component: render tools categorized with scopes (Wave 1)
+- [ ] 167-02-PLAN.md — Integrate MCPToolsEducation into Admin Config page as tab (Wave 2)
+
+**Success criteria:**
+1. All 10 MCP tools display with name, description, required scopes, and parameter schemas
+2. Tools are grouped by category: Read-Only (4), Write Operations (4), Public (2)
+3. Component styling matches ActorTokenEducation pattern
+4. MCPToolsEducation accessible from Admin Config page as a tab
+5. Build passes without errors
+
 ---
 
 ### Phase 166: Replace Gemini with Anthropic in NL intent chain
