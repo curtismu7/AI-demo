@@ -431,7 +431,17 @@ app.use('/api/auth/oauth/user/login', authLimiter);
 app.use('/api/auth/oauth/user/callback', authLimiter);
 
 // Logging middleware
-app.use(morgan('combined'));
+// Skip access-log noise from high-frequency polling endpoints
+const POLL_ROUTES = new Set([
+  '/api/auth/oauth/user/status',
+  '/api/auth/oauth/status',
+  '/api/tokens/session-preview',
+  '/api/auth/session',
+  '/api/auth/ciba/status',
+]);
+app.use(morgan('combined', {
+  skip: (req) => POLL_ROUTES.has(req.path),
+}));
 
 /**
  * Ensure the Redis wire-protocol client is ready before express-session runs.
