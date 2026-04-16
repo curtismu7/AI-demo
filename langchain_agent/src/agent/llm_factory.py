@@ -41,6 +41,9 @@ PROVIDER_MODELS: Dict[str, list[str]] = {
         "mistral",
         "phi3",
     ],
+    "lmstudio": [
+        "default",
+    ],
 }
 
 DEFAULT_MODELS: Dict[str, str] = {
@@ -49,6 +52,7 @@ DEFAULT_MODELS: Dict[str, str] = {
     "anthropic": "claude-3-5-haiku-20241022",
     "google": "gemini-2.0-flash",
     "ollama": "llama3.2",
+    "lmstudio": "default",
 }
 
 
@@ -60,19 +64,21 @@ def get_llm(
     max_tokens: int = 1000,
     streaming: bool = True,
     ollama_base_url: str = "http://localhost:11434",
+    lmstudio_base_url: str = "http://localhost:1234/v1",
     **kwargs: Any,
 ) -> BaseChatModel:
     """
     Return a chat model for the given provider.
 
     Args:
-        provider: One of groq, openai, anthropic, google, ollama.
+        provider: One of groq, openai, anthropic, google, ollama, lmstudio.
         model: Model name; defaults to DEFAULT_MODELS[provider].
         api_key: API key for the provider (not required for ollama).
         temperature: Sampling temperature.
         max_tokens: Max tokens to generate.
         streaming: Enable streaming.
         ollama_base_url: Base URL for Ollama server.
+        lmstudio_base_url: Base URL for LM Studio server.
 
     Returns:
         A BaseChatModel instance.
@@ -136,6 +142,18 @@ def get_llm(
             temperature=temperature,
             num_predict=max_tokens,
             base_url=ollama_base_url,
+        )
+
+    if provider == "lmstudio":
+        from langchain_openai import ChatOpenAI
+
+        return ChatOpenAI(
+            model=resolved_model if resolved_model != "default" else "",
+            temperature=temperature,
+            max_tokens=max_tokens,
+            streaming=streaming,
+            api_key="lm-studio",
+            base_url=lmstudio_base_url,
         )
 
     raise ValueError(

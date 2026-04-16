@@ -68,6 +68,8 @@ class LangChainConfig:
     anthropic_api_key: str = ""
     google_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
+    lm_studio_base_url: str = "http://localhost:1234/v1"
+    lm_studio_model: str = ""
 
 
 @dataclass
