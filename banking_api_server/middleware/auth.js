@@ -527,7 +527,9 @@ const validatePingOneCoreToken = async (token, requestContext = {}) => {
 
     return { valid: true, decoded: payload };
   } catch (error) {
-    logger.error(LOG_CATEGORIES.OAUTH_VALIDATION, 'Token validation failed', {
+    const isTransient = error.message.includes('timed out') || error.message.includes('ETIMEDOUT') || error.message.includes('ECONNREFUSED');
+    const logFn = isTransient ? 'warn' : 'error';
+    logger[logFn](LOG_CATEGORIES.OAUTH_VALIDATION, 'Token validation failed', {
       method,
       path,
       error_message: error.message,
@@ -661,10 +663,15 @@ const authenticateToken = async (req, res, next) => {
           });
           return next();
         } catch (sessionAuthError) {
-          logger.error(LOG_CATEGORIES.AUTHENTICATION, 'Session token validation error', {
-            ...requestContext,
-            error_message: sessionAuthError.message
-          });
+          const isTransientErr = sessionAuthError.message.includes('timed out') || sessionAuthError.message.includes('ETIMEDOUT');
+          if (isTransientErr) {
+            // Already logged as WARN in validatePingOneCoreToken — skip duplicate
+          } else {
+            logger.error(LOG_CATEGORIES.AUTHENTICATION, 'Session token validation error', {
+              ...requestContext,
+              error_message: sessionAuthError.message
+            });
+          }
           if (sessionAuthError instanceof OAuthError) throw sessionAuthError;
           throw new OAuthError(OAUTH_ERROR_TYPES.INVALID_TOKEN, 'Session token validation failed', 401);
         }
@@ -783,12 +790,18 @@ const authenticateToken = async (req, res, next) => {
       );
     }
   } catch (error) {
-    logger.logAuthenticationAttempt(false, {
-      ...requestContext,
-      error_type: error.type || 'authentication_failed',
-      error_message: error.message,
-      status_code: error.statusCode || 401
-    });
+    // Skip redundant log for transient errors (already logged upstream)
+    const isTransient = error.message && (error.message.includes('timed out') || error.message.includes('ETIMEDOUT'));
+    if (isTransient) {
+      // Already logged as WARN in validatePingOneCoreToken — skip duplicate
+    } else {
+      logger.logAuthenticationAttempt(false, {
+        ...requestContext,
+        error_type: error.type || 'authentication_failed',
+        error_message: error.message,
+        status_code: error.statusCode || 401
+      });
+    }
     
     // Format and send OAuth error response
     const errorResponse = {

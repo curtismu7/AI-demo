@@ -123,19 +123,32 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     }
 
     // Initialize model with system prompt and API key from environment
-    // Groq is preferred (faster, lower cost); Anthropic is fallback
+    // Groq is preferred (faster, lower cost); Anthropic is fallback on 429/rate-limit
     let model;
+    let fallbackModel = null;
     let provider;
 
     if (process.env.GROQ_API_KEY) {
-      console.log('[agentBuilder] Using Groq (llama-3.1-8b-instant)');
+      console.log('[agentBuilder] Using Groq (llama-3.3-70b-versatile)');
       model = new ChatGroq({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
         temperature: 0.7,
         maxTokens: 1024,
         apiKey: process.env.GROQ_API_KEY,
+        timeout: 30000,
       });
       provider = 'groq';
+      // Build Anthropic fallback if available
+      if (process.env.ANTHROPIC_API_KEY) {
+        fallbackModel = new ChatAnthropic({
+          model: 'claude-3-5-haiku-20241022',
+          temperature: 0.7,
+          maxTokens: 1024,
+          apiKey: process.env.ANTHROPIC_API_KEY,
+          timeout: 30000,
+        });
+        console.log('[agentBuilder] Anthropic fallback available for rate-limit errors');
+      }
     } else if (process.env.ANTHROPIC_API_KEY) {
       console.log('[agentBuilder] Using Anthropic (claude-3-5-haiku-20241022)');
       model = new ChatAnthropic({
@@ -143,6 +156,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
         temperature: 0.7,
         maxTokens: 1024,
         apiKey: process.env.ANTHROPIC_API_KEY,
+        timeout: 30000,
       });
       provider = 'anthropic';
     } else {
@@ -167,7 +181,19 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
           },
         },
       };
-      const response = await model.bindTools(tools).invoke(messages, config);
+      let response;
+      try {
+        response = await model.bindTools(tools).invoke(messages, config);
+      } catch (invokeError) {
+        const is429 = invokeError.message?.includes('429') || invokeError.message?.includes('rate') || invokeError.status === 429;
+        if (is429 && fallbackModel) {
+          console.warn('[agentBuilder] Primary model rate-limited (429), falling back to Anthropic');
+          provider = 'anthropic';
+          response = await fallbackModel.bindTools(tools).invoke(messages, config);
+        } else {
+          throw invokeError;
+        }
+      }
       // Handle LangChain response format - it may have tool_calls or content as array
       let messageContent;
       if (response.tool_calls && response.tool_calls.length > 0) {
