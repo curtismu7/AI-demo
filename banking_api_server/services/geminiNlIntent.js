@@ -1,7 +1,7 @@
 // banking_api_server/services/geminiNlIntent.js
 /**
- * LLM intent parsing — priority: Groq → LM Studio → Gemini → heuristic regex.
- * Set GROQ_API_KEY for fastest inference; GEMINI_API_KEY as fallback; neither = free heuristic.
+ * LLM intent parsing — priority: Groq → LM Studio → Anthropic → heuristic regex.
+ * Set GROQ_API_KEY for fastest inference; ANTHROPIC_API_KEY as cloud fallback; neither = free heuristic.
  */
 'use strict';
 
@@ -9,7 +9,9 @@ const { parseHeuristic, EDU } = require('./nlIntentParser');
 const { parseWithGroq } = require('./groqNlIntent');
 const { sanitizeNlResult } = require('./nlIntentSanitize');
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022';
+const ANTHROPIC_TIMEOUT_MS = 10000;
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown) with one of:
@@ -114,53 +116,60 @@ async function parseWithLmStudio(userMessage, context = {}) {
 /**
  * @param {string} userMessage
  * @param {{ role?: string, firstName?: string }} [context]
- * @returns {Promise<object|null>} parsed result object or null to use heuristic
+ * @returns {Promise<object|null>} parsed result object or null to fall through
  */
-async function parseWithGemini(userMessage, context = {}) {
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-  if (!key) return null;
+async function parseWithAnthropic(userMessage, context = {}) {
+  if (!ANTHROPIC_API_KEY) return null;
 
   const systemWithCtx = context.role
     ? `${SYSTEM}\n\nSigned-in user: role=${context.role}${context.firstName ? ', name=' + context.firstName : ''}. ${
         context.role === 'admin'
           ? 'Admin users can query ALL accounts and transactions system-wide, not just their own.'
-          : 'This is a regular customer — banking actions apply to their own accounts only.'
+          : 'This is a regular customer \u2014 banking actions apply to their own accounts only.'
       }`
     : SYSTEM;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
-  const body = {
-    contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-    systemInstruction: { parts: [{ text: systemWithCtx }] },
-    generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 512,
-      responseMimeType: 'application/json',
-    },
-  };
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.warn('[geminiNlIntent] Gemini HTTP', res.status, errText.slice(0, 200));
-    return null;
-  }
-
-  const data = await res.json();
-  let text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return null;
-  text = text.replace(/^```json\s*/i, '').replace(/```\s*$/m, '').trim();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ANTHROPIC_TIMEOUT_MS);
 
   try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 256,
+        system: systemWithCtx,
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.warn('[nlIntent] Anthropic HTTP', res.status, errText.slice(0, 200));
+      return null;
+    }
+
+    const data = await res.json();
+    let text = data?.content?.[0]?.text;
+    if (!text) return null;
+    text = text.replace(/^```json\s*/i, '').replace(/```\s*$/m, '').trim();
+
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed === 'object' && parsed.kind) return parsed;
   } catch (e) {
-    console.warn('[geminiNlIntent] JSON parse failed', e.message);
+    if (e.name === 'AbortError') {
+      console.warn('[nlIntent] Anthropic timeout (%dms) \u2014 skipping', ANTHROPIC_TIMEOUT_MS);
+    } else {
+      console.warn('[nlIntent] Anthropic error:', e.message);
+    }
+  } finally {
+    clearTimeout(timeout);
   }
   return null;
 }
@@ -168,7 +177,7 @@ async function parseWithGemini(userMessage, context = {}) {
 /**
  * @param {string} message
  * @param {{ role?: string, firstName?: string }} [context] - user context for role-aware routing
- * @returns {Promise<{ source: 'groq'|'lmstudio'|'gemini'|'heuristic', result: object }>}
+ * @returns {Promise<{ source: 'groq'|'lmstudio'|'anthropic'|'heuristic', result: object }>}
  */
 async function parseNaturalLanguage(message, context = {}) {
   // 1. Try Groq (fastest, OpenAI-compatible)
@@ -193,15 +202,15 @@ async function parseNaturalLanguage(message, context = {}) {
     return { source: rejected ? 'heuristic' : 'lmstudio', result };
   }
 
-  // 3. Try Gemini
-  const gemini = await parseWithGemini(message, context).catch((e) => {
-    console.warn('[nlIntent] Gemini error:', e.message);
+  // 3. Try Anthropic (cloud fallback)
+  const anthropic = await parseWithAnthropic(message, context).catch((e) => {
+    console.warn('[nlIntent] Anthropic error:', e.message);
     return null;
   });
-  if (gemini) {
-    const { result, rejected, reason } = sanitizeNlResult(gemini, message);
-    if (rejected) console.warn('[nlIntent] Gemini output rejected → heuristic:', reason);
-    return { source: rejected ? 'heuristic' : 'gemini', result };
+  if (anthropic) {
+    const { result, rejected, reason } = sanitizeNlResult(anthropic, message);
+    if (rejected) console.warn('[nlIntent] Anthropic output rejected → heuristic:', reason);
+    return { source: rejected ? 'heuristic' : 'anthropic', result };
   }
 
   // 4. Heuristic regex (always available, zero cost)
