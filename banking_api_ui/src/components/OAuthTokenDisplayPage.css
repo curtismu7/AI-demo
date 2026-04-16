@@ -1,0 +1,197 @@
+/* banking_api_ui/src/components/OAuthTokenDisplayPage.css */
+
+.otdp-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.otdp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.otdp-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.otdp-status {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.otdp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.otdp-badge--active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.otdp-badge--expired {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.otdp-badge--provider {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.otdp-loading {
+  text-align: center;
+  padding: 4rem 0;
+  color: #64748b;
+  font-size: 1rem;
+}
+
+.otdp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.otdp-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.otdp-card--error {
+  text-align: center;
+  padding: 3rem 2rem;
+  max-width: 480px;
+  margin: 2rem auto;
+}
+
+.otdp-card--error h3 {
+  margin: 0.75rem 0 0.5rem;
+  color: #1e293b;
+}
+
+.otdp-card--error p {
+  color: #64748b;
+  margin: 0;
+}
+
+.otdp-error-icon {
+  font-size: 2.5rem;
+}
+
+.otdp-card-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.otdp-claim-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.otdp-claim-row + .otdp-claim-row {
+  border-top: 1px solid #f8fafc;
+}
+
+.otdp-claim-key {
+  flex-shrink: 0;
+  width: 120px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.otdp-claim-value {
+  color: #1e293b;
+  word-break: break-all;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.75rem;
+}
+
+.otdp-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.otdp-scope-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.otdp-muted {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.75rem;
+}
+
+.otdp-expired-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.otdp-active-text {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.otdp-raw-section {
+  margin-top: 0;
+}
+
+.otdp-raw-toggle {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  padding: 0.25rem 0;
+}
+
+.otdp-raw-toggle:hover {
+  color: #1e293b;
+}
+
+.otdp-raw-json {
+  margin-top: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  color: #334155;
+}

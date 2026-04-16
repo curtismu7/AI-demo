@@ -46,6 +46,7 @@ import SelfServicePage from './components/SelfServicePage';
 import LogoutPage from './components/LogoutPage';
 import PingOneTestPage from './components/PingOneTestPage';
 import MFATestPage from './components/MFATestPage';
+import OAuthTokenDisplayPage from './components/OAuthTokenDisplayPage';
 import AdminLayout from './components/AdminLayout';
 import AdminSideNav from './components/AdminSideNav';
 
@@ -631,6 +632,7 @@ function AppWithAuth() {
                     <Route path="/postman" element={<PostmanCollectionsPage user={user} onLogout={logout} />} />
                     <Route path="/scope-audit" element={<AdminRoute user={user}><ScopeAuditPage /></AdminRoute>} />
                     <Route path="/scope-reference" element={<AdminRoute user={user}><ScopeReferencePage /></AdminRoute>} />
+                    <Route path="/oauth/token-display" element={user ? <OAuthTokenDisplayPage /> : <Navigate to="/" replace />} />
                     {/* User-friendly self-service routes */}
                     <Route path="/accounts" element={<UserAccounts user={user} />} />
                     <Route path="/transactions" element={<UserTransactions user={user} />} />
