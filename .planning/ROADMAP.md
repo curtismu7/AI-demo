@@ -2377,13 +2377,13 @@ Plans:
 
 ### Phase 162: Enhanced spinner with live activity feed showing token retrieval, MCP gateway calls, responses, and other interesting events
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add a live scrolling activity feed to the spinner overlay showing server events (OAuth, token exchange, MCP calls, session, JWKS) while the spinner is visible. Uses Phase 161's appEventService as data source. Admin-only enhancement; non-admin spinner unchanged.
+**Requirements**: SPIN-162-01
 **Depends on:** Phase 161
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 162 to break down)
+- [ ] 162-01-PLAN.md — Create spinnerActivityService, enhance SpinnerHost with activity feed, update CSS
 
 ---
 
