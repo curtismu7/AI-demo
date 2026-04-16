@@ -1,7 +1,7 @@
 // banking_api_server/services/geminiNlIntent.js
 /**
- * LLM intent parsing — priority: Groq → LM Studio → Anthropic → heuristic regex.
- * Set GROQ_API_KEY for fastest inference; ANTHROPIC_API_KEY as cloud fallback; neither = free heuristic.
+ * LLM intent parsing — priority: LM Studio → Groq → Anthropic → heuristic regex.
+ * Set LM_STUDIO_BASE_URL for local inference; GROQ_API_KEY for cloud; ANTHROPIC_API_KEY as fallback; neither = free heuristic.
  */
 'use strict';
 
@@ -177,21 +177,10 @@ async function parseWithAnthropic(userMessage, context = {}) {
 /**
  * @param {string} message
  * @param {{ role?: string, firstName?: string }} [context] - user context for role-aware routing
- * @returns {Promise<{ source: 'groq'|'lmstudio'|'anthropic'|'heuristic', result: object }>}
+ * @returns {Promise<{ source: 'lmstudio'|'groq'|'anthropic'|'heuristic', result: object }>}
  */
 async function parseNaturalLanguage(message, context = {}) {
-  // 1. Try Groq (fastest, OpenAI-compatible)
-  const groq = await parseWithGroq(message, context).catch((e) => {
-    console.warn('[nlIntent] Groq error:', e.message);
-    return null;
-  });
-  if (groq) {
-    const { result, rejected, reason } = sanitizeNlResult(groq, message);
-    if (rejected) console.warn('[nlIntent] Groq output rejected → heuristic:', reason);
-    return { source: rejected ? 'heuristic' : 'groq', result };
-  }
-
-  // 2. Try LM Studio (local, OpenAI-compatible — fast fallback when Groq quota exceeded)
+  // 1. Try LM Studio (local, fastest when running)
   const lmStudio = await parseWithLmStudio(message, context).catch((e) => {
     console.warn('[nlIntent] LM Studio error:', e.message);
     return null;
@@ -200,6 +189,17 @@ async function parseNaturalLanguage(message, context = {}) {
     const { result, rejected, reason } = sanitizeNlResult(lmStudio, message);
     if (rejected) console.warn('[nlIntent] LM Studio output rejected → heuristic:', reason);
     return { source: rejected ? 'heuristic' : 'lmstudio', result };
+  }
+
+  // 2. Try Groq (cloud, OpenAI-compatible)
+  const groq = await parseWithGroq(message, context).catch((e) => {
+    console.warn('[nlIntent] Groq error:', e.message);
+    return null;
+  });
+  if (groq) {
+    const { result, rejected, reason } = sanitizeNlResult(groq, message);
+    if (rejected) console.warn('[nlIntent] Groq output rejected → heuristic:', reason);
+    return { source: rejected ? 'heuristic' : 'groq', result };
   }
 
   // 3. Try Anthropic (cloud fallback)
