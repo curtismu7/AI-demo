@@ -195,3 +195,11 @@
   overflow-x: auto;
   color: #334155;
 }
+
+/* PingOne Enrichment source label */
+.otdp-source-label {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #94a3b8;
+  margin-left: 0.5rem;
+}

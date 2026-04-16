@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/OAuthTokenDisplayPage.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { fetchEnrichedUserInfo } from '../services/userInfoService';
 import './OAuthTokenDisplayPage.css';
 
 const CLAIM_GLOSSARY = {
@@ -74,6 +75,8 @@ export default function OAuthTokenDisplayPage() {
   const [tokenClaims, setTokenClaims] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [enrichedInfo, setEnrichedInfo] = useState(null);
+  const [enrichedLoading, setEnrichedLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +118,17 @@ export default function OAuthTokenDisplayPage() {
     fetchTokenData();
     return () => { cancelled = true; };
   }, []);
+
+  // Fetch enriched user info from PingOne userinfo endpoint (optional)
+  useEffect(() => {
+    if (!userStatus?.authenticated) return;
+    let cancelled = false;
+    setEnrichedLoading(true);
+    fetchEnrichedUserInfo()
+      .then((result) => { if (!cancelled) setEnrichedInfo(result); })
+      .finally(() => { if (!cancelled) setEnrichedLoading(false); });
+    return () => { cancelled = true; };
+  }, [userStatus?.authenticated]);
 
   if (loading) {
     return (
@@ -233,6 +247,34 @@ export default function OAuthTokenDisplayPage() {
           <ClaimRow label="Environment" value={payload.env} glossary={CLAIM_GLOSSARY.env} />
           <ClaimRow label="Organization" value={payload.org} glossary={CLAIM_GLOSSARY.org} />
         </div>
+      </div>
+
+
+      {/* PingOne Userinfo Enrichment */}
+      <div className="otdp-card">
+        <div className="otdp-card-title">📋 Account Information <span className="otdp-source-label">(from PingOne userinfo)</span></div>
+        {enrichedLoading && <div className="otdp-muted">Loading PingOne profile…</div>}
+        {enrichedInfo?.error && (
+          <div className="otdp-muted">⚠ {enrichedInfo.error} — showing token data only</div>
+        )}
+        {enrichedInfo?.data && (
+          <>
+            <ClaimRow label="Email" value={enrichedInfo.data.email} />
+            <ClaimRow label="Email Verified" value={enrichedInfo.data.email_verified != null ? String(enrichedInfo.data.email_verified) : null} />
+            <ClaimRow label="Given Name" value={enrichedInfo.data.given_name} />
+            <ClaimRow label="Family Name" value={enrichedInfo.data.family_name} />
+            <ClaimRow label="Phone" value={enrichedInfo.data.phone_number || enrichedInfo.data.phone} />
+            <ClaimRow label="Locale" value={enrichedInfo.data.locale} />
+            <ClaimRow label="Address" value={enrichedInfo.data.address?.formatted} />
+            <ClaimRow label="Updated At" value={enrichedInfo.data.updated_at ? formatTimestamp(enrichedInfo.data.updated_at) : null} />
+            {enrichedInfo.timestamp && (
+              <div className="otdp-claim-row">
+                <span className="otdp-claim-key otdp-muted">Fetched</span>
+                <span className="otdp-claim-value otdp-muted">{new Date(enrichedInfo.timestamp).toLocaleString()}</span>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Raw payload toggle */}

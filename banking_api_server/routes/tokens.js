@@ -10,6 +10,8 @@ const configStore = require('../services/configStore');
 const oauthService = require('../services/oauthService');
 const { getSessionAccessToken } = require('../services/mcpWebSocketClient');
 const agentMcpTokenService = require('../services/agentMcpTokenService');
+const axios = require('axios');
+const oauthUserConfig = require('../config/oauthUser');
 
 /**
  * Parse token content for display
@@ -243,6 +245,51 @@ router.get('/session-preview', (req, res) => {
   }
 });
 
+
+/**
+ * Fetch enriched user info from PingOne userinfo endpoint.
+ * Uses the session access token (BFF pattern — token never reaches frontend).
+ * GET /api/tokens/userinfo
+ */
+router.get('/userinfo', async (req, res) => {
+  try {
+    const token = getSessionAccessToken(req);
+    if (!token || token === '_cookie_session') {
+      return res.status(401).json({
+        source: 'PingOne userinfo',
+        error: 'No valid session token',
+        data: null
+      });
+    }
+
+    const userInfoUrl = oauthUserConfig.userInfoEndpoint;
+    const response = await axios.get(userInfoUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000
+    });
+
+    res.json({
+      source: 'PingOne userinfo',
+      data: response.data,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    const status = err.response?.status;
+    if (status === 401 || status === 403) {
+      return res.status(401).json({
+        source: 'PingOne userinfo',
+        error: 'Token expired or invalid',
+        data: null
+      });
+    }
+    console.error('PingOne userinfo error:', err.message);
+    res.status(err.response?.status || 502).json({
+      source: 'PingOne userinfo',
+      error: 'PingOne userinfo unavailable',
+      data: null
+    });
+  }
+});
 /**
  * Get detailed information about a specific token in the chain (same keys as GET /chain).
  * GET /api/tokens/:tokenId
