@@ -27,7 +27,7 @@ export default function AdminSideNav() {
     { label: 'Home', path: '/marketing', icon: '🏠' },
     { label: 'Dashboard', path: '/admin', icon: '📊' },
     {
-      label: 'User Banking',
+      label: 'Users & Accounts',
       icon: '📑',
       children: [
         { label: 'Users', path: '/users', icon: '👥' },
@@ -36,7 +36,7 @@ export default function AdminSideNav() {
       ],
     },
     {
-      label: 'Audit & Logs',
+      label: 'Monitoring',
       icon: '📋',
       children: [
         { label: 'Activity Logs', path: '/activity', icon: '📝' },  // FIXED: was /activity-logs
@@ -45,7 +45,7 @@ export default function AdminSideNav() {
       ],
     },
     {
-      label: 'Security',
+      label: 'OAuth & Security',
       icon: '🔐',
       children: [
         { label: 'Security Settings', path: '/settings', icon: '⚙️' },  // FIXED: was /security-settings
@@ -56,7 +56,7 @@ export default function AdminSideNav() {
       ],
     },
     {
-      label: 'Configuration',
+      label: 'System Tools',
       icon: '⚙️',
       children: [
         { label: 'Feature Flags', path: '/feature-flags', icon: '🚩' },
