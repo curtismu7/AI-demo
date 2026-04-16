@@ -44,11 +44,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [apiCallsModalOpen, setApiCallsModalOpen] = useState(false);
   const fetchingRef = React.useRef(false);
   const [scopeInjectionEnabled, setScopeInjectionEnabled] = useState(false);
-  const { theme, toggleTheme } = useTheme();
-
-  const handleDashThemeToggle = useCallback(() => {
-    toggleTheme();
-  }, [toggleTheme]);
+  const { theme } = useTheme();
 
   const isLocalApiHost =
     typeof window !== 'undefined' &&
@@ -354,41 +350,6 @@ const Dashboard = ({ user, onLogout }) => {
           >
             📡 API Calls
           </button>
-          <Link
-            to="/feature-flags"
-            className="app-page-toolbar-btn app-page-toolbar-btn--accent"
-            title="Toggle PingOne Authorize, step-up MFA, HITL consent, and other in-development features"
-          >
-            🚩 Feature Flags
-          </Link>
-          <Link
-            to="/demo-data"
-            className="app-page-toolbar-btn"
-            title="Edit sandbox account names, balances, and MFA threshold"
-          >
-            Demo config
-          </Link>
-          <Link
-            to="/mcp-inspector"
-            className="app-page-toolbar-btn app-page-toolbar-btn--accent"
-            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
-          >
-            MCP Inspector
-          </Link>
-          <Link
-            to="/oauth-debug-logs"
-            className="app-page-toolbar-btn"
-            title="OAuth verbose log (Config → Debug OAuth logging)"
-          >
-            OAuth debug log
-          </Link>
-          <Link
-            to="/client-registration"
-            className="app-page-toolbar-btn"
-            title="Create OAuth clients in PingOne using the CIMD interface"
-          >
-            Client Registration
-          </Link>
           <button
             type="button"
             onClick={openTokenModal}
@@ -426,15 +387,6 @@ const Dashboard = ({ user, onLogout }) => {
           >
             {resettingDemo ? 'Resetting…' : '↺ Reset Demo'}
           </button>
-          <button
-            type="button"
-            onClick={handleDashThemeToggle}
-            className="app-page-toolbar-btn app-page-toolbar-btn--theme"
-            aria-pressed={theme === 'dark'}
-            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          >
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
           {/* P2 — Role switch: re-login as customer without a full logout cycle */}
           <button
             type="button"
@@ -453,9 +405,6 @@ const Dashboard = ({ user, onLogout }) => {
             title="Re-login as a banking customer without signing out"
           >
             {switchingRole ? 'Switching…' : 'Switch to Customer view'}
-          </button>
-          <button type="button" onClick={onLogout} className="app-page-toolbar-btn app-page-toolbar-btn--danger">
-            Log out
           </button>
         </div>
       <main id="admin-dashboard-main" tabIndex={-1}>
