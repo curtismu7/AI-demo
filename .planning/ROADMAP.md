@@ -2046,9 +2046,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 171-01-PLAN.md — Blog outline, introduction, "What is MCP", and live demo walkthrough
-- [ ] 171-02-PLAN.md — Three auth flows, RFC 8693 token exchange (1-exchange vs 2-exchange), BX Finance case study  
-- [ ] 171-03-PLAN.md — Production deployment guide, best practices, diagram sourcing, publication checklist
+- [x] 171-01-PLAN.md — Blog outline, introduction, "What is MCP", and live demo walkthrough
+- [x] 171-02-PLAN.md — Three auth flows, RFC 8693 token exchange (1-exchange vs 2-exchange), BX Finance case study  
+- [x] 171-03-PLAN.md — Production deployment guide, best practices, diagram sourcing, publication checklist
 
 **Success criteria:**
 1. Complete ~3,000–4,000 word blog post drafted
