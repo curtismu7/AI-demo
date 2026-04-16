@@ -46,6 +46,7 @@ import LogoutPage from './components/LogoutPage';
 import PingOneTestPage from './components/PingOneTestPage';
 import MFATestPage from './components/MFATestPage';
 import AdminLayout from './components/AdminLayout';
+import AdminSideNav from './components/AdminSideNav';
 
 import { savePublicConfig } from './services/configService';
 import { SpinnerProvider } from './context/SpinnerContext';
@@ -502,6 +503,8 @@ function AppWithAuth() {
             {/* Demo config accessible without login - needed to configure flags before PingOne is set up */}
             <Route path="/configure" element={
               <>
+                {user?.role === 'admin' && <AdminSideNav />}
+
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
                   <EducationBar />
@@ -511,6 +514,8 @@ function AppWithAuth() {
             } />
             <Route path="/demo-data" element={
               <>
+                {user?.role === 'admin' && <AdminSideNav />}
+
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
                   <EducationBar />
@@ -521,6 +526,8 @@ function AppWithAuth() {
             {/* Self-service user provisioning — accessible without login */}
             <Route path="/self-service" element={
               <>
+                {user?.role === 'admin' && <AdminSideNav />}
+
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
                   <EducationBar />
@@ -555,6 +562,8 @@ function AppWithAuth() {
                 <LandingPage />
               ) : (
                 <>
+                  {user?.role === 'admin' && <AdminSideNav />}
+
                   <TopNav user={user} onLogout={logout} />
                   <main className="main-content">
                     <EducationBar />

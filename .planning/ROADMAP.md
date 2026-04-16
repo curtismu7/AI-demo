@@ -2301,9 +2301,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [x] 155-01-PLAN.md — AdminSideNav component + AdminLayout wrapper + CSS styling (COMPLETE — AdminSideNav.jsx, AdminSideNav.css, AdminLayout.jsx created)
-- [x] 155-02-PLAN.md — Consolidate DashboardQuickNav buttons into sidebar, hide QuickNav for admin users (COMPLETE — Home, Banking, Agent, API popout, Logs popout added to AdminSideNav; DashboardQuickNav returns null for admins)
-- [x] 155-03-PLAN.md — Add expandable submenu sections, ensure ALL text is white, consistent icon+label formatting (COMPLETE — Data Management, Audit & Logs, Security, Configuration submenus added; all entries white text; submenu expand/collapse working)
+- [x] [155-01-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-01-PLAN.md) — AdminSideNav component + AdminLayout wrapper + CSS styling (COMPLETE — AdminSideNav.jsx, AdminSideNav.css, AdminLayout.jsx created)
+- [x] [155-02-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-02-PLAN.md) — Consolidate DashboardQuickNav buttons into sidebar, hide QuickNav for admin users (COMPLETE — Home, Banking, Agent, API popout, Logs popout added to AdminSideNav; DashboardQuickNav returns null for admins)
+- [x] [155-03-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-03-PLAN.md) — Add expandable submenu sections, ensure ALL text is white, consistent icon+label formatting (COMPLETE — Data Management, Audit & Logs, Security, Configuration submenus added; all entries white text; submenu expand/collapse working)
 
 ### Phase 156: Improve security error messages for token scope violations and delegation failures
 

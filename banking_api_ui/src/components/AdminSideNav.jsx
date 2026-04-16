@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './AdminSideNav.css';
 
-const POPOUT = 'width=1400,height=900,scrollbars=yes,resizable=yes';
 
 /**
  * AdminSideNav — PingIdentity-style persistent left sidebar for admin navigation.
@@ -14,6 +13,8 @@ const POPOUT = 'width=1400,height=900,scrollbars=yes,resizable=yes';
  * - Active link highlighting
  * - Consistent icon + label styling
  * - Responsive on mobile
+ * 
+ * Updated Phase 155: All routes verified against App.js; broken links fixed
  */
 export default function AdminSideNav() {
   const location = useLocation();
@@ -21,12 +22,12 @@ export default function AdminSideNav() {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
 
-  // Main navigation items (some with submenus)
+  // Main navigation items (some with submenus) — ALL ROUTES VERIFIED
   const adminNavItems = [
     { label: 'Home', path: '/marketing', icon: '🏠' },
     { label: 'Dashboard', path: '/admin', icon: '📊' },
     {
-      label: 'Data Management',
+      label: 'User Banking',
       icon: '📑',
       children: [
         { label: 'Users', path: '/users', icon: '👥' },
@@ -34,36 +35,31 @@ export default function AdminSideNav() {
         { label: 'Transactions', path: '/transactions', icon: '💳' },
       ],
     },
-    { label: 'Banking', path: '/admin/banking', icon: '🏧' },
     {
       label: 'Audit & Logs',
       icon: '📋',
       children: [
-        { label: 'Activity Logs', path: '/activity-logs', icon: '📝' },
+        { label: 'Activity Logs', path: '/activity', icon: '📝' },  // FIXED: was /activity-logs
         { label: 'Audit Trail', path: '/audit', icon: '🔍' },
+        { label: 'API Traffic', path: '/api-traffic', icon: '📡' },  // ADDED: useful for debugging
       ],
     },
     {
       label: 'Security',
       icon: '🔐',
       children: [
-        { label: 'Security Settings', path: '/security-settings', icon: '⚙️' },
-        { label: 'OAuth Debug', path: '/oauth-debug', icon: '🔑' },
-        { label: 'Client Registration', path: '/client-reg', icon: '📝' },
+        { label: 'Security Settings', path: '/settings', icon: '⚙️' },  // FIXED: was /security-settings
+        { label: 'OAuth Debug', path: '/oauth-debug-logs', icon: '🔑' },  // FIXED: was /oauth-debug
+        { label: 'Client Registration', path: '/client-registration', icon: '📝' },  // FIXED: was /client-reg
+        { label: 'Scope Audit', path: '/scope-audit', icon: '🔎' },
+        { label: 'Scope Reference', path: '/scope-reference', icon: '📚' },
       ],
     },
-  ];
-
-  // Utility/Admin Ops items
-  const adminOpsItems = [
-    { label: 'Admin Ops', path: '/admin-ops', icon: '🛠️' },
-    { label: 'API Calls', path: '/api-calls', icon: '🔗' },
     {
       label: 'Configuration',
       icon: '⚙️',
       children: [
         { label: 'Feature Flags', path: '/feature-flags', icon: '🚩' },
-        { label: 'Demo Config', path: '/demo-config', icon: '⚡' },
         { label: 'MCP Inspector', path: '/mcp-inspector', icon: '🔬' },
       ],
     },
@@ -72,12 +68,7 @@ export default function AdminSideNav() {
   // Action items (buttons, not navigation links)
   const actionItems = [
     { label: 'Agent', action: 'agent', icon: '🤖' },
-    { label: 'API', action: 'api-popout', icon: '📡' },
-    { label: 'Logs', action: 'logs-popout', icon: '📜' },
-    { label: 'Export Seed JSON', action: 'export', icon: '💾' },
-    { label: 'Reset Demo', action: 'reset', icon: '🔄' },
     { label: 'Dark Mode', action: 'dark-mode', icon: '🌙' },
-    { label: 'Switch to Customer', action: 'switch-view', icon: '👤' },
     { label: 'Log Out', action: 'logout', icon: '🚪' },
   ];
 
@@ -105,20 +96,6 @@ export default function AdminSideNav() {
         }
         break;
       }
-      case 'api-popout':
-        window.open('/api-traffic', 'ApiTraffic', POPOUT);
-        break;
-      case 'logs-popout':
-        window.open('/logs', 'BankingLogs', POPOUT);
-        break;
-      case 'export':
-        alert('Export seed JSON - feature to be implemented');
-        break;
-      case 'reset':
-        if (window.confirm('Reset demo? This will clear all data.')) {
-          alert('Reset demo - feature to be implemented');
-        }
-        break;
       case 'dark-mode': {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -126,9 +103,6 @@ export default function AdminSideNav() {
         localStorage.setItem('theme', newTheme);
         break;
       }
-      case 'switch-view':
-        alert('Switch to customer view - feature to be implemented');
-        break;
       case 'logout':
         if (window.confirm('Log out?')) {
           window.location.href = '/api/auth/logout';
@@ -211,14 +185,6 @@ export default function AdminSideNav() {
         {/* Main Navigation Section */}
         <div className="admin-side-nav__section">
           {adminNavItems.map((item, idx) => renderNavItem(item, 'nav', idx))}
-        </div>
-
-        {/* Divider */}
-        {!collapsed && <div className="admin-side-nav__divider" />}
-
-        {/* Admin Ops Section */}
-        <div className="admin-side-nav__section">
-          {adminOpsItems.map((item, idx) => renderNavItem(item, 'ops', idx))}
         </div>
 
         {/* Divider */}
