@@ -14,6 +14,7 @@ import ExchangeModeToggle from './ExchangeModeToggle';
 import TransactionConsentModal from './TransactionConsentModal';
 import BankingAgent from './BankingAgent';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
+import AgentUiModeToggle from './AgentUiModeToggle';
 
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
@@ -1781,6 +1782,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             </svg>
             <span className="dashboard-toolbar-btn__sr">Token info</span>
           </button>
+          <AgentUiModeToggle variant="config" />
         </div>
       </div>
 

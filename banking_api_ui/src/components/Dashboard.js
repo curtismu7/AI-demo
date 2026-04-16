@@ -18,6 +18,7 @@ import ChaseTopNav from './ChaseTopNav';
 import SplitPaneLayout from './SplitPaneLayout';
 import ArchitectureTabsPanel from './ArchitectureTabsPanel';
 import ApiCallsModal from './ApiCallsModal';
+import AgentUiModeToggle from './AgentUiModeToggle';
 
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
@@ -386,7 +387,7 @@ const Dashboard = ({ user, onLogout }) => {
           >
             {resettingDemo ? 'Resetting…' : '↺ Reset Demo'}
           </button>
-
+          <AgentUiModeToggle variant="config" />
         </div>
       <main id="admin-dashboard-main" tabIndex={-1}>
       {/* Token chain — grouped card (TokenChainDisplay includes its own title) */}
