@@ -79,6 +79,19 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-16 — Phase 168: HTTP/2 Streaming Transport for MCP Tool Calls
+
+- **What:** Added HTTP/2 bridge between BFF and MCP server, replacing WebSocket transport when MCP_SERVER_URL uses `http://` or `https://` scheme.
+- **Files modified:** `banking_api_server/services/http2McpBridge.js` (new), `banking_api_server/server.js`, `banking_api_ui/src/services/bankingAgentService.js`
+- **Transport selection:** URL scheme determines transport — `http://`/`https://` → HTTP/2 bridge, `ws://`/`wss://` → WebSocket (unchanged)
+- **Connection pooling:** Persistent HTTP/2 sessions keyed by URL+token, max 5 concurrent, 60s idle timeout
+- **Streaming responses:** BFF sends `Content-Type: application/stream+json` for HTTP/2 path; client `parseStreamingResponse()` handles newline-delimited JSON
+- **Backward compatible:** WebSocket transport fully preserved; JSON fallback for non-streaming responses
+- **Known limitations:** HTTP/2 path does full MCP handshake per tool call (initialize + tools/call); no connection reuse across handshakes yet; server push not implemented
+- **Tests:** 11 unit tests in `banking_api_server/src/__tests__/http2McpBridge.test.js`
+- **Do not break:** WebSocket transport (`mcpWebSocketClient.js`); transport selection logic (`useHttp2` flag in server.js); SSE flow events (`mcpFlowSseHub.js`); local tool fallback path
+
+
 ### 2026-04-16 — Bug: Recurring data loss — runtimeData.json corruption loses all user data
 
 - **Root cause:** `runtimeData.json` (gitignored, 300MB+ due to unbounded activity logs) written with `fs.writeFileSync` — a crash mid-write truncates the file. On next startup, DataStore falls back to `bootstrapData.json` (only 5 seed users), losing all runtime data. No backup mechanism existed.
