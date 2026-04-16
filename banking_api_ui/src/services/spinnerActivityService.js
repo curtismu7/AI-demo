@@ -27,6 +27,7 @@ const CATEGORY_ICONS = {
   client:         '📡',
   authorization:  '⚖️',
   config:         '⚙️',
+  agent:          '🧠',
 };
 
 /** Routes that are background polls — skip from the activity feed */
@@ -117,9 +118,6 @@ function truncate(str, max = 120) {
 }
 
 function pushEvent(evt) {
-  if (evt.source === 'server') {
-    _events = _events.filter(event => event.source === 'server');
-  }
   _events.push(evt);
   if (_events.length > MAX_EVENTS) _events = _events.slice(-MAX_EVENTS);
   notify();
@@ -226,7 +224,6 @@ export const spinnerActivity = {
       _clientEventId = 0;
     }
     if (_stopped) return;
-    if (_events.some(event => event.source === 'server')) return;
     _clientEventId++;
     const label = resolveClientLabel(method.toUpperCase(), path)
       || truncate(`${method.toUpperCase()} ${path}`);

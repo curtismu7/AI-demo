@@ -12,6 +12,7 @@ const {
   recordConsentDecision,
 } = require('../middleware/hitlGatewayMiddleware');
 const { processAgentMessage } = require('../services/bankingAgentLangChainService');
+const appEventService = require('../services/appEventService');
 
 const router = express.Router();
 router.use(agentSessionMiddleware);
@@ -38,6 +39,7 @@ router.post('/init', async (req, res) => {
 router.post('/message', async (req, res) => {
   try {
     console.log('[banking-agent/message] Incoming request');
+    appEventService.logEvent('agent', 'info', 'Agent request received', { tag: 'agent/route' });
     console.log('[banking-agent/message] Session ID:', req.session?.id);
     console.log('[banking-agent/message] Session exists:', !!req.session);
     console.log('[banking-agent/message] Request body keys:', Object.keys(req.body || {}));
@@ -120,6 +122,7 @@ router.post('/message', async (req, res) => {
     }
 
     console.log('[banking-agent/message] Returning agent response');
+    appEventService.logEvent('agent', 'info', 'Agent response sent', { tag: 'agent/route' });
     return res.json({
       reply: response.reply,
       success: response.success,

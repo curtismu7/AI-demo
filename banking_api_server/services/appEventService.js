@@ -16,6 +16,7 @@ const EVENT_CATEGORIES = {
   JWKS: 'jwks',
   MCP: 'mcp',
   AUTH_LIFECYCLE: 'auth_lifecycle',
+  AGENT: 'agent',
 };
 
 // Event severity levels
