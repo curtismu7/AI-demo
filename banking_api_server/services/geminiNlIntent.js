@@ -1,6 +1,6 @@
 // banking_api_server/services/geminiNlIntent.js
 /**
- * LLM intent parsing — priority: Groq → Gemini → heuristic regex.
+ * LLM intent parsing — priority: Groq → LM Studio → Gemini → heuristic regex.
  * Set GROQ_API_KEY for fastest inference; GEMINI_API_KEY as fallback; neither = free heuristic.
  */
 'use strict';
@@ -45,6 +45,71 @@ Examples of mcp_tools (always banking, never education):
   "list tools"        → {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}
 Only route to education panel mcp-protocol when the user asks HOW MCP works or WHAT MCP is (no list/show/get verb).
 If the user asks to pay, transfer, or send money involving a "credit card", "credit account", or "investment account" → {"kind":"none","message":"This demo only supports Checking and Savings accounts. Credit cards and investment accounts are not available."}`;
+
+const LM_STUDIO_BASE_URL = process.env.LM_STUDIO_BASE_URL || '';
+const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || '';
+const LM_STUDIO_TIMEOUT_MS = 5000;
+
+/**
+ * @param {string} userMessage
+ * @param {{ role?: string, firstName?: string }} [context]
+ * @returns {Promise<object|null>} parsed intent or null to fall through
+ */
+async function parseWithLmStudio(userMessage, context = {}) {
+  if (!LM_STUDIO_BASE_URL) return null;
+
+  const systemWithCtx = context.role
+    ? `${SYSTEM}\n\nSigned-in user: role=${context.role}${context.firstName ? ', name=' + context.firstName : ''}. ${
+        context.role === 'admin'
+          ? 'Admin users can query ALL accounts and transactions system-wide, not just their own.'
+          : 'This is a regular customer \u2014 banking actions apply to their own accounts only.'
+      }`
+    : SYSTEM;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), LM_STUDIO_TIMEOUT_MS);
+
+  try {
+    const body = {
+      messages: [
+        { role: 'system', content: systemWithCtx },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: 0.1,
+      max_tokens: 256,
+      response_format: { type: 'json_object' },
+    };
+    if (LM_STUDIO_MODEL) body.model = LM_STUDIO_MODEL;
+
+    const res = await fetch(`${LM_STUDIO_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      console.warn('[lmStudioNlIntent] LM Studio HTTP', res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content;
+    if (!text) return null;
+
+    const parsed = JSON.parse(text.trim());
+    if (parsed && typeof parsed === 'object' && parsed.kind) return parsed;
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      console.warn('[lmStudioNlIntent] LM Studio timeout (%dms) \u2014 skipping', LM_STUDIO_TIMEOUT_MS);
+    } else {
+      console.warn('[lmStudioNlIntent] LM Studio error:', e.message);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+  return null;
+}
 
 /**
  * @param {string} userMessage
@@ -103,7 +168,7 @@ async function parseWithGemini(userMessage, context = {}) {
 /**
  * @param {string} message
  * @param {{ role?: string, firstName?: string }} [context] - user context for role-aware routing
- * @returns {Promise<{ source: 'groq'|'gemini'|'heuristic', result: object }>}
+ * @returns {Promise<{ source: 'groq'|'lmstudio'|'gemini'|'heuristic', result: object }>}
  */
 async function parseNaturalLanguage(message, context = {}) {
   // 1. Try Groq (fastest, OpenAI-compatible)
@@ -117,7 +182,18 @@ async function parseNaturalLanguage(message, context = {}) {
     return { source: rejected ? 'heuristic' : 'groq', result };
   }
 
-  // 2. Try Gemini
+  // 2. Try LM Studio (local, OpenAI-compatible — fast fallback when Groq quota exceeded)
+  const lmStudio = await parseWithLmStudio(message, context).catch((e) => {
+    console.warn('[nlIntent] LM Studio error:', e.message);
+    return null;
+  });
+  if (lmStudio) {
+    const { result, rejected, reason } = sanitizeNlResult(lmStudio, message);
+    if (rejected) console.warn('[nlIntent] LM Studio output rejected → heuristic:', reason);
+    return { source: rejected ? 'heuristic' : 'lmstudio', result };
+  }
+
+  // 3. Try Gemini
   const gemini = await parseWithGemini(message, context).catch((e) => {
     console.warn('[nlIntent] Gemini error:', e.message);
     return null;
@@ -128,7 +204,7 @@ async function parseNaturalLanguage(message, context = {}) {
     return { source: rejected ? 'heuristic' : 'gemini', result };
   }
 
-  // 3. Heuristic regex (always available, zero cost)
+  // 4. Heuristic regex (always available, zero cost)
   return { source: 'heuristic', result: parseHeuristic(message) };
 }
 

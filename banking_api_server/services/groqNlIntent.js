@@ -80,7 +80,11 @@ async function parseWithGroq(userMessage, context = {}) {
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
-    console.warn('[groqNlIntent] Groq HTTP', res.status, errText.slice(0, 200));
+    if (res.status === 429) {
+      console.warn('[groqNlIntent] Groq quota exceeded (429) — falling back to next provider');
+    } else {
+      console.warn('[groqNlIntent] Groq HTTP', res.status, errText.slice(0, 200));
+    }
     return null;
   }
 
