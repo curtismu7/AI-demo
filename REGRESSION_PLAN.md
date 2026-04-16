@@ -19,6 +19,7 @@
 | **Status endpoint token expiry** | **Dashboard loops: status returns `authenticated: true` for expired tokens** | `routes/oauthUser.js`, `routes/oauth.js` — both check `expiresAt` before responding `authenticated: true` |
 | **REAUTH_KEY re-auth guard** | **Infinite PingOne redirect loop** | `UserDashboard.js` `fetchUserData` — key cleared ONLY on success path. Never clear it on `oauth=success` URL param (triggers immediate loop). |
 | **Agent form account IDs** | **'❌ Account chk-5 not found' on balance/deposit/withdraw/transfer** | `BankingAgent.js` — `liveAccounts` state hydrated from `GET /api/accounts/my` on login; passed to `ActionForm`; falls back to `generateFakeAccounts` only while fetch is pending |
+| **Transfer HITL enforcement** | **All transfers lose HITL requirement; users can transfer any amount without approval** | `banking_api_server/services/transactionConsentChallenge.js` (line ~178: transfer type check before amount threshold), `banking_api_server/routes/transactions.js` (line ~358: 428 enforcement for transfers without valid consent challenge) — Phase 170. Do not revert transfer type check or remove 428 enforcement. Preserve `if (v.normalized.type === 'transfer')` before amount threshold check. |
 | **Extra accounts (investment etc.) lost on cold-start** | **Only checking+savings appear after Vercel cold-start; investment and other custom accounts missing** | `demoScenario PUT` must call `saveAccountSnapshot(userId)`; `GET /accounts/my` and `GET /demo-data` must call `restoreAccountsFromSnapshot(userId)` BEFORE `provisionDemoAccounts` — see `accounts.js` and `demoScenario.js`. `demoScenarioStore` (Redis/KV) is the persistence layer. |
 | **Middle layout start state** | **Middle column inline agent does not appear when placement is already 'middle'** | `UserDashboard.js` — `middleAgentOpen` must be initialised via `useState(() => agentPlacement === 'middle')` and set to `true` in the `agentPlacement` useEffect. `App.js` (`showFloatingAgent` suppressed for middle ON USER DASHBOARD ROUTES ONLY — admin Dashboard.js gets float in middle mode). |
 | **Bottom dock on dashboard routes** | **Bottom dock not showing — floating FAB shown instead** | `App.js` — skip App-level `<EmbeddedAgentDock>` on `onUserDashboardRoute` (UserDashboard mounts it internally). `EmbeddedAgentDock.js` — must NOT have `isBankingAgentDashboardRoute` guard (that returns null before the component can render). |
@@ -78,6 +79,17 @@
 ---
 
 ## 4. Bug Fix Log (reverse-chronological)
+
+### 2026-04-16 — Phase 170: Force HITL for all Transfers in authorization server
+
+- **Requirement:** Security requirement to mandate explicit user approval for every transfer operation.
+- **Implementation:**
+  1. `transactionConsentChallenge.js` — Added transfer-type check before amount threshold; all transfers now require consent challenge regardless of amount
+  2. `routes/transactions.js` — POST /api/transactions returns 428 + `consent_challenge_required` for transfers without valid consent; added explicit check for missing `consentChallengeId`
+- **Files modified:** `banking_api_server/services/transactionConsentChallenge.js`, `banking_api_server/routes/transactions.js`
+- **Regression check:** Transfer $1 now requires consent; withdrawals keep $500 threshold; admin bypass preserved
+- **Do not break:** Transfer type check (`if (v.normalized.type === 'transfer')` before amount comparison); 428 enforcement for transfers; challenge verification in POST /api/transactions
+
 
 ### 2026-04-16 — Phase 168: HTTP/2 Streaming Transport for MCP Tool Calls
 
