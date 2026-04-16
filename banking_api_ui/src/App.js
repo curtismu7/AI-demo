@@ -420,8 +420,8 @@ function AppWithAuth() {
     Boolean(user) &&
     pathname === '/dashboard';
 
-  // Check if we're on an admin-managed route (AdminSideNav is visible)
-  const adminRoutePatterns = [
+  // Check if we're on a sidebar-visible route (AdminSideNav is visible for all logged-in users)
+  const sidebarRoutePatterns = [
     '/admin',
     '/activity',
     '/audit',
@@ -436,9 +436,13 @@ function AppWithAuth() {
     '/feature-flags',
     '/mcp-inspector',
     '/security-settings',
+    '/marketing',
+    '/dashboard',
+    '/pingone-test',
+    '/mfa-test',
   ];
-  const isOnAdminRoute = adminRoutePatterns.some(pattern => pathname.startsWith(pattern)) || 
-                         (user?.role === 'admin' && pathname === '/');
+  const isOnSidebarRoute = sidebarRoutePatterns.some(pattern => pathname.startsWith(pattern)) || 
+                         (Boolean(user) && pathname === '/');
 
   // Marketing home (/ or /marketing): show floating agent even when signed out; signed-in /marketing too.
   // Suppress float on signed-in / only when UserDashboard owns middle placement.
@@ -504,7 +508,7 @@ function AppWithAuth() {
             {/* Demo config accessible without login - needed to configure flags before PingOne is set up */}
             <Route path="/configure" element={
               <>
-                {user?.role === 'admin' && <AdminSideNav />}
+                {user && <AdminSideNav user={user} />}
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
@@ -515,7 +519,7 @@ function AppWithAuth() {
             } />
             <Route path="/demo-data" element={
               <>
-                {user?.role === 'admin' && <AdminSideNav />}
+                {user && <AdminSideNav user={user} />}
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
@@ -527,7 +531,7 @@ function AppWithAuth() {
             {/* Self-service user provisioning — accessible without login */}
             <Route path="/self-service" element={
               <>
-                {user?.role === 'admin' && <AdminSideNav />}
+                {user && <AdminSideNav user={user} />}
 
                 <TopNav user={user} onLogout={logout} />
                 <main className="main-content">
@@ -549,10 +553,13 @@ function AppWithAuth() {
                 !user ? (
                   <LandingPage />
                 ) : (
-                  <main className="main-content">
-                    <EducationBar />
-                    <LandingPage user={user} onLogout={logout} />
-                  </main>
+                  <>
+                    <AdminSideNav user={user} />
+                    <main className="main-content">
+                      <EducationBar />
+                      <LandingPage user={user} onLogout={logout} />
+                    </main>
+                  </>
                 )
               }
             />
@@ -563,7 +570,7 @@ function AppWithAuth() {
                 <LandingPage />
               ) : (
                 <>
-                  {user?.role === 'admin' && <AdminSideNav />}
+                  {user && <AdminSideNav user={user} />}
 
                   <TopNav user={user} onLogout={logout} />
                   <main className="main-content">
@@ -628,7 +635,7 @@ function AppWithAuth() {
           {!isApiTrafficOnlyPage && <CimdSimPanel />}
           {!isApiTrafficOnlyPage && <AgentFlowDiagramPanel />}
           <LogViewer isOpen={logViewerOpen} onClose={() => setLogViewerOpen(false)} />
-          {user && demoMode !== true && !isApiTrafficOnlyPage && !isOnAdminRoute && (
+          {user && demoMode !== true && !isApiTrafficOnlyPage && !isOnSidebarRoute && (
             <button
               type="button"
               className="demo-config-fab"
