@@ -438,6 +438,8 @@ const POLL_ROUTES = new Set([
   '/api/tokens/session-preview',
   '/api/auth/session',
   '/api/auth/ciba/status',
+  '/api/config/vertical',
+  '/api/admin/config',
 ]);
 app.use(morgan('combined', {
   skip: (req) => POLL_ROUTES.has(req.path),

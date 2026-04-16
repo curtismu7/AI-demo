@@ -77,7 +77,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [withdrawAccount, setWithdrawAccount] = useState(null);
   /** 'all' | 'agent' — filters the transaction history table. */
   const [txFilter, setTxFilter] = useState('all');
-  const [autoRefresh, setAutoRefresh] = useState(false);
   /** Server-issued id for high-value HITL — opens TransactionConsentModal on the dashboard. */
   const [consentChallengeId, setConsentChallengeId] = useState(null);
   /** Track which account cards have expanded profile details */
@@ -374,25 +373,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    let refreshInterval;
-    
-    if (autoRefresh) {
-      // Refresh every 30 seconds — frequent enough to catch real-time changes,
-      // slow enough not to burn Upstash quota or clutter the console.
-      refreshInterval = setInterval(() => {
-        fetchUserData(true); // Silent refresh - no loading spinner
-      }, 30000); // 30 seconds
-    }
-    
-    // Cleanup interval on component unmount or when autoRefresh changes
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- interval uses current fetchUserData; adding it would reset timer too often
-  }, [autoRefresh]);
 
   /** Toast when returning from transaction consent route (success or decline). */
   useEffect(() => {
@@ -1757,20 +1737,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">
 
-          <div className="dashboard-toolbar-toggle">
-            <label className="toggle-label toggle-label--toolbar">
-              <span className="toggle-text">Auto-refresh</span>
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={autoRefresh}
-                  onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="toggle-input"
-                />
-                <span className="toggle-slider"></span>
-              </div>
-            </label>
-          </div>
           <button
             type="button"
             onClick={openTokenModal}
