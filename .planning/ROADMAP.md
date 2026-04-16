@@ -2401,7 +2401,7 @@ Plans:
 **Goal:** Add LM Studio (OpenAI-compatible local server) as a fallback model provider when Groq quota is exceeded, keeping the demo functional without cloud API dependencies.
 **Requirements**: LMSTUDIO-01, LMSTUDIO-02
 **Depends on:** Phase 164
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 165-01-PLAN.md — Add LM Studio fallback to BFF NL intent chain and LangChain agent factory
