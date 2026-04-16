@@ -2015,7 +2015,29 @@ Plans:
 - [ ] 170-01-PLAN.md — Modify transactionConsentChallenge to force HITL for all transfers + verify BFF 428 enforcement (TRANSFER-HITL-01, TRANSFER-HITL-02)
 - [ ] 170-02-PLAN.md — Add unit and integration tests + update REGRESSION_PLAN.md (TRANSFER-HITL-03, TRANSFER-HITL-04)
 
----
+### Phase 171: https://developer.pingidentity.com/blog/introducing-the-pingone-mcp-server/
+
+**Goal:** Create a comprehensive technical blog post on PingIdentity Developer Blog showcasing the PingOne MCP server implementation from the BX Finance demo. Explain how the MCP server enables secure AI agent integration with banking APIs using modern OAuth 2.0 patterns (RFC 8693 token exchange, CIBA, HITL).
+
+**Requirements**: BLOG-POST-171-01 (blog structure and content), BLOG-POST-171-02 (production deployment guide)
+
+**Depends on:** Phase 170 (Force HITL for all Transfers)
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 171-01-PLAN.md — Blog outline, introduction, "What is MCP", and live demo walkthrough
+- [ ] 171-02-PLAN.md — Three auth flows, RFC 8693 token exchange (1-exchange vs 2-exchange), BX Finance case study  
+- [ ] 171-03-PLAN.md — Production deployment guide, best practices, diagram sourcing, publication checklist
+
+**Success criteria:**
+1. Complete ~3,000–4,000 word blog post drafted
+2. All major sections: MCP overview, auth flows, RFC 8693, case study, deployment, best practices
+3. Code examples taken directly from banking_api_server/ and banking_mcp_server/
+4. Diagrams sourced and ready for design handoff
+5. Publication checklist verified (security, accuracy, compliance)
+6. Ready for PingIdentity Developer Blog submission
+
 
 ### Phase 128: Quality Audit and Fix — Phases 120–127 Code Review and Professional Polish
 
