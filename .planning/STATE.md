@@ -24,6 +24,7 @@ Phase: 159
 Plan: Not started
 
 ## Roadmap Evolution
+- Phase 162 added: Enhanced spinner with live activity feed showing token retrieval, MCP gateway calls, responses, and other interesting events
 - Phase 161 added: Add thin activity log — meaningful app events (JWKS validation, OAuth redirects, token exchange, session state) instead of raw API calls and debug noise
 
 - Phase 151 added: Scope vocabulary audit — review docs, code, tests, and PingOne Test page for clean scope alignment

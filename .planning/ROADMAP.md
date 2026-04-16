@@ -2374,4 +2374,14 @@ Plans:
 - [ ] 161-02-PLAN.md — Instrument OAuth, token exchange, session, JWKS event sources
 - [ ] 161-03-PLAN.md — Enhanced ActivityLogs UI with timeline, icons, flow groups
 
+### Phase 162: Enhanced spinner with live activity feed showing token retrieval, MCP gateway calls, responses, and other interesting events
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 161
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 162 to break down)
+
 ---
