@@ -2392,8 +2392,8 @@ Plans:
 **Goal:** Extend AdminSideNav to render for ALL logged-in users with role-filtered menu items. Strip navigation links from TopNav and ChaseTopNav (keep brand bar only). Remove DashboardQuickNav. Sidebar becomes the single source of page navigation.
 **Requirements**: NAV-163-01 (role-aware sidebar), NAV-163-02 (universal render), NAV-163-03 (role-filtered menus), NAV-163-04 (strip top nav links), NAV-163-05 (remove DashboardQuickNav)
 **Depends on:** Phase 155
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 163-01-PLAN.md — Make AdminSideNav role-aware, render for all logged-in users
-- [ ] 163-02-PLAN.md — Strip nav links from TopNav/ChaseTopNav, remove DashboardQuickNav, visual verify
+- [x] 163-02-PLAN.md — Strip nav links from TopNav/ChaseTopNav, remove DashboardQuickNav, visual verify
