@@ -2006,13 +2006,14 @@ Plans:
 
 ### Phase 170: Force HITL for all Transfers in authorization server
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Enforce HITL (Human-In-The-Loop) approval requirement for ALL transfer operations (regardless of amount), implemented across the BFF authorization layer.
+**Requirements**: TRANSFER-HITL-01, TRANSFER-HITL-02, TRANSFER-HITL-03, TRANSFER-HITL-04
 **Depends on:** Phase 169
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 170 to break down)
+- [ ] 170-01-PLAN.md — Modify transactionConsentChallenge to force HITL for all transfers + verify BFF 428 enforcement (TRANSFER-HITL-01, TRANSFER-HITL-02)
+- [ ] 170-02-PLAN.md — Add unit and integration tests + update REGRESSION_PLAN.md (TRANSFER-HITL-03, TRANSFER-HITL-04)
 
 ---
 
