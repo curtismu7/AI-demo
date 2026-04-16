@@ -902,3 +902,10 @@ router.post('/verify-otp', (req, res) => {
 });
 
 module.exports = router;
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Phase 161: App Event Service Integration
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Note: Full instrumentation will be completed in Phase 161-02.
+// This section provides the foundation for event capture.
+
+const appEventService = require('../services/appEventService');

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
@@ -210,6 +210,13 @@ function AppWithAuth() {
   useEffect(() => {
     monitorApiHealth();
   }, []);
+
+  // Clear old page content on route change — scroll to top before paint
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    const main = document.querySelector('.main-content');
+    if (main) main.scrollTop = 0;
+  }, [pathname]);
 
   const injectEmailIntoNextSessionInit = useCallback((email) => {
     pendingUserEmailRef.current = email;

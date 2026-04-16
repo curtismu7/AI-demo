@@ -265,3 +265,11 @@ class SqliteSessionStore extends Store {
 }
 
 module.exports = SqliteSessionStore;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Phase 161: App Event Service Integration
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Note: Full instrumentation will be completed in Phase 161-02.
+// This section provides the foundation for session event capture.
+
+// const appEventService = require('./appEventService');

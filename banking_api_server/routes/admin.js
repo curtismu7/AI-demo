@@ -940,3 +940,50 @@ router.get(
 
 
 module.exports = router;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Phase 161: App Event Service Routes
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const appEventService = require('../services/appEventService');
+
+/**
+ * GET /api/admin/app-events — Get curated app events (OAuth, token exchange, session, JWKS)
+ * Supports filtering by category, severity, limit, and time range
+ */
+router.get('/app-events', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+  try {
+    const { category, severity, limit = 100, since } = req.query;
+    
+    const events = appEventService.getEvents({
+      category,
+      severity,
+      limit: Math.min(parseInt(limit) || 100, 500),
+      since,
+    });
+
+    const categories = appEventService.getEventsByCategory();
+
+    res.json({
+      events,
+      total: events.length,
+      categories,
+    });
+  } catch (error) {
+    console.error('Get app-events error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/admin/app-events/categories — Get summary of events by category
+ */
+router.get('/app-events/categories', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+  try {
+    const categories = appEventService.getEventsByCategory();
+    res.json({ categories });
+  } catch (error) {
+    console.error('Get app-events categories error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
