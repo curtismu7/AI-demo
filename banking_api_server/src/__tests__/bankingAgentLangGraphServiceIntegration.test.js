@@ -1,5 +1,5 @@
 /**
- * Integration tests for Phase 116 LangChain 1.x agent endpoint
+ * Integration tests for Phase 116 LangGraph agent endpoint
  * Tests the actual HTTP API contract (not internal functions)
  */
 
@@ -8,7 +8,7 @@
 const request = require('supertest');
 const express = require('express');
 
-describe('Banking Agent LangChain 1.x API (Phase 116)', () => {
+describe('Banking Agent LangGraph API (Phase 116)', () => {
   let mockApp;
   let mockSession;
 

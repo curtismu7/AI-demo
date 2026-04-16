@@ -11,7 +11,7 @@ const {
   getConsentDecision,
   recordConsentDecision,
 } = require('../middleware/hitlGatewayMiddleware');
-const { processAgentMessage } = require('../services/bankingAgentLangChainService');
+const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
 const appEventService = require('../services/appEventService');
 
 const router = express.Router();
