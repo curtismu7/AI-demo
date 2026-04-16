@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-last_updated: "2026-04-16T18:20:32.439Z"
+status: executing
+last_updated: "2026-04-16T21:26:52.619Z"
 progress:
-  total_phases: 172
-  completed_phases: 82
-  total_plans: 289
+  total_phases: 175
+  completed_phases: 81
+  total_plans: 299
   completed_plans: 217
 ---
 
@@ -20,14 +20,18 @@ progress:
 
 ## Current Position
 
-Phase: 166
-Plan: Not started
+Phase: 168 (support-http2-stream-from-agent-to-mcp-servers) — EXECUTING
+Plan: 1 of 3
 
 ## Roadmap Evolution
+
+- Phase 172 added: MCP server token exchange — require token exchange at MCP server before forwarding to backend app instead of OAuth pass-through
+
+- Phase 171 added: https://developer.pingidentity.com/blog/introducing-the-pingone-mcp-server/
+
 - Phase 170 added: Force HITL for all Transfers in authorization server
 
 - Phase 169 added: Add OAuth token display page — show user info from token or PingOne userinfo endpoint
-
 
 - Phase 168 added: support HTTP2 stream from Agent to mcp servers
 
@@ -48,7 +52,7 @@ Plan: Not started
 
 **Previous:** Phase 147 (get-rid-of-left-agent-keep-the-rest) — ✅ COMPLETE
 **Next:** /gsd-plan-phase 148
-**Status:** Milestone complete
+**Status:** Executing Phase 168
 
 ---
 

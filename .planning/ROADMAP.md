@@ -1927,6 +1927,16 @@ Plans:
 9. All test results displayed clearly with pass/fail status
 10. Fix buttons provide actionable guidance for failed tests
 
+### Phase 172: MCP server token exchange — require token exchange at MCP server before forwarding to backend app instead of OAuth pass-through
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 171
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 172 to break down)
+
 ---
 
 ### Phase 124: MFA HITL Indication
