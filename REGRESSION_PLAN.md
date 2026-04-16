@@ -41,6 +41,7 @@
 | Split vs Classic dashboard + HITL consent | Duplicate FAB/dock with inline agent, or consent navigates away | `dashboardLayout.js`, `customerSplit3Dashboard.js`, `UserDashboard.js`, `TransactionConsentModal.js`, `App.js` |
 | **Bottom dock — tile strip direction** | **Re-adding `flex-direction: row-reverse` to `.ba-embedded-bottom-dock .ba-body` puts tiles back on the right sidebar, hiding the prompt input** | `banking_api_ui/src/components/BankingAgent.css` — `.ba-body` must be `column-reverse`; `.ba-left-col` must be `flex-direction: row; overflow-x: auto; border-top` (horizontal strip). `ba-chips-footer` and nav button are `display:none` in bottom dock to prevent input cut-off. |
 | **ff_inject_may_act — synthetic may_act (demo only)** | **If changed to inject unconditionally (not gated by flag) it would forge may_act on real tokens** | `banking_api_server/services/agentMcpTokenService.js` — injection only runs when `configStore.getEffective('ff_inject_may_act') === 'true'` AND `userAccessTokenClaims.may_act` is absent. Toggle only in `/demo-data` or Feature Flags (admin). Never enable in production. |
+| **DataStore backup/recovery** | **All user data lost on crash — no recovery possible** | `banking_api_server/data/store.js` — `_atomicWrite`, `_tryRestoreFromBackup`, `createBackup`, `_isValidSnapshot`, `MAX_ACTIVITY_LOGS=1000`. `banking_api_server/data/backups/` dir (gitignored). Recovery chain: runtimeData → backups → bootstrapData. |
 | Vercel SPA routing | All non-API routes 404 on Vercel | `vercel.json` (SPA catch-all rewrite) |
 | OAuth redirect origin | Redirects go to localhost in production | `routes/oauth.js`, `routes/oauthUser.js` (`getOrigin`) |
 | Vercel build | Production deployment fails | `banking_api_ui/package.json`, `vercel.json` |
@@ -77,6 +78,21 @@
 ---
 
 ## 4. Bug Fix Log (reverse-chronological)
+
+### 2026-04-16 — Bug: Recurring data loss — runtimeData.json corruption loses all user data
+
+- **Root cause:** `runtimeData.json` (gitignored, 300MB+ due to unbounded activity logs) written with `fs.writeFileSync` — a crash mid-write truncates the file. On next startup, DataStore falls back to `bootstrapData.json` (only 5 seed users), losing all runtime data. No backup mechanism existed.
+- **Fix:**
+  1. **Atomic writes** — `_atomicWrite()` writes to `.tmp` then `fs.renameSync()` (atomic on POSIX)
+  2. **Rotating backups** — 3 timestamped copies in `banking_api_server/data/backups/`
+  3. **Auto-recovery** — `_tryRestoreFromBackup()` scans backups newest-first on startup if runtimeData is invalid
+  4. **Activity log cap** — `getSnapshot()` limits to 1000 most recent entries (300MB → 4.6MB)
+  5. **Validation** — `_isValidSnapshot()` requires ≥1 user before accepting a data file
+  6. **Auto-backup** — immediate on startup + every 15 minutes via `setInterval`
+- **Files modified:** `banking_api_server/data/store.js`, `.gitignore`
+- **Commits:** `4ac3ca3`
+- **Regression check:** Recovery tested: wrote empty runtimeData → DataStore auto-restored from backup (6 users recovered). File size reduced from 309MB to 4.6MB.
+- **Do not break:** Atomic write path (`_atomicWrite`); backup directory (`data/backups/`); recovery chain (runtimeData → backups → bootstrapData); activity log cap (1000); `_isValidSnapshot` ≥1 user check.
 
 ### 2026-04-15 — Bug: Token audience mismatch → 401 on /api/accounts/my and /api/transactions/my
 
