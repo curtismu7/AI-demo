@@ -19,6 +19,7 @@ import './AdminSideNav.css';
  * 
  * Updated Phase 155: All routes verified against App.js; broken links fixed
  * Updated Phase 163: Role-aware — renders for ALL logged-in users, filters items by role
+ * Updated Phase 163: Added Config, Demo Config, Role Switch; consolidated all nav here
  */
 export default function AdminSideNav({ user }) {
   const location = useLocation();
@@ -99,6 +100,8 @@ export default function AdminSideNav({ user }) {
       children: [
         { label: 'Feature Flags', path: '/feature-flags', icon: '🚩' },
         { label: 'MCP Inspector', path: '/mcp-inspector', icon: '🔬' },
+        { label: 'Demo Config', path: '/demo-data', icon: '🎛' },
+        { label: 'App Configuration', path: '/config', icon: '🔧' },
       ],
     },
     { label: 'PingOne Test', path: '/pingone-test', icon: '🧪' },
@@ -118,6 +121,7 @@ export default function AdminSideNav({ user }) {
 
   // Action items (buttons, not navigation links)
   const actionItems = [
+    { label: isAdmin ? 'Customer View' : 'Admin View', action: 'switch-role', icon: '⇄' },
     { label: 'Dark Mode', action: 'dark-mode', icon: '🌙' },
     { label: 'Log Out', action: 'logout', icon: '🚪' },
   ];
@@ -136,6 +140,22 @@ export default function AdminSideNav({ user }) {
 
   const handleAction = (action) => {
     switch (action) {
+      case 'switch-role': {
+        const targetRole = isAdmin ? 'customer' : 'admin';
+        fetch('/api/auth/switch', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetRole }),
+        })
+          .then((r) => {
+            if (!r.ok) throw new Error(`Switch failed: ${r.status}`);
+            return r.json();
+          })
+          .then(({ redirectUrl }) => { window.location.href = redirectUrl; })
+          .catch((e) => { console.error('[Sidebar] Role switch failed:', e.message); });
+        break;
+      }
       case 'dark-mode': {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';

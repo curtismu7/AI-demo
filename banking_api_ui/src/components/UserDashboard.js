@@ -17,7 +17,6 @@ import EmbeddedAgentDock from './EmbeddedAgentDock';
 
 import { getDashboardLayout, setDashboardLayout } from '../utils/dashboardLayout';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
-import { useTheme } from '../context/ThemeContext';
 import Fido2Challenge from './Fido2Challenge';
 import { useCurrentUserTokenEvent } from '../hooks/useCurrentUserTokenEvent';
 import './UserDashboard.css';
@@ -47,7 +46,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const location = useLocation();
   const { open } = useEducationUI();
   const { placement: agentPlacement } = useAgentUiMode();
-  const { theme, toggleTheme } = useTheme();
   useCurrentUserTokenEvent(); // Seed the token chain with current user's session token on mount
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(() => agentPlacement === 'middle');
@@ -60,7 +58,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [tokenData, setTokenData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [switchingRole, setSwitchingRole] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [transferForm, setTransferForm] = useState({
     toAccountId: '',
@@ -299,10 +296,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       fetchUserData(true);
     }
   }, [agentPlacement, user, fetchUserData]);
-
-  const handleDashThemeToggle = useCallback(() => {
-    toggleTheme();
-  }, [toggleTheme]);
 
   /** Toggle expanded state for account profile details */
   const toggleAccountProfile = useCallback((accountId) => {

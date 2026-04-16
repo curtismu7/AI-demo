@@ -8,7 +8,6 @@ import apiClient from '../services/apiClient';
 import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioService';
 import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../config/agentMcpScopes';
 import { useEducationUI } from '../context/EducationUIContext';
-import { useTheme } from '../context/ThemeContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
 import VerticalSwitcher from './VerticalSwitcher';
@@ -80,7 +79,6 @@ export default function DemoDataPage({ user, onLogout }) {
   const { preset: industryPreset } = useIndustryBranding();
   const navigate = useNavigate();
   const { open } = useEducationUI();
-  const { theme, toggleTheme } = useTheme();
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
   const dashboardCrumbLabel = user?.role === 'admin' ? 'Admin' : 'Dashboard';
 
@@ -678,41 +676,9 @@ export default function DemoDataPage({ user, onLogout }) {
           <Link to={dashboardPath} className="dashboard-toolbar-btn">
             ⌂ {dashboardCrumbLabel}
           </Link>
-          <Link
-            to="/mcp-inspector"
-            className="dashboard-toolbar-btn dashboard-toolbar-btn--accent"
-            title="MCP discovery, tools/list & tools/call via Backend-for-Frontend (BFF)"
-          >
-            MCP Inspector
-          </Link>
           <span className="demo-data-toolbar-current" aria-current="page">
             Demo config
           </span>
-          <Link to="/config" className="dashboard-toolbar-btn" title="PingOne environment and OAuth client settings">
-            ⚙ Config
-          </Link>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            onClick={() =>
-              window.open('/api-traffic', 'ApiTraffic', 'width=1400,height=900,scrollbars=yes,resizable=yes')
-            }
-            title="Open API Traffic viewer (all /api/* calls)"
-          >
-            API Traffic
-          </button>
-          <button
-            type="button"
-            className="dashboard-toolbar-btn dashboard-toolbar-btn--theme"
-            onClick={toggleTheme}
-            aria-pressed={theme === 'dark'}
-            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          >
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
-          <button type="button" onClick={onLogout} className="dashboard-toolbar-btn dashboard-toolbar-btn--danger">
-            Log out
-          </button>
         </div>
       </div>
 

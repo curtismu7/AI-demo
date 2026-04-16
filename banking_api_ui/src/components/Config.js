@@ -12,7 +12,6 @@ import {
   AGENT_MCP_SCOPE_CATALOG,
   DEFAULT_AGENT_MCP_ALLOWED_SCOPES,
 } from '../config/agentMcpScopes';
-import AgentUiModeToggle from './AgentUiModeToggle';
 import McpInspectorSetupWizard from './McpInspectorSetupWizard';
 import VercelConfigTab from './VercelConfigTab';
 import WorkerAppConfigTab from './WorkerAppConfigTab';
@@ -384,7 +383,6 @@ function AgentLayoutPreferences() {
         <strong>+ FAB</strong> adds the floating panel on top of Middle or Bottom (never Middle and Bottom together).
         When signed in, your choice syncs to your demo profile.
       </p>
-      <AgentUiModeToggle variant="config" />
       <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '1rem', lineHeight: 1.5 }}>
         <strong>Bottom</strong> sends you to <strong>Home</strong> after apply so the dock mounts. <strong>Middle</strong>{' '}
         reloads with split view.

@@ -4,7 +4,6 @@ import { NavLink } from 'react-router-dom';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { useDemoTour } from '../context/DemoTourContext';
-import AgentUiModeToggle from './AgentUiModeToggle';
 import { useDemoMode } from '../hooks/useDemoMode';
 import './EducationBar.css';
 
@@ -82,7 +81,6 @@ export default function EducationBar() {
             <h2 id="edu-bar-panel-title" className="edu-bar-panel__title">
               Agent UI
             </h2>
-            <AgentUiModeToggle variant="eduBar" className="edu-bar-agent-toggle" />
             <button
               type="button"
               className="edu-bar-panel__btn"
@@ -126,7 +124,6 @@ export default function EducationBar() {
           </h2>
 
           <div className="edu-bar-panel__section">
-            <AgentUiModeToggle variant="eduBar" className="edu-bar-agent-toggle" />
           </div>
 
           <div className="edu-bar-panel__section">

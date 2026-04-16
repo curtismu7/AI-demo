@@ -32,7 +32,6 @@ const Dashboard = ({ user, onLogout }) => {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
   const [resettingDemo, setResettingDemo] = useState(false);
-  const [switchingRole, setSwitchingRole] = useState(false);
   const [txLookupUsername, setTxLookupUsername] = useState('bankuser');
   const [txLookupPhone4, setTxLookupPhone4] = useState('1586');
   const [txLookupTx, setTxLookupTx] = useState([]);
@@ -318,7 +317,7 @@ const Dashboard = ({ user, onLogout }) => {
       <a href="#admin-dashboard-main" className="dash-skip-link">
         Skip to admin content
       </a>
-      <ChaseTopNav user={user} onLogout={onLogout} currentPage="admin-dashboard" />
+      <ChaseTopNav user={user} />
       <div
         className={`app-page-shell__body app-page-shell__body--wide ${agentPlacement === 'bottom' ? 'app-page-shell__body--embed-agent' : ''}`}
       >
@@ -387,25 +386,7 @@ const Dashboard = ({ user, onLogout }) => {
           >
             {resettingDemo ? 'Resetting…' : '↺ Reset Demo'}
           </button>
-          {/* P2 — Role switch: re-login as customer without a full logout cycle */}
-          <button
-            type="button"
-            disabled={switchingRole}
-            onClick={async () => {
-              setSwitchingRole(true);
-              try {
-                const res = await bffAxios.post('/api/auth/switch', { targetRole: 'customer' });
-                window.location.href = res.data.redirectUrl;
-              } catch (err) {
-                notifyError(err.response?.data?.message || 'Role switch unavailable — user client not configured.');
-                setSwitchingRole(false);
-              }
-            }}
-            className="app-page-toolbar-btn"
-            title="Re-login as a banking customer without signing out"
-          >
-            {switchingRole ? 'Switching…' : 'Switch to Customer view'}
-          </button>
+
         </div>
       <main id="admin-dashboard-main" tabIndex={-1}>
       {/* Token chain — grouped card (TokenChainDisplay includes its own title) */}

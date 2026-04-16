@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../styles/appShellPages.css';
 
 /**
- * Thin navigation bar for admin sub-pages: Back (history), Home, optional breadcrumb, Log out.
+ * Thin navigation bar for admin sub-pages: Back (history), Home, optional breadcrumb.
+ * Phase 163: Log Out moved to AdminSideNav.
  */
-export default function PageNav({ user, onLogout, title }) {
+export default function PageNav({ user, title }) {
   const navigate = useNavigate();
   const homePath = user?.role === 'admin' ? '/admin' : '/dashboard';
 
@@ -25,18 +26,6 @@ export default function PageNav({ user, onLogout, title }) {
         <span className="page-nav__trail">
           / {title}
         </span>
-      )}
-      {onLogout && (
-        <>
-          <span className="page-nav__spacer" aria-hidden="true" />
-          <button
-            type="button"
-            className="app-page-toolbar-btn app-page-toolbar-btn--danger"
-            onClick={onLogout}
-          >
-            Log Out
-          </button>
-        </>
       )}
     </nav>
   );
