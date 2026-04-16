@@ -2468,11 +2468,11 @@ Plans:
 
 **Depends on:** Phase 166
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 167-01-PLAN.md — MCPToolsEducation component: render tools categorized with scopes (Wave 1)
-- [ ] 167-02-PLAN.md — Integrate MCPToolsEducation into Admin Config page as tab (Wave 2)
+- [x] 167-01-PLAN.md — MCPToolsEducation component: render tools categorized with scopes (Wave 1)
+- [x] 167-02-PLAN.md — Integrate MCPToolsEducation into Admin Config page as tab (Wave 2)
 
 **Success criteria:**
 1. All 10 MCP tools display with name, description, required scopes, and parameter schemas
