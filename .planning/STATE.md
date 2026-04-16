@@ -25,6 +25,8 @@ Plan: 1 of 3
 
 ## Roadmap Evolution
 
+- Phase 173 added: Research and create a frontend using WebMCP from Google
+
 - Phase 172 added: MCP server token exchange — require token exchange at MCP server before forwarding to backend app instead of OAuth pass-through
 
 - Phase 171 added: https://developer.pingidentity.com/blog/introducing-the-pingone-mcp-server/

@@ -1937,6 +1937,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 172 to break down)
 
+### Phase 173: Research and create a frontend using WebMCP from Google
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 172
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 173 to break down)
+
 ---
 
 ### Phase 124: MFA HITL Indication
