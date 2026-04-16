@@ -2029,11 +2029,11 @@ Plans:
 **Goal:** Enforce HITL (Human-In-The-Loop) approval requirement for ALL transfer operations (regardless of amount), implemented across the BFF authorization layer.
 **Requirements**: TRANSFER-HITL-01, TRANSFER-HITL-02, TRANSFER-HITL-03, TRANSFER-HITL-04
 **Depends on:** Phase 169
-**Plans:** 2 plans
+**Plans:** 3/2 plans complete
 
 Plans:
-- [ ] 170-01-PLAN.md — Modify transactionConsentChallenge to force HITL for all transfers + verify BFF 428 enforcement (TRANSFER-HITL-01, TRANSFER-HITL-02)
-- [ ] 170-02-PLAN.md — Add unit and integration tests + update REGRESSION_PLAN.md (TRANSFER-HITL-03, TRANSFER-HITL-04)
+- [x] 170-01-PLAN.md — Modify transactionConsentChallenge to force HITL for all transfers + verify BFF 428 enforcement (TRANSFER-HITL-01, TRANSFER-HITL-02)
+- [x] 170-02-PLAN.md — Add unit and integration tests + update REGRESSION_PLAN.md (TRANSFER-HITL-03, TRANSFER-HITL-04)
 
 ### Phase 171: https://developer.pingidentity.com/blog/introducing-the-pingone-mcp-server/
 
