@@ -24,6 +24,8 @@ Phase: 166
 Plan: Not started
 
 ## Roadmap Evolution
+- Phase 170 added: Force HITL for all Transfers in authorization server
+
 - Phase 169 added: Add OAuth token display page — show user info from token or PingOne userinfo endpoint
 
 

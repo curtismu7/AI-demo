@@ -2004,6 +2004,16 @@ Plans:
 5. Build passes with no errors
 6. REGRESSION_PLAN.md updated with implementation notes
 
+### Phase 170: Force HITL for all Transfers in authorization server
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 169
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 170 to break down)
+
 ---
 
 ### Phase 128: Quality Audit and Fix — Phases 120–127 Code Review and Professional Polish
