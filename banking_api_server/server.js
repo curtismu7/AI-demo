@@ -1731,6 +1731,16 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         if (mcpAuthorizeEvaluationThisRequest) {
             out.mcpAuthorizeEvaluation = mcpAuthorizeEvaluationThisRequest;
         }
+
+        // Stream response when using HTTP/2 transport (client detects via Content-Type)
+        if (useHttp2) {
+            res.setHeader('Content-Type', 'application/stream+json; charset=utf-8');
+            res.setHeader('Transfer-Encoding', 'chunked');
+            // Emit any pending flow events (already published to SSE hub, now also in response)
+            res.write(JSON.stringify({ type: 'result', data: result, tokenEvents }) + '\n');
+            res.write(JSON.stringify({ type: 'stream_close', status: 'success' }) + '\n');
+            return res.end();
+        }
         return res.json(out);
     } catch (err) {
         const isConnErr =

@@ -231,7 +231,15 @@ export async function callMcpTool(tool, params = {}) {
       throw e;
     }
 
-    const data = await response.json();
+
+    // Detect streaming response (HTTP/2 bridge sends application/stream+json)
+    let data;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('stream+json') && response.body) {
+      data = await parseStreamingResponse(response.body, tool);
+    } else {
+      data = await response.json();
+    }
     appendMcpCall(tool, response.status, Date.now() - t0, data.result);
     appendTokenEvents(tool, data.tokenEvents || []);
     agentFlowDiagram.completeMcpToolCall({
@@ -258,6 +266,75 @@ export async function callMcpTool(tool, params = {}) {
   } finally {
     closeSse();
   }
+}
+
+
+// ─── HTTP/2 streaming response parser ─────────────────────────────────────────
+
+/**
+ * Parse a newline-delimited JSON stream from the BFF (application/stream+json).
+ * Extracts flow events in real time and returns the final result + tokenEvents.
+ *
+ * Stream format:
+ *   {"type":"flow_event", ...}\n
+ *   {"type":"result", "data": {...}}\n
+ *   {"type":"stream_close", "status": "success"}\n
+ *
+ * @param {ReadableStream} readableStream
+ * @param {string} tool — tool name for logging
+ * @returns {Promise<{result: any, tokenEvents: Array}>}
+ */
+async function parseStreamingResponse(readableStream, tool) {
+  const reader = readableStream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult = null;
+  let tokenEvents = [];
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Split on newlines — each line is a complete JSON object
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || ""; // Keep incomplete last chunk in buffer
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        try {
+          const obj = JSON.parse(trimmed);
+          if (obj.type === "flow_event") {
+            agentFlowDiagram.applyServerEvent(obj);
+          } else if (obj.type === "result") {
+            finalResult = obj.data;
+            if (obj.tokenEvents) tokenEvents = obj.tokenEvents;
+          } else if (obj.type === "error") {
+            throw Object.assign(new Error(obj.message || "Stream error"), {
+              statusCode: obj.statusCode || 502,
+              code: obj.code || "stream_error",
+            });
+          }
+          // stream_close handled by loop termination
+        } catch (parseErr) {
+          if (parseErr.statusCode) throw parseErr; // Re-throw structured errors
+          console.warn("[parseStreamingResponse] Skipping malformed chunk:", trimmed.slice(0, 100));
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!finalResult) {
+    console.warn("[parseStreamingResponse] No result object received for", tool);
+  }
+
+  return { result: finalResult, tokenEvents };
 }
 
 // ─── Named tool helpers ───────────────────────────────────────────────────────
