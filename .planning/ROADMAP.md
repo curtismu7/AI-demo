@@ -1927,15 +1927,17 @@ Plans:
 9. All test results displayed clearly with pass/fail status
 10. Fix buttons provide actionable guidance for failed tests
 
-### Phase 172: MCP server token exchange — require token exchange at MCP server before forwarding to backend app instead of OAuth pass-through
+### Phase 172: MCP server token exchange — require token exchange at MCP server before forwarding to backend app instead of OAuth pass-through ✅
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Wire RFC 8693 token exchange into MCP server tool execution path with lazy caching, tool-specific scopes, and backend act claim validation
+**Requirements**: D-01 (lazy+cache), D-02 (backend validates act), D-03 (narrowed scopes), D-04 (hard fail)
 **Depends on:** Phase 171
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 172 to break down)
+- [x] 172-01-PLAN.md — TokenCacheService and tool-to-scope mapping
+- [x] 172-02-PLAN.md — Wire token exchange + cache into BankingToolProvider
+- [x] 172-03-PLAN.md — requireDelegation middleware for act claim validation
 
 ### Phase 173: Research and create a frontend using WebMCP from Google
 
@@ -1946,6 +1948,16 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 173 to break down)
+
+### Phase 174: HITL step-up modal — replace toast with blocking modal for MFA and consent flows
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 173
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 174 to break down)
 
 ---
 
