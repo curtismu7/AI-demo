@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-last_updated: "2026-04-17T11:36:48.827Z"
+last_updated: "2026-04-17T11:59:16.019Z"
 progress:
   total_phases: 180
-  completed_phases: 87
-  total_plans: 304
-  completed_plans: 233
+  completed_phases: 88
+  total_plans: 306
+  completed_plans: 235
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,10 +20,12 @@ progress:
 
 ## Current Position
 
-Phase: 174
+Phase: 175
 Plan: Not started
 
 ## Roadmap Evolution
+
+- Phase 177 added: PingOne Test page — clarify token exchange sections, add subject_token to second exchange, explain IDToken FF bypass
 
 - Phase 176 added: Show users in config what LLM we are using and pick the order — LM Studio default, fallback chain, bad LLM should not block
 

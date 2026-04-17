@@ -1954,10 +1954,10 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 173
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 174 to break down)
+- [x] TBD (run /gsd-plan-phase 174 to break down) (completed 2026-04-17)
 
 ### Phase 175: Investigate JSON-RPC and how and when we should be using it
 
@@ -1978,6 +1978,16 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 176 to break down)
+
+### Phase 177: PingOne Test page — clarify token exchange sections (User+Agent+MCP differences), add subject_token to second exchange, explain IDToken FF bypass
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 176
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 177 to break down)
 
 ---
 
