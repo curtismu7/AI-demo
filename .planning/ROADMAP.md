@@ -2396,7 +2396,7 @@ Plans:
 - [ ] 149-01-PLAN.md — BFF: fix banking RS detection in verify-assets + add POST /api/pingone-test/fix-banking-resource-server
 - [x] 149-02-PLAN.md — UI: scope-fix-panel with conditional fix buttons + scopes tab RS name + build verification
 
-### Phase 150: Evaluate Anthropic Managed Agents SDK — replace custom MCP infrastructure
+### Phase 150: Evaluate Anthropic Managed Agents SDK — replace custom MCP infrastructure [COMPLETE]
 
 **Goal:** Research and evaluate whether Anthropic's Claude Managed Agents SDK can simplify or replace the current custom MCP server infrastructure, handling agent loop, context management, session continuity, and tool execution automatically.
 
@@ -2405,9 +2405,9 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 150-01-PLAN.md — Evaluate Anthropic Managed Agents SDK vs current MCP infrastructure
+- [x] 150-01-PLAN.md — Evaluate Anthropic Managed Agents SDK vs current MCP infrastructure
 
-### Phase 151: Scope vocabulary audit — review docs, code, tests, and PingOne Test page for clean scope alignment
+### Phase 151: Scope vocabulary audit — review docs, code, tests, and PingOne Test page for clean scope alignment [COMPLETE]
 
 **Goal:** Audit all OAuth scope strings across code, config, docs, tests, and PingOne Test page for consistent vocabulary and clean alignment
 **Requirements**: SCOPE-151-01
@@ -2415,7 +2415,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 151-01-PLAN.md — Scope vocabulary audit across codebase
+- [x] 151-01-PLAN.md — Scope vocabulary audit across codebase
 
 ### Phase 152: PingOne Test Page — live integration testing and bug fixes
 
@@ -2427,7 +2427,7 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 152 to break down)
 
-### Phase 153: Postman collections — fix auth flow and add session cookie support
+### Phase 153: Postman collections — fix auth flow and add session cookie support [COMPLETE]
 
 **Goal:** Fix both Postman collections: (1) Super Banking PingOne Test collection — replace broken login GET requests with browser-based auth + sessionCookie variable, add Cookie headers to session-dependent requests. (2) PingOne Authorization Code pi.flow collection — fix redirect_uri from Vercel production to local (api.pingdemo.com:4000), fix callback path (/oauthuser/ → /oauth/user/). Rename BX Finance → Super Banking in pi.flow collection.
 **Requirements**: POST-153-01 (test collection auth fix), POST-153-02 (pi.flow redirect_uri fix), POST-153-03 (BX Finance rename in pi.flow)
@@ -2435,9 +2435,9 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 153-01-PLAN.md — Fix Postman collections (auth flow, redirect_uri, rename)
+- [x] 153-01-PLAN.md — Fix Postman collections (auth flow, redirect_uri, rename)
 
-### Phase 154: Create plan to implement DPoP, research if PingOne SSO supports it, if not how can we simulate it
+### Phase 154: Create plan to implement DPoP, research if PingOne SSO supports it, if not how can we simulate it [COMPLETE]
 
 **Goal:** Research DPoP (RFC 9449) implementation feasibility with PingOne SSO; create implementation or simulation plan
 **Requirements**: DPOP-154-01
@@ -2445,7 +2445,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 154-01-PLAN.md — DPoP research and PingOne support assessment
+- [x] 154-01-PLAN.md — DPoP research and PingOne support assessment
 
 ### Phase 155: Redesign left sidebar as unified navigation menu with icon + label styling [COMPLETE]
 
