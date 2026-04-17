@@ -150,7 +150,7 @@ export default function AdminSideNav({ user }) {
 
   // Action items (buttons, not navigation links)
   const actionItems = [
-    { label: isAdmin ? 'Customer View' : 'Admin View', action: 'switch-role', icon: '⇄' },
+    { label: isAdmin ? 'Admin View' : 'Customer View', action: 'switch-role', icon: '⇄' },
     { label: 'Dark Mode', action: 'dark-mode', icon: '🌙' },
     { label: 'Log Out', action: 'logout', icon: '🚪' },
   ];
