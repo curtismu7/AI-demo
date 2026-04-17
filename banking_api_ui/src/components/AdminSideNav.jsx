@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { persistBankingAgentUi } from '../services/demoScenarioService';
 import { setDashboardLayout } from '../utils/dashboardLayout';
@@ -26,6 +26,7 @@ import './AdminSideNav.css';
  */
 export default function AdminSideNav({ user }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
 
@@ -113,7 +114,6 @@ export default function AdminSideNav({ user }) {
         { label: 'Feature Flags', path: '/feature-flags', icon: '🚩' },
         { label: 'MCP Inspector', path: '/mcp-inspector', icon: '🔬' },
         { label: 'MCP Tools', path: '/mcp-tools', icon: '🧰' },
-        { label: 'WebMCP', path: '/webmcp', icon: '🌐' },
         { label: 'Demo Config', path: '/demo-data', icon: '🎛' },
         { label: 'App Configuration', path: '/config', icon: '🔧' },
       ],
@@ -138,6 +138,7 @@ export default function AdminSideNav({ user }) {
     { label: 'Introspection', icon: '🔍', action: () => openEdu(EDU.INTROSPECTION, 'why') },
     { label: 'RFC Index', icon: '📚', action: () => openEdu(EDU.RFC_INDEX, 'index') },
     { label: 'Agent flow diagram', icon: '📊', action: () => { window.dispatchEvent(new CustomEvent('agent-flow-diagram-open')); } },
+    { label: 'WebMCP (Google)', icon: '🌐', action: () => navigate('/webmcp') },
   ];
 
   // Agent UI placement options for the expandable dropdown
