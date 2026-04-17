@@ -113,6 +113,7 @@ export default function AdminSideNav({ user }) {
         { label: 'Feature Flags', path: '/feature-flags', icon: '🚩' },
         { label: 'MCP Inspector', path: '/mcp-inspector', icon: '🔬' },
         { label: 'MCP Tools', path: '/mcp-tools', icon: '🧰' },
+        { label: 'WebMCP', path: '/webmcp', icon: '🌐' },
         { label: 'Demo Config', path: '/demo-data', icon: '🎛' },
         { label: 'App Configuration', path: '/config', icon: '🔧' },
       ],

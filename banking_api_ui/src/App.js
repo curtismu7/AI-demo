@@ -442,6 +442,7 @@ function AppWithAuth() {
     '/feature-flags',
     '/mcp-inspector',
     '/mcp-tools',
+    '/webmcp',
     '/security-settings',
     '/marketing',
     '/dashboard',
@@ -624,6 +625,7 @@ function AppWithAuth() {
                     <Route path="/settings" element={<AdminRoute user={user}><SecuritySettings user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/mcp-tools" element={user ? <MCPToolsEducation /> : <Navigate to="/" replace />} />
+                    <Route path="/webmcp" element={user ? <WebMcpPanel /> : <Navigate to="/" replace />} />
                     <Route path="/oauth-debug-logs"
                       element={<AdminRoute user={user}><OAuthDebugLogViewer /></AdminRoute>}
                     />
