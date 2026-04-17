@@ -1974,13 +1974,13 @@ Plans:
 
 ### Phase 176: Show users in config what LLM we are using and pick the order — if first errors go to next, LM Studio default, bad LLM should not stop it from working
 
-**Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
-**Requirements**: TBD
+**Goal:** Build configuration UI for LLM provider selection with automatic fallback chain and availability status. Show current provider+model, allow switching providers, display fallback priorities, and enable agent to auto-retry next provider if first fails.
+**Requirements**: LLM-CONFIG-01
 **Depends on:** Phase 175
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 176 to break down)
+- [x] 176-01-PLAN.md — LlmConfigPanel UI, provider status service, agent fallback logic
 
 ### Phase 177: PingOne Test page — clarify token exchange sections (User+Agent+MCP differences), add subject_token to second exchange, explain IDToken FF bypass
 
