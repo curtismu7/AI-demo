@@ -2,14 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Milestone complete
-last_updated: "2026-04-17T17:47:30.576Z"
+status: Executing Phase 184
+last_updated: "2026-04-17T22:03:31.012Z"
 progress:
-  total_phases: 189
-  completed_phases: 157
-  total_plans: 327
-  completed_plans: 335
-  percent: 100
+  total_phases: 190
+  completed_phases: 160
+  total_plans: 335
+  completed_plans: 344
 ---
 
 # State — Super Banking AI Banking Demo
@@ -21,18 +20,25 @@ progress:
 
 ## Current Position
 
-Phase: 182
-Plan: Not started
+Phase: 184 (end-to-end-delegated-token-flow) — EXECUTING
+Plan: 1 of 3
+Next incomplete phase: 74 (62.1 Token exchange critical fixes and enhancements - may_act, RFC 8707, scopes) — Not Started
 
 ## Recent Progress
 
-✅ Phase 156 COMPLETE
+✅ Phase 181 COMPLETE
 
-- Wave 1 (Plans 156-01, 156-02): BFF + MCP validation with educational errors
-- Wave 2 (Plan 156-03): Frontend error display + admin audit trail
-- Total: 16 files, 2,031 lines, commits: 4daf91f, 026ce88, 267eac3, f0c623e
+- Wave 1 (181-01): Added the CUA education drawer and registered `EDU.CUA = 'cua'`
+- Wave 2 (181-02, 181-03): Added NL routing, sidebar/RFC/agent discoverability, and reciprocal links with Agent Gateway, HITL, and MCP Protocol
+- Verification: `banking_api_ui` production build passed; heuristic NL parser routes `cua`, `computer use agent`, and `computer use` to the CUA panel
+
+Note: current GSD stats report more plan summaries than plan definitions (`330/325`) because of legacy summary overcounting in the underlying stats output; the state file now mirrors the canonical tool totals rather than the stale Phase 05 snapshot.
 
 ## Roadmap Evolution
+
+- Phase 184 added: End-to-end delegated token flow — agent CC token + user OAuth token sent to MCP Gateway for dual token exchange at PingOne before fulfilling request
+
+- Phase 181 COMPLETE: CUA training slide-out added and verified
 
 - Phase 183 added: MCP tools metadata compliance and token chain logging
 

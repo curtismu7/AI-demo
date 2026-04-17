@@ -6,6 +6,26 @@ Step-by-step setup for a **human → AI Agent → MCP → PingOne API** fully-de
 
 > **See also:** [PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md](PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md) — the simpler 1-exchange demo pattern (what the Super Banking app implements).
 
+## Phase 184 Alignment (PingOne Test Page)
+
+For current demo validation, treat these labels as canonical:
+
+- Exchange 1: user token to MCP Server token (single exchange baseline)
+- Exchange 2 (Phase 184): user token + agent client-credentials token to MCP Gateway token (single RFC 8693 request with actor token)
+- Exchange 3: legacy educational two-step chain retained for comparison/testing
+
+When updating test UX, logs, or runbooks, keep this mapping stable so Phase 184 checks are unambiguous.
+
+## Phase 184 Exchange Patterns Reference
+
+| Pattern | Mode | Location | Purpose |
+|---------|------|----------|---------|
+| Exchange 1 | `single` | PingOne Test Page, routes | Legacy baseline — user token only, no agent delegation |
+| **Exchange 2** | **`dual` (or `double` legacy alias)** | **PingOne Test Page, routes, MCP Gateway** | **Phase 184 canonical — user OAuth + agent CC, act claim** |
+| Exchange 3 | `legacy` / two-step | PingOne Test Page, routes | Educational reference — sequential exchanges, not recommended |
+
+**Recommended**: Use Exchange 2 (Phase 184 `dual` mode) for all agent-to-MCP communication. Exchange 1 and 3 retained for comparison testing only.
+
 ---
 
 ## Important: PingOne Resource-Scope Mental Model

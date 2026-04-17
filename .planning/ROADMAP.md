@@ -1900,6 +1900,25 @@ Plans:
 5. No regression in existing authentication flows
 6. UI clearly communicates which auth step is required (login vs MFA)
 
+### Phase 184: End-to-end delegated token flow: agent CC token + user OAuth token sent to MCP Gateway for dual token exchange at PingOne before fulfilling request
+
+**Goal:** Make the Phase 184 delegated path explicit and verifiable across UI, backend routes, and docs so Exchange 2 consistently means user OAuth token + agent CC token exchanged for an MCP Gateway token before request fulfillment.
+**Requirements**: P184-01, P184-02, P184-03
+**Depends on:** Phase 183
+**Plans:** 3 plans
+
+Plans:
+- [ ] 184-01-PLAN.md — PingOne Test Page: label Exchange 2 as Phase 184 canonical dual-token gateway flow
+- [ ] 184-02-PLAN.md — PingOne test routes: dual-mode semantics target MCP Gateway audience (legacy alias preserved)
+- [ ] 184-03-PLAN.md — Docs + runbook alignment for Phase 184 dual-token terminology and flow
+
+**Success criteria:**
+1. Exchange 2 labeled as Phase 184 canonical in test UI (13+ references)
+2. Backend routes normalize 'double' → 'dual' and route dual-mode to MCP Gateway audience
+3. Docs reference Phase 184 as canonical agent token exchange path with reference table
+4. Developers reading test UI, backend code, and setup guide all see consistent Phase 184 terminology
+5. Legacy patterns (1-exchange, 2-step) clearly marked as fallback/educational only
+
 ---
 
 ### Phase 123: PingOne MFA Test Page
@@ -1952,7 +1971,7 @@ Plans:
 ### Phase 174: HITL step-up modal — replace toast with blocking modal for MFA and consent flows ✅
 
 **Goal:** Replace toast-based MFA with blocking modal supporting OTP, FIDO2 passkey, and PingOne MFA
-**Requirements**: TBD
+**Requirements**: CUA-01, CUA-02, CUA-03
 **Depends on:** Phase 173
 **Plans:** 4/4 plans complete
 
@@ -1965,7 +1984,7 @@ Plans:
 ### Phase 175: Investigate JSON-RPC and how and when we should be using it
 
 **Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
-**Requirements**: TBD
+**Requirements**: CUA-01, CUA-02, CUA-03
 **Depends on:** Phase 174
 **Plans:** 2/2 plans complete
 
@@ -2041,13 +2060,15 @@ Plans:
 
 ### Phase 181: We need to add a training slide out for CUA for AI
 
-**Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
-**Requirements**: TBD
+**Goal:** Add a Computer Use Agent (CUA) training slide-out drawer that explains what CUA is, how it works, how it compares to MCP/tool-use, the security implications, and how it relates to this banking demo.
+**Requirements**: CUA-01, CUA-02, CUA-03
 **Depends on:** Phase 180
-**Plans:** 1 plan
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 181 to break down)
+- [x] 181-01-PLAN.md — CUA education drawer component + EDU registration
+- [x] 181-02-PLAN.md — NL routing + RFC/sidebar/agent discoverability wiring
+- [x] 181-03-PLAN.md — Cross-links with HITL/MCP panels + copy polish
 
 ### Phase 182: Public URL for MCP server so external clients like Claude can connect
 
@@ -2065,7 +2086,7 @@ Plans:
 
 **Requirements**: TBD
 **Depends on:** Phase 182
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 183-01-PLAN.md — Tool metadata compliance (titles, icons, annotations for all 9 tools; emit via /tools/list)
@@ -2388,10 +2409,11 @@ Plans:
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 144
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 145 to break down)
+- [x] 145-01-PLAN.md — MCP server tools/list metadata contract audit + registry/handler tests
+- [x] 145-02-PLAN.md — Agent metadata-first schema consumption hardening + dynamic schema tests
 
 ### Phase 146: Scope vocabulary alignment — match code to PingOne
 
