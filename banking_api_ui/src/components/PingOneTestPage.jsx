@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/apiClient';
 import DecodedTokenPanel from './DecodedTokenPanel';
 import ApiCallDisplay from './ApiCallDisplay';
+import ScopeNarrowingVisualization from './ScopeNarrowingVisualization';
 import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import { useTokenChainOptional } from '../context/TokenChainContext';
 import './PingOneTestPage.css';
@@ -1600,6 +1601,12 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             />
           </div>
           <SectionApiCalls />
+        </section>
+
+        {/* Scope Narrowing & Last Mile Vault Education */}
+        <section className="pingone-test-section">
+          <h2 className="pingone-test-section-title">Agentic Trust — Scope Narrowing &amp; Last Mile</h2>
+          <ScopeNarrowingVisualization />
         </section>
       </div>
     </div>
