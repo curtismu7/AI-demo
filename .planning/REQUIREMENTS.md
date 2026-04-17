@@ -31,6 +31,12 @@
 - [ ] **EDU-03**: RFC reference cards — one card per RFC (8693, 9396, 7519, 9700, OIDC CIBA) with "see it live in this demo" links to relevant panels/flows
 - [ ] **EDU-04**: Guided demo tour — linear presentation mode that sequences all 3 auth flows with narration; designed for a 5-min conference walkthrough
 
+### CUA Education
+
+- [x] **CUA-01**: CUA training slide-out exists as a standard education drawer with 5 tabs covering definition, loop, comparison, security, and demo relevance
+- [x] **CUA-02**: CUA panel is discoverable from NL intent routing, RFC Index, sidebar learn navigation, and agent education commands
+- [x] **CUA-03**: CUA panel is cross-linked with Agent Gateway, Human-in-the-Loop, and MCP Protocol panels, and accurately explains that this demo uses MCP/tool-use instead of direct CUA browser control
+
 ### Documentation
 
 - [x] **DOC-01**: User-facing setup guide — end-to-end: PingOne app config → environment variables → `npm run` locally → verify each auth flow
@@ -71,6 +77,7 @@
 | EDU-01, EDU-02, EDU-03, EDU-04 | Phase 4 — Educational Content |
 | DOC-01, DOC-02 | Phase 5 — User Documentation |
 | TOKEN-FIX-01, TOKEN-FIX-02 | Phase 6 — Token Exchange Fix |
+| CUA-01, CUA-02, CUA-03 | Phase 181 — CUA Training Slide-Out |
 
 ### MCP Server Advanced Capabilities (Phase 32)
 
