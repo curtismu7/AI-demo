@@ -22,6 +22,7 @@ import CIBAPanel from './components/CIBAPanel';
 import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
 import { MCPToolsEducation } from './components/MCPToolsEducation';
+import { AgenticTrustEducation } from './components/AgenticTrustEducation';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
@@ -443,6 +444,7 @@ function AppWithAuth() {
     '/mcp-inspector',
     '/mcp-tools',
     '/webmcp',
+    '/agentic-trust',
     '/security-settings',
     '/marketing',
     '/dashboard',
@@ -625,6 +627,7 @@ function AppWithAuth() {
                     <Route path="/settings" element={<AdminRoute user={user}><SecuritySettings user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/mcp-tools" element={user ? <MCPToolsEducation /> : <Navigate to="/" replace />} />
+                    <Route path="/agentic-trust" element={user ? <AgenticTrustEducation /> : <Navigate to="/" replace />} />
                     <Route path="/webmcp" element={user ? <WebMcpPanel /> : <Navigate to="/" replace />} />
                     <Route path="/oauth-debug-logs"
                       element={<AdminRoute user={user}><OAuthDebugLogViewer /></AdminRoute>}

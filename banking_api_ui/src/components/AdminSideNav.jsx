@@ -140,6 +140,7 @@ export default function AdminSideNav({ user }) {
     { label: 'RFC Index', icon: '📚', action: () => openEdu(EDU.RFC_INDEX, 'index') },
     { label: 'Agent flow diagram', icon: '📊', action: () => { window.dispatchEvent(new CustomEvent('agent-flow-diagram-open')); } },
     { label: 'WebMCP (Google)', icon: '🌐', action: () => navigate('/webmcp') },
+    { label: 'Agentic Trust', icon: '🛡️', action: () => navigate('/agentic-trust') },
   ];
 
   // Agent UI placement options for the expandable dropdown
