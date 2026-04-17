@@ -992,6 +992,50 @@
   justify-content: center;
 }
 
+
+/* P1MFA device picker (Phase 174-04) */
+.otp-step-up-modal__device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.otp-step-up-modal__device-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-size: 0.95rem;
+}
+.otp-step-up-modal__device-item:hover {
+  border-color: var(--accent-blue, #0066cc);
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.15);
+}
+.otp-step-up-modal__device-icon {
+  font-size: 1.3rem;
+}
+
+/* Method toggle link (Phase 174-03) */
+.otp-step-up-modal__method-toggle {
+  background: transparent;
+  border: none;
+  color: #0ea5e9;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  padding: 0.5rem 0;
+  width: 100%;
+  text-align: center;
+}
+.otp-step-up-modal__method-toggle:hover {
+  color: #0284c7;
+}
+
 /* ── Phase 163: Sidebar layout offset ─────────────────────────────────────────
    Push main content right so the fixed sidebar doesn't overlay it.
    Only applies when sidebar is rendered (user is logged in).

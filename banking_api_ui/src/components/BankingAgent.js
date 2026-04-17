@@ -36,6 +36,7 @@ import { isPublicMarketingAgentPath } from '../utils/embeddedAgentFabVisibility'
 import AgentConsentModal from './AgentConsentModal';
 import TransactionConsentModal from './TransactionConsentModal';
 import OtpStepUpModal from './OtpStepUpModal';
+import FidoStepUpModal from './FidoStepUpModal';
 import bffAxios from '../services/bffAxios';
 import './BankingAgent.css';
 
@@ -874,7 +875,17 @@ export default function BankingAgent({
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpContextLine, setOtpContextLine] = useState('');
   const pendingOtpActionRef = useRef(null);
+  // FIDO2 + P1MFA state (Phase 174-03/04)
+  const [stepUpMethod, setStepUpMethod] = useState('otp'); // 'otp' or 'fido'
+  const [supportsFido, setSupportsFido] = useState(false);
+  const [p1mfaMode, setP1mfaMode] = useState(false);
+  const [p1mfaDaId, setP1mfaDaId] = useState(null);
+  const [p1mfaDevices, setP1mfaDevices] = useState([]);
   const [consentBlocked, setConsentBlocked] = useState(false);
+  // Detect FIDO2/WebAuthn support on mount
+  useEffect(() => {
+    setSupportsFido(typeof window !== 'undefined' && window.PublicKeyCredential !== undefined);
+  }, []);
   /** Group expand/collapse state for chip categories — defaults per D-06, persisted in localStorage. */
   const [chipGroupsState, setChipGroupsState] = useState(() => {
     try {
@@ -1850,6 +1861,36 @@ export default function BankingAgent({
           // Store pending action and show modal
           setOtpContextLine(contextLine);
           pendingOtpActionRef.current = { actionId, form };
+
+          // Check for P1MFA mode
+          if (normalized.step_up_method === 'p1mfa') {
+            try {
+              const apiBase = process.env.REACT_APP_API_URL || '';
+              const mfaResp = await fetch(`${apiBase}/api/auth/mfa/challenge`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+              });
+              if (!mfaResp.ok) throw new Error(`MFA initiation failed: ${mfaResp.status}`);
+              const { daId, devices } = await mfaResp.json();
+              setP1mfaDaId(daId);
+              setP1mfaDevices(devices || []);
+              setP1mfaMode(true);
+            } catch (err) {
+              console.error('[BankingAgent] P1MFA initiation failed, falling back to stub:', err);
+              setP1mfaMode(false);
+            }
+          } else {
+            setP1mfaMode(false);
+          }
+
+          // Determine FIDO vs OTP for standalone FIDO flow
+          if (normalized.step_up_method === 'fido' || (normalized.allow_fido && supportsFido)) {
+            setStepUpMethod('fido');
+          } else {
+            setStepUpMethod('otp');
+          }
+
           setShowOtpModal(true);
           
           // Show waiting message
@@ -2569,6 +2610,10 @@ export default function BankingAgent({
       const { actionId, form } = pendingOtpActionRef.current;
       pendingOtpActionRef.current = null;
       setShowOtpModal(false);
+      setStepUpMethod('otp');
+      setP1mfaMode(false);
+      setP1mfaDaId(null);
+      setP1mfaDevices([]);
       // Verify MFA in flow diagram
       agentFlowDiagram.completeMfaChallenge(true);
       // Retry the original action with MFA verified
@@ -2580,8 +2625,50 @@ export default function BankingAgent({
     setShowOtpModal(false);
     setOtpContextLine('');
     pendingOtpActionRef.current = null;
+    setP1mfaMode(false);
+    setP1mfaDaId(null);
+    setP1mfaDevices([]);
+    setStepUpMethod('otp');
     addMessage('assistant', 'MFA request was cancelled. Please try again if needed.', 'mfa-cancelled');
     agentFlowDiagram.completeMfaChallenge(false);
+  };
+
+  // FIDO submit handler (Phase 174-03)
+  const handleFidoSubmit = (credentialResponse) => {
+    if (pendingOtpActionRef.current) {
+      const { actionId, form } = pendingOtpActionRef.current;
+      pendingOtpActionRef.current = null;
+      setShowOtpModal(false);
+      setStepUpMethod('otp');
+      agentFlowDiagram.completeMfaChallenge(true);
+      runAction(actionId, form);
+    }
+  };
+
+  const handleSwitchToOtp = () => {
+    setStepUpMethod('otp');
+  };
+
+  const handleSwitchToFido = () => {
+    setStepUpMethod('fido');
+  };
+
+  // P1MFA completion handler (Phase 174-04)
+  const handleP1MfaComplete = () => {
+    if (pendingOtpActionRef.current) {
+      const { actionId, form } = pendingOtpActionRef.current;
+      pendingOtpActionRef.current = null;
+      setShowOtpModal(false);
+      setP1mfaMode(false);
+      setP1mfaDaId(null);
+      setP1mfaDevices([]);
+      agentFlowDiagram.completeMfaChallenge(true);
+      runAction(actionId, form);
+    }
+  };
+
+  const handleP1MfaError = (errorMsg) => {
+    console.error('[BankingAgent] P1MFA error:', errorMsg);
   };
 
   const floatShell = (
@@ -2996,13 +3083,30 @@ export default function BankingAgent({
               />
             )}
 
-            {/* OTP Step-Up Modal (Phase 174) */}
-            <OtpStepUpModal
-              show={showOtpModal}
-              contextLine={otpContextLine}
-              onSubmit={handleOtpSubmit}
-              onCancel={handleOtpCancel}
-            />
+            {/* OTP/FIDO Step-Up Modal (Phase 174) */}
+            {stepUpMethod === 'fido' && !p1mfaMode ? (
+              <FidoStepUpModal
+                show={showOtpModal}
+                contextLine={otpContextLine}
+                onSubmit={handleFidoSubmit}
+                onCancel={handleOtpCancel}
+                fallbackToOtp={handleSwitchToOtp}
+              />
+            ) : (
+              <OtpStepUpModal
+                show={showOtpModal}
+                contextLine={otpContextLine}
+                onSubmit={handleOtpSubmit}
+                onCancel={handleOtpCancel}
+                allowFido={supportsFido && !p1mfaMode}
+                onSwitchToFido={handleSwitchToFido}
+                mode={p1mfaMode ? 'p1mfa' : 'stub'}
+                daId={p1mfaDaId}
+                devices={p1mfaDevices}
+                onP1MfaComplete={handleP1MfaComplete}
+                onP1MfaError={handleP1MfaError}
+              />
+            )}
 
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">
