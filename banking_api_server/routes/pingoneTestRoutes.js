@@ -797,6 +797,7 @@ router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
       mcpToken: mcpToken ? mcpToken.substring(0, 20) + '...' : 'undefined',
       agentTokenDecoded: agentDecoded3,
       mcpTokenDecoded: mcpDecoded3,
+      subjectTokenDecoded: subjectDecoded3,
       tokenEvents: tokenEvents3,
     };
     trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token for Agent Token, then use those 2 for MCP token');
