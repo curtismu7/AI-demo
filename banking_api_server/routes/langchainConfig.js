@@ -135,3 +135,38 @@ router.delete('/config/key/:keyType', (req, res) => {
 });
 
 module.exports = router;
+
+// GET /api/langchain/provider/:providerName/status
+// Returns: { provider, status, reason, configured: boolean }
+// Status: 'available' | 'unconfigured' | 'unreachable'
+// NOTE: Async health check runs server-side; client sees result synchronously
+router.get('/provider/:providerName/status', async (req, res) => {
+  const { providerName } = req.params;
+  
+  // Validate provider
+  if (!PROVIDER_MODELS[providerName]) {
+    return res.status(400).json({ error: `Unknown provider: ${providerName}` });
+  }
+
+  try {
+    const { getProviderStatus } = require('../services/llmProviderStatus');
+    const cfg = getLangchainConfig(req);
+    
+    const statusData = await getProviderStatus(providerName, cfg);
+    
+    res.json({
+      provider: providerName,
+      status: statusData.status,
+      reason: statusData.reason,
+      configured: statusData.hasKey,
+    });
+  } catch (error) {
+    console.error(`[langchainConfig] Provider status check failed for ${providerName}:`, error.message);
+    res.status(500).json({
+      provider: providerName,
+      status: 'unreachable',
+      reason: `Status check error: ${error.message}`,
+      configured: false,
+    });
+  }
+});

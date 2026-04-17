@@ -1724,15 +1724,14 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
             }
         }
 
-        const out = {
-            result,
-
         // Get active LLM model for logging and client display
         const langchainConfig = req.session?.langchain_config || {};
         const activeProvider = langchainConfig.provider || 'groq';
         const activeModel = langchainConfig.model || 'llama-3.1-8b-instant';
         console.log(`[/api/mcp/tool] ${tool} — using LLM: ${activeProvider}/${activeModel}`);
 
+        const out = {
+            result,
             tokenEvents,
             activeModel,
             activeProvider

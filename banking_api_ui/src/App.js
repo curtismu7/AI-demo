@@ -50,6 +50,7 @@ import SelfServicePage from './components/SelfServicePage';
 import LogoutPage from './components/LogoutPage';
 import PingOneTestPage from './components/PingOneTestPage';
 import MFATestPage from './components/MFATestPage';
+import LlmConfigPage from './components/LlmConfigPage';
 import OAuthTokenDisplayPage from './components/OAuthTokenDisplayPage';
 import AdminLayout from './components/AdminLayout';
 import AdminSideNav from './components/AdminSideNav';
@@ -628,6 +629,7 @@ function AppWithAuth() {
                       element={user ? <FeatureFlagsPage /> : <Navigate to="/" replace />}
                     />
                     <Route path="/langchain" element={<LangChainPage />} />
+                    <Route path="/llm-config" element={<AdminRoute user={user}><LlmConfigPage user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/settings" element={<AdminRoute user={user}><SecuritySettings user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/mcp-tools" element={user ? <MCPToolsEducation /> : <Navigate to="/" replace />} />
