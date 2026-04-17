@@ -1949,15 +1949,18 @@ Plans:
 Plans:
 - [ ] 173-01-PLAN.md — Feature flag + WebMCP client service
 - [ ] 173-02-PLAN.md — WebMCP UI panel + dashboard integration
-### Phase 174: HITL step-up modal — replace toast with blocking modal for MFA and consent flows
+### Phase 174: HITL step-up modal — replace toast with blocking modal for MFA and consent flows ✅
 
-**Goal:** [To be planned]
+**Goal:** Replace toast-based MFA with blocking modal supporting OTP, FIDO2 passkey, and PingOne MFA
 **Requirements**: TBD
 **Depends on:** Phase 173
-**Plans:** 2/2 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
-- [x] TBD (run /gsd-plan-phase 174 to break down) (completed 2026-04-17)
+- [x] 174-01-PLAN.md — OtpStepUpModal component + BankingAgent integration
+- [x] 174-02-PLAN.md — UI freeze + context line wiring
+- [x] 174-03-PLAN.md — FIDO2 passkey modal + method toggle
+- [x] 174-04-PLAN.md — PingOne MFA wiring (P1MFA device picker, push, FIDO assertion)
 
 ### Phase 175: Investigate JSON-RPC and how and when we should be using it
 
