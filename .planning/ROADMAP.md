@@ -1977,7 +1977,7 @@ Plans:
 **Goal:** Build configuration UI for LLM provider selection with automatic fallback chain and availability status. Show current provider+model, allow switching providers, display fallback priorities, and enable agent to auto-retry next provider if first fails.
 **Requirements**: LLM-CONFIG-01
 **Depends on:** Phase 175
-**Plans:** 1/1 plans complete
+**Plans:** 2/1 plans complete
 
 Plans:
 - [x] 176-01-PLAN.md — LlmConfigPanel UI, provider status service, agent fallback logic
