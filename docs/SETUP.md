@@ -32,7 +32,7 @@ cd Banking
 
 ## 2. PingOne Application Configuration
 
-You need **three PingOne OAuth applications** (two for browser login, one worker for Management API calls).
+You need **four PingOne applications** (two for browser login, one worker for Management API calls, one for MCP token exchange). An optional fifth (AI Agent actor) enables 2-exchange delegation with the `act` claim.
 
 **Source of truth:** See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative resource server, application, and scope definitions.
 
@@ -77,7 +77,7 @@ Used for **staff login** (`/admin`) and **RFC 8693 Token Exchange** to MCP.
 - Add your production domain (e.g., `https://your-domain.com`) for hosted deployments
 - This allows the frontend to make API calls to the backend
 
-**Copy the Client ID and Client Secret** — you will use these as `PINGONE_AI_CORE_CLIENT_ID` / `PINGONE_AI_CORE_CLIENT_SECRET`.
+**Copy the Client ID and Client Secret** — you will use these as `PINGONE_ADMIN_CLIENT_ID` / `PINGONE_ADMIN_CLIENT_SECRET`.
 
 ### 2.3 End-User OIDC Application (`user_client_id`)
 
@@ -101,7 +101,7 @@ Used for **customer login** (`/dashboard`).
 
 **Critical:** Must include `banking:ai:agent` for agent delegation to work. See [PINGONE_RESOURCES_AND_SCOPES_MATRIX.md](./PINGONE_RESOURCES_AND_SCOPES_MATRIX.md) for authoritative scope definitions.
 
-**Copy the Client ID and Client Secret** — these become `PINGONE_AI_CORE_USER_CLIENT_ID` / `PINGONE_AI_CORE_USER_CLIENT_SECRET`.
+**Copy the Client ID and Client Secret** — these become `PINGONE_USER_CLIENT_ID` / `PINGONE_USER_CLIENT_SECRET`.
 
 ### 2.4 Management Worker Application (client credentials)
 
@@ -115,7 +115,26 @@ Used by the BFF to call PingOne Management API (read users etc.).
 
 You can generate a long-lived token from this app and set `PINGONE_MANAGEMENT_API_TOKEN`, **or** set its credentials as `PINGONE_MANAGEMENT_CLIENT_ID` / `PINGONE_MANAGEMENT_CLIENT_SECRET` for the BFF to obtain tokens dynamically.
 
-### 2.5 Create test users
+### 2.5 MCP Token Exchanger Application (RFC 8693)
+
+Required for AI agent MCP tool calls with token exchange delegation.
+
+| Setting | Value |
+|---------|-------|
+| Type | AI_AGENT |
+| Grant types | Client Credentials, Token Exchange (`urn:ietf:params:oauth:grant-type:token-exchange`) |
+| Token auth method | `client_secret_basic` |
+| Required scopes | `banking:general:read banking:general:write banking:ai:agent` |
+
+**Copy the Client ID and Client Secret** — these become `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` / `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET`.
+
+**Also set** in your `.env`:
+```
+PINGONE_MCP_TOKEN_EXCHANGER_SCOPES=banking:general:read banking:general:write banking:ai:agent
+PINGONE_MCP_TOKEN_EXCHANGER_AUTH_METHOD=client_secret_basic
+```
+
+### 2.6 Create test users
 
 Create at least two PingOne directory users in your environment:
 
@@ -148,10 +167,12 @@ The React UI reads `REACT_APP_*` vars from the **root** `.env` or from its own `
 |----------|---------|-----------------|-----------|
 | `PINGONE_ENVIRONMENT_ID` | BFF | PingOne Admin → Environment → Settings | ✅ Yes |
 | `PINGONE_REGION` | BFF | `com` / `eu` / `ca` / `ap` / `asia` | ✅ Yes |
-| `PINGONE_AI_CORE_CLIENT_ID` | BFF | Admin OIDC app → Client ID | ✅ Yes |
-| `PINGONE_AI_CORE_CLIENT_SECRET` | BFF | Admin OIDC app → Client Secret | ✅ Yes |
-| `PINGONE_AI_CORE_USER_CLIENT_ID` | BFF | End-user OIDC app → Client ID | ✅ Yes |
-| `PINGONE_AI_CORE_USER_CLIENT_SECRET` | BFF | End-user OIDC app → Client Secret | ✅ Yes |
+| `PINGONE_ADMIN_CLIENT_ID` | BFF | Admin OIDC app → Client ID | ✅ Yes |
+| `PINGONE_ADMIN_CLIENT_SECRET` | BFF | Admin OIDC app → Client Secret | ✅ Yes |
+| `PINGONE_USER_CLIENT_ID` | BFF | End-user OIDC app → Client ID | ✅ Yes |
+| `PINGONE_USER_CLIENT_SECRET` | BFF | End-user OIDC app → Client Secret | ✅ Yes |
+| `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` | BFF | MCP Token Exchanger app → Client ID | Optional (enables MCP token exchange) |
+| `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET` | BFF | MCP Token Exchanger app → Client Secret | Optional (enables MCP token exchange) |
 | `SESSION_SECRET` | BFF | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` | ✅ Yes |
 | `PUBLIC_APP_URL` | BFF | `http://localhost:3000` (local) or your hosted domain | ✅ Yes |
 | `REACT_APP_API_URL` | UI | `http://localhost:3001` (local) | ✅ Yes |
@@ -160,6 +181,8 @@ The React UI reads `REACT_APP_*` vars from the **root** `.env` or from its own `
 | `MCP_SERVER_URL` | BFF | WebSocket URL of deployed MCP server | Optional |
 | `GROQ_API_KEY` | BFF | console.groq.com | Optional (enables NL intents) |
 | `REDIS_URL` or `UPSTASH_REDIS_REST_URL` | BFF | Upstash free tier at upstash.com | Optional locally; **required on Vercel** |
+
+> **Legacy names:** The BFF also accepts `PINGONE_AI_CORE_CLIENT_ID` as a fallback alias for `PINGONE_ADMIN_CLIENT_ID`. Use the canonical names above for new setups.
 
 > **Config UI alternative:** Instead of `.env` files, launch the app and visit **`http://localhost:3000/config`** to enter PingOne credentials via the browser UI. Settings are encrypted and saved to `banking_api_server/data/persistent/config.db` (SQLite). Either method works.
 
@@ -174,7 +197,21 @@ The React UI reads `REACT_APP_*` vars from the **root** `.env` or from its own `
 ./run-bank.sh
 ```
 
-`run-bank.sh` starts the BFF and UI concurrently. Check the script header for `PORT` defaults (typically 4000/3002 when using this script vs. the 3001/3000 defaults in `.env.example`). Ensure `banking_api_ui/.env` → `REACT_APP_API_PORT` matches.
+`run-bank.sh` starts all services concurrently using HTTPS via mkcert and requires a `/etc/hosts` entry (`127.0.0.1 api.pingdemo.com`).
+
+**Ports used by `run-bank.sh`:**
+
+| Service | Port | URL |
+|---------|------|-----|
+| React UI | 4000 | `https://api.pingdemo.com:4000` |
+| BFF API | 3002 | `https://api.pingdemo.com:3002` |
+| MCP server | 8080 | `ws://localhost:8080` |
+
+Ensure `banking_api_ui/.env` has `REACT_APP_API_PORT=3002`.
+
+Commands: `./run-bank.sh start`, `./run-bank.sh stop`, `./run-bank.sh status`, `./run-bank.sh tail`
+
+> **Port summary:** `run-bank.sh` = ports 4000/3002 (HTTPS, requires mkcert + hosts entry); `start.sh` / manual = ports 3000/3001 (HTTP, no setup required).
 
 ### Option B — Start services individually
 
@@ -257,7 +294,7 @@ Key points compared to local:
 ### `invalid_client` from PingOne token endpoint
 
 **Cause:** Wrong client ID / secret, or wrong token auth method.  
-**Fix:** Verify `PINGONE_AI_CORE_CLIENT_ID` / `_SECRET` match the PingOne app exactly. Check `admin_token_endpoint_auth_method` in `/config` matches your PingOne app setting (`basic` vs `post`).
+**Fix:** Verify `PINGONE_ADMIN_CLIENT_ID` / `PINGONE_ADMIN_CLIENT_SECRET` match the PingOne app exactly. Check `admin_token_endpoint_auth_method` in `/config` matches your PingOne app setting (`basic` vs `post`).
 
 ### `invalid_scope` on authorization request
 
