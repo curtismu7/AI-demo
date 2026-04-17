@@ -1991,6 +1991,24 @@ Plans:
 - [x] 177-02-PLAN.md — Fix TokenLineageDiff truncation + expected-change categorization
 - [x] 177-03-PLAN.md — Extend diagnosis claim validation + fix button for PingOne config
 
+### Phase 178: Agentic Trust alignment — education page mapping 6 security pillars, scope narrowing visualization, last-mile vault concept, threat model framing for credential replay, rogue agents, impersonation, and overpermissioning
+
+**Goal:** Create comprehensive Agentic Trust education content mapping 6 security pillars (credential replay prevention, rogue agent prevention, impersonation/delegation, per-hop token exchange, least privilege scope narrowing, last-mile vault) to the banking demo implementation, with interactive flow diagram and threat model framing.
+**Requirements**: TRUST-01, TRUST-02, TRUST-03, TRUST-04, TRUST-05
+**Depends on:** Phase 177
+**Plans:** 2 plans
+
+Plans:
+- [ ] 178-01-PLAN.md — Agentic Trust education page with 6 pillars, flow diagram, threat model
+- [ ] 178-02-PLAN.md — Scope narrowing visualization and last-mile vault education on PingOne Test page
+
+
+
+
+
+
+
+
 ---
 
 ### Phase 124: MFA HITL Indication
