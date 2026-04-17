@@ -24,7 +24,7 @@ const PROVIDER_TABLE = `| Provider   | Package                  | Default model 
 | OpenAI     | langchain-openai         | gpt-4o-mini                |
 | Anthropic  | langchain-anthropic      | claude-haiku-4-20250414  |
 | Google AI  | langchain-google-genai   | gemini-2.0-flash           |
-| Ollama     | langchain-ollama         | llama3.2 (local)           |`;
+| Ollama     | langchain-ollama         | gemma4:e4b (local)         |`;
 
 function OverviewContent() {
   return (

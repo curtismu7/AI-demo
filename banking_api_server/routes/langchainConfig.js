@@ -29,7 +29,7 @@ const PROVIDER_MODELS = {
     'claude-3-opus-20240229',
   ],
   google: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-  ollama: ['llama3.2', 'llama3.1', 'mistral', 'phi3'],
+  ollama: ['gemma4:e4b', 'llama3.2', 'llama3.1', 'mistral', 'phi3'],
 };
 
 const DEFAULT_MODELS = {
@@ -37,7 +37,7 @@ const DEFAULT_MODELS = {
   openai: 'gpt-4o-mini',
   anthropic: 'claude-haiku-4-20250414',
   google: 'gemini-2.0-flash',
-  ollama: 'llama3.2',
+  ollama: 'gemma4:e4b',
 };
 
 const KEY_SESSION_FIELDS = {

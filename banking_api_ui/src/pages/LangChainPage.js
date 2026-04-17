@@ -37,7 +37,7 @@ const PROVIDERS = [
   { id: 'openai',    label: 'OpenAI',     package: 'langchain-openai',          defaultModel: 'gpt-4o-mini',               notes: 'Most capable function calling' },
   { id: 'anthropic', label: 'Anthropic',  package: 'langchain-anthropic',       defaultModel: 'claude-haiku-4-20250414', notes: 'Long context · strong reasoning' },
   { id: 'google',    label: 'Google AI',  package: 'langchain-google-genai',    defaultModel: 'gemini-2.0-flash',          notes: 'Google Gemini models' },
-  { id: 'ollama',    label: 'Ollama',     package: 'langchain-ollama',          defaultModel: 'llama3.2',                  notes: 'Local — no API key needed' },
+  { id: 'ollama',    label: 'Ollama',     package: 'langchain-ollama',          defaultModel: 'gemma4:e4b',                  notes: 'Local — Gemma 4 default, no API key' },
 ];
 
 export default function LangChainPage() {

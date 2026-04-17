@@ -36,6 +36,7 @@ PROVIDER_MODELS: Dict[str, list[str]] = {
         "gemini-1.5-flash",
     ],
     "ollama": [
+        "gemma4:e4b",
         "llama3.2",
         "llama3.1",
         "mistral",
@@ -51,7 +52,7 @@ DEFAULT_MODELS: Dict[str, str] = {
     "openai": "gpt-4o-mini",
     "anthropic": "claude-haiku-4-20250414",
     "google": "gemini-2.0-flash",
-    "ollama": "llama3.2",
+    "ollama": "gemma4:e4b",
     "lmstudio": "default",
 }
 
