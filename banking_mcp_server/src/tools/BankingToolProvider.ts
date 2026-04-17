@@ -12,6 +12,10 @@ import { AuthorizationChallengeHandler, AuthorizationChallenge } from './Authori
 import { ToolResult, AuthorizationRequest } from '../interfaces/mcp';
 import { Session, AuthErrorCodes, AuthenticationError } from '../interfaces/auth';
 import { BankingAPIError } from '../interfaces/banking';
+import { TokenExchangeService } from '../auth/TokenExchangeService';
+import { TokenExchangeRequest } from '../interfaces/tokenExchange';
+import { tokenCache } from '../services/tokenCacheService';
+import { getScopesForTool } from './toolScopeMap';
 
 export interface ToolExecutionContext {
   session: Session;
@@ -33,7 +37,8 @@ export class BankingToolProvider {
   constructor(
     private apiClient: BankingAPIClient,
     private authManager: BankingAuthenticationManager,
-    private sessionManager: BankingSessionManager
+    private sessionManager: BankingSessionManager,
+    private tokenExchangeService?: TokenExchangeService
   ) {
     this.authChallengeHandler = new AuthorizationChallengeHandler(authManager, sessionManager);
   }
@@ -222,6 +227,7 @@ export class BankingToolProvider {
       token = agentToken;
       console.log(`[BankingToolProvider] Using BFF-exchanged delegated token for ${tool.name}`);
     } else {
+      // Resolve user token from session
       const userToken = this.getUserTokenForScopes(context.session, tool.requiredScopes);
       if (!userToken) {
         throw new AuthenticationError(
@@ -231,8 +237,49 @@ export class BankingToolProvider {
           tool.requiredScopes
         );
       }
-      token = userToken.accessToken;
-      console.log(`[BankingToolProvider] Using session user token for ${tool.name} (no delegated token)`);
+
+      if (this.tokenExchangeService) {
+        // D-01: Lazy token exchange with cache — exchange on first call, cache with TTL
+        // D-03: Narrowed scopes per tool via getScopesForTool()
+        const toolScopes = getScopesForTool(context.toolName);
+        const cacheKey = context.session.sessionId;
+
+        // Check cache first
+        const cachedToken = tokenCache.get(cacheKey, toolScopes);
+        if (cachedToken) {
+          token = cachedToken;
+          console.log(`[BankingToolProvider] Cache hit for ${tool.name} (scopes: ${toolScopes.join(',')})`);
+        } else {
+          // Cache miss — perform RFC 8693 token exchange
+          console.log(`[BankingToolProvider] Token exchange initiated for tool: ${tool.name}, scopes: ${toolScopes.join(',')}`);
+          try {
+            const exchangeRequest: TokenExchangeRequest = {
+              grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+              subject_token: userToken.accessToken,
+              subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+              scope: toolScopes.join(' '),
+            };
+            const exchangeResponse = await this.tokenExchangeService.exchangeToken(exchangeRequest);
+            token = exchangeResponse.access_token;
+
+            // Cache the exchanged token
+            const expiresAt = Date.now() + (exchangeResponse.expires_in * 1000);
+            tokenCache.set(cacheKey, toolScopes, token, expiresAt);
+
+            console.log(`[BankingToolProvider] Token exchange succeeded for ${tool.name} (expires_in: ${exchangeResponse.expires_in}s)`);
+          } catch (exchangeError) {
+            // D-04: Hard fail on exchange error — no pass-through fallback
+            console.error(`[BankingToolProvider] Token exchange FAILED for ${tool.name}:`, exchangeError);
+            throw new Error(
+              `Token exchange failed for tool '${tool.name}': ${exchangeError instanceof Error ? exchangeError.message : 'Unknown error'}`
+            );
+          }
+        }
+      } else {
+        // No token exchange service — direct pass-through (backward compat / ff_skip_token_exchange)
+        token = userToken.accessToken;
+        console.log(`[BankingToolProvider] Using session user token for ${tool.name} (no token exchange service)`);
+      }
     }
 
     switch (tool.handler) {
