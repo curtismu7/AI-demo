@@ -1905,12 +1905,12 @@ Plans:
 **Goal:** Make the Phase 184 delegated path explicit and verifiable across UI, backend routes, and docs so Exchange 2 consistently means user OAuth token + agent CC token exchanged for an MCP Gateway token before request fulfillment.
 **Requirements**: P184-01, P184-02, P184-03
 **Depends on:** Phase 183
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 184-01-PLAN.md — PingOne Test Page: label Exchange 2 as Phase 184 canonical dual-token gateway flow
-- [ ] 184-02-PLAN.md — PingOne test routes: dual-mode semantics target MCP Gateway audience (legacy alias preserved)
-- [ ] 184-03-PLAN.md — Docs + runbook alignment for Phase 184 dual-token terminology and flow
+- [x] 184-01-PLAN.md — PingOne Test Page: label Exchange 2 as Phase 184 canonical dual-token gateway flow (completed 2026-04-17)
+- [x] 184-02-PLAN.md — PingOne test routes: dual-mode semantics target MCP Gateway audience (legacy alias preserved)
+- [x] 184-03-PLAN.md — Docs + runbook alignment for Phase 184 dual-token terminology and flow
 
 **Success criteria:**
 1. Exchange 2 labeled as Phase 184 canonical in test UI (13+ references)
