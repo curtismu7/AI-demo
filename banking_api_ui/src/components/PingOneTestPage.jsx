@@ -551,8 +551,12 @@ export default function PingOneTestPage() {
     try {
       const { data } = await apiClient.get('/api/pingone-test/diagnose-mcp-exchange');
       setMcpExchangeDiag(data);
-      if (data.canExchange) {
-        notifySuccess('MCP exchange looks correctly configured ✓');
+      if (data.canExchange && data.claimValidation?.allClaimsValid) {
+        notifySuccess('MCP exchange configured correctly — claims validated ✓');
+      } else if (data.canExchange && !data.claimValidation?.tested) {
+        notifySuccess('MCP exchange config OK (log in to validate claims)');
+      } else if (data.canExchange) {
+        notifyError('MCP exchange config OK but token claims have issues — see details');
       } else {
         notifyError('MCP exchange has config issues — see diagnostic panel');
       }
@@ -1210,9 +1214,9 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 <button className="pingone-test-button pingone-test-button--secondary" onClick={diagnoseMcpExchange}>
                   Diagnose
                 </button>
-                {mcpExchangeDiag && !mcpExchangeDiag.canExchange && (
+                {mcpExchangeDiag && (!mcpExchangeDiag.canExchange || (mcpExchangeDiag.claimValidation && !mcpExchangeDiag.claimValidation.allClaimsValid)) && (
                   <button className="pingone-test-button pingone-test-button--danger" onClick={fixMcpExchange} disabled={mcpExchangeFixing}>
-                    {mcpExchangeFixing ? 'Fixing…' : 'Auto-Fix in PingOne'}
+                    {mcpExchangeFixing ? 'Fixing…' : '🔧 Auto-Fix in PingOne'}
                   </button>
                 )}
               </div>
@@ -1251,8 +1255,34 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                     {mcpExchangeDiag.missingFromApp?.length > 0 && (
                       <div className="scope-fix-result--err">Not assigned to exchanger app: {mcpExchangeDiag.missingFromApp.join(', ')}</div>
                     )}
-                    {mcpExchangeDiag.canExchange && (
+                    {mcpExchangeDiag.canExchange && !mcpExchangeDiag.claimValidation?.issues?.length && (
                       <div className="scope-fix-result--ok">✓ Exchange should work</div>
+                    )}
+                    {mcpExchangeDiag.canExchange && mcpExchangeDiag.claimValidation?.issues?.length > 0 && (
+                      <div className="scope-fix-result--ok" style={{ color: '#e65100' }}>⚠️ Config OK but token claims have issues</div>
+                    )}
+                    {mcpExchangeDiag.claimValidation && (
+                      <div style={{ marginTop: '0.5rem', padding: '8px', background: '#fafafa', borderRadius: '4px' }}>
+                        <strong>Token Claim Validation</strong>
+                        {mcpExchangeDiag.claimValidation.tested ? (
+                          mcpExchangeDiag.claimValidation.allClaimsValid ? (
+                            <div style={{ color: '#2e7d32', marginTop: '4px' }}>✅ All token claims validated correctly</div>
+                          ) : (
+                            <div style={{ marginTop: '4px' }}>
+                              <div style={{ color: '#e65100', fontWeight: 600 }}>⚠️ {mcpExchangeDiag.claimValidation.issues.length} claim issue(s) found:</div>
+                              {mcpExchangeDiag.claimValidation.issues.map((issue, i) => (
+                                <div key={i} style={{ margin: '4px 0', padding: '4px 8px', background: '#fff3e0', borderLeft: '3px solid #ff9800', borderRadius: '4px' }}>
+                                  <strong>{issue.claim}</strong>: expected <code>{JSON.stringify(issue.expected)}</code>, got <code>{JSON.stringify(issue.actual)}</code>
+                                  {issue.missing && <div style={{ fontSize: '0.85rem', color: '#666' }}>Missing: {issue.missing.join(', ')}</div>}
+                                  <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '2px' }}>Fix: {issue.fix}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        ) : (
+                          <div style={{ color: '#1565c0', marginTop: '4px' }}>ℹ️ {mcpExchangeDiag.claimValidation.reason}</div>
+                        )}
+                      </div>
                     )}
                     {mcpExchangeFixResult && (
                       <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(0,0,0,0.1)', paddingTop: '0.5rem' }}>

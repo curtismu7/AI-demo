@@ -1344,6 +1344,92 @@ router.get('/diagnose-mcp-exchange', async (req, res) => {
     });
     const missingFromApp = requestedScopes.filter(s => !resolvedExchangerScopes.includes(s));
 
+    const canExchangeResult = missingFromRS.length === 0 && missingFromApp.length === 0 && exchangerHasMcpRS;
+
+    // --- Claim Validation: Perform a test exchange and validate resulting token claims ---
+    let claimValidation = null;
+    if (canExchangeResult) {
+      try {
+        const userToken = req.session?.oauthTokens?.accessToken;
+        if (userToken) {
+          const mcpExchangerClientId2 = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID;
+          const mcpExchangerSecret2 = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET;
+          const mcpExchangerAuthMethod2 = (configStore.getEffective('pingone_token_exchange_auth_method') || process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || 'post').toLowerCase();
+
+          if (mcpExchangerClientId2 && mcpExchangerSecret2) {
+            const exchangeResult = await oauthService.performTokenExchangeAs(
+              userToken, null, mcpExchangerClientId2, mcpExchangerSecret2,
+              mcpUri, requestedScopes, mcpExchangerAuthMethod2
+            );
+
+            if (exchangeResult) {
+              const decoded = decodeJwtForDisplay(exchangeResult);
+              const issues = [];
+
+              if (decoded?.payload) {
+                // Validate audience
+                const actualAud = Array.isArray(decoded.payload.aud) ? decoded.payload.aud : [decoded.payload.aud];
+                if (!actualAud.includes(mcpUri)) {
+                  issues.push({
+                    claim: 'aud',
+                    expected: mcpUri,
+                    actual: decoded.payload.aud,
+                    fix: 'MCP Resource Server audience must match PINGONE_RESOURCE_MCP_SERVER_URI'
+                  });
+                }
+
+                // Validate scopes present
+                const actualScopes = (decoded.payload.scope || '').split(' ').filter(Boolean);
+                const missingScopes = requestedScopes.filter(s => !actualScopes.includes(s));
+                if (missingScopes.length > 0) {
+                  issues.push({
+                    claim: 'scope',
+                    expected: requestedScopes,
+                    actual: actualScopes,
+                    missing: missingScopes,
+                    fix: 'Assign missing scopes to MCP Token Exchanger app grant'
+                  });
+                }
+
+                // Validate client_id is the exchanger app
+                if (decoded.payload.client_id && decoded.payload.client_id !== exchangerClientId) {
+                  issues.push({
+                    claim: 'client_id',
+                    expected: exchangerClientId,
+                    actual: decoded.payload.client_id,
+                    fix: 'Token client_id should match MCP Token Exchanger app'
+                  });
+                }
+
+                claimValidation = {
+                  tested: true,
+                  issues,
+                  allClaimsValid: issues.length === 0,
+                  decodedSample: {
+                    aud: decoded.payload.aud,
+                    scope: decoded.payload.scope,
+                    client_id: decoded.payload.client_id,
+                    act: decoded.payload.act || null,
+                    may_act: decoded.payload.may_act || null
+                  }
+                };
+              } else {
+                claimValidation = { tested: true, exchangeFailed: true, error: 'Could not decode exchanged token' };
+              }
+            } else {
+              claimValidation = { tested: true, exchangeFailed: true, error: 'Exchange returned no access_token' };
+            }
+          } else {
+            claimValidation = { tested: false, reason: 'MCP Token Exchanger credentials not configured' };
+          }
+        } else {
+          claimValidation = { tested: false, reason: 'No user token in session — log in first to test claims' };
+        }
+      } catch (claimErr) {
+        claimValidation = { tested: false, reason: claimErr.message };
+      }
+    }
+
     res.json({
       success: true,
       mcpUri,
@@ -1355,7 +1441,8 @@ router.get('/diagnose-mcp-exchange', async (req, res) => {
       requestedScopes,
       missingFromRS,
       missingFromApp,
-      canExchange: missingFromRS.length === 0 && missingFromApp.length === 0 && exchangerHasMcpRS,
+      canExchange: canExchangeResult,
+      claimValidation,
     });
   } catch (error) {
     console.error('[PingOneTest] diagnose-mcp-exchange error:', error.message);
@@ -1507,6 +1594,22 @@ router.post('/fix-mcp-exchange', async (req, res) => {
       // Don't create may_act on MCP RS if not present — act is the primary claim here
     } catch (mayActErr) {
       steps.push({ step: 'may_act-mapping-mcp', status: 'failed', detail: mayActErr.response?.data?.message || mayActErr.message });
+    }
+
+    // Step 6: Verify audience on MCP RS matches PINGONE_RESOURCE_MCP_SERVER_URI
+    try {
+      if (mcpRS.audience !== mcpUri) {
+        await axios.put(`${apiBase}/resources/${mcpRS.id}`, {
+          name: mcpRS.name,
+          audience: mcpUri,
+          description: mcpRS.description || 'MCP Server resource server for token exchange audience',
+        }, { headers: mgmtHeaders, timeout: 10000 });
+        steps.push({ step: 'fix-audience', status: 'fixed', detail: `Updated MCP RS audience from "${mcpRS.audience}" to "${mcpUri}"` });
+      } else {
+        steps.push({ step: 'fix-audience', status: 'already_correct', detail: `Audience matches: ${mcpUri}` });
+      }
+    } catch (audErr) {
+      steps.push({ step: 'fix-audience', status: 'failed', detail: audErr.response?.data?.message || audErr.message });
     }
 
     res.json({ success: true, mcpUri, mcpRSCreated, requestedScopes, steps });
