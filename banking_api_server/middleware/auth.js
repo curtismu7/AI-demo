@@ -940,6 +940,60 @@ const requireAIAgent = (req, res, next) => {
   }
 };
 
+/**
+ * Require RFC 8693 delegation token (act claim) for AI agent requests.
+ * Implements D-02: Backend validates act claim required.
+ *
+ * When the request comes from an AI agent (clientType === 'ai_agent'),
+ * the token MUST contain an act claim proving delegation was performed
+ * via token exchange. Direct pass-through of user tokens is rejected.
+ *
+ * Non-agent requests (enduser, admin) pass through unchanged.
+ */
+const requireDelegation = (req, res, next) => {
+  // Only enforce delegation on agent requests
+  if (req.user?.clientType !== 'ai_agent') {
+    return next();
+  }
+
+  if (!req.user.isDelegated || !req.user.actor) {
+    logger.warn(LOG_CATEGORIES.AUTHENTICATION, 'Agent request rejected: missing delegation token (act claim)', {
+      userId: req.user.id,
+      clientType: req.user.clientType,
+      path: req.path,
+      method: req.method,
+    });
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Delegation token required (missing act claim)',
+      code: 'DELEGATION_REQUIRED',
+    });
+  }
+
+  if (!req.user.actor.sub && !req.user.actor.client_id) {
+    logger.warn(LOG_CATEGORIES.AUTHENTICATION, 'Agent request rejected: invalid delegation claim (no actor identity)', {
+      userId: req.user.id,
+      clientType: req.user.clientType,
+      actor: req.user.actor,
+      path: req.path,
+    });
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid delegation claim (missing actor identity)',
+      code: 'INVALID_DELEGATION',
+    });
+  }
+
+  logger.info(LOG_CATEGORIES.AUTHENTICATION, 'Agent request authorized via delegation', {
+    userId: req.user.id,
+    actorSub: req.user.actor.sub || req.user.actor.client_id,
+    path: req.path,
+    method: req.method,
+  });
+
+  next();
+};
+
 // Verify password
 const verifyPassword = (password, hashedPassword) => {
   return bcrypt.compareSync(password, hashedPassword);
@@ -973,6 +1027,7 @@ module.exports = {
   requireOwnershipOrAdmin,
   requireEndUser,
   requireAIAgent,
+  requireDelegation,
   requireScopes,
   verifyPassword,
   hashPassword,
