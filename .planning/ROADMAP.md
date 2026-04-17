@@ -1964,7 +1964,7 @@ Plans:
 
 ### Phase 175: Investigate JSON-RPC and how and when we should be using it
 
-**Goal:** [To be planned]
+**Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
 **Requirements**: TBD
 **Depends on:** Phase 174
 **Plans:** 2/2 plans complete
@@ -1974,10 +1974,10 @@ Plans:
 
 ### Phase 176: Show users in config what LLM we are using and pick the order — if first errors go to next, LM Studio default, bad LLM should not stop it from working
 
-**Goal:** [To be planned]
+**Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
 **Requirements**: TBD
 **Depends on:** Phase 175
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 176 to break down)
@@ -2031,33 +2031,33 @@ Plans:
 
 ### Phase 180: Evaluate and implement Google Gemma 4 as another LLM provider
 
-**Goal:** [To be planned]
+**Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
 **Requirements**: TBD
 **Depends on:** Phase 179
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 180 to break down)
 
 ### Phase 181: We need to add a training slide out for CUA for AI
 
-**Goal:** [To be planned]
+**Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
 **Requirements**: TBD
 **Depends on:** Phase 180
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 181 to break down)
 
 ### Phase 182: Public URL for MCP server so external clients like Claude can connect
 
-**Goal:** [To be planned]
+**Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
 **Requirements**: TBD
 **Depends on:** Phase 181
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 182 to break down)
+- [ ] 182-01-PLAN.md — K8s manifests (Deployment, Service, Ingress, ConfigMap, Secret) + README docs
 
 ---
 
