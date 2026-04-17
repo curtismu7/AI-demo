@@ -78,12 +78,14 @@ router.post('/message', async (req, res) => {
 
     // Process message with agent
     console.log('[banking-agent/message] Calling processAgentMessage...');
+    const langchainConfig = req.session?.langchain_config || {};
     const response = await processAgentMessage({
       message,
       userId,
       userToken: accessToken,
       sessionId: req.session.id,
-      tokenEvents: tokenEvents || []
+      tokenEvents: tokenEvents || [],
+      langchainConfig
     });
     console.log('[banking-agent/message] processAgentMessage response received');
     console.log('[banking-agent/message] Response keys:', Object.keys(response || {}));

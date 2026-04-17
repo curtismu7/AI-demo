@@ -9,7 +9,7 @@ const appEventService = require('./appEventService');
 /**
  * Process incoming user message through the agent
  */
-async function processAgentMessage({ message, userId, userToken, sessionId, tokenEvents = [] }) {
+async function processAgentMessage({ message, userId, userToken, sessionId, tokenEvents = [], langchainConfig = {} }) {
   try {
     console.log('[processAgentMessage] Starting');
     appEventService.logEvent('agent', 'info', 'Agent processing message…', { tag: 'agent/message' });
@@ -40,7 +40,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       userId,
       userToken,
       sessionId,
-      tokenEvents
+      tokenEvents,
+      langchainConfig
     });
     console.log('[processAgentMessage] Agent created successfully');
 

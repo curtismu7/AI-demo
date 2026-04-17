@@ -77,6 +77,7 @@ const AgentAnnotation = Annotation.Root({
  * @param {string} config.userToken - User's OAuth access token
  * @param {string} config.sessionId - Express session ID
  * @param {array} config.tokenEvents - Token event tracking array (passed by reference)
+ * @param {object} config.langchainConfig - Session LLM config: { provider, model, fallback_order, groq_api_key, openai_api_key, ... }
  * @returns {Promise<object>} LangGraph agent ready for invoke()
  */
 /**
@@ -93,7 +94,7 @@ function normalizeToolCallArgs(args) {
   return {};
 }
 
-async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = [] }) {
+async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = [], langchainConfig = {} }) {
   console.log('[agentBuilder] === CREATE BANKING AGENT START ===');
   console.log('[agentBuilder] userId:', userId);
   console.log('[agentBuilder] userToken present:', !!userToken);
@@ -137,46 +138,105 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       console.log('[agentBuilder] tokenEvents count after adding:', tokenEvents.length);
     }
 
-    // Initialize model with system prompt and API key from environment
-    // Groq is preferred (faster, lower cost); Anthropic is fallback on 429/rate-limit
+        // Initialize model with fallback chain support
+    // Priority: session langchain_config.fallback_order > environment variables > hardcoded defaults
     let model;
-    let fallbackModel = null;
     let provider;
-
-    if (process.env.GROQ_API_KEY) {
-      console.log('[agentBuilder] Using Groq (llama-3.3-70b-versatile)');
-      model = new ChatGroq({
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.7,
-        maxTokens: 1024,
-        apiKey: process.env.GROQ_API_KEY,
-        timeout: 30000,
-      });
-      provider = 'groq';
-      // Build Anthropic fallback if available
-      if (process.env.ANTHROPIC_API_KEY) {
-        fallbackModel = new ChatAnthropic({
+    
+    // Build provider config map from session + environment
+    const groqKey = langchainConfig?.groq_api_key || process.env.GROQ_API_KEY;
+    const anthropicKey = langchainConfig?.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
+    const openaiKey = langchainConfig?.openai_api_key || process.env.OPENAI_API_KEY;
+    const googleKey = langchainConfig?.google_api_key || process.env.GOOGLE_API_KEY;
+    
+    // Determine fallback order
+    const fallbackOrder = langchainConfig?.fallback_order || ['groq', 'anthropic'];
+    console.log('[agentBuilder] Fallback chain (from session config):', fallbackOrder);
+    
+    // Try to initialize model based on fallback order
+    let initialized = false;
+    for (const providerName of fallbackOrder) {
+      try {
+        if (providerName === 'groq' && groqKey) {
+          console.log('[agentBuilder] Initializing Groq LLM');
+          model = new ChatGroq({
+            model: langchainConfig?.model || 'llama-3.3-70b-versatile',
+            temperature: 0.7,
+            maxTokens: 1024,
+            apiKey: groqKey,
+            timeout: 30000,
+          });
+          provider = 'groq';
+          initialized = true;
+          console.log(`[agentBuilder] LLM initialized: groq/${langchainConfig?.model || 'llama-3.3-70b-versatile'}`);
+          break;
+        } else if (providerName === 'anthropic' && anthropicKey) {
+          console.log('[agentBuilder] Initializing Anthropic LLM');
+          model = new ChatAnthropic({
+            model: langchainConfig?.model || 'claude-haiku-4-20250414',
+            temperature: 0.7,
+            maxTokens: 1024,
+            apiKey: anthropicKey,
+            timeout: 30000,
+          });
+          provider = 'anthropic';
+          initialized = true;
+          console.log(`[agentBuilder] LLM initialized: anthropic/${langchainConfig?.model || 'claude-haiku-4-20250414'}`);
+          break;
+        } else if (providerName === 'openai' && openaiKey) {
+          console.log('[agentBuilder] Initializing OpenAI LLM');
+          // Note: OpenAI uses ChatOpenAI from @langchain/openai
+          console.warn('[agentBuilder] OpenAI not yet integrated in this version');
+          continue;
+        } else if (providerName === 'google' && googleKey) {
+          console.log('[agentBuilder] Initializing Google LLM');
+          // Note: Google uses ChatGoogleGenerativeAI from @langchain/google-genai
+          console.warn('[agentBuilder] Google not yet integrated in this version');
+          continue;
+        } else if (providerName === 'ollama') {
+          console.log('[agentBuilder] Ollama local not yet integrated as LLM provider');
+          continue;
+        }
+      } catch (err) {
+        console.warn(`[agentBuilder] Failed to initialize ${providerName}:`, err.message);
+        continue;
+      }
+    }
+    
+    // Fallback to environment variables if session config didn't work
+    if (!initialized) {
+      console.log('[agentBuilder] No provider initialized from fallback chain, trying environment defaults');
+      if (process.env.GROQ_API_KEY) {
+        console.log('[agentBuilder] Using Groq from environment');
+        model = new ChatGroq({
+          model: 'llama-3.3-70b-versatile',
+          temperature: 0.7,
+          maxTokens: 1024,
+          apiKey: process.env.GROQ_API_KEY,
+          timeout: 30000,
+        });
+        provider = 'groq';
+        initialized = true;
+      } else if (process.env.ANTHROPIC_API_KEY) {
+        console.log('[agentBuilder] Using Anthropic from environment');
+        model = new ChatAnthropic({
           model: 'claude-haiku-4-20250414',
           temperature: 0.7,
           maxTokens: 1024,
           apiKey: process.env.ANTHROPIC_API_KEY,
           timeout: 30000,
         });
-        console.log('[agentBuilder] Anthropic fallback available for rate-limit errors');
+        provider = 'anthropic';
+        initialized = true;
       }
-    } else if (process.env.ANTHROPIC_API_KEY) {
-      console.log('[agentBuilder] Using Anthropic (claude-haiku-4-20250414)');
-      model = new ChatAnthropic({
-        model: 'claude-haiku-4-20250414',
-        temperature: 0.7,
-        maxTokens: 1024,
-        apiKey: process.env.ANTHROPIC_API_KEY,
-        timeout: 30000,
-      });
-      provider = 'anthropic';
-    } else {
-      console.error('[agentBuilder] ERROR: No LLM API key configured');
-      throw new Error('No LLM API key configured. Set GROQ_API_KEY or ANTHROPIC_API_KEY to use the banking agent.');
+    }
+    
+    if (!initialized || !model) {
+      console.error('[agentBuilder] ERROR: No LLM provider could be initialized');
+      throw new Error('No LLM provider available. Configure at least one provider in /llm-config or set GROQ_API_KEY/ANTHROPIC_API_KEY.');
+    }
+
+
     }
 
     // Define the agent node with tools
