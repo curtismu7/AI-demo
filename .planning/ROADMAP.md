@@ -2054,7 +2054,7 @@ Plans:
 **Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
 **Requirements**: TBD
 **Depends on:** Phase 181
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 182-01-PLAN.md — K8s manifests (Deployment, Service, Ingress, ConfigMap, Secret) + README docs
