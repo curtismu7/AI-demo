@@ -89,6 +89,8 @@ const AgentUiModeContext = createContext({
   placement: 'none',
   fab: true,
   setAgentUi: () => {},
+  webMcpLastResult: null,
+  setWebMcpLastResult: () => {},
 });
 
 /**
@@ -100,6 +102,7 @@ const AgentUiModeContext = createContext({
  */
 export function AgentUiModeProvider({ children }) {
   const [state, setState] = useState(() => readState());
+  const [webMcpLastResult, setWebMcpLastResult] = useState(null);
 
   useEffect(() => {
     try {
@@ -159,8 +162,10 @@ export function AgentUiModeProvider({ children }) {
       placement: state.placement,
       fab: state.fab,
       setAgentUi,
+      webMcpLastResult,
+      setWebMcpLastResult,
     }),
-    [state.placement, state.fab, setAgentUi]
+    [state.placement, state.fab, setAgentUi, webMcpLastResult, setWebMcpLastResult]
   );
 
   return (

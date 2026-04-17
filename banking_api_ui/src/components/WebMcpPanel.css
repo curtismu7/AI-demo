@@ -1,0 +1,263 @@
+/* banking_api_ui/src/components/WebMcpPanel.css */
+
+.webmcp-panel {
+  border: 1px solid var(--ba-border, #2a3a5c);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  background: var(--ba-bg, #152a52);
+  color: #e0e6f0;
+}
+
+.webmcp-panel-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.webmcp-loading {
+  color: #8899bb;
+  padding: 12px 0;
+}
+
+.webmcp-body {
+  display: flex;
+  gap: 16px;
+  min-height: 200px;
+}
+
+/* Tool list (left column) */
+.webmcp-tool-list {
+  flex: 0 0 240px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.webmcp-tool-list h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #8899bb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.webmcp-tool-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #c5d0e6;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.webmcp-tool-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.webmcp-tool-item.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.webmcp-tool-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e0e6f0;
+}
+
+.webmcp-tool-desc {
+  font-size: 11px;
+  color: #7888a8;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+/* Tool detail (right column) */
+.webmcp-tool-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.webmcp-tool-detail h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: #fff;
+}
+
+.webmcp-tool-detail-desc {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #8899bb;
+}
+
+/* Parameter form */
+.webmcp-params {
+  margin-bottom: 12px;
+}
+
+.webmcp-params h5 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #8899bb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.webmcp-param-label {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #c5d0e6;
+}
+
+.webmcp-required {
+  color: #f87171;
+  margin-left: 2px;
+}
+
+.webmcp-param-hint {
+  font-size: 11px;
+  color: #7888a8;
+}
+
+.webmcp-param-input {
+  margin-top: 4px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #e0e6f0;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.webmcp-param-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Call button */
+.webmcp-call-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.webmcp-call-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.webmcp-call-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Stream log */
+.webmcp-stream-log {
+  margin-top: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.webmcp-stream-log h5 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #8899bb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.webmcp-stream-event {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: #a3b5d6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-bottom: 4px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Result */
+.webmcp-result {
+  margin-top: 12px;
+}
+
+.webmcp-result h5 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #8899bb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.webmcp-result pre {
+  margin: 0;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: #c5d0e6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Error */
+.webmcp-error {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.webmcp-error p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #f87171;
+}
+
+.webmcp-error details {
+  font-size: 12px;
+  color: #a3b5d6;
+}
+
+.webmcp-error summary {
+  cursor: pointer;
+  color: #8899bb;
+  font-size: 12px;
+}
+
+.webmcp-error pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font-size: 11px;
+  color: #c5d0e6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

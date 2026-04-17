@@ -34,6 +34,7 @@ import TransactionConsentPage from './components/TransactionConsentPage';
 import DelegatedAccessPage from './components/DelegatedAccessPage';
 import DelegationPage from './components/DelegationPage';
 import FeatureFlagsPage from './components/FeatureFlagsPage';
+import WebMcpPanel from './components/WebMcpPanel';
 import ScopeAuditPage from './components/ScopeAuditPage';
 import ScopeReferencePage from './components/ScopeReferencePage';
 import LangChainPage from './pages/LangChainPage';
@@ -599,7 +600,7 @@ function AppWithAuth() {
                       <Routes location={backgroundLocation || fullLocation}>
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <LandingPage user={user} onLogout={logout} />} />
                     <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
-                    <Route path="/dashboard" element={<UserDashboard user={user} onLogout={logout} />} />
+                    <Route path="/dashboard" element={<><UserDashboard user={user} onLogout={logout} /><WebMcpPanel /></>} />
                     <Route path="/config"      element={<Navigate to="/configure?tab=pingone-config" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
