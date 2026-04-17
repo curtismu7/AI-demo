@@ -2029,6 +2029,16 @@ Plans:
 
 
 
+### Phase 180: Evaluate and implement Google Gemma 4 as another LLM provider
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 179
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 180 to break down)
+
 ---
 
 ### Phase 124: MFA HITL Indication

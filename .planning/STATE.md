@@ -25,6 +25,8 @@ Plan: 1 of 3
 
 ## Roadmap Evolution
 
+- Phase 180 added: Evaluate and implement Google Gemma 4 as another LLM provider
+
 - Phase 179 added: Add dropdown for user to choose which LLM to use — when they select it, show config for that model
 
 - Phase 178 added: Agentic Trust alignment — education page mapping 6 security pillars, scope narrowing visualization, last-mile vault concept, threat model framing
