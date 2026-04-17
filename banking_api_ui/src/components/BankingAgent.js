@@ -832,6 +832,7 @@ export default function BankingAgent({
   const [nlInput, setNlInput] = useState('');
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
+  const [activeModel, setActiveModel] = useState(null);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
@@ -2468,6 +2469,9 @@ export default function BankingAgent({
         return;
       }
       const response = await sendAgentMessage(text);
+      if (response.activeModel) {
+        setActiveModel(response.activeModel);
+      }
 
       if (response._status === 428 && response.hitl) {
         // HITL consent required — wire to existing consent modal state
@@ -2527,6 +2531,9 @@ export default function BankingAgent({
       setNlLoading(true);
       try {
         const response = await sendAgentMessage(text);
+      if (response.activeModel) {
+        setActiveModel(response.activeModel);
+      }
         if (!cancelled) {
           if (response.error || !response.success) {
             reportNlFailure({ code: response.error || 'unknown' });
