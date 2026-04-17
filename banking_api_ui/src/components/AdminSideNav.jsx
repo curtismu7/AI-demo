@@ -105,6 +105,7 @@ export default function AdminSideNav({ user }) {
         { label: 'Scope Audit', path: '/scope-audit', icon: '🔎' },
         { label: 'Scope Reference', path: '/scope-reference', icon: '📚' },
         { label: 'User Delegation', path: '/delegation', icon: '🤝' },
+        { label: 'Error Audit Log', path: '/error-audit', icon: '📋' },
       ],
     },
     {
@@ -141,6 +142,7 @@ export default function AdminSideNav({ user }) {
     { label: 'Agent flow diagram', icon: '📊', action: () => { window.dispatchEvent(new CustomEvent('agent-flow-diagram-open')); } },
     { label: 'WebMCP (Google)', icon: '🌐', action: () => navigate('/webmcp') },
     { label: 'Agentic Trust', icon: '🛡️', action: () => navigate('/agentic-trust') },
+    { label: 'Actor Token (Agent)', icon: '🎭', action: () => navigate('/actor-token-education') },
   ];
 
   // Agent UI placement options for the expandable dropdown

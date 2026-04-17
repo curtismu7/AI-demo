@@ -23,6 +23,8 @@ import CimdSimPanel from './components/CimdSimPanel';
 import McpInspector from './components/McpInspector';
 import { MCPToolsEducation } from './components/MCPToolsEducation';
 import { AgenticTrustEducation } from './components/AgenticTrustEducation';
+import { ActorTokenEducation } from './components/ActorTokenEducation';
+import AdminErrorAuditLog from './components/AdminErrorAuditLog';
 import OAuthDebugLogViewer from './components/OAuthDebugLogViewer';
 import ClientRegistrationPage from './components/ClientRegistrationPage';
 import LogViewer from './components/LogViewer';
@@ -445,6 +447,8 @@ function AppWithAuth() {
     '/mcp-tools',
     '/webmcp',
     '/agentic-trust',
+    '/actor-token-education',
+    '/error-audit',
     '/security-settings',
     '/marketing',
     '/dashboard',
@@ -628,6 +632,8 @@ function AppWithAuth() {
                     <Route path="/mcp-inspector" element={<McpInspector user={user} onLogout={logout} />} />
                     <Route path="/mcp-tools" element={user ? <MCPToolsEducation /> : <Navigate to="/" replace />} />
                     <Route path="/agentic-trust" element={user ? <AgenticTrustEducation /> : <Navigate to="/" replace />} />
+                    <Route path="/actor-token-education" element={user ? <ActorTokenEducation /> : <Navigate to="/" replace />} />
+                    <Route path="/error-audit" element={<AdminRoute user={user}><AdminErrorAuditLog /></AdminRoute>} />
                     <Route path="/webmcp" element={user ? <WebMcpPanel /> : <Navigate to="/" replace />} />
                     <Route path="/oauth-debug-logs"
                       element={<AdminRoute user={user}><OAuthDebugLogViewer /></AdminRoute>}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styles from './AgenticTrustEducation.module.css';
+import ScopeNarrowingVisualization from './ScopeNarrowingVisualization';
 
 interface Pillar {
   id: number;
@@ -57,13 +58,12 @@ const pillars: Pillar[] = [
   {
     id: 5,
     name: 'Least Privilege / Scope Narrowing',
-    status: 'partial',
-    statusLabel: '⚠️ Partial',
+    status: 'strong',
+    statusLabel: '✅ Strong',
     threat: 'Agent token has more permissions than needed — overpermissioning allows lateral movement if token is compromised.',
-    demoImplementation: 'Audience restriction (RFC 8707) limits which resource servers accept the token. Scope parameters on exchange requests limit permissions per hop.',
-    gap: 'No visual UI showing progressive scope narrowing per hop. See the PingOne Test page for the conceptual scope narrowing visualization.',
+    demoImplementation: 'Audience restriction (RFC 8707) limits which resource servers accept the token. Scope parameters on exchange requests limit permissions per hop. A visual scope narrowing diagram below shows how 7 user scopes reduce to 3 agent scopes and then 1 tool scope at each exchange hop.',
     link: '/pingone-test',
-    linkLabel: 'See Scope Narrowing →',
+    linkLabel: 'See it on PingOne Test Page →',
   },
   {
     id: 6,
@@ -87,7 +87,7 @@ const threatModel: ThreatRow[] = [
   { threat: 'Credential Replay', category: 'Tampering', mitigation: 'BFF token custodian — tokens never reach LLM or browser', status: '✅ Mitigated' },
   { threat: 'Rogue Agent', category: 'Spoofing', mitigation: 'OAuth client credentials + IdP validation of agent identity', status: '✅ Mitigated' },
   { threat: 'Impersonation', category: 'Spoofing', mitigation: 'RFC 8693 token exchange with IdP-bound act claim', status: '✅ Mitigated' },
-  { threat: 'Overpermissioning', category: 'Elevation of Privilege', mitigation: 'Scope narrowing + audience restriction per hop', status: '⚠️ Partial' },
+  { threat: 'Overpermissioning', category: 'Elevation of Privilege', mitigation: 'Scope narrowing + audience restriction per hop (visualized)', status: '✅ Mitigated' },
   { threat: 'Token Propagation', category: 'Information Disclosure', mitigation: 'Per-hop exchange — fresh token at each boundary', status: '✅ Mitigated' },
   { threat: 'Last Mile Exposure', category: 'Information Disclosure', mitigation: 'Vault for temporary tool credentials (planned)', status: '❌ Planned' },
 ];
@@ -213,6 +213,16 @@ export const AgenticTrustEducation: React.FC = () => {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Scope Narrowing Visualization */}
+      <section className={styles.section}>
+        <h2>Scope Narrowing in Action</h2>
+        <p className={styles.sectionIntro}>
+          See how OAuth scopes are progressively restricted at each token exchange hop — from full user
+          permissions down to a single tool-specific scope.
+        </p>
+        <ScopeNarrowingVisualization />
       </section>
 
       {/* Threat Model Table */}
