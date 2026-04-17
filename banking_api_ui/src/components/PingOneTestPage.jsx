@@ -1299,6 +1299,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                       toDecoded={exchange1Decoded}
                       fromLabel={t1Label}
                       toLabel="MCP Token (Exchange 1)"
+                      expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
                     />
                   </>
                 );
@@ -1329,6 +1330,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                       toDecoded={exchange2Decoded}
                       fromLabel={t1Label}
                       toLabel="MCP Token with act (Exchange 2)"
+                      expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
                     />
                   </>
                 );
@@ -1353,6 +1355,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                       toDecoded={exchange3AgentDecoded}
                       fromLabel={t1Label}
                       toLabel="Agent Token (T2)"
+                      expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
                     />
                     <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
                     <TokenLineageDiff
@@ -1360,6 +1363,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                       toDecoded={exchange3McpDecoded}
                       fromLabel="Agent Token (T2)"
                       toLabel="MCP Token (T3)"
+                      expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
                     />
                   </>
                 );
@@ -1706,7 +1710,7 @@ const TestCard = ({ title, status, error, onTest, onFix, onUpdate, updateLabel, 
   );
 };
 
-function TokenLineageDiff({ fromDecoded, toDecoded, fromLabel, toLabel }) {
+function TokenLineageDiff({ fromDecoded, toDecoded, fromLabel, toLabel, expectedChanges }) {
   const [open, setOpen] = React.useState(false);
   if (!fromDecoded?.payload || !toDecoded?.payload) return null;
 
@@ -1726,22 +1730,33 @@ function TokenLineageDiff({ fromDecoded, toDecoded, fromLabel, toLabel }) {
       else if (tStr === undefined) kind = 'removed';
       else if (fStr !== tStr) kind = 'changed';
       else kind = 'same';
-      return { k, fStr, tStr, kind };
+      const expected = expectedChanges ? expectedChanges.includes(k) : false;
+      return { k, fStr, tStr, kind, expected };
     })
     .sort((a, b) => {
-      const ORDER = { changed: 0, added: 1, removed: 2, same: 3 };
-      return ORDER[a.kind] - ORDER[b.kind];
+      // Unexpected changes first, then expected changes, then same
+      const aOrder = a.kind === 'same' ? 3 : (a.expected ? 2.5 : ({ changed: 0, added: 1, removed: 2 })[a.kind]);
+      const bOrder = b.kind === 'same' ? 3 : (b.expected ? 2.5 : ({ changed: 0, added: 1, removed: 2 })[b.kind]);
+      return aOrder - bOrder;
     });
 
   const changed = rows.filter(r => r.kind !== 'same');
   const same = rows.filter(r => r.kind === 'same');
+  const unexpected = changed.filter(r => !r.expected);
+  const expectedCount = changed.filter(r => r.expected).length;
 
   return (
     <div className="tld-wrapper">
       <button type="button" className="tld-toggle" onClick={() => setOpen(o => !o)}>
-        <span className="tld-icon">{open ? '▼' : '▶'}</span>
-        <span className="tld-label">🔀 Token Lineage Diff — {fromLabel || 'Input'} → {toLabel || 'Output'}</span>
-        {changed.length > 0 && (
+        <span className="tld-icon">{open ? '\u25BC' : '\u25B6'}</span>
+        <span className="tld-label">\uD83D\uDD00 Token Lineage Diff \u2014 {fromLabel || 'Input'} \u2192 {toLabel || 'Output'}</span>
+        {unexpected.length > 0 && (
+          <span className="tld-badge tld-badge--unexpected">{unexpected.length} unexpected</span>
+        )}
+        {expectedCount > 0 && (
+          <span className="tld-badge tld-badge--expected">{expectedCount} expected</span>
+        )}
+        {changed.length > 0 && !expectedChanges && (
           <span className="tld-badge">{changed.length} claim{changed.length !== 1 ? 's' : ''} changed</span>
         )}
       </button>
@@ -1751,17 +1766,19 @@ function TokenLineageDiff({ fromDecoded, toDecoded, fromLabel, toLabel }) {
             <span className="tld-col-label tld-col--from">{fromLabel || 'Input Token'}</span>
             <span className="tld-col-label tld-col--to">{toLabel || 'Output Token'}</span>
           </div>
-          {changed.map(({ k, fStr, tStr, kind }) => (
-            <div key={k} className={`tld-row tld-row--${kind}`}>
+          {changed.map(({ k, fStr, tStr, kind, expected }) => (
+            <div key={k} className={`tld-row tld-row--${kind} ${expected ? 'tld-row--expected' : 'tld-row--unexpected'}`}>
               <span className="tld-claim-key">{k}</span>
-              <span className={`tld-kind-badge tld-kind--${kind}`}>{kind}</span>
+              <span className={`tld-kind-badge tld-kind--${kind} ${expected ? 'tld-expected' : 'tld-unexpected'}`}>
+                {kind}{expected ? ' \u2713' : ''}
+              </span>
               <div className="tld-values">
                 {fStr !== undefined && (
-                  <code className="tld-val tld-val--from">{fStr.length > 80 ? fStr.slice(0, 77) + '…' : fStr}</code>
+                  <code className="tld-val tld-val--from">{fStr}</code>
                 )}
-                {kind === 'changed' && <span className="tld-arrow">→</span>}
+                {kind === 'changed' && <span className="tld-arrow">\u2192</span>}
                 {tStr !== undefined && (
-                  <code className="tld-val tld-val--to">{tStr.length > 80 ? tStr.slice(0, 77) + '…' : tStr}</code>
+                  <code className="tld-val tld-val--to">{tStr}</code>
                 )}
               </div>
             </div>
@@ -1774,7 +1791,7 @@ function TokenLineageDiff({ fromDecoded, toDecoded, fromLabel, toLabel }) {
                   <span className="tld-claim-key">{k}</span>
                   <span className="tld-kind-badge tld-kind--same">same</span>
                   <div className="tld-values">
-                    <code className="tld-val tld-val--same">{fStr.length > 80 ? fStr.slice(0, 77) + '…' : fStr}</code>
+                    <code className="tld-val tld-val--same">{fStr}</code>
                   </div>
                 </div>
               ))}

@@ -1301,3 +1301,25 @@ a.pingone-test-button--primary:visited {
   color: #1e40af;
   border: 1px solid #93c5fd;
 }
+
+/* Plan 177-02: Full-value display + expected/unexpected categorization */
+.tld-val {
+  word-break: break-all;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: unset;
+  font-size: 0.82rem;
+}
+.tld-badge--unexpected { background: #fbbf24; color: #78350f; }
+.tld-badge--expected { background: #a7f3d0; color: #065f46; margin-left: 4px; }
+.tld-expected { opacity: 0.75; }
+.tld-row--expected .tld-kind-badge.tld-expected {
+  background: #a7f3d0;
+  color: #065f46;
+}
+.tld-row--expected {
+  opacity: 0.8;
+}
+.tld-unexpected { font-weight: 600; }
