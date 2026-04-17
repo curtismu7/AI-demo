@@ -556,7 +556,7 @@
             },
             {
               "key": "scope",
-              "value": "banking:accounts:read banking:transactions:read banking:transactions:write"
+              "value": "banking:read banking:write"
             },
             {
               "key": "client_id",
@@ -962,7 +962,7 @@
     },
     {
       "key": "scope",
-      "value": "openid profile email banking:agent:invoke",
+      "value": "openid profile email banking:read banking:write",
       "description": "Space-separated scopes"
     },
     {
