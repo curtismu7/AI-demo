@@ -2049,6 +2049,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 181 to break down)
 
+### Phase 182: Public URL for MCP server so external clients like Claude can connect
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 181
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 182 to break down)
+
 ---
 
 ### Phase 124: MFA HITL Indication

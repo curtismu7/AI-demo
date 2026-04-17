@@ -33,6 +33,8 @@ Plan: 2 of 2 (incomplete)
 
 ## Roadmap Evolution
 
+- Phase 182 added: Public URL for MCP server so external clients like Claude can connect
+
 - Phase 181 added: We need to add a training slide out for CUA for AI
 
 - Phase 180 added: Evaluate and implement Google Gemma 4 as another LLM provider
