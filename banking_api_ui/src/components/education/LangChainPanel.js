@@ -22,7 +22,7 @@ const PROVIDER_TABLE = `| Provider   | Package                  | Default model 
 |------------|--------------------------|----------------------------|
 | Groq       | langchain-groq           | llama-3.1-8b-instant       |
 | OpenAI     | langchain-openai         | gpt-4o-mini                |
-| Anthropic  | langchain-anthropic      | claude-3-5-haiku-20241022  |
+| Anthropic  | langchain-anthropic      | claude-haiku-4-20250414  |
 | Google AI  | langchain-google-genai   | gemini-2.0-flash           |
 | Ollama     | langchain-ollama         | llama3.2 (local)           |`;
 

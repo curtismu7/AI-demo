@@ -10,7 +10,7 @@ const { parseWithGroq } = require('./groqNlIntent');
 const { sanitizeNlResult } = require('./nlIntentSanitize');
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-20250414';
 const ANTHROPIC_TIMEOUT_MS = 10000;
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.

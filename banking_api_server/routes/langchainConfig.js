@@ -24,7 +24,7 @@ const PROVIDER_MODELS = {
   ],
   openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   anthropic: [
-    'claude-3-5-haiku-20241022',
+    'claude-haiku-4-20250414',
     'claude-3-5-sonnet-20241022',
     'claude-3-opus-20240229',
   ],
@@ -35,7 +35,7 @@ const PROVIDER_MODELS = {
 const DEFAULT_MODELS = {
   groq: 'llama-3.1-8b-instant',
   openai: 'gpt-4o-mini',
-  anthropic: 'claude-3-5-haiku-20241022',
+  anthropic: 'claude-haiku-4-20250414',
   google: 'gemini-2.0-flash',
   ollama: 'llama3.2',
 };

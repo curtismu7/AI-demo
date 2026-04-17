@@ -35,7 +35,7 @@ async def run(user_msg: str, chat_history: list) -> str:
 const PROVIDERS = [
   { id: 'groq',      label: 'Groq',       package: 'langchain-groq',           defaultModel: 'llama-3.1-8b-instant',      notes: 'Free tier · fastest inference' },
   { id: 'openai',    label: 'OpenAI',     package: 'langchain-openai',          defaultModel: 'gpt-4o-mini',               notes: 'Most capable function calling' },
-  { id: 'anthropic', label: 'Anthropic',  package: 'langchain-anthropic',       defaultModel: 'claude-3-5-haiku-20241022', notes: 'Long context · strong reasoning' },
+  { id: 'anthropic', label: 'Anthropic',  package: 'langchain-anthropic',       defaultModel: 'claude-haiku-4-20250414', notes: 'Long context · strong reasoning' },
   { id: 'google',    label: 'Google AI',  package: 'langchain-google-genai',    defaultModel: 'gemini-2.0-flash',          notes: 'Google Gemini models' },
   { id: 'ollama',    label: 'Ollama',     package: 'langchain-ollama',          defaultModel: 'llama3.2',                  notes: 'Local — no API key needed' },
 ];

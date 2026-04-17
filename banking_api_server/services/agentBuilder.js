@@ -141,7 +141,7 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       // Build Anthropic fallback if available
       if (process.env.ANTHROPIC_API_KEY) {
         fallbackModel = new ChatAnthropic({
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-haiku-4-20250414',
           temperature: 0.7,
           maxTokens: 1024,
           apiKey: process.env.ANTHROPIC_API_KEY,
@@ -150,9 +150,9 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
         console.log('[agentBuilder] Anthropic fallback available for rate-limit errors');
       }
     } else if (process.env.ANTHROPIC_API_KEY) {
-      console.log('[agentBuilder] Using Anthropic (claude-3-5-haiku-20241022)');
+      console.log('[agentBuilder] Using Anthropic (claude-haiku-4-20250414)');
       model = new ChatAnthropic({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-haiku-4-20250414',
         temperature: 0.7,
         maxTokens: 1024,
         apiKey: process.env.ANTHROPIC_API_KEY,

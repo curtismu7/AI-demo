@@ -27,7 +27,7 @@ PROVIDER_MODELS: Dict[str, list[str]] = {
     ],
     "anthropic": [
         "claude-3-5-sonnet-20241022",
-        "claude-3-5-haiku-20241022",
+        "claude-haiku-4-20250414",
         "claude-3-opus-20240229",
     ],
     "google": [
@@ -49,7 +49,7 @@ PROVIDER_MODELS: Dict[str, list[str]] = {
 DEFAULT_MODELS: Dict[str, str] = {
     "groq": "llama-3.1-8b-instant",
     "openai": "gpt-4o-mini",
-    "anthropic": "claude-3-5-haiku-20241022",
+    "anthropic": "claude-haiku-4-20250414",
     "google": "gemini-2.0-flash",
     "ollama": "llama3.2",
     "lmstudio": "default",
