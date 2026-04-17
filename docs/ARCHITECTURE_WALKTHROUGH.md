@@ -23,13 +23,15 @@ Super Banking is a three-layer stack. Each layer has a clear responsibility boun
 | PingOne (`auth.pingone.com`) | Identity provider — issues tokens for all OAuth/OIDC flows |
 | Upstash Redis (Vercel) / SQLite (local) | Session store — persists BFF sessions across serverless invocations |
 
-**OAuth clients (three PingOne apps):**
+**OAuth clients (up to five PingOne apps):**
 
 | Client | Used for | Config key |
 |--------|----------|-----------|
-| Admin OIDC app | Staff login to `/admin`; performs RFC 8693 token exchange to MCP | `PINGONE_AI_CORE_CLIENT_ID` |
-| End-user OIDC app | Customer login to `/dashboard` | `PINGONE_AI_CORE_USER_CLIENT_ID` |
-| Agent actor app (optional) | Client credentials actor token for 2-exchange delegation | `AGENT_OAUTH_CLIENT_ID` |
+| Admin OIDC app | Staff login to `/admin`; initiates RFC 8693 token exchange to MCP | `PINGONE_ADMIN_CLIENT_ID` |
+| End-user OIDC app | Customer login to `/dashboard` | `PINGONE_USER_CLIENT_ID` |
+| Worker app | PingOne Management API calls (user lookups, MFA) | `PINGONE_WORKER_TOKEN_CLIENT_ID` |
+| MCP Token Exchanger | RFC 8693 token exchange to MCP-audience tokens | `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` |
+| AI Agent actor app (optional) | Client credentials actor token for 2-exchange delegation | `PINGONE_AI_AGENT_CLIENT_ID` |
 
 ---
 
@@ -69,7 +71,7 @@ This means a compromised browser session only exposes the session cookie — an 
 
 ## 3. Flow 1: Authorization Code + PKCE (User Login)
 
-**Reference diagram:** [BX-Finance-AuthCode-PKCE-Flow.drawio](./BX-Finance-AuthCode-PKCE-Flow.drawio)
+**Reference diagram:** [Super-Banking-AuthCode-PKCE-Flow.drawio](./Super-Banking-AuthCode-PKCE-Flow.drawio)
 
 **Standards:** [RFC 6749 — OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749) · [RFC 7636 — PKCE](https://datatracker.ietf.org/doc/html/rfc7636) · [RFC 9700 — OAuth 2.0 Security BCP](https://datatracker.ietf.org/doc/html/rfc9700)
 
@@ -98,7 +100,7 @@ This means a compromised browser session only exposes the session cookie — an 
 | Token | Location | Scope | Notes |
 |-------|----------|-------|-------|
 | `code` (authorization code) | BFF memory (transient) | — | One-time use; exchanged in step 6 |
-| `access_token` (user) | BFF session store | `openid profile email offline_access banking:read banking:write...` | Server-side only |
+| `access_token` (user) | BFF session store | `openid profile email offline_access banking:general:read banking:general:write banking:ai:agent...` | Server-side only |
 | `refresh_token` | BFF session store | Same resource | Used by BFF for silent renewal |
 | `id_token` | BFF session store | `openid` | Validated on receipt; sub used for local user lookup |
 | Session cookie | Browser | — | Only credential the browser holds |
@@ -111,7 +113,7 @@ PKCE ensures the party that receives the authorization code at the callback is t
 
 ## 4. Flow 2: CIBA (Client-Initiated Backchannel Authentication)
 
-**Reference diagram:** [BX-Finance-CIBA-Flow.drawio](./BX-Finance-CIBA-Flow.drawio)
+**Reference diagram:** [Super-Banking-CIBA-Flow.drawio](./Super-Banking-CIBA-Flow.drawio)
 
 **Standards:** [OpenID CIBA Core 1.0](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html) · [RFC 9700 — OAuth 2.0 Security BCP](https://datatracker.ietf.org/doc/html/rfc9700)
 
@@ -155,7 +157,7 @@ CIBA triggers when the AI agent attempts a **high-value operation** (amount ≥ 
 
 ## 5. Flow 3: RFC 8693 Token Exchange (MCP Agent Delegation)
 
-**Reference diagram:** [BX-Finance-TokenExchange-Flow.drawio](./BX-Finance-TokenExchange-Flow.drawio)
+**Reference diagram:** [Super-Banking-TokenExchange-Flow.drawio](./Super-Banking-TokenExchange-Flow.drawio)
 
 **Standards:** [RFC 8693 — OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693) · [RFC 9700 §2.8 — Token Exchange Security](https://datatracker.ietf.org/doc/html/rfc9700)
 
@@ -190,7 +192,7 @@ BFF → PingOne:
   audience = banking_mcp_01
 
 PingOne → BFF:
-  MCP access_token { sub: <user-id>, aud: "banking_mcp_01", scope: "banking:accounts:read …" }
+  MCP access_token { sub: <user-id>, aud: "banking_mcp_01", scope: "banking:general:read banking:general:write banking:ai:agent" }
 ```
 
 **Token state after 1-exchange:**
@@ -198,7 +200,7 @@ PingOne → BFF:
 | Token | sub | aud | act claim | Notes |
 |-------|-----|-----|-----------|-------|
 | User session token | `<user-id>` | Admin / user resource | — | Stays in BFF session |
-| MCP token | `<user-id>` | `banking_mcp_01` | Not present | Derived per-request |
+| MCP token | `<user-id>` | `banking_mcp_01` | Not present | The MCP Token Exchanger app (`PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`) authenticates this exchange request to PingOne |
 
 **PingOne requirement:** `may_act` claim on the user access token must name the BFF's `client_id`. This is set via Attribute Mappings on the resource server.
 
@@ -215,8 +217,8 @@ Two sequential RFC 8693 exchanges:
 BFF → PingOne:
   POST /token
   grant_type = client_credentials
-  client_id = AGENT_OAUTH_CLIENT_ID
-  → agent_actor_token { sub: "AGENT_OAUTH_CLIENT_ID" }
+  client_id = PINGONE_AI_AGENT_CLIENT_ID
+  → agent_actor_token { sub: "PINGONE_AI_AGENT_CLIENT_ID" }
 ```
 
 **Exchange 2 — MCP token with act claim:**
@@ -228,7 +230,7 @@ BFF → PingOne:
   actor_token = <agent_actor_token>
   audience = banking_mcp_01
   → MCP token { sub: <user-id>, aud: "banking_mcp_01",
-                act: { sub: "AGENT_OAUTH_CLIENT_ID" } }
+                act: { sub: "PINGONE_AI_AGENT_CLIENT_ID" } }
 ```
 
 **RFC 8693 §4.1 — The `act` claim:**
@@ -244,8 +246,8 @@ The MCP server can inspect `act.sub` to verify the specific agent identity. Ping
 | Token | sub | aud | act claim | Notes |
 |-------|-----|-----|-----------|-------|
 | User session token | `<user-id>` | Admin resource | — | Stays in BFF session |
-| Agent actor token | `AGENT_OAUTH_CLIENT_ID` | Agent gateway | — | Transient, from CC grant |
-| MCP token | `<user-id>` | `banking_mcp_01` | `{ sub: "AGENT_OAUTH_CLIENT_ID" }` | Delegation chain proven |
+| Agent actor token | `PINGONE_AI_AGENT_CLIENT_ID` | Agent gateway | — | Transient, from CC grant |
+| MCP token | `<user-id>` | `banking_mcp_01` | `{ sub: "PINGONE_AI_AGENT_CLIENT_ID" }` | Delegation chain proven |
 
 **Feature flags:**
 
@@ -253,7 +255,8 @@ The MCP server can inspect `act.sub` to verify the specific agent identity. Ping
 |------|--------|
 | `USE_AGENT_ACTOR_FOR_MCP=true` | Enables 2-exchange path at startup |
 | `ff_two_exchange_delegation` | Runtime toggle (same effect) |
-| `SKIP_TOKEN_SIGNATURE_VALIDATION=true` | Dev safety valve — **must be false in production** |
+| `SKIP_TOKEN_SIGNATURE_VALIDATION=true` | Dev safety valve — **must be `false` in production** |
+| `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` | Client ID for MCP Token Exchanger app (both exchange paths) |}
 
 ---
 
