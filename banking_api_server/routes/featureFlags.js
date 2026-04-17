@@ -246,6 +246,17 @@ const FLAG_REGISTRY = [
     defaultValue: false,
     warnIfEnabled: false,
   },
+  // ── WebMCP ────────────────────────────────────────────────────────────────
+  {
+    id:           'ff_webmcp_enabled',
+    name:         'WebMCP — Browser MCP Panel',
+    category:     'WebMCP',
+    description:  'Show the WebMCP interaction panel on the dashboard. Lets users browse MCP tools, call them directly, and see streaming results — all through the BFF proxy (tokens stay server-side).',
+    impact:       'OFF (default) = panel hidden. ON = panel visible on dashboard for logged-in users.',
+    type:         'boolean',
+    defaultValue: false,
+    warnIfEnabled: false,
+  },
 ];
 
 // ---------------------------------------------------------------------------
