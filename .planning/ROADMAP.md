@@ -1932,7 +1932,7 @@ Plans:
 **Goal:** Wire RFC 8693 token exchange into MCP server tool execution path with lazy caching, tool-specific scopes, and backend act claim validation
 **Requirements**: D-01 (lazy+cache), D-02 (backend validates act), D-03 (narrowed scopes), D-04 (hard fail)
 **Depends on:** Phase 171
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 172-01-PLAN.md — TokenCacheService and tool-to-scope mapping

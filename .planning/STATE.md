@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-16T21:26:52.619Z"
+status: planning
+last_updated: "2026-04-17T11:36:03.824Z"
 progress:
-  total_phases: 175
-  completed_phases: 81
-  total_plans: 299
-  completed_plans: 217
+  total_phases: 180
+  completed_phases: 87
+  total_plans: 304
+  completed_plans: 233
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,11 +20,16 @@ progress:
 
 ## Current Position
 
-Phase: 168 (support-http2-stream-from-agent-to-mcp-servers) — EXECUTING
-Plan: 1 of 3
+Phase: 173
+Plan: Not started
 
 ## Roadmap Evolution
 
+- Phase 176 added: Show users in config what LLM we are using and pick the order — LM Studio default, fallback chain, bad LLM should not block
+
+- Phase 175 added: Investigate JSON-RPC and how and when we should be using it
+
+- Phase 174 added: HITL step-up modal — replace toast with blocking modal for MFA and consent flows
 - Phase 173 added: Research and create a frontend using WebMCP from Google
 
 - Phase 172 added: MCP server token exchange — require token exchange at MCP server before forwarding to backend app instead of OAuth pass-through
@@ -54,7 +59,7 @@ Plan: 1 of 3
 
 **Previous:** Phase 147 (get-rid-of-left-agent-keep-the-rest) — ✅ COMPLETE
 **Next:** /gsd-plan-phase 148
-**Status:** Executing Phase 168
+**Status:** Ready to plan
 
 ---
 
