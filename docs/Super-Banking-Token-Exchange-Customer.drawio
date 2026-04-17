@@ -142,7 +142,7 @@
     </mxCell>
 
     <!-- MCP Exchanged Token (2-exchange) -->
-    <mxCell id="mcp-ex-token-2ex" value="&lt;b&gt;MCP Exchanged Token (2-Exchange)&lt;/b&gt;&#xa;sub: user-id&#xa;aud: https://resource-server&#xa;scope: banking:accounts:read&#xa;act: {sub: MCP_CLIENT_ID,&#xa;      act: {sub: AI_AGENT_CLIENT_ID}}" style="rounded=1;arcSize=10;fillColor=#fdba74;strokeColor=#ea580c;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-mcp">
+    <mxCell id="mcp-ex-token-2ex" value="&lt;b&gt;MCP Exchanged Token (2-Exchange)&lt;/b&gt;&#xa;sub: user-id&#xa;aud: https://resource-server&#xa;scope: banking:general:read&#xa;act: {sub: MCP_CLIENT_ID,&#xa;      act: {sub: AI_AGENT_CLIENT_ID}}" style="rounded=1;arcSize=10;fillColor=#fdba74;strokeColor=#ea580c;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-mcp">
       <mxGeometry x="1030" y="25" width="280" height="90" as="geometry" />
     </mxCell>
 
