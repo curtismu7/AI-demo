@@ -2061,15 +2061,17 @@ Plans:
 
 ### Phase 183: MCP tools metadata compliance and token chain logging
 
-**Goal:** [To be planned]
+**Goal:** Make MCP tool definitions fully MCP 2025-11-25 spec-compliant (annotations, titles, icons) and add comprehensive per-tool-call token chain audit logging with visibility in admin audit page and user token panel.
+
 **Requirements**: TBD
 **Depends on:** Phase 182
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 183 to break down)
-
----
+- [x] 183-01-PLAN.md — Tool metadata compliance (titles, icons, annotations for all 9 tools; emit via /tools/list)
+- [x] 183-02-PLAN.md — Token chain audit infrastructure (AuditLogger logTokenChain method, TokenExchangeService upgrade, BankingToolProvider audit calls)
+- [x] 183-03-PLAN.md — Admin audit page token chain tab (eventType='token_chain' filter, specialized table, hover detail view)
+- [x] 183-04-PLAN.md — User token chain panel MCP trail (/api/token-chain mcpToolCallsChain, TokenChainContext integration, TokenChainPanel rendering)
 
 ### Phase 124: MFA HITL Indication
 
