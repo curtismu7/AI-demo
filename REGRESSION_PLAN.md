@@ -80,6 +80,20 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-17 — Bug: Agent "tool_use.input: Input should be a valid dictionary" error
+
+- **Root cause:** Anthropic API requires `tool_use.input` to always be a valid dictionary object. During the LangGraph agent's second iteration (after tool execution), `tool_calls[0].args` for empty-schema tools like `get_my_accounts` could be non-object values (empty string, undefined) — particularly during Groq→Anthropic cross-provider fallback. The `_convertLangChainToolCallToAnthropic` function in `@langchain/anthropic` directly maps `input: toolCall.args` without validation, causing 400 errors.
+- **Symptom:** User asks "Show me my accounts" → spinner timeout → `Could not parse: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages.1.content.0.tool_use.input: Input should be a valid dictionary"}}`
+- **Fix:**
+  1. Added `normalizeToolCallArgs()` function — ensures args is always a plain object; handles string args (JSON.parse), undefined/null/arrays (returns `{}`)
+  2. Normalize args in `agentNode` after LLM returns tool_calls (before passing to toolNode)
+  3. Normalize args in `toolNode` before `tool.invoke()` call
+  4. Use `ToolMessage` instances instead of plain `{ role: 'tool' }` objects for proper cross-provider serialization
+- **Files modified:** `banking_api_server/services/agentBuilder.js`
+- **Regression check:** "Show me my accounts" returns account list; agent works with both Groq and Anthropic providers
+- **Do not break:** `normalizeToolCallArgs()` in agentNode and toolNode; `ToolMessage` instances (not plain objects) for tool responses
+
+
 ### 2026-04-16 — Phase 170: Force HITL for all Transfers in authorization server
 
 - **Requirement:** Security requirement to mandate explicit user approval for every transfer operation.
