@@ -1941,14 +1941,14 @@ Plans:
 
 ### Phase 173: Research and create a frontend using WebMCP from Google
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Build a browser-based MCP interaction panel (prototype) that lets users list and call MCP tools through the BFF proxy, with streaming results, hybrid error handling, and shared agent state — behind a feature flag.
+**Requirements:** [WEBMCP-01: Feature flag gating, WEBMCP-02: Browser MCP client service, WEBMCP-03: Tool interaction panel UI, WEBMCP-04: Shared agent state integration, WEBMCP-05: Hybrid error handling]
 **Depends on:** Phase 172
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 173 to break down)
-
+- [ ] 173-01-PLAN.md — Feature flag + WebMCP client service
+- [ ] 173-02-PLAN.md — WebMCP UI panel + dashboard integration
 ### Phase 174: HITL step-up modal — replace toast with blocking modal for MFA and consent flows
 
 **Goal:** [To be planned]
@@ -1958,6 +1958,26 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 174 to break down)
+
+### Phase 175: Investigate JSON-RPC and how and when we should be using it
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 174
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 175 to break down)
+
+### Phase 176: Show users in config what LLM we are using and pick the order — if first errors go to next, LM Studio default, bad LLM should not stop it from working
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 175
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 176 to break down)
 
 ---
 
