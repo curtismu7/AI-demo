@@ -1981,13 +1981,15 @@ Plans:
 
 ### Phase 177: PingOne Test page — clarify token exchange sections (User+Agent+MCP differences), add subject_token to second exchange, explain IDToken FF bypass
 
-**Goal:** [To be planned]
+**Goal:** Clarify Exchange 2 vs 3 differences, fix TokenLineageDiff truncation, add expected-change categorization, extend diagnosis to validate token claims, add comprehensive auto-fix
 **Requirements**: TBD
 **Depends on:** Phase 176
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 177 to break down)
+- [ ] 177-01-PLAN.md — Clarify Exchange 2 vs 3, add subject token to Exchange 3, ungated ID Token card
+- [ ] 177-02-PLAN.md — Fix TokenLineageDiff truncation + expected-change categorization
+- [ ] 177-03-PLAN.md — Extend diagnosis claim validation + fix button for PingOne config
 
 ---
 
