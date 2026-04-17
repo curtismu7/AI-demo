@@ -668,7 +668,8 @@ router.get('/exchange-id-token-to-mcp', async (req, res) => {
 
 /**
  * GET /api/pingone-test/exchange-user-agent-to-mcp
- * Test exchange user token (authz) and Agent Token (client creds) for MCP token
+ * Phase 184 canonical path: exchange user token (subject) + agent CC token (actor)
+ * for an MCP Gateway token via a single RFC 8693 call.
  */
 router.get('/exchange-user-agent-to-mcp', async (req, res) => {
   const startTime = Date.now();
@@ -681,7 +682,7 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
         success: false,
         error: 'No authorization token found in session. User must log in first.'
       };
-      trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Exchange user token (authz) and Agent Token (client creds) for MCP token');
+      trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 184: exchange user token + agent CC token for MCP Gateway token');
       return res.json(responseData);
     }
 
@@ -742,7 +743,8 @@ router.get('/exchange-user-agent-to-mcp', async (req, res) => {
 
 /**
  * GET /api/pingone-test/exchange-user-to-agent-to-mcp
- * Test exchange user token for Agent Token, then use those 2 for MCP token
+ * Legacy educational flow: exchange user token for agent token, then exchange
+ * user+agent for MCP Server token (two RFC 8693 calls).
  */
 router.get('/exchange-user-to-agent-to-mcp', async (req, res) => {
   const startTime = Date.now();
@@ -913,30 +915,32 @@ router.get('/config', async (req, res) => {
 
 /**
  * POST /api/pingone-test/token-exchange
- * Test token exchange (1-exchange and 2-exchange)
+ * Test token exchange in single or dual mode.
  */
 router.post('/token-exchange', async (req, res) => {
   try {
     await configStore.ensureInitialized();
     
     const { mode = 'single', subjectToken, actorToken } = req.body;
-    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri');
+    const normalizedMode = mode === 'double' ? 'dual' : mode;
+    const mcpServerUri = configStore.getEffective('pingone_resource_mcp_server_uri');
+    const mcpGatewayUri = configStore.getEffective('pingone_resource_mcp_gateway_uri') || mcpServerUri;
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
     
     let result;
-    if (mode === 'single') {
-      result = await oauthService.performTokenExchange(subjectToken, mcpUri, scopes);
-    } else if (mode === 'double') {
+    if (normalizedMode === 'single') {
+      result = await oauthService.performTokenExchange(subjectToken, mcpServerUri, scopes);
+    } else if (normalizedMode === 'dual') {
       // Use MCP Token Exchanger credentials for the exchange authentication
       const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
       const exchangerSecret   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
       if (exchangerClientId && exchangerSecret) {
-        result = await oauthService.performTokenExchangeAs(subjectToken, actorToken, exchangerClientId, exchangerSecret, mcpUri, scopes);
+        result = await oauthService.performTokenExchangeAs(subjectToken, actorToken, exchangerClientId, exchangerSecret, mcpGatewayUri, scopes);
       } else {
-        result = await oauthService.performTokenExchangeWithActor(subjectToken, actorToken, mcpUri, scopes);
+        result = await oauthService.performTokenExchangeWithActor(subjectToken, actorToken, mcpGatewayUri, scopes);
       }
     } else {
-      throw new Error('Invalid mode. Use "single" or "double"');
+      throw new Error('Invalid mode. Use "single", "dual", or "double" (legacy alias).');
     }
     
     // Decode token to show claims
@@ -945,7 +949,7 @@ router.post('/token-exchange', async (req, res) => {
     
     res.json({
       success: true,
-      mode,
+      mode: normalizedMode,
       token: result,
       claims: payload
     });
@@ -1167,30 +1171,32 @@ router.get('/users', async (req, res) => {
 
 /**
  * POST /api/pingone-test/token-exchange
- * Test token exchange (1-exchange and 2-exchange)
+ * Test token exchange in single or dual mode.
  */
 router.post('/token-exchange', async (req, res) => {
   try {
     await configStore.ensureInitialized();
     
     const { mode = 'single', subjectToken, actorToken } = req.body;
-    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri');
+    const normalizedMode = mode === 'double' ? 'dual' : mode;
+    const mcpServerUri = configStore.getEffective('pingone_resource_mcp_server_uri');
+    const mcpGatewayUri = configStore.getEffective('pingone_resource_mcp_gateway_uri') || mcpServerUri;
     const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
     
     let result;
-    if (mode === 'single') {
-      result = await oauthService.performTokenExchange(subjectToken, mcpUri, scopes);
-    } else if (mode === 'double') {
+    if (normalizedMode === 'single') {
+      result = await oauthService.performTokenExchange(subjectToken, mcpServerUri, scopes);
+    } else if (normalizedMode === 'dual') {
       // Use MCP Token Exchanger credentials for the exchange authentication
       const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
       const exchangerSecret   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
       if (exchangerClientId && exchangerSecret) {
-        result = await oauthService.performTokenExchangeAs(subjectToken, actorToken, exchangerClientId, exchangerSecret, mcpUri, scopes);
+        result = await oauthService.performTokenExchangeAs(subjectToken, actorToken, exchangerClientId, exchangerSecret, mcpGatewayUri, scopes);
       } else {
-        result = await oauthService.performTokenExchangeWithActor(subjectToken, actorToken, mcpUri, scopes);
+        result = await oauthService.performTokenExchangeWithActor(subjectToken, actorToken, mcpGatewayUri, scopes);
       }
     } else {
-      throw new Error('Invalid mode. Use "single" or "double"');
+      throw new Error('Invalid mode. Use "single", "dual", or "double" (legacy alias).');
     }
     
     // Decode token to show claims
@@ -1199,7 +1205,7 @@ router.post('/token-exchange', async (req, res) => {
     
     res.json({
       success: true,
-      mode,
+      mode: normalizedMode,
       token: result,
       claims: payload
     });
