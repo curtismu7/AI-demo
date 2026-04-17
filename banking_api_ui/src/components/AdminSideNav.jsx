@@ -104,6 +104,7 @@ export default function AdminSideNav({ user }) {
         { label: 'Client Registration', path: '/client-registration', icon: '📝' },
         { label: 'Scope Audit', path: '/scope-audit', icon: '🔎' },
         { label: 'Scope Reference', path: '/scope-reference', icon: '📚' },
+        { label: 'User Delegation', path: '/delegation', icon: '🤝' },
       ],
     },
     {
