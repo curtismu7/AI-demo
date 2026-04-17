@@ -22,6 +22,7 @@ import { useAgentUiMode } from '../context/AgentUiModeContext';
 import Fido2Challenge from './Fido2Challenge';
 import { useCurrentUserTokenEvent } from '../hooks/useCurrentUserTokenEvent';
 import './UserDashboard.css';
+import DashboardHeader from './DashboardHeader';
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -1734,6 +1735,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
+      <DashboardHeader variant="customer" />
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div className="dashboard-toolbar" role="toolbar" aria-label="Dashboard actions">

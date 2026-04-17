@@ -18,6 +18,7 @@ import SplitPaneLayout from './SplitPaneLayout';
 import ArchitectureTabsPanel from './ArchitectureTabsPanel';
 import ApiCallsModal from './ApiCallsModal';
 import AgentUiModeToggle from './AgentUiModeToggle';
+import DashboardHeader from './DashboardHeader';
 
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
@@ -316,6 +317,7 @@ const Dashboard = ({ user, onLogout }) => {
       <a href="#admin-dashboard-main" className="dash-skip-link">
         Skip to admin content
       </a>
+      <DashboardHeader variant="admin" />
 
       <div
         className={`app-page-shell__body app-page-shell__body--wide ${agentPlacement === 'bottom' ? 'app-page-shell__body--embed-agent' : ''}`}
