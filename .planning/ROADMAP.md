@@ -2039,6 +2039,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 180 to break down)
 
+### Phase 181: We need to add a training slide out for CUA for AI
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 180
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 181 to break down)
+
 ---
 
 ### Phase 124: MFA HITL Indication

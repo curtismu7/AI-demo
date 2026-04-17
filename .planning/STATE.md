@@ -33,6 +33,8 @@ Plan: 2 of 2 (incomplete)
 
 ## Roadmap Evolution
 
+- Phase 181 added: We need to add a training slide out for CUA for AI
+
 - Phase 180 added: Evaluate and implement Google Gemma 4 as another LLM provider
 
 - Phase 179 READY: Add dropdown for user to choose which LLM to use (1/1 plans incomplete)
