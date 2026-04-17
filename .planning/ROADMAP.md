@@ -1999,11 +1999,11 @@ Plans:
 **Goal:** Create comprehensive Agentic Trust education content mapping 6 security pillars (credential replay prevention, rogue agent prevention, impersonation/delegation, per-hop token exchange, least privilege scope narrowing, last-mile vault) to the banking demo implementation, with interactive flow diagram and threat model framing.
 **Requirements**: TRUST-01, TRUST-02, TRUST-03, TRUST-04, TRUST-05
 **Depends on:** Phase 177
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 178-01-PLAN.md — Agentic Trust education page with 6 pillars, flow diagram, threat model
-- [ ] 178-02-PLAN.md — Scope narrowing visualization and last-mile vault education on PingOne Test page
+- [x] 178-01-PLAN.md — Agentic Trust education page with 6 pillars, flow diagram, threat model
+- [x] 178-02-PLAN.md — Scope narrowing visualization and last-mile vault education on PingOne Test page
 
 
 
@@ -2464,7 +2464,7 @@ Plans:
 
 **Requirements**: SIDE-155-01 (sidebar menu component), SIDE-155-02 (icon + label styling), SIDE-155-03 (hierarchical menus), SIDE-155-04 (verify all links), SIDE-155-05 (global integration)
 **Depends on:** Phase 154
-**Plans:** 4 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] [155-01-PLAN.md](.planning/phases/155-redesign-left-sidebar-as-unified-navigation-menu/155-01-PLAN.md) — AdminSideNav component + AdminLayout wrapper + CSS styling (COMPLETE — AdminSideNav.jsx, AdminSideNav.css, AdminLayout.jsx created)
