@@ -884,9 +884,9 @@ export class BankingMCPServer extends EventEmitter {
       
       // Validate token exchange request
       const tokenExchangeRequest = {
-        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange' as const,
         subject_token: body.subject_token,
-        subject_token_type: body.subject_token_type || 'urn:ietf:params:oauth:token-type:access_token',
+        subject_token_type: (body.subject_token_type || 'urn:ietf:params:oauth:token-type:access_token') as 'urn:ietf:params:oauth:token-type:access_token',
         actor_token: body.actor_token,
         actor_token_type: body.actor_token_type,
         requested_token_type: body.requested_token_type,
@@ -902,7 +902,7 @@ export class BankingMCPServer extends EventEmitter {
       const config = loadConfiguration();
       const tokenExchangeConfig = {
         pingoneBaseUrl: config.pingone.baseUrl,
-        environmentId: config.pingone.environmentId,
+        environmentId: config.pingone.environmentId || '',
         clientId: config.pingone.clientId,
         clientSecret: config.pingone.clientSecret,
         requireMayAct: config.requireMayAct === 'true',
@@ -961,7 +961,7 @@ export class BankingMCPServer extends EventEmitter {
   private async parseRequestBody(req: any): Promise<any> {
     return new Promise((resolve, reject) => {
       let body = '';
-      req.on('data', chunk => {
+      req.on('data', (chunk: string) => {
         body += chunk.toString();
       });
       req.on('end', () => {

@@ -49,6 +49,7 @@ export interface TokenInfo {
 
 export interface PingOneConfig {
   baseUrl: string;
+  environmentId?: string;
   clientId: string;
   clientSecret: string;
   tokenIntrospectionEndpoint: string;
@@ -102,7 +103,10 @@ export enum AuthErrorCodes {
   USER_AUTHORIZATION_REQUIRED = MCPErrorCode.UNAUTHORIZED,
   TOKEN_EXPIRED = MCPErrorCode.TOKEN_EXPIRED,
   INSUFFICIENT_SCOPE = MCPErrorCode.INSUFFICIENT_SCOPE,
-  TOKEN_REFRESH_FAILED = MCPErrorCode.INTERNAL_ERROR
+  TOKEN_REFRESH_FAILED = MCPErrorCode.INTERNAL_ERROR,
+  INVALID_AUTHORIZATION_CODE = MCPErrorCode.INVALID_REQUEST,
+  INVALID_PARAMS = MCPErrorCode.INVALID_PARAMS,
+  INVALID_TOKEN = MCPErrorCode.INVALID_TOKEN
 }
 
 export class AuthenticationError extends Error {

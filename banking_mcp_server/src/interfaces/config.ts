@@ -31,6 +31,11 @@ export interface BankingMCPServerConfig {
   bankingApi: BankingAPIConfig;
   security: SecurityConfig;
   logging: LoggingConfig;
+  requireMayAct?: string;
+  bffClientId?: string;
+  expectedActClientId?: string;
+  expectedActSub?: string;
+  resourceUri?: string;
 }
 
 export interface EnvironmentVariables {

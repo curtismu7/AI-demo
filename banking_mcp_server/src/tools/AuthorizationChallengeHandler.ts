@@ -171,7 +171,7 @@ export class AuthorizationChallengeHandler {
         return {
           success: false,
           error: error.message,
-          errorCode: error.code
+          errorCode: String(error.code)
         };
       }
 
@@ -301,7 +301,7 @@ export class AuthorizationChallengeHandler {
 
     if (error instanceof AuthenticationError) {
       errorMessage = error.message;
-      errorCode = error.code;
+      errorCode = String(error.code);
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }

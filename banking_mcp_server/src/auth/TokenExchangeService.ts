@@ -43,7 +43,7 @@ export class TokenExchangeService {
       client_id: this.config.clientId,
       subject: 'unknown', // Will be updated after validation
       scopes: request.scope ? request.scope.split(' ') : [],
-      resource: request.resource,
+      resource: Array.isArray(request.resource) ? request.resource[0] : request.resource,
       audience: request.audience,
       success: false,
       request_id: this.generateRequestId()
@@ -344,6 +344,7 @@ export class TokenExchangeService {
    * Validate nested act claim for multi-hop delegation
    */
   private validateNestedActClaim(act: ActClaim['act'], result: TokenExchangeValidationResult): void {
+    if (!act) return;
     if (this.config.expectedActClientId && act.client_id && act.client_id !== this.config.expectedActClientId) {
       result.errors.push(
         `Nested act.client_id mismatch. Expected: ${this.config.expectedActClientId}, Got: ${act.client_id}`
