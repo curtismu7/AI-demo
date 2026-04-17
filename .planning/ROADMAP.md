@@ -1944,7 +1944,7 @@ Plans:
 **Goal:** Build a browser-based MCP interaction panel (prototype) that lets users list and call MCP tools through the BFF proxy, with streaming results, hybrid error handling, and shared agent state — behind a feature flag.
 **Requirements:** [WEBMCP-01: Feature flag gating, WEBMCP-02: Browser MCP client service, WEBMCP-03: Tool interaction panel UI, WEBMCP-04: Shared agent state integration, WEBMCP-05: Hybrid error handling]
 **Depends on:** Phase 172
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 173-01-PLAN.md — Feature flag + WebMCP client service
