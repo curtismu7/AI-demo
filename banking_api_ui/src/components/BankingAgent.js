@@ -35,6 +35,7 @@ import { isBankingAgentFloatingDefaultOpen } from '../utils/bankingAgentFloating
 import { isPublicMarketingAgentPath } from '../utils/embeddedAgentFabVisibility';
 import AgentConsentModal from './AgentConsentModal';
 import TransactionConsentModal from './TransactionConsentModal';
+import OtpStepUpModal from './OtpStepUpModal';
 import bffAxios from '../services/bffAxios';
 import './BankingAgent.css';
 
@@ -868,6 +869,10 @@ export default function BankingAgent({
   /** User declined high-value consent — tools/chat disabled until sign-out (agentAccessConsent). */
   // Always start false — the block is session-scoped, not page-load-scoped.
   // Clear any stale localStorage value immediately so refresh/login never shows the banner.
+  // OTP step-up modal state (Phase 174)
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpContextLine, setOtpContextLine] = useState('');
+  const pendingOtpActionRef = useRef(null);
   const [consentBlocked, setConsentBlocked] = useState(false);
   /** Group expand/collapse state for chip categories — defaults per D-06, persisted in localStorage. */
   const [chipGroupsState, setChipGroupsState] = useState(() => {
@@ -916,7 +921,7 @@ export default function BankingAgent({
         type="button"
         className="ba-action-item ba-action-item--icon-text"
         onClick={() => handleActionClick(action.id)}
-        disabled={loading || (consentBlocked && action.id !== 'logout')}
+        disabled={loading || (consentBlocked && action.id !== 'logout') || (showOtpModal && action.id !== 'logout')}
         title={textLabel || action.desc}
       >
         <span className="ba-action-item__icon">{emoji}</span>
@@ -1830,14 +1835,27 @@ export default function BankingAgent({
           setHitlPendingIntent({ actionId, form, intentPayload, threshold: normalized.hitl_threshold_usd ?? 500 });
         } else if (normalized.step_up_required === true || normalized.error === 'step_up_required') {
           const stepUpMethod = normalized.step_up_method || 'email';
-          const isHITL = normalized.isHITL === true;
-          pendingStepUpActionRef.current = { actionId, form, method: stepUpMethod };
-          const stepUpMessageBody = stepUpMethod === 'ciba'
-            ? `🔐 **Additional verification required.**\n\nCIBA push sent to your device — waiting for approval…\n\nApprove the request on your registered device and your action will resume automatically.`
-            : `🔐 **Additional verification required.**\n\nEmail OTP sent to your registered email — waiting for verification…\n\nComplete the verification and your action will resume automatically.`;
-          addMessage('assistant', stepUpMessageBody, actionId);
-          window.dispatchEvent(new CustomEvent('agentStepUpRequested', { detail: { step_up_method: stepUpMethod, isHITL } }));
+          
+          // Set context for modal
+          let contextLine = 'Identity verification required';
+          if (normalized.step_up_reason) {
+            contextLine = normalized.step_up_reason;
+          } else if (normalized.amount_threshold && normalized.transaction_amount > normalized.amount_threshold) {
+            const threshold = normalized.amount_threshold;
+            contextLine = `Transfer over $${threshold} requires identity verification`;
+          } else if (form) {
+            contextLine = 'This action requires identity verification';
+          }
+          
+          // Store pending action and show modal
+          setOtpContextLine(contextLine);
+          pendingOtpActionRef.current = { actionId, form };
+          setShowOtpModal(true);
+          
+          // Show waiting message
+          addMessage('assistant', '🔐 Waiting for MFA verification… Enter the code from your email in the modal above.', `mfa-step-${Date.now()}`);
           toast.dismiss(toastId);
+          agentFlowDiagram.completeMfaChallenge(null); // Pending
           setLoading(false);
           return;
         } else if (normalized.authChallenge && normalized.authChallenge.authorizationUrl) {
@@ -2539,6 +2557,27 @@ export default function BankingAgent({
   // Float mode should return nothing when the dedicated /agent page is active
   if (!isInline && isAgentPage) return null;
 
+  // OTP modal handlers (Phase 174)
+  const handleOtpSubmit = (otp) => {
+    if (pendingOtpActionRef.current) {
+      const { actionId, form } = pendingOtpActionRef.current;
+      pendingOtpActionRef.current = null;
+      setShowOtpModal(false);
+      // Verify MFA in flow diagram
+      agentFlowDiagram.completeMfaChallenge(true);
+      // Retry the original action with MFA verified
+      runAction(actionId, form);
+    }
+  };
+
+  const handleOtpCancel = () => {
+    setShowOtpModal(false);
+    setOtpContextLine('');
+    pendingOtpActionRef.current = null;
+    addMessage('assistant', 'MFA request was cancelled. Please try again if needed.', 'mfa-cancelled');
+    agentFlowDiagram.completeMfaChallenge(false);
+  };
+
   const floatShell = (
     <div
       className={`banking-agent-float-root${distinctFloatingChrome && !isInline ? ' banking-agent-float-root--distinct' : ''}`}
@@ -2950,6 +2989,14 @@ export default function BankingAgent({
                 }}
               />
             )}
+
+            {/* OTP Step-Up Modal (Phase 174) */}
+            <OtpStepUpModal
+              show={showOtpModal}
+              contextLine={otpContextLine}
+              onSubmit={handleOtpSubmit}
+              onCancel={handleOtpCancel}
+            />
 
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">
