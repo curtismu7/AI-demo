@@ -2009,6 +2009,23 @@ Plans:
 
 
 
+### Phase 179: Add dropdown for user to choose which LLM to use — when they select it, show config for that model
+
+**Goal:** Replace LLM provider button row with a dropdown selector that shows contextual config (model picker + API key) for the selected provider only.
+**Requirements**: LLM-01
+**Depends on:** Phase 178
+**Plans:** 1 plan
+
+Plans:
+- [ ] 179-01-PLAN.md — Refactor LangChainAgentConfig to dropdown provider + model selector
+
+
+
+
+
+
+
+
 ---
 
 ### Phase 124: MFA HITL Indication
