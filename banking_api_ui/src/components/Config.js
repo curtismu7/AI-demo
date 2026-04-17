@@ -409,7 +409,7 @@ function LangChainAgentConfig() {
     { id: 'openai',    label: 'OpenAI',     placeholder: 'sk-…'           },
     { id: 'anthropic', label: 'Anthropic',  placeholder: 'sk-ant-…'       },
     { id: 'google',    label: 'Google AI',  placeholder: 'AIza…'          },
-    { id: 'ollama',    label: 'Ollama',     placeholder: '(local — no key needed)' },
+    { id: 'ollama',    label: 'Local Model (LM Studio / Ollama)',     placeholder: '(local — no key needed)' },
   ];
 
   useEffect(() => {
@@ -553,7 +553,7 @@ function LangChainAgentConfig() {
         </div>
       ) : (
         <p style={{ fontSize: 13, color: '#666', margin: '8px 0', padding: '8px 0', borderTop: '1px solid #eee' }}>
-          Ollama runs locally — no API key needed. Make sure the Ollama server is running on your machine.
+          Runs locally via LM Studio or Ollama — no API key needed. Make sure your local inference server is running.
         </p>
       )}
 

@@ -49,7 +49,7 @@ Only route to education panel mcp-protocol when the user asks HOW MCP works or W
 If the user asks to pay, transfer, or send money involving a "credit card", "credit account", or "investment account" → {"kind":"none","message":"This demo only supports Checking and Savings accounts. Credit cards and investment accounts are not available."}`;
 
 const LM_STUDIO_BASE_URL = process.env.LM_STUDIO_BASE_URL || '';
-const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || '';
+const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'gemma-4-4b';
 const LM_STUDIO_TIMEOUT_MS = 5000;
 
 /**
