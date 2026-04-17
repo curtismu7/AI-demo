@@ -1984,12 +1984,12 @@ Plans:
 **Goal:** Clarify Exchange 2 vs 3 differences, fix TokenLineageDiff truncation, add expected-change categorization, extend diagnosis to validate token claims, add comprehensive auto-fix
 **Requirements**: TBD
 **Depends on:** Phase 176
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 177-01-PLAN.md — Clarify Exchange 2 vs 3, add subject token to Exchange 3, ungated ID Token card
-- [ ] 177-02-PLAN.md — Fix TokenLineageDiff truncation + expected-change categorization
-- [ ] 177-03-PLAN.md — Extend diagnosis claim validation + fix button for PingOne config
+- [x] 177-01-PLAN.md — Clarify Exchange 2 vs 3, add subject token to Exchange 3, ungated ID Token card
+- [x] 177-02-PLAN.md — Fix TokenLineageDiff truncation + expected-change categorization
+- [x] 177-03-PLAN.md — Extend diagnosis claim validation + fix button for PingOne config
 
 ---
 
