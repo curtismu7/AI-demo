@@ -9,7 +9,7 @@ import { Redis } from '@upstash/redis';
 export interface AuditEvent {
   eventId: string;
   timestamp: string;
-  eventType: 'banking_operation' | 'authentication' | 'authorization' | 'session_management';
+  eventType: 'banking_operation' | 'authentication' | 'authorization' | 'session_management' | 'token_chain';
   operation: string;
   userId?: string;
   agentId?: string;
@@ -45,7 +45,7 @@ export interface BankingOperationAudit {
 }
 
 export interface AuthenticationAudit {
-  operation: 'agent_token_validation' | 'user_authorization' | 'token_refresh' | 'token_revocation';
+  operation: 'agent_token_validation' | 'user_authorization' | 'token_refresh' | 'token_revocation' | 'token_exchange';
   tokenType?: 'agent' | 'user' | 'refresh' | 'exchanged';
   scopes?: string[];
   grantType?: string;
@@ -57,6 +57,35 @@ export interface SessionAudit {
   sessionDuration?: number;
   tokensAssociated?: boolean;
   cleanupReason?: string;
+}
+
+export interface UserTokenInfo {
+  sub: string;              // User subject (PingOne user ID)
+  scope: string[];          // Scopes on incoming token
+  aud?: string;             // Audience
+  issuedAt: string;         // ISO timestamp
+  expiresAt?: string;       // ISO timestamp or "never" if persistent
+  tokenId?: string;         // jti claim (for token tracking)
+}
+
+export interface ExchangedTokenInfo {
+  sub: string;              // Agent/MCP server subject (for delegation tracking)
+  act?: {                   // RFC 8693 actor claim (multi-hop delegation)
+    iss: string;
+    sub: string;
+  };
+  aud?: string;
+  scope: string[];
+  issuedAt: string;
+  expiresAt?: string;
+  tokenId?: string;
+}
+
+export interface TokenChainExecutionResult {
+  success: boolean;
+  errorCode?: string;
+  duration: number;         // ms
+  toolResultSummary?: string;  // e.g. "3 accounts returned", "transfer completed", etc.
 }
 
 /**
@@ -326,6 +355,81 @@ export class AuditLogger {
     await this.logger.info('Session management audit', {
       auditEvent,
       operation: 'audit_session'
+    });
+    await this.writeToRedis(auditEvent);
+  }
+
+  /**
+   * Log a token chain audit event for an MCP tool call
+   * Captures complete token lineage and execution outcome per call
+   * Per D-03, D-04: Full lifecycle logging with lineage tracking
+   */
+  async logTokenChain(
+    toolName: string,
+    chainIndex: number,  // ordinal in session: 1st call, 2nd call, 3rd call...
+    userTokenInfo: UserTokenInfo,
+    exchangedTokenInfo: ExchangedTokenInfo | null,  // null if not exchanged
+    context: {
+      sessionId: string;
+      userId?: string;
+      ipAddress?: string;
+      userAgent?: string;
+    },
+    toolExecutionStatus: 'started' | 'completed' | 'failed',
+    executionResult: TokenChainExecutionResult
+  ): Promise<void> {
+    const baseEvent = this.createBaseAuditEvent(
+      'token_chain',       // event type
+      `tool_call_${toolName}`,
+      executionResult.success ? 'success' : 'failure',
+      {
+        sessionId: context.sessionId,
+        userId: context.userId,
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+        resourceId: toolName,
+        resourceType: 'transaction',  // tool calls are like transactions
+        errorCode: executionResult.errorCode,
+        duration: executionResult.duration
+      }
+    );
+
+    const auditEvent: AuditEvent = {
+      ...baseEvent,
+      tokenType: exchangedTokenInfo ? 'exchanged' : 'user',
+      scope: userTokenInfo.scope,  // Track scopes on this audit event
+      details: {
+        toolName,
+        chainIndex,           // Track call order in session
+        userToken: {
+          sub: userTokenInfo.sub,
+          scope: userTokenInfo.scope,
+          issuedAt: userTokenInfo.issuedAt,
+          exp: userTokenInfo.expiresAt,
+          jti: userTokenInfo.tokenId
+        },
+        exchangedToken: exchangedTokenInfo ? {
+          sub: exchangedTokenInfo.sub,
+          act: exchangedTokenInfo.act,  // RFC 8693 delegation chain
+          aud: exchangedTokenInfo.aud,
+          scope: exchangedTokenInfo.scope,
+          issuedAt: exchangedTokenInfo.issuedAt,
+          exp: exchangedTokenInfo.expiresAt,
+          jti: exchangedTokenInfo.tokenId
+        } : null,
+        toolExecutionStatus,
+        result: {
+          success: executionResult.success,
+          errorCode: executionResult.errorCode,
+          duration: executionResult.duration,
+          summary: executionResult.toolResultSummary
+        }
+      }
+    };
+
+    await this.logger.info('Token chain audit', {
+      auditEvent,
+      operation: 'audit_token_chain'
     });
     await this.writeToRedis(auditEvent);
   }

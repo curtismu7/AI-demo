@@ -4,6 +4,8 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
+import { Logger } from '../utils/Logger';
+import { AuditLogger } from '../utils/AuditLogger';
 import { 
   TokenExchangeRequest, 
   TokenExchangeResponse, 
@@ -21,9 +23,13 @@ import { AuthenticationError, AuthErrorCodes } from '../interfaces/auth';
 export class TokenExchangeService {
   private client: AxiosInstance;
   private config: TokenExchangeConfig;
+  private logger: Logger;
+  private auditLogger: AuditLogger;
 
-  constructor(config: TokenExchangeConfig) {
+  constructor(config: TokenExchangeConfig, logger?: Logger) {
     this.config = config;
+    this.logger = logger || Logger.getInstance();
+    this.auditLogger = AuditLogger.getInstance(this.logger);
     this.client = axios.create({
       baseURL: `${config.pingoneBaseUrl}/${config.environmentId}/as`,
       timeout: 30000,
@@ -71,18 +77,48 @@ export class TokenExchangeService {
       
       // Update audit log
       auditLog.success = true;
-      this.logAuditEvent(auditLog);
-      
-      console.log(`[TokenExchangeService] Token exchange successful for request ${auditLog.request_id}`);
+
+      // Log to AuditLogger instead of console
+      await this.auditLogger.logAuthentication(
+        'token_exchange',  // operation
+        'success',         // outcome
+        {
+          sessionId: 'unknown',  // Token exchange doesn't have session context
+        },
+        {
+          tokenType: 'exchanged',             // This token is the result of exchange
+          scopes: request.scope ? request.scope.split(' ') : [],
+          grantType: 'urn:ietf:params:oauth:grant-type:token-exchange'  // RFC 8693
+        }
+      );
+
+      this.logger.info(`[TokenExchangeService] Token exchange successful for request ${auditLog.request_id}`);
       
       return tokenResponse;
       
     } catch (error) {
       auditLog.success = false;
       auditLog.error = error instanceof Error ? error.message : 'Unknown error';
-      this.logAuditEvent(auditLog);
-      
-      console.error(`[TokenExchangeService] Token exchange failed for request ${auditLog.request_id}:`, error);
+
+      // Log to AuditLogger instead of console
+      await this.auditLogger.logAuthentication(
+        'token_exchange',  // operation
+        'failure',         // outcome — token exchange failed
+        {
+          sessionId: 'unknown',
+          errorCode: error instanceof AuthenticationError ? String(error.code) : 'UNKNOWN',
+          errorMessage: error instanceof Error ? error.message : String(error)
+        },
+        {
+          tokenType: 'exchanged',
+          scopes: request.scope ? request.scope.split(' ') : [],
+          grantType: 'urn:ietf:params:oauth:grant-type:token-exchange'
+        }
+      );
+
+      this.logger.error(`[TokenExchangeService] Token exchange failed for request ${auditLog.request_id}:`, {
+        error: error instanceof Error ? error.message : String(error)
+      });
       
       if (axios.isAxiosError(error)) {
         const statusCode = error.response?.status;
@@ -154,9 +190,9 @@ export class TokenExchangeService {
       result.isValid = result.errors.length === 0;
       
       if (result.isValid) {
-        console.log(`[TokenExchangeService] Token validation successful for subject: ${tokenInfo.sub}`);
+        this.logger.info(`[TokenExchangeService] Token validation successful for subject: ${tokenInfo.sub}`);
       } else {
-        console.warn(`[TokenExchangeService] Token validation failed: ${result.errors.join(', ')}`);
+        this.logger.warn(`[TokenExchangeService] Token validation failed: ${result.errors.join(', ')}`);
       }
       
       return result;
@@ -489,12 +525,5 @@ export class TokenExchangeService {
    */
   private generateRequestId(): string {
     return `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
-   * Log audit event
-   */
-  private logAuditEvent(audit: TokenExchangeAudit): void {
-    console.log(`[TokenExchangeService] Audit: ${JSON.stringify(audit, null, 2)}`);
   }
 }

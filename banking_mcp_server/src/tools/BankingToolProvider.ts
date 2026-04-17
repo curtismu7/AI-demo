@@ -14,6 +14,7 @@ import { Session, AuthErrorCodes, AuthenticationError } from '../interfaces/auth
 import { BankingAPIError } from '../interfaces/banking';
 import { TokenExchangeService } from '../auth/TokenExchangeService';
 import { TokenExchangeRequest } from '../interfaces/tokenExchange';
+import { AuditLogger, UserTokenInfo, ExchangedTokenInfo, TokenChainExecutionResult } from '../utils/AuditLogger';
 import { tokenCache } from '../services/tokenCacheService';
 import { getScopesForTool } from './toolScopeMap';
 
@@ -33,6 +34,8 @@ export interface BankingToolResult extends ToolResult {
 
 export class BankingToolProvider {
   private authChallengeHandler: AuthorizationChallengeHandler;
+  private auditLogger: AuditLogger;
+  private chainIndexBySession: Map<string, number> = new Map();  // Track call count per session
 
   constructor(
     private apiClient: BankingAPIClient,
@@ -41,6 +44,17 @@ export class BankingToolProvider {
     private tokenExchangeService?: TokenExchangeService
   ) {
     this.authChallengeHandler = new AuthorizationChallengeHandler(authManager, sessionManager);
+    this.auditLogger = AuditLogger.getInstance();
+  }
+
+  /**
+   * Increment and return chain index for session (per-session call count)
+   */
+  private incrementChainIndex(sessionId: string): number {
+    const current = this.chainIndexBySession.get(sessionId) || 0;
+    const next = current + 1;
+    this.chainIndexBySession.set(sessionId, next);
+    return next;
   }
 
   /**
@@ -114,6 +128,94 @@ export class BankingToolProvider {
 
       const executionTime = Date.now() - startTime;
       console.log(`[BankingToolProvider] Tool execution completed: ${toolName} (${executionTime}ms) - Success: ${result.success}`);
+
+      // Log token chain audit event (D-03, D-04)
+      try {
+        const chainIndex = this.incrementChainIndex(session.sessionId);
+        
+        // Extract user token info from session
+        let userToken = session.userTokens;
+        if (Array.isArray(userToken)) {
+          userToken = userToken[0];
+        }
+        
+        const userTokenInfo: UserTokenInfo = userToken
+          ? {
+              sub: 'user',  // Placeholder - actual user ID would come from token claims
+              scope: userToken.scope?.split(' ') || [],
+              issuedAt: new Date(userToken.issuedAt).toISOString(),
+              expiresAt: new Date(userToken.issuedAt.getTime() + userToken.expiresIn * 1000).toISOString(),
+              tokenId: 'user'
+            }
+          : {
+              sub: 'user',
+              scope: [],
+              issuedAt: new Date().toISOString(),
+              expiresAt: undefined,
+              tokenId: 'unknown'
+            };
+
+        // Extract exchanged token info if agent token was used (RFC 8693 delegation)
+        const exchangedTokenInfo: ExchangedTokenInfo | null = agentToken
+          ? {
+              sub: 'mcp-agent',  // MCP server as delegated subject
+              act: {
+                iss: 'pingone',
+                sub: 'user'  // Original actor
+              },
+              scope: tool.requiredScopes || [],
+              issuedAt: new Date().toISOString(),
+              expiresAt: undefined,
+              tokenId: 'exchange'
+            }
+          : null;
+
+        // Construct tool result summary (non-sensitive)
+        let toolResultSummary = '';
+        if (result.success) {
+          if (toolName === 'get_my_accounts' && result.text.includes('accounts')) {
+            toolResultSummary = 'accounts retrieved';
+          } else if (toolName === 'get_account_balance') {
+            toolResultSummary = 'balance retrieved';
+          } else if (toolName === 'get_my_transactions') {
+            toolResultSummary = 'transactions retrieved';
+          } else if (toolName.startsWith('create_')) {
+            toolResultSummary = `${toolName} completed`;
+          } else if (toolName === 'query_user_by_email') {
+            toolResultSummary = 'user query completed';
+          } else if (toolName === 'get_sensitive_account_details') {
+            toolResultSummary = 'sensitive details retrieved';
+          } else {
+            toolResultSummary = `${toolName} executed`;
+          }
+        } else {
+          toolResultSummary = `${toolName} failed`;
+        }
+
+        // Log to AuditLogger
+        await this.auditLogger.logTokenChain(
+          toolName,
+          chainIndex,
+          userTokenInfo,
+          exchangedTokenInfo,
+          {
+            sessionId: session.sessionId,
+            userId: undefined,  // Would need to be extracted from token claims
+            ipAddress: undefined,  // Could be extracted from request context if available
+            userAgent: undefined
+          },
+          'completed',  // toolExecutionStatus
+          {
+            success: result.success || false,
+            errorCode: result.error ? 'TOOL_ERROR' : undefined,
+            duration: executionTime,
+            toolResultSummary
+          }
+        );
+      } catch (auditError) {
+        // Don't let audit failure block tool result
+        console.warn(`[BankingToolProvider] Failed to log token chain: ${auditError instanceof Error ? auditError.message : String(auditError)}`);
+      }
 
       return result;
 
