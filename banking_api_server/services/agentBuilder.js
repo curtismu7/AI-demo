@@ -13,6 +13,7 @@
 const { StateGraph } = require('@langchain/langgraph');
 const { ChatGroq } = require('@langchain/groq');
 const { ChatAnthropic } = require('@langchain/anthropic');
+const { ToolMessage } = require('@langchain/core/messages');
 const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
 const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
@@ -78,6 +79,20 @@ const AgentAnnotation = Annotation.Root({
  * @param {array} config.tokenEvents - Token event tracking array (passed by reference)
  * @returns {Promise<object>} LangGraph agent ready for invoke()
  */
+/**
+ * Ensure tool_call args is always a plain object.
+ * Prevents Anthropic API "Input should be a valid dictionary" errors
+ * when args is empty string, undefined, or other non-object type
+ * (can happen with cross-provider fallback or empty-schema tools).
+ */
+function normalizeToolCallArgs(args) {
+  if (args && typeof args === 'object' && !Array.isArray(args)) return args;
+  if (typeof args === 'string' && args.length > 0) {
+    try { return JSON.parse(args); } catch { return {}; }
+  }
+  return {};
+}
+
 async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = [] }) {
   console.log('[agentBuilder] === CREATE BANKING AGENT START ===');
   console.log('[agentBuilder] userId:', userId);
@@ -197,7 +212,12 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       // Handle LangChain response format - it may have tool_calls or content as array
       let messageContent;
       if (response.tool_calls && response.tool_calls.length > 0) {
-        // If there are tool calls, return the response as-is (tool_calls will be processed by toolNode)
+        // Normalize tool_call args to always be plain objects.
+        // Prevents Anthropic API "Input should be a valid dictionary" errors
+        // in cross-provider fallback or empty-schema tools like get_my_accounts.
+        for (const tc of response.tool_calls) {
+          tc.args = normalizeToolCallArgs(tc.args);
+        }
         return { messages: [response] };
       } else if (Array.isArray(response.content)) {
         // Content might be an array of content blocks
@@ -218,7 +238,8 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
           const tool = tools.find(t => t.name === toolCall.name);
           if (tool) {
             try {
-              const result = await tool.invoke(toolCall.args, {
+              const args = normalizeToolCallArgs(toolCall.args);
+              const result = await tool.invoke(args, {
                 configurable: {
                   agentContext: {
                     agentToken,
@@ -230,17 +251,15 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
               // Ensure result is a string for React rendering
               const resultString = typeof result === 'string' ? result : JSON.stringify(result);
               // Return individual tool message for each tool call
-              toolMessages.push({
-                role: 'tool',
-                tool_call_id: toolCall.id,
+              toolMessages.push(new ToolMessage({
                 content: resultString,
-              });
-            } catch (error) {
-              toolMessages.push({
-                role: 'tool',
                 tool_call_id: toolCall.id,
+              }));
+            } catch (error) {
+              toolMessages.push(new ToolMessage({
                 content: `Error: ${error.message}`,
-              });
+                tool_call_id: toolCall.id,
+              }));
             }
           }
         }
