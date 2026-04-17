@@ -1967,10 +1967,10 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 174
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 175 to break down)
+- [x] TBD (run /gsd-plan-phase 175 to break down) (completed 2026-04-17)
 
 ### Phase 176: Show users in config what LLM we are using and pick the order — if first errors go to next, LM Studio default, bad LLM should not stop it from working
 
