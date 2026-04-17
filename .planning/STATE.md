@@ -107,4 +107,6 @@ Phase 146, Phase 147 (most recent)
 
 ### Pending Todos
 
-- Fix spinner backend activity visibility and performance — .planning/todos/pending/2026-04-16-fix-spinner-backend-activity-visibility-and-performance.md
+No pending todos.
+
+
