@@ -2031,13 +2031,13 @@ Plans:
 
 ### Phase 180: Evaluate and implement Google Gemma 4 as another LLM provider
 
-**Goal:** Deploy banking_mcp_server to EKS with K8s manifests, publicly reachable at api.pingdemo.com with WebSocket + HTTP Streamable transport, OAuth 2.0 Protected Resource auth, CORS, and rate limiting
-**Requirements**: TBD
+**Goal:** Integrate Google Gemma 4 as the default local LLM provider via Ollama/LM Studio, update model dropdowns and labels, create comparison script for intent accuracy evaluation
+**Requirements**: GEMMA-01, GEMMA-02, GEMMA-03, GEMMA-04
 **Depends on:** Phase 179
 **Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 180 to break down)
+- [ ] 180-01-PLAN.md — BFF config + UI labels + comparison script
 
 ### Phase 181: We need to add a training slide out for CUA for AI
 
