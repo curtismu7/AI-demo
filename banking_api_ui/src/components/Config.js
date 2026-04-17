@@ -470,63 +470,92 @@ function LangChainAgentConfig() {
     } catch {}
   };
 
+  const handleModelChange = async (model) => {
+    try {
+      const r = await fetch('/api/langchain/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setStatus(prev => ({ ...prev, model: d.model }));
+      }
+    } catch {}
+  };
+
   if (!status) return <p style={{ padding: '8px', color: '#888' }}>Loading LangChain config…</p>;
 
   const activeProvider = status.provider || 'groq';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 14, color: '#666' }}>
-        Active provider: <strong>{activeProvider}</strong> — model: <code>{status.model}</code>
-      </p>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-        {PROVIDERS.map(p => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => handleProviderSelect(p.id)}
-            className={activeProvider === p.id ? 'btn btn-primary' : 'btn btn-secondary'}
-            style={{ fontSize: 13 }}
-          >
-            {p.label}
-          </button>
-        ))}
+      {/* Provider dropdown */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <label style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>LLM Provider:</label>
+        <select
+          value={activeProvider}
+          onChange={e => handleProviderSelect(e.target.value)}
+          style={{ fontSize: 14, padding: '6px 12px', borderRadius: 6, border: '1px solid #ccc', minWidth: 180 }}
+        >
+          {PROVIDERS.map(p => (
+            <option key={p.id} value={p.id}>{p.label}</option>
+          ))}
+        </select>
       </div>
 
-      {PROVIDERS.filter(p => p.id !== 'ollama').map(p => (
-        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ width: 90, fontSize: 13, fontWeight: 500 }}>{p.label}</span>
-          {status.key_set?.[p.id] ? (
+      {/* Model dropdown */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <label style={{ fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap' }}>Model:</label>
+        <select
+          value={status.model || ''}
+          onChange={e => handleModelChange(e.target.value)}
+          style={{ fontSize: 13, padding: '5px 10px', borderRadius: 6, border: '1px solid #ccc', minWidth: 240 }}
+        >
+          {(status.provider_models?.[activeProvider] || []).map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* API key for active provider only */}
+      {activeProvider !== 'ollama' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid #eee' }}>
+          <span style={{ fontSize: 13, fontWeight: 500, minWidth: 90 }}>API Key:</span>
+          {status.key_set?.[activeProvider] ? (
             <>
               <span style={{ fontSize: 12, color: '#2e7d32' }}>🔒 key set (session only)</span>
               <button type="button" className="btn btn-secondary" style={{ fontSize: 12, padding: '2px 8px' }}
-                onClick={() => handleClearKey(p.id)}>Clear</button>
+                onClick={() => handleClearKey(activeProvider)}>Clear</button>
             </>
           ) : (
             <>
               <input
                 type="password"
-                placeholder={p.placeholder}
-                value={keyInputs[p.id] || ''}
-                onChange={e => setKeyInputs(i => ({ ...i, [p.id]: e.target.value }))}
+                placeholder={PROVIDERS.find(p => p.id === activeProvider)?.placeholder || ''}
+                value={keyInputs[activeProvider] || ''}
+                onChange={e => setKeyInputs(i => ({ ...i, [activeProvider]: e.target.value }))}
                 style={{ flex: 1, minWidth: 200, maxWidth: 340, fontSize: 13, padding: '4px 8px',
                          border: '1px solid #ccc', borderRadius: 4 }}
                 autoComplete="off"
               />
               <button type="button" className="btn btn-primary" style={{ fontSize: 12, padding: '4px 12px' }}
-                onClick={() => handleSaveKey(p.id)} disabled={saving[p.id]}>
-                {saving[p.id] ? '…' : 'Save'}
+                onClick={() => handleSaveKey(activeProvider)} disabled={saving[activeProvider]}>
+                {saving[activeProvider] ? '…' : 'Save'}
               </button>
             </>
           )}
-          {messages[p.id] && (
-            <span style={{ fontSize: 12, color: messages[p.id].startsWith('✓') ? '#2e7d32' : '#c62828' }}>
-              {messages[p.id]}
+          {messages[activeProvider] && (
+            <span style={{ fontSize: 12, color: messages[activeProvider].startsWith('✓') ? '#2e7d32' : '#c62828' }}>
+              {messages[activeProvider]}
             </span>
           )}
         </div>
-      ))}
+      ) : (
+        <p style={{ fontSize: 13, color: '#666', margin: '8px 0', padding: '8px 0', borderTop: '1px solid #eee' }}>
+          Ollama runs locally — no API key needed. Make sure the Ollama server is running on your machine.
+        </p>
+      )}
 
       <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
         Keys are stored in your server session only and are never included in API responses.
