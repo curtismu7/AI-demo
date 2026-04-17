@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import './AuditPage.css';
 
-const EVENT_TYPES = ['', 'banking_operation', 'authentication', 'authorization', 'session_management'];
+const EVENT_TYPES = ['', 'banking_operation', 'authentication', 'authorization', 'session_management', 'token_chain'];
 const OUTCOMES = ['', 'success', 'failure', 'partial'];
 
 const MIN_W = 420;
@@ -23,6 +23,7 @@ export default function AuditPage({ onClose } = {}) {
   const [filterOutcome, setFilterOutcome] = useState('');
   const [filterAgentId, setFilterAgentId] = useState('');
   const [filterOperation, setFilterOperation] = useState('');
+  const [expandedEventId, setExpandedEventId] = useState(null);
 
   // Floating window position + size — centred on first render (not used in popout mode)
   const [pos, setPos] = useState(() => ({
@@ -186,31 +187,91 @@ export default function AuditPage({ onClose } = {}) {
             <tbody>
               {loading && <tr><td colSpan={8} className="audit-table__empty">Loading…</td></tr>}
               {!loading && events.length === 0 && <tr><td colSpan={8} className="audit-table__empty">No audit events found.</td></tr>}
-              {!loading && events.map((ev, i) => (
-                <tr key={ev.eventId ?? i} className={`audit-row audit-row--${ev.outcome}`}>
-                  <td className="audit-cell--time">{formatTime(ev.timestamp)}</td>
-                  <td><span className="audit-badge audit-badge--type">{ev.eventType}</span></td>
-                  <td className="audit-cell--user" title={ev.agentId ?? ''}>{ev.agentId ? ev.agentId.slice(0, 16) + (ev.agentId.length > 16 ? '…' : '') : '—'}</td>
-                  <td className="audit-cell--user">{ev.userId ?? '—'}</td>
-                  <td>{ev.operation ?? ev.resourceType ?? '—'}</td>
-                  <td><span className={`audit-badge audit-badge--outcome audit-badge--outcome--${ev.outcome}`}>{ev.outcome}</span></td>
-                  <td className="audit-cell--duration">{ev.duration != null ? `${ev.duration}ms` : '—'}</td>
-                  <td className="audit-cell--details">
-                    {(ev.details || ev.scope || ev.requestSummary) ? (
-                      <details>
-                        <summary>show</summary>
-                        <pre className="audit-details-pre">{JSON.stringify({
-                          ...(ev.scope ? { scope: ev.scope } : {}),
-                          ...(ev.tokenType ? { tokenType: ev.tokenType } : {}),
-                          ...(ev.requestSummary ? { requestSummary: ev.requestSummary } : {}),
-                          ...(ev.responseSummary ? { responseSummary: ev.responseSummary } : {}),
-                          ...(ev.details ?? {}),
-                        }, null, 2)}</pre>
-                      </details>
-                    ) : '—'}
-                  </td>
-                </tr>
-              ))}
+              {!loading && events.map((ev, i) => {
+                // Special rendering for token_chain events
+                if (ev.eventType === 'token_chain') {
+                  const detail = ev.details || {};
+                  const userToken = detail.userToken || {};
+                  const exchangedToken = detail.exchangedToken;
+                  const result = detail.result || {};
+                  const isExpanded = expandedEventId === (ev.eventId ?? i);
+                  return (
+                    <React.Fragment key={ev.eventId ?? i}>
+                      <tr
+                        className={`audit-row audit-row--${ev.outcome} token-chain-row`}
+                        onClick={() => setExpandedEventId(isExpanded ? null : (ev.eventId ?? i))}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <td className="audit-cell--time">{formatTime(ev.timestamp)}</td>
+                        <td className="tool-name">{detail.toolName || '—'}</td>
+                        <td className="audit-cell--user" title={userToken.sub}>{userToken.sub ? userToken.sub.substring(0, 20) : '—'}</td>
+                        <td className="scopes">{(userToken.scope || []).join(', ') || 'none'}</td>
+                        <td className="exchanged-token">
+                          {exchangedToken ? (
+                            <span title={`Sub: ${exchangedToken.sub || ''}\nScopes: ${(exchangedToken.scope || []).join(', ')}`}>
+                              {(exchangedToken.sub || '').substring(0, 15)}{exchangedToken.act ? ' (delegated)' : ''}
+                            </span>
+                          ) : (
+                            <span className="no-exchange">Direct</span>
+                          )}
+                        </td>
+                        <td><span className={`audit-badge audit-badge--outcome audit-badge--outcome--${result.success ? 'success' : 'failure'}`}>{result.success ? '✓ Success' : '✗ Failed'}</span></td>
+                        <td className="audit-cell--duration">{result.duration != null ? `${result.duration}ms` : '—'}</td>
+                        <td className="audit-cell--details">{isExpanded ? '▾' : '▸'}</td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="token-chain-detail-row">
+                          <td colSpan={8}>
+                            <div className="token-detail">
+                              <div className="token-section">
+                                <h4>User Token</h4>
+                                <pre className="audit-details-pre">{JSON.stringify(userToken, null, 2)}</pre>
+                              </div>
+                              {exchangedToken && (
+                                <div className="token-section">
+                                  <h4>Exchanged Token (Delegation)</h4>
+                                  <pre className="audit-details-pre">{JSON.stringify(exchangedToken, null, 2)}</pre>
+                                </div>
+                              )}
+                              <div className="token-section">
+                                <h4>Execution</h4>
+                                <pre className="audit-details-pre">{JSON.stringify(result, null, 2)}</pre>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                }
+
+                // Default rendering for other event types
+                return (
+                  <tr key={ev.eventId ?? i} className={`audit-row audit-row--${ev.outcome}`}>
+                    <td className="audit-cell--time">{formatTime(ev.timestamp)}</td>
+                    <td><span className="audit-badge audit-badge--type">{ev.eventType}</span></td>
+                    <td className="audit-cell--user" title={ev.agentId ?? ''}>{ev.agentId ? ev.agentId.slice(0, 16) + (ev.agentId.length > 16 ? '…' : '') : '—'}</td>
+                    <td className="audit-cell--user">{ev.userId ?? '—'}</td>
+                    <td>{ev.operation ?? ev.resourceType ?? '—'}</td>
+                    <td><span className={`audit-badge audit-badge--outcome audit-badge--outcome--${ev.outcome}`}>{ev.outcome}</span></td>
+                    <td className="audit-cell--duration">{ev.duration != null ? `${ev.duration}ms` : '—'}</td>
+                    <td className="audit-cell--details">
+                      {(ev.details || ev.scope || ev.requestSummary) ? (
+                        <details>
+                          <summary>show</summary>
+                          <pre className="audit-details-pre">{JSON.stringify({
+                            ...(ev.scope ? { scope: ev.scope } : {}),
+                            ...(ev.tokenType ? { tokenType: ev.tokenType } : {}),
+                            ...(ev.requestSummary ? { requestSummary: ev.requestSummary } : {}),
+                            ...(ev.responseSummary ? { responseSummary: ev.responseSummary } : {}),
+                            ...(ev.details ?? {}),
+                          }, null, 2)}</pre>
+                        </details>
+                      ) : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
