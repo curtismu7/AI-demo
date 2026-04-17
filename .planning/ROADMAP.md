@@ -2402,20 +2402,20 @@ Plans:
 
 **Requirements**: EVAL-150-01, EVAL-150-02
 **Depends on:** Phase 149
-**Plans:** TBD (run /gsd-plan-phase 150 to break down)
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 150 to break down)
+- [ ] 150-01-PLAN.md — Evaluate Anthropic Managed Agents SDK vs current MCP infrastructure
 
 ### Phase 151: Scope vocabulary audit — review docs, code, tests, and PingOne Test page for clean scope alignment
 
-**Goal:** Curated admin activity feed showing meaningful OAuth, token exchange, session, and JWKS events with timeline UI, replacing raw API noise
-**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
+**Goal:** Audit all OAuth scope strings across code, config, docs, tests, and PingOne Test page for consistent vocabulary and clean alignment
+**Requirements**: SCOPE-151-01
 **Depends on:** Phase 150
-**Plans:** 2 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 151 to break down)
+- [ ] 151-01-PLAN.md — Scope vocabulary audit across codebase
 
 ### Phase 152: PingOne Test Page — live integration testing and bug fixes
 
@@ -2432,20 +2432,20 @@ Plans:
 **Goal:** Fix both Postman collections: (1) Super Banking PingOne Test collection — replace broken login GET requests with browser-based auth + sessionCookie variable, add Cookie headers to session-dependent requests. (2) PingOne Authorization Code pi.flow collection — fix redirect_uri from Vercel production to local (api.pingdemo.com:4000), fix callback path (/oauthuser/ → /oauth/user/). Rename BX Finance → Super Banking in pi.flow collection.
 **Requirements**: POST-153-01 (test collection auth fix), POST-153-02 (pi.flow redirect_uri fix), POST-153-03 (BX Finance rename in pi.flow)
 **Depends on:** Phase 152
-**Plans:** 2 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 153 to break down)
+- [ ] 153-01-PLAN.md — Fix Postman collections (auth flow, redirect_uri, rename)
 
 ### Phase 154: Create plan to implement DPoP, research if PingOne SSO supports it, if not how can we simulate it
 
-**Goal:** Curated admin activity feed showing meaningful OAuth, token exchange, session, and JWKS events with timeline UI, replacing raw API noise
-**Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
+**Goal:** Research DPoP (RFC 9449) implementation feasibility with PingOne SSO; create implementation or simulation plan
+**Requirements**: DPOP-154-01
 **Depends on:** Phase 153
-**Plans:** 2 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 154 to break down)
+- [ ] 154-01-PLAN.md — DPoP research and PingOne support assessment
 
 ### Phase 155: Redesign left sidebar as unified navigation menu with icon + label styling [COMPLETE]
 
