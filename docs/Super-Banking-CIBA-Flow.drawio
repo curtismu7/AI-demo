@@ -65,7 +65,7 @@
         </mxCell>
 
         <!-- 2: BFF → PingOne: POST /bc-authorize -->
-        <mxCell id="s2" value="2. POST /bc-authorize: login_hint=user@email, scope=banking:write, binding_message=&quot;Approve transfer&quot;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1">
+        <mxCell id="s2" value="2. POST /bc-authorize: login_hint=user@email, scope=banking:general:write, binding_message=&quot;Approve transfer&quot;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="345" y="165" as="sourcePoint"/>
             <mxPoint x="570" y="165" as="targetPoint"/>

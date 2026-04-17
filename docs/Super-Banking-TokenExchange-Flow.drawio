@@ -100,12 +100,12 @@
         </mxCell>
 
         <!-- Left annotation: token structure -->
-        <mxCell id="l-note1" value="Issued token (no act claim):&lt;br&gt;{ sub: &quot;&amp;lt;user-id&amp;gt;&quot;, aud: &quot;banking_mcp_01&quot;,&lt;br&gt;  scope: &quot;banking:accounts:read …&quot; }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;" vertex="1" parent="1">
+        <mxCell id="l-note1" value="Issued token (no act claim):&lt;br&gt;{ sub: &quot;&amp;lt;user-id&amp;gt;&quot;, aud: &quot;banking_mcp_01&quot;,&lt;br&gt;  scope: &quot;banking:general:read …&quot; }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;" vertex="1" parent="1">
           <mxGeometry x="50" y="370" width="300" height="60" as="geometry"/>
         </mxCell>
 
         <!-- Left note: RFC 8693 -->
-        <mxCell id="l-note2" value="RFC 8693 §2.1 — token-exchange grant type.&lt;br&gt;PingOne must have Token Exchange enabled on the&lt;br&gt;admin OAuth app (PINGONE_AI_CORE_CLIENT_ID)." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;" vertex="1" parent="1">
+        <mxCell id="l-note2" value="RFC 8693 §2.1 — token-exchange grant type.&lt;br&gt;PingOne must have Token Exchange enabled on the&lt;br&gt;admin OAuth app (PINGONE_ADMIN_CLIENT_ID)." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;" vertex="1" parent="1">
           <mxGeometry x="50" y="450" width="300" height="60" as="geometry"/>
         </mxCell>
 
@@ -156,7 +156,7 @@
         <!-- Right steps -->
 
         <!-- R1: BFF → PingOne A: client credentials (actor token) -->
-        <mxCell id="r-s1" value="1. POST /token: grant=client_credentials&lt;br&gt;client_id=AGENT_OAUTH_CLIENT_ID  (actor token)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1">
+        <mxCell id="r-s1" value="1. POST /token: grant=client_credentials&lt;br&gt;client_id=PINGONE_AI_AGENT_CLIENT_ID  (actor token)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="795" y="165" as="sourcePoint"/>
             <mxPoint x="1005" y="165" as="targetPoint"/>
@@ -164,7 +164,7 @@
         </mxCell>
 
         <!-- R2: PingOne A → BFF: agent_actor_token (dashed) -->
-        <mxCell id="r-s2" value="2. agent_actor_token  (sub=AGENT_OAUTH_CLIENT_ID)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="1">
+        <mxCell id="r-s2" value="2. agent_actor_token  (sub=PINGONE_AI_AGENT_CLIENT_ID)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1005" y="210" as="sourcePoint"/>
             <mxPoint x="795" y="210" as="targetPoint"/>
@@ -196,7 +196,7 @@
         </mxCell>
 
         <!-- Right annotation: act claim token structure -->
-        <mxCell id="r-note1" value="Issued token (with act claim):&lt;br&gt;{ sub: &quot;&amp;lt;user-id&amp;gt;&quot;, aud: &quot;banking_mcp_01&quot;,&lt;br&gt;  scope: &quot;banking:accounts:read …&quot;,&lt;br&gt;  act: { sub: &quot;AGENT_OAUTH_CLIENT_ID&quot; } }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;" vertex="1" parent="1">
+        <mxCell id="r-note1" value="Issued token (with act claim):&lt;br&gt;{ sub: &quot;&amp;lt;user-id&amp;gt;&quot;, aud: &quot;banking_mcp_01&quot;,&lt;br&gt;  scope: &quot;banking:general:read …&quot;,&lt;br&gt;  act: { sub: &quot;PINGONE_AI_AGENT_CLIENT_ID&quot; } }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;" vertex="1" parent="1">
           <mxGeometry x="720" y="380" width="320" height="70" as="geometry"/>
         </mxCell>
 
