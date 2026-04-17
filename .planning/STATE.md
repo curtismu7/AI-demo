@@ -33,6 +33,8 @@ Plan: Not started
 
 ## Roadmap Evolution
 
+- Phase 183 added: MCP tools metadata compliance and token chain logging
+
 - Phase 182 added: Public URL for MCP server so external clients like Claude can connect
 
 - Phase 181 added: We need to add a training slide out for CUA for AI

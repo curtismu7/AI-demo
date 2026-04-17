@@ -2059,6 +2059,16 @@ Plans:
 Plans:
 - [ ] 182-01-PLAN.md — K8s manifests (Deployment, Service, Ingress, ConfigMap, Secret) + README docs
 
+### Phase 183: MCP tools metadata compliance and token chain logging
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 182
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 183 to break down)
+
 ---
 
 ### Phase 124: MFA HITL Indication
