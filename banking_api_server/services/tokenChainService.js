@@ -211,6 +211,48 @@ function synthesizeFromSession(accessToken) {
   } catch (_e) { return []; }
 }
 
+/**
+ * Fetch MCP tool calls from audit logs for user.
+ * Returns lightweight tool call events (no full token claims).
+ * Per Phase 183 D-08, D-09: Show MCP delegation trail for users.
+ */
+async function getMCPToolCalls(userId) {
+  try {
+    const mcpPort = process.env.MCP_PORT || 3002;
+    const agentToken = process.env.MCP_AGENT_TOKEN || '';
+    const url = `http://localhost:${mcpPort}/audit?eventType=token_chain`;
+    const response = await fetch(url, {
+      headers: agentToken ? { 'Authorization': `Bearer ${agentToken}` } : {}
+    });
+
+    if (!response.ok) {
+      console.warn('[tokenChainService] getMCPToolCalls: audit fetch failed', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const events = Array.isArray(data) ? data : (data.events || []);
+
+    // Filter to this user's events and extract lightweight view
+    return events
+      .filter(event => !userId || event.userId === userId || event.details?.userToken?.sub === userId)
+      .map(event => ({
+        id: event.eventId,
+        timestamp: event.timestamp,
+        toolName: event.details?.toolName || 'unknown',
+        status: event.details?.result?.success ? 'success' : 'failure',
+        duration: event.details?.result?.duration || 0,
+        chainIndex: event.details?.chainIndex || 0,
+        isDelegated: !!event.details?.exchangedToken,
+        scopes: event.details?.userToken?.scope || []
+      }))
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  } catch (error) {
+    console.error('[tokenChainService] getMCPToolCalls error:', error.message);
+    return [];
+  }
+}
+
 module.exports = {
   trackTokenEvent,
   addExchangeStep,
@@ -219,5 +261,6 @@ module.exports = {
   clearTokenChain,
   classifyTokenType,
   generateTokenDescription,
-  synthesizeFromSession
+  synthesizeFromSession,
+  getMCPToolCalls
 };

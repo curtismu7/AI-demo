@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { getTokenChain, getCurrentTokens, synthesizeFromSession } = require('../services/tokenChainService');
+const { getTokenChain, getCurrentTokens, synthesizeFromSession, getMCPToolCalls } = require('../services/tokenChainService');
 
-// GET /api/token-chain — get token chain for authenticated user
+// GET /api/token-chain — get token chain for authenticated user (including MCP delegation trail)
 router.get('/', async (req, res) => {
   try {
     let tokenChain = await getTokenChain(req.user.id);
@@ -10,11 +10,17 @@ router.get('/', async (req, res) => {
     if (tokenChain.length === 0 && req.session && req.session.oauthTokens && req.session.oauthTokens.accessToken) {
       tokenChain = synthesizeFromSession(req.session.oauthTokens.accessToken);
     }
+    
+    // Fetch MCP tool call delegation trail
+    const mcpToolCallsChain = await getMCPToolCalls(req.user.id);
+    
     res.json({
       tokenChain,
+      mcpToolCallsChain,
       metadata: {
         userId: req.user.id,
         totalEvents: tokenChain.length,
+        totalMCPToolCalls: mcpToolCallsChain.length,
         lastUpdated: new Date().toISOString()
       }
     });

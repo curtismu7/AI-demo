@@ -1,5 +1,6 @@
 // banking_api_ui/src/components/education/TokenChainPanel.js
 import React, { useState, useCallback } from 'react';
+import { useTokenChainOptional } from '../../context/TokenChainContext';
 import './TokenChainPanel.css';
 
 /**
@@ -75,8 +76,12 @@ function StatusBadge({ status }) {
 export default function TokenChainPanel() {
   const [archOpen, setArchOpen] = useState(true);
   const [chainOpen, setChainOpen] = useState(true);
+  const [mcpTrailOpen, setMcpTrailOpen] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
+  const [expandedToolId, setExpandedToolId] = useState(null);
   const [copyFlash, setCopyFlash] = useState(null);
+  const tokenChain = useTokenChainOptional();
+  const mcpToolCalls = tokenChain?.mcpToolCalls || [];
 
   const handleToggleRow = useCallback((id) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -178,6 +183,78 @@ export default function TokenChainPanel() {
               );
             })}
           </ul>
+        )}
+      </div>
+
+      {/* MCP Delegation Trail */}
+      <div className="token-chain-card">
+        <button
+          type="button"
+          className="token-chain-card-head"
+          onClick={() => setMcpTrailOpen((o) => !o)}
+          aria-expanded={mcpTrailOpen}
+        >
+          <div>
+            <div className="token-chain-card-title">🔗 MCP Tool Calls ({mcpToolCalls.length})</div>
+            <div className="token-chain-card-sub">Tools called with your token authority in this session</div>
+          </div>
+          <span className="token-chain-chev" aria-hidden>{mcpTrailOpen ? '▾' : '▸'}</span>
+        </button>
+
+        {mcpTrailOpen && (
+          <div style={{ padding: '12px 16px' }}>
+            {mcpToolCalls.length === 0 ? (
+              <p style={{ color: '#999', fontStyle: 'italic', margin: 0 }}>No MCP tool calls in this session</p>
+            ) : (
+              <ul className="token-chain-list" style={{ gap: '8px' }}>
+                {mcpToolCalls.map((tc) => {
+                  const isExpanded = expandedToolId === tc.id;
+                  return (
+                    <li key={tc.id} className="token-chain-item" style={{ borderLeft: `3px solid ${tc.status === 'success' ? '#28a745' : '#dc3545'}` }}>
+                      <div
+                        className="token-chain-row"
+                        onClick={() => setExpandedToolId(isExpanded ? null : tc.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <span style={{ background: '#e8e8e8', padding: '2px 6px', borderRadius: 3, fontSize: '0.8em', fontWeight: 600 }}>
+                          #{tc.chainIndex}
+                        </span>
+                        <span style={{ fontWeight: 600, color: '#0066cc', flex: 1 }}>{tc.toolName}</span>
+                        <span style={{
+                          fontWeight: 'bold',
+                          color: tc.status === 'success' ? '#28a745' : '#dc3545',
+                          width: 20, textAlign: 'center'
+                        }}>
+                          {tc.status === 'success' ? '✓' : '✗'}
+                        </span>
+                        <span style={{ color: '#666', fontSize: '0.85em' }}>{tc.duration}ms</span>
+                        {tc.isDelegated && (
+                          <span title="Called with delegated token" style={{ fontSize: '1.1em' }}>🔀</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.8em', color: '#999', marginTop: 2, paddingLeft: 28 }}>
+                        {new Date(tc.timestamp).toLocaleTimeString()}
+                      </div>
+                      {isExpanded && (
+                        <div className="token-chain-detail" style={{ marginTop: 8, fontSize: '0.85em' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '4px' }}>
+                            <span style={{ fontWeight: 600, color: '#666' }}>Timestamp:</span>
+                            <span>{new Date(tc.timestamp).toLocaleString()}</span>
+                            <span style={{ fontWeight: 600, color: '#666' }}>CallIndex:</span>
+                            <span>{tc.chainIndex}</span>
+                            <span style={{ fontWeight: 600, color: '#666' }}>Scopes:</span>
+                            <span>{(tc.scopes || []).join(', ') || 'none'}</span>
+                            <span style={{ fontWeight: 600, color: '#666' }}>Delegation:</span>
+                            <span>{tc.isDelegated ? '✓ Token exchanged for MCP agent' : 'Direct user token'}</span>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         )}
       </div>
     </div>

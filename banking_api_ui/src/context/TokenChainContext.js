@@ -14,6 +14,8 @@ export function TokenChainProvider({ children }) {
   const [events, setEvents] = useState([]);
   // Current session token event — shown when no tool events (e.g., on dashboard load)
   const [sessionTokenEvent, setSessionTokenEvent] = useState(null);
+  // MCP tool call delegation trail (fetched from /api/token-chain)
+  const [mcpToolCalls, setMCPToolCalls] = useState([]);
   // History: array of { tool, timestamp, events[] } — hydrated from localStorage on mount
   const [history, setHistory] = useState(() => {
     try {
@@ -65,16 +67,37 @@ export function TokenChainProvider({ children }) {
     setHistory([]);
     setEvents([]);
     setSessionTokenEvent(null);
+    setMCPToolCalls([]);
     try { localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY); } catch {}
+  }, []);
+
+  // Fetch MCP tool calls from /api/token-chain on mount and poll every 15s
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMCPToolCalls = async () => {
+      try {
+        const res = await fetch('/api/token-chain', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) {
+          setMCPToolCalls(data.mcpToolCallsChain || []);
+        }
+      } catch {
+        // Silently fail — user may not be authenticated
+      }
+    };
+    fetchMCPToolCalls();
+    const pollInterval = setInterval(fetchMCPToolCalls, 15000);
+    return () => { cancelled = true; clearInterval(pollInterval); };
   }, []);
 
   const value = useMemo(
     () => {
       // Use tool events if available, otherwise show session token
       const displayEvents = events.length > 0 ? events : (sessionTokenEvent ? [sessionTokenEvent] : []);
-      return { events: displayEvents, history, setTokenEvents, clearEvents, setSessionToken, clearHistory };
+      return { events: displayEvents, history, mcpToolCalls, setTokenEvents, clearEvents, setSessionToken, clearHistory };
     },
-    [events, sessionTokenEvent, history, setTokenEvents, clearEvents, setSessionToken, clearHistory]
+    [events, sessionTokenEvent, history, mcpToolCalls, setTokenEvents, clearEvents, setSessionToken, clearHistory]
   );
 
   return (
