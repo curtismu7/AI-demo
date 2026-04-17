@@ -35,14 +35,14 @@ const TEST_CONFIG = {
     appType: 'AI_AGENT',
     requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: 'https://mcp-gateway.pingdemo.com',
-    spel: 'Exchange 2: Single POST — T1 (user) as subject + Agent CC as actor → MCP token with act claim. Audience: MCP Gateway'
+    spel: 'Exchange 2 (Phase 184): Single POST — T1 (user) as subject + Agent CC as actor → MCP Gateway token with act claim'
   },
   exchange3: {
     appName: 'Super Banking AI Agent App',
     appType: 'AI_AGENT',
     requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:ai:agent'],
     audience: 'https://agent-gateway.pingdemo.com',
-    spel: 'Exchange 3: Two-step chain — Step 1: T1 → Agent token, Step 2: T1 + Agent → MCP token. Audience: Agent Gateway'
+    spel: 'Exchange 3 (Legacy): Two-step chain — Step 1: T1 → Agent token, Step 2: T1 + Agent → MCP token. Audience: Agent Gateway'
   },
   apps: {
     appName: 'Super Banking User App',
@@ -443,7 +443,7 @@ export default function PingOneTestPage() {
       resourceMcpGatewayUri:     { msg: 'Set PINGONE_RESOURCE_MCP_GATEWAY_URI — Audience URI for the MCP Gateway resource server.', url: `${consoleBase}/foundation/Resource/list` },
       resourceAgentGatewayUri:   { msg: 'Set PINGONE_RESOURCE_AGENT_GATEWAY_URI — Audience URI for the Agent Gateway resource server.', url: `${consoleBase}/foundation/Resource/list` },
       'single-exchange':         { msg: 'PingOne error: "At least one scope must be granted" means the MCP Token Exchanger app is missing banking scopes. Fix: PingOne → Applications → Super Banking MCP Token Exchanger → Resources tab → add banking:read, banking:write, banking:admin, banking:sensitive, banking:ai:agent from the Banking resource server. Also enable Token Exchange grant type.', url: `${consoleBase}/application/list` },
-      'double-exchange':         { msg: 'Same as Exchange 1 — MCP Token Exchanger app needs banking scopes. Also verify may_act claim on the user token and actor_token policy in PingOne. Fix: Applications → MCP Token Exchanger → Resources tab.', url: `${consoleBase}/application/list` },
+      'double-exchange':         { msg: 'Phase 184 dual-token exchange needs MCP Gateway alignment: MCP Token Exchanger app must have banking scopes, user token must carry may_act, and actor_token policy must allow gateway exchange. Fix: Applications → MCP Token Exchanger → Resources tab.', url: `${consoleBase}/application/list` },
       apps:                      { msg: 'In PingOne → Worker App → Roles → assign Read Clients / Applications role.', url: `${consoleBase}/application/list` },
       resources:                 { msg: 'In PingOne → Worker App → Roles → assign Read Resource Servers role.', url: `${consoleBase}/foundation/Resource/list` },
       scopes:                    { msg: 'In PingOne → Worker App → Roles → assign Read Scopes role.', url: `${consoleBase}/foundation/Resource/list` },
@@ -664,7 +664,7 @@ export default function PingOneTestPage() {
   const testExchange2 = useCallback(async () => {
     setExchange2Status('running');
     setExchange2Error(null);
-    notifyInfo('Testing User + Agent Token → MCP Token exchange…', { toastId: 'test-exchange2' });
+    notifyInfo('Testing Phase 184 dual-token exchange (User + Agent CC → MCP Gateway)…', { toastId: 'test-exchange2' });
     try {
       const { data } = await apiClient.get('/api/pingone-test/exchange-user-agent-to-mcp');
       if (data.success) {
@@ -675,16 +675,16 @@ export default function PingOneTestPage() {
         if (data.tokenEvents && tokenChainCtx?.setTokenEvents) {
           tokenChainCtx.setTokenEvents('exchange-user-agent-to-mcp', data.tokenEvents);
         }
-        notifySuccess('User + Agent → MCP token exchange succeeded ✓');
+        notifySuccess('Phase 184 dual-token exchange succeeded ✓');
       } else {
         setExchange2Status('failed');
         setExchange2Error(data.error);
-        notifyError(`Exchange 2 failed: ${data.error}`);
+        notifyError(`Phase 184 Exchange 2 failed: ${data.error}`);
       }
     } catch (err) {
       setExchange2Status('failed');
       setExchange2Error(err.message);
-      notifyError(`Exchange 2 error: ${err.message}`);
+      notifyError(`Phase 184 Exchange 2 error: ${err.message}`);
     }
   }, [tokenChainCtx]);
 
@@ -971,7 +971,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                     <option value="basic">Basic (Authorization header)</option>
                     <option value="none">None (no authentication)</option>
                   </select>
-                  <p className="form-hint">Used for RFC 8693 token exchange calls (Exchange 1 / 2 / 3). PingOne AI_AGENT apps typically require <code>post</code>.</p>
+                  <p className="form-hint">Used for RFC 8693 token exchange calls (Exchange 1 / Phase 184 Exchange 2 / Exchange 3). PingOne AI_AGENT apps typically require <code>post</code>.</p>
                 </div>
                 <div className="form-actions">
                   <button
@@ -1180,16 +1180,16 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               'Token Exchange (RFC 8693) swaps one token for a narrower-scoped token without re-authenticating the user',
               'Subject Token = the user access token (T1). It carries a may_act claim authorizing the agent client',
               'Exchange 1 (Simple): Single POST — T1 (user) as subject, no actor. Audience = MCP Server RS. Result: MCP token scoped to banking:read/write/mcp:invoke. No act claim.',
-              'Exchange 2 (Dual-token): Single POST — T1 (user) as subject + pre-existing Agent CC token as actor. Audience = MCP Gateway RS. Result: MCP token with act claim showing agent identity.',
+              'Exchange 2 (Phase 184 dual-token): Single POST — T1 (user) as subject + pre-existing Agent CC token as actor. Audience = MCP Gateway RS. Result: MCP gateway token with act claim showing agent identity.',
               'Exchange 3 (Two-step chain): TWO POST calls. Step 1: T1 → Agent token (AI Agent App, Agent Gateway audience). Step 2: T1 + Agent token → MCP token. Both user and agent identities in final token.',
-              'Key difference between Exchange 2 and 3: Exchange 2 uses a pre-existing agent CC token. Exchange 3 creates the agent token first via exchange, then uses both.',
+              'Key difference between Exchange 2 and 3: Phase 184 Exchange 2 uses a pre-existing agent CC token and is the canonical delegated gateway path. Exchange 3 is a legacy educational two-step chain.',
               'ID Token Exchange: Uses id_token (not access_token) as subject_token_type. Feature-flagged on server (ff_id_token_exchange).',
               'The MCP server validates act.client_id to confirm the agent acted on behalf of the user',
             ]}
             apiFlow={[
               { method: 'POST', endpoint: '/as/token (grant_type=urn:ietf:params:oauth:grant-type:token-exchange)', note: 'RFC 8693 — all exchanges' },
               { method: 'POST', endpoint: '/as/token subject=T1, audience=mcp-server', note: 'Exchange 1: simple delegation' },
-              { method: 'POST', endpoint: '/as/token subject=T1, actor=agentCC, audience=mcp-gateway', note: 'Exchange 2: dual-token with act' },
+              { method: 'POST', endpoint: '/as/token subject=T1, actor=agentCC, audience=mcp-gateway', note: 'Phase 184 Exchange 2: dual-token with act' },
               { method: 'POST', endpoint: '/as/token subject=T1, audience=agent-gateway (step 1)', note: 'Exchange 3 step 1' },
               { method: 'POST', endpoint: '/as/token subject=T1, actor=agentToken, audience=mcp-server (step 2)', note: 'Exchange 3 step 2' },
             ]}
@@ -1342,14 +1342,14 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 return (
                   <>
                     <TestCard
-                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token + Agent Token → MCP Token`}
+                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token + Agent CC → MCP Gateway Token (Phase 184)`}
                       status={exchange2Status}
                       error={exchange2Error}
                       onTest={testExchange2}
                       onFix={exchange2Status === 'failed' ? () => fixIssue('double-exchange') : undefined}
                       config={TEST_CONFIG.exchange2}
                     />
-                    <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Token (Exchange 2)" />
+                    <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Gateway Token (Phase 184 Exchange 2)" />
                     {(exchange2SubjectDecoded || exchange2ActorDecoded) && (
                       <>
                         <DecodedTokenPanel decoded={exchange2SubjectDecoded} label={`Subject: ${t1Label}`} />
@@ -1360,7 +1360,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                       fromDecoded={authzDecoded}
                       toDecoded={exchange2Decoded}
                       fromLabel={t1Label}
-                      toLabel="MCP Token with act (Exchange 2)"
+                      toLabel="MCP Gateway Token with act (Phase 184 Exchange 2)"
                       expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
                     />
                   </>
@@ -1373,7 +1373,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 return (
                   <>
                     <TestCard
-                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token → Agent Token → MCP Token`}
+                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token → Agent Token → MCP Token (Legacy Two-Step)`}
                       status={exchange3Status}
                       error={exchange3Error}
                       onTest={testExchange3}
