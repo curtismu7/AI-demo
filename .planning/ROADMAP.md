@@ -2017,10 +2017,10 @@ Plans:
 **Goal:** Replace LLM provider button row with a dropdown selector that shows contextual config (model picker + API key) for the selected provider only.
 **Requirements**: LLM-01
 **Depends on:** Phase 178
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 179-01-PLAN.md — Refactor LangChainAgentConfig to dropdown provider + model selector
+- [x] 179-01-PLAN.md — Refactor LangChainAgentConfig to dropdown provider + model selector
 
 
 
