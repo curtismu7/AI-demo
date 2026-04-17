@@ -1323,3 +1323,44 @@ a.pingone-test-button--primary:visited {
   opacity: 0.8;
 }
 .tld-unexpected { font-weight: 600; }
+
+/* ── Agent Prompt Preview Bubble ─────────────────────────────────── */
+.test-card-prompt-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #334155;
+  border-radius: 12px 12px 12px 2px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  animation: promptSlideIn 0.3s ease-out;
+}
+.prompt-bubble-label {
+  color: #60a5fa;
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  padding-top: 1px;
+}
+.prompt-bubble-text {
+  color: #e2e8f0;
+  word-break: break-word;
+}
+.prompt-cursor {
+  color: #60a5fa;
+  animation: promptBlink 0.6s step-end infinite;
+  font-weight: 300;
+  margin-left: 1px;
+}
+@keyframes promptBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes promptSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

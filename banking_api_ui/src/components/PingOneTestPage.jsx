@@ -28,21 +28,24 @@ const TEST_CONFIG = {
     appType: 'AI_AGENT',
     requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: 'https://mcp-server.pingdemo.com',
-    spel: 'T1 (user token) → MCP token'
+    spel: 'T1 (user token) → MCP token',
+    agentPrompt: 'Show me my account balances'
   },
   exchange2: {
     appName: 'Super Banking MCP Token Exchanger',
     appType: 'AI_AGENT',
     requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:admin', 'banking:sensitive', 'banking:ai:agent'],
     audience: 'https://mcp-gateway.pingdemo.com',
-    spel: 'Exchange 2 (Phase 184): Single POST — T1 (user) as subject + Agent CC as actor → MCP Gateway token with act claim'
+    spel: 'Exchange 2 (Phase 184): Single POST — T1 (user) as subject + Agent CC as actor → MCP Gateway token with act claim',
+    agentPrompt: 'Transfer $500 from checking to savings on behalf of the user'
   },
   exchange3: {
     appName: 'Super Banking AI Agent App',
     appType: 'AI_AGENT',
     requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:ai:agent'],
     audience: 'https://agent-gateway.pingdemo.com',
-    spel: 'Exchange 3 (Legacy): Two-step chain — Step 1: T1 → Agent token, Step 2: T1 + Agent → MCP token. Audience: Agent Gateway'
+    spel: 'Exchange 3 (Legacy): Two-step chain — Step 1: T1 → Agent token, Step 2: T1 + Agent → MCP token. Audience: Agent Gateway',
+    agentPrompt: 'What are the recent transactions on my account?'
   },
   apps: {
     appName: 'Super Banking User App',
@@ -1632,9 +1635,36 @@ function SectionApiCalls() {
 const TestCard = ({ title, status, error, onTest, onFix, onUpdate, updateLabel, updateResult, value, config, loginUrl, testLabel, envVar, format, failMsg }) => {
   const [testing, setTesting] = React.useState(false);
   const [updating, setUpdating] = React.useState(false);
+  const [showingPrompt, setShowingPrompt] = React.useState(false);
+  const [displayedPrompt, setDisplayedPrompt] = React.useState('');
 
   const handleTest = async () => {
     if (!onTest) return;
+    const prompt = config?.agentPrompt;
+    if (prompt && !showingPrompt) {
+      // Show the prompt with typewriter effect, then auto-send
+      setShowingPrompt(true);
+      setDisplayedPrompt('');
+      let i = 0;
+      await new Promise((resolve) => {
+        const timer = setInterval(() => {
+          i++;
+          setDisplayedPrompt(prompt.slice(0, i));
+          if (i >= prompt.length) {
+            clearInterval(timer);
+            setTimeout(resolve, 800); // pause after typing before auto-send
+          }
+        }, 30);
+      });
+      // Auto-fire the exchange
+      setTesting(true);
+      try {
+        await onTest();
+      } finally {
+        setTesting(false);
+      }
+      return;
+    }
     setTesting(true);
     try {
       await onTest();
@@ -1664,6 +1694,12 @@ const TestCard = ({ title, status, error, onTest, onFix, onUpdate, updateLabel, 
           {statusLabel[status] || status}
         </span>
       </div>
+      {showingPrompt && config?.agentPrompt && (
+        <div className="test-card-prompt-bubble">
+          <span className="prompt-bubble-label">Agent prompt →</span>
+          <span className="prompt-bubble-text">{displayedPrompt}<span className="prompt-cursor">|</span></span>
+        </div>
+      )}
       {value && <p className="test-card-value">{value}</p>}
       {updateResult?.result && (
         <div className={`test-card-update-result test-card-update-result--${updateStatus}`}>
@@ -1719,7 +1755,7 @@ const TestCard = ({ title, status, error, onTest, onFix, onUpdate, updateLabel, 
             onClick={handleTest}
             disabled={testing || status === 'running'}
           >
-            {testing || status === 'running' ? 'Testing…' : (testLabel || 'Test')}
+            {testing || status === 'running' ? 'Exchanging tokens…' : showingPrompt ? 'Sending…' : (config?.agentPrompt ? (testLabel || 'Send Prompt') : (testLabel || 'Test'))}
           </button>
         )}
         {onUpdate && (
