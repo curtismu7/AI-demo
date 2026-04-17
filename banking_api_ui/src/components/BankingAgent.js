@@ -1834,7 +1834,6 @@ export default function BankingAgent({
           toast.dismiss(toastId);
           setHitlPendingIntent({ actionId, form, intentPayload, threshold: normalized.hitl_threshold_usd ?? 500 });
         } else if (normalized.step_up_required === true || normalized.error === 'step_up_required') {
-          const stepUpMethod = normalized.step_up_method || 'email';
           
           // Set context for modal
           let contextLine = 'Identity verification required';
