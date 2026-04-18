@@ -867,7 +867,7 @@ function HistoryEntry({ entry, index, onInspect, hints }) {
 const PLACEHOLDER_EVENTS = [
   {
     id: 'user-token',
-    label: 'User access token',
+    label: 'Subject Token — user access token (RFC 8693 §2.1)',
     status: 'waiting',
     claims: null,
     explanation: 'Issued by PingOne after Authorization Code + PKCE login. Stored securely in the Backend-for-Frontend (BFF) session (server-side, httpOnly cookie — never exposed to the browser). Contains may_act authorising the Backend-for-Frontend (BFF) to exchange it on the user\'s behalf.',
@@ -875,7 +875,7 @@ const PLACEHOLDER_EVENTS = [
   },
   {
     id: 'exchange',
-    label: 'Token exchange (RFC 8693): user access token → MCP access token',
+    label: 'Token Exchange (RFC 8693 §3.1): subject_token → MCP-scoped access token',
     status: 'waiting',
     claims: null,
     explanation: 'Backend-for-Frontend (BFF) presents the user access token to PingOne as subject_token. PingOne validates may_act, narrows the scope to the tool\'s required scopes, and issues the MCP access token with an act claim identifying the Backend-for-Frontend (BFF) as the actor. The user access token NEVER leaves the Backend-for-Frontend (BFF).',
@@ -883,7 +883,7 @@ const PLACEHOLDER_EVENTS = [
   },
   {
     id: 'exchanged-token',
-    label: 'MCP access token (delegated) → MCP server',
+    label: 'MCP-Scoped Access Token (RFC 8693 §3.2) → MCP server',
     status: 'waiting',
     claims: null,
     explanation: 'The MCP access token is scoped to the MCP server audience with narrowed scopes. Contains act: { client_id: bff } — proves delegation chain. The user access token stays in the Backend-for-Frontend (BFF); only the MCP access token reaches the MCP server and Banking API.',
@@ -1024,8 +1024,8 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
   const effectivePlaceholders = React.useMemo(() => {
     if (!idTokenMode) return PLACEHOLDER_EVENTS;
     return PLACEHOLDER_EVENTS.map(ev => {
-      if (ev.id === 'user-token') return { ...ev, label: 'User ID token' };
-      if (ev.id === 'exchange') return { ...ev, label: 'Token exchange (RFC 8693): user ID token \u2192 MCP access token' };
+      if (ev.id === 'user-token') return { ...ev, label: 'Subject Token — user ID token (RFC 8693 §2.1)' };
+      if (ev.id === 'exchange') return { ...ev, label: 'Token Exchange (RFC 8693 §3.1): subject ID token u2192 MCP-scoped access token' };
       return ev;
     });
   }, [idTokenMode]);

@@ -1209,12 +1209,13 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             title="RFC 8693 Token Exchange — Delegated Authorization for MCP"
             steps={[
               'Token Exchange (RFC 8693) swaps one token for a narrower-scoped token without re-authenticating the user',
-              'Subject Token = the user access token (T1). It carries a may_act claim authorizing the agent client',
-              'Exchange 1 (Simple): Single POST — T1 (user) as subject, no actor. Audience = MCP Server RS. Result: MCP token scoped to banking:read/write/mcp:invoke. No act claim.',
-              'Exchange 2 (Phase 184 dual-token): Single POST — T1 (user) as subject + pre-existing Agent CC token as actor. Audience = MCP Gateway RS. Result: MCP gateway token with act claim showing agent identity.',
+              'Subject Token (RFC 8693 §2.1) = the user access token (T1). It carries a may_act claim authorizing the agent client',
+              'Exchange 1 (subject-only, RFC 8693 §3.1): Single POST — T1 (user) as subject_token, no actor_token. Audience = MCP Server RS. Result: MCP token scoped to banking:read/write/mcp:invoke. No act claim.',
+              'Exchange 2 (RFC 8693 §2.2 delegation): Single POST — T1 (user) as subject_token + Agent CC as actor_token. Audience = MCP Gateway RS. Result: MCP gateway token with act claim showing agent identity.',
               'Exchange 3 (Two-step chain): TWO POST calls. Step 1: T1 → Agent token (AI Agent App, Agent Gateway audience). Step 2: T1 + Agent token → MCP token. Both user and agent identities in final token.',
               'Key difference between Exchange 2 and 3: Phase 184 Exchange 2 uses a pre-existing agent CC token and is the canonical delegated gateway path. Exchange 3 is a legacy educational two-step chain.',
-              'ID Token Exchange: Uses id_token (not access_token) as subject_token_type. Feature-flagged on server (ff_id_token_exchange).',
+              'ID Token Exchange (simple): Uses id_token (not access_token) as subject_token_type. No actor token. Feature-flagged on server (ff_id_token_exchange).',
+              'Exchange 186 (Phase 186 dual ID+Actor): ID token as subject + Agent CC as actor \u2192 MCP Gateway token with act claim. Combines identity assertion (ID token) with agent delegation (CC token). Also FF-gated (ff_id_token_exchange).',
               'The MCP server validates act.client_id to confirm the agent acted on behalf of the user',
             ]}
             apiFlow={[
