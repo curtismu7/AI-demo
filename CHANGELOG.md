@@ -310,3 +310,6 @@ Initial working demo deployed to Vercel with:
 
 ### Changed
 - **Phase 189 planning: Marketing page user authentication — context & decisions captured** — Autonomous discussion completed; 5 locked decisions, no blockers identified. Ready for phase-researcher and planner.
+
+### Planned
+- **Phase 189 planning: Marketing page user authentication — 1 executable plan created** — PLAN 189-01 focuses on adding resource-server buttons (balance, transactions) to marketing page with state-driven enable/disable; locked decisions: D-01 (login returns to /marketing), D-02 (buttons disabled when logged out), D-03 (same content layout), D-04 (reuse Phase 187 exchange flow). Ready for execution.

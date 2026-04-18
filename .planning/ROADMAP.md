@@ -1966,13 +1966,23 @@ Plans:
 
 ### Phase 189: Marketing page user authentication — login on /marketing goes straight to customer dashboard; resource-server buttons (balance, transactions) call banking API directly; PingOne authz validates user; agent path follows 401→exchange pattern
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Enable customers to explore banking resources directly from /marketing page without forcing navigation to /dashboard. Add resource-server action buttons (balance, transactions) that are disabled when logged out and active when logged in. Reuse Phase 187 token exchange flow on 401 responses.
+**Requirements**: MARKETING-189-01, MARKETING-189-02
 **Depends on:** Phase 188
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 189 to break down)
+- [x] 189-01-PLAN.md — Add resource buttons to marketing page with state-driven enable/disable (MARKETING-189-01, MARKETING-189-02)
+
+**Success criteria:**
+1. Resource buttons (balance, transactions) appear on /marketing homepage  
+2. Buttons are disabled + show "Sign in to view" when user is logged out
+3. Buttons are enabled + fire action callbacks when user is logged in
+4. Clicking button fetches data from BFF /api/banking/* endpoint (get_account_balance, get_transactions)
+5. 401 from BFF triggers need_auth signal → agent intercept → login redirect → return to /marketing
+6. After login, user returns to /marketing with buttons active (login returns to /marketing, not /dashboard)
+7. npm run build exit 0; no new errors
+8. No regression in existing LandingPage or BankingAgent functionality
 
 ---
 
