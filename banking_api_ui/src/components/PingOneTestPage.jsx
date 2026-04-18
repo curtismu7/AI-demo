@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/apiClient';
 import DecodedTokenPanel from './DecodedTokenPanel';
+import { TokenColorLegend } from './TokenColorSystem';
 import ApiCallDisplay from './ApiCallDisplay';
 import ScopeNarrowingVisualization from './ScopeNarrowingVisualization';
 import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
@@ -1205,6 +1206,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
         {/* Token Exchange Tests Section */}
         <section className="pingone-test-section">
           <h2 className="pingone-test-section-title">Token Exchange Tests</h2>
+          <TokenColorLegend />
           <WhatIsHappening
             title="RFC 8693 Token Exchange — Delegated Authorization for MCP"
             steps={[
