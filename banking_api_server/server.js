@@ -262,6 +262,7 @@ const pingoneAuditRoutes = require('./routes/pingoneAudit');
 const pingoneTestRoutes = require('./routes/pingoneTestRoutes');
 const tokenDisplayRoutes = require('./routes/tokenDisplay');
 const apiCallTrackerRoutes = require('./routes/apiCallTracker');
+const resourceServerRoutes = require('./routes/resourceServer');
 
 // Import middleware
 const {
@@ -1038,6 +1039,7 @@ app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/self-service/users', authenticateToken, selfServiceUsersRoutes);
 app.use('/api/accounts', authenticateToken, accountRoutes);
 app.use('/api/accounts', authenticateToken, sensitiveBankingRoutes);
+app.use('/api/resource-server', authenticateToken, resourceServerRoutes);
 app.use('/api/transactions', requireSession, authenticateToken, transactionRoutes);
 // GET /api/demo-scenario — return empty defaults when unauthenticated so the public
 // /demo-data page never triggers a 401 console error.  All mutating methods (PUT, PATCH)
