@@ -1946,7 +1946,7 @@ Plans:
 **Goal:** Wire real MCP 401 intercept path: when MCP returns 401, BFF signals need_auth, user re-authenticates, 1-token RFC 8693 exchange produces MCP token; remove legacy exchange3 two-step card; add live 401 test card to test page; document in PINGONE_TOKEN_EXCHANGE_COMPARISON.md
 **Requirements**: P187-D01, P187-D02, P187-D03, P187-D04, P187-D05, P187-D06, P187-D07
 **Depends on:** Phase 186
-**Plans:** 4 plans
+**Plans:** 0/4 plans executed
 
 Plans:
 - [ ] 187-01-PLAN.md — BFF need_auth signal (agentMcpTokenService + bankingAgentRoutes)

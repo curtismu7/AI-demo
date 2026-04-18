@@ -479,3 +479,43 @@ Phase 186 adds `performTokenExchangeWithActorIdToken()` which uses `subject_toke
 See [PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md](PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md#phase-186-id-token--agent-cc-exchange) for full details.
 
 **Recommendation**: This implementation is ready for production deployment and can serve as a best-practice reference for PingOne token exchange implementations.
+
+### Phase 187 Addition: 1-Token Exchange via MCP 401 Trigger
+
+Phase 187 introduces the **MCP 401 trigger pattern** — a reactive exchange flow where the MCP server itself signals that a token exchange is needed.
+
+#### When This Flow Applies
+
+The user is already authenticated (has an access token in session) but the MCP server returns HTTP 401 because:
+- The user token has the wrong audience (not the MCP server)
+- The token is missing MCP-required scopes
+- The token was not obtained via RFC 8693 exchange
+
+#### Flow Steps
+
+1. **User agent sends request to MCP** using raw user access token
+2. **MCP server returns 401** — Bearer token required or wrong audience
+3. **BFF detects 401** → returns `need_auth: true` in response to frontend
+4. **BankingAgent.js intercepts** `need_auth: true` → triggers PingOne customer login (PKCE flow)
+5. **After re-auth**, BFF performs **RFC 8693 1-token exchange**: user access token (subject only) → MCP token with MCP audience
+6. **Retry**: MCP server accepts the exchanged token → request completes
+
+#### 1-Token vs Dual-Token Comparison
+
+| | Phase 187 (1-Token 401) | Phase 184 (Dual-Token) | Phase 186 (ID Token Dual) |
+|---|---|---|---|
+| **Subject token** | User access token | User access token | User ID token |
+| **Actor token** | None (subject-only) | Agent CC token | Agent CC token |
+| **`act` claim** | No | Yes (delegation proof) | Yes |
+| **Trigger** | Live MCP 401 response | Proactive exchange | Proactive exchange |
+| **Use case** | Fallback recovery, simple scenarios | Full delegation chain | Identity assertion delegation |
+
+#### When to Use
+
+- **Lightweight scenarios** where the MCP server only needs to know "which user" without requiring a full delegation (`act`) chain
+- **Fallback recovery path** when a tool call fails with 401 — the agent automatically re-authenticates and exchanges
+- **Simpler security model** — no actor token means no delegation proof, but fewer moving parts
+
+#### Test Route
+
+`GET /api/pingone-test/exchange-1token-401-flow` — probes MCP with raw user token, catches 401, exchanges, retries. Returns step-by-step trace with decoded tokens.
