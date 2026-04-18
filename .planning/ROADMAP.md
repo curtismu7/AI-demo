@@ -1921,13 +1921,13 @@ Plans:
 
 ### Phase 185: Token color legend and consistent token-type color coding across all token displays including token chain, decoded panels, and education components
 
-**Goal:** [To be planned]
+**Goal:** Consistent token-type color coding (Subject=🔴, Actor=🔵, MCP=🟢) across TokenChainDisplay, TokenDisplay, DecodedTokenPanel, and PingOneTestPage; shared TokenColorLegend component; RFC 8693 badge color alignment.
 **Requirements**: TBD
 **Depends on:** Phase 184
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 185 to break down)
+- [ ] 185-01-PLAN.md — CSS classes, badge color fix, PingOneTestPage legend
 
 ### Phase 186: ID token exchange flow — agent sends prompt to MCP server, gets 401, performs OIDC authz with PingOne to get access+id+refresh tokens, then exchanges agent CC token plus user ID token via dual token exchange at MCP Gateway
 
