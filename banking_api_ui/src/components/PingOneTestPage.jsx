@@ -1451,6 +1451,15 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               {exchangeIdTokenSubjectDecoded && (
                 <DecodedTokenPanel decoded={exchangeIdTokenSubjectDecoded} label="Subject: User ID Token" />
               )}
+              {exchangeIdTokenDecoded && exchangeIdTokenSubjectDecoded && (
+                <TokenLineageDiff
+                  fromDecoded={exchangeIdTokenSubjectDecoded}
+                  toDecoded={exchangeIdTokenDecoded}
+                  fromLabel="User ID Token (Subject)"
+                  toLabel="MCP Token (ID Token Exchange)"
+                  expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
+                />
+              )}
             </div>
             {/* Phase 186 ID-token exchange: dual ID+Actor → MCP Gateway */}
             <div className="test-card-col">
@@ -1480,6 +1489,15 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               )}
               {exchange186ActorDecoded && (
                 <DecodedTokenPanel decoded={exchange186ActorDecoded} label="Actor: Agent CC Token" />
+              )}
+              {exchange186Decoded && exchange186SubjectDecoded && (
+                <TokenLineageDiff
+                  fromDecoded={exchange186SubjectDecoded}
+                  toDecoded={exchange186Decoded}
+                  fromLabel="User ID Token (Subject)"
+                  toLabel="MCP Gateway Token (Phase 186)"
+                  expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
+                />
               )}
             </div>
           </div>
