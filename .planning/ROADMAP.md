@@ -2317,7 +2317,7 @@ Plans:
 Plans:
 - [x] Audited 15 most recent todos — 7 archived to done, 8 remain as backlog
 
-### Phase 130: PingOne Asset Verification — rich table with apps, resources, scopes and missing item highlights
+### Phase 130: PingOne Asset Verification — rich table with apps, resources, scopes and missing item highlights ✅ COMPLETE
 
 **Goal:** Replace the 4-tile PingOne Asset Verification summary with a rich app→resource→scope table. Each app row shows its granted resource servers and scopes, with red highlights for missing expected apps, unassigned resource servers, and absent banking scopes. Summary count tiles remain above the table.
 **Requirements**: APP-RESOURCE-SCOPE-TABLE, MISSING-HIGHLIGHT
@@ -2449,7 +2449,7 @@ Plans:
 - [ ] 141-03-PLAN.md — Wire route + SideNav + SetupWizardTab env update
 - [ ] 141-04-PLAN.md — Human verify checkpoint
 
-### Phase 142: UX: clear separation of banking action buttons — standard authz (transfer, deposit) vs token exchange — visual distinction for PingOne OAuth actions
+### Phase 142: UX: clear separation of banking action buttons — standard authz (transfer, deposit) vs token exchange — visual distinction for PingOne OAuth actions ✅ COMPLETE
 
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
@@ -2461,12 +2461,12 @@ Plans:
 - [x] 142-02-PLAN.md — Implement disabled and authorization pending states
 - [x] 142-03-PLAN.md — Manual verification of styling
 
-### Phase 143: UX: agent banking actions via MCP server — new user token scoped to agent with aud claim, then 1-token or 2-token exchange for MCP token (FF), showing pattern evolution from standard authz to agentic authz
+### Phase 143: UX: agent banking actions via MCP server — new user token scoped to agent with aud claim, then 1-token or 2-token exchange for MCP token (FF), showing pattern evolution from standard authz to agentic authz ✅ COMPLETE
 
 **Goal:** Enable agent-initiated banking transactions with user approval gates, real-time feedback, and live token exchange path demonstration.
 **Requirements**: TOKEN-01, TOKEN-02, AGENT-APPROVAL-01, AGENT-ACTIVITY-01
 **Depends on:** Phase 142
-**Plans:** 5/4 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 143-01-PLAN.md — Approval threshold HITL modal + error handling service
@@ -2530,7 +2530,7 @@ Plans:
 - [x] 148-02-PLAN.md — Implement emoji-only chip rendering, condensed messages, prominent sticky prompt field, and collapsible group CSS
 - [x] 148-03-PLAN.md — Visual verification checkpoint across all placement modes
 
-### Phase 149: Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne
+### Phase 149: Verify Phase 146 scope alignment — pingone-test page shows correct scopes, detects missing/wrong scopes, and can update PingOne ✅ COMPLETE
 
 **Goal:** Fix Phase 146 gaps: scope detection targets the banking resource server by name/audience (not array index), expose missing canonical scopes in verify-assets response, and add Fix-in-PingOne action buttons to create the banking resource server and missing canonical scopes from the test page.
 **Requirements**: SCOPE-149-01, SCOPE-149-02, SCOPE-149-03
