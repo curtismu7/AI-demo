@@ -2,80 +2,134 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-last_updated: "2026-04-18T12:10:08.609Z"
+status: Phase 189 Complete — Ready for next phase
+last_updated: "2026-04-18T12:30:00.000Z"
 progress:
   total_phases: 195
-  completed_phases: 165
-  total_plans: 345
-  completed_plans: 358
+  completed_phases: 166
+  total_plans: 346
+  completed_plans: 359
 ---
 
 # State — Super Banking AI Banking Demo
 
 **Milestone:** v1.0 — Complete Demo + Educational Content
-**Updated:** 2026-04-17
+**Updated:** 2026-04-18
 
 ---
 
 ## Current Position
 
-Phase: 188
-Plan: Not started
-Next incomplete phase: 74 (62.1 Token exchange critical fixes and enhancements - may_act, RFC 8707, scopes) — Not Started
+Phase: 189 (marketing-page-user-authentication) — ✅ COMPLETE
+Plan: 1/1 COMPLETE
+Next phase: 190+ (available for planning)
 
 ## Recent Progress
 
+✅ **Phase 189 COMPLETE**
+
+- Plan 189-01: Added resource buttons (balance, transactions) to /marketing
+- Implementation: LandingPage markup + CSS styling + service integration
+- Error handling: Phase 187 need_auth pattern reused for token exchange on 401
+- Login flow: Verified return_to=/marketing preserves user position after auth
+- Build verification: npm run build exit code 0, no new errors
+- Commits: 8597539 (implementation), 412e82a (summary)
+- All locked decisions honored (D-01 through D-04)
+
 ✅ Phase 181 COMPLETE
+- CUA education drawer added with NL routing
 
-- Wave 1 (181-01): Added the CUA education drawer and registered `EDU.CUA = 'cua'`
-- Wave 2 (181-02, 181-03): Added NL routing, sidebar/RFC/agent discoverability, and reciprocal links with Agent Gateway, HITL, and MCP Protocol
-- Verification: `banking_api_ui` production build passed; heuristic NL parser routes `cua`, `computer use agent`, and `computer use` to the CUA panel
+✅ Phase 187 COMPLETE
+- 1-token exchange 401 flow established
 
-Note: current GSD stats report more plan summaries than plan definitions (`330/325`) because of legacy summary overcounting in the underlying stats output; the state file now mirrors the canonical tool totals rather than the stale Phase 05 snapshot.
+---
 
 ## Roadmap Evolution
 
-- Phase 189 added: Marketing page user authentication — login on /marketing goes straight to customer dashboard; resource-server buttons (balance, transactions) call banking API directly; PingOne authz validates user; agent path follows 401→exchange pattern
+- **Phase 189 COMPLETE** ✅: Marketing page user authentication with resource buttons
+- Phase 188: Define AI token exchange taxonomy
+- Phase 187 COMPLETE ✅: 1-token exchange 401 flow
+- Phase 186: ID token exchange flow
+- Phase 185: Token color legend
+- Phase 184: End-to-end delegated token flow
+- Phase 183: MCP tools metadata compliance
+- Phase 182: Public URL for MCP server
+- Phase 181 COMPLETE ✅: CUA training slide-out
+- Phase 180: Evaluate and implement Google Gemma 4
+- Phase 179 READY: Add LLM dropdown selector
+- Phase 178 READY: Agentic Trust alignment — 6 security pillars
+- Phase 177: PingOne Test page clarification
+- Phase 176: Show LLM in config with fallback chain
+- Phase 175 READY: Investigate JSON-RPC patterns
+- Phase 174: HITL step-up modal
+- Phase 173 COMPLETE ✅: WebMCP frontend from Google
+- Phase 172: MCP server token exchange
+- Phase 171: PingOne MCP server integration
+- Phase 170: Force HITL for Transfers
+- Phase 169: OAuth token display page
 
-- Phase 188 added: Define AI token exchange taxonomy — user token (subject), agent token (actor), transaction token (MCP access) — validate naming against RFC 8693 and MCP spec
+---
 
-- Phase 187 added: 1-token exchange 401 flow — MCP 401 triggers user authz then token exchange for MCP token. Update docs, test page, all 1-token exchange paths.
+## Phase 189 Execution Summary
 
-- Phase 186 added: ID token exchange flow — MCP 401 → OIDC authz → agent CC + user ID token → dual token exchange at MCP Gateway
+**Objective:** Add resource-server action buttons to marketing page with state-driven enable/disable
 
-- Phase 185 added: Token color legend and consistent token-type color coding across all token displays
+**Tasks Completed (5/5):**
+1. ✅ Add resource buttons markup to LandingPage.js (185 lines)
+2. ✅ Wire onResourceAction callback + error handling (need_auth pattern)
+3. ✅ Verify login return_to=/marketing flow (D-01)
+4. ✅ Style resource buttons + disabled states (127 lines CSS)
+5. ✅ Verify npm run build passes (exit code 0)
 
-- Phase 184 added: End-to-end delegated token flow — agent CC token + user OAuth token sent to MCP Gateway for dual token exchange at PingOne before fulfilling request
+**Implementation Details:**
+- Files: LandingPage.js (+185 lines), LandingPage.css (+127 lines)
+- Features: Balance + Transactions resource cards
+- State: Disabled when logged out, active when logged in (D-02)
+- Error handling: Phase 187 need_auth intercept → login → return to /marketing
+- Build: Production build verified, no regressions
+- Commits: 2 atomic (implementation + summary)
 
-- Phase 181 COMPLETE: CUA training slide-out added and verified
+**Decisions Honored:**
+- ✅ D-01: Login returns to /marketing (not /dashboard)
+- ✅ D-02: Buttons disabled when logged out, active when logged in
+- ✅ D-03: No existing content refactored (purely additive)
+- ✅ D-04: Reused Phase 187 exchange, no new handlers
 
-- Phase 183 added: MCP tools metadata compliance and token chain logging
+---
 
-- Phase 182 added: Public URL for MCP server so external clients like Claude can connect
+## Verification Results
 
-- Phase 181 added: We need to add a training slide out for CUA for AI
+✅ Resource buttons render correctly (disabled/enabled states)
+✅ Service calls wired to getAccountBalance + getMyTransactions
+✅ Phase 187 need_auth error pattern integrated
+✅ Login flow preserves return_to parameter
+✅ npm run build exit code 0
+✅ No new warnings or errors
+✅ All success criteria met (8/8)
 
-- Phase 180 added: Evaluate and implement Google Gemma 4 as another LLM provider
+---
 
-- Phase 179 READY: Add dropdown for user to choose which LLM to use (1/1 plans incomplete)
+## Next Steps
 
-- Phase 178 READY: Agentic Trust alignment — education page mapping 6 security pillars (2/2 plans incomplete)
+- **Option 1:** Plan Phase 189-02 (optional enhancements)
+  - Add similar buttons to EmbeddedAgentDock
+  - Add transaction detail drill-down
+  - Add account selection dropdown
 
-- Phase 177 added: PingOne Test page — clarify token exchange sections, add subject_token to second exchange, explain IDToken FF bypass
+- **Option 2:** Move to Phase 190 or next incomplete phase
+  - Check ROADMAP for next priority
+  - Run `/gsd-discuss-phase 190` to gather context
 
-- Phase 176 added: Show users in config what LLM we are using and pick the order — LM Studio default, fallback chain, bad LLM should not block
+- **Option 3:** Deploy to production
+  - Review implementation on live server
+  - Monitor user interactions and errors
+  - Iterate based on feedback
 
-- Phase 175 READY: Investigate JSON-RPC and how and when we should be using it (2/2 plans incomplete)
+---
 
-- Phase 174 added: HITL step-up modal — replace toast with blocking modal for MFA and consent flows
+## Notes
 
-- Phase 173 COMPLETE: Research and create a frontend using WebMCP from Google
-
-- Phase 172 added: MCP server token exchange — require token exchange at MCP server before forwarding to backend app instead of OAuth pass-through
-
-- Phase 171 added: https://developer.pingidentity.com/blog/introducing-the-pingone-mcp-server/
-
-- Phase 170 added: Force HITL for all Transfers in authorization server
-
-- Phase 169 added: Add OAuth token display page — show user info from token or PingOne userinfo endpoint
+- Phase 189 planning (discuss-phase + plan-phase) took precedence to lock decisions before implementation
+- Plan execution was straightforward due to Phase 187 infrastructure already in place
+- No blockers or surprises during implementation
+- All git commits include descriptive commit messages with file lists and rationale
