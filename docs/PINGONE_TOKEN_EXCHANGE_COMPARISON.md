@@ -31,7 +31,7 @@ This document compares the Super Banking demo's token exchange implementation ag
 |-----------|-------------------|---------------------------|---------|
 | `grant_type` | Must be token-exchange URN | `urn:ietf:params:oauth:grant-type:token-exchange` | ✅ Perfect |
 | `subject_token` | User's access token | User session token | ✅ Perfect |
-| `subject_token_type` | Must be access_token URN | `urn:ietf:params:oauth:token-type:access_token` | ✅ Perfect |
+| `subject_token_type` | access_token or id_token URN | `access_token` (Exchange 2) or `id_token` (Phase 186) | ✅ Perfect |
 | `audience` | Target resource URI | MCP resource URI from config | ✅ Perfect |
 | `scope` | Requested scopes | Computed from tool requirements | ✅ Perfect |
 
@@ -470,5 +470,12 @@ The Super Banking demo's token exchange implementation demonstrates **exceptiona
 - ✅ **Outstanding documentation and education**
 
 The implementation serves as an excellent reference for other developers implementing PingOne token exchange, with only minor enhancements needed for production scalability.
+
+
+### Phase 186 Addition: ID Token as Subject
+
+Phase 186 adds `performTokenExchangeWithActorIdToken()` which uses `subject_token_type: urn:ietf:params:oauth:token-type:id_token`. This is valid per RFC 8693 §3 which allows any token type URI. PingOne accepts ID tokens as subject tokens in exchange requests.
+
+See [PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md](PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md#phase-186-id-token--agent-cc-exchange) for full details.
 
 **Recommendation**: This implementation is ready for production deployment and can serve as a best-practice reference for PingOne token exchange implementations.

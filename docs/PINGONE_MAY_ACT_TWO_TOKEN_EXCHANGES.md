@@ -16,13 +16,14 @@ For current demo validation, treat these labels as canonical:
 
 When updating test UX, logs, or runbooks, keep this mapping stable so Phase 184 checks are unambiguous.
 
-## Phase 184 Exchange Patterns Reference
+## Exchange Patterns Reference
 
 | Pattern | Mode | Location | Purpose |
 |---------|------|----------|---------|
 | Exchange 1 | `single` | PingOne Test Page, routes | Legacy baseline — user token only, no agent delegation |
 | **Exchange 2** | **`dual` (or `double` legacy alias)** | **PingOne Test Page, routes, MCP Gateway** | **Phase 184 canonical — user OAuth + agent CC, act claim** |
 | Exchange 3 | `legacy` / two-step | PingOne Test Page, routes | Educational reference — sequential exchanges, not recommended |
+| **Exchange 186** | **`dual-id`** | **PingOne Test Page, routes** | **Phase 186 — user ID token + agent CC, act claim (identity-based)** |
 
 **Recommended**: Use Exchange 2 (Phase 184 `dual` mode) for all agent-to-MCP communication. Exchange 1 and 3 retained for comparison testing only.
 
@@ -1036,6 +1037,89 @@ echo "<token>" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | python3 -m
 | Exchange #2: `unauthorized_client` | Token Exchange grant not enabled on MCP Service App | Part 2c — enable Token Exchange grant |
 | Final token missing `act.act.sub` | `act` expression on Super Banking Banking API is wrong | Check Step 1e expression — must nest incoming `act` as `act.act` |
 | PAZ denies all requests | `act.sub` or `act.act.sub` not matching policy values | Check PAZ policy — values must be the client ID UUIDs, not URLs |
+
+
+---
+
+## Phase 186: ID Token + Agent CC Exchange
+
+**Added:** 2026-04-18
+
+### Overview
+
+Phase 186 introduces a variant of the Phase 184 dual-token exchange that uses the user's **ID token** (instead of access token) as the subject token, combined with the agent's client-credentials token as the actor.
+
+| Aspect | Phase 184 (Exchange 2) | Phase 186 (ID Token) |
+|--------|----------------------|---------------------|
+| **Subject token** | User access token | User ID token |
+| **Subject type** | `urn:ietf:params:oauth:token-type:access_token` | `urn:ietf:params:oauth:token-type:id_token` |
+| **Actor token** | Agent CC token | Agent CC token (same) |
+| **Result** | MCP Gateway token with `act` claim | MCP Gateway token with `act` claim (same) |
+| **Use case** | Capability-based delegation | Identity-based delegation |
+| **ID token lifetime** | N/A | Short (15-30 min) |
+
+### When to Use Phase 186 Pattern
+
+- **Identity assertion matters more than capability grants** — MCP Gateway needs to verify the user's identity directly from the `sub` claim
+- **Minimal token exposure** — agent never touches user's access token; only the ID token (non-capability-granting) is passed
+- **Educational value** — demonstrates that RFC 8693 accepts different `subject_token_type` values
+
+### Token Exchange Request
+
+```
+POST /as/token HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&subject_token=<user_id_token_jwt>
+&subject_token_type=urn:ietf:params:oauth:token-type:id_token
+&actor_token=<agent_cc_token_jwt>
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&requested_token_type=urn:ietf:params:oauth:token-type:access_token
+&audience=https://mcp-gateway.pingdemo.com
+&scope=banking:read banking:write banking:mcp:invoke
+&client_id=<bff_client_id>
+```
+
+### Backend Code
+
+```javascript
+// oauthService.performTokenExchangeWithActorIdToken(idToken, actorToken, audience, scopes)
+const mcpToken = await oauthService.performTokenExchangeWithActorIdToken(
+  session.oauthTokens.idToken,   // subject: user identity
+  agentCCToken,                   // actor: agent delegation
+  'https://mcp-gateway.pingdemo.com',
+  ['banking:read', 'banking:write', 'banking:mcp:invoke']
+);
+// Result: MCP token with { sub: <user>, act: { sub: <agent> }, aud: <mcp-gateway> }
+```
+
+### Feature Flag
+
+Phase 186 is gated by `ff_id_token_exchange` (same flag as the simple ID token exchange). Enable in Feature Flags before testing.
+
+### Test Page
+
+Navigate to PingOne Test Page → Token Exchange Tests → **"User ID Token + Agent CC → MCP Gateway Token (Phase 186)"**
+
+Route: `GET /api/pingone-test/exchange-idtoken-agent-to-mcp`
+
+### Security Considerations
+
+1. **ID token lifetime is short** (15-30 min) — each exchange requires a relatively fresh token
+2. **ID tokens stored server-side only** — httpOnly session cookie; never exposed to frontend JavaScript
+3. **PingOne validates ID token signature** during exchange — forged tokens rejected
+4. **Scopes in OIDC request should be minimal** — `openid profile email` (just enough for identity)
+
+### Troubleshooting
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| `ff_id_token_exchange is OFF` | Feature flag disabled | Enable `ff_id_token_exchange` in Feature Flags page |
+| `No ID token found in session` | User not logged in via OIDC | Log in first (Authorization Code + PKCE flow) |
+| `invalid_grant` on exchange | ID token expired or invalid audience | Re-authenticate to get fresh ID token |
+| Exchange succeeds but no `act` claim | PingOne `act` expression not configured on resource server | Check MCP Gateway resource server `act` expression (same as Phase 184) |
+
 
 ---
 
