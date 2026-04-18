@@ -2012,7 +2012,7 @@ Plans:
 **Goal:** Build a second version of the banking summary resource server app that authenticates using client_id/client_secret (Client Credentials grant). Clearly labeled throughout as "Client ID / Client Secret" service-to-service pattern — no user authentication, no OIDC. Contrasts with Phase 191's OIDC user-delegated flow to show the difference between user-context and machine-context access to the same banking API.
 **Requirements**: TBD
 **Depends on:** Phase 191
-**Plans:** 1 plan
+**Plans:** 0/1 plans executed
 
 Plans:
 - [ ] 192-01-PLAN.md — Backend route + ClientCredentialsResourcePage (CC, banking summary, comparison, routing)
