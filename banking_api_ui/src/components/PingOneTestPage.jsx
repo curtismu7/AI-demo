@@ -198,6 +198,11 @@ export default function PingOneTestPage() {
   const [exchangeIdTokenError, setExchangeIdTokenError] = useState(null);
   const [exchangeIdTokenDecoded, setExchangeIdTokenDecoded] = useState(null);
   const [exchangeIdTokenSubjectDecoded, setExchangeIdTokenSubjectDecoded] = useState(null);
+  const [exchange186Status, setExchange186Status] = useState('pending');
+  const [exchange186Error, setExchange186Error] = useState(null);
+  const [exchange186Decoded, setExchange186Decoded] = useState(null);
+  const [exchange186SubjectDecoded, setExchange186SubjectDecoded] = useState(null);
+  const [exchange186ActorDecoded, setExchange186ActorDecoded] = useState(null);
   const [ffIdTokenExchange, setFfIdTokenExchange] = useState(false);
 
   // Decoded token claims from BFF (server-side decode — no raw JWT in browser)
@@ -737,7 +742,30 @@ export default function PingOneTestPage() {
     }
   }, []);
 
-  const testApps = useCallback(async () => {
+  const testExchange186 = useCallback(async () => {
+    setExchange186Status('running');
+    setExchange186Error(null);
+    try {
+      notifyInfo('Testing ID Token + Agent CC \u2192 MCP Gateway Token (Phase 186)\u2026', { toastId: 'test-exchange-186' });
+      const { data } = await apiClient.get('/api/pingone-test/exchange-idtoken-agent-to-mcp', {
+        params: { sessionId: 'pingone-test' }
+      });
+      setExchange186Status(data.success ? 'passed' : 'failed');
+      setExchange186Error(data.success ? null : data.error);
+      if (data.decoded) setExchange186Decoded(data.decoded);
+      if (data.subjectTokenDecoded) setExchange186SubjectDecoded(data.subjectTokenDecoded);
+      if (data.actorTokenDecoded) setExchange186ActorDecoded(data.actorTokenDecoded);
+      if (data.tokenEvents && tokenChainCtx) {
+        data.tokenEvents.forEach(evt => tokenChainCtx.addEvent(evt));
+      }
+      if (data.success) notifySuccess('Phase 186: ID Token + Agent CC \u2192 MCP Gateway token succeeded \u2713');
+    } catch (err) {
+      setExchange186Status('failed');
+      setExchange186Error(err.message);
+    }
+  }, [tokenChainCtx]);
+
+    const testApps = useCallback(async () => {
     const { data } = await apiClient.get('/api/pingone-test/apps');
     if (!data.success) throw new Error(data.error);
     return { count: data.count, apps: data.apps };

@@ -666,6 +666,90 @@ router.get('/exchange-id-token-to-mcp', async (req, res) => {
   }
 });
 
+
+/**
+ * GET /api/pingone-test/exchange-idtoken-agent-to-mcp
+ * Phase 186: exchange user ID token (subject) + agent CC token (actor)
+ * for an MCP Gateway token via a single RFC 8693 call.
+ * Like Phase 184 but uses id_token as subject_token_type instead of access_token.
+ * FF-gated: requires ff_id_token_exchange === true.
+ */
+router.get('/exchange-idtoken-agent-to-mcp', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+
+  const ffOn = configStore.getEffective('ff_id_token_exchange') === true ||
+               configStore.getEffective('ff_id_token_exchange') === 'true';
+  if (!ffOn) {
+    return res.status(400).json({
+      success: false,
+      error: 'ff_id_token_exchange is OFF — enable in Feature Flags to use this exchange pattern.'
+    });
+  }
+
+  try {
+    const oauthTokens = req.session.oauthTokens;
+    if (!oauthTokens || !oauthTokens.idToken) {
+      const responseData = {
+        success: false,
+        error: 'No ID token found in session. User must log in first.'
+      };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 186: exchange ID token + agent CC for MCP Gateway token');
+      return res.json(responseData);
+    }
+
+    await configStore.ensureInitialized();
+
+    // Get actor token using MCP Token Exchanger client
+    const agentToken = await oauthService.getMcpExchangerToken();
+
+    const mcpScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+
+    const subjectDecoded = decodeJwtForDisplay(oauthTokens.idToken);
+    const actorDecoded   = decodeJwtForDisplay(agentToken);
+    console.log('[PingOneTest] Phase186 ID+Actor subject sub:', subjectDecoded?.payload?.sub);
+    console.log('[PingOneTest] Phase186 ID+Actor actor   scope:', actorDecoded?.payload?.scope);
+
+    const mcpExchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
+    const mcpExchangerSecret   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const mcpExchangerAuthMethod = (configStore.getEffective('pingone_token_exchange_auth_method') || process.env.PINGONE_TOKEN_EXCHANGE_AUTH_METHOD || 'post').toLowerCase();
+    const gatewayUri = configStore.getEffective('pingone_resource_mcp_gateway_uri');
+
+    // Phase 186: Use ID token as subject + agent CC as actor
+    // If we have exchanger credentials, use performTokenExchangeAs with id_token subject type
+    // Otherwise fall back to performTokenExchangeWithActorIdToken
+    const exchangedToken = await oauthService.performTokenExchangeWithActorIdToken(
+      oauthTokens.idToken, agentToken, gatewayUri, mcpScopes
+    );
+
+    const mcpDecoded = exchangedToken ? decodeJwtForDisplay(exchangedToken) : null;
+    const tokenEvents = [
+      buildExchangeTokenEvent('user-id-token', 'User ID token', 'active', subjectDecoded, 'ID token from OIDC login (identity assertion — subject token for exchange)'),
+      buildExchangeTokenEvent('actor-token', 'Agent actor token', 'active', actorDecoded, 'Client Credentials token from MCP Token Exchanger (actor in RFC 8693)'),
+      buildExchangeTokenEvent('mcp-token', 'MCP access token', exchangedToken ? 'active' : 'failed', mcpDecoded, 'RFC 8693 exchanged token — ID token + actor → MCP gateway token with act claim'),
+    ];
+    const responseData = {
+      success: true,
+      token: exchangedToken ? exchangedToken.substring(0, 20) + '...' : 'undefined',
+      decoded: mcpDecoded,
+      subjectTokenDecoded: subjectDecoded,
+      actorTokenDecoded: actorDecoded,
+      requestedScopes: mcpScopes,
+      tokenEvents,
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 186: exchange ID token + agent CC for MCP Gateway token');
+    res.json(responseData);
+  } catch (error) {
+    console.error('[PingOneTest] Phase 186 ID+Actor exchange error:', error.message);
+    const responseData = {
+      success: false,
+      error: error.message
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 186: exchange ID token + agent CC for MCP Gateway token');
+    res.json(responseData);
+  }
+});
+
 /**
  * GET /api/pingone-test/exchange-user-agent-to-mcp
  * Phase 184 canonical path: exchange user token (subject) + agent CC token (actor)

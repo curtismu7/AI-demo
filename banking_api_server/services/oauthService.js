@@ -408,6 +408,65 @@ class OAuthService {
   }
 
   /**
+   * RFC 8693 Token Exchange: ID token (subject) + agent CC token (actor) → MCP token.
+   * Phase 186: Like performTokenExchangeWithActor but uses id_token as subject_token_type.
+   * The issued access token represents the user (from ID token sub claim) with the agent
+   * acting on their behalf (act claim from actor token).
+   *
+   * @param {string} idToken     - User's ID token (identity assertion, not capability grant)
+   * @param {string} actorToken  - Agent client-credentials token (who performs the action)
+   * @param {string} audience    - Target resource server URI (e.g. MCP Gateway)
+   * @param {string|string[]} scopes - Scopes to request on the output token
+   */
+  async performTokenExchangeWithActorIdToken(idToken, actorToken, audience, scopes) {
+    const scopeStr = Array.isArray(scopes) ? scopes.join(' ') : scopes;
+    const body = new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      subject_token: idToken,
+      subject_token_type: 'urn:ietf:params:oauth:token-type:id_token',
+      actor_token: actorToken,
+      actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      audience: audience,
+      scope: scopeStr,
+      client_id: this.config.clientId,
+    });
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    applyAdminTokenEndpointClientAuth(this.config, body, headers);
+    console.log(
+      '[TokenExchange:ID_TOKEN+Actor:REQUEST] endpoint=%s client_id=%s audience=%s scope="%s"',
+      this.config.tokenEndpoint,
+      this.config.clientId,
+      audience,
+      scopeStr
+    );
+    try {
+      const response = await axios.post(this.config.tokenEndpoint, body.toString(), { headers });
+      const exchanged = response.data.access_token;
+      if (!exchanged) throw new Error('ID token + actor exchange response missing access_token');
+      console.log(`[TokenExchange:ID_TOKEN+Actor] Delegated token audience=${audience} scope="${scopeStr}"`);
+      return exchanged;
+    } catch (error) {
+      const pingoneData = error.response?.data || {};
+      const httpStatus  = error.response?.status;
+      console.error('[TokenExchange:ID_TOKEN+Actor:FAILED] httpStatus=%s error=%s description=%s',
+        httpStatus,
+        pingoneData.error ?? error.message,
+        pingoneData.error_description ?? '(none)'
+      );
+      const richErr = new Error(
+        `ID token + actor exchange failed: ${pingoneData.error_description || pingoneData.error || error.message}`
+      );
+      richErr.httpStatus              = httpStatus;
+      richErr.pingoneError            = pingoneData.error;
+      richErr.pingoneErrorDescription = pingoneData.error_description;
+      richErr.pingoneErrorDetail      = pingoneData.error_detail || pingoneData.details;
+      richErr.requestContext          = { audience, scope: scopeStr, client_id: this.config.clientId };
+      throw richErr;
+    }
+  }
+
+  /**
    * Client-credentials token for the PingOne Worker Token app (Management API).
    * Used for verifying apps, resources, scopes, users in PingOne.
    * PingOne App: Super Banking Worker Token — configure via PINGONE_WORKER_TOKEN_CLIENT_ID / PINGONE_WORKER_TOKEN_CLIENT_SECRET.
