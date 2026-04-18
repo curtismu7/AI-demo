@@ -72,3 +72,30 @@ Primary target — ~13 user-facing label sites updated.
 
 - Unicode characters (`—`, `→`, `§`) in source file required Python `str.replace()` rather than heredoc to apply correctly
 - The `-18 B` size delta reflects the slightly shorter canonical labels vs the old verbose names
+
+---
+
+## Re-verification — 2026-04-18 (post-review improvements)
+
+Applied review findings from plan quality audit. Re-ran full verification suite against updated plan criteria:
+
+| Check | Command | Result |
+|-------|---------|--------|
+| Legacy label sweep (full src/) | `grep -rn "Exchange [123]\|Phase 184" src/ \| grep -v legacy` | **0 hits — PASS** |
+| Phase 186 still distinctly named | `grep -rn "Phase 186" src/` | **8 hits — PASS** |
+| fixIssue legacy comments | `grep -n "legacy dispatch key" PingOneTestPage.jsx` | **2 comments — PASS** |
+| Build | `npm run build` | **exit 0 — PASS** |
+
+### Changes applied in post-review commit (4974f81)
+
+**Plan (190-01-PLAN.md):**
+- Added `must_haves` frontmatter (truths, artifacts, key_links)
+- Converted prose tasks to structured `<task>` XML format with `<verify>` commands
+- Task 1: requires broad `src/` scan (not just 5 files) with before/after map
+- Task 2: explicit `grep "Phase 186"` verify step to confirm distinct naming preserved
+- Task 3: `fixIssue` comment requirement made explicit in action
+- Task 4: removed irrelevant `package.json`; replaced prose checklist with runnable greps
+
+**Code (PingOneTestPage.jsx):**
+- `'single-exchange'`: `// legacy dispatch key — not user-facing; canonical: 1-exchange`
+- `'double-exchange'`: `// legacy dispatch key — not user-facing; canonical: 2-exchange`
