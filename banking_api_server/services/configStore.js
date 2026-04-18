@@ -127,7 +127,7 @@ const FIELD_DEFS = {
   ff_inject_scopes:        { public: true, default: 'false' }, // BFF-inject banking:read banking:write scopes when absent from user token (demo/dev — no PingOne change needed)
   ff_skip_token_exchange:  { public: true, default: 'false' }, // Skip RFC 8693 — pass user access token directly to MCP (demo mode; token exchange not required)
   ff_oidc_only_authorize:  { public: true, default: 'false' }, // Strip banking:* from user /authorize — fixes multi-resource error when scopes are on a PingOne Resource Server
-  ff_two_exchange_delegation: { public: true, default: 'false' }, // 2-Exchange pattern: Subject→(AI Agent exchange)→Agent Token→(MCP exchange)→Final Token with nested act.act claim
+  ff_two_exchange_delegation: { public: true, default: 'true' }, // 2-Exchange pattern: Subject→(AI Agent exchange)→Agent Token→(MCP exchange)→Final Token with nested act.act claim (default ON — canonical agent path)
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
   ff_webmcp_enabled:         { public: true, default: 'false' }, // Show WebMCP browser panel on dashboard (tool-listing + streaming call UI via BFF proxy)
 
