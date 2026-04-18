@@ -462,3 +462,48 @@
   color: #334155;
   white-space: pre;
 }
+
+/* ─── Token Color System (Phase 185 / RFC 8693) ─────────────────────────── */
+/* CSS classes mirror the inline styles in TokenColorSystem.js.              */
+/* Allows theme overrides without JS changes.                                */
+
+/* Colored dot representing token type */
+.token-color-dot {
+  display: inline-block;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.token-color-dot--subject { background-color: #dc2626; }
+.token-color-dot--actor   { background-color: #2563eb; }
+.token-color-dot--mcp     { background-color: #16a34a; }
+
+/* Inline legend bar showing all three token types */
+.token-color-legend {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  border-bottom: 1px solid #1e293b;
+}
+.token-color-legend__label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+.token-color-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.token-color-legend__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.token-color-legend__dot--subject { background-color: #dc2626; }
+.token-color-legend__dot--actor   { background-color: #2563eb; }
+.token-color-legend__dot--mcp     { background-color: #16a34a; }
