@@ -36,6 +36,10 @@ Note: current GSD stats report more plan summaries than plan definitions (`330/3
 
 ## Roadmap Evolution
 
+- Phase 186 added: ID token exchange flow — MCP 401 → OIDC authz → agent CC + user ID token → dual token exchange at MCP Gateway
+
+- Phase 185 added: Token color legend and consistent token-type color coding across all token displays
+
 - Phase 184 added: End-to-end delegated token flow — agent CC token + user OAuth token sent to MCP Gateway for dual token exchange at PingOne before fulfilling request
 
 - Phase 181 COMPLETE: CUA training slide-out added and verified

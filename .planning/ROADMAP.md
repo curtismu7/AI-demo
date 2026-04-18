@@ -1919,6 +1919,26 @@ Plans:
 4. Developers reading test UI, backend code, and setup guide all see consistent Phase 184 terminology
 5. Legacy patterns (1-exchange, 2-step) clearly marked as fallback/educational only
 
+### Phase 185: Token color legend and consistent token-type color coding across all token displays including token chain, decoded panels, and education components
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 184
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 185 to break down)
+
+### Phase 186: ID token exchange flow — agent sends prompt to MCP server, gets 401, performs OIDC authz with PingOne to get access+id+refresh tokens, then exchanges agent CC token plus user ID token via dual token exchange at MCP Gateway
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 185
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 186 to break down)
+
 ---
 
 ### Phase 123: PingOne MFA Test Page

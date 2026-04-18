@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom';
 import { useTokenChainOptional } from '../context/TokenChainContext';
 import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import './TokenChainDisplay.css';
+import { deriveTokenCategory, TokenColorDot, TokenColorLegend, getTokenColor } from './TokenColorSystem';
 
 
 // Module-level request deduplication
@@ -402,6 +403,8 @@ function EventDetail({ event }) {
  * The user can move that window to any physical screen.
  */
 function openInNewWindow(event) {
+  const _cat = deriveTokenCategory(event.label, event.id, event.tokenType);
+  const dotColor = getTokenColor(_cat) || '#6b7280';
   const fullJwtJson = event.jwtFullDecode ? JSON.stringify(event.jwtFullDecode, null, 2) : '';
   
   const claimsHtml = event.claims
@@ -463,7 +466,7 @@ function openInNewWindow(event) {
 <body>
   <div class="header">
     <div class="title">⊕ OAuth Token Inspector</div>
-    <div class="subtitle">${event.label}${event.status ? ` · ${event.status}` : ''}</div>
+    <div class="subtitle"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dotColor};margin-right:6px;vertical-align:middle"></span>${event.label}${event.status ? ` · ${event.status}` : ''}</div>
   </div>
   <div class="body">
     ${fullJwtJson ? `<div class="full-jwt">
@@ -742,6 +745,7 @@ function EventRow({ event, isLast, onInspect, hints }) {
       <div className={`tcd-event ${event.status}`}>
         <div className="tcd-event-content">
           <div className="tcd-event-title-row">
+            <TokenColorDot type={deriveTokenCategory(event.label, event.id, event.tokenType)} size={10} />
             <span className="tcd-event-label">{event.label}</span>
             {hasDetail && (
               <button
@@ -1129,6 +1133,8 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
         </div>
 
         {tab === 'current' && (
+          <>
+          <TokenColorLegend />
           <div className="tcd-events">
             {!isLive && (
               <div className="tcd-placeholder-note">
@@ -1149,6 +1155,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
               <EventRow key={ev.id} event={ev} isLast={i === currentEvents.length - 1} onInspect={handleInspect} hints={identityHints} />
             ))}
           </div>
+          </>
         )}
 
         {tab === 'history' && (

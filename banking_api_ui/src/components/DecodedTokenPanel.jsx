@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './TokenDisplay.css';
+import { deriveTokenCategory } from './TokenColorSystem';
 
 const CLAIM_GLOSSARY = {
   sub: 'Subject — unique identifier of the principal this token was issued for (user, client, or service)',
@@ -32,6 +33,8 @@ export default function DecodedTokenPanel({ decoded, label }) {
 
   if (!decoded) return null;
 
+  const tokenType = deriveTokenCategory(label);
+
   const { header = {}, payload = {} } = decoded;
 
   const formatTs = (ts) => {
@@ -56,14 +59,14 @@ export default function DecodedTokenPanel({ decoded, label }) {
   return (
     <div className="token-display decoded-token-panel">
       <div
-        className="token-display-header"
+        className={`token-display-header${tokenType ? ` token-display-header--${tokenType}` : ``}`}
         role="button"
         tabIndex={0}
         onClick={() => setExpanded((e) => !e)}
         onKeyDown={(e) => e.key === 'Enter' && setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
-        <span className="token-display-label">🔍 {label} — Decoded Claims</span>
+        <span className="token-display-label">{tokenType === 'subject' ? '🔴' : tokenType === 'actor' ? '🔵' : tokenType === 'mcp' ? '🟢' : '🔍'} {label} — Decoded Claims</span>
         <span className="token-display-toggle">{expanded ? '▲ hide' : '▼ show'}</span>
       </div>
 

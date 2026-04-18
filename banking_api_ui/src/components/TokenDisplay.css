@@ -26,6 +26,40 @@
   background: #e5e7eb;
 }
 
+/* Token type color-coded headers */
+.token-display-header--subject {
+  background: #dc2626;
+}
+.token-display-header--subject:hover {
+  background: #b91c1c;
+}
+.token-display-header--subject .token-display-label,
+.token-display-header--subject .token-display-toggle {
+  color: #ffffff;
+}
+
+.token-display-header--actor {
+  background: #2563eb;
+}
+.token-display-header--actor:hover {
+  background: #1d4ed8;
+}
+.token-display-header--actor .token-display-label,
+.token-display-header--actor .token-display-toggle {
+  color: #ffffff;
+}
+
+.token-display-header--mcp {
+  background: #16a34a;
+}
+.token-display-header--mcp:hover {
+  background: #15803d;
+}
+.token-display-header--mcp .token-display-label,
+.token-display-header--mcp .token-display-toggle {
+  color: #ffffff;
+}
+
 .token-display-label {
   font-weight: 600;
   font-size: 0.875rem;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import apiClient from '../services/apiClient';
 import './TokenDisplay.css';
+import { deriveTokenCategory, TokenColorDot } from './TokenColorSystem';
 
 /**
  * TokenDisplay - Component for displaying JWT tokens with collapsible sections
@@ -84,7 +85,7 @@ export default function TokenDisplay({ token, label, showFullToken = false }) {
   return (
     <div className="token-display">
       <div className="token-display-header" onClick={toggleExpand}>
-        <span className="token-display-label">{label || 'Token'}</span>
+        <span className="token-display-label"><TokenColorDot type={deriveTokenCategory(label)} size={10} />{label || 'Token'}</span>
         <span className="token-display-toggle">
           {expanded ? '▼' : '▶'}
         </span>

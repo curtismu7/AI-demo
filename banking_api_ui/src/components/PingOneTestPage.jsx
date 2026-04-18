@@ -1822,7 +1822,7 @@ function TokenLineageDiff({ fromDecoded, toDecoded, fromLabel, toLabel, expected
     <div className="tld-wrapper">
       <button type="button" className="tld-toggle" onClick={() => setOpen(o => !o)}>
         <span className="tld-icon">{open ? '\u25BC' : '\u25B6'}</span>
-        <span className="tld-label">\uD83D\uDD00 Token Lineage Diff \u2014 {fromLabel || 'Input'} \u2192 {toLabel || 'Output'}</span>
+        <span className="tld-label">🔀 Token Lineage Diff — {fromLabel || 'Input'} → {toLabel || 'Output'}</span>
         {unexpected.length > 0 && (
           <span className="tld-badge tld-badge--unexpected">{unexpected.length} unexpected</span>
         )}
@@ -1849,7 +1849,7 @@ function TokenLineageDiff({ fromDecoded, toDecoded, fromLabel, toLabel, expected
                 {fStr !== undefined && (
                   <code className="tld-val tld-val--from">{fStr}</code>
                 )}
-                {kind === 'changed' && <span className="tld-arrow">\u2192</span>}
+                {kind === 'changed' && <span className="tld-arrow">→</span>}
                 {tStr !== undefined && (
                   <code className="tld-val tld-val--to">{tStr}</code>
                 )}
@@ -1929,6 +1929,14 @@ function AssetCard({ title, status, count, error }) {
 
 function AssetTable({ apps, resources, scopes, scopesMeta, users, tokenPolicies, missing, expectedApps, expectedScopes }) {
   const [activeTab, setActiveTab] = React.useState('apps');
+  const [appNameFilter, setAppNameFilter] = React.useState('');
+  const [appTypeFilter, setAppTypeFilter] = React.useState('');
+  const appTypes = React.useMemo(() => [...new Set(apps.map(a => a.type).filter(Boolean))].sort(), [apps]);
+  const filteredApps = React.useMemo(() => apps.filter(a => {
+    if (appNameFilter && !(a.name || '').toLowerCase().includes(appNameFilter.toLowerCase())) return false;
+    if (appTypeFilter && a.type !== appTypeFilter) return false;
+    return true;
+  }), [apps, appNameFilter, appTypeFilter]);
   const missingAppNames = missing.apps || [];
   const rsBankingLabel = scopesMeta?.resourceServerName
     ? `${scopesMeta.resourceServerName}${scopesMeta.isBankingRS ? ' (banking)' : ''}`
@@ -1960,6 +1968,28 @@ function AssetTable({ apps, resources, scopes, scopesMeta, users, tokenPolicies,
 
       {activeTab === 'apps' && (
         <div style={{ overflowX: 'auto' }}>
+          <div className="asset-filter-bar" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="Filter by name…"
+              value={appNameFilter}
+              onChange={e => setAppNameFilter(e.target.value)}
+              style={{ padding: '0.35rem 0.6rem', borderRadius: '6px', border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', fontSize: '0.82rem', minWidth: '160px' }}
+            />
+            <select
+              value={appTypeFilter}
+              onChange={e => setAppTypeFilter(e.target.value)}
+              style={{ padding: '0.35rem 0.6rem', borderRadius: '6px', border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', fontSize: '0.82rem' }}
+            >
+              <option value="">All types</option>
+              {appTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            {(appNameFilter || appTypeFilter) && (
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                {filteredApps.length} of {apps.length} apps
+              </span>
+            )}
+          </div>
           <table className="asset-table">
             <thead>
               <tr>
@@ -1971,7 +2001,7 @@ function AssetTable({ apps, resources, scopes, scopesMeta, users, tokenPolicies,
               </tr>
             </thead>
             <tbody>
-              {apps.map(app => {
+              {filteredApps.map(app => {
                 const missingScopesForApp = (missing.scopesByApp || {})[app.id] || [];
                 const hasIssue = missingScopesForApp.length > 0;
                 return (
