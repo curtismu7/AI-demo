@@ -1,10 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import './LandingPage.css';
 import EmbeddedAgentDock from './EmbeddedAgentDock';
+import * as bankingAgentService from '../services/bankingAgentService';
 
 export default function LandingPage({ user, onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleAdminLogin = (e) => {
     e.preventDefault();
@@ -15,9 +19,33 @@ export default function LandingPage({ user, onLogout }) {
   const handleCustomerLogin = (e) => {
     e.preventDefault();
     // Redirect to BFF OAuth user login endpoint
-    window.location.href = '/api/auth/oauth/user/login';
+    const returnTo = location.pathname === '/marketing' ? '/marketing' : '/dashboard';
+    window.location.href = `/api/auth/oauth/user/login?return_to=${encodeURIComponent(returnTo)}`;
   };
 
+  const handleResourceAction = async (actionId) => {
+    try {
+      if (actionId === 'balance') {
+        const result = await bankingAgentService.getAccountBalance('primary');
+        notifySuccess(`Balance: ${result.balance || 'Loading...'}`);
+      } else if (actionId === 'transactions') {
+        const result = await bankingAgentService.getMyTransactions();
+        notifySuccess(`Found ${result?.length || 0} transactions`);
+      }
+    } catch (err) {
+      console.error(`[handleResourceAction] Error for ${actionId}:`, err);
+      
+      // Phase 187 pattern: Check for need_auth signal (401 - token expired or missing permission)
+      if (err?.need_auth) {
+        notifyInfo('🔐 Session expired — sign in again to view your data');
+        handleCustomerLogin({ preventDefault: () => {} });
+        return;
+      }
+      
+      // Other errors: display error message
+      notifyError(`Error fetching ${actionId}: ${err.message || 'Unknown error'}`);
+    }
+  };
 
   return (
     <div className="landing-page">
@@ -138,6 +166,53 @@ export default function LandingPage({ user, onLogout }) {
           </article>
         </div>
       </section>
+
+      {/* Account Resources Section (Phase 189) - visible when logged in */}
+      {user && (
+        <section className="landing-account-resources">
+          <div className="landing-resources-heading">
+            <h2>Account Resources</h2>
+            <p className="landing-resources-subtitle">Explore your banking data directly from here</p>
+          </div>
+          <div className="landing-resources-grid" role="list">
+            {/* Resource 1: Check Balance */}
+            <article className="resource-card" role="listitem">
+              <div className="resource-card-icon">💰</div>
+              <h3 className="resource-card-title">Account Balance</h3>
+              <p className="resource-card-description">
+                View your current account balance and account details
+              </p>
+              <button
+                onClick={() => handleResourceAction('balance')}
+                className="resource-button"
+                disabled={!user}
+                aria-label="Check Account Balance"
+                title={!user ? 'Sign in to view balance' : 'Check your account balance'}
+              >
+                Check Balance
+              </button>
+            </article>
+
+            {/* Resource 2: View Transactions */}
+            <article className="resource-card" role="listitem">
+              <div className="resource-card-icon">📊</div>
+              <h3 className="resource-card-title">Recent Transactions</h3>
+              <p className="resource-card-description">
+                View your recent transactions and account activity
+              </p>
+              <button
+                onClick={() => handleResourceAction('transactions')}
+                className="resource-button"
+                disabled={!user}
+                aria-label="View Recent Transactions"
+                title={!user ? 'Sign in to view transactions' : 'View your recent transactions'}
+              >
+                View Transactions
+              </button>
+            </article>
+          </div>
+        </section>
+      )}
 
       {/* Embedded Agent Dock - fixed bottom-right on desktop, static on mobile */}
       <div className="landing-agent-dock-container">
