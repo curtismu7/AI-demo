@@ -1961,6 +1961,16 @@ Plans:
 Plans:
 - [x] TBD (run /gsd-plan-phase 188 to break down) (completed 2026-04-18)
 
+### Phase 189: Marketing page user authentication — login on /marketing goes straight to customer dashboard; resource-server buttons (balance, transactions) call banking API directly; PingOne authz validates user; agent path follows 401→exchange pattern
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 188
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 189 to break down)
+
 ---
 
 ### Phase 123: PingOne MFA Test Page

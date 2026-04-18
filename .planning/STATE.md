@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-last_updated: "2026-04-17T22:43:25.965Z"
+status: Executing Phase 188
+last_updated: "2026-04-18T10:39:02.128Z"
 progress:
-  total_phases: 190
-  completed_phases: 161
-  total_plans: 335
-  completed_plans: 348
+  total_phases: 194
+  completed_phases: 162
+  total_plans: 340
+  completed_plans: 351
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,8 +20,8 @@ progress:
 
 ## Current Position
 
-Phase: 84
-Plan: Not started
+Phase: 188 (define-ai-token-exchange-taxonomy) — EXECUTING
+Plan: 1 of 2
 Next incomplete phase: 74 (62.1 Token exchange critical fixes and enhancements - may_act, RFC 8707, scopes) — Not Started
 
 ## Recent Progress
@@ -35,6 +35,8 @@ Next incomplete phase: 74 (62.1 Token exchange critical fixes and enhancements -
 Note: current GSD stats report more plan summaries than plan definitions (`330/325`) because of legacy summary overcounting in the underlying stats output; the state file now mirrors the canonical tool totals rather than the stale Phase 05 snapshot.
 
 ## Roadmap Evolution
+
+- Phase 189 added: Marketing page user authentication — login on /marketing goes straight to customer dashboard; resource-server buttons (balance, transactions) call banking API directly; PingOne authz validates user; agent path follows 401→exchange pattern
 
 - Phase 188 added: Define AI token exchange taxonomy — user token (subject), agent token (actor), transaction token (MCP access) — validate naming against RFC 8693 and MCP spec
 
