@@ -15,6 +15,7 @@ import { BankingAPIError } from '../interfaces/banking';
 import { TokenExchangeService } from '../auth/TokenExchangeService';
 import { TokenExchangeRequest } from '../interfaces/tokenExchange';
 import { AuditLogger, UserTokenInfo, ExchangedTokenInfo, TokenChainExecutionResult } from '../utils/AuditLogger';
+import { Logger, createDefaultLoggerConfig } from '../utils/Logger';
 import { tokenCache } from '../services/tokenCacheService';
 import { getScopesForTool } from './toolScopeMap';
 
@@ -44,7 +45,7 @@ export class BankingToolProvider {
     private tokenExchangeService?: TokenExchangeService
   ) {
     this.authChallengeHandler = new AuthorizationChallengeHandler(authManager, sessionManager);
-    this.auditLogger = AuditLogger.getInstance();
+    this.auditLogger = AuditLogger.getInstance(Logger.getInstance(createDefaultLoggerConfig()));
   }
 
   /**
