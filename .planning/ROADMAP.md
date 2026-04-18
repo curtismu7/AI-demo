@@ -1937,7 +1937,19 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 186 to break down)
+- [x] 186-01-PLAN.md — Backend 401 handler, OIDC auth, token exchange wiring
+- [x] 186-02-PLAN.md — Test page integration with ID token exchange flow  
+- [x] 186-03-PLAN.md — Documentation and verification
+
+### Phase 187: 1-token exchange 401 flow — MCP 401 triggers user authz then token exchange for MCP token
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 186
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 187 to break down)
 
 ---
 
