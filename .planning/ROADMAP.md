@@ -1924,7 +1924,7 @@ Plans:
 **Goal:** Consistent token-type color coding (Subject=🔴, Actor=🔵, MCP=🟢) across TokenChainDisplay, TokenDisplay, DecodedTokenPanel, and PingOneTestPage; shared TokenColorLegend component; RFC 8693 badge color alignment.
 **Requirements**: TBD
 **Depends on:** Phase 184
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 185-01-PLAN.md — CSS classes, badge color fix, PingOneTestPage legend
