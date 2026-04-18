@@ -1931,10 +1931,10 @@ Plans:
 
 ### Phase 186: ID token exchange flow — agent sends prompt to MCP server, gets 401, performs OIDC authz with PingOne to get access+id+refresh tokens, then exchanges agent CC token plus user ID token via dual token exchange at MCP Gateway
 
-**Goal:** [To be planned]
+**Goal:** Dual ID token + agent CC token exchange via RFC 8693 with test page integration and documentation
 **Requirements**: TBD
 **Depends on:** Phase 185
-**Plans:** 0 plans
+**Plans:** 3 plans ✅ COMPLETE
 
 Plans:
 - [x] 186-01-PLAN.md — Backend 401 handler, OIDC auth, token exchange wiring
