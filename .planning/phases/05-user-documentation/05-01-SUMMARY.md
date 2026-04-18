@@ -6,6 +6,49 @@ status: complete
 
 # 05-01 SUMMARY
 
+**Plan:** Audit and fix docs/SETUP.md and README.md  
+**Requirements:** DOC-01  
+**Status:** COMPLETE
+
+## What Was Done
+
+### Task 1: Fixed docs/SETUP.md (5 targeted fixes)
+
+1. **Env var naming** — Renamed `PINGONE_AI_CORE_CLIENT_ID` → `PINGONE_ADMIN_CLIENT_ID`, `PINGONE_AI_CORE_USER_CLIENT_ID` → `PINGONE_USER_CLIENT_ID` in §2.2, §2.3, §3, §7. Added legacy names note as fallback alias documentation.
+
+2. **MCP Token Exchanger app** — Added new §2.5 with full config table (Type: AI_AGENT, grant types, scopes, env vars `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID/_SECRET`). Renumbered old §2.5 → §2.6.
+
+3. **App count** — Updated intro from "three PingOne OAuth applications" → "four PingOne applications" with optional fifth.
+
+4. **Port clarity** — Replaced vague §4 Option A text with explicit port table (UI: 4000, API: 3002, MCP: 8080), HTTPS/mkcert requirement, and a comparison callout: run-bank.sh = 4000/3002 HTTPS; start.sh/manual = 3000/3001 HTTP.
+
+5. **Scope consistency** — Verified no stale `banking:read`/`banking:write` scopes remain (consolidated 6-scope model already used throughout).
+
+### Task 2: Verified README.md pointer (no changes needed)
+
+README already has two `docs/SETUP.md` pointers (Quick Start + Configuration sections). No stale `AI_CORE` refs present.
+
+## Verification
+- `grep "PINGONE_AI_CORE_CLIENT_ID" docs/SETUP.md` → 0 matches (only legacy note remains) ✅
+- `grep -c "PINGONE_ADMIN_CLIENT_ID" docs/SETUP.md` → 4 ✅
+- `grep -c "MCP Token Exchanger" docs/SETUP.md` → 3 ✅
+- `grep -c "4000/3002" docs/SETUP.md` → 1 ✅
+- `grep "docs/SETUP.md" README.md` → 2 matches ✅
+
+## Commits
+- `24bf91c` — docs(05-01): fix env var naming, add MCP Token Exchanger, clarify ports in SETUP.md
+
+## Artifacts
+- `docs/SETUP.md` (modified — 5 targeted fixes, net +47/-10 lines)
+- `README.md` (verified, no changes needed)
+---
+phase: 05-user-documentation
+plan: 01
+status: complete
+---
+
+# 05-01 SUMMARY
+
 **Plan:** docs/SETUP.md + README.md pointer update  
 **Requirements:** DOC-01  
 **Status:** COMPLETE (artifacts verified as meeting all must_haves)

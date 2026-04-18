@@ -6,35 +6,46 @@ status: complete
 
 # 05-03 SUMMARY
 
-**Plan:** docs/ARCHITECTURE_WALKTHROUGH.md  
+**Plan:** Audit and fix docs/ARCHITECTURE_WALKTHROUGH.md  
 **Requirements:** DOC-02  
-**Status:** COMPLETE (artifact verified as meeting all must_haves)
+**Status:** COMPLETE
 
 ## What Was Done
 
-### Task 1: Created docs/ARCHITECTURE_WALKTHROUGH.md (275 lines)
+### Task 1: Fixed ARCHITECTURE_WALKTHROUGH.md (5 targeted fixes)
 
-Architecture narrative guide with 6 sections:
+1. **OAuth clients table** — Updated from 3-row to 5-row table with canonical env var names:
+   - `PINGONE_AI_CORE_CLIENT_ID` → `PINGONE_ADMIN_CLIENT_ID`
+   - `PINGONE_AI_CORE_USER_CLIENT_ID` → `PINGONE_USER_CLIENT_ID`
+   - `AGENT_OAUTH_CLIENT_ID` → `PINGONE_AI_AGENT_CLIENT_ID`
+   - Added Worker app row: `PINGONE_WORKER_TOKEN_CLIENT_ID`
+   - Added MCP Token Exchanger row: `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID`
+   - Header updated from "three" to "up to five PingOne apps"
 
-1. **Component Map** — 3-layer stack table (React SPA → BFF → MCP Server) with codebase locations and external dependencies (PingOne, Upstash Redis)
+2. **Diagram filename references** — Fixed all 3 diagram links:
+   - `BX-Finance-AuthCode-PKCE-Flow.drawio` → `Super-Banking-AuthCode-PKCE-Flow.drawio`
+   - `BX-Finance-CIBA-Flow.drawio` → `Super-Banking-CIBA-Flow.drawio`
+   - `BX-Finance-TokenExchange-Flow.drawio` → `Super-Banking-TokenExchange-Flow.drawio`
 
-2. **Why the BFF Holds All Tokens** — Security rationale including threat model table (XSS, CSRF, token theft), BFF token custodian pattern, and session cookie design
+3. **Scope names** — Updated token state tables:
+   - `banking:read banking:write` → `banking:general:read banking:general:write banking:ai:agent`
+   - `banking:accounts:read` → `banking:general:read banking:general:write banking:ai:agent`
 
-3. **Flow 1: Authorization Code + PKCE** — Step-by-step walkthrough with token state table after login; link to `BX-Finance-AuthCode-PKCE-Flow.drawio`; RFC 6749 + RFC 7636 annotations
+4. **Exchange client identity** — Updated 2-exchange step labels and token state:
+   - `AGENT_OAUTH_CLIENT_ID` → `PINGONE_AI_AGENT_CLIENT_ID` (×3: CC grant step, act claim in token struct, table row)
 
-4. **Flow 2: CIBA** — Backchannel auth walkthrough, token state during CIBA, polling pattern; link to `BX-Finance-CIBA-Flow.drawio`; CIBA Core spec annotation
-
-5. **Flow 3: RFC 8693 Token Exchange** — Both 1-exchange and 2-exchange paths with token state tables showing `sub`, `aud`, `act` claim structure after each exchange. Links to `PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md` and `PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md`; link to `BX-Finance-TokenExchange-Flow.drawio`; RFC 8693 + RFC 9700 annotations
-
-6. **RFC Reference Summary** — Table of all 6 RFCs/specs with the step they govern
+5. **MCP Token Exchanger attribution** — Added note to 1-exchange path stating `PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID` authenticates the exchange request to PingOne
 
 ## Verification
-- `docs/ARCHITECTURE_WALKTHROUGH.md` exists, 275 lines ✅
-- Links to `PINGONE_MAY_ACT_ONE_TOKEN_EXCHANGE.md` and `PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md` ✅
-- All 3 `.drawio` files referenced by filename ✅
-- Token state tables present for all 3 flows ✅
-- RFC annotations on each flow section ✅
-- BFF security rationale section explaining why no token in browser ✅
+- `grep "PINGONE_AI_CORE" docs/ARCHITECTURE_WALKTHROUGH.md` → 0 matches ✅
+- `grep "BX-Finance-" docs/ARCHITECTURE_WALKTHROUGH.md` → 0 matches ✅
+- `grep "AGENT_OAUTH" docs/ARCHITECTURE_WALKTHROUGH.md` → 0 matches ✅
+- `grep -c "Super-Banking-" docs/ARCHITECTURE_WALKTHROUGH.md` → 3 ✅
+- `grep -c "PINGONE_ADMIN_CLIENT_ID" docs/ARCHITECTURE_WALKTHROUGH.md` → 1 ✅
+- `grep "MCP Token Exchanger" docs/ARCHITECTURE_WALKTHROUGH.md` → 2 matches ✅
+
+## Commits
+- `6e9da9b` — docs(05-03): fix naming and diagram refs in ARCHITECTURE_WALKTHROUGH.md
 
 ## Artifacts
-- `docs/ARCHITECTURE_WALKTHROUGH.md` (created)
+- `docs/ARCHITECTURE_WALKTHROUGH.md` (modified — 5 targeted fixes, net +19/-16 lines)
