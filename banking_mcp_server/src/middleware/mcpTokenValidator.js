@@ -9,6 +9,7 @@
  */
 
 import McpErrorFormatter from '../services/mcpErrorFormatter.js';
+import { validateTokenAtGateway } from './validateTokenAtGateway.js';
 
 /**
  * Create middleware that validates token for MCP server
@@ -57,6 +58,22 @@ export default function mcpTokenValidator() {
           }
         );
       }
+    }
+
+    // RFC 8693 §3.2 structural validation (Phase 188)
+    const mcpAudience = process.env.MCP_AUDIENCE || process.env.PINGONE_RESOURCE_MCP_URI;
+    const rfc8693 = validateTokenAtGateway(token, { expectedAudience: mcpAudience });
+    if (!rfc8693.valid) {
+      console.warn('[mcpTokenValidator] RFC 8693 validation failed:', rfc8693.errors);
+      return McpErrorFormatter.formatMcpError(
+        res,
+        'RFC8693_VALIDATION_FAILED',
+        `Token does not meet RFC 8693 requirements: ${rfc8693.errors[0]}`,
+        { errors: rfc8693.errors, warnings: rfc8693.warnings }
+      );
+    }
+    if (rfc8693.warnings.length > 0) {
+      console.log('[mcpTokenValidator] RFC 8693 warnings:', rfc8693.warnings);
     }
 
     // Token validation passed, proceed

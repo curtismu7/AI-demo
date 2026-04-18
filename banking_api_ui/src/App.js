@@ -39,6 +39,7 @@ import DelegationPage from './components/DelegationPage';
 import FeatureFlagsPage from './components/FeatureFlagsPage';
 import WebMcpPanel from './components/WebMcpPanel';
 import ScopeAuditPage from './components/ScopeAuditPage';
+import AdminTokenComplianceAudit from './components/AdminTokenComplianceAudit';
 import ScopeReferencePage from './components/ScopeReferencePage';
 import LangChainPage from './pages/LangChainPage';
 import PostmanCollectionsPage from './components/PostmanCollectionsPage';
@@ -636,6 +637,7 @@ function AppWithAuth() {
                     <Route path="/agentic-trust" element={user ? <AgenticTrustEducation /> : <Navigate to="/" replace />} />
                     <Route path="/actor-token-education" element={user ? <ActorTokenEducation /> : <Navigate to="/" replace />} />
                     <Route path="/error-audit" element={<AdminRoute user={user}><AdminErrorAuditLog /></AdminRoute>} />
+                    <Route path="/token-compliance" element={<AdminRoute user={user}><AdminTokenComplianceAudit /></AdminRoute>} />
                     <Route path="/webmcp" element={user ? <WebMcpPanel /> : <Navigate to="/" replace />} />
                     <Route path="/oauth-debug-logs"
                       element={<AdminRoute user={user}><OAuthDebugLogViewer /></AdminRoute>}
