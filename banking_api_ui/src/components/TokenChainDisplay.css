@@ -361,16 +361,18 @@
   border: 1px solid;
 }
 
+/* Subject token (red — RFC 8693 §2.1) */
 .tcd-token-type--user_token {
-  background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
-  color: var(--chase-navy);
-  border-color: var(--chase-navy-light);
+  background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  border-color: #f87171;
 }
 
+/* Actor/agent token (blue — RFC 8693 §2.2) */
 .tcd-token-type--agent_token {
-  background: linear-gradient(180deg, #f3e8ff 0%, #e9d5ff 100%);
-  color: #6b21a8;
-  border-color: #a855f7;
+  background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e3a8a;
+  border-color: #93c5fd;
 }
 
 .tcd-token-type--exchanged_token {
