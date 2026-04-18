@@ -1997,6 +1997,26 @@ Plans:
 Plans:
 - [x] 190-01-PLAN.md — Audit and align UI terminology, education copy, and token-exchange visuals with Phase 188 taxonomy
 
+### Phase 191: OIDC resource server app — banking summary page with decoded tokens, target for MCP server dual token exchange
+
+**Goal:** Build a standalone OIDC-authenticated resource server app that looks like the Banking summary page and displays decoded access/ID tokens. This app is the target audience for the MCP server's dual token exchange — the agent exchanges tokens to call this resource server on behalf of the user. Shows the full OIDC flow: user authenticates, app displays decoded tokens (claims, scopes, aud, act), and serves as the real resource server endpoint for RFC 8693 token exchange.
+**Requirements**: TBD
+**Depends on:** Phase 190
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 191 to break down)
+
+### Phase 192: Client credentials resource server app — banking summary page with client_id/client_secret auth, clearly labeled as service-to-service pattern
+
+**Goal:** Build a second version of the banking summary resource server app that authenticates using client_id/client_secret (Client Credentials grant). Clearly labeled throughout as "Client ID / Client Secret" service-to-service pattern — no user authentication, no OIDC. Contrasts with Phase 191's OIDC user-delegated flow to show the difference between user-context and machine-context access to the same banking API.
+**Requirements**: TBD
+**Depends on:** Phase 191
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 192 to break down)
+
 ---
 
 ### Phase 123: PingOne MFA Test Page

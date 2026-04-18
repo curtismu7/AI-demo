@@ -79,6 +79,8 @@ Next phase: 127+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 192 added: Client credentials resource server app — client_id/client_secret banking summary
+- Phase 191 added: OIDC resource server app — banking summary with decoded tokens, MCP target
 - Phase 190 added: Align UI with 2-token exchange taxonomy and education
 - **Phase 189 COMPLETE** ✅: Marketing page user authentication with resource buttons
 - Phase 188: Define AI token exchange taxonomy
