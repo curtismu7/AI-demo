@@ -124,6 +124,7 @@ export default function AdminSideNav({ user }) {
     { label: 'PingOne Test', path: '/pingone-test', icon: '🧪' },
     { label: 'MFA Test', path: '/mfa-test', icon: '🔒' },
     { label: 'OIDC Resource Server', path: '/resource-server', icon: '🔐' },
+    { label: '🔑 CC Resource Server', path: '/resource-server-cc', icon: '🔑' },
   ];
 
   // Filter by role

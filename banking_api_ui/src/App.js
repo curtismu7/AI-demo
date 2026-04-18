@@ -54,6 +54,7 @@ import MFATestPage from './components/MFATestPage';
 import LlmConfigPage from './components/LlmConfigPage';
 import OAuthTokenDisplayPage from './components/OAuthTokenDisplayPage';
 import ResourceServerPage from './components/ResourceServerPage';
+import ClientCredentialsResourcePage from './components/ClientCredentialsResourcePage';
 import AdminLayout from './components/AdminLayout';
 import AdminSideNav from './components/AdminSideNav';
 
@@ -651,6 +652,7 @@ function AppWithAuth() {
                     <Route path="/scope-reference" element={<AdminRoute user={user}><ScopeReferencePage /></AdminRoute>} />
                     <Route path="/oauth/token-display" element={user ? <OAuthTokenDisplayPage /> : <Navigate to="/" replace />} />
                     <Route path="/resource-server" element={user ? <ResourceServerPage /> : <Navigate to="/" replace />} />
+                    <Route path="/resource-server-cc" element={<AdminRoute user={user}><ClientCredentialsResourcePage /></AdminRoute>} />
                     {/* User-friendly self-service routes */}
                     <Route path="/accounts" element={<UserAccounts user={user} />} />
                     <Route path="/transactions" element={<UserTransactions user={user} />} />
