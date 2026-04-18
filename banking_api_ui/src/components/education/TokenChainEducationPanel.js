@@ -1,6 +1,7 @@
 // banking_api_ui/src/components/education/TokenChainEducationPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { useTokenChainOptional } from '../../context/TokenChainContext';
 
 function OverviewTab() {
   return (
@@ -65,7 +66,13 @@ function OverviewTab() {
   );
 }
 
-function JwtClaimsTab() {
+function JwtClaimsTab({ liveIdentity }) {
+  const liveSub = liveIdentity?.currentUser?.sub;
+  const liveName = liveIdentity?.currentUser?.name || liveIdentity?.currentUser?.email || '';
+  // Use live values when available, fall back to example placeholders
+  const exampleSub = liveSub || 'a1b2c3d4-user-uuid';
+  const exampleName = liveName || 'Jane Smith';
+  const exampleEmail = liveIdentity?.currentUser?.email || 'jane@example.com';
   return (
     <div>
       <h3 style={{ marginTop: 0 }}>JWT claims in token exchange</h3>
@@ -77,14 +84,14 @@ function JwtClaimsTab() {
       </p>
       <pre className="edu-code">{`// User's original token
 {
-  "sub": "a1b2c3d4-user-uuid",
-  "name": "Jane Smith",
-  "email": "jane@example.com"
+  "sub": "${exampleSub}",
+  "name": "${exampleName}",
+  "email": "${exampleEmail}"
 }
 
 // After token exchange — sub unchanged
 {
-  "sub": "a1b2c3d4-user-uuid",  // same user
+  "sub": "${exampleSub}",  // same user
   "act": { "client_id": "bff-admin-app" }
 }`}</pre>
 
@@ -95,7 +102,7 @@ function JwtClaimsTab() {
       </p>
       <pre className="edu-code">{`// 1-exchange: BFF acts directly
 {
-  "sub": "user-uuid",
+  "sub": "${exampleSub}",
   "act": {
     "client_id": "admin-oidc-app-id"
   }
@@ -103,7 +110,7 @@ function JwtClaimsTab() {
 
 // 2-exchange: Agent acts, then BFF acts on agent's behalf
 {
-  "sub": "user-uuid",
+  "sub": "${exampleSub}",
   "act": {
     "client_id": "bff-admin-app-id",
     "act": {
@@ -119,7 +126,7 @@ function JwtClaimsTab() {
       </p>
       <pre className="edu-code">{`// User's token with may_act
 {
-  "sub": "user-uuid",
+  "sub": "${exampleSub}",
   "may_act": {
     "client_id": "admin-oidc-app-id"
   }
@@ -280,9 +287,12 @@ Step 5: Transfer executed
 }
 
 export default function TokenChainEducationPanel({ isOpen, onClose, initialTabId }) {
+  const tokenChain = useTokenChainOptional();
+  const liveIdentity = tokenChain?.resolvedIdentity ?? null;
+
   const tabs = [
     { id: 'overview', label: 'Overview', content: <OverviewTab /> },
-    { id: 'jwt-claims', label: 'JWT Claims', content: <JwtClaimsTab /> },
+    { id: 'jwt-claims', label: 'JWT Claims', content: <JwtClaimsTab liveIdentity={liveIdentity} /> },
     { id: 'exchange-paths', label: 'Exchange Paths', content: <ExchangePathsTab /> },
     { id: 'examples', label: 'Examples', content: <ExamplesTab /> },
   ];

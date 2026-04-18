@@ -3,6 +3,8 @@
 // Shares live RFC 8693 token chain events across the UI.
 // Events are produced by callMcpTool() (bankingAgentService) and consumed by
 // TokenChainPanel and BankingAgent (inline chat messages).
+// Also provides resolvedIdentity — friendly user/actor labels derived from the
+// current BFF session, cached here so all token surfaces share one fetch.
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 
 const TokenChainContext = createContext(null);
@@ -16,6 +18,9 @@ export function TokenChainProvider({ children }) {
   const [sessionTokenEvent, setSessionTokenEvent] = useState(null);
   // MCP tool call delegation trail (fetched from /api/token-chain)
   const [mcpToolCalls, setMCPToolCalls] = useState([]);
+  // Resolved identity — friendly user/actor names derived from current BFF session.
+  // { currentUser: { sub, name, email } | null, knownClients: { [clientId]: label } }
+  const [resolvedIdentity, setResolvedIdentity] = useState(null);
   // History: array of { tool, timestamp, events[] } — hydrated from localStorage on mount
   const [history, setHistory] = useState(() => {
     try {
@@ -91,13 +96,55 @@ export function TokenChainProvider({ children }) {
     return () => { cancelled = true; clearInterval(pollInterval); };
   }, []);
 
+  /** Fetch resolved identity once on mount (and on re-auth). Shared across all token surfaces. */
+  const loadResolvedIdentity = useCallback(async () => {
+    try {
+      const [sessionRes, configRes] = await Promise.all([
+        fetch('/api/auth/session', { credentials: 'include' }),
+        fetch('/api/pingone-test/config', { credentials: 'include' }),
+      ]);
+      const sessionData = sessionRes.ok ? await sessionRes.json() : null;
+      const configData  = configRes.ok  ? await configRes.json()  : null;
+      const identity = { currentUser: null, knownClients: {} };
+      if (sessionData?.authenticated && sessionData.user) {
+        const u = sessionData.user;
+        const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || u.username || '';
+        identity.currentUser = { sub: u.id, name, email: u.email };
+      }
+      if (configData) {
+        const clientLabels = {
+          adminClientId:             'Super Banking BFF (Admin)',
+          userClientId:              'Super Banking BFF (User)',
+          mcpTokenExchangerClientId: 'MCP Token Exchanger',
+          aiAgentClientId:           'AI Agent',
+        };
+        for (const [key, label] of Object.entries(clientLabels)) {
+          const id = configData[key];
+          if (id) identity.knownClients[id] = label;
+        }
+      }
+      setResolvedIdentity(identity);
+    } catch { /* non-fatal — falls back to raw UUIDs */ }
+  }, []);
+
+  useEffect(() => {
+    void loadResolvedIdentity();
+  }, [loadResolvedIdentity]);
+
+  // Re-fetch identity after login (e.g., session expiry re-auth)
+  useEffect(() => {
+    const onAuth = () => void loadResolvedIdentity();
+    window.addEventListener('userAuthenticated', onAuth);
+    return () => window.removeEventListener('userAuthenticated', onAuth);
+  }, [loadResolvedIdentity]);
+
   const value = useMemo(
     () => {
       // Use tool events if available, otherwise show session token
       const displayEvents = events.length > 0 ? events : (sessionTokenEvent ? [sessionTokenEvent] : []);
-      return { events: displayEvents, history, mcpToolCalls, setTokenEvents, clearEvents, setSessionToken, clearHistory };
+      return { events: displayEvents, history, mcpToolCalls, resolvedIdentity, setTokenEvents, clearEvents, setSessionToken, clearHistory };
     },
-    [events, sessionTokenEvent, history, mcpToolCalls, setTokenEvents, clearEvents, setSessionToken, clearHistory]
+    [events, sessionTokenEvent, history, mcpToolCalls, resolvedIdentity, setTokenEvents, clearEvents, setSessionToken, clearHistory]
   );
 
   return (

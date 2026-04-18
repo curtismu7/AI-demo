@@ -82,6 +82,24 @@ export default function TokenChainPanel() {
   const [copyFlash, setCopyFlash] = useState(null);
   const tokenChain = useTokenChainOptional();
   const mcpToolCalls = tokenChain?.mcpToolCalls || [];
+  const resolvedIdentity = tokenChain?.resolvedIdentity ?? null;
+
+  // Build live-aware steps — replace "user-uuid" with real sub when session identity is available
+  const liveSub = resolvedIdentity?.currentUser?.sub;
+  const liveName = resolvedIdentity?.currentUser?.name || resolvedIdentity?.currentUser?.email || '';
+  const steps = TOKEN_CHAIN_STEPS.map((step) => {
+    if (step.id !== 'banking-app' || !liveSub) return step;
+    return {
+      ...step,
+      payloadPreview: `{
+  "sub": "${liveSub}",${liveName ? `\n  "name": "${liveName}",` : ''}
+  "scope": "openid banking:read banking:write",
+  "aud": "https://banking-api.example.com",
+  "iss": "https://auth.pingone.com/...",
+  "exp": 1710000000
+}`,
+    };
+  });
 
   const handleToggleRow = useCallback((id) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -134,7 +152,7 @@ export default function TokenChainPanel() {
 
         {chainOpen && (
           <ul className="token-chain-list">
-            {TOKEN_CHAIN_STEPS.map((step) => {
+            {steps.map((step) => {
               const expanded = expandedId === step.id;
               const showCopy = step.status === 'active' && step.copySample;
 

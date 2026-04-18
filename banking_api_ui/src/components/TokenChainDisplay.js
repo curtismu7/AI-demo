@@ -777,7 +777,7 @@ function EventRow({ event, isLast, onInspect, hints }) {
                   }}
                   type="button"
                 >
-                  👤 User: {userId.length > 16 ? userId.slice(0, 14) + '…' : userId}
+                  👤 User: {fmtSub(userId, hints)}
                 </button>
               )}
               {agentId && (
@@ -931,7 +931,8 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
   const [inspectedEvent, setInspectedEvent] = useState(null);
   const [inspectorPos, setInspectorPos] = useState({ x: 120, y: 100 });
   const [copied, setCopied] = useState(false);
-  const [identityHints, setIdentityHints] = useState(null);
+  // Identity hints sourced from TokenChainContext (fetched once, shared across surfaces)
+  const identityHints = ctx?.resolvedIdentity ?? null;
 
   /** Fetch session preview (called on mount, on login, and when live events reset). */
   const fetchSessionPreview = useCallback(async () => {
@@ -972,44 +973,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
     void fetchSessionPreview();
   }, [fetchSessionPreview]);
 
-  /** Fetch identity hints once on mount — resolve current user name + known client IDs for friendly display. */
-  React.useEffect(() => {
-    let cancelled = false;
-    async function loadIdentityHints() {
-      try {
-        const [sessionRes, configRes] = await Promise.all([
-          fetch('/api/auth/session', { credentials: 'include', _silent: true }),
-          fetch('/api/pingone-test/config', { credentials: 'include', _silent: true }),
-        ]);
-        if (cancelled) return;
-        const sessionData = sessionRes.ok ? await sessionRes.json() : null;
-        const configData  = configRes.ok  ? await configRes.json()  : null;
-        const hints = { currentUser: null, knownClients: {} };
-        if (sessionData?.authenticated && sessionData.user) {
-          const u = sessionData.user;
-          const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || u.username || '';
-          hints.currentUser = { sub: u.id, name, email: u.email };
-        }
-        if (configData) {
-          const clientLabels = {
-            adminClientId:             'Super Banking BFF (Admin)',
-            userClientId:              'Super Banking BFF (User)',
-            mcpTokenExchangerClientId: 'MCP Token Exchanger',
-            aiAgentClientId:           'AI Agent',
-          };
-          for (const [key, label] of Object.entries(clientLabels)) {
-            const id = configData[key];
-            if (id) hints.knownClients[id] = label;
-          }
-        }
-        setIdentityHints(hints);
-      } catch (_e) { /* non-fatal — falls back to raw UUIDs */ }
-    }
-    void loadIdentityHints();
-    return () => { cancelled = true; };
-  }, []);
-
-  /** Also re-fetch immediately after a successful PingOne login (e.g. session expiry re-auth). */
+  /** Re-fetch session preview after a successful PingOne login (e.g. session expiry re-auth). */
   React.useEffect(() => {
     const onAuth = () => {
       setSessionPreviewEvents(null); // clear stale preview so new fetch replaces it

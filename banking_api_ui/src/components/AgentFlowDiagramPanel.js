@@ -5,6 +5,7 @@ import { useDraggablePanel } from '../hooks/useDraggablePanel';
 import { agentFlowDiagram } from '../services/agentFlowDiagramService';
 import { useExchangeMode } from '../context/ExchangeModeContext';
 import { useEducationUIOptional } from '../context/EducationUIContext';
+import { useTokenChainOptional } from '../context/TokenChainContext';
 import TokenExchangeFlowDiagram from './TokenExchangeFlowDiagram';
 import './AgentFlowDiagramPanel.css';
 
@@ -15,10 +16,29 @@ function statusBadge(status) {
 }
 
 // Token chain display component
-function TokenChainDisplay({ tokenChain, compact = false }) {
+function TokenChainDisplay({ tokenChain, resolvedIdentity, compact = false }) {
   if (!tokenChain || tokenChain.length === 0) return null;
   
   const currentTokens = tokenChain.filter(t => t.eventType === 'auth' || t.eventType === 'exchange');
+
+  // Derive friendly user label from resolvedIdentity when available
+  function fmtTokenSub(sub) {
+    if (!sub) return null;
+    const s = String(sub);
+    if (resolvedIdentity?.currentUser?.sub && s === resolvedIdentity.currentUser.sub && resolvedIdentity.currentUser.name) {
+      return `${resolvedIdentity.currentUser.name} (${s.slice(0, 8)}…)`;
+    }
+    return `${s.slice(0, 8)}…`;
+  }
+
+  // Derive friendly actor label from resolvedIdentity when available
+  function fmtTokenAct(act) {
+    if (!act) return null;
+    const clientId = typeof act === 'object' ? act.client_id : String(act);
+    if (!clientId) return null;
+    const known = resolvedIdentity?.knownClients?.[clientId];
+    return known ? `${known} (${String(clientId).slice(0, 8)}…)` : String(clientId).slice(0, 12) + '…';
+  }
   
   if (compact) {
     return (
@@ -29,7 +49,7 @@ function TokenChainDisplay({ tokenChain, compact = false }) {
               {token.tokenType?.replace('_', ' ').toUpperCase() || 'TOKEN'}
             </span>
             {token.tokenSub && (
-              <span className="afd-token-user">👤 {token.tokenSub.slice(0, 8)}...</span>
+              <span className="afd-token-user">👤 {fmtTokenSub(token.tokenSub)}</span>
             )}
           </div>
         ))}
@@ -57,12 +77,12 @@ function TokenChainDisplay({ tokenChain, compact = false }) {
           </div>
           {token.tokenSub && (
             <div className="afd-token-claim">
-              User ID: <code>{token.tokenSub}</code>
+              User: <code>{fmtTokenSub(token.tokenSub)}</code>
             </div>
           )}
           {token.tokenAct && (
             <div className="afd-token-claim">
-              Agent: <code>{token.tokenAct.client_id}</code>
+              Actor: <code>{fmtTokenAct(token.tokenAct)}</code>
             </div>
           )}
           {token.scopes && token.scopes.length > 0 && (
@@ -87,6 +107,8 @@ export default function AgentFlowDiagramPanel() {
   const [showFlowDiagram, setShowFlowDiagram] = useState(false);
   const { mode } = useExchangeMode();
   const edu = useEducationUIOptional();
+  const tokenChainCtx = useTokenChainOptional();
+  const resolvedIdentity = tokenChainCtx?.resolvedIdentity ?? null;
 
   const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
     () => ({
@@ -256,7 +278,7 @@ export default function AgentFlowDiagramPanel() {
                 {showTokenChain ? 'Hide' : 'Show'}
               </button>
             </div>
-            <TokenChainDisplay tokenChain={tokenChain} compact={true} />
+            <TokenChainDisplay tokenChain={tokenChain} resolvedIdentity={resolvedIdentity} compact={true} />
           </div>
         )}
         
