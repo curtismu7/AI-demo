@@ -40,14 +40,6 @@ const TEST_CONFIG = {
     spel: 'Exchange 2 (Phase 184): Single POST — T1 (user) as subject + Agent CC as actor → MCP Gateway token with act claim',
     agentPrompt: 'Transfer $500 from checking to savings on behalf of the user'
   },
-  exchange3: {
-    appName: 'Super Banking AI Agent App',
-    appType: 'AI_AGENT',
-    requiredScopes: ['openid', 'banking:read', 'banking:write', 'banking:ai:agent'],
-    audience: 'https://agent-gateway.pingdemo.com',
-    spel: 'Exchange 3 (Legacy): Two-step chain — Step 1: T1 → Agent token, Step 2: T1 + Agent → MCP token. Audience: Agent Gateway',
-    agentPrompt: 'What are the recent transactions on my account?'
-  },
   apps: {
     appName: 'Super Banking User App',
     appType: 'WEB_APP',
@@ -191,10 +183,12 @@ export default function PingOneTestPage() {
   // Token exchange tests state
   const [exchange1Status, setExchange1Status] = useState('pending');
   const [exchange2Status, setExchange2Status] = useState('pending');
-  const [exchange3Status, setExchange3Status] = useState('pending');
+  const [exchange401Status, setExchange401Status] = useState('pending');
   const [exchange1Error, setExchange1Error] = useState(null);
   const [exchange2Error, setExchange2Error] = useState(null);
-  const [exchange3Error, setExchange3Error] = useState(null);
+  const [exchange401Error, setExchange401Error] = useState(null);
+  const [exchange401Decoded, setExchange401Decoded] = useState(null);
+  const [exchange401Steps, setExchange401Steps] = useState([]);
   const [exchangeIdTokenStatus, setExchangeIdTokenStatus] = useState('pending');
   const [exchangeIdTokenError, setExchangeIdTokenError] = useState(null);
   const [exchangeIdTokenDecoded, setExchangeIdTokenDecoded] = useState(null);
@@ -215,9 +209,8 @@ export default function PingOneTestPage() {
   const [exchange1ActorDecoded, setExchange1ActorDecoded] = useState(null);
   const [exchange2SubjectDecoded, setExchange2SubjectDecoded] = useState(null);
   const [exchange2ActorDecoded, setExchange2ActorDecoded] = useState(null);
-  const [exchange3AgentDecoded, setExchange3AgentDecoded] = useState(null);
-  const [exchange3McpDecoded, setExchange3McpDecoded] = useState(null);
-  const [exchange3SubjectDecoded, setExchange3SubjectDecoded] = useState(null);
+  const [exchange401AgentDecoded, setExchange401AgentDecoded] = useState(null);
+  const [exchange401SubjectDecoded, setExchange401SubjectDecoded] = useState(null);
   const [workerDecoded, setWorkerDecoded] = useState(null);
 
   // Current time for updating time remaining display
@@ -243,10 +236,10 @@ export default function PingOneTestPage() {
       setAgentTokenError(results.agentTokenError || null);
       setExchange1Status(results.exchange1Status || 'pending');
       setExchange2Status(results.exchange2Status || 'pending');
-      setExchange3Status(results.exchange3Status || 'pending');
+      setExchange401Status(results.exchange401Status || 'pending');
       setExchange1Error(results.exchange1Error || null);
       setExchange2Error(results.exchange2Error || null);
-      setExchange3Error(results.exchange3Error || null);
+      setExchange401Error(results.exchange401Error || null);
     }
   }, []);
 
@@ -259,13 +252,13 @@ export default function PingOneTestPage() {
       agentTokenError,
       exchange1Status,
       exchange2Status,
-      exchange3Status,
+      exchange401Status,
       exchange1Error,
       exchange2Error,
-      exchange3Error
+      exchange401Error
     };
     localStorage.setItem('pingoneTestResults', JSON.stringify(results));
-  }, [authzTokenStatus, agentTokenStatus, authzTokenError, agentTokenError, exchange1Status, exchange2Status, exchange3Status, exchange1Error, exchange2Error, exchange3Error]);
+  }, [authzTokenStatus, agentTokenStatus, authzTokenError, agentTokenError, exchange1Status, exchange2Status, exchange401Status, exchange1Error, exchange2Error, exchange401Error]);
 
   // Load existing worker config from config endpoint on mount
   useEffect(() => {
@@ -697,30 +690,30 @@ export default function PingOneTestPage() {
     }
   }, [tokenChainCtx]);
 
-  const testExchange3 = useCallback(async () => {
-    setExchange3Status('running');
-    setExchange3Error(null);
-    notifyInfo('Testing User → Agent → MCP three-step exchange…', { toastId: 'test-exchange3' });
+  const testExchange401 = useCallback(async () => {
+    setExchange401Status('running');
+    setExchange401Error(null);
+    setExchange401Steps([]);
+    notifyInfo('Testing 1-Token Exchange via MCP 401 flow…', { toastId: 'test-exchange-401' });
     try {
-      const { data } = await apiClient.get('/api/pingone-test/exchange-user-to-agent-to-mcp');
-      if (data.success) {
-        setExchange3Status('passed');
-        setExchange3AgentDecoded(data.agentTokenDecoded || null);
-        setExchange3McpDecoded(data.mcpTokenDecoded || null);
-        setExchange3SubjectDecoded(data.subjectTokenDecoded || null);
-        if (data.tokenEvents && tokenChainCtx?.setTokenEvents) {
-          tokenChainCtx.setTokenEvents('exchange-user-to-agent-to-mcp', data.tokenEvents);
-        }
-        notifySuccess('User → Agent → MCP three-step exchange succeeded ✓');
-      } else {
-        setExchange3Status('failed');
-        setExchange3Error(data.error);
-        notifyError(`Exchange 3 failed: ${data.error}`);
+      const { data } = await apiClient.get('/api/pingone-test/exchange-1token-401-flow', {
+        params: { sessionId: 'pingone-test' }
+      });
+      setExchange401Status(data.success ? 'passed' : 'failed');
+      setExchange401Error(data.success ? null : data.error);
+      if (data.decoded) setExchange401Decoded(data.decoded);
+      if (data.steps) setExchange401Steps(data.steps);
+      if (data.agentTokenDecoded) setExchange401AgentDecoded(data.agentTokenDecoded);
+      if (data.subjectTokenDecoded) setExchange401SubjectDecoded(data.subjectTokenDecoded);
+      if (data.tokenEvents && tokenChainCtx?.setTokenEvents) {
+        tokenChainCtx.setTokenEvents('exchange-1token-401-flow', data.tokenEvents);
       }
+      if (data.success) notifySuccess('1-Token 401 Exchange succeeded ✓');
+      else notifyError(`Exchange 401 failed: ${data.error}`);
     } catch (err) {
-      setExchange3Status('failed');
-      setExchange3Error(err.message);
-      notifyError(`Exchange 3 error: ${err.message}`);
+      setExchange401Status('failed');
+      setExchange401Error(err.message);
+      notifyError(`Exchange 401 error: ${err.message}`);
     }
   }, [tokenChainCtx]);
 
@@ -1402,37 +1395,37 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               })()}
             </div>
             <div className="test-card-col">
-              {(() => {
-                const t1Label = loginType === 'admin' ? 'Admin Token (T1)' : loginType === 'ai_agent' ? 'AI Agent Token (T1)' : 'User Token (T1)';
-                return (
-                  <>
-                    <TestCard
-                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token → Agent Token → MCP Token (Legacy Two-Step)`}
-                      status={exchange3Status}
-                      error={exchange3Error}
-                      onTest={testExchange3}
-                      config={TEST_CONFIG.exchange3}
-                    />
-                    {exchange3SubjectDecoded && <DecodedTokenPanel decoded={exchange3SubjectDecoded} label={`Subject: ${t1Label} (input to chain)`} />}
-                    <DecodedTokenPanel decoded={exchange3AgentDecoded} label={`Agent Token (${t1Label}→Agent step)`} />
-                    <TokenLineageDiff
-                      fromDecoded={authzDecoded}
-                      toDecoded={exchange3AgentDecoded}
-                      fromLabel={t1Label}
-                      toLabel="Agent Token (T2)"
-                      expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
-                    />
-                    <DecodedTokenPanel decoded={exchange3McpDecoded} label="MCP Token (3-step Exchange)" />
-                    <TokenLineageDiff
-                      fromDecoded={exchange3AgentDecoded}
-                      toDecoded={exchange3McpDecoded}
-                      fromLabel="Agent Token (T2)"
-                      toLabel="MCP Token (T3)"
-                      expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
-                    />
-                  </>
-                );
-              })()}
+              <TestCard
+                title="1-Token Exchange (MCP 401 → Auth → Exchange)"
+                status={exchange401Status}
+                error={exchange401Error}
+                onTest={testExchange401}
+                config={{
+                  appName: 'Super Banking AI Agent App',
+                  appType: 'AI_AGENT',
+                  requiredScopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'],
+                  audience: 'https://mcp-server.pingdemo.com',
+                  spel: 'Phase 187: User access token sent to MCP → 401 → agent fetches CC token → RFC 8693 1-token exchange → retry MCP with MCP token',
+                }}
+              />
+              {exchange401Steps.length > 0 && (
+                <ul style={{listStyle:'none',padding:'8px 0',margin:'8px 0',fontSize:'0.82rem'}}>
+                  {exchange401Steps.map((step, i) => (
+                    <li key={i} style={{padding:'2px 0',color:step.passed?'#16a34a':'#dc2626'}}>
+                      {step.passed ? '✓' : '✗'} Step {step.step}: {step.label}{step.received!=null ? ` (HTTP ${step.received})` : ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {exchange401SubjectDecoded && (
+                <DecodedTokenPanel decoded={exchange401SubjectDecoded} label="User Access Token (Subject — causes 401)" />
+              )}
+              {exchange401AgentDecoded && (
+                <DecodedTokenPanel decoded={exchange401AgentDecoded} label="Agent Token (MCP Exchanger CC)" />
+              )}
+              {exchange401Decoded && (
+                <DecodedTokenPanel decoded={exchange401Decoded} label="MCP Token (1-Token Exchange Result)" />
+              )}
             </div>
             {/* ID Token Exchange — always visible */}
             <div className="test-card-col">

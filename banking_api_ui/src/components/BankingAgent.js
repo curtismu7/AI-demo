@@ -2089,6 +2089,15 @@ export default function BankingAgent({
       markToolProgressOutcome(false);
       toast.dismiss(toastId);
 
+      // Phase 187 D-05: BFF signaled need_auth — redirect to PingOne customer login
+      if (err?.need_auth) {
+        addMessage('assistant', '🔐 MCP requires your authorization — logging you in…');
+        handleLoginAction('login_user');
+        setLoading(false);
+        return;
+      }
+
+
       if (actionId === 'mcp_tools') {
         const st = agentFlowDiagram.getState();
         if (st.phase === 'running' && st.toolName === 'tools/list') {

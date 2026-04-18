@@ -227,6 +227,7 @@ export async function callMcpTool(tool, params = {}) {
         tokenEvents,
         statusCode: response.status,
         code: err.error,
+        need_auth: !!err.need_auth,
       });
       throw e;
     }
