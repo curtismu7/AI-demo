@@ -42,13 +42,14 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 95 | actor-token-agent-token-education | Document and teach that Actor token = Agent token; establish consistent terminology across docs and education UI | ACTOR-01 | ✅ Complete (1/1) |
 | 96 | audience-aud-claim-validation | Validate audience (aud) claim in all tokens; ensure aud matches expected resource/API; configure and audit aud values in PingOne apps | AUD-01 | ✅ Complete (1/1) |
 | 99 | langgraph-upgrade | Migrate banking agent from LangChain createAgent to LangGraph StateGraph for better state management | None | ✅ Complete (1/1) |
-| 100 | configurable-step-up-mfa-threshold | Configurable step-up MFA threshold and agent transaction stop limit | TBD | 0 plans |
+| 100 | configurable-step-up-mfa-threshold | 2/2 | Complete   | 2026-04-18 |
 | 101 | token-exchange-flow-diagram-ui | Single and double exchange with AI agent bubble on responses | TBD | 3/2 plans |
 | 102 | agent-token-exchange-flow | Implement complete token exchange flow for agent: two-exchange (user+agent→MCP) and single-exchange (user→agent→MCP) paths | None | 0 plans |
 | 103 | pingone-test-page | Comprehensive PingOne test page with Chase.com-style UI and fix buttons | TBD | 0 plans |
 | 104 | pingone-test-security-audit | Security audit and hardening of PingOne test page to ensure worker tokens stay on backend | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05 | 1 plan |
 | 121 | api-display-modal-enhancement | Integrate API display service into dashboards and marketing page as draggable, resizable modal | TBD | 0 plans |
 | 122 | conditional-step-up-auth | Conditional step-up authentication: logged-in users only need MFA for banking transactions, non-logged-in users need login + MFA | TBD | 0 plans |
+| 163 | universal-sidebar-navigation | 2/2 | Complete    | 2026-04-16 |
 | 166 | replace-gemini-with-anthropic | 1/1 | Complete    | 2026-04-16 |
 
 ---
@@ -1590,10 +1591,10 @@ Plans:
 **Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 99
-**Plans:** 1 plan
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 100 to break down)
+- [x] TBD (run /gsd-plan-phase 100 to break down) (completed 2026-04-18)
 
 ### Phase 102: Agent Token Exchange Flow
 
@@ -1691,13 +1692,13 @@ Plans:
 
 ### Phase 106: RFC 8693 §4.4 delegation claims - nested act for delegation chains - ensure compliance and implementation
 
-**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
+**Goal:** Implement and verify RFC 8693 nested `act` delegation-chain compliance in backend handling, diagnostics, and documentation, without adding new end-user UI.
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 105
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 106 to break down)
+- [x] 106-01-PLAN.md — Audit and align nested `act` delegation-chain handling across backend diagnostics, docs, and verification
 
 ### Phase 107: Make hostname and redirect URI configurable via admin config page
 
@@ -1819,22 +1820,24 @@ Plans:
 
 ### Phase 117: LangChain production-quality agent with pluggable model interface (Groq default, OpenAI/Anthropic/HuggingFace support)
 
-**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
+**Goal:** Build a production-quality pluggable model interface for the LangChain agent, with Groq as default and OpenAI, Anthropic, and HuggingFace available through a shared provider abstraction plus real configuration UI.
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 116
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 117 to break down)
+- [x] 117-01-PLAN.md — Implement shared provider abstraction, provider-specific configuration, and configuration UI for Groq/OpenAI/Anthropic/HuggingFace
 
 ### Phase 118: Research and plan HuggingFace integration with LangChain for cost-effective model deployment — evaluate ecosystem, licensing, model selection, deployment options
 
-**Goal:** Add SectionApiCalls toggle to all 6 MFA sections; instrument mfaTest.js routes with apiCallTrackerService so the toggle shows real API data
+**Goal:** Research and recommend the right HuggingFace integration path for this LangChain system by comparing hosted and self-hosted options across licensing, model fit, LangChain integration, operational burden, cost, and latency.
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 117
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
+- [x] 118-01-PLAN.md — Research hosted versus self-hosted HuggingFace options and recommend the integration path for the Phase 117 provider architecture
+
 ### Phase 119: Call MCP server and get tools without authenticating user
 
 **Goal:** Expose MCP tool discovery to external AI clients (Claude Desktop, Cursor, Windsurf) without requiring authentication. Implement unauthenticated `/.well-known/mcp-server` endpoint (RFC 8414 convention) with whitelist-based tool filtering (safe: explain_topic, brave_search; blocked: banking operations) + rate limiting (100 req/min per IP).
@@ -1983,6 +1986,16 @@ Plans:
 6. After login, user returns to /marketing with buttons active (login returns to /marketing, not /dashboard)
 7. npm run build exit 0; no new errors
 8. No regression in existing LandingPage or BankingAgent functionality
+
+### Phase 190: Align UI with 2-token exchange taxonomy and education
+
+**Goal:** Align all user-facing token-exchange language, diagrams, and examples with the Phase 188 RFC 8693 taxonomy so the product consistently teaches 1-exchange, 2-exchange, and the Phase 186 ID-token variant without legacy labels.
+**Requirements**: TAX-190-01, TAX-190-02, TAX-190-03
+**Depends on:** Phase 188
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 190-01-PLAN.md — Audit and align UI terminology, education copy, and token-exchange visuals with Phase 188 taxonomy
 
 ---
 
@@ -2167,7 +2180,10 @@ Plans:
 
 **Depends on:** Phase 122 (conditional-step-up-authentication), Phase 52 (pingone-mfa-step-up)
 
-**Plans:** 0/1 plans complete
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 124-01-PLAN.md — Add explicit manual-approval copy and persistent HITL indication across relevant MFA/step-up flows
 
 **Success criteria:**
 1. MFA prompt clearly indicates HITL status with text like "Manual approval required"
@@ -2193,10 +2209,10 @@ Plans:
 
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 124
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 126 to break down)
+- [x] 126-01-PLAN.md — Surface friendly sub/act identity across token chain display, education panels, and AgentFlowDiagramPanel
 
 ### Phase 127: Comprehensive Debug and Fix - Fix pingone-test page, mfa-test page, and agent failures
 
@@ -2368,10 +2384,10 @@ Plans:
 **Goal:** Audit every place the token chain can break or go silent — missing events after login, chain not updating after agent tool calls, UI stuck on placeholder, identity hints not resolving, session preview stale — and fix each one. Add automated smoke tests and a visible error state when the chain fails so breakages are immediately obvious.
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 134 (audit 120+), Phase 132 (decoded token panels)
-**Plans:** 2 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 136 to break down)
+- [x] TBD (run /gsd-plan-phase 136 to break down) (completed 2026-04-18)
 
 ### Phase 137: Configure page complete redesign — Chase.com style, functional PingOne config, full review and testing
 
@@ -2541,7 +2557,7 @@ Plans:
 **Goal:** Audit all OAuth scope strings across code, config, docs, tests, and PingOne Test page for consistent vocabulary and clean alignment
 **Requirements**: SCOPE-151-01
 **Depends on:** Phase 150
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [x] 151-01-PLAN.md — Scope vocabulary audit across codebase
@@ -2632,11 +2648,12 @@ Plans:
 **Goal:** Implement red button kill switch demonstrating AI TRiSM principles: immediate OAuth token revocation (< 2 sec), rate limiting to cap blast radius, state capture for forensics, and immutable audit trail for compliance.
 **Requirements**: REQ-159-01 through REQ-159-08 (AI TRiSM compliance)
 **Depends on:** Phase 158
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 159-01-PLAN.md — Kill switch backend: token revocation, rate limiting, state capture, audit logging
 - [x] 159-02-PLAN.md — Red button UI: confirmation modal, forensic audit dashboard integration
+
 ### Phase 160: AI TRiSM Training Panel — educational slide-out explaining Trust, Risk Management, Security, Governance, Lifecycle, and IAM principles for AI agents
 
 **Goal:** Create interactive training panel explaining all six AI TRiSM principles with live demos from the app showing how each principle is implemented: Trust, Risk Management, Security, Governance, Lifecycle, and IAM.
@@ -2670,6 +2687,17 @@ Plans:
 Plans:
 - [ ] 162-01-PLAN.md — Create spinnerActivityService, enhance SpinnerHost with activity feed, update CSS
 
+### Phase 163: Universal sidebar navigation
+
+**Goal:** Make the sidebar the universal, role-aware navigation surface for all logged-in users and remove redundant page-specific navigation so the app has a single primary navigation system.
+**Requirements**: NAV-163-01, NAV-163-02, NAV-163-03, NAV-163-04, NAV-163-05
+**Depends on:** Phase 162
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 163-01-PLAN.md — Make AdminSideNav role-aware and render it for all logged-in users
+- [x] 163-02-PLAN.md — Remove redundant top-nav/dashboard quick-nav patterns so the sidebar is the single navigation source
+
 ### Phase 164: Performance evaluation and optimization — diagnose slow spinners, long API waits, and overall responsiveness
 
 **Goal:** Fix SQLite/server blockers, eliminate auth status polling storm (120 req/min to <20), add timing instrumentation with <5s target for all request paths
@@ -2690,6 +2718,16 @@ Plans:
 
 Plans:
 - [ ] 165-01-PLAN.md — Add LM Studio fallback to BFF NL intent chain and LangChain agent factory
+
+### Phase 166: Replace Gemini with Anthropic
+
+**Goal:** Replace Gemini with Anthropic Claude in the NL intent fallback chain so the sequence becomes Groq → LM Studio → Anthropic → heuristic, while keeping the rest of the intent-routing contract stable.
+**Requirements**: INTENT-CHAIN-01
+**Depends on:** Phase 165
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 166-01-PLAN.md — Replace Gemini with Anthropic in the NL intent fallback chain and update config/docs
 
 ### Phase 167: MCP Tools Education Page
 

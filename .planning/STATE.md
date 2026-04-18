@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-18T12:31:47.981Z"
+last_updated: "2026-04-18T20:00:00.000Z"
 progress:
-  total_phases: 195
-  completed_phases: 166
+  total_phases: 196
+  completed_phases: 168
   total_plans: 346
-  completed_plans: 359
+  completed_plans: 361
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,11 +20,42 @@ progress:
 
 ## Current Position
 
-Phase: 189
-Plan: Not started
-Next phase: 190+ (available for planning)
+Phase: 126
+Plan: 126-01 complete
+Next phase: 127+ (available for planning)
 
 ## Recent Progress
+
+✅ **Phase 126 COMPLETE**
+
+- Plan 126-01: Added `resolvedIdentity` to TokenChainContext (single shared fetch); refactored TokenChainDisplay to read identity from context; EventRow User button shows friendly name; TokenChainEducationPanel JwtClaimsTab shows live sub/name/email; TokenChainPanel shows live sub in banking-app step; AgentFlowDiagramPanel compact view shows friendly identity
+- Files: TokenChainContext.js, TokenChainDisplay.js, TokenChainEducationPanel.js, TokenChainPanel.js, AgentFlowDiagramPanel.js
+- Build: npm run build exit 0, 441.42 kB
+
+✅ **Phase 124 COMPLETE**
+
+- Plan 124-01: Added persistent HITL badge to AgentConsentModal; strengthened manual-approval copy in BankingAgent.js chat messages; updated all MFA step-up flow labels in agentFlowDiagramService.js
+- Files: AgentConsentModal.js, AgentConsentModal.css, BankingAgent.js, agentFlowDiagramService.js
+- Build: npm run build exit 0, 440.81 kB
+
+✅ **Phase 118 COMPLETE**
+
+- Plan 118-01: HuggingFace research — recommend Dedicated Inference Endpoint (OpenAI-compatible, `ChatOpenAI` + `baseURL`); model `meta-llama/Llama-3.3-70B-Instruct`
+- No code changes; implementation checklist in 118-RESEARCH.md
+
+✅ **Phase 117 COMPLETE**
+
+- Plan 117-01: Added `LLMProvider` ABC to Python interfaces; wired OpenAI + LM Studio in BFF agentBuilder; fixed per-provider model defaults
+- Files changed: `langchain_agent/src/services/interfaces.py`, `banking_api_server/services/agentBuilder.js`, `banking_api_server/package.json`
+- Build: npm run build exit 0, 440.49 kB
+
+✅ **Phase 190 COMPLETE**
+
+- Plan 190-01: Aligned all user-facing token-exchange labels in React SPA with Phase 188 RFC 8693 taxonomy
+- Files changed: PingOneTestPage.jsx (~13 label sites updated)
+- No changes needed in TokenExchangeFlowDiagram, TokenChainEducationPanel, TokenExchangePanel, RFC8707Content (already aligned)
+- Canonical vocabulary: 1-exchange / 2-exchange (dual-token) / Phase 186 ID-token exchange / Legacy two-step chain
+- Build verification: npm run build exit 0, 440.49 kB (−18 B)
 
 ✅ **Phase 189 COMPLETE**
 
@@ -48,6 +79,7 @@ Next phase: 190+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 190 added: Align UI with 2-token exchange taxonomy and education
 - **Phase 189 COMPLETE** ✅: Marketing page user authentication with resource buttons
 - Phase 188: Define AI token exchange taxonomy
 - Phase 187 COMPLETE ✅: 1-token exchange 401 flow
@@ -138,3 +170,12 @@ Next phase: 190+ (available for planning)
 - Plan execution was straightforward due to Phase 187 infrastructure already in place
 - No blockers or surprises during implementation
 - All git commits include descriptive commit messages with file lists and rationale
+
+---
+
+## Accumulated Context
+
+### Pending Todos
+
+- 1 pending todo
+- Latest: Align UI with 2-token exchange

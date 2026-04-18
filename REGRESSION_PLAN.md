@@ -80,6 +80,72 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-18 — Phase 126: Surface friendly sub/act identity in token chain UI
+
+- **Summary:** Token chain display, education panels, and AgentFlowDiagramPanel now show human-readable user and actor identity instead of raw UUIDs. Identity is fetched once from BFF session, cached in TokenChainContext, and shared across all token surfaces.
+- **Fix:**
+  1. `TokenChainContext.js` — added `resolvedIdentity` state with single shared fetch (`/api/auth/session` + `/api/pingone-test/config`); re-fetches on `userAuthenticated` event; exposed in context value
+  2. `TokenChainDisplay.js` — removed duplicate `loadIdentityHints` effect; reads `identityHints` from context; EventRow User button uses `fmtSub(userId, hints)` → shows `Name (uuid…)`
+  3. `TokenChainEducationPanel.js` — `JwtClaimsTab` accepts `liveIdentity` prop; replaces placeholder strings with live sub/name/email in JWT code examples
+  4. `TokenChainPanel.js` — builds live-aware `steps` array; `banking-app` step shows real `sub`/`name` in `payloadPreview` when authenticated
+  5. `AgentFlowDiagramPanel.js` — imports context; passes `resolvedIdentity` to local `TokenChainDisplay`; `fmtTokenSub`/`fmtTokenAct` helpers show friendly labels in compact view
+- **Files modified:** `TokenChainContext.js`, `TokenChainDisplay.js`, `TokenChainEducationPanel.js`, `TokenChainPanel.js`, `AgentFlowDiagramPanel.js`
+- **Regression check:** `npm run build` → exit 0 (441.42 kB); no token-exchange, consent, or scope logic changed
+- **Do not break:** Token exchange flow, ClaimsStrip rendering, inspector panel, `fmtSub`/`fmtAct` fallback-to-raw-UUID behavior
+
+### 2026-04-18 — Phase 124: MFA HITL indication
+
+- **Summary:** Added explicit Human-in-the-Loop (HITL) badges and copy throughout MFA/step-up flows so users understand manual approval is required.
+- **Fix:**
+  1. Persistent HITL badge (amber bar) added to `AgentConsentModal.js` header
+  2. Transaction consent body copy updated with HITL checkpoint language
+  3. Inline chat message in `BankingAgent.js` strengthened to clarify agent is paused
+  4. All MFA step-up flow labels in `agentFlowDiagramService.js` updated to reference HITL/manual approval
+- **Files modified:** `AgentConsentModal.js`, `AgentConsentModal.css`, `BankingAgent.js`, `agentFlowDiagramService.js`
+- **Regression check:** `npm run build` → exit 0 (440.81 kB +0.32 kB); server contract unchanged
+- **Do not break:** Approval mechanics, consentId flow, OTP sequencing, and step-up thresholds in `runtimeSettings.js`
+
+### 2026-04-18 — Phase 118: HuggingFace integration research
+
+- **Summary:** Research-only phase. Produced 118-RESEARCH.md with full hosted vs self-hosted comparison and concrete recommendation.
+- **Recommendation:** HuggingFace Dedicated Inference Endpoint (OpenAI-compatible) using existing `ChatOpenAI` + `baseURL` pattern from Phase 117 LM Studio; model `meta-llama/Llama-3.3-70B-Instruct`; config `HUGGINGFACEHUB_API_TOKEN` + `HF_ENDPOINT_URL`.
+- **Files created/modified:** `118-RESEARCH.md`, `docs/phases-100-119.md` (corrected stale DESCOPED/SUPERSEDED entries for 117+118)
+- **No code changes.** Implementation checklist is in 118-RESEARCH.md.
+
+### 2026-04-18 — Phase 117: LangChain pluggable model interface
+
+- **Summary:** OpenAI provider wired in BFF agent builder; `LLMProvider` ABC added to Python interfaces; per-provider model defaults fixed.
+- **Fix:**
+  1. Added `LLMProvider` abstract base class to `langchain_agent/src/services/interfaces.py`
+  2. Installed `@langchain/openai` in `banking_api_server`
+  3. Wired `ChatOpenAI` and LM Studio in `agentBuilder.js` with correct per-provider default models
+  4. Fixed model name leakage: replaced single `langchainConfig.model` with `PROVIDER_DEFAULT_MODELS[provider]` fallback
+- **Files modified:** `langchain_agent/src/services/interfaces.py`, `banking_api_server/services/agentBuilder.js`, `banking_api_server/package.json`
+- **Regression check:** `node -e "require('./services/agentBuilder')"` → OK; `npm run build` → exit 0 (440.49 kB)
+- **Do not break:** `PROVIDER_DEFAULT_MODELS` map — every provider must have a default; Groq must remain the first-priority provider in the default fallback chain
+
+### 2026-04-18 — Phase 190: UI token-exchange terminology alignment
+
+- **Summary:** All user-facing token-exchange labels in the React SPA now use the Phase 188 RFC 8693 canonical taxonomy.
+- **Fix:**
+  1. Updated `PingOneTestPage.jsx` (~13 label sites): "Exchange 1/2/3", "Phase 184 Exchange 2", "Phase 184 dual-token exchange" → "1-exchange", "2-exchange (dual-token)", "Phase 186 ID-token exchange", "Legacy two-step chain"
+  2. Audited `TokenExchangeFlowDiagram.jsx`, `TokenChainEducationPanel.js`, `TokenExchangePanel.js`, `RFC8707Content.js` — all already aligned; no changes needed
+- **Files modified:** `banking_api_ui/src/components/PingOneTestPage.jsx`
+- **Regression check:** `npm run build` passes (exit 0, 440.49 kB −18 B)
+- **Do not break:** `'single'`/`'double'` internal prop constants in `TokenExchangeFlowDiagram.jsx`; `double-exchange` key in `fixIssue()` map — these are internal, non-user-visible identifiers
+
+### 2026-04-18 — Phase 106: Nested act delegation-chain diagnostics and docs alignment
+
+- **Root cause:** Delegation error guidance and architecture docs had drifted toward a single-hop `act.sub` story even though the runtime and compliance tests already model full 2-exchange nested chains (`act.sub` plus `act.act.sub`) when PingOne preserves them.
+- **Fix:**
+  1. Updated delegation error builders to explain RFC 8693 nested chain semantics and expected claim shapes
+  2. Extended delegation middleware actor matching to inspect nested `act.act` identities instead of only the top-level actor
+  3. Aligned `ACT_CLAIM_VERIFICATION.md`, `ARCHITECTURE_WALKTHROUGH.md`, and `rfc8693-delegation-claims-compliance-guide.md` with the repo's actual 1-exchange / 2-exchange behavior
+  4. Added targeted regression coverage for nested-chain diagnostics and actor matching
+- **Files modified:** `banking_api_server/src/services/errorMessageBuilder.js`, `banking_api_server/src/services/errorSchemaService.js`, `banking_api_server/src/middleware/delegationErrorMiddleware.js`, `banking_api_server/services/errorMessageBuilder.js`, `banking_api_server/services/errorSchemaService.js`, `banking_api_server/middleware/delegationErrorMiddleware.js`, `banking_api_server/src/__tests__/delegationErrorDiagnostics.test.js`, `docs/ACT_CLAIM_VERIFICATION.md`, `docs/ARCHITECTURE_WALKTHROUGH.md`, `docs/rfc8693-delegation-claims-compliance-guide.md`
+- **Regression check:** Nested `act` diagnostics mention `act.act.sub`; allowed-actor middleware accepts actors present deeper in the chain; targeted Jest test passes.
+- **Do not break:** `agentMcpTokenService.js` two-exchange semantics (`act.sub` current exchanger, `act.act.sub` prior agent when preserved); `mcpToolAuthorizationService.nestedActIdFromClaim()`; docs must continue to distinguish full nested chains from flattened PingOne fallback behavior.
+
 ### 2026-04-17 — Bug: Agent "tool_use.input: Input should be a valid dictionary" error
 
 - **Root cause:** Anthropic API requires `tool_use.input` to always be a valid dictionary object. During the LangGraph agent's second iteration (after tool execution), `tool_calls[0].args` for empty-schema tools like `get_my_accounts` could be non-object values (empty string, undefined) — particularly during Groq→Anthropic cross-provider fallback. The `_convertLangChainToolCallToAnthropic` function in `@langchain/anthropic` directly maps `input: toolCall.args` without validation, causing 400 errors.
