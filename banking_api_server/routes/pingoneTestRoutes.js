@@ -16,6 +16,9 @@ const configStore = require('../services/configStore');
 const { managementService } = require('../services/pingoneManagementService');
 const pingOneUserService = require('../services/pingOneUserService');
 const apiCallTrackerService = require('../services/apiCallTrackerService');
+const http = require('http');
+const https = require('https');
+const { URL } = require('url');
 
 /**
  * Decode a JWT for display in the UI — server-side only, never exposes raw token to browser.
@@ -2121,6 +2124,145 @@ router.post('/update-user-spel', async (req, res) => {
   } catch (error) {
     console.error('[PingOneTest] update-user-spel error:', error.message);
     res.status(500).json({ success: false, error: error.response?.data?.message || error.message });
+  }
+});
+
+
+/**
+ * GET /api/pingone-test/exchange-1token-401-flow
+ * Phase 187: Probe MCP with raw user access token (expect 401),
+ * fetch fresh agent CC token, perform RFC 8693 1-token exchange
+ * (subject only, no actor), retry MCP with exchanged MCP token.
+ */
+router.get('/exchange-1token-401-flow', async (req, res) => {
+  const startTime = Date.now();
+  const sessionId = req.query.sessionId || 'pingone-test';
+  const steps = [];
+
+  try {
+    // Step 0: Validate session
+    const oauthTokens = req.session.oauthTokens;
+    const userAccessToken = oauthTokens?.accessToken || oauthTokens?.access_token;
+    if (!userAccessToken) {
+      const responseData = { success: false, error: 'No user access token in session. Log in first.' };
+      trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 187: 1-token 401 flow');
+      return res.json(responseData);
+    }
+
+    await configStore.ensureInitialized();
+    const rawMcpUrl = configStore.getEffective('mcp_server_url') || 'ws://localhost:8080';
+    const httpMcpUrl = rawMcpUrl.replace(/^ws:\/\//, 'http://').replace(/^wss:\/\//, 'https://');
+    const postUrl = new URL('/mcp', httpMcpUrl).toString();
+
+    // Helper: HTTP POST to MCP with given bearer token
+    function probeMcp(token) {
+      return new Promise((resolve) => {
+        const parsedUrl = new URL(postUrl);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const transport = isHttps ? https : http;
+        const payload = JSON.stringify({
+          jsonrpc: '2.0', method: 'initialize',
+          params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: '401-probe', version: '1.0' } },
+          id: 1
+        });
+        const options = {
+          hostname: parsedUrl.hostname,
+          port: parsedUrl.port || (isHttps ? 443 : 80),
+          path: parsedUrl.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+            'Authorization': `Bearer ${token}`
+          }
+        };
+        const request = transport.request(options, (response) => {
+          let body = '';
+          response.on('data', (chunk) => { body += chunk; });
+          response.on('end', () => resolve({ status: response.statusCode, body }));
+        });
+        request.on('error', (err) => resolve({ status: 0, body: err.message }));
+        request.write(payload);
+        request.end();
+      });
+    }
+
+    // Step 1: Probe MCP with raw user access token (expect 401)
+    const probe = await probeMcp(userAccessToken);
+    steps.push({
+      step: 1,
+      label: 'Probe MCP with user access token (no exchange)',
+      status: probe.status,
+      expected: 401,
+      received: probe.status,
+      passed: probe.status === 401
+    });
+
+    // Step 2: Fetch fresh agent CC token
+    const agentToken = await oauthService.getMcpExchangerToken();
+    const agentDecoded = decodeJwtForDisplay(agentToken);
+    steps.push({
+      step: 2,
+      label: 'Agent fetches own CC token (MCP Exchanger)',
+      status: 200,
+      passed: !!agentToken
+    });
+
+    // Step 3: 1-token exchange (user access token → MCP token)
+    const mcpResourceUri = configStore.getEffective('mcp_resource_uri')
+      || configStore.getEffective('pingone_resource_mcp_gateway_uri');
+    const mcpScopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
+    let mcpToken = null;
+    let exchangeError = null;
+    try {
+      mcpToken = await oauthService.performTokenExchange(userAccessToken, mcpResourceUri, mcpScopes);
+    } catch (exErr) {
+      exchangeError = exErr.message;
+    }
+    const mcpDecoded = mcpToken ? decodeJwtForDisplay(mcpToken) : null;
+    steps.push({
+      step: 3,
+      label: 'RFC 8693 1-token exchange (user → MCP token)',
+      status: mcpToken ? 200 : 400,
+      passed: !!mcpToken,
+      error: exchangeError || undefined
+    });
+
+    // Step 4: Retry MCP with exchanged MCP token
+    let retryResult = { status: 0, body: 'skipped — no MCP token' };
+    if (mcpToken) {
+      retryResult = await probeMcp(mcpToken);
+    }
+    steps.push({
+      step: 4,
+      label: 'Retry MCP with exchanged MCP token',
+      status: retryResult.status,
+      received: retryResult.status,
+      passed: mcpToken ? retryResult.status !== 401 : false
+    });
+
+    const subjectDecoded = decodeJwtForDisplay(userAccessToken);
+    const tokenEvents = [
+      buildExchangeTokenEvent('user-access-token', 'User Access Token (subject)', 'active', subjectDecoded, 'Raw user access token from OIDC session — sent to MCP first (causes 401)'),
+      buildExchangeTokenEvent('agent-cc-token', 'Agent Token (MCP Exchanger CC)', 'active', agentDecoded, 'Client Credentials token from MCP Exchanger app — agent authenticates independently'),
+      buildExchangeTokenEvent('mcp-token', 'MCP Access Token', mcpToken ? 'active' : 'failed', mcpDecoded, 'RFC 8693 1-token exchange result — subject-only exchange, aud narrowed to MCP server'),
+    ];
+
+    const responseData = {
+      success: !!mcpToken,
+      steps,
+      decoded: mcpDecoded,
+      agentTokenDecoded: agentDecoded,
+      subjectTokenDecoded: subjectDecoded,
+      tokenEvents,
+    };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 187: 1-token 401 flow');
+    res.json(responseData);
+  } catch (error) {
+    console.error('[PingOneTest] Phase 187 1-token 401 flow error:', error.message);
+    const responseData = { success: false, error: error.message, steps };
+    trackApiCall(sessionId, req, res, startTime, responseData, 'token-exchange', 'Phase 187: 1-token 401 flow');
+    res.json(responseData);
   }
 });
 
