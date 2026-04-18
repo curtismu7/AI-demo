@@ -123,6 +123,7 @@ export default function AdminSideNav({ user }) {
     },
     { label: 'PingOne Test', path: '/pingone-test', icon: '🧪' },
     { label: 'MFA Test', path: '/mfa-test', icon: '🔒' },
+    { label: 'OIDC Resource Server', path: '/resource-server', icon: '🔐' },
   ];
 
   // Filter by role
@@ -136,6 +137,7 @@ export default function AdminSideNav({ user }) {
     { label: 'CIBA (OOB)', icon: '📲', action: () => { window.dispatchEvent(new CustomEvent('education-open-ciba', { detail: { tab: 'what' } })); } },
     { label: 'Token Exchange', icon: '🔄', action: () => openEdu(EDU.TOKEN_EXCHANGE, 'why') },
     { label: 'MCP Protocol', icon: '🔬', action: () => openEdu(EDU.MCP_PROTOCOL, 'what') },
+    { label: 'Computer Use Agent (CUA)', icon: '🖱️', action: () => openEdu(EDU.CUA, 'what') },
     { label: 'Human-in-the-loop', icon: '🤝', action: () => openEdu(EDU.HUMAN_IN_LOOP, 'what') },
     { label: 'Agent Gateway', icon: '🌐', action: () => openEdu(EDU.AGENT_GATEWAY, 'overview') },
     { label: 'Introspection', icon: '🔍', action: () => openEdu(EDU.INTROSPECTION, 'why') },
