@@ -2306,11 +2306,11 @@ Plans:
 **Goal:** Replace the 4-tile PingOne Asset Verification summary with a rich app→resource→scope table. Each app row shows its granted resource servers and scopes, with red highlights for missing expected apps, unassigned resource servers, and absent banking scopes. Summary count tiles remain above the table.
 **Requirements**: APP-RESOURCE-SCOPE-TABLE, MISSING-HIGHLIGHT
 **Depends on:** Phase 129
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 130-01-PLAN.md — Backend: add getApplicationResources() + enrich verify-assets response
-- [ ] 130-02-PLAN.md — Frontend: AssetTable component with missing-item highlights
+- [x] 130-02-PLAN.md — Frontend: AssetTable component with missing-item highlights
 
 ### Phase 131: PingOne test page — config and resources sections: show pass/fail details and explain why
 
@@ -2438,7 +2438,7 @@ Plans:
 **Goal:** Wizard at /setup/wizard — accordion UX, credentials validate, Run All SSE pipeline, mcp_exchanger app creation, SPEL attribute mapping, localStorage resume, .env output
 **Requirements**: ACTLOG-01, ACTLOG-02, ACTLOG-03, ACTLOG-04, ACTLOG-05, ACTLOG-06, ACTLOG-07
 **Depends on:** Phase 141
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 142-01-PLAN.md — Add diagonal stripe CSS pattern to standard banking buttons
@@ -2450,13 +2450,13 @@ Plans:
 **Goal:** Enable agent-initiated banking transactions with user approval gates, real-time feedback, and live token exchange path demonstration.
 **Requirements**: TOKEN-01, TOKEN-02, AGENT-APPROVAL-01, AGENT-ACTIVITY-01
 **Depends on:** Phase 142
-**Plans:** 0/4 plans executed
+**Plans:** 5/4 plans complete
 
 Plans:
-- [ ] 143-01-PLAN.md — Approval threshold HITL modal + error handling service
-- [ ] 143-02-PLAN.md — Token path display + real-time progress feedback
-- [ ] 143-03-PLAN.md — Agent Activity tab + feature flag for token exchange path
-- [ ] 143-04-PLAN.md — Manual verification checkpoint
+- [x] 143-01-PLAN.md — Approval threshold HITL modal + error handling service
+- [x] 143-02-PLAN.md — Token path display + real-time progress feedback
+- [x] 143-03-PLAN.md — Agent Activity tab + feature flag for token exchange path
+- [x] 143-04-PLAN.md — Manual verification checkpoint
 
 ### Phase 144: Agent token exchange from ID token — agent never receives access token, only scoped to user data via RFC 8693 token exchange
 
@@ -2519,10 +2519,10 @@ Plans:
 **Goal:** Fix Phase 146 gaps: scope detection targets the banking resource server by name/audience (not array index), expose missing canonical scopes in verify-assets response, and add Fix-in-PingOne action buttons to create the banking resource server and missing canonical scopes from the test page.
 **Requirements**: SCOPE-149-01, SCOPE-149-02, SCOPE-149-03
 **Depends on:** Phase 148
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 149-01-PLAN.md — BFF: fix banking RS detection in verify-assets + add POST /api/pingone-test/fix-banking-resource-server
+- [x] 149-01-PLAN.md — BFF: fix banking RS detection in verify-assets + add POST /api/pingone-test/fix-banking-resource-server
 - [x] 149-02-PLAN.md — UI: scope-fix-panel with conditional fix buttons + scopes tab RS name + build verification
 
 ### Phase 150: Evaluate Anthropic Managed Agents SDK — replace custom MCP infrastructure [COMPLETE]
