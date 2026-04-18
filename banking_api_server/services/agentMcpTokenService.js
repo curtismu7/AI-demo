@@ -348,7 +348,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     errorLog('ERROR: No user token in session - returning null');
     console.log('[AGENT_MCP] oauthTokens present:', !!req.session?.oauthTokens);
     console.log('[AGENT_MCP] oauthTokens keys:', req.session?.oauthTokens ? Object.keys(req.session.oauthTokens) : 'none');
-    return { token: null, tokenEvents, userSub: null };
+    return { token: null, tokenEvents, userSub: null, need_auth: true, exchange_mode: '1-token' };
   }
 
   // ── Admin Token Detection ────────────────────────────────────────────────

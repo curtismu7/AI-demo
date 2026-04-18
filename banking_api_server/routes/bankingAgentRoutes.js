@@ -22,7 +22,7 @@ router.post('/init', async (req, res) => {
   try {
     const { userId, accessToken } = req.agentContext || {};
     if (!userId || !accessToken) {
-      return res.status(401).json({ error: 'Session expired', agentInitRequired: true });
+      return res.status(401).json({ error: 'Session expired', agentInitRequired: true, need_auth: true });
     }
     res.json({ 
       sessionId: req.session.id, 
@@ -64,7 +64,7 @@ router.post('/message', async (req, res) => {
 
     if (!userId || !accessToken) {
       console.error('[banking-agent/message] ERROR: Session expired - userId:', userId, 'accessToken present:', !!accessToken);
-      return res.status(401).json({ error: 'Session expired', agentInitRequired: true });
+      return res.status(401).json({ error: 'Session expired', agentInitRequired: true, need_auth: true });
     }
 
     // Check for pending consent decisions
