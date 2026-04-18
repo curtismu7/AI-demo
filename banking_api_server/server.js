@@ -1388,7 +1388,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         phase: 'request_accepted'
     });
 
-    let agentToken;
+    let mcpAccessToken; // RFC 8693 §3.2: MCP-scoped access token (result of exchange)
     let userSub = null;
     let tokenEvents = [];
     try {
@@ -1396,7 +1396,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
             phase: 'resolving_access_token'
         });
         const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
-        agentToken = resolved.token;
+        mcpAccessToken = resolved.token;
         tokenEvents = resolved.tokenEvents;
         userSub = resolved.userSub || null;
         const evs = tokenEvents || [];
@@ -1504,7 +1504,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         });
     }
 
-    if (!agentToken) {
+    if (!mcpAccessToken) {
         emit({
             phase: 'no_bearer_token_branch'
         });
@@ -1561,7 +1561,7 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         const mcpAuthz = await mcpToolAuthorizationService.evaluateMcpFirstToolGate({
             req,
             tool,
-            agentToken,
+            agentToken: mcpAccessToken, // RFC 8693: pass as agentToken for backward compat
             userSub,
             userAcr: req.session ?.user ?.acr,
         });
@@ -1690,10 +1690,10 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         _appEvents.logEvent('mcp', 'info', `MCP tool call → ${tool}`, { tag: 'mcp/tool', metadata: { tool, mcpServerUrl: getMcpServerUrl() } });
         let result;
         if (useHttp2) {
-            const h2Session = http2McpBridge.createHttp2Session(mcpUrl, agentToken);
-            result = await http2McpBridge.forwardToolCall(h2Session, tool, params || {}, agentToken, userSub, req.correlationId);
+            const h2Session = http2McpBridge.createHttp2Session(mcpUrl, mcpAccessToken);
+            result = await http2McpBridge.forwardToolCall(h2Session, tool, params || {}, mcpAccessToken, userSub, req.correlationId);
         } else {
-            result = await mcpCallTool(tool, params || {}, agentToken, userSub, req.correlationId);
+            result = await mcpCallTool(tool, params || {}, mcpAccessToken, userSub, req.correlationId);
         }
         _appEvents.logEvent('mcp', 'info', `MCP tool done ← ${tool} (${Date.now() - startTime}ms)`, { tag: 'mcp/tool', metadata: { tool, durationMs: Date.now() - startTime } });
         emit({
