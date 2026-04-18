@@ -1943,13 +1943,16 @@ Plans:
 
 ### Phase 187: 1-token exchange 401 flow — MCP 401 triggers user authz then token exchange for MCP token
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Wire real MCP 401 intercept path: when MCP returns 401, BFF signals need_auth, user re-authenticates, 1-token RFC 8693 exchange produces MCP token; remove legacy exchange3 two-step card; add live 401 test card to test page; document in PINGONE_TOKEN_EXCHANGE_COMPARISON.md
+**Requirements**: P187-D01, P187-D02, P187-D03, P187-D04, P187-D05, P187-D06, P187-D07
 **Depends on:** Phase 186
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 187 to break down)
+- [ ] 187-01-PLAN.md — BFF need_auth signal (agentMcpTokenService + bankingAgentRoutes)
+- [ ] 187-02-PLAN.md — BFF test route (GET /exchange-1token-401-flow)
+- [ ] 187-03-PLAN.md — UI changes (BankingAgent need_auth intercept + exchange401 card replacing exchange3)
+- [ ] 187-04-PLAN.md — Docs + build verify + ROADMAP update
 
 ### Phase 188: Define AI token exchange taxonomy — user token (subject), agent token (actor), transaction token (MCP access) — validate naming against RFC 8693 and MCP spec
 
