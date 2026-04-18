@@ -36,6 +36,10 @@ Note: current GSD stats report more plan summaries than plan definitions (`330/3
 
 ## Roadmap Evolution
 
+- Phase 188 added: Define AI token exchange taxonomy — user token (subject), agent token (actor), transaction token (MCP access) — validate naming against RFC 8693 and MCP spec
+
+- Phase 187 added: 1-token exchange 401 flow — MCP 401 triggers user authz then token exchange for MCP token. Update docs, test page, all 1-token exchange paths.
+
 - Phase 186 added: ID token exchange flow — MCP 401 → OIDC authz → agent CC + user ID token → dual token exchange at MCP Gateway
 
 - Phase 185 added: Token color legend and consistent token-type color coding across all token displays

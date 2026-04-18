@@ -1951,6 +1951,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 187 to break down)
 
+### Phase 188: Define AI token exchange taxonomy — user token (subject), agent token (actor), transaction token (MCP access) — validate naming against RFC 8693 and MCP spec
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 187
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 188 to break down)
+
 ---
 
 ### Phase 123: PingOne MFA Test Page
