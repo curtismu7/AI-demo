@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-18T20:00:00.000Z"
+last_updated: "2026-04-18T20:40:56.299Z"
 progress:
-  total_phases: 196
-  completed_phases: 168
-  total_plans: 346
-  completed_plans: 361
+  total_phases: 199
+  completed_phases: 174
+  total_plans: 357
+  completed_plans: 366
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,8 +20,8 @@ progress:
 
 ## Current Position
 
-Phase: 126
-Plan: 126-01 complete
+Phase: 191 (oidc-resource-server-app-banking-summary-page-with-decoded-tokens-target-for-mcp-server-dual-token-exchange) — EXECUTING
+Plan: 1 of 1
 Next phase: 127+ (available for planning)
 
 ## Recent Progress
