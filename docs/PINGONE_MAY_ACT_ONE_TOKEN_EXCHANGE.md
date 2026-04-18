@@ -1,5 +1,7 @@
 # PingOne: 1-Exchange Delegated Chain — Setup Guide
 
+
+> **RFC 8693 Terminology (Phase 188):** subject_token = user access token (§2.1), actor_token = agent CC token (§2.2), MCP-scoped access token = exchange result (§3.2). See [TOKEN_TERMINOLOGY_GLOSSARY.md](TOKEN_TERMINOLOGY_GLOSSARY.md).
 Step-by-step setup for a **human → Banking App → MCP → PingOne API** delegated token chain using **one RFC 8693 token exchange**. This is the pattern implemented by the Super Banking demo.
 
 > **2-exchange pattern (AI Agent as named identity):** See [PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md](PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md) for the production pattern where the AI Agent performs its own exchange and appears as `act.act.sub` in the final token.

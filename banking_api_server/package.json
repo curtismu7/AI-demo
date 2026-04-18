@@ -11,6 +11,7 @@
     "test:auth": "jest --testPathPattern='auth|oauth-callback|oauth-error-handling|oauth-scope-integration|scope-integration' --forceExit --verbose",
     "test:all": "jest --forceExit --verbose",
     "test:watch": "jest --watch",
+    "test:token-compliance": "jest --testPathPattern=token-structure-validation --forceExit --verbose",
     "test:coverage": "jest --forceExit --coverage",
     "test:integration": "jest --config=jest.integration.config.js",
     "test:oauth": "./run-oauth-integration-tests.sh",

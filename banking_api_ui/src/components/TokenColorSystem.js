@@ -36,9 +36,9 @@ const TOKEN_COLORS = {
 };
 
 const TOKEN_LABELS = {
-  subject: 'Subject Token',
-  actor: 'Actor / Agent Token',
-  mcp: 'MCP / Gateway Token',
+  subject: 'Subject Token (RFC 8693 §2.1)',
+  actor: 'Actor Token (RFC 8693 §2.2)',
+  mcp: 'MCP-Scoped Access Token (RFC 8693 §3.2)',
 };
 
 /**

@@ -1,5 +1,11 @@
 # PingOne: 2-Exchange Delegated Chain — Setup Guide
 
+> **RFC 8693 Terminology (Phase 188):** This document uses RFC 8693 primary terms.
+> - **Subject Token** (§2.1) = user's access token or ID token
+> - **Actor Token** (§2.2) = agent's client-credentials token  
+> - **MCP-Scoped Access Token** (§3.2) = result of token exchange
+> See [TOKEN_TERMINOLOGY_GLOSSARY.md](TOKEN_TERMINOLOGY_GLOSSARY.md) for complete definitions.
+
 Step-by-step setup for a **human → AI Agent → MCP → PingOne API** fully-delegated token chain using **two chained RFC 8693 token exchanges**.
 
 **Product scope:** PingOne SaaS (`auth.pingone.com`).
@@ -10,8 +16,8 @@ Step-by-step setup for a **human → AI Agent → MCP → PingOne API** fully-de
 
 For current demo validation, treat these labels as canonical:
 
-- Exchange 1: user token to MCP Server token (single exchange baseline)
-- Exchange 2 (Phase 184): user token + agent client-credentials token to MCP Gateway token (single RFC 8693 request with actor token)
+- Exchange 1: subject_token → MCP-scoped access token (single exchange, RFC 8693 §3.1)
+- Exchange 2 (Phase 184): subject_token + actor_token → MCP Gateway token (RFC 8693 §2.2 delegation)
 - Exchange 3: legacy educational two-step chain retained for comparison/testing
 
 When updating test UX, logs, or runbooks, keep this mapping stable so Phase 184 checks are unambiguous.
