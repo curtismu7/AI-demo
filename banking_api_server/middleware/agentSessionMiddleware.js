@@ -104,7 +104,7 @@ async function agentSessionMiddleware(req, res, next) {
       refreshToken: req.session.oauthTokens.refreshToken || null,
       sessionId: req.sessionID,
       // These will be populated after token exchange in Plan 02
-      mcpAccessToken: null // RFC 8693 §3.2: populated after token exchange,
+      mcpAccessToken: null, // RFC 8693 §3.2: populated after token exchange
       tokenExchangedAt: null,
       tokenEvents: [],
     };
@@ -165,7 +165,7 @@ function getAuthContextOrDefault(req) {
       accessToken: null,
       refreshToken: null,
       sessionId: null,
-      mcpAccessToken: null // RFC 8693 §3.2: populated after token exchange,
+      mcpAccessToken: null, // RFC 8693 §3.2: populated after token exchange
       tokenExchangedAt: null,
     }
   );
