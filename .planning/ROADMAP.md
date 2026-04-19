@@ -2107,13 +2107,33 @@ Plans:
 
 ### Phase 201: PingOne test page: rename 'Verify Assets' to 'Verify Resources & Scopes' and filter to only show apps/resources used by this app
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Rename "PingOne Asset Verification" section to "Verify Resources & Scopes" and filter AssetTable to only show apps/resources used by this Banking Demo.
+**Requirements**: TBD-201
 **Depends on:** Phase 200
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 201 to break down)
+- [ ] 201-01-PLAN.md — Rename section + filter apps/resources to EXPECTED_APP_NAMES
+
+### Phase 202: PingOne test page: show token events in acquisition order (top=first obtained, bottom=MCP token); add summary of changes section
+
+**Goal:** Reorder token panels to acquisition order (subject → actor → result) and add Session Summary section showing test pass/fail counts.
+**Requirements**: TBD-202
+**Depends on:** Phase 201
+**Plans:** 1 plan
+
+Plans:
+- [ ] 202-01-PLAN.md — Token acquisition order + Session Summary section
+
+### Phase 203: pingone-test config cards yellow/green/red status background
+
+**Goal:** Config and Resources TestCards start as pending (yellow) on load; turn green/red only after clicking Test.
+**Requirements**: TBD-203
+**Depends on:** Phase 202
+**Plans:** 1 plan
+
+Plans:
+- [ ] 203-01-PLAN.md — Switch 9 config/resource TestCards to pending-first status
 
 ---
 
