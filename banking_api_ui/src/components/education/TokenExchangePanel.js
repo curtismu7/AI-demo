@@ -1,12 +1,52 @@
 // banking_api_ui/src/components/education/TokenExchangePanel.js
 import React, { useState, useEffect } from 'react';
 import { getCachedJson } from '../../services/cachedStatusService';
+import { useEducationUI } from '../../context/EducationUIContext';
 import EducationDrawer from '../shared/EducationDrawer';
+import { EDU } from './educationIds';
 import {
   EduImplIntro,
   SNIP_RESOLVE_MCP_TOKEN,
   SNIP_TOKEN_EXCHANGE_PINGONE,
 } from './educationImplementationSnippets';
+
+// ─── See Also: Token Flow Panel link ────────────────────────────────────────
+function TokenFlowLink({ onClick }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      background: '#1e3a5f',
+      border: '1px solid #3b82f6',
+      borderRadius: '8px',
+      padding: '10px 14px',
+      marginTop: '16px',
+      flexWrap: 'wrap',
+    }}>
+      <span style={{ fontSize: '1.1rem' }}>🔗</span>
+      <span style={{ color: '#93c5fd', fontSize: '0.85rem', flex: '1 1 160px' }}>
+        <strong>See also:</strong> Token Flow Education Panel — full dual-exchange walkthrough with act / may_act claim chain, scope narrowing, and a live What Changed table.
+      </span>
+      <button
+        onClick={onClick}
+        style={{
+          background: '#2563eb',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '6px',
+          padding: '6px 14px',
+          fontSize: '0.8125rem',
+          fontWeight: 600,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Open Token Flow Panel →
+      </button>
+    </div>
+  );
+}
 
 // ─── Token Exchange Flow Diagram ──────────────────────────────────────────────
 
@@ -193,6 +233,7 @@ function TokenCompareCard({ title, emoji, color, border, claims }) {
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
 export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
+  const { open: openEdu } = useEducationUI();
   const [live, setLive] = useState({ loading: false, error: null, userToken: null });
 
   useEffect(() => {
@@ -234,6 +275,7 @@ export default function TokenExchangePanel({ isOpen, onClose, initialTabId }) {
             it stays locked in the Backend-for-Frontend (BFF) session.
           </p>
           <TokenFlowDiagram />
+          <TokenFlowLink onClick={() => openEdu(EDU.TOKEN_FLOW, 'diagram')} />
         </>
       ),
     },
@@ -532,6 +574,7 @@ BFF_CLIENT_ID=<your-bff-oauth-client-id>`}</pre>
                   ⚠️ <strong>may_act is absent</strong> — configure the may_act claim in PingOne token policy to enable token exchange.
                 </div>
               )}
+              <TokenFlowLink onClick={() => openEdu(EDU.TOKEN_FLOW, 'what-changed')} />
             </>
           )}
         </>
