@@ -14,6 +14,14 @@ export interface AgentTokenInfo {
   /** Populated when the token carries an RFC 8693 `act` claim — identifies the
    *  actor (e.g. Backend-for-Frontend (BFF) or AI agent client_id) that performed token exchange. */
   actorClientId?: string;
+  /** Token exchange mode detected from introspection response.
+   *  rfc_8693: standard delegated token with act claim (default).
+   *  transaction_tokens: draft Transaction Tokens with txn_id claim. */
+  tokenMode?: 'rfc_8693' | 'transaction_tokens';
+  /** Transaction ID from Transaction Tokens draft (txn_id claim). */
+  transactionId?: string;
+  /** Transaction scope/intent from Transaction Tokens (txn_scope claim). */
+  transactionScope?: string;
 }
 
 export interface UserTokens {
@@ -45,6 +53,12 @@ export interface TokenInfo {
     iss?: string;
     act?: { client_id?: string; sub?: string; iss?: string };
   };
+  /** draft-oauth-transaction-tokens: Transaction ID, present only in Transaction Tokens mode. */
+  txn_id?: string;
+  /** draft-oauth-transaction-tokens: Transaction scope/intent. */
+  txn_scope?: string;
+  /** draft-oauth-transaction-tokens: Agent identifier in transaction token. */
+  agent_id?: string;
 }
 
 export interface PingOneConfig {

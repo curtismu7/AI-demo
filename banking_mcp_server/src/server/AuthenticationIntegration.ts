@@ -55,11 +55,21 @@ export class AuthenticationIntegration {
         };
       }
 
-      // Get or create session
+      // Get or create session — pass token mode metadata from dual-mode validation
       let session = await this.sessionManager.getSessionByAgentToken(agentToken);
       if (!session) {
-        session = await this.sessionManager.createSession(agentToken);
-        console.log(`[AuthenticationIntegration] Created session ${session.sessionId} for agent token`);
+        session = await this.sessionManager.createSession(
+          agentToken,
+          24,
+          agentTokenInfo.tokenMode,
+          agentTokenInfo.transactionId,
+          agentTokenInfo.transactionScope
+        );
+        console.log(
+          `[AuthenticationIntegration] Created session ${session.sessionId} for agent token`,
+          `tokenMode=${agentTokenInfo.tokenMode || 'rfc_8693'}`,
+          agentTokenInfo.transactionId ? `txn_id=${agentTokenInfo.transactionId}` : ''
+        );
       }
 
       return {

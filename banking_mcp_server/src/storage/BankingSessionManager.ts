@@ -21,6 +21,12 @@ export interface BankingSession extends SessionData {
   sessionStats?: SessionStats;
   /** Email address of the authenticated user — injected at connection time for CIBA. */
   userEmail?: string;
+  /** Token exchange mode detected at session creation. Informational. */
+  tokenMode?: 'rfc_8693' | 'transaction_tokens';
+  /** Transaction ID from Transaction Tokens draft (txn_id claim). Undefined in RFC 8693 mode. */
+  transactionId?: string;
+  /** Transaction scope/intent from Transaction Tokens (txn_scope claim). */
+  transactionScope?: string;
 }
 
 /**
@@ -125,7 +131,13 @@ export class BankingSessionManager {
   /**
    * Create a new banking session with agent token correlation
    */
-  async createSession(agentToken: string, expirationHours: number = 24): Promise<BankingSession> {
+  async createSession(
+    agentToken: string,
+    expirationHours: number = 24,
+    tokenMode?: 'rfc_8693' | 'transaction_tokens',
+    transactionId?: string,
+    transactionScope?: string
+  ): Promise<BankingSession> {
     const sessionId = this.generateSessionId();
     const agentTokenHash = this.hashAgentToken(agentToken);
 
@@ -135,14 +147,17 @@ export class BankingSessionManager {
       expirationHours
     );
 
-    // Create banking session with initial stats
+    // Create banking session with initial stats and optional transaction context
     const bankingSession: BankingSession = {
       ...sessionData,
       sessionStats: {
         toolCallCount: 0,
         authChallengeCount: 0,
         bankingApiCallCount: 0
-      }
+      },
+      ...(tokenMode && { tokenMode }),
+      ...(transactionId && { transactionId }),
+      ...(transactionScope && { transactionScope }),
     };
 
     // Index agent token for quick lookup
@@ -158,7 +173,7 @@ export class BankingSessionManager {
     }
 
     if (this.monitoringConfig.enableDetailedLogging) {
-      console.log(`[BankingSessionManager] Created session ${sessionId} for agent token hash ${agentTokenHash.substring(0, 8)}...`);
+      console.log(`[BankingSessionManager] Created session ${sessionId} for agent token hash ${agentTokenHash.substring(0, 8)}... tokenMode=${tokenMode || 'rfc_8693'}` + (transactionId ? ` txn_id=${transactionId}` : ''));
     }
 
     return bankingSession;

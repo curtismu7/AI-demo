@@ -6,6 +6,7 @@
 import { createHash } from 'crypto';
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { PingOneConfig, TokenInfo, AgentTokenInfo, AuthenticationError, AuthErrorCodes } from '../interfaces/auth';
+import { detectTokenMode, enrichAgentTokenInfo } from '../services/tokenValidationService';
 
 export class TokenIntrospector {
   private httpClient: AxiosInstance;
@@ -183,7 +184,7 @@ export class TokenIntrospector {
       console.log(`[TokenIntrospector] Direct token — subject: ${tokenInfo.sub} (no act claim)`);
     }
 
-    return {
+    const baseTokenInfo: AgentTokenInfo = {
       tokenHash: this.hashToken(token),
       clientId: tokenInfo.client_id || 'unknown',
       scopes,
@@ -191,6 +192,10 @@ export class TokenIntrospector {
       isValid: true,
       actorClientId,
     };
+
+    // Detect dual-mode token type (RFC 8693 vs Transaction Tokens)
+    const modeResult = detectTokenMode(tokenInfo);
+    return enrichAgentTokenInfo(baseTokenInfo, modeResult);
   }
 
   /**
