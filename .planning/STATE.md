@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-19T10:46:31.739Z"
+last_updated: "2026-04-19T11:24:25.005687+00:00"
 progress:
   total_phases: 200
   completed_phases: 177
@@ -20,7 +20,7 @@ progress:
 
 ## Current Position
 
-Phase: 193
+Phase: 194
 Plan: Not started
 Next phase: 127+ (available for planning)
 
@@ -78,7 +78,9 @@ Next phase: 127+ (available for planning)
 ---
 
 ## Roadmap Evolution
+- Phase 196 added: Combine feature flags, configuration, and setup into unified tabbed page with clear visual tabs (color and outlines) including IDP setup tab
 
+- Phase 194 added: Display complete token chain and OIDC flow visualization with token state changes, MCP calls, and backend operations
 - Phase 193 added: Allow unauthenticated dashboard access — lazy login on agent/action buttons
 - Phase 192 added: Client credentials resource server app — client_id/client_secret banking summary
 - Phase 191 added: OIDC resource server app — banking summary with decoded tokens, MCP target

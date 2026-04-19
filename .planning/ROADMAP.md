@@ -2065,6 +2065,16 @@ Plans:
 
 - [x] [195-01-SUMMARY.md](.planning/phases/195-phase-172-security-hardening-act-claim-validation-status-codes-fallback-removal-and-test-coverage/195-01-SUMMARY.md) — Status code fix, act structural validation, fallback removal, D-02 MCP boundary enforcement, test coverage
 
+### Phase 196: Combine feature flags, configuration, and setup into unified tabbed page with clear visual tabs (color and outlines) including IDP setup tab
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 195
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 196 to break down)
+
 ---
 
 ### Phase 123: PingOne MFA Test Page
