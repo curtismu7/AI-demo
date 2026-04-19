@@ -94,6 +94,18 @@
   transform: translateY(-1px);
 }
 
+.error-boundary__btn--home {
+  background: var(--color-surface);
+  color: var(--color-text-secondary, #475569);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.error-boundary__btn--home:hover {
+  background: var(--color-surface-hover, #f8fafc);
+  border-color: var(--color-border-hover, #cbd5e1);
+  transform: translateY(-1px);
+}
+
 /* Error Details */
 .error-boundary__details {
   margin-top: var(--space-6);

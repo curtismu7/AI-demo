@@ -684,6 +684,8 @@ function AppWithAuth() {
                     <Route path="/transactions" element={<UserTransactions user={user} />} />
                     <Route path="/profile" element={<Profile user={user} />} />
                     <Route path="/security" element={<SecurityCenter user={user} />} />
+                    {/* Catch-all: unknown routes redirect to dashboard instead of blank/404 */}
+                    <Route path="*" element={<Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />} />
                   </Routes>
                   {backgroundLocation && fullLocation.pathname === '/audit' && (
                     <AdminRoute user={user}><AuditPage user={user} onClose={() => window.history.back()} /></AdminRoute>

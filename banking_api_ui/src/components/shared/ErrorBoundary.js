@@ -86,6 +86,11 @@ class ErrorBoundary extends React.Component {
     window.location.reload();
   };
 
+  handleGoHome = () => {
+    // Navigate to root without a full reload — React Router re-mounts cleanly.
+    window.location.href = '/';
+  };
+
   render() {
     if (this.state.hasError) {
       const { fallback, showDetails = process.env.NODE_ENV === 'development' } = this.props;
@@ -136,6 +141,14 @@ class ErrorBoundary extends React.Component {
                   Try Again
                 </button>
               )}
+
+              <button
+                type="button"
+                className="error-boundary__btn error-boundary__btn--home"
+                onClick={this.handleGoHome}
+              >
+                ← Go to App
+              </button>
               
               <button
                 type="button"

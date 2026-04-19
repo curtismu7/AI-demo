@@ -70,7 +70,7 @@ function getFrontendOrigin(req) {
     const proto = req.protocol === 'http' ? 'http' : 'https';
     return `${proto}://${getPublicHost(req)}`;
   }
-  return _sanitizeUrl(process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000');
+  return _sanitizeUrl(process.env.REACT_APP_CLIENT_URL || process.env.PUBLIC_APP_URL || 'http://localhost:4000');
 }
 
 /**
