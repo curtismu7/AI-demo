@@ -75,6 +75,14 @@ function hasAnyField(data) {
   return Object.values(data).some((v) => v !== undefined && v !== null);
 }
 
+/** Step states for the unauthenticated "start the flow" UI */
+const MCP_FLOW_STEPS = {
+  idle: null,
+  calling: { label: 'Sending request to MCP server…', color: '#3b82f6' },
+  got_401: { label: 'MCP server → 401 Unauthenticated', color: '#f59e0b' },
+  redirecting: { label: 'Redirecting to PingOne login…', color: '#10b981' },
+};
+
 export default function OAuthTokenDisplayPage() {
   const [userStatus, setUserStatus] = useState(null);
   const [tokenClaims, setTokenClaims] = useState(null);
@@ -84,6 +92,7 @@ export default function OAuthTokenDisplayPage() {
   const [enrichedLoading, setEnrichedLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [isExpired, setIsExpired] = useState(false);
+  const [mcpFlowStep, setMcpFlowStep] = useState('idle');
 
   useEffect(() => {
     let cancelled = false;
@@ -134,6 +143,34 @@ export default function OAuthTokenDisplayPage() {
     return () => { cancelled = true; };
   }, [userStatus?.authenticated]);
 
+  /**
+   * Demonstrate the MCP → 401 → OAuth login flow.
+   * 1. POST /api/mcp/tool (get_my_accounts) — no session, expect 401
+   * 2. Show the 401 step visually for 1.2 s
+   * 3. Redirect to the BFF user login endpoint
+   */
+  const startMcpFlow = useCallback(async () => {
+    setMcpFlowStep('calling');
+    try {
+      await fetch('/api/mcp/tool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tool: 'get_my_accounts', params: {} }),
+      });
+      // Any response (401 expected) — show the 401 step then redirect
+    } catch {
+      // Network error still means we should try to log in
+    }
+    setMcpFlowStep('got_401');
+    setTimeout(() => {
+      setMcpFlowStep('redirecting');
+      setTimeout(() => {
+        window.location.href = '/api/auth/oauth/user/login';
+      }, 800);
+    }, 1200);
+  }, []);
+
   // Refresh time-remaining display every 30s
   const expTs = tokenClaims?.payload?.exp;
   const updateTimeRemaining = useCallback(() => {
@@ -157,15 +194,62 @@ export default function OAuthTokenDisplayPage() {
   }
 
   if (error === 'no_session') {
+    const step = MCP_FLOW_STEPS[mcpFlowStep];
+    const isBusy = mcpFlowStep !== 'idle';
     return (
       <div className="otdp-container">
         <div className="otdp-header">
           <h2>OAuth Token Information</h2>
         </div>
-        <div className="otdp-card otdp-card--error">
-          <div className="otdp-error-icon">🔒</div>
-          <h3>No Active OAuth Session</h3>
-          <p>Log in with PingOne OAuth to view your token information.</p>
+        <div className="otdp-card otdp-flow-start-card">
+          <div className="otdp-flow-icon">🔒</div>
+          <h3>No Active Session</h3>
+          <p className="otdp-flow-desc">
+            Click <strong>Log In</strong> to see the live token flow — the browser POSTs to the MCP
+            server, receives a&nbsp;<code>401&nbsp;Unauthenticated</code>, then follows the OAuth
+            redirect to PingOne. Once you log in, this page shows your decoded token claims.
+          </p>
+
+          {/* Step flow diagram */}
+          <div className="otdp-flow-steps">
+            <div className={`otdp-flow-step ${mcpFlowStep === 'calling' ? 'otdp-flow-step--active' : ''} ${['got_401','redirecting'].includes(mcpFlowStep) ? 'otdp-flow-step--done' : ''}`}>
+              <span className="otdp-flow-step-num">1</span>
+              <div>
+                <div className="otdp-flow-step-title">POST /api/mcp/tool</div>
+                <div className="otdp-flow-step-sub">get_my_accounts — no token yet</div>
+              </div>
+            </div>
+            <div className="otdp-flow-arrow">→</div>
+            <div className={`otdp-flow-step ${mcpFlowStep === 'got_401' ? 'otdp-flow-step--active otdp-flow-step--warn' : ''} ${mcpFlowStep === 'redirecting' ? 'otdp-flow-step--done' : ''}`}>
+              <span className="otdp-flow-step-num">2</span>
+              <div>
+                <div className="otdp-flow-step-title">401 Unauthenticated</div>
+                <div className="otdp-flow-step-sub">MCP server rejects the request</div>
+              </div>
+            </div>
+            <div className="otdp-flow-arrow">→</div>
+            <div className={`otdp-flow-step ${mcpFlowStep === 'redirecting' ? 'otdp-flow-step--active otdp-flow-step--ok' : ''}`}>
+              <span className="otdp-flow-step-num">3</span>
+              <div>
+                <div className="otdp-flow-step-title">PingOne OAuth Login</div>
+                <div className="otdp-flow-step-sub">Auth Code + PKCE → tokens issued</div>
+              </div>
+            </div>
+          </div>
+
+          {step && (
+            <div className="otdp-flow-status" style={{ color: step.color }}>
+              {step.label}
+            </div>
+          )}
+
+          <button
+            className="otdp-flow-login-btn"
+            onClick={startMcpFlow}
+            disabled={isBusy}
+          >
+            {isBusy ? 'Starting…' : 'Log In via MCP Flow'}
+          </button>
         </div>
       </div>
     );

@@ -172,6 +172,161 @@
   margin-top: 0;
 }
 
+/* ── No-session: MCP flow start card ── */
+.otdp-flow-start-card {
+  text-align: center;
+  padding: 2.5rem 2rem;
+  max-width: 560px;
+  margin: 2rem auto;
+}
+
+.otdp-flow-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.otdp-flow-start-card h3 {
+  margin: 0 0 0.75rem;
+  color: #1e293b;
+  font-size: 1.25rem;
+}
+
+.otdp-flow-desc {
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 1.75rem;
+}
+
+.otdp-flow-desc code {
+  background: #f1f5f9;
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  font-size: 0.875em;
+  color: #0f172a;
+}
+
+/* Step indicators */
+.otdp-flow-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.otdp-flow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.875rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+  text-align: left;
+  min-width: 140px;
+  transition: border-color 0.25s, background 0.25s;
+}
+
+.otdp-flow-step--active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.otdp-flow-step--warn {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.otdp-flow-step--ok {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.otdp-flow-step--done {
+  border-color: #10b981;
+  opacity: 0.75;
+}
+
+.otdp-flow-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.otdp-flow-step--active .otdp-flow-step-num {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.otdp-flow-step--warn .otdp-flow-step-num {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.otdp-flow-step--ok .otdp-flow-step-num,
+.otdp-flow-step--done .otdp-flow-step-num {
+  background: #10b981;
+  color: #fff;
+}
+
+.otdp-flow-step-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.otdp-flow-step-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.1rem;
+}
+
+.otdp-flow-arrow {
+  font-size: 1.125rem;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.otdp-flow-status {
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-height: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.otdp-flow-login-btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 0.7rem 2rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.otdp-flow-login-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.otdp-flow-login-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+
 .otdp-raw-toggle {
   cursor: pointer;
   font-size: 0.8125rem;
