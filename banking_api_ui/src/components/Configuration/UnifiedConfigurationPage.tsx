@@ -53,8 +53,36 @@ const CONFIGURATION_TABS = [
     requiresAuth: true,
     requiredRole: 'admin',
     sections: ['vercel-config', 'worker-app', 'debug-settings', 'api-keys']
+  },
+  {
+    id: 'idp-setup',
+    label: 'IDP Setup',
+    icon: '🏛',
+    description: 'PingOne Identity Provider configuration reference',
+    requiresAuth: true,
+    requiredRole: 'admin',
+    sections: ['idp-overview', 'idp-clients']
+  },
+  {
+    id: 'feature-flags',
+    label: 'Feature Flags',
+    icon: '🚩',
+    description: 'Toggle in-development features',
+    requiresAuth: true,
+    requiredRole: 'admin',
+    sections: ['feature-flags']
   }
 ];
+
+// Feature flag shape returned by /api/admin/feature-flags
+interface FeatureFlag {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  impact: string;
+  value: boolean;
+}
 
 // Flat configuration state
 interface ConfigurationState {
@@ -306,27 +334,37 @@ const ConfigurationTabs: FC<{
   tabs: typeof CONFIGURATION_TABS;
   activeTab: string;
   onTabChange: (tabId: string) => void;
-}> = ({ tabs, activeTab, onTabChange }) => (
-  <nav className="configuration-tabs">
-    {tabs.map(tab => (
-      <button
-        type="button"
-        key={tab.id}
-        className={`configuration-tab ${activeTab === tab.id ? 'active' : ''}`}
-        onClick={() => onTabChange(tab.id)}
-        role="tab"
-        aria-selected={activeTab === tab.id}
-        aria-controls={`tabpanel-${tab.id}`}
-      >
-        <span className="tab-icon">{tab.icon}</span>
-        <div className="tab-content">
-          <span className="tab-label">{tab.label}</span>
-          <span className="tab-description">{tab.description}</span>
-        </div>
-      </button>
-    ))}
-  </nav>
-);
+}> = ({ tabs, activeTab, onTabChange }) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    const idx = tabs.findIndex(t => t.id === activeTab);
+    if (e.key === 'ArrowRight') { onTabChange(tabs[(idx + 1) % tabs.length].id); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { onTabChange(tabs[(idx - 1 + tabs.length) % tabs.length].id); e.preventDefault(); }
+    else if (e.key === 'Home') { onTabChange(tabs[0].id); e.preventDefault(); }
+    else if (e.key === 'End') { onTabChange(tabs[tabs.length - 1].id); e.preventDefault(); }
+  };
+  return (
+    <nav className="configuration-tabs" role="tablist" onKeyDown={handleKeyDown}>
+      {tabs.map(tab => (
+        <button
+          type="button"
+          key={tab.id}
+          className={`configuration-tab configuration-tab--${tab.id} ${activeTab === tab.id ? 'active' : ''}`}
+          onClick={() => onTabChange(tab.id)}
+          role="tab"
+          tabIndex={activeTab === tab.id ? 0 : -1}
+          aria-selected={activeTab === tab.id}
+          aria-controls={`tabpanel-${tab.id}`}
+        >
+          <span className="tab-icon">{tab.icon}</span>
+          <div className="tab-content">
+            <span className="tab-label">{tab.label}</span>
+            <span className="tab-description">{tab.description}</span>
+          </div>
+        </button>
+      ))}
+    </nav>
+  );
+};
 
 const SectionNavigation: FC<{
   sections: string[];
@@ -353,7 +391,10 @@ const SectionNavigation: FC<{
     'vercel-config': 'Vercel Configuration',
     'worker-app': 'Worker Application',
     'debug-settings': 'Debug Settings',
-    'api-keys': 'API Keys'
+    'api-keys': 'API Keys',
+    'idp-overview': 'Environment & Endpoints',
+    'idp-clients': 'OAuth Clients',
+    'feature-flags': 'Feature Flags'
   };
 
   return (
@@ -387,6 +428,9 @@ const UnifiedConfigurationPage: FC<{
 
   const [state, setState] = useState<ConfigurationState>(getDefaultState);
   const [activeTab, setActiveTab] = useState('quick-start');
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
+  const [flagsLoading, setFlagsLoading] = useState(false);
+  const [flagsError, setFlagsError] = useState<string | null>(null);
 
   const { placement: ctxAgentUiMode } = useAgentUiMode();
   useEducationUI();
@@ -604,6 +648,56 @@ const UnifiedConfigurationPage: FC<{
   const resetConfiguration = useCallback(() => {
     setState(getDefaultState());
     notifySuccess('Configuration reset to defaults');
+  }, []);
+
+  // Feature flags
+  useEffect(() => {
+    if (activeTab !== 'feature-flags') return;
+    let cancelled = false;
+    setFlagsLoading(true);
+    setFlagsError(null);
+    fetch('/api/admin/feature-flags', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { flags?: FeatureFlag[] }) => {
+        if (!cancelled) {
+          setFeatureFlags(data.flags || []);
+          setFlagsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFlagsError('Failed to load feature flags — is the API server running?');
+          setFlagsLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  const toggleFlag = useCallback(async (flagId: string, newValue: boolean) => {
+    setFeatureFlags(prev => prev.map(f => f.id === flagId ? { ...f, value: newValue } : f));
+    try {
+      const res = await fetch('/api/admin/feature-flags', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ [flagId]: newValue }),
+      });
+      if (!res.ok) throw new Error('PATCH failed');
+      notifySuccess(`Flag ${newValue ? 'enabled' : 'disabled'}`);
+    } catch {
+      setFeatureFlags(prev => prev.map(f => f.id === flagId ? { ...f, value: !newValue } : f));
+      notifyError('Failed to toggle flag');
+    }
+  }, []);
+
+  const copyToClipboard = useCallback(async (value: string, label: string) => {
+    if (!value) { notifyError(`${label} — nothing to copy`); return; }
+    try {
+      await navigator.clipboard.writeText(value);
+      notifySuccess(`${label} copied!`);
+    } catch {
+      notifyError('Copy failed — select and copy manually');
+    }
   }, []);
 
   const handleTabChange = useCallback((tabId: string) => {
@@ -1103,6 +1197,102 @@ const UnifiedConfigurationPage: FC<{
         )}
       </div>
     );
+
+    // IDP Setup tab
+    if (s === 'idp-overview') {
+      const base = `https://auth.pingone.${state.pingoneRegion}`;
+      const envId = state.pingoneEnvironmentId || '(not configured)';
+      const entries = [
+        { label: 'PingOne Region', value: state.pingoneRegion || '(not configured)' },
+        { label: 'Environment ID', value: envId },
+        { label: 'Authorization Endpoint', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/authorize` : '(not configured)' },
+        { label: 'Token Endpoint', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/token` : '(not configured)' },
+        { label: 'JWKS URI', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/jwks` : '(not configured)' },
+        { label: 'Userinfo Endpoint', value: state.pingoneEnvironmentId ? `${base}/${envId}/as/userinfo` : '(not configured)' },
+      ];
+      return (
+        <div className="cfg-section">
+          <p className="cfg-section-desc">Current PingOne environment endpoints. Click any value to copy.</p>
+          <div className="idp-setup-table">
+            {entries.map(({ label, value }) => (
+              <div key={label} className="idp-setup-row">
+                <span className="idp-setup-label">{label}</span>
+                <span className="idp-setup-value">{value}</span>
+                {value !== '(not configured)' && (
+                  <button type="button" className="idp-copy-btn" onClick={() => copyToClipboard(value, label)} title={`Copy ${label}`}>⎘ Copy</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (s === 'idp-clients') {
+      const clients = [
+        { label: 'Admin Client ID', value: state.adminClientId },
+        { label: 'Admin Redirect URI', value: state.adminRedirectUri },
+        { label: 'User Client ID', value: state.userClientId },
+        { label: 'User Redirect URI', value: state.userRedirectUri },
+        { label: 'Worker Client ID', value: state.workerClientId },
+        { label: 'MCP Resource URI', value: state.mcpResourceUri },
+      ];
+      return (
+        <div className="cfg-section">
+          <p className="cfg-section-desc">OAuth client IDs and redirect URIs registered in PingOne. These are safe to display — register the redirect URIs in each PingOne application.</p>
+          <div className="idp-setup-table">
+            {clients.map(({ label, value }) => (
+              <div key={label} className="idp-setup-row">
+                <span className="idp-setup-label">{label}</span>
+                <span className="idp-setup-value">{value || '(not configured)'}</span>
+                {value && (
+                  <button type="button" className="idp-copy-btn" onClick={() => copyToClipboard(value, label)} title={`Copy ${label}`}>⎘ Copy</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Feature Flags tab
+    if (s === 'feature-flags') {
+      if (flagsLoading) return <div className="cfg-section"><p className="cfg-section-desc">Loading flags…</p></div>;
+      if (flagsError) return <div className="cfg-section"><p className="cfg-section-desc cfg-error-text">⚠ {flagsError}</p></div>;
+      if (featureFlags.length === 0) return <div className="cfg-section"><p className="cfg-section-desc">No feature flags configured.</p></div>;
+
+      const categories = Array.from(new Set(featureFlags.map(f => f.category)));
+      return (
+        <div className="cfg-section">
+          <p className="cfg-section-desc">Toggle in-development features. Changes apply immediately.</p>
+          {categories.map(cat => (
+            <div key={cat} className="ff-category-group">
+              <h3 className="ff-category-title">{cat}</h3>
+              {featureFlags.filter(f => f.category === cat).map(flag => (
+                <div key={flag.id} className="ff-flag-card">
+                  <div className="ff-flag-header">
+                    <span className="ff-flag-name">{flag.name}</span>
+                    <button
+                      type="button"
+                      className={`ff-toggle-btn${flag.value ? ' ff-toggle-btn--on' : ''}`}
+                      onClick={() => toggleFlag(flag.id, !flag.value)}
+                      aria-label={`${flag.value ? 'Disable' : 'Enable'} ${flag.name}`}
+                    >
+                      <span className="ff-toggle-track">
+                        <span className="ff-toggle-thumb" />
+                      </span>
+                      <span className="ff-toggle-text">{flag.value ? 'On' : 'Off'}</span>
+                    </button>
+                  </div>
+                  {flag.description && <p className="ff-flag-desc">{flag.description}</p>}
+                  {flag.impact && <p className="ff-flag-impact"><strong>Impact:</strong> {flag.impact}</p>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      );
+    }
 
     // Fallback for any unknown/future section
     if (s) return (
