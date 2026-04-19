@@ -1247,18 +1247,24 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="section ud-quick-actions" aria-label="Quick actions">
           <h2 className="ud-quick-actions__title">Quick actions</h2>
           <div className="ud-quick-actions__row">
-            <button type="button" className="ud-qa-btn" onClick={handleScrollToAccounts}>
+            <button type="button" className="ud-qa-btn" onClick={() => user ? handleScrollToAccounts() : navigateToCustomerOAuthLogin()}>
               Move money
             </button>
-            <button type="button" className="ud-qa-btn" onClick={handleScrollToAccounts}>
+            <button type="button" className="ud-qa-btn" onClick={() => user ? handleScrollToAccounts() : navigateToCustomerOAuthLogin()}>
               Add funds
             </button>
-            <button type="button" className="ud-qa-btn ud-qa-btn--accent" onClick={handleScrollToAssistant}>
+            <button type="button" className="ud-qa-btn ud-qa-btn--accent" onClick={() => user ? handleScrollToAssistant() : navigateToCustomerOAuthLogin()}>
               Ask assistant
             </button>
-            <Link to="/delegation" className="ud-qa-btn ud-qa-btn--delegate">
-              👥 Manage Delegates
-            </Link>
+            {user ? (
+              <Link to="/delegation" className="ud-qa-btn ud-qa-btn--delegate">
+                👥 Manage Delegates
+              </Link>
+            ) : (
+              <button type="button" className="ud-qa-btn ud-qa-btn--delegate" onClick={navigateToCustomerOAuthLogin}>
+                👥 Manage Delegates
+              </button>
+            )}
           </div>
         </div>
 
@@ -1418,25 +1424,21 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                     <button
                       type="button"
                       className="select-account-btn"
-                      onClick={() => setSelectedAccount(account)}
+                      onClick={() => user ? setSelectedAccount(account) : navigateToCustomerOAuthLogin()}
                     >
                       Select for Transfer
                     </button>
                     <button
                       type="button"
                       className="deposit-btn"
-                      onClick={() => setDepositAccount(account)}
-                      disabled={!user}
-                      title={!user ? 'Log in to deposit funds' : undefined}
+                      onClick={() => user ? setDepositAccount(account) : navigateToCustomerOAuthLogin()}
                     >
                       Deposit
                     </button>
                     <button
                       type="button"
                       className="withdraw-btn"
-                      onClick={() => setWithdrawAccount(account)}
-                      disabled={!user}
-                      title={!user ? 'Log in to withdraw funds' : undefined}
+                      onClick={() => user ? setWithdrawAccount(account) : navigateToCustomerOAuthLogin()}
                     >
                       Withdraw
                     </button>
