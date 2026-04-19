@@ -156,6 +156,17 @@
   color: var(--app-primary-red, #b91c1c);
 }
 
+/* Override App.css end-user-nano blanket white-text rule for header secondary button */
+.App.end-user-nano .landing-header-actions .btn-secondary,
+.App.end-user-nano .landing-header-actions .btn-secondary:hover,
+.App.end-user-nano .landing-header-actions .btn-secondary:focus,
+.App.end-user-nano .landing-header-actions .btn-secondary:focus-visible,
+.App.end-user-nano .landing-header-actions .btn-secondary:active,
+.App.end-user-nano .landing-header-actions .btn-secondary:visited {
+  color: var(--app-primary-red, #b91c1c) !important;
+  -webkit-text-fill-color: var(--app-primary-red, #b91c1c) !important;
+}
+
 .landing-header-actions .landing-theme-toggle {
   display: flex;
   align-items: center;
