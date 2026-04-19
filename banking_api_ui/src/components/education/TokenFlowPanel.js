@@ -1,9 +1,23 @@
 // banking_api_ui/src/components/education/TokenFlowPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import TokenExchangeDiagram from './TokenExchangeDiagram';
 
 export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
   const tabs = [
+    {
+      id: 'diagram',
+      label: 'Diagram',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>2-Exchange Delegation Flow — Visual</h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: 12 }}>
+            End-to-end token journey from user login through two RFC 8693 exchanges to the final MCP tool call.
+          </p>
+          <TokenExchangeDiagram />
+        </>
+      ),
+    },
     {
       id: 'overview',
       label: 'Overview',
