@@ -597,6 +597,32 @@ function AppWithAuth() {
                 )
               }
             />
+            {/* Explicit /dashboard so guests see UserDashboard with demo data, not LandingPage */}
+            <Route
+              path="/dashboard"
+              element={
+                loading ? null : (
+                  !user ? (
+                    <>
+                      <TopNav user={user} onLogout={logout} />
+                      <main className="main-content">
+                        <UserDashboard user={null} onLogout={logout} />
+                        <WebMcpPanel />
+                      </main>
+                    </>
+                  ) : (
+                    <>
+                      <AdminSideNav user={user} />
+                      <TopNav user={user} onLogout={logout} />
+                      <main className="main-content">
+                        <UserDashboard user={user} onLogout={logout} />
+                        <WebMcpPanel />
+                      </main>
+                    </>
+                  )
+                )
+              }
+            />
             <Route path="/logout" element={<LogoutPage />} />
 
             <Route path="*" element={
@@ -611,7 +637,6 @@ function AppWithAuth() {
                       <Routes location={backgroundLocation || fullLocation}>
                     <Route path="/" element={user?.role === 'admin' ? <Dashboard user={user} onLogout={logout} /> : <LandingPage user={user} onLogout={logout} />} />
                     <Route path="/admin" element={<AdminRoute user={user}><Dashboard user={user} onLogout={logout} /></AdminRoute>} />
-                    <Route path="/dashboard" element={<><UserDashboard user={user} onLogout={logout} /><WebMcpPanel /></>} />
                     <Route path="/config"      element={<Navigate to="/configure?tab=pingone-config" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />

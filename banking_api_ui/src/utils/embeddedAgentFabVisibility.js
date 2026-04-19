@@ -32,7 +32,7 @@ export function isEmbeddedAgentDockRoute(pathname) {
 export function isPublicMarketingAgentPath(pathname) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
-  return p === '/' || p === '/marketing';
+  return p === '/' || p === '/marketing' || p === '/dashboard';
 }
 
 /**
@@ -45,7 +45,7 @@ export function isPublicMarketingAgentPath(pathname) {
 export function isMarketingEmbeddedDockSurface(pathname, user) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
-  if (!user && (p === '/' || p === '/marketing')) return true;
+  if (!user && (p === '/' || p === '/marketing' || p === '/dashboard')) return true;
   if (user && p === '/marketing') return true;
   return false;
 }

@@ -833,7 +833,6 @@ export default function BankingAgent({
   const [nlInput, setNlInput] = useState('');
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
-  const [activeModel, setActiveModel] = useState(null);
   /** Set when returning from PingOne with a pending banking NL line to run after session exists. */
   const [nlResumeAfterAuth, setNlResumeAfterAuth] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
@@ -1626,7 +1625,7 @@ export default function BankingAgent({
       setTimeout(() => {
         const p = (location.pathname || '').replace(/\/$/, '') || '/';
         const params = new URLSearchParams();
-        if (isPublicMarketingAgentPath(p)) params.set('return_to', '/marketing');
+        if (isPublicMarketingAgentPath(p)) params.set('return_to', p === '/dashboard' ? '/dashboard' : '/marketing');
         if (usePiFlow) params.set('use_pi_flow', '1');
         const q = params.toString();
         window.location.href = `${apiUrl}/api/auth/oauth/user/login${q ? `?${q}` : ''}`;
@@ -1646,7 +1645,7 @@ export default function BankingAgent({
     setTimeout(() => {
       const p = (location.pathname || '').replace(/\/$/, '') || '/';
       const params = new URLSearchParams();
-      if (isPublicMarketingAgentPath(p)) params.set('return_to', '/marketing');
+      if (isPublicMarketingAgentPath(p)) params.set('return_to', p === '/dashboard' ? '/dashboard' : '/marketing');
       if (usePiFlow) params.set('use_pi_flow', '1');
       const q = params.toString();
       window.location.href = `${apiUrl}/api/auth/oauth/user/login${q ? `?${q}` : ''}`;
@@ -1840,7 +1839,7 @@ export default function BankingAgent({
             return;
           }
           addMessage('assistant',
-            `👤 **High-value transaction — your approval is needed.**\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} require your consent and email verification.\n\nReview the authorization popup, then enter the code sent to your email.`,
+            `👤 **Human-in-the-Loop (HITL) — your manual approval is required.**\n\nTransactions over $${normalized.hitl_threshold_usd ?? 500} require your consent before the agent can proceed. The agent is paused and cannot continue until you approve or cancel.\n\nReview the authorization popup, then enter the verification code sent to your email.`,
             actionId
           );
           toast.dismiss(toastId);
@@ -2519,9 +2518,6 @@ export default function BankingAgent({
         return;
       }
       const response = await sendAgentMessage(text);
-      if (response.activeModel) {
-        setActiveModel(response.activeModel);
-      }
 
       if (response._status === 428 && response.hitl) {
         // HITL consent required — wire to existing consent modal state
@@ -2581,9 +2577,6 @@ export default function BankingAgent({
       setNlLoading(true);
       try {
         const response = await sendAgentMessage(text);
-      if (response.activeModel) {
-        setActiveModel(response.activeModel);
-      }
         if (!cancelled) {
           if (response.error || !response.success) {
             reportNlFailure({ code: response.error || 'unknown' });
