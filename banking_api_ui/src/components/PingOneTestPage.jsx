@@ -1438,6 +1438,15 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
               {exchange401Decoded && (
                 <DecodedTokenPanel decoded={exchange401Decoded} label="MCP Token (Simple Exchange Result)" />
               )}
+              {exchange401SubjectDecoded && exchange401Decoded && (
+                <TokenLineageDiff
+                  fromDecoded={exchange401SubjectDecoded}
+                  toDecoded={exchange401Decoded}
+                  fromLabel="User Access Token (Subject)"
+                  toLabel="MCP Token (Simple Exchange)"
+                  expectedChanges={['aud', 'scope', 'client_id']}
+                />
+              )}
             </div>
           </div>
           <SectionApiCalls />
