@@ -79,6 +79,12 @@ Next phase: 127+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 201 added: PingOne test page: rename 'Verify Assets' to 'Verify Resources & Scopes' and filter to only show apps/resources used by this app
+
+- Phase 200 added: Heuristic command/chip routing — use LLM only when heuristic cannot understand
+
+- Phase 199 added: Fix agent token chain: get agent client-credentials token silently and show in token chain
+
 - Phase 198 added: Support Transaction Tokens For Agents (draft-oauth-transaction-tokens-for-agents-06) with configurable RFC 8693 fallback; update MCP server for dual-mode
 
 - Phase 196 added: Combine feature flags, configuration, and setup into unified tabbed page with clear visual tabs (color and outlines) including IDP setup tab

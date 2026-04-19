@@ -2004,7 +2004,7 @@ Plans:
 **Goal:** Build a standalone OIDC-authenticated resource server app that looks like the Banking summary page and displays decoded access/ID tokens. This app is the target audience for the MCP server's dual token exchange — the agent exchanges tokens to call this resource server on behalf of the user. Shows the full OIDC flow: user authenticates, app displays decoded tokens (claims, scopes, aud, act), and serves as the real resource server endpoint for RFC 8693 token exchange.
 **Requirements**: TBD
 **Depends on:** Phase 190
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [x] 191-01-PLAN.md — Backend route + ResourceServerPage (OIDC, banking summary, decoded tokens, routing)
@@ -2084,6 +2084,36 @@ Plans:
 
 Plans:
 - [x] TBD (run /gsd-plan-phase 198 to break down) (completed 2026-04-19)
+
+### Phase 199: Fix agent token chain: get agent client-credentials token silently and show in token chain
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 198
+**Plans:** 0/1 plans executed
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 199 to break down)
+
+### Phase 200: Heuristic command/chip routing — use LLM only when heuristic cannot understand
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 199
+**Plans:** 0/1 plans executed
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 200 to break down)
+
+### Phase 201: PingOne test page: rename 'Verify Assets' to 'Verify Resources & Scopes' and filter to only show apps/resources used by this app
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 200
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 201 to break down)
 
 ---
 
