@@ -2028,6 +2028,41 @@ Plans:
 - [ ] 193-01-PLAN.md — Route /dashboard for unauthenticated users + agent FAB visibility + return_to
 - [ ] 193-02-PLAN.md — Gate action buttons behind lazy login triggers
 
+### Phase 194: Display complete token chain and OIDC flow visualization with token state changes, MCP calls, and backend operations
+
+**Goal:** Create a comprehensive flow timeline visualization showing the complete OAuth + token exchange + MCP + backend operations sequence. Users see each step (OIDC login → exchange decision → exchange → tool call → backend operation) with token state transitions and which token powers each milestone. Backend operations are connected to their triggering MCP tool calls to demonstrate the full end-to-end flow.
+
+**Requirements**: VIZ-01: OIDC flow timeline component, VIZ-02: Token state indicators, VIZ-03: Backend operation display
+
+**Depends on:** Phase 193 (lazy login on dashboard)
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 194-01-PLAN.md — OidcFlowTimeline component + milestone tracking in TokenChainContext
+- [ ] 194-02-PLAN.md — Token state indicators (TokenStateIndicator component) + token state integration
+- [ ] 194-03-PLAN.md — Backend operation display (BackendOperationIndicator) + backend API audit trail integration
+
+**Success criteria:**
+1. OidcFlowTimeline displays 5+ milestones (OIDC login, exchange start, exchange complete, MCP tool call, backend operation)
+2. Each milestone shows status (pending → active → done) with spinner/checkmark animations
+3. Token state indicator shows token type, claims, and expiry for each milestone
+4. Backend operations linked to MCP tool calls with endpoint, status, response time
+5. Complete end-to-end flow visible on one dashboard panel
+6. Milestones persist in localStorage
+7. Build passes (npm run build exit 0)
+
+### Phase 195: Phase 172 security hardening — act claim validation, status codes, fallback removal, and test coverage
+
+**Goal:** Harden the Phase 172 dual-token / RFC 8693 implementation: fix DELEGATION_CLAIM_MISSING status code (403→401), add act structural validation in both delegationErrorMiddleware files, remove subject-only fallback from agentMcpTokenService, enforce D-02 act claim check at MCP server boundary in BankingToolProvider, and add 5 token exchange tests.
+**Requirements**: N/A (audit/hardening of existing phase)
+**Depends on:** Phase 172
+**Plans:** 1/1 plans complete
+
+Plans:
+
+- [x] [195-01-SUMMARY.md](.planning/phases/195-phase-172-security-hardening-act-claim-validation-status-codes-fallback-removal-and-test-coverage/195-01-SUMMARY.md) — Status code fix, act structural validation, fallback removal, D-02 MCP boundary enforcement, test coverage
+
 ---
 
 ### Phase 123: PingOne MFA Test Page
