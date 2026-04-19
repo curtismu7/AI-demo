@@ -97,13 +97,13 @@ export default function LandingPage({ user, onLogout }) {
               onClick={handleAdminLogin}
               className="btn btn-primary"
             >
-              Sign In as Admin
+              Log In as Admin
             </button>
             <button
               onClick={handleCustomerLogin}
               className="btn btn-secondary"
             >
-              Sign In as Customer
+              Log In as Customer
             </button>
           </div>
         </div>

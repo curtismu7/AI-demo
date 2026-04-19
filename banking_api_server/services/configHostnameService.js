@@ -22,7 +22,7 @@ const { logger } = require('../utils/logger');
 // In-memory cache — holds the authoritative hostname value
 let _hostnameCache = null;
 const CONFIG_KEY = 'CONFIGURED_HOSTNAME';
-const DEFAULT_HOSTNAME = 'https://api.pingdemo.com';
+const DEFAULT_HOSTNAME = process.env.PUBLIC_APP_URL || 'https://api.pingdemo.com:3001';
 
 // Regex for hostname validation: https?://host(:port)?
 // Allows:
