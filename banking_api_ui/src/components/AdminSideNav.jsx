@@ -147,7 +147,7 @@ export default function AdminSideNav({ user }) {
     { label: 'Agent flow diagram', icon: '📊', action: () => { window.dispatchEvent(new CustomEvent('agent-flow-diagram-open')); } },
     { label: 'WebMCP (Google)', icon: '🌐', action: () => navigate('/webmcp') },
     { label: 'Agentic Trust', icon: '🛡️', action: () => navigate('/agentic-trust') },
-    { label: 'Actor Token (Agent)', icon: '🎭', action: () => navigate('/actor-token-education') },
+    { label: 'Actor Token (Agent)', icon: '🎭', action: () => openEdu(EDU.TOKEN_FLOW, 'diagram') },
   ];
 
   // Agent UI placement options for the expandable dropdown

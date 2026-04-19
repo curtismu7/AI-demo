@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import styles from './AgenticTrustEducation.module.css';
 import ScopeNarrowingVisualization from './ScopeNarrowingVisualization';
+import { useEducationUI } from '../context/EducationUIContext';
+import { EDU } from './education/educationIds';
 
 interface Pillar {
   id: number;
@@ -12,6 +14,9 @@ interface Pillar {
   gap?: string;
   link?: string;
   linkLabel?: string;
+  /** If set, clicking the link opens this education panel instead of navigating */
+  eduPanel?: string;
+  eduTab?: string;
 }
 
 const pillars: Pillar[] = [
@@ -43,7 +48,9 @@ const pillars: Pillar[] = [
     threat: 'Agent self-asserts user identity without IdP validation — "I am acting for user X" without proof.',
     demoImplementation: 'RFC 8693 token exchange produces a combined token where the IdP validates both user (subject) and agent (actor). The resulting "act" claim is cryptographically bound — the agent cannot forge it.',
     link: '/actor-token-education',
-    linkLabel: 'See Actor Token Education →',
+    linkLabel: 'See Token Flow Diagram →',
+    eduPanel: EDU.TOKEN_FLOW,
+    eduTab: 'diagram',
   },
   {
     id: 4,
@@ -94,6 +101,7 @@ const threatModel: ThreatRow[] = [
 
 export const AgenticTrustEducation: React.FC = () => {
   const [expandedPillar, setExpandedPillar] = useState<number | null>(null);
+  const { open: openEdu } = useEducationUI();
 
   const togglePillar = (id: number) => {
     setExpandedPillar(expandedPillar === id ? null : id);
@@ -204,9 +212,19 @@ export const AgenticTrustEducation: React.FC = () => {
                     </div>
                   )}
                   {pillar.link && (
-                    <a href={pillar.link} className={styles.pillarLink}>
-                      {pillar.linkLabel}
-                    </a>
+                    pillar.eduPanel ? (
+                      <button
+                        className={styles.pillarLink}
+                        onClick={() => openEdu(pillar.eduPanel as string, pillar.eduTab)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', textAlign: 'left' }}
+                      >
+                        {pillar.linkLabel}
+                      </button>
+                    ) : (
+                      <a href={pillar.link} className={styles.pillarLink}>
+                        {pillar.linkLabel}
+                      </a>
+                    )
                   )}
                 </div>
               )}
