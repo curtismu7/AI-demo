@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-18T20:40:56.299Z"
+last_updated: "2026-04-18T22:41:19.707Z"
 progress:
   total_phases: 199
-  completed_phases: 174
+  completed_phases: 175
   total_plans: 357
-  completed_plans: 366
+  completed_plans: 367
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,7 +20,7 @@ progress:
 
 ## Current Position
 
-Phase: 191 (oidc-resource-server-app-banking-summary-page-with-decoded-tokens-target-for-mcp-server-dual-token-exchange) — EXECUTING
+Phase: 192 (client-credentials-resource-server) — EXECUTING
 Plan: 1 of 1
 Next phase: 127+ (available for planning)
 
@@ -79,6 +79,7 @@ Next phase: 127+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 193 added: Allow unauthenticated dashboard access — lazy login on agent/action buttons
 - Phase 192 added: Client credentials resource server app — client_id/client_secret banking summary
 - Phase 191 added: OIDC resource server app — banking summary with decoded tokens, MCP target
 - Phase 190 added: Align UI with 2-token exchange taxonomy and education
