@@ -143,7 +143,7 @@
 }
 
 .landing-header-actions .btn-secondary {
-  background-color: white;
+  background: white;
   color: var(--app-primary-red, #b91c1c);
   border: 2px solid var(--app-primary-red, #b91c1c);
 }
