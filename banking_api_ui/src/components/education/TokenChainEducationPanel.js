@@ -286,6 +286,101 @@ Step 5: Transfer executed
   );
 }
 
+
+function TransactionTokensTab() {
+  return (
+    <div>
+      <h3 style={{ marginTop: 0 }}>Transaction Tokens (draft-oauth-transaction-tokens-for-agents-06)</h3>
+
+      <p>
+        Transaction Tokens are a draft OAuth extension designed for <strong>agent-to-resource delegation</strong>.
+        Unlike RFC 8693's general-purpose token exchange, Transaction Tokens add per-operation context and
+        accountability to agent actions.
+      </p>
+
+      <h4>Key Concepts</h4>
+      <ul>
+        <li><strong>Transaction ID</strong> — Unique identifier per agent-user interaction. Enables audit trails
+          and replay prevention. Example: <code className="edu-code-inline">txn-a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6</code></li>
+        <li><strong>Transaction Scope</strong> — What operation the agent is authorized to perform.
+          Example: <code className="edu-code-inline">check_balance</code> or <code className="edu-code-inline">transfer_funds</code></li>
+        <li><strong>Agent Identity</strong> — Who initiated the request, carried in <code className="edu-code-inline">act</code> or
+          <code className="edu-code-inline">agent_id</code> claim</li>
+        <li><strong>Audit Trail</strong> — Every agent action is tagged with <code className="edu-code-inline">txn_id</code>,
+          enabling compliance logging and incident investigation</li>
+      </ul>
+
+      <h4>Token Exchange Flow</h4>
+      <pre className="edu-code">{`1. User logs in → receives user access token
+2. Agent prepares delegation request:
+   - subject_token: user access token
+   - actor_token:   agent access token (client_credentials)
+   - transaction context: scope + optional attestation
+3. PingOne issues Transaction Token:
+   {
+     "sub":       "user-uuid",          // User identity
+     "txn_id":    "txn-a1b2c3d4...",   // Transaction ID (unique)
+     "txn_scope": "check_balance",      // Operation intent
+     "act": { "sub": "agent-client-id" }, // Agent identity
+     "aud":       "https://mcp.example.com"
+   }
+4. MCP server validates token:
+   - Checks JWT signature (PingOne public key)
+   - Validates audience matches MCP server URI
+   - Logs txn_id for audit trail
+   - Executes tool operation`}</pre>
+
+      <h4>RFC 8693 vs Transaction Tokens</h4>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem', marginBottom: '1rem' }}>
+        <thead>
+          <tr style={{ borderBottom: '2px solid #e5e7eb', background: '#f8fafc' }}>
+            <th style={{ padding: '8px 10px', textAlign: 'left' }}>Aspect</th>
+            <th style={{ padding: '8px 10px', textAlign: 'left' }}>RFC 8693</th>
+            <th style={{ padding: '8px 10px', textAlign: 'left' }}>Transaction Tokens</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ['Design Intent', 'General-purpose delegation', 'Agent-specific delegation'],
+            ['Scope Granularity', 'Broad scopes (e.g., banking:read)', 'Per-operation (e.g., check_balance)'],
+            ['Audit Trail', 'Agent ID only (act claim)', 'Transaction ID + scope + timestamp'],
+            ['Replay Protection', 'TTL only', 'Transaction ID enables replay detection'],
+            ['Key Claim', 'act (actor chain)', 'txn_id + txn_scope'],
+            ['Status', '✅ RFC — Stable', '🔬 IETF Draft — In progress'],
+          ].map(([aspect, rfc, txn], i) => (
+            <tr key={aspect} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 ? '#f9fafb' : 'white' }}>
+              <td style={{ padding: '7px 10px', fontWeight: 600 }}>{aspect}</td>
+              <td style={{ padding: '7px 10px' }}>{rfc}</td>
+              <td style={{ padding: '7px 10px' }}>{txn}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h4>When to use each mode</h4>
+      <dl style={{ margin: 0 }}>
+        <dt style={{ fontWeight: 700, marginTop: '0.75rem' }}>RFC 8693 (Default)</dt>
+        <dd style={{ marginLeft: '1rem', marginBottom: '0.5rem', color: '#4b5563', fontSize: '0.85rem' }}>
+          General-purpose token exchange that works with any OAuth 2.0 authorization server.
+          Best for broad delegations and established integrations. This is the default mode in this demo.
+        </dd>
+        <dt style={{ fontWeight: 700 }}>Transaction Tokens</dt>
+        <dd style={{ marginLeft: '1rem', color: '#4b5563', fontSize: '0.85rem' }}>
+          Agent-specific delegation with fine-grained authorization and transaction audit context.
+          Choose this mode for compliance requirements or detailed agent action auditing.
+          Enable via <code className="edu-code-inline">TOKEN_EXCHANGE_MODE=transaction_tokens</code> in BFF <code className="edu-code-inline">.env</code>.
+        </dd>
+      </dl>
+
+      <h4 style={{ marginTop: '1rem' }}>References</h4>
+      <ul style={{ fontSize: '0.85rem' }}>
+        <li><a href="https://tools.ietf.org/html/rfc8693" target="_blank" rel="noopener noreferrer">RFC 8693 — OAuth 2.0 Token Exchange</a> (IETF, Stable)</li>
+        <li><a href="https://datatracker.ietf.org/doc/html/draft-oauth-transaction-tokens-for-agents-06" target="_blank" rel="noopener noreferrer">draft-oauth-transaction-tokens-for-agents-06</a> (IETF Internet Draft)</li>
+      </ul>
+    </div>
+  );
+}
+
 export default function TokenChainEducationPanel({ isOpen, onClose, initialTabId }) {
   const tokenChain = useTokenChainOptional();
   const liveIdentity = tokenChain?.resolvedIdentity ?? null;
@@ -295,6 +390,7 @@ export default function TokenChainEducationPanel({ isOpen, onClose, initialTabId
     { id: 'jwt-claims', label: 'JWT Claims', content: <JwtClaimsTab liveIdentity={liveIdentity} /> },
     { id: 'exchange-paths', label: 'Exchange Paths', content: <ExchangePathsTab /> },
     { id: 'examples', label: 'Examples', content: <ExamplesTab /> },
+    { id: 'transaction-tokens', label: 'Transaction Tokens', content: <TransactionTokensTab /> },
   ];
 
   return (
