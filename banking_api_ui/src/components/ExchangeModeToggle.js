@@ -17,7 +17,7 @@ export default function ExchangeModeToggle() {
       </div>
       
       <p className="emt-desc-main">
-        <strong>Chained delegation:</strong> User Token → Agent Token → MCP Token (nested <code>act</code> claim)
+        <strong>Chained delegation:</strong> User Token → Agent Token → Delegated Access Token (nested <code>act</code> claim)
       </p>
 
       {/* Token Types Table */}
@@ -49,17 +49,17 @@ export default function ExchangeModeToggle() {
 
         <div className="emt-token-row emt-token-row--mcp">
           <span className="emt-tokens-col-name"><strong>MCP Token</strong></span>
-          <span className="emt-tokens-col-noun">MCP access token</span>
+          <span className="emt-tokens-col-noun">Delegated access token</span>
           <span className="emt-tokens-col-source">RFC 8693 exchange</span>
           <span className="emt-tokens-col-use">
-            Result with <code>act</code> claim (to MCP Server)
+            Result with nested <code>act</code> claim (to MCP Server)
           </span>
         </div>
       </div>
 
       <p className="emt-note">
         ℹ️ <strong>Security guarantee:</strong> User Token and Agent Token are secrets — stored only on the Backend-for-Frontend (BFF). 
-        Only the MCP Token (limited scope + nested delegation proof) reaches the MCP Server.
+        Only the Delegated Access Token (limited scope + nested delegation proof) reaches the MCP Server.
       </p>
     </div>
   );
