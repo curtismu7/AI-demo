@@ -48,4 +48,6 @@ export const EDU = {
   FLOW_DIAGRAMS: 'flow-diagrams',
   /** IETF Standards for Agentic Identity — RFC7523bis, Identity Chaining, JAG-IR, AIMS, WIMSE, SD-JWT VC, PQ/T JOSE */
   IETF_STANDARDS: 'ietf-standards',
+  /** Token Flow — end-to-end 2-exchange RFC 8693 delegation: tokens, audiences, scopes, act chain */
+  TOKEN_FLOW: 'token-flow',
 };

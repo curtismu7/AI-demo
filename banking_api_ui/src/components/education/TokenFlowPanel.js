@@ -1,0 +1,335 @@
+// banking_api_ui/src/components/education/TokenFlowPanel.js
+import React from 'react';
+import EducationDrawer from '../shared/EducationDrawer';
+
+export default function TokenFlowPanel({ isOpen, onClose, initialTabId }) {
+  const tabs = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      content: (
+        <>
+          <h3>2-Exchange Delegation Flow</h3>
+          <p>
+            BX Finance uses a <strong>two-step RFC 8693 token exchange chain</strong> to safely
+            delegate a user's banking authority to an AI agent and then to an MCP server tool —
+            without ever exposing the user's original access token outside the BFF.
+          </p>
+
+          <h4>Why Two Exchanges?</h4>
+          <p>
+            Each exchange crosses a security boundary and narrows both the audience and the scopes:
+          </p>
+          <ol>
+            <li>
+              <strong>Exchange #1 — User → AI Agent:</strong> The BFF proves the AI agent is
+              authorised to act for the user. PingOne issues an intermediate token bound to the
+              AI Agent audience with an <code>act</code> claim recording the delegation.
+            </li>
+            <li>
+              <strong>Exchange #2 — Agent Token → MCP Tool:</strong> The BFF proves the MCP
+              exchanger is authorised to call the specific tool. PingOne issues a final token
+              scoped to exactly the one tool's permission, with a nested <code>act</code> chain.
+            </li>
+          </ol>
+
+          <h4>End-to-end Guarantees</h4>
+          <ul>
+            <li><strong>Identity preservation:</strong> <code>sub</code> = user's ID throughout all tokens</li>
+            <li><strong>Delegation audit:</strong> <code>act</code> chain records every actor in order</li>
+            <li><strong>Scope narrowing:</strong> Final token carries only the tool's required scope</li>
+            <li><strong>Audience isolation:</strong> Each token is only valid at its intended endpoint</li>
+            <li><strong>Token containment:</strong> Raw access tokens stay server-side; only decoded claims reach the UI</li>
+          </ul>
+
+          <div style={{ background: '#1e293b', borderRadius: 8, padding: '16px 20px', marginTop: 16 }}>
+            <code style={{ color: '#94a3b8', fontSize: 12 }}>
+              User AT → [Exchange #1: AI Agent actor] → Intermediate Token<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [Exchange #2: MCP Exchanger actor] → Final MCP Token → MCP Server
+            </code>
+          </div>
+        </>
+      ),
+    },
+    {
+      id: 'token-inventory',
+      label: 'Token Inventory',
+      content: (
+        <>
+          <h3>All Tokens in the Flow</h3>
+          <p>Six distinct tokens are created. Only the final MCP Token leaves the BFF as a Bearer value.</p>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#1e293b', color: '#cbd5e1' }}>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>#</th>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>Token</th>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>aud</th>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>Used for</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['1', 'User Access Token', 'ai-agent.pingdemo.com', 'Subject token for Exchange #1'],
+                ['2', 'User ID Token', '(BFF client ID)', 'Identity verification, claims to UI'],
+                ['3', 'Refresh Token', 'n/a', 'Silent token renewal'],
+                ['4', 'AI Agent CC Token', 'agent-gateway.pingdemo.com', 'Actor token for Exchange #1'],
+                ['5', 'Intermediate Agent Token', 'ai-agent.pingdemo.com', 'Subject token for Exchange #2'],
+                ['6', 'MCP Exchanger CC Token', 'mcp-gateway.pingdemo.com', 'Actor token for Exchange #2'],
+                ['7', 'Final MCP Token', 'resource-server.pingdemo.com', 'Bearer sent to MCP Server'],
+              ].map(([n, name, aud, use]) => (
+                <tr key={n} style={{ background: n % 2 === 0 ? '#0f172a' : '#1e293b' }}>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{n}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#e2e8f0', fontWeight: 500 }}>{name}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'monospace', fontSize: 11 }}>{aud}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{use}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h4 style={{ marginTop: 20 }}>Key claim on User AT: <code>may_act</code></h4>
+          <p>
+            The User AT carries a <code>may_act</code> claim that acts as a pre-approval for
+            Exchange #1. PingOne verifies that the presenting <code>actor_token.sub</code> matches
+            this value before issuing the intermediate token.
+          </p>
+          <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
+{`{
+  "sub": "<user-sub>",
+  "aud": "https://ai-agent.pingdemo.com",
+  "scope": "openid profile email offline_access banking:read banking:write banking:ai:agent",
+  "may_act": { "sub": "<ai-agent-client-id>" }
+}`}
+          </pre>
+        </>
+      ),
+    },
+    {
+      id: 'exchange-flow',
+      label: 'Exchange Flow',
+      content: (
+        <>
+          <h3>RFC 8693 Exchange #1 — User AT → Intermediate Agent Token</h3>
+          <p>
+            The BFF calls PingOne's token endpoint using the AI Agent's client credentials as the
+            actor, presenting the user's AT as the subject.
+          </p>
+
+          <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
+{`POST /as/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&subject_token=<user-access-token>
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&actor_token=<ai-agent-cc-token>
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&audience=https://ai-agent.pingdemo.com
+&client_id=<PINGONE_AI_AGENT_CLIENT_ID>
+&client_secret=<PINGONE_AI_AGENT_CLIENT_SECRET>`}
+          </pre>
+
+          <p>PingOne validates:</p>
+          <ul style={{ fontSize: 13 }}>
+            <li>User AT is valid and not expired</li>
+            <li><code>actor_token.sub</code> matches <code>subject_token.may_act.sub</code></li>
+            <li>Requested audience is allowed</li>
+          </ul>
+
+          <p>Issues <strong>Intermediate Agent Token</strong>:</p>
+          <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
+{`{
+  "sub": "<user-sub>",              // preserved
+  "aud": "https://ai-agent.pingdemo.com",
+  "scope": "banking:read banking:write",
+  "act": { "sub": "<ai-agent-client-id>" }
+}`}
+          </pre>
+
+          <hr style={{ borderColor: '#334155', margin: '24px 0' }} />
+
+          <h3>RFC 8693 Exchange #2 — Intermediate Token → Final MCP Token</h3>
+          <p>
+            The BFF calls PingOne again using the MCP Exchanger's client credentials as actor,
+            presenting the intermediate token as subject, and narrowing the scope to the specific
+            tool being called.
+          </p>
+
+          <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
+{`POST /as/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&subject_token=<intermediate-agent-token>
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&actor_token=<mcp-exchanger-cc-token>
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&audience=https://resource-server.pingdemo.com
+&scope=banking:read                  ← narrowed to this tool's required scope
+&client_id=<MCP_TOKEN_EXCHANGER_CLIENT_ID>
+&client_secret=<MCP_TOKEN_EXCHANGER_CLIENT_SECRET>`}
+          </pre>
+
+          <p>Issues <strong>Final MCP Token</strong> with nested <code>act</code>:</p>
+          <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
+{`{
+  "sub": "<user-sub>",              // preserved end-to-end
+  "aud": "https://resource-server.pingdemo.com",
+  "scope": "banking:read",          // narrowed
+  "act": {
+    "sub": "<mcp-exchanger-client-id>",
+    "act": { "sub": "<ai-agent-client-id>" }  // nested chain
+  }
+}`}
+          </pre>
+        </>
+      ),
+    },
+    {
+      id: 'scopes-resources',
+      label: 'Scopes & Resources',
+      content: (
+        <>
+          <h3>Resource URIs</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#1e293b', color: '#cbd5e1' }}>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>Resource URI</th>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>Used by</th>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>Env Var</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['https://ai-agent.pingdemo.com', 'User AT audience + Exchange #1 intermediate token', 'PINGONE_RESOURCE_URI / MCP_RESOURCE_URI'],
+                ['https://agent-gateway.pingdemo.com', 'AI Agent CC Token audience', 'PINGONE_AGENT_GATEWAY_URI'],
+                ['https://mcp-gateway.pingdemo.com', 'MCP Exchanger CC Token audience', 'PINGONE_MCP_GATEWAY_URI'],
+                ['https://resource-server.pingdemo.com', 'Final MCP Token audience', 'PINGONE_RESOURCE_SERVER_URI / MCP_RESOURCE_SERVER_URI'],
+              ].map(([uri, use, env]) => (
+                <tr key={uri}>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'monospace', fontSize: 11 }}>{uri}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>{use}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#a3e635', fontFamily: 'monospace', fontSize: 11 }}>{env}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3 style={{ marginTop: 20 }}>Scope Definitions</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#1e293b', color: '#cbd5e1' }}>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>Scope</th>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>Tools</th>
+                <th style={{ padding: '10px', border: '1px solid #334155', textAlign: 'left' }}>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['banking:read', 'get_account_balance, get_transaction_history, get_investments, search_transactions', 'Read-only banking data'],
+                ['banking:write', 'transfer_funds, make_payment', 'Mutations — requires HITL consent'],
+                ['banking:ai:agent', 'query_ai (natural language)', 'AI query tool'],
+                ['openid profile email', 'n/a', 'OIDC identity — on User AT only'],
+                ['offline_access', 'n/a', 'Refresh token — User AT only'],
+                ['admin:read admin:write users:read users:manage', 'admin tools', 'Worker app scopes — separate flow'],
+              ].map(([scope, tools, notes]) => (
+                <tr key={scope}>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#a3e635', fontFamily: 'monospace', fontSize: 11 }}>{scope}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8', fontSize: 12 }}>{tools}</td>
+                  <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#64748b', fontSize: 12 }}>{notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ),
+    },
+    {
+      id: 'act-chain',
+      label: 'act Claim Chain',
+      content: (
+        <>
+          <h3>RFC 8693 § 4.2 — The <code>act</code> Claim Delegation Chain</h3>
+          <p>
+            After both exchanges, the final MCP Token contains a nested <code>act</code> structure
+            that encodes the full delegation chain. Each actor wraps the previous one.
+          </p>
+          <p>
+            Reading from outside in: <em>mcp-exchanger acted on behalf of ai-agent, which acted
+            on behalf of the user.</em>
+          </p>
+
+          <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
+{`// Final MCP Token — decoded payload
+{
+  "sub": "b8e9302a-user-id",           // ← always the original user
+  "aud": "https://resource-server.pingdemo.com",
+  "scope": "banking:read",
+
+  "act": {
+    "sub": "mcp-exchanger-client-id",  // ← outermost actor (Exchange #2 actor)
+    "act": {
+      "sub": "ai-agent-client-id"      // ← inner actor (Exchange #1 actor)
+    }
+  }
+}`}
+          </pre>
+
+          <h4>How the MCP Server validates this</h4>
+          <ol style={{ fontSize: 13, lineHeight: 1.8 }}>
+            <li>Verify JWT signature using PingOne JWKS</li>
+            <li>Verify <code>aud</code> = <code>resource-server.pingdemo.com</code></li>
+            <li>Verify <code>scope</code> contains the required tool scope</li>
+            <li>Check <code>act.sub</code> is a known MCP exchanger client ID</li>
+            <li>Optionally check <code>act.act.sub</code> is a known AI agent client ID</li>
+            <li><code>sub</code> is the user — used for audit logging and data isolation</li>
+          </ol>
+
+          <h4 style={{ marginTop: 20 }}>How this differs from <code>may_act</code></h4>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#1e293b', color: '#cbd5e1' }}>
+                <th style={{ padding: '10px', border: '1px solid #334155' }}>Claim</th>
+                <th style={{ padding: '10px', border: '1px solid #334155' }}>RFC</th>
+                <th style={{ padding: '10px', border: '1px solid #334155' }}>Direction</th>
+                <th style={{ padding: '10px', border: '1px solid #334155' }}>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'monospace' }}>may_act</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>§ 4.3</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Forward-looking</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>User pre-approves who may exchange this token</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#67e8f9', fontFamily: 'monospace' }}>act</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>§ 4.2</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Retrospective</td>
+                <td style={{ padding: '8px 10px', border: '1px solid #334155', color: '#94a3b8' }}>Records who actually exercised delegation (audit trail)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4 style={{ marginTop: 20 }}>Source file</h4>
+          <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
+{`// banking_api_server/services/tokenExchangeService.js
+// exchangeForMcpToken() — performs both exchanges in sequence
+// buildExchangeParams() — constructs RFC 8693 request params for each step`}
+          </pre>
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <EducationDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="2-Exchange Delegation Flow"
+      tabs={tabs}
+      initialTabId={initialTabId}
+    />
+  );
+}
