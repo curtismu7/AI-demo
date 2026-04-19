@@ -2022,7 +2022,7 @@ Plans:
 **Goal:** Let users browse /dashboard without logging in. Login triggers only when user tries to: (1) use the agent chat (dual token exchange, same as dashboard), or (2) click action buttons (transfer, etc.). On /marketing, same pattern — agent chat triggers login + dual token exchange. Read-only banking data visible without auth; write operations and agent require OIDC session.
 **Requirements**: TBD
 **Depends on:** Phase 192
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 193-01-PLAN.md — Route /dashboard for unauthenticated users + agent FAB visibility + return_to
