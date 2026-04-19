@@ -53,6 +53,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 166 | replace-gemini-with-anthropic | 1/1 | Complete    | 2026-04-16 |
 | 169 | multi-idp-oauth-abstraction | OAuth endpoints, callbacks, role claims configurable for any IDP | FEDERATE-01..06 | 4 plans |
 
+| 195 | security-hardening-act-delegation | RFC 8693 act claim validation, status codes, fallback removal | SEC-01..05 | 1 plan |
 ---
 
 ## Phase Details
@@ -2874,3 +2875,33 @@ Plans:
 - roleClaimResolver.js: abstract role determination from any claim structure
 - Docs: FEDERATE-SETUP.md (complete migration), OIDC-DISCOVERY.md, CALLBACK-PATHS.md, ROLE-MAPPING.md
 - Tests: 40+ cases across all 4 plans
+
+### Phase 195: Security Hardening — RFC 8693 act Claim Validation, Status Codes, Fallback Removal
+
+**Goal:** Close Phase 172 security gaps identified in code review: validate act claim structure, enforce correct HTTP status codes, remove unsafe fallbacks, and implement boundary validation at MCP server.
+
+**Requirements**: SEC-01, SEC-02, SEC-03, SEC-04, SEC-05
+
+**Depends on:** Phase 172
+
+**Plans:** 1/1 plan complete
+
+Plans:
+- [x] 195-01-PLAN.md — Status code fix (403→401), act validation, fallback removal, MCP boundary check, tests (Wave 1)
+
+**Success criteria:**
+1. DELEGATION_CLAIM_MISSING returns 401 Unauthorized (auth failure, not authz)
+2. act claim validated to be an object with sub or client_id (structural check)
+3. Malformed act claims rejected with 403 INSUFFICIENT_PERMISSIONS
+4. Subject-only fallback removed: exchange failures hard-fail immediately
+5. MCP server validates act claim BEFORE using exchanged token (defense in depth)
+6. 5 new token exchange tests pass covering D-01, D-02, D-04
+7. All existing tests still pass (29 total)
+8. RFC 8693 compliance verified
+
+**Key Deliverables:**
+- errorSchemaService.js: DELEGATION_CLAIM_MISSING → 401
+- delegationErrorMiddleware.js: Structural act validation (object + sub/client_id check)
+- agentMcpTokenService.js: Subject-only fallback removed
+- BankingToolProvider.ts: D-02 act validation at MCP boundary + decodeJwtPayload helper
+- BankingToolProvider.test.ts: 5 new token exchange tests (D-01, D-02, D-04)
