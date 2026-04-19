@@ -1006,6 +1006,10 @@ router.get('/config', async (req, res) => {
  */
 router.post('/token-exchange', async (req, res) => {
   try {
+    // Security: require authenticated session — don't accept raw tokens from unauthenticated callers
+    if (!req.session?.oauthTokens?.accessToken) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
     await configStore.ensureInitialized();
     
     const { mode = 'single', subjectToken, actorToken } = req.body;
@@ -1254,56 +1258,7 @@ router.get('/users', async (req, res) => {
     trackApiCall(sessionId, req, res, startTime, responseData, 'management-api', 'Test PingOne Users via Management API using worker token');
     res.json(responseData);
   }
-});
-
-/**
- * POST /api/pingone-test/token-exchange
- * Test token exchange in single or dual mode.
- */
-router.post('/token-exchange', async (req, res) => {
-  try {
-    await configStore.ensureInitialized();
-    
-    const { mode = 'single', subjectToken, actorToken } = req.body;
-    const normalizedMode = mode === 'double' ? 'dual' : mode;
-    const mcpServerUri = configStore.getEffective('pingone_resource_mcp_server_uri');
-    const mcpGatewayUri = configStore.getEffective('pingone_resource_mcp_gateway_uri') || mcpServerUri;
-    const scopes = (process.env.MCP_TOKEN_EXCHANGE_SCOPES || 'banking:read banking:write banking:mcp:invoke').trim().split(/\s+/);
-    
-    let result;
-    if (normalizedMode === 'single') {
-      result = await oauthService.performTokenExchange(subjectToken, mcpServerUri, scopes);
-    } else if (normalizedMode === 'dual') {
-      // Use MCP Token Exchanger credentials for the exchange authentication
-      const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
-      const exchangerSecret   = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
-      if (exchangerClientId && exchangerSecret) {
-        result = await oauthService.performTokenExchangeAs(subjectToken, actorToken, exchangerClientId, exchangerSecret, mcpGatewayUri, scopes);
-      } else {
-        result = await oauthService.performTokenExchangeWithActor(subjectToken, actorToken, mcpGatewayUri, scopes);
-      }
-    } else {
-      throw new Error('Invalid mode. Use "single", "dual", or "double" (legacy alias).');
-    }
-    
-    // Decode token to show claims
-    const parts = result.split('.');
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-    
-    res.json({
-      success: true,
-      mode: normalizedMode,
-      token: result,
-      claims: payload
-    });
-  } catch (error) {
-    console.error('[PingOneTest] Token exchange error:', error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+});;
 
 /**
  * POST /api/pingone-test/fix-banking-resource-server
@@ -1373,7 +1328,7 @@ router.post('/fix-banking-resource-server', async (req, res) => {
     });
   } catch (error) {
     console.error('[PingOneTest] fix-banking-resource-server error:', error.message);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Operation failed. Check server logs.' });
   }
 });
 
@@ -1708,7 +1663,7 @@ router.post('/fix-mcp-exchange', async (req, res) => {
     res.json({ success: true, mcpUri, mcpRSCreated, requestedScopes, steps });
   } catch (error) {
     console.error('[PingOneTest] fix-mcp-exchange error:', error.message);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Operation failed. Check server logs.' });
   }
 });
 
@@ -1825,7 +1780,7 @@ router.post('/update-resources', async (req, res) => {
     res.json({ success: true, steps });
   } catch (error) {
     console.error('[PingOneTest] update-resources error:', error.message);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Operation failed. Check server logs.' });
   }
 });
 
@@ -1875,7 +1830,7 @@ router.post('/update-scopes', async (req, res) => {
     res.json({ success: true, results });
   } catch (error) {
     console.error('[PingOneTest] update-scopes error:', error.message);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Operation failed. Check server logs.' });
   }
 });
 
@@ -1948,7 +1903,7 @@ router.post('/update-apps', async (req, res) => {
     });
   } catch (error) {
     console.error('[PingOneTest] update-apps error:', error.message);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Operation failed. Check server logs.' });
   }
 });
 
@@ -1970,9 +1925,10 @@ router.post('/update-user-spel', async (req, res) => {
   try {
     await configStore.ensureInitialized();
 
-    const { enabled = true, userId } = req.body;
+    const { enabled = true } = req.body;
     const sessionUser = req.session?.user;
-    const pingOneUserId = userId || sessionUser?.oauthId || sessionUser?.id;
+    // Security: always use session user — never accept userId from client (BOLA prevention)
+    const pingOneUserId = sessionUser?.oauthId || sessionUser?.id;
 
     if (!pingOneUserId) {
       return res.json({ success: false, error: 'No user ID available. User must be logged in or supply userId.' });
@@ -2123,7 +2079,7 @@ router.post('/update-user-spel', async (req, res) => {
     });
   } catch (error) {
     console.error('[PingOneTest] update-user-spel error:', error.message);
-    res.status(500).json({ success: false, error: error.response?.data?.message || error.message });
+    res.status(500).json({ success: false, error: 'Operation failed. Check server logs.' });
   }
 });
 

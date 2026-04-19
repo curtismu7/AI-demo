@@ -1127,7 +1127,7 @@ app.use('/api/logs', logsRoutes);
 app.use('/api/pingone/audit', pingoneAuditRoutes);
 
 // PingOne Test Page — comprehensive testing of PingOne integration
-app.use('/api/pingone-test', pingoneTestRoutes);
+app.use('/api/pingone-test', authenticateToken, pingoneTestRoutes);
 
 // Migration API routes - mixed authentication (some public, some admin-only)
 app.use('/api/migration', migrationRoutes);
