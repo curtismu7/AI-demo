@@ -1,0 +1,351 @@
+/**
+ * OidcFlowTimeline Styles
+ * Vertical timeline visualization for OAuth flow milestones
+ */
+
+.oidt-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--app-bg-secondary, #f5f5f5);
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: var(--app-text-primary, #1a1a1a);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.oidt-empty {
+  background: var(--app-bg-primary, #ffffff);
+  border: 1px solid var(--app-border-color, #e0e0e0);
+}
+
+.oidt-empty-state {
+  text-align: center;
+  color: var(--app-text-secondary, #666666);
+  font-size: 14px;
+  margin: 12px 0;
+  padding: 8px;
+}
+
+/* Header */
+.oidt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid var(--app-primary-blue, #004687);
+  padding-bottom: 8px;
+}
+
+.oidt-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-text-primary, #1a1a1a);
+}
+
+.oidt-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--app-text-secondary, #666666);
+}
+
+/* Timeline container */
+.oidt-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.oidt-timeline::-webkit-scrollbar {
+  width: 6px;
+}
+
+.oidt-timeline::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.oidt-timeline::-webkit-scrollbar-thumb {
+  background: var(--app-border-color, #d0d0d0);
+  border-radius: 3px;
+}
+
+.oidt-timeline::-webkit-scrollbar-thumb:hover {
+  background: var(--app-border-color-hover, #a0a0a0);
+}
+
+/* Milestone row */
+.oidt-milestone-row {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  position: relative;
+}
+
+/* Timeline left side (dot + line) */
+.oidt-timeline-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-width: 40px;
+}
+
+.oidt-timeline-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: #f0f0f0;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.oidt-timeline-dot:hover {
+  transform: scale(1.1);
+}
+
+.oidt-timeline-icon {
+  display: block;
+  line-height: 1;
+}
+
+.oidt-timeline-line {
+  flex: 1;
+  width: 2px;
+  background: linear-gradient(to bottom, #ccc, #e5e5e5);
+  min-height: 40px;
+  margin-top: 4px;
+}
+
+/* Milestone content */
+.oidt-milestone-content {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--app-bg-primary, #ffffff);
+  border-radius: 6px;
+  border-left: 3px solid var(--app-primary-blue, #004687);
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Milestone header */
+.oidt-milestone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.oidt-milestone-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text-primary, #1a1a1a);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.oidt-milestone-time {
+  font-size: 11px;
+  color: var(--app-text-secondary, #999999);
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  white-space: nowrap;
+}
+
+/* Exchange badge */
+.oidt-exchange-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--app-primary-blue, #004687);
+  color: white;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+/* Details */
+.oidt-milestone-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.oidt-detail-item {
+  color: var(--app-text-secondary, #666666);
+  margin: 0;
+}
+
+.oidt-detail-item code {
+  background: var(--app-bg-secondary, #f5f5f5);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--app-text-primary, #1a1a1a);
+}
+
+.oidt-error-msg {
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+/* Status badge */
+.oidt-milestone-status {
+  display: flex;
+  align-items: center;
+}
+
+.oidt-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.oidt-status-icon {
+  display: inline-block;
+  font-size: 14px;
+}
+
+.oidt-status-text {
+  white-space: nowrap;
+}
+
+/* Status variants */
+.oidt-badge-pending {
+  background: #f5f5f5;
+  color: #999999;
+  border: 1px solid #d0d0d0;
+}
+
+.oidt-badge-active {
+  background: #e3f2fd;
+  color: var(--app-primary-blue, #004687);
+  border: 1px solid var(--app-primary-blue, #004687);
+  animation: oidt-pulse 1.5s ease-in-out infinite;
+}
+
+.oidt-badge-done {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #2e7d32;
+}
+
+.oidt-badge-error {
+  background: #ffebee;
+  color: #d32f2f;
+  border: 1px solid #d32f2f;
+}
+
+/* Animations */
+@keyframes oidt-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Spinner animation for active status icon */
+.oidt-badge-active .oidt-status-icon {
+  animation: oidt-spin 1s linear infinite;
+}
+
+@keyframes oidt-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .oidt-container {
+    max-width: 100%;
+    padding: 12px;
+  }
+
+  .oidt-timeline-dot {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .oidt-milestone-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .oidt-milestone-time {
+    align-self: auto;
+  }
+
+  .oidt-milestone-name {
+    width: 100%;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .oidt-container {
+    background: var(--app-bg-secondary, #2a2a2a);
+    color: var(--app-text-primary, #e0e0e0);
+  }
+
+  .oidt-timeline-dot {
+    background: #3a3a3a;
+    border-color: #2a2a2a;
+  }
+
+  .oidt-milestone-content {
+    background: var(--app-bg-primary, #1a1a1a);
+    border-left-color: var(--app-primary-blue, #4da6ff);
+  }
+
+  .oidt-detail-item code {
+    background: var(--app-bg-secondary, #2a2a2a);
+    color: var(--app-text-primary, #e0e0e0);
+  }
+
+  .oidt-status-badge {
+    background: #3a3a3a;
+    color: #b0b0b0;
+  }
+
+  .oidt-badge-active {
+    background: #1a3a5a;
+    color: #4da6ff;
+    border-color: #4da6ff;
+  }
+
+  .oidt-badge-done {
+    background: #1a3a1a;
+    color: #4da6df;
+    border-color: #4da6df;
+  }
+}
