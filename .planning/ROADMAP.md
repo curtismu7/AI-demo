@@ -2014,10 +2014,10 @@ Plans:
 **Goal:** Build a second version of the banking summary resource server app that authenticates using client_id/client_secret (Client Credentials grant). Clearly labeled throughout as "Client ID / Client Secret" service-to-service pattern — no user authentication, no OIDC. Contrasts with Phase 191's OIDC user-delegated flow to show the difference between user-context and machine-context access to the same banking API.
 **Requirements**: TBD
 **Depends on:** Phase 191
-**Plans:** 0/1 plans executed
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 192-01-PLAN.md — Backend route + ClientCredentialsResourcePage (CC, banking summary, comparison, routing)
+- [x] 192-01-PLAN.md — Backend route + ClientCredentialsResourcePage (CC, banking summary, comparison, routing)
 
 ### Phase 193: Allow unauthenticated dashboard access — lazy login on agent chat and action buttons, dual token exchange on demand
 
@@ -2038,12 +2038,12 @@ Plans:
 
 **Depends on:** Phase 193 (lazy login on dashboard)
 
-**Plans:** 3 plans
+**Plans:** 4/3 plans complete
 
 Plans:
-- [ ] 194-01-PLAN.md — OidcFlowTimeline component + milestone tracking in TokenChainContext
-- [ ] 194-02-PLAN.md — Token state indicators (TokenStateIndicator component) + token state integration
-- [ ] 194-03-PLAN.md — Backend operation display (BackendOperationIndicator) + backend API audit trail integration
+- [x] 194-01-PLAN.md — OidcFlowTimeline component + milestone tracking in TokenChainContext
+- [x] 194-02-PLAN.md — Token state indicators (TokenStateIndicator component) + token state integration
+- [x] 194-03-PLAN.md — Backend operation display (BackendOperationIndicator) + backend API audit trail integration
 
 **Success criteria:**
 1. OidcFlowTimeline displays 5+ milestones (OIDC login, exchange start, exchange complete, MCP tool call, backend operation)
@@ -2067,13 +2067,13 @@ Plans:
 
 ### Phase 196: Combine feature flags, configuration, and setup into unified tabbed page with clear visual tabs (color and outlines) including IDP setup tab
 
-**Goal:** [To be planned]
+**Goal:** Extend /configure with IDP Setup + Feature Flags tabs, color-coded tab styling, and consolidated nav
 **Requirements**: TBD
 **Depends on:** Phase 195
-**Plans:** 0 plans
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 196 to break down)
+- [x] 196-01: Extend UnifiedConfigurationPage with IDP Setup + Feature Flags tabs and color-coded styling
 
 ### Phase 198: Support Transaction Tokens For Agents (draft-oauth-transaction-tokens-for-agents-06) with configurable RFC 8693 fallback; update MCP server for dual-mode
 
