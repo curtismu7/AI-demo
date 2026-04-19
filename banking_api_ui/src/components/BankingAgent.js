@@ -2216,15 +2216,9 @@ export default function BankingAgent({
           err?.code === 'session_not_hydrated' ||
           mcpToolsUnauthorized ||
           /sign in to use the banking agent/i.test(String(err?.message || '')));
-      if (authRelatedMarketingNudge) {
-        window.dispatchEvent(new CustomEvent('marketing-scroll-login'));
-        if (!isLoggedIn) {
-          addMessage(
-            'assistant',
-            'Use **Customer** in this assistant’s sign-in flow — PingOne will return you here so you can keep using banking on this page. **Customer sign in** in the header or the sign-in section opens the full dashboard after PingOne.',
-            actionId,
-          );
-        }
+      if (authRelatedMarketingNudge && !isLoggedIn) {
+        addMessage('assistant', '🔐 Signing you in with PingOne…', actionId);
+        handleLoginAction('login_user');
       }
     } finally {
       setLoading(false);
@@ -2394,6 +2388,12 @@ export default function BankingAgent({
         }
         return;
       }
+      const p401 = (location.pathname || '').replace(/\/$/, '') || '/';
+      if (isPublicMarketingAgentPath(p401) && !isLoggedIn) {
+        addMessage('assistant', '🔐 Signing you in with PingOne…');
+        handleLoginAction('login_user');
+        return;
+      }
       notifyError(
         'Sign in required — the server has no session for this request. Refresh the page and sign in again.',
         { autoClose: agentToastMs.errShort },
@@ -2402,10 +2402,6 @@ export default function BankingAgent({
         'assistant',
         'You need an active server session to use the agent. If you already signed in, refresh the page (session may have expired or cookies may not have reached the API).',
       );
-      const p401 = (location.pathname || '').replace(/\/$/, '') || '/';
-      if (isPublicMarketingAgentPath(p401)) {
-        window.dispatchEvent(new CustomEvent('marketing-scroll-login'));
-      }
       return;
     }
     const errorMessage = err.message || err.error || 'An unexpected error occurred. Please try again.';
