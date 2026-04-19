@@ -149,7 +149,11 @@
 }
 
 .landing-header-actions .btn-secondary:hover {
-  background-color: rgba(185, 28, 28, 0.08);
+  background: rgba(185, 28, 28, 0.08);
+}
+
+.landing-header-actions .btn-secondary:focus-visible {
+  color: var(--app-primary-red, #b91c1c);
 }
 
 .landing-header-actions .landing-theme-toggle {

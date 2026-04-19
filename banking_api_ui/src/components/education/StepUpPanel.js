@@ -146,10 +146,10 @@ FIDO2/WebAuthn:
           
           <h4>2-Exchange / Dual-Token (User + Agent → MCP)</h4>
           <ul>
-            <li><strong>First Exchange aud</strong>: <code>https://banking-ai-agent.banking-demo.com</code></li>
-            <li><strong>First Exchange may_act</strong>: <code>{`{"client_id": "pingone-agent-client-id"}`}</code></li>
-            <li><strong>Second Exchange aud</strong>: <code>https://banking-mcp-server.banking-demo.com</code></li>
-            <li><strong>Second Exchange may_act</strong>: Contains user delegation from first exchange</li>
+            <li><strong>Flow</strong>: Single POST with <code>subject_token</code> (user T1) + <code>actor_token</code> (agent CC)</li>
+            <li><strong>aud</strong>: <code>https://banking-ai-agent.banking-demo.com</code> (MCP Gateway)</li>
+            <li><strong>subject_token may_act</strong>: <code>{`{"client_id": "pingone-agent-client-id"}`}</code></li>
+            <li><strong>Result</strong>: MCP gateway token with <code>act</code> claim showing agent identity</li>
             <li><strong>Feature Flag</strong>: <code>ff_two_exchange_delegation=true</code></li>
           </ul>
           
