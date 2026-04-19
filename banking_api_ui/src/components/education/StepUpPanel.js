@@ -136,7 +136,7 @@ FIDO2/WebAuthn:
           <p>
             <strong>Two Exchange Modes</strong> are supported for MCP tool access, controlled by feature flags:
           </p>
-          <h4>Single Exchange (User → MCP)</h4>
+          <h4>1-Exchange (User → MCP)</h4>
           <ul>
             <li><strong>aud</strong>: <code>https://banking-mcp-server.banking-demo.com</code></li>
             <li><strong>may_act</strong>: Not used (direct delegation)</li>
@@ -144,7 +144,7 @@ FIDO2/WebAuthn:
             <li><strong>Feature Flag</strong>: <code>ff_two_exchange_delegation=false</code></li>
           </ul>
           
-          <h4>Double Exchange (User → Agent → MCP)</h4>
+          <h4>2-Exchange / Dual-Token (User + Agent → MCP)</h4>
           <ul>
             <li><strong>First Exchange aud</strong>: <code>https://banking-ai-agent.banking-demo.com</code></li>
             <li><strong>First Exchange may_act</strong>: <code>{`{"client_id": "pingone-agent-client-id"}`}</code></li>
@@ -154,7 +154,7 @@ FIDO2/WebAuthn:
           </ul>
           
           <p>
-            <strong>Configuration</strong>: Use <code>PINGONE_USE_AGENT_ACTOR_FOR_MCP=true</code> to enable double exchange mode.
+            <strong>Configuration</strong>: Use <code>PINGONE_USE_AGENT_ACTOR_FOR_MCP=true</code> to enable 2-exchange (dual-token) mode.
             The agent client credentials are configured via <code>PINGONE_AGENT_CLIENT_ID</code> and <code>PINGONE_AGENT_CLIENT_SECRET</code>.
           </p>
         </>
