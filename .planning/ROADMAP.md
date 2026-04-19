@@ -51,6 +51,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 122 | conditional-step-up-auth | Conditional step-up authentication: logged-in users only need MFA for banking transactions, non-logged-in users need login + MFA | TBD | 0 plans |
 | 163 | universal-sidebar-navigation | 2/2 | Complete    | 2026-04-16 |
 | 166 | replace-gemini-with-anthropic | 1/1 | Complete    | 2026-04-16 |
+| 169 | multi-idp-oauth-abstraction | OAuth endpoints, callbacks, role claims configurable for any IDP | FEDERATE-01..06 | 4 plans |
 
 ---
 
@@ -2838,3 +2839,38 @@ Plans:
 6. Full test coverage with performance baseline documented
 7. REGRESSION_PLAN.md updated with implementation notes and known limitations
 
+
+### Phase 169: Multi-IDP OAuth Configuration Abstraction & Federate Portability
+
+**Goal:** Make the banking demo work with any OAuth provider (PingOne, PingFederate, Auth0, Okta, Azure AD) without code changes — only configuration.
+
+**Requirements**: FEDERATE-01, FEDERATE-02, FEDERATE-03, FEDERATE-04, FEDERATE-05, FEDERATE-06
+
+**Depends on:** Phase 168
+
+**Plans:** 4/4 plans planned
+
+Plans:
+- [ ] 169-01-PLAN.md — Extract OAuth endpoints to configStore + update all services (Wave 1: authorization, token, userinfo, JWKS, issuer endpoints)
+- [ ] 169-02-PLAN.md — Support OIDC Discovery for auto-endpoint population (Wave 1: .well-known/openid-configuration fetch + validation)
+- [ ] 169-03-PLAN.md — Make OAuth callback paths configurable + dispatcher (Wave 2: dynamic route registration for `/api/auth/oauth/callback` vs `/oauth2/callback`)
+- [ ] 169-04-PLAN.md — Abstract role/population claim mapping for any IDP (Wave 2: PingOne population_id → Azure AD app_roles → Auth0 roles → Okta groups)
+
+**Success criteria:**
+1. All 5 OAuth endpoints (auth, token, userinfo, JWKS, issuer) configurable via configStore + env vars
+2. OIDC discovery optional: set issuer → auto-populate all endpoints from .well-known metadata
+3. Callback paths configurable: `/api/auth/oauth/callback` (PingOne default) → `/oauth2/callback` (Federate) → `/callback` (Auth0)
+4. Role determination abstracted: PingOne population_id, Azure app_roles, Auth0 roles, Okta groups all supported
+5. Federate setup guide complete: 5-step migration from PingOne without code changes
+6. Full test coverage: 40+ test cases covering PingOne, Federate, Auth0, Okta patterns
+7. Backward compatible: existing PingOne configuration unchanged
+8. Zero hardcoded `auth.pingone` URLs in service code (only in docs/comments)
+
+**Key Deliverables:**
+- configStore: 5 OAuth endpoint fields + 4 role claim fields
+- oauthEndpointResolver.js: centralized endpoint resolution with discovery priority
+- oauthDiscoveryService.js: OIDC metadata fetching + validation
+- callbackDispatcher.js: dynamic route registration for configurable callback paths
+- roleClaimResolver.js: abstract role determination from any claim structure
+- Docs: FEDERATE-SETUP.md (complete migration), OIDC-DISCOVERY.md, CALLBACK-PATHS.md, ROLE-MAPPING.md
+- Tests: 40+ cases across all 4 plans
