@@ -737,11 +737,6 @@ export default function PingOneTestPage() {
   }, []);
 
   const testExchange186 = useCallback(async () => {
-    if (!ffIdTokenExchange) {
-      setExchange186Status('failed');
-      setExchange186Error('ff_id_token_exchange is OFF — enable in Feature Flags to run this test.');
-      return;
-    }
     setExchange186Status('running');
     setExchange186Error(null);
     try {
@@ -762,7 +757,7 @@ export default function PingOneTestPage() {
       setExchange186Status('failed');
       setExchange186Error(err.message);
     }
-  }, [tokenChainCtx, ffIdTokenExchange]);
+  }, [tokenChainCtx]);
 
     const testApps = useCallback(async () => {
     const { data } = await apiClient.get('/api/pingone-test/apps');
