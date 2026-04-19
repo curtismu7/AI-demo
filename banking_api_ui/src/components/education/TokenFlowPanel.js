@@ -335,6 +335,186 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
         </>
       ),
     },
+    {
+      id: 'what-changed',
+      label: 'What Changed',
+      content: (
+        <>
+          <h3 style={{ marginTop: 0 }}>Token-by-Token: What Changed at Each Step</h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: 16 }}>
+            Each row is one token or exchange. The right column shows what was added, removed, or narrowed versus the previous token.
+          </p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+              <thead>
+                <tr style={{ background: '#1e293b' }}>
+                  <th style={{ padding: '10px 12px', border: '1px solid #334155', textAlign: 'left', color: '#cbd5e1', width: '30%' }}>Token / Step</th>
+                  <th style={{ padding: '10px 12px', border: '1px solid #334155', textAlign: 'left', color: '#cbd5e1' }}>What changed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  {
+                    step: '① User Login',
+                    token: 'User Access Token',
+                    color: '#d97706',
+                    bg: '#1c1a0d',
+                    rows: [
+                      ['aud set →', 'https://ai-agent.pingdemo.com  (broad user-facing resource)'],
+                      ['scope set →', 'openid profile email offline_access banking:read banking:write banking:ai:agent'],
+                      ['may_act added →', '{ "sub": "<ai-agent-client-id>" }  — pre-approval for Exchange #1'],
+                      ['act', '(absent — no delegation yet)'],
+                      ['where it lives', 'BFF server session only — never sent to browser or LLM'],
+                    ],
+                  },
+                  {
+                    step: '② Exchange #1',
+                    token: 'RFC 8693 request to PingOne',
+                    color: '#7c3aed',
+                    bg: '#150d26',
+                    rows: [
+                      ['subject_token', 'User AT (proves user identity)'],
+                      ['actor_token', 'AI Agent CC Token (proves agent identity)'],
+                      ['PingOne checks →', 'actor_token.sub === subject_token.may_act.sub'],
+                      ['result', 'Intermediate Agent Token (below)'],
+                    ],
+                  },
+                  {
+                    step: '③ Intermediate Agent Token',
+                    token: 'After Exchange #1',
+                    color: '#8b5cf6',
+                    bg: '#1a1033',
+                    rows: [
+                      ['sub', 'UNCHANGED — still <user-id>'],
+                      ['aud', 'UNCHANGED — still https://ai-agent.pingdemo.com'],
+                      ['scope', 'NARROWED → banking:read  banking:write  (OIDC claims removed)'],
+                      ['may_act', 'REMOVED — no further prospective delegation'],
+                      ['act added →', '{ "sub": "<ai-agent-client-id>" }  — delegation fact recorded'],
+                    ],
+                  },
+                  {
+                    step: '④ Exchange #2',
+                    token: 'RFC 8693 request to PingOne',
+                    color: '#7c3aed',
+                    bg: '#150d26',
+                    rows: [
+                      ['subject_token', 'Intermediate Agent Token'],
+                      ['actor_token', 'MCP Exchanger CC Token (proves MCP exchanger identity)'],
+                      ['scope requested →', 'banking:read  (narrowed to this specific tool)'],
+                      ['audience requested →', 'https://resource-server.pingdemo.com'],
+                      ['result', 'Final MCP Token (below)'],
+                    ],
+                  },
+                  {
+                    step: '⑤ Final MCP Token',
+                    token: 'After Exchange #2',
+                    color: '#16a34a',
+                    bg: '#0d1a0d',
+                    rows: [
+                      ['sub', 'UNCHANGED — still <user-id> end-to-end ✓'],
+                      ['aud', 'CHANGED → https://resource-server.pingdemo.com  (MCP server audience)'],
+                      ['scope', 'NARROWED → banking:read  (single tool permission only) ✓'],
+                      ['act', 'NESTED → { "sub": "mcp-exchanger-id", "act": { "sub": "ai-agent-id" } }'],
+                      ['where it goes', 'Bearer header sent to MCP Server — the only token that leaves BFF'],
+                    ],
+                  },
+                  {
+                    step: '⑥ Browser / UI',
+                    token: 'What reaches the client',
+                    color: '#3b82f6',
+                    bg: '#0f1f35',
+                    rows: [
+                      ['raw tokens', 'NEVER sent to browser'],
+                      ['decoded claims', 'Served via /api/tokens/session-preview and /api/token-chain'],
+                      ['visible fields', 'sub, aud, scope, act, may_act, iat, exp — read-only display'],
+                    ],
+                  },
+                ].map(({ step, token, color, bg, rows }) => (
+                  <React.Fragment key={step}>
+                    {/* Section header row */}
+                    <tr style={{ background: bg }}>
+                      <td
+                        colSpan={2}
+                        style={{
+                          padding: '8px 12px',
+                          border: `1px solid ${color}`,
+                          borderLeft: `4px solid ${color}`,
+                          color,
+                          fontWeight: 700,
+                          fontSize: '0.76rem',
+                        }}
+                      >
+                        {step} — <span style={{ fontWeight: 400, color: '#94a3b8' }}>{token}</span>
+                      </td>
+                    </tr>
+                    {/* Detail rows */}
+                    {rows.map(([field, value], i) => (
+                      <tr key={field} style={{ background: i % 2 === 0 ? '#0f172a' : '#111827' }}>
+                        <td style={{
+                          padding: '6px 12px 6px 24px',
+                          border: '1px solid #1e293b',
+                          borderLeft: `4px solid ${color}`,
+                          color: '#64748b',
+                          fontFamily: 'monospace',
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'top',
+                        }}>
+                          {field}
+                        </td>
+                        <td style={{
+                          padding: '6px 12px',
+                          border: '1px solid #1e293b',
+                          color: '#e2e8f0',
+                          fontFamily: value.startsWith('{') || value.includes('→') ? 'monospace' : 'inherit',
+                          fontSize: value.startsWith('{') ? '0.72rem' : 'inherit',
+                          lineHeight: 1.5,
+                        }}>
+                          {value.includes('UNCHANGED') && (
+                            <span style={{ color: '#22c55e', fontWeight: 600 }}>{value}</span>
+                          )}
+                          {value.includes('NARROWED') && (
+                            <span style={{ color: '#f59e0b', fontWeight: 600 }}>{value}</span>
+                          )}
+                          {value.includes('CHANGED') && !value.includes('UNCHANGED') && (
+                            <span style={{ color: '#60a5fa', fontWeight: 600 }}>{value}</span>
+                          )}
+                          {value.includes('REMOVED') && (
+                            <span style={{ color: '#f87171', fontWeight: 600 }}>{value}</span>
+                          )}
+                          {value.includes('NEVER') && (
+                            <span style={{ color: '#f87171', fontWeight: 600 }}>{value}</span>
+                          )}
+                          {!value.includes('UNCHANGED') && !value.includes('NARROWED') &&
+                           !value.includes('REMOVED') && !value.includes('NEVER') &&
+                           !(value.includes('CHANGED') && !value.includes('UNCHANGED')) && (
+                            <span>{value}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Colour legend */}
+          <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap', fontSize: '0.7rem' }}>
+            {[
+              ['#22c55e', 'UNCHANGED'],
+              ['#f59e0b', 'NARROWED'],
+              ['#60a5fa', 'CHANGED'],
+              ['#f87171', 'REMOVED / NEVER'],
+            ].map(([color, label]) => (
+              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#64748b' }}>
+                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: color }} />
+                {label}
+              </span>
+            ))}
+          </div>
+        </>
+      ),
+    },
   ];
 
   return (
