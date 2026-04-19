@@ -80,6 +80,17 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+
+### 2026-04-19 — Phase 197: Fixed sidebar missing on unauthenticated /dashboard (Phase 193 regression)
+
+- **Root cause:** Phase 193 moved `/dashboard` route to an explicit outer Route. Authenticated branch had `<AdminSideNav>`, but unauthenticated branch omitted it, so guests saw only TopNav + dashboard content with no sidebar navigation.
+- **Fix:**
+  1. `App.js` (~line 607) — Added `<AdminSideNav user={null} />` to the unauthenticated `/dashboard` branch
+  2. `AdminSideNav.jsx` — Made action items guest-aware using spread syntax: "Switch Role" and "Log Out" only show when `user` exists; guests see "Sign In" (🔑) instead
+  3. Added `case 'sign-in'` handler in `handleAction()` to redirect to `/api/auth/oauth/user/login?return_to=/dashboard`
+- **Files modified:** `banking_api_ui/src/App.js`, `banking_api_ui/src/components/AdminSideNav.jsx`
+- **Regression check:** `npm run build` → exit 0; Build folder ready; no server changes
+- **Behavior:** Guests now see sidebar on `/dashboard`; click "Sign In" to log in; authenticated users see normal "Switch Role" + "Log Out" + "Dark Mode" actions
 ### 2026-04-19 — Agent stub-token 401 detection + session-fix bubble
 
 - **Summary:** When agentSessionMiddleware rejects a cookie-restored session (accessToken = `_cookie_session`), it returns `session_restore_required` or `oauth_session_required`. The UI agent service did not recognize these codes — it wasted a round-trip on a doomed token refresh, then showed a generic error instead of the session-fix bubble with "Sign out (then sign in again)" button.

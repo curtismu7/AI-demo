@@ -604,6 +604,7 @@ function AppWithAuth() {
                 loading ? null : (
                   !user ? (
                     <>
+                      <AdminSideNav user={null} />
                       <TopNav user={user} onLogout={logout} />
                       <main className="main-content">
                         <UserDashboard user={null} onLogout={logout} />

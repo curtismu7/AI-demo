@@ -119,6 +119,7 @@ export default function AdminSideNav({ user }) {
         { label: 'LLM Config', path: '/llm-config', icon: '🤖' },
         { label: 'Demo Config', path: '/demo-data', icon: '🎛' },
         { label: 'App Configuration', path: '/config', icon: '🔧' },
+        { label: 'Postman Collections', path: '/postman', icon: '📬' },
       ],
     },
     { label: 'PingOne Test', path: '/pingone-test', icon: '🧪' },
@@ -159,9 +160,9 @@ export default function AdminSideNav({ user }) {
 
   // Action items (buttons, not navigation links)
   const actionItems = [
-    { label: isAdmin ? 'Admin View' : 'Customer View', action: 'switch-role', icon: '⇄' },
+    ...(user ? [{ label: isAdmin ? 'Admin View' : 'Customer View', action: 'switch-role', icon: '⇄' }] : []),
     { label: 'Dark Mode', action: 'dark-mode', icon: '🌙' },
-    { label: 'Log Out', action: 'logout', icon: '🚪' },
+    ...(user ? [{ label: 'Log Out', action: 'logout', icon: '🚪' }] : [{ label: 'Sign In', action: 'sign-in', icon: '🔑' }]),
   ];
 
   const isActive = (path) => {
@@ -205,6 +206,9 @@ export default function AdminSideNav({ user }) {
         if (window.confirm('Log out?')) {
           window.location.href = '/api/auth/logout';
         }
+        break;
+      case 'sign-in':
+        window.location.href = '/api/auth/oauth/user/login?return_to=/dashboard';
         break;
       default:
         break;

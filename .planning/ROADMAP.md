@@ -2077,6 +2077,30 @@ Plans:
 
 ---
 
+### Phase 197: Fix Phase 193 regression — sidebar missing on unauthenticated dashboard
+
+**Goal:** Fix regression where unauthenticated guests on `/dashboard` route had no sidebar navigation.
+
+**Requirements**: None (regression fix)
+
+**Depends on:** Phase 193
+
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 197-01-PLAN.md — Add AdminSideNav to guest /dashboard branch; make sidebar actions guest-aware (Sign In vs Log Out)
+
+**Success criteria:**
+1. Sidebar visible on unauthenticated `/dashboard`
+2. Guest action menu shows "Dark Mode" + "Sign In"
+3. Authenticated users see normal "Switch Role" + "Log Out" + "Dark Mode"
+4. Sign In button triggers OAuth login with `return_to=/dashboard`
+5. Build passes without errors
+
+**Key Deliverables:**
+- App.js: Added `<AdminSideNav user={null} />` to unauthenticated /dashboard branch
+- AdminSideNav.jsx: Conditional action items (spread syntax for auth-dependent actions); added sign-in case handler
+
 ### Phase 123: PingOne MFA Test Page
 
 **Goal:** Create a comprehensive test page for PingOne MFA functionality including OTP (SMS, email), FIDO2/passkey, registration, and authentication testing.
