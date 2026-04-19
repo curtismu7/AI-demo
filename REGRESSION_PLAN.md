@@ -80,6 +80,17 @@
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-04-19 — Agent stub-token 401 detection + session-fix bubble
+
+- **Summary:** When agentSessionMiddleware rejects a cookie-restored session (accessToken = `_cookie_session`), it returns `session_restore_required` or `oauth_session_required`. The UI agent service did not recognize these codes — it wasted a round-trip on a doomed token refresh, then showed a generic error instead of the session-fix bubble with "Sign out (then sign in again)" button.
+- **Fix:**
+  1. `bankingAgentService.js` `callMcpTool` — skip refresh for `session_restore_required` / `oauth_session_required` (same as existing `session_not_hydrated` skip)
+  2. `bankingAgentService.js` `callMcpTool` error throw — normalize stub-token codes to `session_not_hydrated` so BankingAgent shows the fix bubble
+  3. `bankingAgentService.js` `sendAgentMessage` — same skip-refresh + code normalization
+- **Files modified:** `banking_api_ui/src/services/bankingAgentService.js`
+- **Regression check:** `npm run build` → exit 0; no server-side changes
+- **Do not break:** `session_not_hydrated` code path in BankingAgent.js `reportNlFailure` and `handleDoAction`; `showSessionFixActions` rendering; `cookieOnlyBffSession` polling loop
+
 ### 2026-04-18 — Phase 126: Surface friendly sub/act identity in token chain UI
 
 - **Summary:** Token chain display, education panels, and AgentFlowDiagramPanel now show human-readable user and actor identity instead of raw UUIDs. Identity is fetched once from BFF session, cached in TokenChainContext, and shared across all token surfaces.

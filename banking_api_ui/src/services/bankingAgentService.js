@@ -193,7 +193,9 @@ export async function callMcpTool(tool, params = {}) {
     if (response.status === 401) {
       const err401 = await response.clone().json().catch(() => ({}));
       // Cookie-only / empty Redis session: refresh cannot add tokens — avoid spamming refresh endpoints.
-      if (err401.error !== 'session_not_hydrated') {
+      // agentSessionMiddleware returns session_restore_required or oauth_session_required for stub tokens.
+      const isStubToken = ['session_not_hydrated', 'session_restore_required', 'oauth_session_required'].includes(err401.error);
+      if (!isStubToken) {
         const refreshed = await refreshOAuthSession();
         if (refreshed.ok) {
           response = await fetch('/api/mcp/tool', fetchOpts);
@@ -223,10 +225,14 @@ export async function callMcpTool(tool, params = {}) {
           tokenEvents,
         });
       }
+      // Normalize stub-token error codes so BankingAgent shows the session-fix bubble
+      const errCode = ['session_restore_required', 'oauth_session_required'].includes(err.error)
+        ? 'session_not_hydrated'
+        : err.error;
       const e = Object.assign(new Error(err.message || `MCP error: ${response.status}`), {
         tokenEvents,
         statusCode: response.status,
-        code: err.error,
+        code: errCode,
         need_auth: !!err.need_auth,
       });
       throw e;
@@ -466,15 +472,24 @@ export async function sendAgentMessage(message, consentId = null) {
 
   let res = await fetch('/api/banking-agent/message', opts);
 
-  // 401: try session refresh once, then retry
+  // 401: try session refresh once, then retry — skip for stub-token errors (refresh has no real token to use)
   if (res.status === 401) {
-    const refreshed = await refreshOAuthSession();
-    if (refreshed.ok) {
-      res = await fetch('/api/banking-agent/message', opts);
+    const err401 = await res.clone().json().catch(() => ({}));
+    const isStubToken = ['session_not_hydrated', 'session_restore_required', 'oauth_session_required'].includes(err401.error);
+    if (!isStubToken) {
+      const refreshed = await refreshOAuthSession();
+      if (refreshed.ok) {
+        res = await fetch('/api/banking-agent/message', opts);
+      }
     }
   }
 
   const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+
+  // Normalize stub-token error codes so BankingAgent shows session-fix bubble
+  if (['session_restore_required', 'oauth_session_required'].includes(data.error)) {
+    data.error = 'session_not_hydrated';
+  }
 
   // Attach HTTP status for caller to inspect (428 = HITL required)
   return { ...data, _status: res.status };
