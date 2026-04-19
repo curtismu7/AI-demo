@@ -18,10 +18,14 @@ export default function LandingPage({ user, onLogout }) {
 
   const handleCustomerLogin = (e) => {
     e.preventDefault();
-    // Redirect to BFF OAuth user login endpoint
-    const returnTo = location.pathname === '/marketing' ? '/marketing' : '/dashboard';
-    window.location.href = `/api/auth/oauth/user/login?return_to=${encodeURIComponent(returnTo)}`;
+    navigate("/dashboard");
   };
+
+
+
+
+
+
 
   const handleResourceAction = async (actionId) => {
     try {
@@ -79,6 +83,13 @@ export default function LandingPage({ user, onLogout }) {
             >
               MFA Test
             </button>
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="nav-link"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", font: "inherit" }}
+            >
+              Explore Demo
+            </button>
 
           </nav>
           <div className="landing-header-actions">
@@ -119,6 +130,14 @@ export default function LandingPage({ user, onLogout }) {
             >
               Try as Customer
             </button>
+            {!user && (
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="hero-cta hero-cta-explore"
+              >
+                Explore Demo
+              </button>
+            )}
           </div>
         </div>
       </section>

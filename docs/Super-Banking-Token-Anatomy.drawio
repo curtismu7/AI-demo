@@ -31,7 +31,7 @@
     </mxCell>
 
     <!-- Claims box P1 -->
-    <mxCell id="p1-claims" value="sub: user-id-12345&#xa;aud: bff-client-id&#xa;iss: https://auth.pingone.com/{env}&#xa;scope: banking:agent:invoke&#xa;exp: &lt;timestamp&gt;&#xa;&#xa;may_act: {&#xa;  sub: &lt;AI_AGENT_CLIENT_ID&gt;&#xa;}" style="rounded=1;arcSize=6;fillColor=#e0f2fe;strokeColor=#38bdf8;fontSize=12;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+    <mxCell id="p1-claims" value="sub: user-id-12345&#xa;aud: banking_enduser&#xa;iss: https://auth.pingone.com/{env}&#xa;scope: banking:ai:agent&#xa;exp: &lt;timestamp&gt;&#xa;&#xa;may_act: {&#xa;  sub: &lt;PINGONE_AI_AGENT_CLIENT_ID&gt;&#xa;}" style="rounded=1;arcSize=6;fillColor=#e0f2fe;strokeColor=#38bdf8;fontSize=12;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
       <mxGeometry x="50" y="170" width="340" height="200" as="geometry" />
     </mxCell>
 
@@ -45,7 +45,7 @@
     <mxCell id="p1-note3" value="may_act grants AI Agent permission to exchange" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#0369a1;" vertex="1" parent="1">
       <mxGeometry x="55" y="418" width="360" height="22" as="geometry" />
     </mxCell>
-    <mxCell id="p1-note4" value="Audience: BFF client ID (not the MCP server)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#475569;" vertex="1" parent="1">
+    <mxCell id="p1-note4" value="Audience: banking_enduser resource (not the MCP server)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#475569;" vertex="1" parent="1">
       <mxGeometry x="55" y="440" width="360" height="22" as="geometry" />
     </mxCell>
 
@@ -85,12 +85,12 @@
     </mxCell>
 
     <!-- Claims box P2 -->
-    <mxCell id="p2-claims" value="sub: user-id-12345       ← preserved&#xa;aud: https://mcp-server&#xa;iss: https://auth.pingone.com/{env}&#xa;scope: banking:agent:invoke&#xa;exp: &lt;timestamp&gt;&#xa;&#xa;" style="rounded=1;arcSize=6;fillColor=#dcfce7;strokeColor=#4ade80;fontSize=12;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+    <mxCell id="p2-claims" value="sub: user-id-12345       ← preserved&#xa;aud: https://mcp-server&#xa;iss: https://auth.pingone.com/{env}&#xa;scope: banking:ai:agent&#xa;exp: &lt;timestamp&gt;&#xa;&#xa;" style="rounded=1;arcSize=6;fillColor=#dcfce7;strokeColor=#4ade80;fontSize=12;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
       <mxGeometry x="600" y="170" width="340" height="120" as="geometry" />
     </mxCell>
 
     <!-- act highlight P2 -->
-    <mxCell id="p2-act-highlight" value="act: {&#xa;  sub: bff-client-id    ← BFF is the actor&#xa;}" style="rounded=1;arcSize=6;fillColor=#bbf7d0;strokeColor=#16a34a;strokeWidth=2;fontSize=12;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+    <mxCell id="p2-act-highlight" value="act: {&#xa;  sub: PINGONE_ADMIN_CLIENT_ID    ← BFF is the actor&#xa;}" style="rounded=1;arcSize=6;fillColor=#bbf7d0;strokeColor=#16a34a;strokeWidth=2;fontSize=12;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
       <mxGeometry x="600" y="292" width="340" height="70" as="geometry" />
     </mxCell>
 
@@ -106,7 +106,7 @@
     <mxCell id="p2-note2" value="aud changes to MCP Server URL" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#475569;" vertex="1" parent="1">
       <mxGeometry x="605" y="415" width="360" height="22" as="geometry" />
     </mxCell>
-    <mxCell id="p2-note3" value="act.sub = BFF client ID (delegated actor)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#15803d;" vertex="1" parent="1">
+    <mxCell id="p2-note3" value="act.sub = PINGONE_ADMIN_CLIENT_ID (delegated actor)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#15803d;" vertex="1" parent="1">
       <mxGeometry x="605" y="437" width="360" height="22" as="geometry" />
     </mxCell>
     <mxCell id="p2-note4" value="BFF used its own Client Credentials token as actor_token" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#475569;" vertex="1" parent="1">
@@ -157,7 +157,7 @@
     </mxCell>
 
     <!-- inner act.act highlight P3 -->
-    <mxCell id="p3-act-inner" value="  act: {&#xa;    sub: AI_AGENT_CLIENT_ID&#xa;  }             ← nested actor&#xa;}" style="rounded=1;arcSize=6;fillColor=#fbbf24;strokeColor=#d97706;strokeWidth=2;fontSize=12;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+    <mxCell id="p3-act-inner" value="  act: {&#xa;    sub: PINGONE_AI_AGENT_CLIENT_ID&#xa;  }             ← nested actor&#xa;}" style="rounded=1;arcSize=6;fillColor=#fbbf24;strokeColor=#d97706;strokeWidth=2;fontSize=12;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
       <mxGeometry x="1160" y="342" width="300" height="70" as="geometry" />
     </mxCell>
 

@@ -1,17 +1,34 @@
 // banking_api_ui/src/components/education/AgentGatewayPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { useEducationUI } from '../../context/EducationUIContext';
+import { EDU } from './educationIds';
 import { AgentGatewayContent } from './educationContent';
 import { RFC9728Content } from './enhancedRFC9728Content';
 import { RFC8707Content } from './RFC8707Content';
 import { EduImplIntro, SNIP_AGENT_GATEWAY } from './educationImplementationSnippets';
 
 export default function AgentGatewayPanel({ isOpen, onClose, initialTabId }) {
+  const { open } = useEducationUI();
   const tabs = [
     {
       id: 'overview',
       label: 'Pattern overview',
-      content: <AgentGatewayContent />,
+      content: (
+        <>
+          <AgentGatewayContent />
+          <p style={{ marginTop: 16 }}>
+            <strong>See also:</strong>{' '}
+            <button
+              type="button"
+              onClick={() => open(EDU.CUA, 'what')}
+              style={{ background: 'none', border: 'none', color: 'var(--chase-navy)', cursor: 'pointer', padding: 0, textDecoration: 'underline', font: 'inherit' }}
+            >
+              Computer Use Agent (CUA)
+            </button>
+          </p>
+        </>
+      ),
     },
     {
       id: 'inrepo',

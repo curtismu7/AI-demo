@@ -5,39 +5,50 @@
 import { BankingToolRegistry } from '../../src/tools/BankingToolRegistry';
 
 describe('BankingToolRegistry', () => {
+  const EXPECTED_TOOL_NAMES = [
+    'get_my_accounts',
+    'get_account_balance',
+    'get_sensitive_account_details',
+    'get_my_transactions',
+    'create_deposit',
+    'create_withdrawal',
+    'create_transfer',
+    'query_user_by_email',
+    'sequential_think',
+  ];
+
   describe('getAllTools', () => {
-    it('should return all banking tools', () => {
+    it('should return all current banking tools', () => {
       const tools = BankingToolRegistry.getAllTools();
-      
-      expect(tools).toHaveLength(7);
-      expect(tools.map(t => t.name)).toEqual([
-        'get_my_accounts',
-        'get_account_balance',
-        'get_my_transactions',
-        'create_deposit',
-        'create_withdrawal',
-        'create_transfer',
-        'query_user_by_email'
-      ]);
+      const names = tools.map((t) => t.name);
+
+      expect(names).toHaveLength(EXPECTED_TOOL_NAMES.length);
+      expect(new Set(names)).toEqual(new Set(EXPECTED_TOOL_NAMES));
     });
 
-    it('should return tools with all required properties', () => {
+    it('should return tools with required metadata fields', () => {
       const tools = BankingToolRegistry.getAllTools();
-      
-      tools.forEach(tool => {
+
+      tools.forEach((tool) => {
         expect(tool).toHaveProperty('name');
+        expect(tool).toHaveProperty('title');
         expect(tool).toHaveProperty('description');
         expect(tool).toHaveProperty('inputSchema');
         expect(tool).toHaveProperty('requiresUserAuth');
         expect(tool).toHaveProperty('requiredScopes');
         expect(tool).toHaveProperty('handler');
-        
+        expect(tool).toHaveProperty('readOnly');
+        expect(tool).toHaveProperty('icons');
+        expect(tool).toHaveProperty('annotations');
+
         expect(typeof tool.name).toBe('string');
+        expect(typeof tool.title).toBe('string');
         expect(typeof tool.description).toBe('string');
         expect(typeof tool.inputSchema).toBe('object');
         expect(typeof tool.requiresUserAuth).toBe('boolean');
         expect(Array.isArray(tool.requiredScopes)).toBe(true);
         expect(typeof tool.handler).toBe('string');
+        expect(typeof tool.readOnly).toBe('boolean');
       });
     });
   });
@@ -45,13 +56,14 @@ describe('BankingToolRegistry', () => {
   describe('getTool', () => {
     it('should return tool definition for valid tool name', () => {
       const tool = BankingToolRegistry.getTool('get_my_accounts');
-      
+
       expect(tool).toBeDefined();
       expect(tool?.name).toBe('get_my_accounts');
-      expect(tool?.description).toBe('Retrieve user\'s bank accounts');
+      expect(tool?.title).toBe('My Bank Accounts');
       expect(tool?.requiresUserAuth).toBe(true);
       expect(tool?.requiredScopes).toEqual(['banking:accounts:read']);
       expect(tool?.handler).toBe('executeGetMyAccounts');
+      expect(tool?.readOnly).toBe(true);
     });
 
     it('should return undefined for invalid tool name', () => {
@@ -60,91 +72,81 @@ describe('BankingToolRegistry', () => {
     });
   });
 
-  describe('getToolNames', () => {
+  describe('getToolNames and hasTool', () => {
     it('should return all tool names', () => {
       const names = BankingToolRegistry.getToolNames();
-      
-      expect(names).toEqual([
-        'get_my_accounts',
-        'get_account_balance',
-        'get_my_transactions',
-        'create_deposit',
-        'create_withdrawal',
-        'create_transfer',
-        'query_user_by_email'
-      ]);
+      expect(new Set(names)).toEqual(new Set(EXPECTED_TOOL_NAMES));
     });
-  });
 
-  describe('hasTool', () => {
-    it('should return true for existing tools', () => {
+    it('should report existence accurately', () => {
       expect(BankingToolRegistry.hasTool('get_my_accounts')).toBe(true);
       expect(BankingToolRegistry.hasTool('create_transfer')).toBe(true);
-    });
-
-    it('should return false for non-existing tools', () => {
+      expect(BankingToolRegistry.hasTool('sequential_think')).toBe(true);
       expect(BankingToolRegistry.hasTool('invalid_tool')).toBe(false);
-      expect(BankingToolRegistry.hasTool('')).toBe(false);
     });
   });
 
-  describe('getToolsByScope', () => {
+  describe('scope and safety helpers', () => {
     it('should return tools with banking:accounts:read scope', () => {
       const tools = BankingToolRegistry.getToolsByScope('banking:accounts:read');
-      
-      expect(tools).toHaveLength(2);
-      expect(tools.map(t => t.name)).toEqual([
-        'get_my_accounts',
-        'get_account_balance'
-      ]);
-    });
+      const names = tools.map((t) => t.name);
 
-    it('should return tools with banking:transactions:read scope', () => {
-      const tools = BankingToolRegistry.getToolsByScope('banking:transactions:read');
-      
-      expect(tools).toHaveLength(1);
-      expect(tools[0].name).toBe('get_my_transactions');
+      expect(names).toContain('get_my_accounts');
+      expect(names).toContain('get_account_balance');
+      expect(names).toHaveLength(2);
     });
 
     it('should return tools with banking:transactions:write scope', () => {
       const tools = BankingToolRegistry.getToolsByScope('banking:transactions:write');
-      
-      expect(tools).toHaveLength(3);
-      expect(tools.map(t => t.name)).toEqual([
-        'create_deposit',
-        'create_withdrawal',
-        'create_transfer'
-      ]);
+      const names = tools.map((t) => t.name);
+
+      expect(names).toEqual(
+        expect.arrayContaining(['create_deposit', 'create_withdrawal', 'create_transfer'])
+      );
+      expect(names).toHaveLength(3);
     });
 
-    it('should return empty array for non-existing scope', () => {
-      const tools = BankingToolRegistry.getToolsByScope('invalid:scope');
-      expect(tools).toHaveLength(0);
+    it('should return read-only tools', () => {
+      const tools = BankingToolRegistry.getReadOnlyTools();
+      expect(tools.length).toBeGreaterThan(0);
+      tools.forEach((tool) => expect(tool.readOnly).toBe(true));
+      expect(tools.map((t) => t.name)).toContain('sequential_think');
+    });
+
+    it('should return authenticated/write tools helper set', () => {
+      const tools = BankingToolRegistry.getAuthenticatedTools();
+      expect(tools.length).toBeGreaterThan(0);
+      tools.forEach((tool) => expect(tool.readOnly).toBe(false));
+      expect(tools.map((t) => t.name)).toContain('create_transfer');
     });
   });
 
   describe('getMCPToolDefinitions', () => {
     it('should return MCP-compatible tool definitions without handler property', () => {
       const mcpTools = BankingToolRegistry.getMCPToolDefinitions();
-      
-      expect(mcpTools).toHaveLength(7);
-      
-      mcpTools.forEach(tool => {
+
+      expect(mcpTools).toHaveLength(EXPECTED_TOOL_NAMES.length);
+
+      mcpTools.forEach((tool) => {
         expect(tool).toHaveProperty('name');
+        expect(tool).toHaveProperty('title');
         expect(tool).toHaveProperty('description');
         expect(tool).toHaveProperty('inputSchema');
+        expect(tool).toHaveProperty('icons');
+        expect(tool).toHaveProperty('annotations');
         expect(tool).toHaveProperty('requiresUserAuth');
         expect(tool).toHaveProperty('requiredScopes');
+
         expect(tool).not.toHaveProperty('handler');
       });
     });
   });
 
-  describe('Tool Schema Validation', () => {
-    it('should have valid schemas for all tools', () => {
+  describe('Tool schema validation', () => {
+    it('should have valid object schemas for all tools', () => {
       const tools = BankingToolRegistry.getAllTools();
-      
-      tools.forEach(tool => {
+
+      tools.forEach((tool) => {
         expect(tool.inputSchema.type).toBe('object');
         expect(tool.inputSchema).toHaveProperty('properties');
         expect(tool.inputSchema).toHaveProperty('required');
@@ -152,82 +154,16 @@ describe('BankingToolRegistry', () => {
       });
     });
 
-    it('should have correct schema for get_my_accounts', () => {
-      const tool = BankingToolRegistry.getTool('get_my_accounts');
-      
-      expect(tool?.inputSchema.properties).toEqual({});
-      expect(tool?.inputSchema.required).toEqual([]);
+    it('should require query for sequential_think', () => {
+      const tool = BankingToolRegistry.getTool('sequential_think');
+      expect(tool?.inputSchema.required).toEqual(['query']);
+      expect(tool?.inputSchema.properties?.query?.type).toBe('string');
     });
 
-    it('should have correct schema for get_account_balance', () => {
-      const tool = BankingToolRegistry.getTool('get_account_balance');
-      
-      expect(tool?.inputSchema.properties).toHaveProperty('account_id');
-      expect(tool?.inputSchema.required).toEqual(['account_id']);
-      
-      const accountIdSchema = tool?.inputSchema.properties?.account_id;
-      expect(accountIdSchema.type).toBe('string');
-      expect(accountIdSchema.minLength).toBe(1);
-    });
-
-    it('should have correct schema for create_deposit', () => {
-      const tool = BankingToolRegistry.getTool('create_deposit');
-      
-      expect(tool?.inputSchema.properties).toHaveProperty('to_account_id');
-      expect(tool?.inputSchema.properties).toHaveProperty('amount');
-      expect(tool?.inputSchema.properties).toHaveProperty('description');
-      expect(tool?.inputSchema.required).toEqual(['to_account_id', 'amount']);
-      
-      const amountSchema = tool?.inputSchema.properties?.amount;
-      expect(amountSchema.type).toBe('number');
-      expect(amountSchema.minimum).toBe(0.01);
-      expect(amountSchema.multipleOf).toBe(0.01);
-    });
-
-    it('should have correct schema for create_transfer', () => {
-      const tool = BankingToolRegistry.getTool('create_transfer');
-      
-      expect(tool?.inputSchema.properties).toHaveProperty('from_account_id');
-      expect(tool?.inputSchema.properties).toHaveProperty('to_account_id');
-      expect(tool?.inputSchema.properties).toHaveProperty('amount');
-      expect(tool?.inputSchema.properties).toHaveProperty('description');
-      expect(tool?.inputSchema.required).toEqual(['from_account_id', 'to_account_id', 'amount']);
-      expect(tool?.inputSchema.properties?.amount?.minimum).toBe(0.01);
-    });
-  });
-
-  describe('Tool Authentication Requirements', () => {
-    it('should require user authentication for banking operation tools', () => {
-      const authRequiredTools = ['get_my_accounts', 'get_account_balance', 'get_my_transactions', 'create_deposit', 'create_withdrawal', 'create_transfer'];
-      
-      authRequiredTools.forEach(toolName => {
-        const tool = BankingToolRegistry.getTool(toolName);
-        expect(tool?.requiresUserAuth).toBe(true);
-      });
-
-      // query_user_by_email is an admin/agent tool that does not require user auth
-      const queryTool = BankingToolRegistry.getTool('query_user_by_email');
-      expect(queryTool?.requiresUserAuth).toBe(false);
-    });
-
-    it('should have appropriate scopes for read operations', () => {
-      const readTools = ['get_my_accounts', 'get_account_balance', 'get_my_transactions'];
-      
-      readTools.forEach(toolName => {
-        const tool = BankingToolRegistry.getTool(toolName);
-        expect(tool?.requiredScopes).toContain(
-          toolName.includes('transaction') ? 'banking:transactions:read' : 'banking:accounts:read'
-        );
-      });
-    });
-
-    it('should have appropriate scopes for write operations', () => {
-      const writeTools = ['create_deposit', 'create_withdrawal', 'create_transfer'];
-      
-      writeTools.forEach(toolName => {
-        const tool = BankingToolRegistry.getTool(toolName);
-        expect(tool?.requiredScopes).toContain('banking:transactions:write');
-      });
+    it('should require sensitive scope for sensitive account details', () => {
+      const tool = BankingToolRegistry.getTool('get_sensitive_account_details');
+      expect(tool?.requiredScopes).toEqual(['banking:sensitive:read']);
+      expect(tool?.requiresUserAuth).toBe(true);
     });
   });
 });

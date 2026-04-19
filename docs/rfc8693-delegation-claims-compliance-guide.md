@@ -234,10 +234,7 @@ app.use('/api/delegated-endpoint',
   "exp": 1640993400,
   "iat": 1640991700,
   "act": {
-    "sub": "https://mcp-server.pingdemo.com/mcp/test-mcp",
-    "act": {
-      "sub": "https://banking-agent.pingdemo.com/agent/test-agent"
-    }
+    "sub": "https://banking-app.pingdemo.com/bff/core"
   },
   "scope": "banking:read banking:agent:invoke"
 }
@@ -246,8 +243,8 @@ app.use('/api/delegated-endpoint',
 **Key Requirements**:
 - `sub`: User subject preserved from original token (required)
 - `act`: Actor claim (required)
-- `act.sub`: MCP server identifier (required)
-- `act.act.sub`: Agent identifier (optional, for nested delegation)
+- `act.sub`: Current exchanger identifier (required)
+- `act.act.sub`: Not expected in the simple 1-exchange path
 
 ### Exchanged Token Structure (Two-Exchange Delegation)
 
@@ -275,28 +272,29 @@ app.use('/api/delegated-endpoint',
 
 ### Expected Chain Patterns
 
-#### Single Exchange Chain (3 nodes)
+#### Single Exchange Chain (2 nodes)
 ```
-user → agent → mcp_server
-```
-
-#### Two-Exchange Chain (4 nodes)
-```
-user → agent → intermediate → mcp_server
+user → current_exchanger
 ```
 
-#### Subject-Only Chain (2 nodes)
+#### Two-Exchange Chain (3 nodes)
 ```
-user → mcp_server
+user → ai_agent → mcp_service
+```
+
+#### Subject-Only Chain (1 node)
+```
+user
 ```
 
 ### Validation Rules
 
 1. **Subject Preservation**: User subject must be preserved through all exchanges
 2. **Agent Authorization**: Agent must be authorized in user's `may_act` claim
-3. **MCP Server Identity**: MCP server must match expected audience
-4. **Circular Detection**: No circular references allowed in chain
-5. **Format Compliance**: All identifiers must follow standard format
+3. **Current Actor Identity**: act.sub must match the current exchanger or MCP-facing actor
+4. **Nested Actor Identity**: act.act.sub, when present, must match the prior AI agent in a multi-hop chain
+5. **Circular Detection**: No circular references allowed in chain
+6. **Format Compliance**: All identifiers must follow standard format
 
 ### Chain Reconstruction Example
 

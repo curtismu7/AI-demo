@@ -78,6 +78,8 @@ Next phase: 127+ (available for planning)
 ---
 
 ## Roadmap Evolution
+- Phase 198 added: Support Transaction Tokens For Agents (draft-oauth-transaction-tokens-for-agents-06) with configurable RFC 8693 fallback; update MCP server for dual-mode
+
 - Phase 196 added: Combine feature flags, configuration, and setup into unified tabbed page with clear visual tabs (color and outlines) including IDP setup tab
 
 - Phase 194 added: Display complete token chain and OIDC flow visualization with token state changes, MCP calls, and backend operations

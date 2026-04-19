@@ -38,11 +38,27 @@ const POSTMAN_COLLECTIONS = [
     difficulty: 'Intermediate'
   },
   {
+    filename: 'Super-Banking-MCP-Tools-Vercel.postman_collection.json',
+    title: 'Super Banking - MCP Tools (Vercel)',
+    description: 'MCP server tool testing configured for Vercel deployment. Uses production MCP server URLs.',
+    audience: 'Developer',
+    features: ['MCP protocol tools', 'Vercel deployment', 'Production URLs'],
+    difficulty: 'Intermediate'
+  },
+  {
     filename: 'Super-Banking-BFF-API.postman_collection.json',
     title: 'Super Banking - BFF API',
     description: 'Backend-for-Frontend API endpoints. Test the banking API server directly.',
     audience: 'Developer',
     features: ['BFF endpoints', 'Account operations', 'Transaction testing'],
+    difficulty: 'Intermediate'
+  },
+  {
+    filename: 'Super-Banking-BFF-API-Vercel.postman_collection.json',
+    title: 'Super Banking - BFF API (Vercel)',
+    description: 'BFF API endpoints configured for Vercel deployment. Uses production banking API URLs.',
+    audience: 'Developer',
+    features: ['BFF endpoints', 'Vercel deployment', 'Production URLs'],
     difficulty: 'Intermediate'
   },
   {
@@ -71,12 +87,22 @@ const POSTMAN_COLLECTIONS = [
   }
 ];
 
-const ENVIRONMENT_FILE = {
-  filename: 'Super-Banking-Shared.postman_environment.json',
-  title: 'Super Banking - Shared Environment',
-  description: 'Shared environment file required by all collections. Contains variables for endpoints, credentials, and configuration.',
-  required: true
-};
+const ENVIRONMENT_FILES = [
+  {
+    filename: 'Super-Banking-Shared.postman_environment.json',
+    title: 'Super Banking - Shared Environment',
+    description: 'Shared environment for local development. Contains variables for localhost endpoints, credentials, and configuration.',
+    required: true,
+    variant: 'Local'
+  },
+  {
+    filename: 'Super-Banking-Vercel.postman_environment.json',
+    title: 'Super Banking - Vercel Environment',
+    description: 'Environment for Vercel-deployed instances. Points to production banking API and MCP server URLs.',
+    required: false,
+    variant: 'Vercel'
+  }
+];
 
 export default function PostmanCollectionsPage({ user, onLogout }) {
   const [downloadStats, setDownloadStats] = useState({});
@@ -145,32 +171,40 @@ export default function PostmanCollectionsPage({ user, onLogout }) {
           </p>
         </div>
 
-        {/* Environment File - Always show first */}
+        {/* Environment Files - Always show first */}
         <section className="postman-section">
-          <h2>📋 Required Environment</h2>
-          <div className="postman-card postman-card--environment">
-            <div className="postman-card__content">
-              <div className="postman-card__header">
-                <h3>{ENVIRONMENT_FILE.title}</h3>
-                <span className="postman-card__badge postman-card__badge--required">Required</span>
+          <h2>📋 Environments</h2>
+          <div className="postman-grid">
+            {ENVIRONMENT_FILES.map((envFile) => (
+              <div key={envFile.filename} className="postman-card postman-card--environment">
+                <div className="postman-card__content">
+                  <div className="postman-card__header">
+                    <h3>{envFile.title}</h3>
+                    {envFile.required ? (
+                      <span className="postman-card__badge postman-card__badge--required">Required</span>
+                    ) : (
+                      <span className="postman-card__badge postman-card__badge--optional">{envFile.variant}</span>
+                    )}
+                  </div>
+                  <p className="postman-card__description">
+                    {envFile.description}
+                  </p>
+                  <div className="postman-card__features">
+                    <span className="postman-card__feature">🔧 Configuration variables</span>
+                    <span className="postman-card__feature">🔐 Credential placeholders</span>
+                    <span className="postman-card__feature">🌍 {envFile.variant} settings</span>
+                  </div>
+                </div>
+                <div className="postman-card__actions">
+                  <button
+                    className="postman-btn postman-btn--primary"
+                    onClick={() => handleDownload(envFile.filename)}
+                  >
+                    📥 Download Environment
+                  </button>
+                </div>
               </div>
-              <p className="postman-card__description">
-                {ENVIRONMENT_FILE.description}
-              </p>
-              <div className="postman-card__features">
-                <span className="postman-card__feature">🔧 Configuration variables</span>
-                <span className="postman-card__feature">🔐 Credential placeholders</span>
-                <span className="postman-card__feature">🌍 Environment settings</span>
-              </div>
-            </div>
-            <div className="postman-card__actions">
-              <button
-                className="postman-btn postman-btn--primary"
-                onClick={() => handleDownload(ENVIRONMENT_FILE.filename)}
-              >
-                📥 Download Environment
-              </button>
-            </div>
+            ))}
           </div>
         </section>
 

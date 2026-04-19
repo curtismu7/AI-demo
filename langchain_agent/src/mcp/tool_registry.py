@@ -71,10 +71,18 @@ class ToolRegistry:
                 description = tool_descriptions.get(tool_name) if tool_descriptions else None
                 
                 # Extract description and parameters from schema
-                if tool_schema:
+                if tool_schema and isinstance(tool_schema, dict):
                     if not description:
                         description = tool_schema.get("description", "")
-                    parameters = tool_schema.get("inputSchema", {})
+
+                    # Accept both full MCP tool definitions ({ inputSchema: {...} })
+                    # and bare JSON schema objects ({ type, properties, required }).
+                    if isinstance(tool_schema.get("inputSchema"), dict):
+                        parameters = tool_schema.get("inputSchema")
+                    elif isinstance(tool_schema.get("properties"), dict):
+                        parameters = tool_schema
+                    else:
+                        parameters = {}
                 
                 tool_info = ToolInfo(
                     name=tool_name,

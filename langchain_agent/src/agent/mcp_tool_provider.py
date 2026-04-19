@@ -28,31 +28,29 @@ class MCPToolInput(BaseModel):
 
 def create_tool_input_schema(tool_info: ToolInfo) -> Type[BaseModel]:
     """
-    Create a dynamic input schema for an MCP tool based on its parameter definition.
-    
+    Create an input schema for an MCP tool from server-provided metadata first.
+
     Args:
         tool_info: Information about the MCP tool including parameters
-        
+
     Returns:
         A Pydantic model class for the tool's input schema
     """
-    # First check if we have proper parameters from the MCP server
     if tool_info.parameters and isinstance(tool_info.parameters, dict):
         properties = tool_info.parameters.get("properties", {})
         required = tool_info.parameters.get("required", [])
-        
+
         if properties:
-            # Use the MCP server's schema
+            logger.debug("Schema source for %s: metadata", tool_info.full_name)
             return _create_schema_from_properties(tool_info, properties, required)
-    
-    # Fallback to hardcoded schemas for known banking tools
-    if tool_info.server_name == "banking":
-        return _create_banking_tool_schema(tool_info)
-    
-    # Final fallback to generic schema
+
+    # Metadata is absent or incomplete: use generic schema to avoid tool-specific drift.
+    logger.debug("Schema source for %s: generic-fallback", tool_info.full_name)
     return MCPToolInput
 
 
+# Retained for backwards compatibility/reference; not used in normal schema resolution path.
+# Metadata-first schema creation is the authoritative source for tool input models.
 def _create_banking_tool_schema(tool_info: ToolInfo) -> Type[BaseModel]:
     """Create hardcoded schemas for banking tools."""
     if tool_info.name == "create_transfer":

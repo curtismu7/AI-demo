@@ -45,6 +45,7 @@ const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClien
 const adminTokenService = require('./adminTokenService');
 const { trackTokenEvent } = require('./tokenChainService');
 const { trackToken } = require('./apiCallTrackerService');
+const tokenExchangeConfig = require('../config/tokenExchangeConfig');
 
 /** Minimum distinct scopes on the User access token before RFC 8693 to MCP (so PingOne can narrow audience + scope). */
 const MIN_USER_SCOPES_FOR_MCP = Math.max(
@@ -332,6 +333,153 @@ function buildSessionPreviewTokenEvents(req) {
  * @param {import('express').Request} req
  * @param {string} tool
  */
+
+// ─── Dual-Mode Token Exchange (Phase 198) ──────────────────────────────────
+
+/**
+ * Generate a transaction ID for tracking transaction-tokens mode exchanges.
+ * Format: txn-{uuid}
+ */
+function generateTransactionId() {
+  const crypto = require('crypto');
+  const uuid = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+  return `txn-${uuid}`;
+}
+
+/**
+ * Perform RFC 8693 token exchange (original implementation).
+ * This is the current production-stable exchange method.
+ * 
+ * @param {string} userToken - User access token from session
+ * @param {string|null} actorToken - Optional agent actor token
+ * @param {string} mcpResourceUri - Target audience for MCP token
+ * @param {Array} finalScopes - Scopes to request in exchange
+ * @returns {Promise<string|null>} - Exchanged MCP token or null on failure
+ */
+async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, finalScopes) {
+  let exchangedToken = null;
+  
+  try {
+    const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
+    const exchangerClientSecret = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    
+    if (actorToken && exchangerClientId && exchangerClientSecret) {
+      exchangedToken = await oauthService.performTokenExchangeAs(
+        userToken, actorToken, exchangerClientId, exchangerClientSecret, mcpResourceUri, finalScopes
+      );
+    } else if (actorToken) {
+      exchangedToken = await oauthService.performTokenExchangeWithActor(
+        userToken, actorToken, mcpResourceUri, finalScopes
+      );
+    } else {
+      exchangedToken = await oauthService.performTokenExchange(
+        userToken, mcpResourceUri, finalScopes
+      );
+    }
+  } catch (err) {
+    errorLog('[RFC8693Exchange]', err.message);
+    return null;
+  }
+  
+  return exchangedToken;
+}
+
+/**
+ * Perform transaction-tokens exchange (draft mode).
+ * Currently implemented as RFC 8693 with transaction metadata wrapping.
+ * Future: Replace with native transaction tokens exchange when PingOne SDK supports draft spec.
+ * 
+ * @param {string} userToken - User access token from session
+ * @param {string|null} actorToken - Optional agent actor token  
+ * @param {string} mcpResourceUri - Target audience for MCP token
+ * @param {Array} finalScopes - Scopes to request in exchange
+ * @returns {Promise<string|null>} - Exchanged MCP token or null on failure
+ */
+async function exchangeTokenWithTransactionTokens(userToken, actorToken, mcpResourceUri, finalScopes) {
+  // Generate transaction ID
+  const txnId = generateTransactionId();
+  console.log(`[TransactionTokens] Generated txnId: ${txnId}`);
+  
+  // For now: Use RFC 8693 exchange, then augment with transaction metadata
+  // TODO: Replace with native transaction tokens exchange when PingOne API supports draft-oauth-transaction-tokens-for-agents-06
+  const exchangedToken = await exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, finalScopes);
+  
+  if (exchangedToken) {
+    console.log(`[TransactionTokens] Success for txnId: ${txnId}`);
+    // In future: Transaction metadata stored separately in session context (deferred to Plan 03)
+  }
+  
+  return exchangedToken;
+}
+
+/**
+ * Perform dual-mode token exchange based on TOKEN_EXCHANGE_MODE configuration.
+ * Attempts primary mode, then falls back to secondary if enabled and primary fails.
+ * 
+ * @param {string} userToken - User access token from session
+ * @param {string|null} actorToken - Optional agent actor token
+ * @param {string} mcpResourceUri - Target audience for MCP token
+ * @param {Array} finalScopes - Scopes to request in exchange
+ * @returns {Promise<string|null>} - Exchanged MCP token or null on failure (permanent, not retryable)
+ */
+async function performDualModeTokenExchange(userToken, actorToken, mcpResourceUri, finalScopes) {
+  const primaryMode = tokenExchangeConfig.mode;
+  const fallbackMode = tokenExchangeConfig.getFallbackMode();
+  const config = tokenExchangeConfig;
+  
+  if (!config.isValidMode(primaryMode)) {
+    errorLog(`[TokenExchange] Invalid mode: ${primaryMode}. Defaulting to RFC 8693.`);
+    return await exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, finalScopes);
+  }
+  
+  // Attempt primary mode
+  console.log(`[TokenExchange] Attempting ${primaryMode}`);
+  let token = null;
+  
+  try {
+    if (primaryMode === 'rfc_8693') {
+      token = await exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, finalScopes);
+    } else if (primaryMode === 'transaction_tokens') {
+      token = await exchangeTokenWithTransactionTokens(userToken, actorToken, mcpResourceUri, finalScopes);
+    }
+    
+    if (token) {
+      console.log(`[TokenExchange] ${primaryMode} succeeded`);
+      return token;
+    }
+  } catch (err) {
+    errorLog(`[TokenExchange] ${primaryMode} failed:`, err.message);
+  }
+  
+  // If primary failed and auto-fallback enabled, retry with fallback mode
+  if (config.autoFallback && token === null) {
+    if (config.logModeSwitches) {
+      console.log(`[TokenExchange] Switching from ${primaryMode} to ${fallbackMode} (auto-fallback)`);
+    }
+    
+    try {
+      if (fallbackMode === 'rfc_8693') {
+        token = await exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, finalScopes);
+      } else {
+        token = await exchangeTokenWithTransactionTokens(userToken, actorToken, mcpResourceUri, finalScopes);
+      }
+      
+      if (token) {
+        console.log(`[TokenExchange] Fallback to ${fallbackMode} succeeded`);
+        return token;
+      }
+    } catch (err) {
+      errorLog(`[TokenExchange] Fallback to ${fallbackMode} failed:`, err.message);
+    }
+  }
+  
+  return null;
+}
+
 async function resolveMcpAccessTokenWithEvents(req, tool) {
   console.log('[AGENT_MCP] === RESOLVE MCP ACCESS TOKEN START ===');
   console.log('[AGENT_MCP] Tool:', tool);
@@ -1025,25 +1173,9 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       rfc: 'RFC 8693',
     });
 
-    // Fallback: try subject-only if actor exchange failed
-    if (actorToken) {
-      try {
-        exchangedToken = await oauthService.performTokenExchange(userToken, mcpResourceUri, effectiveToolScopes);
-        const mcpAccessTokenDecodedFallback = decodeJwtClaims(exchangedToken);
-        tokenEvents.push(buildTokenEvent(
-          'exchanged-token',
-          'MCP access token (subject-only fallback)',
-          'exchanged',
-          mcpAccessTokenDecodedFallback,
-          'Agent access token exchange failed; fell back to subject-only RFC 8693 exchange (no act claim). ' +
-          'The MCP access token is still scoped to the MCP audience — the user access token never leaves the Backend-for-Frontend (BFF).',
-          { rfc: 'RFC 8693', exchangeMethod: 'fallback-subject-only' }
-        ));
-        return { token: exchangedToken, tokenEvents, userSub };
-      } catch (err2) {
-        throw err2;
-      }
-    }
+    // D-04: Hard fail — no subject-only fallback when actor exchange fails.
+    // A token without an act claim would be rejected by the banking API's requireDelegation check
+    // anyway, so silently falling back produces a misleading flow. Surface the real error instead.
     throw err;
   }
 }

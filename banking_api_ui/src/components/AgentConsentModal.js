@@ -97,6 +97,11 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss, hi
               : 'Allow AI Agent Access'}
           </h2>
         </div>
+        {/* HITL badge — always visible while modal is open */}
+        <div className="acm-hitl-badge" aria-live="polite">
+          <span className="acm-hitl-badge__icon" aria-hidden="true">👤</span>
+          <span className="acm-hitl-badge__label">Human-in-the-Loop — <strong>manual approval required</strong></span>
+        </div>
 
         {/* Scrollable body */}
         <div className="acm-body-wrap">
@@ -105,7 +110,8 @@ export default function AgentConsentModal({ transaction, onAccept, onDismiss, hi
               <p className="acm-body">
                 The AI banking assistant is requesting your authorization to complete a
                 {' '}<strong>high-value {transaction.type || 'transaction'}</strong>.
-                Review the details below and click <em>Authorize</em> to proceed.
+                <strong> This is a Human-in-the-Loop (HITL) checkpoint — the action cannot proceed without your manual approval.</strong>
+                {' '}Review the details below and click <em>Authorize</em> to proceed.
               </p>
               <ul className="acm-list acm-list--transaction">
                 <li>💰 <strong>Amount:</strong> ${Number(transaction.amount || 0).toFixed(2)}</li>

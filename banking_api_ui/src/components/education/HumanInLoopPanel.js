@@ -1,9 +1,12 @@
 // banking_api_ui/src/components/education/HumanInLoopPanel.js
 import React from 'react';
 import EducationDrawer from '../shared/EducationDrawer';
+import { useEducationUI } from '../../context/EducationUIContext';
+import { EDU } from './educationIds';
 import { EduImplIntro, SNIP_HITL_CONSENT } from './educationImplementationSnippets';
 
 export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
+  const { open } = useEducationUI();
   const tabs = [
     {
       id: 'what',
@@ -127,6 +130,16 @@ export default function HumanInLoopPanel({ isOpen, onClose, initialTabId }) {
             The underlying idea is stable: <strong>agents should ask permission for actions you would not accept
             unattended.</strong> HITL is a durable pattern for building automation people can trust—not a temporary
             patch until models get &quot;smart enough&quot; to act alone on critical operations.
+          </p>
+          <p>
+            <strong>See also:</strong>{' '}
+            <button
+              type="button"
+              onClick={() => open(EDU.CUA, 'what')}
+              style={{ background: 'none', border: 'none', color: 'var(--chase-navy)', cursor: 'pointer', padding: 0, textDecoration: 'underline', font: 'inherit' }}
+            >
+              Computer Use Agent (CUA)
+            </button>
           </p>
         </>
       ),

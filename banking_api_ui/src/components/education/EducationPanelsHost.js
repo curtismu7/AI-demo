@@ -12,6 +12,7 @@ import RFCIndexPanel from './RFCIndexPanel';
 import StepUpPanel from './StepUpPanel';
 import PingOneAuthorizePanel from './PingOneAuthorizePanel';
 import CimdPanel from './CimdPanel';
+import ComputerUseAgentPanel from './ComputerUseAgentPanel';
 import HumanInLoopPanel from './HumanInLoopPanel';
 import BestPracticesPanel from './BestPracticesPanel';
 import PARPanel from './PARPanel';
@@ -49,6 +50,7 @@ export default function EducationPanelsHost() {
       <StepUpPanel isOpen={panel === EDU.STEP_UP} onClose={close} initialTabId={tab} />
       <PingOneAuthorizePanel isOpen={panel === EDU.PINGONE_AUTHORIZE} onClose={close} initialTabId={tab} />
       <CimdPanel isOpen={panel === EDU.CIMD} onClose={close} initialTabId={tab} />
+      <ComputerUseAgentPanel isOpen={panel === EDU.CUA} onClose={close} initialTabId={tab} />
       <HumanInLoopPanel isOpen={panel === EDU.HUMAN_IN_LOOP} onClose={close} initialTabId={tab} />
       <BestPracticesPanel isOpen={panel === EDU.BEST_PRACTICES} onClose={close} initialTabId={tab} />
       <PARPanel isOpen={panel === EDU.PAR} onClose={close} initialTabId={tab} />

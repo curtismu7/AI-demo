@@ -15,7 +15,7 @@ const ANTHROPIC_TIMEOUT_MS = 10000;
 
 const SYSTEM = `You are a strict JSON router for a banking demo SPA.
 Return ONLY a JSON object (no markdown) with one of:
-{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|human-in-loop|langchain","tab":"what"}}
+{"kind":"education","education":{"panel":"login-flow|token-exchange|may-act|mcp-protocol|introspection|agent-gateway|rfc-index|step-up|pingone-authorize|cimd|cua|human-in-loop|langchain","tab":"what"}}
 {"kind":"education","ciba":true,"tab":"what"}
 {"kind":"banking","banking":{"action":"accounts","params":{}}}
 {"kind":"banking","banking":{"action":"balance","params":{}}}
@@ -36,6 +36,7 @@ Examples:
 User wants banking operations OR to open help topics (OAuth, MCP, CIBA, token exchange, CIMD client registration, etc.).
 Prefer banking when the user asks to move money or list data; prefer education when they ask how something works.
 For CIMD / client-id-metadata / dynamic client registration / register a client / DCR / RFC 7591 → use panel cimd.
+For CUA / computer use agent / computer use → use panel cua.
 For LangChain / LCEL / multi-provider LLM / model-agnostic / llm orchestration / langchain agent → use panel langchain.
 CRITICAL: For ANY request that contains "list", "show", or "get" combined with "mcp tools", "tools available",
 "available tools", or the standalone phrases "list tools" / "show tools" → ALWAYS output {"kind":"banking","banking":{"action":"mcp_tools","params":{}}}.

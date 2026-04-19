@@ -36,6 +36,7 @@
     "@langchain/core": "^1.1.39",
     "@langchain/groq": "^1.2.0",
     "@langchain/langgraph": "^1.2.8",
+    "@langchain/openai": "^1.4.4",
     "@vercel/kv": "^3.0.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",

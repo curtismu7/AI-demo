@@ -221,7 +221,7 @@ BFF → PingOne:
   → agent_actor_token { sub: "PINGONE_AI_AGENT_CLIENT_ID" }
 ```
 
-**Exchange 2 — MCP token with act claim:**
+**Exchange 2 — MCP token with nested act chain when preserved:**
 ```
 BFF → PingOne:
   POST /token
@@ -230,16 +230,18 @@ BFF → PingOne:
   actor_token = <agent_actor_token>
   audience = banking_mcp_01
   → MCP token { sub: <user-id>, aud: "banking_mcp_01",
-                act: { sub: "PINGONE_AI_AGENT_CLIENT_ID" } }
+                act: { sub: "PINGONE_MCP_CLIENT_ID",
+                       act: { sub: "PINGONE_AI_AGENT_CLIENT_ID" } } }
 ```
 
 **RFC 8693 §4.1 — The `act` claim:**
 
 The `act` claim in the issued token records the delegation chain:
 - `sub` = the user (who authorised the request)
-- `act.sub` = the AI agent (who is acting on the user's behalf)
+- `act.sub` = the current exchanger or MCP-facing actor
+- `act.act.sub` = the AI agent identity when PingOne preserves the full nested chain
 
-The MCP server can inspect `act.sub` to verify the specific agent identity. PingOne Authorize (PAZ) can enforce `act.sub` as a policy attribute for fine-grained access control.
+The MCP server can inspect the full chain. PingOne Authorize (PAZ) can enforce `act.sub` and, when present, `act.act.sub` as policy attributes for fine-grained access control. Some PingOne expression paths flatten the chain to a single `act.sub`; the runtime logs and token events call that out explicitly.
 
 **Token state after 2-exchange:**
 
@@ -247,7 +249,7 @@ The MCP server can inspect `act.sub` to verify the specific agent identity. Ping
 |-------|-----|-----|-----------|-------|
 | User session token | `<user-id>` | Admin resource | — | Stays in BFF session |
 | Agent actor token | `PINGONE_AI_AGENT_CLIENT_ID` | Agent gateway | — | Transient, from CC grant |
-| MCP token | `<user-id>` | `banking_mcp_01` | `{ sub: "PINGONE_AI_AGENT_CLIENT_ID" }` | Delegation chain proven |
+| MCP token | `<user-id>` | `banking_mcp_01` | `{ sub: "PINGONE_MCP_CLIENT_ID", act: { sub: "PINGONE_AI_AGENT_CLIENT_ID" } }` | Delegation chain proven when fully preserved |
 
 **Feature flags:**
 

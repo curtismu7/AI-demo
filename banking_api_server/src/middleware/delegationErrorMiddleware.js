@@ -14,6 +14,26 @@
 import ErrorSchemaService, { ERROR_CODES } from '../services/errorSchemaService.js';
 import ErrorMessageBuilder from '../services/errorMessageBuilder.js';
 
+function collectActIds(actClaim, ids = []) {
+  if (!actClaim) return ids;
+  if (typeof actClaim === 'string') {
+    ids.push(actClaim);
+    return ids;
+  }
+  if (typeof actClaim !== 'object') {
+    return ids;
+  }
+
+  const actorId = actClaim.client_id || actClaim.sub;
+  if (actorId) {
+    ids.push(String(actorId));
+  }
+  if (actClaim.act) {
+    collectActIds(actClaim.act, ids);
+  }
+  return ids;
+}
+
 /**
  * Create middleware that validates RFC 8693 delegation claim
  * 
@@ -52,21 +72,44 @@ export default function delegationErrorMiddleware(options = {}) {
       return res.status(statusCode).json(errorResponse);
     }
 
+    // Validate act claim structure — must be an object with non-empty sub or client_id.
+    // A present but malformed act claim cannot prove delegation (RFC 8693 §2.2).
+    const actClaim = token.act;
+    const actorId = typeof actClaim?.sub === 'string' ? actClaim.sub
+      : typeof actClaim?.client_id === 'string' ? actClaim.client_id : '';
+    if (typeof actClaim !== 'object' || !actorId) {
+      return res.status(403).json(
+        ErrorSchemaService.buildErrorResponse(
+          ERROR_CODES.INSUFFICIENT_PERMISSIONS,
+          {
+            message: 'RFC 8693 act claim is present but structurally invalid.',
+            what_failed: 'The act claim must be an object with a non-empty sub or client_id identifying the delegating actor.',
+            why: 'RFC 8693 §2.2 requires the act claim to identify the actor. An empty or malformed act cannot prove the delegation chain.',
+            teaching: 'Ensure the token exchange request includes a valid actor token so PingOne populates act.sub (or act.client_id) in the issued token.',
+            fix: 'Re-issue the token via RFC 8693 Token Exchange with a properly configured actor client.',
+            tokens_involved: {
+              token_sub: token.sub,
+              act_claim: actClaim,
+            },
+          }
+        )
+      );
+    }
+
     // Optionally validate that act claim is from an allowed actor
     if (options.allowedActors && Array.isArray(options.allowedActors)) {
-      const actorId = typeof token.act === 'string' 
-        ? token.act 
-        : (token.act?.client_id || token.act?.sub);
+      const actIds = collectActIds(token.act);
+      const actorId = actIds[0] || '';
       
-      if (!options.allowedActors.includes(actorId)) {
+      if (!actIds.some((id) => options.allowedActors.includes(id))) {
         // Still valid delegation, just not from allowed actor
         return res.status(403).json(
           ErrorSchemaService.buildErrorResponse(
             ERROR_CODES.INSUFFICIENT_PERMISSIONS,
             {
-              message: `Delegation from unauthorized actor: ${actorId}`,
+              message: `Delegation from unauthorized actor chain: ${actIds.join(' -> ') || actorId}`,
               required_role: 'allowed-actor',
-              actual_role: actorId,
+              actual_role: actIds.join(' -> ') || actorId,
             }
           )
         );

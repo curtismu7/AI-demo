@@ -10,6 +10,8 @@ export const EDU = {
   STEP_UP: 'step-up',
   PINGONE_AUTHORIZE: 'pingone-authorize',
   CIMD: 'cimd',
+  /** Computer Use Agent — screen-observing agent loop vs structured tool-use */
+  CUA: 'cua',
   /** Human-in-the-loop: mandatory human approval before high-impact agent-related actions */
   HUMAN_IN_LOOP: 'human-in-loop',
   /** PingOne five best practices for AI agent security */

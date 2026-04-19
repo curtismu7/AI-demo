@@ -177,6 +177,7 @@ describe('MCPMessageHandler', () => {
           },
           requiresUserAuth: true,
           requiredScopes: ['banking:accounts:read'],
+          readOnly: true,
           handler: 'executeGetMyAccounts'
         },
         {
@@ -191,6 +192,7 @@ describe('MCPMessageHandler', () => {
           },
           requiresUserAuth: true,
           requiredScopes: ['banking:accounts:read'],
+          readOnly: true,
           handler: 'executeGetAccountBalance'
         }
       ];
@@ -211,6 +213,40 @@ describe('MCPMessageHandler', () => {
       expect(response.result!.tools[0].name).toBe('get_my_accounts');
       expect(response.result!.tools[1].name).toBe('get_account_balance');
       expect(mockToolProvider.getAvailableTools).toHaveBeenCalled();
+    });
+
+    it('should preserve title icons annotations and readOnly metadata in tools/list response', async () => {
+      const mockBankingTools: BankingToolDefinition[] = [
+        {
+          name: 'get_my_accounts',
+          title: 'My Bank Accounts',
+          description: 'Get user accounts',
+          inputSchema: { type: 'object', properties: {}, required: [] },
+          requiresUserAuth: true,
+          requiredScopes: ['banking:accounts:read'],
+          readOnly: true,
+          handler: 'executeGetMyAccounts',
+          icons: [{ src: 'data:image/svg+xml,test', mimeType: 'image/svg+xml' }],
+          annotations: { userFacing: { readable: true, destructive: false } }
+        }
+      ];
+
+      mockToolProvider.getAvailableTools.mockReturnValue(mockBankingTools);
+
+      const listToolsMessage: ListToolsMessage = {
+        id: 'list-tools-metadata',
+        method: 'tools/list',
+        params: {}
+      };
+
+      const response = await handler.handleListTools(listToolsMessage, mockContext);
+
+      expect(response.result?.tools).toHaveLength(1);
+      const tool = response.result?.tools[0] as any;
+      expect(tool.title).toBe('My Bank Accounts');
+      expect(tool.icons?.[0]?.src).toContain('data:image/svg+xml');
+      expect(tool.annotations?.userFacing?.readable).toBe(true);
+      expect(tool.readOnly).toBe(true);
     });
 
     it('should handle empty tools list', async () => {
@@ -253,6 +289,7 @@ describe('MCPMessageHandler', () => {
         inputSchema: { type: 'object', properties: { account_id: { type: 'string' } }, required: ['account_id'] },
         requiresUserAuth: true,
         requiredScopes: [],
+        readOnly: true,
         handler: 'executeGetAccountBalance'
       }]);
 
@@ -325,6 +362,7 @@ describe('MCPMessageHandler', () => {
         inputSchema: { type: 'object', properties: {}, required: [] },
         requiresUserAuth: true,
         requiredScopes: [],
+        readOnly: true,
         handler: 'executeGetMyAccounts'
       }]);
 
@@ -386,6 +424,7 @@ describe('MCPMessageHandler', () => {
         inputSchema: { type: 'object', properties: { account_id: { type: 'string' } }, required: ['account_id'] },
         requiresUserAuth: true,
         requiredScopes: [],
+        readOnly: true,
         handler: 'executeGetAccountBalance'
       }]);
 
@@ -681,6 +720,7 @@ describe('MCPMessageHandler', () => {
         inputSchema: { type: 'object', properties: {}, required: [] },
         requiresUserAuth: false,
         requiredScopes: [],
+        readOnly: true,
         handler: 'executeSlowTool'
       }]);
 

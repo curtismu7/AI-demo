@@ -2075,6 +2075,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 196 to break down)
 
+### Phase 198: Support Transaction Tokens For Agents (draft-oauth-transaction-tokens-for-agents-06) with configurable RFC 8693 fallback; update MCP server for dual-mode
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 197
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 198 to break down)
+
 ---
 
 ### Phase 197: Fix Phase 193 regression — sidebar missing on unauthenticated dashboard

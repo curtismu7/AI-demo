@@ -245,7 +245,7 @@ router.get('/session-preview', (req, res) => {
   }
 });
 
-
+ // IMPORTANT: /userinfo must be defined above /:tokenId wildcard
 /**
  * Fetch enriched user info from PingOne userinfo endpoint.
  * Uses the session access token (BFF pattern — token never reaches frontend).

@@ -8,10 +8,11 @@ This document explains how to verify that PingOne is correctly issuing `act` and
 
 The banking demo architecture relies on delegation claims to establish a clear chain of custody:
 
-- **`may_act`** (in the **user access token**): Prospectively authorizes the Backend-for-Frontend (BFF) to exchange the token
-- **`act`** (in the **MCP access token** after exchange): Identifies the current actor (Backend-for-Frontend (BFF)) acting on behalf of the user
+- **`may_act`** (in the **user access token**): Prospectively authorizes a downstream actor to exchange the token
+- **`act`** (in the **exchanged MCP token**): Identifies the current actor under RFC 8693 Section 4.1
+- **Nested `act.act`** (when PingOne preserves the full 2-exchange chain): Identifies the prior actor in a multi-hop delegation chain
 
-Without these claims, the delegation chain is invisible in audit logs and token introspection.
+Without these claims, the delegation chain is invisible in audit logs, authorization policy, and token introspection.
 
 ## Prerequisites
 
@@ -47,7 +48,7 @@ Create a custom token policy for user tokens:
 }
 ```
 
-This adds `may_act.client_id` to all user access tokens, authorizing the Backend-for-Frontend (BFF) to exchange them.
+This adds `may_act.sub` to all user access tokens, authorizing the permitted actor to exchange them.
 
 #### 3. Configure act Token Policy
 
@@ -63,7 +64,7 @@ Create a custom token policy for token exchange:
 }
 ```
 
-This adds `act.client_id` to exchanged tokens, identifying the Backend-for-Frontend (BFF) as the current actor.
+This adds `act.sub` to exchanged tokens, identifying the current actor. In the full 2-exchange path, PingOne may preserve the prior actor under `act.act.sub`.
 
 ## Verification Methods
 
@@ -110,7 +111,7 @@ The script will:
      "aud": "client-id",
      "scope": "openid profile email",
      "may_act": {
-       "client_id": "bff-client-id"
+       "sub": "bff-client-id"
      }
    }
    ```
@@ -128,7 +129,10 @@ The script will:
      "aud": "mcp-server-audience",
      "scope": "banking:read banking:write",
      "act": {
-       "client_id": "bff-client-id"
+       "sub": "mcp-client-id",
+       "act": {
+         "sub": "agent-client-id"
+       }
      }
    }
    ```
@@ -156,7 +160,7 @@ The application includes a Token Chain visualization panel:
   "aud": "12345678-90ab-cdef-1234-567890abcdef",
   "scope": "openid profile email",
   "may_act": {
-    "client_id": "12345678-90ab-cdef-1234-567890abcdef"
+    "sub": "12345678-90ab-cdef-1234-567890abcdef"
   },
   "iss": "https://auth.pingone.com/...",
   "exp": 1234567890,
@@ -164,14 +168,17 @@ The application includes a Token Chain visualization panel:
 }
 ```
 
-**MCP access token:**
+**MCP access token (full 2-exchange chain):**
 ```json
 {
   "sub": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "aud": "https://mcp.banking-demo.com",
   "scope": "banking:accounts:read",
   "act": {
-    "client_id": "12345678-90ab-cdef-1234-567890abcdef"
+    "sub": "mcp-client-id",
+    "act": {
+      "sub": "agent-client-id"
+    }
   },
   "iss": "https://auth.pingone.com/...",
   "exp": 1234567890,
@@ -243,7 +250,7 @@ The application includes a Token Chain visualization panel:
 
 1. Verify token exchange succeeded (MCP access token was issued)
 2. Check PingOne token exchange policy configuration
-3. Review PingOne documentation on delegation claims
+3. Review whether your environment preserves a full nested chain (`act.sub` plus `act.act.sub`) or a flattened `act.sub` only
 4. Contact PingOne support if policy is configured but claim still missing
 
 ### Script Reports "ACCESS_TOKEN not set"
@@ -266,6 +273,6 @@ After verifying `act` and `may_act` claims:
 
 1. **Document PingOne Configuration**: Save screenshots and policy JSON for reference
 2. **Update Architecture Docs**: Confirm delegation chain is functional
-3. **Implement Audit Logging**: Extract `act` claims in middleware and log delegation events
+3. **Implement Audit Logging**: Extract the full `act` chain in middleware and log delegation events
 4. **Add Monitoring**: Alert on token exchange failures or missing delegation claims
 5. **Update Tests**: Add test cases that validate `act` claim presence in exchanged tokens

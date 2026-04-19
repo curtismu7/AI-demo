@@ -2,6 +2,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import EducationDrawer from '../shared/EducationDrawer';
+import { useEducationUI } from '../../context/EducationUIContext';
+import { EDU } from './educationIds';
 import { McpProtocolContent, OAuthApiCheatsheet } from './educationContent';
 import { EduImplIntro, SNIP_MCP_BROWSER, SNIP_MCP_BFF } from './educationImplementationSnippets';
 
@@ -18,11 +20,26 @@ const TOOLS = [
 ];
 
 export default function McpProtocolPanel({ isOpen, onClose, initialTabId }) {
+  const { open } = useEducationUI();
   const tabs = [
     {
       id: 'what',
       label: 'How it works',
-      content: <McpProtocolContent />,
+      content: (
+        <>
+          <McpProtocolContent />
+          <p style={{ marginTop: 16 }}>
+            <strong>See also:</strong>{' '}
+            <button
+              type="button"
+              onClick={() => open(EDU.CUA, 'what')}
+              style={{ background: 'none', border: 'none', color: 'var(--chase-navy)', cursor: 'pointer', padding: 0, textDecoration: 'underline', font: 'inherit' }}
+            >
+              Computer Use Agent (CUA)
+            </button>
+          </p>
+        </>
+      ),
     },
     {
       id: 'catalog',

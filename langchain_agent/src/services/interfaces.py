@@ -9,6 +9,59 @@ from models.auth import AccessToken, AuthorizationCode
 from models.chat import ChatMessage, ChatSession
 
 
+class LLMProvider(ABC):
+    """
+    Abstract base class for pluggable LLM provider adapters.
+
+    Implementations wrap a specific LangChain chat-model backend (Groq,
+    OpenAI, Anthropic, Google, Ollama, LM Studio, …) behind a uniform
+    interface so the agent core never imports provider-specific packages
+    directly.
+    """
+
+    @property
+    @abstractmethod
+    def provider_name(self) -> str:
+        """Human-readable provider identifier (e.g. 'groq', 'openai')."""
+
+    @property
+    @abstractmethod
+    def default_model(self) -> str:
+        """Default model name used when none is specified by the caller."""
+
+    @property
+    @abstractmethod
+    def available_models(self) -> List[str]:
+        """Ordered list of model identifiers supported by this provider."""
+
+    @abstractmethod
+    def is_configured(self) -> bool:
+        """Return True if required credentials / endpoints are present."""
+
+    @abstractmethod
+    def get_chat_model(
+        self,
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        streaming: bool = True,
+        **kwargs: Any,
+    ):
+        """
+        Instantiate and return a LangChain ``BaseChatModel`` for this provider.
+
+        Args:
+            model: Model name; defaults to ``default_model`` when omitted.
+            temperature: Sampling temperature (0.0–1.0).
+            max_tokens: Maximum tokens to generate per response.
+            streaming: Whether to enable token-level streaming.
+            **kwargs: Additional provider-specific keyword arguments.
+
+        Returns:
+            A configured ``BaseChatModel`` instance ready for use.
+        """
+
+
 class MCPClient(ABC):
     """Abstract base class for MCP server client connections."""
     

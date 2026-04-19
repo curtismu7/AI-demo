@@ -18,10 +18,10 @@
     <mxCell id="12" value="&lt;b&gt;PingOne&lt;/b&gt;&lt;br&gt;auth.pingone.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="440" y="86" width="160" height="50" as="geometry"/>
     </mxCell>
-    <mxCell id="13" value="Authorization Code + PKCE&lt;br&gt;scope: openid profile banking:agent:invoke" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="11" target="12" parent="1">
+    <mxCell id="13" value="Authorization Code + PKCE&lt;br&gt;scope: openid profile banking:ai:agent" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="11" target="12" parent="1">
       <mxGeometry relative="1" as="geometry"/>
     </mxCell>
-    <mxCell id="14" value="&lt;b&gt;TOKEN 1 — Subject Token&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot; style=&quot;font-size:10px&quot;&gt;{&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;sub&quot;: &quot;&amp;lt;user-id&amp;gt;&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;aud&quot;: [&quot;https://ai-agent.pingdemo.com&quot;],&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;scope&quot;: &quot;openid profile banking:agent:invoke&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;may_act&quot;: { &quot;sub&quot;: &quot;&amp;lt;PINGONE_CORE_CLIENT_ID&amp;gt;&quot; }&lt;br&gt;}&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+    <mxCell id="14" value="&lt;b&gt;TOKEN 1 — Subject Token&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot; style=&quot;font-size:10px&quot;&gt;{&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;sub&quot;: &quot;&amp;lt;user-id&amp;gt;&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;aud&quot;: [&quot;https://ai-agent.pingdemo.com&quot;],&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;scope&quot;: &quot;openid profile banking:ai:agent&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;may_act&quot;: { &quot;sub&quot;: &quot;&amp;lt;PINGONE_ADMIN_CLIENT_ID&amp;gt;&quot; }&lt;br&gt;}&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="640" y="56" width="640" height="110" as="geometry"/>
     </mxCell>
 
@@ -29,7 +29,7 @@
     <mxCell id="20" value="② Token Exchange #1 — RFC 8693" style="text;html=1;rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
       <mxGeometry x="20" y="220" width="240" height="22" as="geometry"/>
     </mxCell>
-    <mxCell id="21" value="&lt;b&gt;Banking App Server&lt;/b&gt;&lt;br&gt;(BFF / PINGONE_CORE_CLIENT_ID)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+    <mxCell id="21" value="&lt;b&gt;Banking App Server&lt;/b&gt;&lt;br&gt;(BFF / PINGONE_ADMIN_CLIENT_ID)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="20" y="250" width="200" height="50" as="geometry"/>
     </mxCell>
     <mxCell id="22" value="&lt;b&gt;PingOne&lt;/b&gt;&lt;br&gt;Token endpoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;" vertex="1" parent="1">
@@ -38,7 +38,7 @@
     <mxCell id="23" value="grant_type=token-exchange&lt;br&gt;subject_token=Token1   audience=mcp-server.pingdemo.com" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="21" target="22" parent="1">
       <mxGeometry relative="1" as="geometry"/>
     </mxCell>
-    <mxCell id="24" value="&lt;b&gt;TOKEN 2 — MCP Token&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot; style=&quot;font-size:10px&quot;&gt;{&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;sub&quot;: &quot;&amp;lt;user-id&amp;gt;&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;aud&quot;: [&quot;https://mcp-server.pingdemo.com&quot;],&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;scope&quot;: &quot;banking:accounts:read banking:transactions:read banking:transactions:write&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;act&quot;: { &quot;sub&quot;: &quot;&amp;lt;PINGONE_CORE_CLIENT_ID&amp;gt;&quot; }&lt;br&gt;}&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+    <mxCell id="24" value="&lt;b&gt;TOKEN 2 — MCP Token&lt;/b&gt;&lt;br&gt;&lt;font face=&quot;Courier New&quot; style=&quot;font-size:10px&quot;&gt;{&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;sub&quot;: &quot;&amp;lt;user-id&amp;gt;&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;aud&quot;: [&quot;https://mcp-server.pingdemo.com&quot;],&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;scope&quot;: &quot;banking:general:read banking:general:write banking:ai:agent&quot;,&lt;br&gt;&amp;nbsp;&amp;nbsp;&quot;act&quot;: { &quot;sub&quot;: &quot;&amp;lt;PINGONE_ADMIN_CLIENT_ID&amp;gt;&quot; }&lt;br&gt;}&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="640" y="220" width="640" height="110" as="geometry"/>
     </mxCell>
 

@@ -2132,12 +2132,40 @@ router.get('/exchange-1token-401-flow', async (req, res) => {
             'Authorization': `Bearer ${token}`
           }
         };
+
+        let resolved = false;
         const request = transport.request(options, (response) => {
           let body = '';
           response.on('data', (chunk) => { body += chunk; });
-          response.on('end', () => resolve({ status: response.statusCode, body }));
+          response.on('end', () => {
+            if (!resolved) {
+              resolved = true;
+              resolve({ status: response.statusCode, body });
+            }
+          });
         });
-        request.on('error', (err) => resolve({ status: 0, body: err.message }));
+
+        // S-05 Fix: Add 10-second timeout to prevent indefinite hangs
+        const timeoutHandle = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            request.destroy();
+            resolve({ status: 0, body: 'MCP probe timeout (10s) — server did not respond' });
+          }
+        }, 10000);
+
+        request.on('error', (err) => {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeoutHandle);
+            resolve({ status: 0, body: err.message });
+          }
+        });
+
+        request.on('close', () => {
+          clearTimeout(timeoutHandle);
+        });
+
         request.write(payload);
         request.end();
       });

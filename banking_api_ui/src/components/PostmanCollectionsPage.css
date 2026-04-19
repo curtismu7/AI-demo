@@ -136,6 +136,12 @@
   border: 1px solid #bbf7d0;
 }
 
+.postman-card__badge--optional {
+  background: #e0f2fe;
+  color: #075985;
+  border: 1px solid #bae6fd;
+}
+
 .postman-card__description {
   color: #999999;
   line-height: 1.6;

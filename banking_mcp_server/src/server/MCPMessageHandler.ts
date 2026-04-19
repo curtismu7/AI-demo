@@ -209,11 +209,15 @@ export class MCPMessageHandler {
       // Get available banking tools
       const bankingTools = this.toolProvider.getAvailableTools();
       
-      // Convert to MCP tool definitions
-      const mcpTools: ToolDefinition[] = bankingTools.map(tool => ({
+      // Convert to MCP tool definitions.
+      // NOTE: readOnly is preserved for backward compatibility with existing clients.
+      const mcpTools = bankingTools.map(tool => ({
         name: tool.name,
+        title: tool.title,
         description: tool.description,
         inputSchema: tool.inputSchema,
+        icons: tool.icons,
+        annotations: tool.annotations,
         requiresUserAuth: tool.requiresUserAuth,
         requiredScopes: tool.requiredScopes,
         readOnly: tool.readOnly,
@@ -222,7 +226,7 @@ export class MCPMessageHandler {
       return {
         id: message.id ?? 'unknown',
         result: {
-          tools: mcpTools,
+          tools: mcpTools as unknown as ToolDefinition[],
           nextCursor: message.params?.cursor ? undefined : undefined // No pagination for now
         }
       };

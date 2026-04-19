@@ -44,7 +44,7 @@
     </mxCell>
 
     <!-- PingOne issues Subject Token -->
-    <mxCell id="step1-token" value="&lt;b&gt;Subject Token&lt;/b&gt;&#xa;sub: user-id&#xa;aud: bff-client-id&#xa;scope: banking:agent:invoke&#xa;may_act: {sub: AI_AGENT_CLIENT_ID}" style="rounded=1;arcSize=10;fillColor=#bfdbfe;strokeColor=#2563eb;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-user">
+    <mxCell id="step1-token" value="&lt;b&gt;Subject Token&lt;/b&gt;&#xa;sub: user-id&#xa;aud: banking_enduser&#xa;scope: banking:ai:agent&#xa;may_act: {sub: PINGONE_AI_AGENT_CLIENT_ID}" style="rounded=1;arcSize=10;fillColor=#bfdbfe;strokeColor=#2563eb;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-user">
       <mxGeometry x="230" y="30" width="240" height="75" as="geometry" />
     </mxCell>
 
@@ -78,7 +78,7 @@
     </mxCell>
 
     <!-- MCP Token box -->
-    <mxCell id="mcp-token-1ex" value="&lt;b&gt;MCP Token (1-Exchange)&lt;/b&gt;&#xa;sub: user-id&#xa;aud: https://mcp-server&#xa;scope: banking:agent:invoke&#xa;act: {sub: bff-client-id}" style="rounded=1;arcSize=10;fillColor=#86efac;strokeColor=#16a34a;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-bff">
+    <mxCell id="mcp-token-1ex" value="&lt;b&gt;MCP Token (1-Exchange)&lt;/b&gt;&#xa;sub: user-id&#xa;aud: https://mcp-server&#xa;scope: banking:ai:agent&#xa;act: {sub: PINGONE_ADMIN_CLIENT_ID}" style="rounded=1;arcSize=10;fillColor=#86efac;strokeColor=#16a34a;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-bff">
       <mxGeometry x="890" y="30" width="230" height="80" as="geometry" />
     </mxCell>
 
@@ -114,7 +114,7 @@
     </mxCell>
 
     <!-- Agent Exchanged Token -->
-    <mxCell id="agent-ex-token" value="&lt;b&gt;Agent Exchanged Token&lt;/b&gt;&#xa;sub: user-id&#xa;aud: https://mcp-server&#xa;act: {sub: AI_AGENT_CLIENT_ID}" style="rounded=1;arcSize=10;fillColor=#fde047;strokeColor=#ca8a04;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-agent">
+    <mxCell id="agent-ex-token" value="&lt;b&gt;Agent Exchanged Token&lt;/b&gt;&#xa;sub: user-id&#xa;aud: https://mcp-server&#xa;act: {sub: PINGONE_AI_AGENT_CLIENT_ID}" style="rounded=1;arcSize=10;fillColor=#fde047;strokeColor=#ca8a04;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-agent">
       <mxGeometry x="430" y="30" width="240" height="70" as="geometry" />
     </mxCell>
 
@@ -142,7 +142,7 @@
     </mxCell>
 
     <!-- MCP Exchanged Token (2-exchange) -->
-    <mxCell id="mcp-ex-token-2ex" value="&lt;b&gt;MCP Exchanged Token (2-Exchange)&lt;/b&gt;&#xa;sub: user-id&#xa;aud: https://resource-server&#xa;scope: banking:general:read&#xa;act: {sub: MCP_CLIENT_ID,&#xa;      act: {sub: AI_AGENT_CLIENT_ID}}" style="rounded=1;arcSize=10;fillColor=#fdba74;strokeColor=#ea580c;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-mcp">
+    <mxCell id="mcp-ex-token-2ex" value="&lt;b&gt;MCP Exchanged Token (2-Exchange)&lt;/b&gt;&#xa;sub: user-id&#xa;aud: https://resource-server&#xa;scope: banking:general:read banking:general:write banking:ai:agent&#xa;act: {sub: MCP_CLIENT_ID,&#xa;      act: {sub: PINGONE_AI_AGENT_CLIENT_ID}}" style="rounded=1;arcSize=10;fillColor=#fdba74;strokeColor=#ea580c;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-mcp">
       <mxGeometry x="1030" y="25" width="280" height="90" as="geometry" />
     </mxCell>
 
@@ -202,7 +202,7 @@
     <!-- ============================================================ -->
     <!-- PAZ annotation on 2-exchange -->
     <!-- ============================================================ -->
-    <mxCell id="paz-box" value="PAZ (PingOne Authorize)&#xa;validates act chain:&#xa;✓ aud == resource-server URI&#xa;✓ act.sub == MCP_CLIENT_ID&#xa;✓ act.act.sub == AI_AGENT_CLIENT_ID" style="rounded=1;arcSize=10;fillColor=#fce7f3;strokeColor=#ec4899;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-rs">
+    <mxCell id="paz-box" value="PAZ (PingOne Authorize)&#xa;validates act chain:&#xa;✓ aud == resource-server URI&#xa;✓ act.sub == MCP_CLIENT_ID&#xa;✓ act.act.sub == PINGONE_AI_AGENT_CLIENT_ID" style="rounded=1;arcSize=10;fillColor=#fce7f3;strokeColor=#ec4899;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="lane-rs">
       <mxGeometry x="1330" y="25" width="210" height="80" as="geometry" />
     </mxCell>
 

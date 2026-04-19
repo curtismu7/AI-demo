@@ -97,20 +97,40 @@ PingOne returns a narrow-scoped token for the MCP server audience. The user's br
 
 ### 2-Exchange path (`ff_two_exchange_delegation=true`)
 
-Exchange 1 — Client Credentials for agent actor token:
+Four steps — two CC acquisitions, two RFC 8693 exchanges:
+
+Step 1 — AI Agent gets CC actor token (audience = Agent Gateway):
 ```
-POST /token  grant_type=client_credentials  client_id=<agent_app>
-→ agent_actor_token { sub: "agent_client_id" }
+POST /token  grant_type=client_credentials  client_id=<ai_agent_client_id>
+→ agent_actor_token { aud: agent_gateway_uri }
 ```
 
-Exchange 2 — Subject + actor → MCP token with `act` claim:
+Step 2 — Exchange #1: Subject + Agent actor → Agent Exchanged Token (intermediate):
 ```
-POST /token
+POST /token  [authenticated as ai_agent_client_id]
 grant_type = urn:ietf:params:oauth:grant-type:token-exchange
-subject_token = <user_access_token>
-actor_token = <agent_actor_token>
-audience = <mcp_resource_uri>
-→ MCP token { sub: user_id, aud: mcp_uri, act: { sub: "agent_client_id" } }
+subject_token = <user_access_token>       # may_act.sub must equal ai_agent_client_id
+actor_token   = <agent_actor_token>
+audience      = <intermediate_audience>
+→ agent_exchanged_token { sub: user_id, act: { sub: "ai_agent_client_id" } }
+```
+
+Step 3 — MCP Service gets CC actor token (audience = MCP Gateway):
+```
+POST /token  grant_type=client_credentials  client_id=<mcp_exchanger_client_id>
+→ mcp_actor_token { aud: mcp_gateway_uri }
+```
+
+Step 4 — Exchange #2: Agent Exchanged Token + MCP actor → Final MCP Token:
+```
+POST /token  [authenticated as mcp_exchanger_client_id]
+grant_type = urn:ietf:params:oauth:grant-type:token-exchange
+subject_token = <agent_exchanged_token>   # act.sub must equal mcp_exchanger_client_id
+actor_token   = <mcp_actor_token>
+audience      = <mcp_resource_uri>
+→ final_token { sub: user_id, aud: mcp_uri,
+                act: { sub: "mcp_exchanger_client_id",
+                       act: { sub: "ai_agent_client_id" } } }  # when PingOne SpEL supports nesting
 ```
 
 ### Key files
@@ -134,7 +154,7 @@ Agent tool call → Token Chain → expand **Token Exchange** event → see subj
 
 **Spec:** https://datatracker.ietf.org/doc/html/rfc8693#section-4.1  
 **Status:** ✅ Full  
-**Compliance notes:** `may_act` is injected by PingOne via attribute mapping on the resource server. `act` claim appears in 2-exchange MCP tokens. Delegation chain is not nested beyond one level (no recursive `act.act`).
+**Compliance notes:** `may_act` is injected by PingOne via attribute mapping on the resource server. `act` claim appears in 2-exchange MCP tokens. The 2-exchange path produces a two-level nested `act` chain (`act.sub` = MCP Service, `act.act.sub` = AI Agent). Full nesting is verified when PingOne SpEL evaluates correctly; a fallback single-level `act.sub` is recorded when SpEL cannot construct the nested object (see `docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e`).
 
 ### How it's implemented
 
@@ -202,7 +222,7 @@ Config → `use_par=true` → login → OAuth Log → see `POST /par` request be
 - Returns: `resource`, `authorization_servers[]`, `bearer_methods_supported`, `scopes_supported`, `jwks_uri`
 - CORS: `Access-Control-Allow-Origin: *`
 - Cache: `Cache-Control: public, max-age=3600`
-- File: `banking_api_server/routes/rfc9728.js` (or `server.js` inline handler)
+- File: `banking_api_server/routes/protectedResourceMetadata.js` (mounted at both `/.well-known/oauth-protected-resource` and `/api/rfc9728` in `server.js`)
 
 ### What you can demo
 
@@ -300,7 +320,7 @@ Admin → MCP Inspector → see `tools/list` live over WebSocket → initiate a 
 | FAPI 2.0 full compliance | Missing mTLS + DPoP | PKCE + PAR + PingOne hardening covers most controls |
 | RFC 9396 RAR | Education panel only — not wired to authorization requests | Planned |
 | Push CIBA | Poll mode only | PingOne push requires DaVinci flow |
-| Recursive `act` nesting | Single-level delegation only | Sufficient for demo; spec allows arbitrary depth |
+| Recursive `act` nesting | Two-level nesting (`act.act.sub`) attempted in 2-exchange path; full nesting depends on PingOne SpEL support — fallback to single-level `act.sub` when SpEL cannot construct nested object | See `docs/PINGONE_MAY_ACT_TWO_TOKEN_EXCHANGES.md §1e` |
 
 ---
 

@@ -8,6 +8,7 @@ import { BankingAuthenticationManager } from '../../src/auth/BankingAuthenticati
 import { BankingSessionManager } from '../../src/storage/BankingSessionManager';
 import { Session, UserTokens, AuthErrorCodes, AuthenticationError } from '../../src/interfaces/auth';
 import { Account, Transaction, TransactionResponse, BankingAPIError } from '../../src/interfaces/banking';
+import { tokenCache } from '../../src/services/tokenCacheService';
 
 // Mock dependencies
 jest.mock('../../src/banking/BankingAPIClient');
@@ -657,14 +658,132 @@ describe('BankingToolProvider', () => {
 
       it('should handle unknown errors', async () => {
         mockSuccessfulAuthorization();
-        
+
         mockApiClient.getMyAccounts.mockRejectedValue('string error');
 
         const result = await provider.executeTool('get_my_accounts', {}, mockSession);
-        
+
         expect(result.success).toBe(false);
         expect(result.error).toBe('Unexpected error: Unknown error');
       });
+    });
+  });
+
+  // ─── Token Exchange: D-01, D-02, D-04 ────────────────────────────────────────
+
+  describe('token exchange (D-01, D-02, D-04)', () => {
+    /** Produce a minimal unsigned JWT string with the given payload. */
+    function makeJwt(payload: object): string {
+      const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+      const body   = Buffer.from(JSON.stringify(payload)).toString('base64url');
+      return `${header}.${body}.`;
+    }
+
+    let providerWithExchange: BankingToolProvider;
+    let mockExchangeService: { exchangeToken: jest.Mock };
+
+    beforeEach(() => {
+      mockExchangeService = { exchangeToken: jest.fn() };
+      providerWithExchange = new BankingToolProvider(
+        mockApiClient,
+        mockAuthManager,
+        mockSessionManager,
+        mockExchangeService as any,
+      );
+      mockSuccessfulAuthorization();
+      // Clear the module-level token cache singleton so tests don't share cached entries.
+      tokenCache.clear();
+    });
+
+    afterEach(() => {
+      tokenCache.clear();
+    });
+
+    it('D-04: hard fails when exchange throws; raw user token never forwarded', async () => {
+      mockExchangeService.exchangeToken.mockRejectedValue(new Error('PingOne unavailable'));
+
+      const result = await providerWithExchange.executeTool('get_my_accounts', {}, mockSession);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Token exchange failed for tool 'get_my_accounts'");
+      expect(result.error).toContain('PingOne unavailable');
+      expect(mockApiClient.getMyAccounts).not.toHaveBeenCalled();
+    });
+
+    it('D-02: hard fails when exchanged token has no act claim', async () => {
+      const noActToken = makeJwt({ sub: 'user123', aud: 'mcp', exp: Math.floor(Date.now() / 1000) + 3600 });
+      mockExchangeService.exchangeToken.mockResolvedValue({
+        access_token: noActToken,
+        expires_in: 3600,
+        token_type: 'Bearer',
+      });
+
+      const result = await providerWithExchange.executeTool('get_my_accounts', {}, mockSession);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('act claim');
+      expect(mockApiClient.getMyAccounts).not.toHaveBeenCalled();
+    });
+
+    it('D-02: hard fails when act claim is present but empty (no sub or client_id)', async () => {
+      const emptyActToken = makeJwt({ sub: 'user123', act: {} });
+      mockExchangeService.exchangeToken.mockResolvedValue({
+        access_token: emptyActToken,
+        expires_in: 3600,
+        token_type: 'Bearer',
+      });
+
+      const result = await providerWithExchange.executeTool('get_my_accounts', {}, mockSession);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('act claim');
+      expect(mockApiClient.getMyAccounts).not.toHaveBeenCalled();
+    });
+
+    it('D-01: uses delegated exchange token instead of raw user token for API call', async () => {
+      const delegationToken = makeJwt({
+        sub: 'user123',
+        act: { sub: 'mcp-server', client_id: 'mcp-client-id' },
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      mockExchangeService.exchangeToken.mockResolvedValue({
+        access_token: delegationToken,
+        expires_in: 3600,
+        token_type: 'Bearer',
+      });
+      mockApiClient.getMyAccounts.mockResolvedValue([]);
+
+      const result = await providerWithExchange.executeTool('get_my_accounts', {}, mockSession);
+
+      expect(result.success).toBe(true);
+      // Must use the exchanged delegation token, never the raw session token
+      expect(mockApiClient.getMyAccounts).toHaveBeenCalledWith(delegationToken);
+      expect(mockApiClient.getMyAccounts).not.toHaveBeenCalledWith('valid_access_token');
+    });
+
+    it('D-01: caches exchanged token; PingOne called only once across two tool calls', async () => {
+      // Use a distinct session ID so this test's cache entry is isolated from others
+      const cacheSession = { ...mockSession, sessionId: 'session_cache_isolation_test' };
+      const delegationToken = makeJwt({
+        sub: 'user123',
+        act: { sub: 'mcp-server', client_id: 'mcp-client-id' },
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      mockExchangeService.exchangeToken.mockResolvedValue({
+        access_token: delegationToken,
+        expires_in: 3600,
+        token_type: 'Bearer',
+      });
+      mockApiClient.getMyAccounts.mockResolvedValue([]);
+
+      await providerWithExchange.executeTool('get_my_accounts', {}, cacheSession);
+      await providerWithExchange.executeTool('get_my_accounts', {}, cacheSession);
+
+      // Exchange called once; second call served from cache
+      expect(mockExchangeService.exchangeToken).toHaveBeenCalledTimes(1);
+      expect(mockApiClient.getMyAccounts).toHaveBeenCalledTimes(2);
+      expect(mockApiClient.getMyAccounts).toHaveBeenNthCalledWith(1, delegationToken);
+      expect(mockApiClient.getMyAccounts).toHaveBeenNthCalledWith(2, delegationToken);
     });
   });
 });

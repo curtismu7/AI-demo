@@ -13,6 +13,7 @@
 const { StateGraph } = require('@langchain/langgraph');
 const { ChatGroq } = require('@langchain/groq');
 const { ChatAnthropic } = require('@langchain/anthropic');
+const { ChatOpenAI } = require('@langchain/openai');
 const { ToolMessage } = require('@langchain/core/messages');
 const { Annotation } = require('@langchain/langgraph');
 const { createMcpToolRegistry } = require('../utils/mcpToolRegistry');
@@ -143,11 +144,21 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     let model;
     let provider;
     
+    // Default model names per provider — matched with langchainConfig.js and llm_factory.py
+    const PROVIDER_DEFAULT_MODELS = {
+      groq: 'llama-3.3-70b-versatile',
+      anthropic: 'claude-haiku-4-20250414',
+      openai: 'gpt-4o-mini',
+      google: 'gemini-2.0-flash',
+      lmstudio: 'default',
+    };
+
     // Build provider config map from session + environment
     const groqKey = langchainConfig?.groq_api_key || process.env.GROQ_API_KEY;
     const anthropicKey = langchainConfig?.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
     const openaiKey = langchainConfig?.openai_api_key || process.env.OPENAI_API_KEY;
     const googleKey = langchainConfig?.google_api_key || process.env.GOOGLE_API_KEY;
+    const lmStudioBase = langchainConfig?.lmstudio_base_url || process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1';
     
     // Determine fallback order
     const fallbackOrder = langchainConfig?.fallback_order || ['groq', 'anthropic'];
@@ -157,10 +168,17 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     let initialized = false;
     for (const providerName of fallbackOrder) {
       try {
+        // Resolve model: prefer an explicitly set model that belongs to this provider;
+        // otherwise fall back to the per-provider default so cross-provider model names
+        // don't leak (e.g. a Groq model name is never sent to OpenAI).
+        const requestedModel = langchainConfig?.model;
+        const defaultModel = PROVIDER_DEFAULT_MODELS[providerName];
+        const resolvedModel = requestedModel || defaultModel;
+
         if (providerName === 'groq' && groqKey) {
           console.log('[agentBuilder] Initializing Groq LLM');
           model = new ChatGroq({
-            model: langchainConfig?.model || 'llama-3.3-70b-versatile',
+            model: resolvedModel,
             temperature: 0.7,
             maxTokens: 1024,
             apiKey: groqKey,
@@ -168,12 +186,12 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
           });
           provider = 'groq';
           initialized = true;
-          console.log(`[agentBuilder] LLM initialized: groq/${langchainConfig?.model || 'llama-3.3-70b-versatile'}`);
+          console.log(`[agentBuilder] LLM initialized: groq/${resolvedModel}`);
           break;
         } else if (providerName === 'anthropic' && anthropicKey) {
           console.log('[agentBuilder] Initializing Anthropic LLM');
           model = new ChatAnthropic({
-            model: langchainConfig?.model || 'claude-haiku-4-20250414',
+            model: resolvedModel,
             temperature: 0.7,
             maxTokens: 1024,
             apiKey: anthropicKey,
@@ -181,20 +199,44 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
           });
           provider = 'anthropic';
           initialized = true;
-          console.log(`[agentBuilder] LLM initialized: anthropic/${langchainConfig?.model || 'claude-haiku-4-20250414'}`);
+          console.log(`[agentBuilder] LLM initialized: anthropic/${resolvedModel}`);
           break;
         } else if (providerName === 'openai' && openaiKey) {
           console.log('[agentBuilder] Initializing OpenAI LLM');
-          // Note: OpenAI uses ChatOpenAI from @langchain/openai
-          console.warn('[agentBuilder] OpenAI not yet integrated in this version');
-          continue;
+          model = new ChatOpenAI({
+            model: resolvedModel,
+            temperature: 0.7,
+            maxTokens: 1024,
+            streaming: true,
+            apiKey: openaiKey,
+            timeout: 30000,
+          });
+          provider = 'openai';
+          initialized = true;
+          console.log(`[agentBuilder] LLM initialized: openai/${resolvedModel}`);
+          break;
+        } else if (providerName === 'lmstudio') {
+          // LM Studio exposes an OpenAI-compatible endpoint — no API key required
+          console.log('[agentBuilder] Initializing LM Studio LLM (OpenAI-compatible)');
+          const lmModel = resolvedModel === 'default' ? '' : resolvedModel;
+          model = new ChatOpenAI({
+            model: lmModel,
+            temperature: 0.7,
+            maxTokens: 1024,
+            streaming: true,
+            apiKey: 'lm-studio',
+            configuration: { baseURL: lmStudioBase },
+            timeout: 30000,
+          });
+          provider = 'lmstudio';
+          initialized = true;
+          console.log(`[agentBuilder] LLM initialized: lmstudio@${lmStudioBase}`);
+          break;
         } else if (providerName === 'google' && googleKey) {
-          console.log('[agentBuilder] Initializing Google LLM');
-          // Note: Google uses ChatGoogleGenerativeAI from @langchain/google-genai
-          console.warn('[agentBuilder] Google not yet integrated in this version');
+          console.log('[agentBuilder] Google Generative AI not yet available in this runtime (missing @langchain/google-genai)');
           continue;
         } else if (providerName === 'ollama') {
-          console.log('[agentBuilder] Ollama local not yet integrated as LLM provider');
+          console.log('[agentBuilder] Ollama not yet available in this runtime (missing @langchain/ollama)');
           continue;
         }
       } catch (err) {
@@ -234,9 +276,6 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
     if (!initialized || !model) {
       console.error('[agentBuilder] ERROR: No LLM provider could be initialized');
       throw new Error('No LLM provider available. Configure at least one provider in /llm-config or set GROQ_API_KEY/ANTHROPIC_API_KEY.');
-    }
-
-
     }
 
     // Define the agent node with tools

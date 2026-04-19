@@ -7,6 +7,10 @@
  * Phase 156: Improve security error messages
  */
 
+function describeActChainShape() {
+  return 'RFC 8693 delegation chains use act.sub for the current actor and nest prior actors under act.act.sub when PingOne preserves the full chain.';
+}
+
 /**
  * Token type mismatch — user token used where agent token required (or vice versa)
  *
@@ -81,14 +85,16 @@ function buildAudienceMismatch(tokenAud, expectedAud) {
  */
 function buildDelegationClaimMissing(context) {
   return {
-    what_failed: `Delegation claim ('act') missing from token. Endpoint ${context.method || ''} ${context.endpoint || ''} requires proof of delegation.`,
-    why: 'For AI agents to act on behalf of users, the token must contain an \'act\' claim (RFC 8693 §4.1) proving that delegation was authorized. Direct API calls with a plain agent token don\'t carry this proof.',
-    teaching: 'The \'act\' claim is a cryptographic proof of delegation. It says "User X authorized Agent Y to perform actions on their behalf." Without it, the system cannot verify that the user actually consented to the agent\'s actions.',
-    fix: 'Use the Token Exchange flow (RFC 8693) to obtain an agent token with the \'act\' claim. Exchange the user\'s access token for a delegated agent token via the /oauth2/token endpoint with grant_type=urn:ietf:params:oauth:grant-type:token-exchange.',
+    what_failed: `Delegation claim ('act') missing from token. Endpoint ${context.method || 'unknown'} ${context.endpoint || 'unknown'} requires a verifiable delegation chain.`,
+    why: 'For AI agents to act on behalf of users, the exchanged token must contain an RFC 8693 act claim proving that delegation was authorized. Without it, the server cannot distinguish a valid on-behalf-of chain from an untrusted direct call.',
+    teaching: 'The act claim is a signed chain-of-custody. In the simple path, act.sub identifies the current actor. In the full 2-exchange path, prior actors can be nested under act.act.sub. Missing act means the chain never started.',
+    fix: 'Use RFC 8693 token exchange to obtain a delegated token before calling this endpoint. For 1-exchange, expect act.sub for the current exchanger. For the full 2-exchange path, PingOne may preserve a nested chain such as act.sub=<MCP service> and act.act.sub=<AI agent>.',
     tokens_involved: {
       endpoint: context.endpoint,
       method: context.method,
       act_claim: 'missing',
+      expected_claim_shape: 'act.sub (current actor), optional act.act.sub (prior actor)',
+      chain_note: describeActChainShape(),
     },
   };
 }
@@ -179,6 +185,7 @@ function buildPolicyViolation(policy, reason) {
 }
 
 module.exports = {
+  describeActChainShape,
   buildTokenTypeMismatch,
   buildScopeViolation,
   buildAudienceMismatch,

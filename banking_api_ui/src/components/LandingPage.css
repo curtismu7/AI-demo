@@ -267,6 +267,18 @@
   transform: translateY(-2px);
 }
 
+.hero-cta-explore {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.hero-cta-explore:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: white;
+  transform: translateY(-2px);
+}
+
 /* ========== Feature Grid ========== */
 
 .landing-features {

@@ -8,7 +8,7 @@
  * - TOKEN_TYPE_MISMATCH: User vs Agent token type validation failed
  * - SCOPE_VIOLATION: Required scopes missing from token
  * - AUDIENCE_MISMATCH: Token audience != endpoint audience
- * - DELEGATION_CLAIM_MISSING: No 'act' claim in delegation token
+ * - DELEGATION_CLAIM_MISSING: No RFC 8693 'act' delegation chain in token
  * - TOKEN_EXPIRED: Token expiration time has passed
  * - RATE_LIMIT_EXCEEDED: Too many requests in time window
  * - INSUFFICIENT_PERMISSIONS: User role doesn't have permission
@@ -36,7 +36,7 @@ const STATUS_CODE_MAP = {
   TOKEN_TYPE_MISMATCH: 403,           // Forbidden - wrong token type
   SCOPE_VIOLATION: 403,                // Forbidden - insufficient scope
   AUDIENCE_MISMATCH: 401,              // Unauthorized - wrong audience
-  DELEGATION_CLAIM_MISSING: 403,       // Forbidden - no delegation proof
+  DELEGATION_CLAIM_MISSING: 401,       // Unauthorized - missing RFC 8693 delegation proof (authentication failure)
   TOKEN_EXPIRED: 401,                  // Unauthorized - expired
   RATE_LIMIT_EXCEEDED: 429,            // Too Many Requests
   INSUFFICIENT_PERMISSIONS: 403,       // Forbidden - insufficient role

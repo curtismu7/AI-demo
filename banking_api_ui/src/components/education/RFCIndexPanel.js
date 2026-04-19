@@ -21,6 +21,7 @@ const ROWS = [
   { rfc: 'RFC 9700', name: 'OAuth 2.0 Security Best Current Practice', app: 'Security baseline — PKCE required, implicit flow banned, redirect URI exact match', href: 'https://datatracker.ietf.org/doc/html/rfc9700', panel: null, tab: null },
   { rfc: 'OIDC Core 1.0', name: 'OpenID Connect', app: 'openid scope, /userinfo', href: 'https://openid.net/specs/openid-connect-core-1_0.html', panel: EDU.LOGIN_FLOW, tab: 'what' },
   { rfc: 'OIDC CIBA', name: 'Backchannel Auth', app: 'bc-authorize, poll /token; OOB email or push', href: 'https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html', panel: null, tab: null, ciba: true },
+  { rfc: 'Pattern', name: 'Computer Use Agent (CUA)', app: 'Screenshot -> analyze -> act loop vs structured MCP tool-use', href: 'https://en.wikipedia.org/wiki/Intelligent_agent', panel: EDU.CUA, tab: 'what' },
   { rfc: 'Pattern', name: 'Human-in-the-loop (HITL)', app: 'High-value consent; agent lockout if declined', href: 'https://en.wikipedia.org/wiki/Human-in-the-loop', panel: EDU.HUMAN_IN_LOOP, tab: 'what' },
 ];
 

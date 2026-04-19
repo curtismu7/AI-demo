@@ -23,6 +23,7 @@ export const EDUCATION_COMMANDS = [
   { id: 'authorize-policy-mcp', label: 'Authorize: policy & AI/MCP security', panel: EDU.PINGONE_AUTHORIZE, tab: 'policy-mcp' },
   { id: 'authorize-mcp-config', label: 'Authorize: MCP PingOne & env', panel: EDU.PINGONE_AUTHORIZE, tab: 'mcp-config' },
   { id: 'cimd', label: 'OAuth: Client ID Metadata Doc (CIMD)', panel: EDU.CIMD, tab: 'what' },
+  { id: 'cua', label: 'Computer Use Agent (CUA)', panel: EDU.CUA, tab: 'what' },
   { id: 'human-in-loop', label: 'Human-in-the-loop (agent)', panel: EDU.HUMAN_IN_LOOP, tab: 'what' },
   { id: 'best-practices', label: '⭐ AI Agent Best Practices', panel: EDU.BEST_PRACTICES, tab: 'overview' },
   { id: 'par', label: 'PAR (RFC 9126)', panel: EDU.PAR, tab: 'what' },

@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/OAuthTokenDisplayPage.jsx
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+import bffAxios from '../services/bffAxios';
 import { fetchEnrichedUserInfo } from '../services/userInfoService';
 import './OAuthTokenDisplayPage.css';
 
@@ -70,6 +70,11 @@ function ClaimRow({ label, value, glossary }) {
   );
 }
 
+function hasAnyField(data) {
+  if (!data) return false;
+  return Object.values(data).some((v) => v !== undefined && v !== null);
+}
+
 export default function OAuthTokenDisplayPage() {
   const [userStatus, setUserStatus] = useState(null);
   const [tokenClaims, setTokenClaims] = useState(null);
@@ -77,14 +82,15 @@ export default function OAuthTokenDisplayPage() {
   const [error, setError] = useState(null);
   const [enrichedInfo, setEnrichedInfo] = useState(null);
   const [enrichedLoading, setEnrichedLoading] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(null);
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchTokenData() {
       try {
-        // Fetch user status (who is logged in)
-        const statusRes = await axios.get('/api/auth/oauth/user/status');
+        const statusRes = await bffAxios.get('/api/auth/oauth/user/status');
         if (!cancelled) setUserStatus(statusRes.data);
 
         if (!statusRes.data.authenticated) {
@@ -95,10 +101,8 @@ export default function OAuthTokenDisplayPage() {
           return;
         }
 
-        // Fetch session token preview (decoded claims from BFF)
-        const previewRes = await axios.get('/api/tokens/session-preview');
+        const previewRes = await bffAxios.get('/api/tokens/session-preview');
         const events = previewRes.data?.tokenEvents || [];
-        // Find the user token event (has decoded claims)
         const userTokenEvent = events.find(
           (e) => e.decoded && (e.id === 'user-token' || e.label?.toLowerCase().includes('user'))
         );
@@ -107,7 +111,7 @@ export default function OAuthTokenDisplayPage() {
           setLoading(false);
         }
       } catch (err) {
-        console.error('OAuthTokenDisplayPage fetch error:', err);
+        console.error('OAuthTokenDisplayPage fetch error:', err.message);
         if (!cancelled) {
           setError('fetch_failed');
           setLoading(false);
@@ -129,6 +133,20 @@ export default function OAuthTokenDisplayPage() {
       .finally(() => { if (!cancelled) setEnrichedLoading(false); });
     return () => { cancelled = true; };
   }, [userStatus?.authenticated]);
+
+  // Refresh time-remaining display every 30s
+  const expTs = tokenClaims?.payload?.exp;
+  const updateTimeRemaining = useCallback(() => {
+    setTimeRemaining(calculateTimeRemaining(expTs));
+    setIsExpired(expTs ? (expTs * 1000 < Date.now()) : false);
+  }, [expTs]);
+
+  useEffect(() => {
+    if (!expTs) return;
+    updateTimeRemaining();
+    const interval = setInterval(updateTimeRemaining, 30000);
+    return () => clearInterval(interval);
+  }, [expTs, updateTimeRemaining]);
 
   if (loading) {
     return (
@@ -171,8 +189,6 @@ export default function OAuthTokenDisplayPage() {
   const payload = tokenClaims?.payload || {};
   const header = tokenClaims?.header || {};
   const user = userStatus?.user;
-  const isExpired = payload.exp ? (payload.exp * 1000 < Date.now()) : false;
-  const timeRemaining = calculateTimeRemaining(payload.exp);
 
   return (
     <div className="otdp-container">
@@ -249,33 +265,34 @@ export default function OAuthTokenDisplayPage() {
         </div>
       </div>
 
-
-      {/* PingOne Userinfo Enrichment */}
-      <div className="otdp-card">
-        <div className="otdp-card-title">📋 Account Information <span className="otdp-source-label">(from PingOne userinfo)</span></div>
-        {enrichedLoading && <div className="otdp-muted">Loading PingOne profile…</div>}
-        {enrichedInfo?.error && (
-          <div className="otdp-muted">⚠ {enrichedInfo.error} — showing token data only</div>
-        )}
-        {enrichedInfo?.data && (
-          <>
-            <ClaimRow label="Email" value={enrichedInfo.data.email} />
-            <ClaimRow label="Email Verified" value={enrichedInfo.data.email_verified != null ? String(enrichedInfo.data.email_verified) : null} />
-            <ClaimRow label="Given Name" value={enrichedInfo.data.given_name} />
-            <ClaimRow label="Family Name" value={enrichedInfo.data.family_name} />
-            <ClaimRow label="Phone" value={enrichedInfo.data.phone_number || enrichedInfo.data.phone} />
-            <ClaimRow label="Locale" value={enrichedInfo.data.locale} />
-            <ClaimRow label="Address" value={enrichedInfo.data.address?.formatted} />
-            <ClaimRow label="Updated At" value={enrichedInfo.data.updated_at ? formatTimestamp(enrichedInfo.data.updated_at) : null} />
-            {enrichedInfo.timestamp && (
-              <div className="otdp-claim-row">
-                <span className="otdp-claim-key otdp-muted">Fetched</span>
-                <span className="otdp-claim-value otdp-muted">{new Date(enrichedInfo.timestamp).toLocaleString()}</span>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {/* PingOne Userinfo Enrichment — only render card if loading, error, or has data */}
+      {(enrichedLoading || enrichedInfo?.error || hasAnyField(enrichedInfo?.data)) && (
+        <div className="otdp-card">
+          <div className="otdp-card-title">📋 Account Information <span className="otdp-source-label">(from PingOne userinfo)</span></div>
+          {enrichedLoading && <div className="otdp-muted">Loading PingOne profile…</div>}
+          {enrichedInfo?.error && (
+            <div className="otdp-muted">⚠ {enrichedInfo.error} — showing token data only</div>
+          )}
+          {enrichedInfo?.data && hasAnyField(enrichedInfo.data) && (
+            <>
+              <ClaimRow label="Email" value={enrichedInfo.data.email} />
+              <ClaimRow label="Email Verified" value={enrichedInfo.data.email_verified != null ? String(enrichedInfo.data.email_verified) : null} />
+              <ClaimRow label="Given Name" value={enrichedInfo.data.given_name} />
+              <ClaimRow label="Family Name" value={enrichedInfo.data.family_name} />
+              <ClaimRow label="Phone" value={enrichedInfo.data.phone_number || enrichedInfo.data.phone} />
+              <ClaimRow label="Locale" value={enrichedInfo.data.locale} />
+              <ClaimRow label="Address" value={enrichedInfo.data.address?.formatted} />
+              <ClaimRow label="Updated At" value={enrichedInfo.data.updated_at ? formatTimestamp(enrichedInfo.data.updated_at) : null} />
+              {enrichedInfo.timestamp && (
+                <div className="otdp-claim-row">
+                  <span className="otdp-claim-key otdp-muted">Fetched</span>
+                  <span className="otdp-claim-value otdp-muted">{new Date(enrichedInfo.timestamp).toLocaleString()}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Raw payload toggle */}
       {Object.keys(payload).length > 0 && (

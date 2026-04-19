@@ -42,10 +42,10 @@ const PHASE_LABELS = {
   mcp_remote_unreachable: 'MCP server unreachable',
   local_fallback_blocked_no_user: 'Local fallback blocked — no user',
   stream_end: 'Stream closed',
-  mfa_challenge_initiated: 'MFA challenge initiated — awaiting device selection',
-  mfa_challenge_completed: 'MFA step-up verified',
-  mfa_challenge_failed: 'MFA challenge failed or expired',
-  mfa_challenge_skipped: 'MFA step-up not required',
+  mfa_challenge_initiated: 'HITL — MFA challenge initiated, awaiting your manual approval',
+  mfa_challenge_completed: 'HITL approved — MFA step-up verified',
+  mfa_challenge_failed: 'HITL — MFA challenge failed or expired',
+  mfa_challenge_skipped: 'MFA step-up not required (below threshold)',
 };
 
 /** @type {{ visible: boolean, phase: string, toolName: string|null, steps: Array<{id: string, title: string, detail: string, status: FlowStepStatus}>, serverEvents: Array<{ phase: string, label: string, detail: string, t?: number }>, hint: string|null, updatedAt: number }} */
@@ -343,19 +343,19 @@ export const agentFlowDiagram = {
       {
         id: 'bff',
         title: 'BFF — MCP Inspector',
-        detail: ok ? `Discovery OK (${source})` : isMfaGate ? 'MFA step-up required before tools load' : errorMessage || 'Discovery failed',
+        detail: ok ? `Discovery OK (${source})` : isMfaGate ? 'Human-in-the-Loop (HITL) — manual approval required before tools load' : errorMessage || 'Discovery failed',
         status: ok ? 'done' : isMfaGate ? 'active' : 'error',
       },
       {
         id: 'mcp',
         title: 'MCP Server',
-        detail: ok ? 'tools/list JSON-RPC completed' : isMfaGate ? 'Waiting for MFA verification' : errorMessage || 'Unreachable or error',
+        detail: ok ? 'tools/list JSON-RPC completed' : isMfaGate ? 'Paused — waiting for your manual approval (HITL)' : errorMessage || 'Unreachable or error',
         status: ok ? 'done' : isMfaGate ? 'pending' : 'error',
       },
       ...(isMfaGate ? [{
         id: 'mfa',
-        title: 'MFA Step-up (PingOne deviceAuthentications)',
-        detail: 'User must verify identity — OTP, TOTP, passkey, or push',
+        title: 'HITL — MFA Step-up (manual approval required)',
+        detail: 'Agent paused — you must verify your identity to continue. OTP, TOTP, passkey, or push.',
         status: 'active',
       }] : []),
     ];
@@ -368,11 +368,11 @@ export const agentFlowDiagram = {
     const mfaStep = state.steps.find((s) => s.id === 'mfa');
     if (mfaStep) {
       mfaStep.status = 'active';
-      mfaStep.detail = 'Verifying identity via PingOne deviceAuthentications...';
+      mfaStep.detail = 'Verifying your identity — HITL manual approval in progress…';
     } else {
       state.steps = [
         ...state.steps,
-        { id: 'mfa', title: 'MFA Step-up (PingOne)', detail: 'Verifying identity...', status: 'active' },
+        { id: 'mfa', title: 'HITL — MFA Step-up', detail: 'Verifying your identity — manual approval in progress…', status: 'active' },
       ];
     }
     state.updatedAt = Date.now();
@@ -384,7 +384,7 @@ export const agentFlowDiagram = {
     const mfaStep = state.steps.find((s) => s.id === 'mfa');
     if (mfaStep) {
       mfaStep.status = ok ? 'done' : 'error';
-      mfaStep.detail = ok ? 'MFA verified — session step-up granted' : 'MFA failed or cancelled';
+      mfaStep.detail = ok ? 'HITL approved — identity verified, agent resuming' : 'HITL cancelled — MFA failed or user declined';
     }
     state.phase = ok ? 'running' : 'error';
     state.updatedAt = Date.now();
