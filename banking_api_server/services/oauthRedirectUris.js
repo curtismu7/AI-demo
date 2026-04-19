@@ -7,7 +7,7 @@
 
 const configStore = require('./configStore');
 const { getCanonicalPublicOrigin, OFFICIAL_DEMO_ORIGIN } = require('./vercelPublicUrl');
-const configHostnameService = require('./configHostnameService');
+const { getExplicitlyConfiguredHostnameOrNull: _getExplicitHostname } = require('./configHostnameService');
 
 /** Public hostname for this request (Vercel often sets x-forwarded-host). */
 function getPublicHost(req) {
@@ -24,13 +24,14 @@ function _sanitizeUrl(url) {
 
 /**
  * Get base hostname from runtime configuration.
- * Returns hostname (with protocol and optional port) or null if not configured.
+ * Returns hostname only when explicitly configured via admin UI or configStore;
+ * returns null when only the DEFAULT_HOSTNAME env-var fallback would be active,
+ * so that the standard PUBLIC_APP_URL / REACT_APP_CLIENT_URL resolution chain runs.
  */
 function getConfiguredHostnameOrNull() {
   try {
-    return configHostnameService.getConfiguredHostname();
+    return _getExplicitHostname();
   } catch (err) {
-    // configHostnameService may not be initialized or hostname not set
     return null;
   }
 }

@@ -99,9 +99,9 @@ function getConfiguredHostname() {
     });
   }
 
-  // Fall back to default
-  _hostnameCache = DEFAULT_HOSTNAME;
-  return _hostnameCache;
+  // Fall back to default — do NOT cache the fallback so config changes and
+  // test env-var overrides are not permanently blocked by an early call.
+  return DEFAULT_HOSTNAME;
 }
 
 /**
@@ -141,8 +141,31 @@ async function setConfiguredHostname(hostname) {
   }
 }
 
+/**
+ * Returns the hostname ONLY if it was explicitly stored in configStore or set
+ * via setConfiguredHostname(). Returns null if only the DEFAULT_HOSTNAME env-var
+ * fallback would be used (so callers can skip this layer and apply their own
+ * resolution priority).
+ *
+ * @returns {string|null}
+ */
+function getExplicitlyConfiguredHostnameOrNull() {
+  if (_hostnameCache !== null) return _hostnameCache;
+  try {
+    const stored = configStore.get(CONFIG_KEY);
+    if (stored) {
+      _hostnameCache = stored;
+      return stored;
+    }
+  } catch (error) {
+    // ignore
+  }
+  return null;
+}
+
 module.exports = {
   getConfiguredHostname,
+  getExplicitlyConfiguredHostnameOrNull,
   setConfiguredHostname,
   InvalidHostnameError,
 };
