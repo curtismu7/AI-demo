@@ -23,7 +23,7 @@ export function useFlowMilestones() {
   const updateStatus    = useCallback((id, status, more)   => storeUpdate(id, status, more),  []);
   const clearMilestones = useCallback(()                   => storeClear(),                   []);
 
-  return { milestones, addMilestone, updateMilestoneStatus: updateStatus, clearMilestones };
+  return { milestones, addMilestone, updateMilestoneStatus: updateStatus, clearMilestones, initialized: true };
 }
 
 export default useFlowMilestones;

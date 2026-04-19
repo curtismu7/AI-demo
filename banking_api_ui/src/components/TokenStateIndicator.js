@@ -90,6 +90,7 @@ export default function TokenStateIndicator({ token, resolvedIdentity, compact =
       <button
         type="button"
         className="tsi-inline"
+        aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
         title={`${typeConfig.label} — ${stateConfig.label}${expiry ? ` (expires in ${expiry})` : ''}`}
         style={{ borderLeft: `3px solid ${typeConfig.color}` }}

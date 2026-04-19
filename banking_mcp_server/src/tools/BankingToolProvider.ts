@@ -365,6 +365,20 @@ export class BankingToolProvider {
             const exchangeResponse = await this.tokenExchangeService.exchangeToken(exchangeRequest);
             token = exchangeResponse.access_token;
 
+            // D-02: Validate the returned token carries a valid act claim (RFC 8693 §2.2).
+            // The banking API requires an act claim on all agent-delegated requests. Hard-fail
+            // here rather than caching a token that will be rejected downstream.
+            const actPayload = this.decodeJwtPayload(token);
+            const act = actPayload?.act as Record<string, unknown> | undefined;
+            const actorId = typeof act?.sub === 'string' ? act.sub
+              : typeof act?.client_id === 'string' ? act.client_id : '';
+            if (!act || typeof act !== 'object' || !actorId) {
+              throw new Error(
+                `Token exchange for '${tool.name}' returned token without valid act claim. ` +
+                'RFC 8693 delegation chain not established — token missing act.sub or act.client_id.'
+              );
+            }
+
             // Cache the exchanged token
             const expiresAt = Date.now() + (exchangeResponse.expires_in * 1000);
             tokenCache.set(cacheKey, toolScopes, token, expiresAt);
@@ -924,6 +938,26 @@ export class BankingToolProvider {
       error: 'User authorization required',
       authChallenge: mcpChallenge.authChallenge
     };
+  }
+
+  /**
+   * Decode the payload of a JWT without verifying the signature.
+   *
+   * SECURITY NOTE: This is intentionally unsigned decode. The token was issued
+   * by PingOne during RFC 8693 token exchange — PingOne verified the subject
+   * and actor tokens before issuing. We only inspect claims (act, sub, scopes)
+   * here; the BFF/MCP server validated the token signature at the transport
+   * boundary before it reached this point. Do NOT use this for authorization
+   * decisions outside of claim inspection on already-authenticated tokens.
+   */
+  private decodeJwtPayload(token: string): Record<string, unknown> | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) return null;
+      return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 
   /**
