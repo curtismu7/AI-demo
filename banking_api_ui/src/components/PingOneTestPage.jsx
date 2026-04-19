@@ -1201,24 +1201,21 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
           <h2 className="pingone-test-section-title">Token Exchange Tests</h2>
           <TokenColorLegend />
           <WhatIsHappening
-            title="RFC 8693 Token Exchange — Delegated Authorization for MCP"
+            title="RFC 8693 Token Exchange — Delegated Authorization for MCP (all flows 401-triggered)"
             steps={[
-              'Token Exchange (RFC 8693) swaps one token for a narrower-scoped token without re-authenticating the user',
-              'Subject Token (RFC 8693 §2.1) = the user access token (T1). It carries a may_act claim authorizing the agent client',
-              '1-exchange (subject-only, RFC 8693 §3.1): Single POST — T1 (user) as subject_token, no actor_token. Audience = MCP Server RS. Result: MCP token scoped to banking:read/write/mcp:invoke. No act claim.',
-              '2-exchange (dual-token, RFC 8693 §2.2 delegation): Single POST — T1 (user) as subject_token + Agent CC as actor_token. Audience = MCP Gateway RS. Result: MCP gateway token with act claim showing agent identity.',
-              'Legacy two-step chain: TWO POST calls. Step 1: T1 → Agent token (AI Agent App, Agent Gateway audience). Step 2: T1 + Agent token → MCP token. Both user and agent identities in final token.',
-              'Key difference: 2-exchange uses a pre-existing agent CC token and is the canonical delegated gateway path. The legacy two-step chain is an educational example only.',
-              'ID Token Exchange (simple): Uses id_token (not access_token) as subject_token_type. No actor token. Feature-flagged on server (ff_id_token_exchange).',
-              'Phase 186 ID-token exchange (dual ID+Actor): ID token as subject + Agent CC as actor \u2192 MCP Gateway token with act claim. Combines identity assertion (ID token) with agent delegation (CC token). Also FF-gated (ff_id_token_exchange).',
-              'The MCP server validates act.client_id to confirm the agent acted on behalf of the user',
+              'Token Exchange (RFC 8693) swaps one token for a narrower-scoped token without re-authenticating the user.',
+              'All three flows below are triggered the same way: the MCP server returns 401 → BFF performs the exchange → retries with the MCP token.',
+              '1) 2-Exchange (User Token + Agent CC): User access token as subject_token + AI Agent client-credentials token as actor_token → MCP Gateway token with nested act claim proving agent identity.',
+              '2) 2-Exchange (ID Token + Agent CC): User ID token as subject_token (identity assertion) + Agent CC as actor_token → MCP Gateway token with act claim. Combines OIDC identity with agent delegation. Requires ff_id_token_exchange feature flag.',
+              '3) Simple Exchange (Access Token → MCP Token): User access token as subject_token only (no actor). Single RFC 8693 POST → MCP-scoped token. No act claim.',
+              'Key difference from #1 to #3: #1 proves which agent acted (act claim appears in MCP token); #3 is simpler but lacks agent provenance.',
+              'The MCP server validates act.client_id (flows 1 & 2) to confirm the correct agent client acted on behalf of the user.',
             ]}
             apiFlow={[
-              { method: 'POST', endpoint: '/as/token (grant_type=urn:ietf:params:oauth:grant-type:token-exchange)', note: 'RFC 8693 — all exchanges' },
-              { method: 'POST', endpoint: '/as/token subject=T1, audience=mcp-server', note: '1-exchange: simple delegation' },
-              { method: 'POST', endpoint: '/as/token subject=T1, actor=agentCC, audience=mcp-gateway', note: '2-exchange: dual-token with act' },
-              { method: 'POST', endpoint: '/as/token subject=T1, audience=agent-gateway (step 1)', note: 'Legacy two-step: step 1' },
-              { method: 'POST', endpoint: '/as/token subject=T1, actor=agentToken, audience=mcp-server (step 2)', note: 'Legacy two-step: step 2' },
+              { method: 'POST', endpoint: '/as/token (grant_type=urn:ietf:params:oauth:grant-type:token-exchange)', note: 'RFC 8693 — all three flows' },
+              { method: 'POST', endpoint: '/as/token subject=accessToken, actor=agentCC, audience=mcp-gateway', note: 'Flow #1: 2-exchange user token + agent CC' },
+              { method: 'POST', endpoint: '/as/token subject=idToken, actor=agentCC, audience=mcp-gateway', note: 'Flow #2: 2-exchange ID token + agent CC' },
+              { method: 'POST', endpoint: '/as/token subject=accessToken, audience=mcp-server', note: 'Flow #3: simple access token exchange' },
             ]}
           />
           {authzTokenStatus === 'failed' && authzTokenError && authzTokenError.toLowerCase().includes('log in') && (
@@ -1332,44 +1329,14 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             )}
           </div>
           <div className="pingone-test-grid">
+            {/* Column 1: 2-Exchange — User Token + Agent CC (401-triggered) */}
             <div className="test-card-col">
               {(() => {
                 const t1Label = loginType === 'admin' ? 'Admin Token (T1)' : loginType === 'ai_agent' ? 'AI Agent Token (T1)' : 'User Token (T1)';
                 return (
                   <>
                     <TestCard
-                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token → MCP Token`}
-                      status={exchange1Status}
-                      error={exchange1Error}
-                      onTest={testExchange1}
-                      onFix={exchange1Status === 'failed' ? () => fixIssue('single-exchange') : undefined}
-                      config={TEST_CONFIG.exchange1}
-                    />
-                    <DecodedTokenPanel decoded={exchange1Decoded} label="MCP Token (1-exchange)" />
-                    {(exchange1SubjectDecoded || exchange1ActorDecoded) && (
-                      <>
-                        <DecodedTokenPanel decoded={exchange1SubjectDecoded} label={`Subject: ${t1Label}`} />
-                        <DecodedTokenPanel decoded={exchange1ActorDecoded} label="Actor: MCP Token Exchanger (CC)" />
-                      </>
-                    )}
-                    <TokenLineageDiff
-                      fromDecoded={authzDecoded}
-                      toDecoded={exchange1Decoded}
-                      fromLabel={t1Label}
-                      toLabel="MCP Token (1-exchange)"
-                      expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
-                    />
-                  </>
-                );
-              })()}
-            </div>
-            <div className="test-card-col">
-              {(() => {
-                const t1Label = loginType === 'admin' ? 'Admin Token (T1)' : loginType === 'ai_agent' ? 'AI Agent Token (T1)' : 'User Token (T1)';
-                return (
-                  <>
-                    <TestCard
-                      title={`${loginType === 'admin' ? 'Admin' : 'User'} Token + Agent CC → MCP Gateway Token (2-exchange)`}
+                      title={`2-Exchange: ${loginType === 'admin' ? 'Admin' : 'User'} Token + Agent CC → MCP Gateway (MCP 401-triggered)`}
                       status={exchange2Status}
                       error={exchange2Error}
                       onTest={testExchange2}
@@ -1380,7 +1347,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                     {(exchange2SubjectDecoded || exchange2ActorDecoded) && (
                       <>
                         <DecodedTokenPanel decoded={exchange2SubjectDecoded} label={`Subject: ${t1Label}`} />
-                        <DecodedTokenPanel decoded={exchange2ActorDecoded} label="Actor: Agent Token (T0)" />
+                        <DecodedTokenPanel decoded={exchange2ActorDecoded} label="Actor: Agent CC Token" />
                       </>
                     )}
                     <TokenLineageDiff
@@ -1394,9 +1361,49 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 );
               })()}
             </div>
+            {/* Column 2: 2-Exchange — ID Token + Agent CC (401-triggered) */}
             <div className="test-card-col">
               <TestCard
-                title="1-Token Exchange (MCP 401 → Auth → Exchange)"
+                title="2-Exchange: ID Token + Agent CC → MCP Gateway (MCP 401-triggered)"
+                status={exchange186Status}
+                error={exchange186Error}
+                onTest={testExchange186}
+                config={{
+                  appName: 'Super Banking MCP Token Exchanger',
+                  appType: 'AI_AGENT',
+                  requiredScopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'],
+                  audience: 'https://mcp-server.pingdemo.com',
+                  spel: 'MCP server returns 401 → BFF uses ID token (subject) + Agent CC token (actor) → RFC 8693 dual exchange → MCP Gateway token with act claim',
+                }}
+              />
+              {!ffIdTokenExchange && (
+                <div className="pingone-test-ff-warning" style={{ padding: '8px 12px', margin: '8px 0', background: '#fff8e1', borderLeft: '3px solid #ffc107', borderRadius: '4px', fontSize: '0.85rem' }}>
+                  ⚠️ <strong>ff_id_token_exchange</strong> is OFF — enable in Feature Flags to run this test.
+                </div>
+              )}
+              {exchange186Decoded && (
+                <DecodedTokenPanel decoded={exchange186Decoded} label="MCP Gateway Token (ID Token + Agent CC)" />
+              )}
+              {exchange186SubjectDecoded && (
+                <DecodedTokenPanel decoded={exchange186SubjectDecoded} label="Subject: User ID Token" />
+              )}
+              {exchange186ActorDecoded && (
+                <DecodedTokenPanel decoded={exchange186ActorDecoded} label="Actor: Agent CC Token" />
+              )}
+              {exchange186Decoded && exchange186SubjectDecoded && (
+                <TokenLineageDiff
+                  fromDecoded={exchange186SubjectDecoded}
+                  toDecoded={exchange186Decoded}
+                  fromLabel="User ID Token (Subject)"
+                  toLabel="MCP Gateway Token (ID Token 2-Exchange)"
+                  expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
+                />
+              )}
+            </div>
+            {/* Column 3: Simple 1-Exchange — Access Token → MCP Token (401-triggered) */}
+            <div className="test-card-col">
+              <TestCard
+                title="Simple Exchange: Access Token → MCP Token (MCP 401-triggered)"
                 status={exchange401Status}
                 error={exchange401Error}
                 onTest={testExchange401}
@@ -1405,7 +1412,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   appType: 'AI_AGENT',
                   requiredScopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'],
                   audience: 'https://mcp-server.pingdemo.com',
-                  spel: 'Phase 187: User access token sent to MCP → 401 → agent fetches CC token → RFC 8693 1-token exchange → retry MCP with MCP token',
+                  spel: 'User access token sent to MCP → MCP returns 401 → agent fetches CC token → RFC 8693 access token exchange → retry MCP with MCP token',
                 }}
               />
               {exchange401Steps.length > 0 && (
@@ -1424,80 +1431,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 <DecodedTokenPanel decoded={exchange401AgentDecoded} label="Agent Token (MCP Exchanger CC)" />
               )}
               {exchange401Decoded && (
-                <DecodedTokenPanel decoded={exchange401Decoded} label="MCP Token (1-Token Exchange Result)" />
-              )}
-            </div>
-            {/* ID Token Exchange — always visible */}
-            <div className="test-card-col">
-              <TestCard
-                title="ID Token → MCP Token"
-                status={exchangeIdTokenStatus}
-                error={exchangeIdTokenError}
-                onTest={testExchangeIdToken}
-                config={{
-                  appName: 'Super Banking MCP Token Exchanger',
-                  appType: 'AI_AGENT',
-                  requiredScopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'],
-                  audience: 'https://mcp-server.pingdemo.com',
-                  spel: 'ID token (not access token) → MCP token',
-                }}
-              />
-              {!ffIdTokenExchange && (
-                <div className="pingone-test-ff-warning" style={{ padding: '8px 12px', margin: '8px 0', background: '#fff8e1', borderLeft: '3px solid #ffc107', borderRadius: '4px', fontSize: '0.85rem' }}>
-                  ⚠️ <strong>ff_id_token_exchange</strong> is OFF — enable in Feature Flags to run this test. The server will return 400 if the flag is disabled.
-                </div>
-              )}
-              <DecodedTokenPanel decoded={exchangeIdTokenDecoded} label="MCP Token (ID Token Exchange)" />
-              {exchangeIdTokenSubjectDecoded && (
-                <DecodedTokenPanel decoded={exchangeIdTokenSubjectDecoded} label="Subject: User ID Token" />
-              )}
-              {exchangeIdTokenDecoded && exchangeIdTokenSubjectDecoded && (
-                <TokenLineageDiff
-                  fromDecoded={exchangeIdTokenSubjectDecoded}
-                  toDecoded={exchangeIdTokenDecoded}
-                  fromLabel="User ID Token (Subject)"
-                  toLabel="MCP Token (ID Token Exchange)"
-                  expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
-                />
-              )}
-            </div>
-            {/* Phase 186 ID-token exchange: dual ID+Actor → MCP Gateway */}
-            <div className="test-card-col">
-              <TestCard
-                title="Phase 186 ID-token exchange (Dual: ID + Agent CC)"
-                status={exchange186Status}
-                error={exchange186Error}
-                onTest={testExchange186}
-                config={{
-                  appName: 'Super Banking MCP Token Exchanger',
-                  appType: 'AI_AGENT',
-                  requiredScopes: ['banking:read', 'banking:write', 'banking:mcp:invoke'],
-                  audience: 'https://mcp-server.pingdemo.com',
-                  spel: 'Phase 186: User ID token (subject) + Agent CC token (actor) → RFC 8693 dual exchange → MCP Gateway token with act claim',
-                }}
-              />
-              {!ffIdTokenExchange && (
-                <div className="pingone-test-ff-warning" style={{ padding: '8px 12px', margin: '8px 0', background: '#fff8e1', borderLeft: '3px solid #ffc107', borderRadius: '4px', fontSize: '0.85rem' }}>
-                  ⚠️ <strong>ff_id_token_exchange</strong> is OFF — enable in Feature Flags to run this test.
-                </div>
-              )}
-              {exchange186Decoded && (
-                <DecodedTokenPanel decoded={exchange186Decoded} label="MCP Gateway Token (Phase 186 ID-token exchange)" />
-              )}
-              {exchange186SubjectDecoded && (
-                <DecodedTokenPanel decoded={exchange186SubjectDecoded} label="Subject: User ID Token" />
-              )}
-              {exchange186ActorDecoded && (
-                <DecodedTokenPanel decoded={exchange186ActorDecoded} label="Actor: Agent CC Token" />
-              )}
-              {exchange186Decoded && exchange186SubjectDecoded && (
-                <TokenLineageDiff
-                  fromDecoded={exchange186SubjectDecoded}
-                  toDecoded={exchange186Decoded}
-                  fromLabel="User ID Token (Subject)"
-                  toLabel="MCP Gateway Token (Phase 186)"
-                  expectedChanges={['aud', 'scope', 'client_id', 'act', 'may_act', 'sid', 'auth_time', 'amr', 'sub']}
-                />
+                <DecodedTokenPanel decoded={exchange401Decoded} label="MCP Token (Simple Exchange Result)" />
               )}
             </div>
           </div>
