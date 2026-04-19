@@ -60,17 +60,24 @@ const REFERENCE_REDIRECT_SETS = [
 
 /**
  * Frontend origin for redirects after login / config (no /api prefix).
+ * REACT_APP_CLIENT_URL is the SPA origin (e.g. :4000). PUBLIC_APP_URL is the BFF
+ * origin (e.g. :3001). These differ in run-bank.sh / pingdemo setups, so we must
+ * prefer REACT_APP_CLIENT_URL here — not getCanonicalPublicOrigin() which returns
+ * PUBLIC_APP_URL first.
  */
 function getFrontendOrigin(req) {
   const fromStore = configStore.getEffective('frontend_url');
   if (fromStore) return _sanitizeUrl(fromStore);
+  // Prefer REACT_APP_CLIENT_URL (explicit SPA origin) over PUBLIC_APP_URL (BFF origin).
+  const clientUrl = _sanitizeUrl(process.env.REACT_APP_CLIENT_URL || '');
+  if (clientUrl) return clientUrl;
   const canonical = getCanonicalPublicOrigin();
   if (canonical) return canonical;
   if (process.env.VERCEL) {
     const proto = req.protocol === 'http' ? 'http' : 'https';
     return `${proto}://${getPublicHost(req)}`;
   }
-  return _sanitizeUrl(process.env.REACT_APP_CLIENT_URL || process.env.PUBLIC_APP_URL || 'http://localhost:4000');
+  return _sanitizeUrl(process.env.PUBLIC_APP_URL || 'http://localhost:4000');
 }
 
 /**
