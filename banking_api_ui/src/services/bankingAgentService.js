@@ -14,6 +14,7 @@ import { appendTokenEvents } from './apiTrafficStore';
 import { appendMcpCall } from './mcpCallStore';
 import { agentFlowDiagram } from './agentFlowDiagramService';
 import { openMcpFlowSse } from './mcpFlowSseClient';
+import { addMilestone, updateMilestoneStatus } from './milestonesStore';
 
 // ─── Session refresh (RFC 6749 §6) — same endpoints as Backend-for-Frontend (BFF) auto-refresh ───────
 
@@ -62,6 +63,12 @@ export async function callMcpTool(tool, params = {}) {
 
   console.log('[callMcpTool] Tool validation passed');
   
+  // ── Phase 194: OIDC flow timeline milestones ───────────────────────────────
+  const _oidcId = addMilestone('OIDC Authentication', 'oidc_login', {});
+  updateMilestoneStatus(_oidcId, 'done');
+  const _exchangeId = addMilestone('Token Exchange', 'exchange_start', {});
+  updateMilestoneStatus(_exchangeId, 'active');
+  // ────────────────────────────────────────────────────────────────────────────
   try {
     agentFlowDiagram.startMcpToolCall(tool);
     console.log('[callMcpTool] Flow diagram started');
@@ -86,6 +93,11 @@ export async function callMcpTool(tool, params = {}) {
       : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
   console.log('[callMcpTool] flowTraceId:', flowTraceId);
 
+  // ── Phase 194: exchange done, tool call begins ──────────────────────────────
+  updateMilestoneStatus(_exchangeId, 'done');
+  const _toolId = addMilestone('MCP Tool Call', 'mcp_tool_call', { toolName: tool });
+  updateMilestoneStatus(_toolId, 'active');
+  // ────────────────────────────────────────────────────────────────────────────
   const closeSse = openMcpFlowSse(flowTraceId, (data) => {
     try {
       agentFlowDiagram.applyServerEvent(data);
@@ -249,6 +261,9 @@ export async function callMcpTool(tool, params = {}) {
     }
     appendMcpCall(tool, response.status, Date.now() - t0, data.result);
     appendTokenEvents(tool, data.tokenEvents || []);
+    // Phase 194: mark tool milestone done
+    updateMilestoneStatus(_toolId, 'done');
+    addMilestone('Flow Complete', 'flow_complete', {});
     agentFlowDiagram.completeMcpToolCall({
       toolName: tool,
       tokenEvents: data.tokenEvents || [],
@@ -260,6 +275,8 @@ export async function callMcpTool(tool, params = {}) {
       tokenEvents: data.tokenEvents || [],
     };
   } catch (e) {
+    // Phase 194: mark milestone error
+    updateMilestoneStatus(_toolId, 'error', { errorMsg: e.message || 'Tool call failed' });
     // HTTP error path already completed the diagram before throw
     if (e.statusCode == null) {
       agentFlowDiagram.completeMcpToolCall({

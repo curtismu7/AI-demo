@@ -12,8 +12,10 @@
 
 import React from 'react';
 import { useFlowMilestones } from '../context/useFlowMilestones';
-import { useTokenChain } from '../context/TokenChainContext';
+
 import '../styles/OidcFlowTimeline.css';
+import TokenStateIndicator from './TokenStateIndicator';
+import BackendOperationIndicator from './BackendOperationIndicator';
 
 const MILESTONE_CONFIG = {
   oidc_login: {
@@ -90,8 +92,8 @@ function MilestoneRow({ milestone, index, total }) {
     <div className="oidt-milestone-row" key={milestone.id}>
       {/* Timeline dot and line */}
       <div className="oidt-timeline-left">
-        <div 
-          className="oidt-timeline-dot" 
+        <div
+          className="oidt-timeline-dot"
           style={{ backgroundColor: config.color }}
           title={config.label}
         >
@@ -111,13 +113,19 @@ function MilestoneRow({ milestone, index, total }) {
             )}
             {config.label}
           </h4>
-          <time className="oidt-milestone-time">
-            {new Date(milestone.timestamp).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            })}
-          </time>
+          <div className="oidt-milestone-header-right">
+            {/* Token state indicator (Plan 02) */}
+            {milestone.details?.token && (
+              <TokenStateIndicator token={milestone.details.token} compact />
+            )}
+            <time className="oidt-milestone-time">
+              {new Date(milestone.timestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+              })}
+            </time>
+          </div>
         </div>
 
         {/* Additional details */}
@@ -143,11 +151,20 @@ function MilestoneRow({ milestone, index, total }) {
 
         {/* Status badge */}
         <div className="oidt-milestone-status">
-          <StatusBadge 
-            status={milestone.status} 
+          <StatusBadge
+            status={milestone.status}
             error={milestone.details?.errorMsg}
           />
         </div>
+
+        {/* Backend operations (Plan 03) — shown under mcp_tool_call milestones */}
+        {milestone.type === 'mcp_tool_call' && milestone.details?.backendOperations?.length > 0 && (
+          <div className="oidt-backend-ops">
+            {milestone.details.backendOperations.map((op) => (
+              <BackendOperationIndicator key={op.id || op.endpoint} operation={op} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

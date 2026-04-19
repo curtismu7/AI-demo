@@ -8,6 +8,7 @@ import { useEducationUIOptional } from '../context/EducationUIContext';
 import { useTokenChainOptional } from '../context/TokenChainContext';
 import TokenExchangeFlowDiagram from './TokenExchangeFlowDiagram';
 import './AgentFlowDiagramPanel.css';
+import OidcFlowTimeline from './OidcFlowTimeline';
 
 function statusBadge(status) {
   const labels = { pending: 'Waiting', active: 'In progress', done: 'Done', error: 'Issue' };
@@ -312,6 +313,10 @@ export default function AgentFlowDiagramPanel() {
             </ul>
           </div>
         )}
+        {/* OAuth Flow Timeline — shows OIDC login → exchange → tool call milestones */}
+        <div className="afd-timeline-section">
+          <OidcFlowTimeline />
+        </div>
       </div>
 
       <div className="afd-resize-grip" onMouseDown={handleResizeStart} title="Resize" aria-hidden />

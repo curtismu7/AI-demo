@@ -349,3 +349,98 @@
     border-color: #4da6df;
   }
 }
+
+/* ─── TokenStateIndicator styles ───────────────────────────────────────────── */
+.tsi-root { position: relative; display: inline-flex; flex-direction: column; }
+.tsi-inline {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 7px; border: 1px solid #e0e0e0; border-radius: 4px;
+  background: #fff; cursor: pointer; font-size: 11px; line-height: 1;
+  transition: border-color 0.2s;
+}
+.tsi-inline:hover { border-color: #a0a0a0; }
+.tsi-abbr { font-weight: 700; }
+.tsi-state-icon { font-size: 12px; }
+.tsi-state-label { color: #666; }
+.tsi-spin { animation: oidt-spin 1s linear infinite; }
+.tsi-state--active   { color: #2563eb; }
+.tsi-state--exchanged { color: #d97706; }
+.tsi-state--used     { color: #16a34a; }
+.tsi-state--failed   { color: #dc2626; }
+.tsi-state--acquiring { color: #6b7280; }
+.tsi-details {
+  position: absolute; top: 100%; left: 0; z-index: 50; min-width: 220px;
+  background: #fff; border: 1px solid #d0d0d0; border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12); padding: 10px 12px; margin-top: 4px;
+  font-size: 12px;
+}
+.tsi-detail-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: flex-start; }
+.tsi-detail-header { align-items: center; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+.tsi-detail-key { color: #888; min-width: 54px; font-weight: 500; }
+.tsi-detail-val { color: #222; word-break: break-all; }
+.tsi-detail-val code, code.tsi-detail-val { font-family: 'Monaco','Menlo',monospace; background: #f5f5f5; padding: 1px 3px; border-radius: 3px; }
+.tsi-expired { color: #dc2626; font-weight: 600; }
+.tsi-badge { padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; background: #e0e8ff; color: #1e3a8a; }
+.tsi-close { position: absolute; top: 6px; right: 8px; background: none; border: none; cursor: pointer; font-size: 16px; color: #999; }
+.tsi-close:hover { color: #333; }
+
+/* ─── BackendOperationIndicator styles ─────────────────────────────────────── */
+.boi-root { display: flex; flex-direction: column; margin: 4px 0 4px 48px; }
+.boi-compact-row {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border: 1px solid #e5e7eb; border-radius: 4px;
+  background: #f9fafb; cursor: pointer; font-size: 11px; text-align: left;
+  transition: background 0.15s;
+}
+.boi-compact-row:hover { background: #f0f4ff; }
+.boi-icon { flex-shrink: 0; }
+.boi-method { font-weight: 700; font-family: 'Monaco','Menlo',monospace; flex-shrink: 0; }
+.boi-endpoint { font-family: 'Monaco','Menlo',monospace; color: #374151; }
+.boi-status-icon { font-weight: 700; }
+.boi-duration { color: #6b7280; margin-left: 4px; }
+.boi-spin { animation: oidt-spin 1s linear infinite; }
+.boi-success .boi-status-icon { color: #16a34a; }
+.boi-error   .boi-status-icon { color: #dc2626; }
+.boi-in-progress .boi-status-icon { color: #2563eb; }
+.boi-details {
+  position: relative; margin-top: 4px; padding: 10px 12px;
+  background: #fff; border: 1px solid #d0d0d0; border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08); font-size: 12px;
+}
+.boi-detail-row { display: flex; gap: 8px; margin-bottom: 4px; align-items: flex-start; }
+.boi-detail-key { color: #6b7280; min-width: 80px; font-weight: 500; flex-shrink: 0; }
+.boi-detail-val { color: #111; word-break: break-all; }
+code.boi-detail-val { font-family: 'Monaco','Menlo',monospace; background: #f5f5f5; padding: 1px 4px; border-radius: 3px; }
+.boi-response-body { font-size: 11px; opacity: 0.85; }
+.boi-detail-error .boi-detail-val { color: #dc2626; font-weight: 600; }
+.boi-http-2xx { color: #16a34a; font-weight: 700; }
+.boi-http-4xx { color: #d97706; font-weight: 700; }
+.boi-http-5xx { color: #dc2626; font-weight: 700; }
+.boi-close { position: absolute; top: 6px; right: 8px; background: none; border: none; cursor: pointer; font-size: 16px; color: #999; }
+.boi-close:hover { color: #333; }
+
+/* ─── Header right slot (timestamp + TokenStateIndicator) ───────────────────── */
+.oidt-milestone-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ─── Backend ops container under mcp_tool_call milestones ─────────────────── */
+.oidt-backend-ops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+/* ─── AgentFlowDiagramPanel timeline section ────────────────────────────────── */
+.afd-timeline-section {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+  margin-top: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
