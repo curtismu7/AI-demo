@@ -17,6 +17,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **OAuth Token Inspector — Collapsible sections** — All 6 sections (Identity, Authorization, Token Validity, Provider, Account Information, Raw JWT Claims) are now collapsible. Users can expand/collapse by clicking section headers, reducing visual clutter. Raw JWT section starts collapsed by default. Sections animate smoothly on toggle.
+- **OAuth Token Inspector — Improved JSON Viewer** — Raw JWT Claims section now has wider scrollbar (12px), custom styling with hover effects, max-height 400px with vertical scroll, and monospace font family. Better readability for large token payloads.
 - **MCP Tools List Modal — Pop-out window for tool catalog** — Clicking "MCP Tools" chip now displays all available MCP banking tools in a dedicated pop-out modal instead of inline chat text. Features searchable tool list, input parameter badges, descriptions, and scrollable layout optimized for long tool catalogs. Replaces plain-text tool listing with interactive discovery UI.
 - **PingOne Test Page — AssetTable tabbed entity explorer (Phase 139)** — Replaced single matrix view with 6-tab explorer: Apps, Resources, Scopes, Users, SPEL/Token Policies, Grants Matrix. Backend now fetches `tokenPolicies` and per-app `grants` via new `getTokenPolicies()` + `getApplicationGrants()` management service methods; all data surfaced in `verify-assets` response.
 - **PingOne Test Page — WhatIsHappening educational panels (Phase 139)** — Collapsible green info panels on Token Acquisition and Token Exchange sections show step-by-step OAuth flow descriptions and colour-coded API call rows (GET/POST) explaining the Authorization Code + PKCE and RFC 8693 Token Exchange flows.

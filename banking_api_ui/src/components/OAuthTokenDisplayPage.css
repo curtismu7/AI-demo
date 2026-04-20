@@ -107,6 +107,50 @@
   border-bottom: 1px solid #f1f5f9;
 }
 
+/* ── Collapsible card header ── */
+.otdp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.25rem -1.25rem 0 -1.25rem;
+  margin: -1.25rem -1.25rem 0 -1.25rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  transition: background-color 0.15s;
+}
+
+.otdp-card-header:hover {
+  background-color: #f8fafc;
+}
+
+.otdp-toggle-icon {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.otdp-card-content {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .otdp-claim-row {
   display: flex;
   align-items: flex-start;
@@ -169,7 +213,7 @@
 }
 
 .otdp-raw-section {
-  margin-top: 0;
+  margin-top: 1rem;
 }
 
 /* ── No-session: MCP flow start card ── */
@@ -327,18 +371,6 @@
 }
 
 
-.otdp-raw-toggle {
-  cursor: pointer;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #475569;
-  padding: 0.25rem 0;
-}
-
-.otdp-raw-toggle:hover {
-  color: #1e293b;
-}
-
 .otdp-raw-json {
   margin-top: 0.75rem;
   background: #f8fafc;
@@ -348,7 +380,32 @@
   font-size: 0.75rem;
   line-height: 1.6;
   overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
   color: #334155;
+  font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+/* ── Wider scrollbar for JSON section ── */
+.otdp-raw-json::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.otdp-raw-json::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 0.5rem;
+}
+
+.otdp-raw-json::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 0.5rem;
+  border: 2px solid #f8fafc;
+  transition: background 0.2s;
+}
+
+.otdp-raw-json::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* PingOne Enrichment source label */
