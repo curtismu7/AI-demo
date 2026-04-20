@@ -572,6 +572,13 @@ echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━
 echo ""
 print_status_table
 echo ""
+echo -e "${MAGENTA}${BOLD}  ┌─ PORTS ─────────────────────────────────────────────────────┐${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  🔌  Banking API Server        :${API_PORT}  ${YELLOW}(HTTPS)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  🌐  Banking UI (React)        :${UI_PORT}  ${YELLOW}(HTTPS)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  🤖  Banking MCP Server        :8080  ${YELLOW}(WebSocket)${RESET}"
+echo -e "${MAGENTA}${BOLD}  │${RESET}  🔗  LangChain Agent           :8888  ${YELLOW}(HTTP/HTTPS)${RESET}"
+echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
+echo ""
 echo -e "${GREEN}${BOLD}  ┌─ URLS ──────────────────────────────────────────────────────┐${RESET}"
 echo -e "${GREEN}${BOLD}  │${RESET}  🌐  App            ${YELLOW}${BOLD}${CLIENT_URL}${RESET}"
 echo -e "${GREEN}${BOLD}  │${RESET}  ⚙️   Admin Config   ${YELLOW}${BOLD}${CLIENT_URL}/config${RESET}"
@@ -588,7 +595,7 @@ echo -e "${MAGENTA}${BOLD}  └────────────────�
 echo ""
 echo -e "${WHITE}${BOLD}  ┌─ MANAGE ────────────────────────────────────────────────────┐${RESET}"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh status${RESET}   — live service health check"
-echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh tail${RESET}     — pick log (${DIM}./run-bank.sh tail all${RESET} for all)"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh tail${RESET}     — pick log (or ${DIM}./run-bank.sh tail all${RESET})"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-bank.sh stop${RESET}     — stop all services"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_API}${RESET}"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_UI}${RESET}"
@@ -598,13 +605,8 @@ echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 
-# Optional: offer to tail a log when run interactively (stdin is a TTY)
-if [[ -t 0 ]]; then
-  read -r -p "Tail a log now? Enter 1–5, all, or Enter to skip: " _tail_choice || true
-  case "${_tail_choice}" in
-    1|2|3|4|5|all|ALL|All) tail_bank_logs "${_tail_choice}" ;;
-    "") ;;
-    *) echo "Skipped (use: ./run-bank.sh tail)" ;;
-  esac
-fi
+# Default to showing all logs (auto-tail all)
+echo -e "${CYAN}Starting live log view (all services)…${RESET}"
+echo "Press Ctrl+C to stop tailing logs (services will keep running)."
 echo ""
+tail_bank_logs "all"

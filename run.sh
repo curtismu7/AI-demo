@@ -455,6 +455,13 @@ cmd_start() {
   echo -e "${GREEN}${BOLD}  │${NC}  👤  User Login     ${YELLOW}${BOLD}${API_URL}/api/auth/oauth/user/login${NC}"
   echo -e "${GREEN}${BOLD}  └─────────────────────────────────────────────────────────────┘${NC}"
   echo ""
+  echo -e "${MAGENTA}${BOLD}  ┌─ PORTS ────────────────────────────────────────────────────┐${NC}"
+  echo -e "${MAGENTA}${BOLD}  │${NC}  🔧  Banking API Server        :${API_PORT}  ${YELLOW}(HTTPS)${NC}"
+  echo -e "${MAGENTA}${BOLD}  │${NC}  🌐  Banking UI (React)        :${UI_PORT}  ${YELLOW}(HTTPS)${NC}"
+  echo -e "${MAGENTA}${BOLD}  │${NC}  🤖  Banking MCP Server        :${MCP_PORT}  ${YELLOW}(WebSocket)${NC}"
+  echo -e "${MAGENTA}${BOLD}  │${NC}  🔗  LangChain Agent           :${AGENT_PORT}  ${YELLOW}(HTTP/HTTPS)${NC}"
+  echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${NC}"
+  echo ""
   echo -e "${WHITE}${BOLD}  ┌─ MANAGE ────────────────────────────────────────────────────┐${NC}"
   echo -e "${WHITE}${BOLD}  │${NC}  ${BOLD}./run.sh status${NC}   — live service health check"
   echo -e "${WHITE}${BOLD}  │${NC}  ${BOLD}./run.sh logs${NC}     — pick log to follow (${DIM}./run.sh logs all${NC} for all)"
@@ -467,16 +474,11 @@ cmd_start() {
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
 
-  # Optional: offer to tail a log when run interactively
-  if [[ -t 0 ]]; then
-    read -r -p "Tail a log now? Enter 1–5, all, or Enter to skip: " _tail_choice || true
-    case "${_tail_choice:-}" in
-      1|2|3|4|5|all|ALL|All) cmd_logs "${_tail_choice}" ;;
-      "") ;;
-      *) echo "Skipped (use: ./run.sh logs)" ;;
-    esac
-  fi
+  # Default to showing all logs (auto-tail all)
+  echo -e "${CYAN}Starting live log view (all services)…${NC}"
+  echo "Press Ctrl+C to stop tailing logs (services will keep running)."
   echo ""
+  cmd_logs "all"
 }
 
 # ── Test ─────────────────────────────────────────────────────────────────────
