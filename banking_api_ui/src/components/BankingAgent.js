@@ -37,6 +37,7 @@ import AgentConsentModal from './AgentConsentModal';
 import TransactionConsentModal from './TransactionConsentModal';
 import OtpStepUpModal from './OtpStepUpModal';
 import FidoStepUpModal from './FidoStepUpModal';
+import MCPToolsListModal from './MCPToolsListModal';
 import bffAxios from '../services/bffAxios';
 import './BankingAgent.css';
 
@@ -727,7 +728,7 @@ const TOPIC_MESSAGES = {
   'agent-gateway': `🌐 Agent Gateway / Resource Indicators (RFC 8707):\n\nRFC 8707: client specifies the resource URI when requesting a token\n  /as/token?resource=https://mcp.example.com\n  → token aud = "https://mcp.example.com"\n\nRFC 9728: Protected Resource Metadata\n  GET https://mcp.example.com/.well-known/oauth-protected-resource\n  → { resource, authorization_servers, scopes_supported }\n\nThis lets a dynamic AI agent discover what auth is needed before attempting a tool call — no hardcoded configuration.`,
   'pingone-authorize': `🔐 PingOne Authorize (DaVinci):\n\nPingOne Authorize evaluates access policies at runtime using DaVinci flows.\n\nIn this demo it drives:\n• Step-up MFA triggers (ACR values like "Multi_factor")\n• CIBA push notifications to the user's device\n• Dynamic consent for high-value transactions\n\nThe acr_values parameter in /as/authorize tells PingOne which DaVinci policy to run.`,
   'cimd': `📄 Client ID Metadata Document (CIMD / RFC 7591):\n\nTraditional OAuth: client_id is an opaque string, pre-registered in the AS.\nCIMD: client_id is a URL you control — it hosts the client's metadata.\n\nThe AS fetches the URL to discover:\n  { redirect_uris, grant_types, scope, client_name, logo_uri, … }\n\nBenefits:\n• No pre-registration — client registers itself\n• Client controls updates (change the hosted document)\n• Works across AS instances that support DCR/RFC 7591\n\nIn this demo: click "▶ Simulate" in the CIMD panel to see PingOne dynamic client registration.`,
-  'langchain': `🔗 LangChain (LCEL + multi-provider):\n\nLangChain 0.3.x modernises AI agent composition:\n• LCEL (LangChain Expression Language): chain = prompt | llm.bind_tools(tools)\n• Model-agnostic: swap Groq, OpenAI, Anthropic, Gemini, Ollama via the widget badge\n• Provider factory: each provider uses its own langchain-* package (no shims)\n• Security: API keys live in the BFF session only — never sent to the browser\n\nIn this demo: the Chat Widget badge shows the active provider · model.\nDeep dive: open /langchain or click the badge → Learn more →`,
+  'langchain': `🔗 LangChain (LCEL + Ollama):\n\nLangChain 0.3.x modernises AI agent composition:\n• LCEL (LangChain Expression Language): chain = prompt | llm.bind_tools(tools)\n• Local inference via Ollama — no cloud API keys required\n• Security: all LLM calls stay on localhost — nothing leaves your network\n\nIn this demo: the Chat Widget badge shows the active Ollama model.\nDeep dive: open /langchain or click the badge → Learn more →`,
   'human-in-loop': `👤 Human-in-the-loop (HITL) for the banking agent:\n\n• Over $500 the server issues a consent challenge in your session; after you confirm in the consent popup, POST /transactions must include matching consentChallengeId (one-time use).\n• The agent cannot complete that path without your browser session.\n• If you decline, this demo disables the assistant until you sign out and sign in again.\n• HITL ≠ MITM (attack). Open the drawer: What is HITL · Patterns & best practices · This app and the agent · Declining and lockout.`,
 };
 
@@ -874,6 +875,9 @@ export default function BankingAgent({
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpContextLine, setOtpContextLine] = useState('');
   const pendingOtpActionRef = useRef(null);
+  // MCP tools list modal state
+  const [showMcpToolsModal, setShowMcpToolsModal] = useState(false);
+  const [mcpToolsList, setMcpToolsList] = useState([]);
   // FIDO2 + P1MFA state (Phase 174-03/04)
   const [stepUpMethod, setStepUpMethod] = useState('otp'); // 'otp' or 'fido'
   const [supportsFido, setSupportsFido] = useState(false);
@@ -1722,10 +1726,40 @@ export default function BankingAgent({
           toast.update(toastId, { render: '↔️ Calling create_transfer…' });
           response = await createTransfer(form.fromId, form.toId, parseFloat(form.amount), form.note);
           break;
-        case 'sensitive-account-details':
-          toast.update(toastId, { render: '🔒 Calling get_sensitive_account_details…' });
-          response = await callMcpTool('get_sensitive_account_details', {});
-          break;
+        case 'sensitive-account-details': {
+          toast.update(toastId, { render: '🔒 Requesting sensitive account details…' });
+          // Route through agent NL path (session-authenticated + ACR step-up check)
+          const sensitiveRes = await sendAgentMessage('Show me my full account details with routing numbers');
+          if (sensitiveRes.stepUpRequired) {
+            toast.update(toastId, {
+              render: '🔐 MFA verification required — verify your identity below',
+              type: 'warning',
+              isLoading: false,
+              autoClose: 6000,
+            });
+            setLoading(false);
+            toolProgressIdRef.current = null;
+            window.dispatchEvent(new CustomEvent('agentStepUpRequested', {
+              detail: { step_up_method: sensitiveRes.stepUpMethod || 'email' },
+            }));
+            return;
+          }
+          if (sensitiveRes.error || !sensitiveRes.success) {
+            addMessage('assistant', `⚠️ ${sensitiveRes.error || sensitiveRes.reply || 'Could not retrieve sensitive account details.'}`, actionId);
+          } else {
+            addMessage('assistant', sensitiveRes.reply || 'Sensitive account details retrieved.', actionId);
+          }
+          setIsExpanded(true);
+          toast.update(toastId, {
+            render: sensitiveRes.success ? '✅ Account details loaded' : '⚠️ Step-up required',
+            type: sensitiveRes.success ? 'success' : 'warning',
+            isLoading: false,
+            autoClose: agentToastMs.toolsLoaded,
+          });
+          setLoading(false);
+          toolProgressIdRef.current = null;
+          return;
+        }
         case 'mcp_tools': {
           toast.update(toastId, { render: '🔧 Fetching MCP tool list…' });
           agentFlowDiagram.startInspectorToolsList();
@@ -1777,12 +1811,10 @@ export default function BankingAgent({
             ok: true,
             source: data._source || 'mcp_server',
           });
-          const toolText = tools.length === 0
-            ? 'No tools found — is the MCP server running?'
-            : tools.map((t, i) =>
-                `${i + 1}. ${t.name}\n   ${t.description || '(no description)'}\n   Inputs: ${Object.keys(t.inputSchema?.properties || {}).join(', ') || 'none'}`
-              ).join('\n\n');
-          addMessage('assistant', `🔧 MCP Banking Tools (${tools.length} available):\n\n${toolText}`, 'tools/list');
+          // Show tools in modal instead of chat message
+          setMcpToolsList(tools);
+          setShowMcpToolsModal(true);
+          addMessage('assistant', `🔧 MCP Banking Tools (${tools.length} available) — check the popup window`, 'tools/list');
           setIsExpanded(true);
           toast.update(toastId, { render: `✅ ${tools.length} tools loaded`, type: 'success', isLoading: false, autoClose: agentToastMs.toolsLoaded });
           setLoading(false);
@@ -2543,6 +2575,18 @@ export default function BankingAgent({
       }
 
       if (response.error || !response.success) {
+        // Marketing guest: 401 / need_auth means "log in via PingOne", not session-hydration issue
+        const pathNorm401 = (location.pathname || '').replace(/\/$/, '') || '/';
+        if (
+          (response.need_auth || response._status === 401) &&
+          isPublicMarketingAgentPath(pathNorm401) &&
+          !isLoggedIn
+        ) {
+          try { sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, text); } catch (_) {}
+          addMessage('assistant', '🔐 Signing you in with PingOne…');
+          handleLoginAction('login_user');
+          return;
+        }
         const errMsg = response.error || 'Agent could not process that request.';
         if (errMsg.includes('session') || errMsg.includes('auth') || response._status === 401) {
           reportNlFailure({ code: 'session_not_hydrated' });
@@ -3116,6 +3160,13 @@ export default function BankingAgent({
               />
             )}
 
+            {/* MCP Tools List Modal */}
+            <MCPToolsListModal
+              show={showMcpToolsModal}
+              onClose={() => setShowMcpToolsModal(false)}
+              tools={mcpToolsList}
+            />
+
             {/* ── Left column: suggestions + actions/auth ── */}
             <div className="ba-left-col">
               {isLoggedIn && (
@@ -3493,8 +3544,8 @@ export default function BankingAgent({
                 )}
               </div>
 
-              {/* Dashboard navigation button — pinned below prompt */}
-              {isLoggedIn && (
+              {/* Dashboard navigation button — pinned below prompt (hidden on marketing pages) */}
+              {isLoggedIn && !isPublicMarketingAgentPath((location.pathname || '').replace(/\/$/, '') || '/') && (
                 <button
                   type="button"
                   className="ba-left-auth-btn primary"

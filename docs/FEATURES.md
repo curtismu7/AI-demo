@@ -127,6 +127,7 @@ The admin dashboard exposes:
 | **Floating resizable windows** | Agent panel, token chain, API viewer all draggable | Drag any panel header |
 | **API Viewer** | Raw request/response for every banking op | Action Hub → API |
 | **MCP Inspector** | Live tools/list + WebSocket health | Admin → MCP tab |
+| **MCP Tools List Modal** | Searchable pop-out window for all available banking tools | Banking Agent → "MCP Tools" chip |
 | **Verbose OAuth Log** | Every BFF→PingOne HTTP call | Admin → OAuth Log |
 | **Self-service provisioning** | Management API setup wizard | Admin → Setup Wizard |
 | **Self-service user creation** | Create PingOne users with `mayAct` attribute | Admin → Users |
