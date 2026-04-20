@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# .husky/pre-commit
+# Managed by Husky — runs before every commit.
+# Warns about missing doc updates, blocks on exposed secrets, and runs UI tests when UI files change.
+
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+RED='\033[0;31m'
+RESET='\033[0m'
+
+warn() { echo -e "${YELLOW}⚠  $1${RESET}"; }
+info() { echo -e "${CYAN}   $1${RESET}"; }
+error() { echo -e "${RED}✖  $1${RESET}"; }
+
+STAGED=$(git diff --cached --name-only)
+
+# ── SECRET SCAN — block on known secret patterns ───────────────────────────
+# Prevents committing hardcoded API keys/tokens (learned from Anthropic key exposure)
+if git diff --cached -U0 | grep -qE '(sk-ant-api[0-9]|ghp_[A-Za-z0-9]{36}|AKIA[0-9A-Z]{16})'; then
+  error "Possible API secret detected in staged changes!"
+  info "Remove hardcoded secrets before committing."
+  info "Use environment variables or .env.local (gitignored) instead."
+  info "Run  git commit --no-verify  only if this is a false positive."
+  echo ""
+  exit 1
+fi
+
+# ── CHANGELOG check ────────────────────────────────────────────────────────
+WARN_TRIGGERED=0
+
+if ! echo "$STAGED" | grep -q "CHANGELOG.md"; then
+  warn "CHANGELOG.md not staged."
+  info "Add one line under [Unreleased] in the right category (Added/Fixed/Changed/Removed)."
+  WARN_TRIGGERED=1
+fi
+
+# ── FEATURES check (only if a route, component, service, or middleware changed) ──
+FEATURE_RELEVANT=$(echo "$STAGED" | grep -E \
+  "routes/|components/|services/|middleware/|mcp_server/" | grep -v "__tests__" | grep -v "\.css$")
+
+if [ -n "$FEATURE_RELEVANT" ] && ! echo "$STAGED" | grep -q "FEATURES.md"; then
+  warn "FEATURES.md not staged — but feature-related files changed:"
+  echo "$FEATURE_RELEVANT" | head -5 | while read -r f; do info "$f"; done
+  info "Update FEATURES.md if a feature was added, removed, or its test coverage changed."
+  WARN_TRIGGERED=1
+fi
+
+# ── REGRESSION_LOG check (only if a test file was staged) ──────────────────
+TEST_FILES=$(echo "$STAGED" | grep -E "\.test\.(js|ts)$")
+
+if [ -n "$TEST_FILES" ] && ! echo "$STAGED" | grep -q "REGRESSION_LOG.md"; then
+  warn "Test files staged but REGRESSION_LOG.md not staged."
+  info "If this test covers a production bug fix, add an entry to REGRESSION_LOG.md."
+  WARN_TRIGGERED=1
+fi
+
+if [ "$WARN_TRIGGERED" -eq 1 ]; then
+  echo ""
+  echo -e "${YELLOW}Run  git commit --no-verify  to skip these checks.${RESET}"
+  echo ""
+fi
+
+# ── UI UNIT TESTS (only when banking_api_ui/src files changed) ─────────────
+if echo "$STAGED" | grep -q 'banking_api_ui/src'; then
+  echo "UI files changed — running unit tests..."
+  (cd banking_api_ui && npm run test:unit -- --watchAll=false --passWithNoTests --forceExit)
+  if [ $? -ne 0 ]; then
+    error "Unit tests failed — commit blocked. Fix tests before committing."
+    exit 1
+  fi
+fi
+
+# Warnings are advisory only — never block on WARN_TRIGGERED.
+exit 0

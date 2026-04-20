@@ -24,11 +24,15 @@
     "setup:vercel": "node scripts/setup-vercel-env.js",
     "setup:vercel:check": "node scripts/setup-vercel-env.js --check",
     "pingone:bootstrap": "node scripts/pingone-bootstrap.js",
-    "pingone:bootstrap:probe": "node scripts/pingone-bootstrap.js --probe"
+    "pingone:bootstrap:probe": "node scripts/pingone-bootstrap.js --probe",
+    "prepare": "husky"
   },
   "dependencies": {
     "@upstash/redis": "^1.37.0",
     "nodemailer": "^8.0.4",
     "vercel": "^50.40.0"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }
