@@ -1031,10 +1031,10 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
 
         {/* PingOne Asset Verification Section */}
         <section className="pingone-test-section">
-          <h2 className="pingone-test-section-title">PingOne Asset Verification</h2>
+          <h2 className="pingone-test-section-title">Verify Resources &amp; Scopes</h2>
           <div className="asset-verification-header">
             <p className="asset-verification-description">
-              Verify that all required PingOne assets (Applications, Resources, Scopes, Users) are configured correctly using the worker token.
+              Verify that the PingOne applications, resource servers, and scopes used by this Banking Demo are configured correctly.
             </p>
             <div className="asset-verification-actions">
               <button
@@ -1051,7 +1051,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                 onClick={verifyAssets}
                 disabled={verifyingAssets}
               >
-                {verifyingAssets ? 'Verifying...' : 'Verify Assets'}
+                {verifyingAssets ? 'Verifying...' : 'Verify Resources & Scopes'}
               </button>
             </div>
           </div>
@@ -1090,8 +1090,12 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   />
                 </div>
                 <AssetTable
-                  apps={assetVerification.applications?.data || []}
-                  resources={assetVerification.resources?.data || []}
+                  apps={(assetVerification.applications?.data || []).filter(a => EXPECTED_APP_NAMES.includes(a.name))}
+                  resources={(() => {
+                    const appData = (assetVerification.applications?.data || []).filter(a => EXPECTED_APP_NAMES.includes(a.name));
+                    const usedRsIds = new Set(appData.flatMap(a => (a.grantedResources || []).map(rs => rs.id)));
+                    return (assetVerification.resources?.data || []).filter(r => usedRsIds.has(r.id));
+                  })()}
                   scopes={assetVerification.scopes?.data || []}
                   scopesMeta={{ isBankingRS: assetVerification.scopes?.isBankingRS, resourceServerName: assetVerification.scopes?.resourceServerName }}
                   users={assetVerification.users?.data || []}
