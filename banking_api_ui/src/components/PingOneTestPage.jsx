@@ -1347,13 +1347,13 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                       onFix={exchange2Status === 'failed' ? () => fixIssue('double-exchange') : undefined}
                       config={TEST_CONFIG.exchange2}
                     />
-                    <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Gateway Token (2-exchange)" />
                     {(exchange2SubjectDecoded || exchange2ActorDecoded) && (
                       <>
                         <DecodedTokenPanel decoded={exchange2SubjectDecoded} label={`Subject: ${t1Label}`} />
                         <DecodedTokenPanel decoded={exchange2ActorDecoded} label="Actor: Agent CC Token" />
                       </>
                     )}
+                    <DecodedTokenPanel decoded={exchange2Decoded} label="MCP Gateway Token (2-exchange)" />
                     <TokenLineageDiff
                       fromDecoded={authzDecoded}
                       toDecoded={exchange2Decoded}
@@ -1385,14 +1385,14 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
                   ⚠️ <strong>ff_id_token_exchange</strong> is OFF — enable in Feature Flags to run this test.
                 </div>
               )}
-              {exchange186Decoded && (
-                <DecodedTokenPanel decoded={exchange186Decoded} label="MCP Gateway Token (ID Token + Agent CC)" />
-              )}
               {exchange186SubjectDecoded && (
                 <DecodedTokenPanel decoded={exchange186SubjectDecoded} label="Subject: User ID Token" />
               )}
               {exchange186ActorDecoded && (
                 <DecodedTokenPanel decoded={exchange186ActorDecoded} label="Actor: Agent CC Token" />
+              )}
+              {exchange186Decoded && (
+                <DecodedTokenPanel decoded={exchange186Decoded} label="MCP Gateway Token (ID Token + Agent CC)" />
               )}
               {exchange186Decoded && exchange186SubjectDecoded && (
                 <TokenLineageDiff
@@ -1630,7 +1630,87 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
           <h2 className="pingone-test-section-title">Agentic Trust — Scope Narrowing &amp; Last Mile</h2>
           <ScopeNarrowingVisualization />
         </section>
+
+        {/* Session Summary */}
+        <section className="pingone-test-section">
+          <h2 className="pingone-test-section-title">Session Summary</h2>
+          <SessionSummary
+            tests={[
+              { label: 'Authorization Code Token', status: authzTokenStatus },
+              { label: 'Agent CC Token', status: agentTokenStatus },
+              { label: '2-Exchange: User Token + Agent CC', status: exchange2Status },
+              { label: '2-Exchange: ID Token + Agent CC', status: exchange186Status },
+              { label: 'Simple Exchange (401-triggered)', status: exchange401Status },
+              ...Object.entries(testResults).map(([key, val]) => ({ label: key, status: val.status })),
+            ]}
+          />
+        </section>
       </div>
+    </div>
+  );
+}
+
+
+function SessionSummary({ tests }) {
+  const passed = tests.filter(t => t.status === 'passed').length;
+  const failed = tests.filter(t => t.status === 'failed').length;
+  const pending = tests.filter(t => t.status !== 'passed' && t.status !== 'failed').length;
+  
+  const hasTests = tests.some(t => t.status !== 'pending');
+  
+  return (
+    <div className="session-summary">
+      <div className="session-summary-counts">
+        <div className="session-summary-count passed" style={{ flex: 1, textAlign: 'center', padding: '1rem' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#28a745' }}>{passed}</div>
+          <div style={{ fontSize: '0.9rem', color: '#666' }}>Passed</div>
+        </div>
+        <div className="session-summary-count failed" style={{ flex: 1, textAlign: 'center', padding: '1rem' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#dc3545' }}>{failed}</div>
+          <div style={{ fontSize: '0.9rem', color: '#666' }}>Failed</div>
+        </div>
+        <div className="session-summary-count pending" style={{ flex: 1, textAlign: 'center', padding: '1rem' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#999' }}>{pending}</div>
+          <div style={{ fontSize: '0.9rem', color: '#666' }}>Pending</div>
+        </div>
+      </div>
+      
+      {!hasTests && (
+        <p style={{ textAlign: 'center', color: '#888', padding: '1rem' }}>
+          Run tests above to see results here.
+        </p>
+      )}
+      
+      {hasTests && (
+        <div className="session-summary-list" style={{ padding: '1rem' }}>
+          {tests.filter(t => t.status === 'passed').length > 0 && (
+            <div className="summary-group" style={{ marginBottom: '1rem' }}>
+              <h4 style={{ color: '#28a745', margin: '0.5rem 0 0.5rem 0' }}>✓ Passed</h4>
+              {tests.filter(t => t.status === 'passed').map((t, i) => (
+                <div key={i} style={{ color: '#28a745', paddingLeft: '1rem', fontSize: '0.9rem' }}>• {t.label}</div>
+              ))}
+            </div>
+          )}
+          
+          {tests.filter(t => t.status === 'failed').length > 0 && (
+            <div className="summary-group" style={{ marginBottom: '1rem' }}>
+              <h4 style={{ color: '#dc3545', margin: '0.5rem 0 0.5rem 0' }}>✗ Failed</h4>
+              {tests.filter(t => t.status === 'failed').map((t, i) => (
+                <div key={i} style={{ color: '#dc3545', paddingLeft: '1rem', fontSize: '0.9rem' }}>• {t.label}</div>
+              ))}
+            </div>
+          )}
+          
+          {tests.filter(t => t.status !== 'passed' && t.status !== 'failed').length > 0 && (
+            <div className="summary-group">
+              <h4 style={{ color: '#999', margin: '0.5rem 0 0.5rem 0' }}>— Pending</h4>
+              {tests.filter(t => t.status !== 'passed' && t.status !== 'failed').map((t, i) => (
+                <div key={i} style={{ color: '#999', paddingLeft: '1rem', fontSize: '0.9rem' }}>• {t.label}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
