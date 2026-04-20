@@ -70,7 +70,8 @@ async function getManagementToken() {
     body += `&client_id=${encodeURIComponent(clientId)}&client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer&client_assertion=${encodeURIComponent(assertion)}`;
   } else {
     // default: basic
-    axiosConfig.auth = { username: clientId, password: clientSecret };
+    // Use manual base64 to avoid axios Basic-auth encoding issues with PingOne
+    axiosConfig.headers['Authorization'] = 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64');
   }
 
   const response = await axios.post(tokenUrl, body, axiosConfig);
