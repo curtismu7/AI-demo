@@ -928,6 +928,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
   const ctx = useTokenChainOptional();
   const [tab, setTab] = useState('current');
   const [sessionPreviewEvents, setSessionPreviewEvents] = useState(null);
+  const [agentCcEvents, setAgentCcEvents] = useState(null);
   const [inspectedEvent, setInspectedEvent] = useState(null);
   const [inspectorPos, setInspectorPos] = useState({ x: 120, y: 100 });
   const [copied, setCopied] = useState(false);
@@ -983,6 +984,25 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
     return () => window.removeEventListener('userAuthenticated', onAuth);
   }, [fetchSessionPreview]);
 
+  /** Silently prefetch agent CC token on mount — shows agent actor identity before first MCP call. */
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/tokens/agent-cc-preview', { credentials: 'include' });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
+          setAgentCcEvents(data.tokenEvents);
+        }
+      } catch (_err) {
+        /* non-fatal — best-effort prefetch */
+        console.warn('[TokenChainDisplay] agent-cc-preview fetch failed:', _err.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isLive = ctx && ctx.events.length > 0;
   const isSessionPreview = !isLive && Array.isArray(sessionPreviewEvents) && sessionPreviewEvents.length > 0;
   const effectivePlaceholders = React.useMemo(() => {
@@ -994,6 +1014,15 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
     });
   }, [idTokenMode]);
   const currentEvents = isLive ? ctx.events : (isSessionPreview ? sessionPreviewEvents : effectivePlaceholders);
+  // Prepend agent CC token event if present and not already represented in the chain
+  const currentEventsWithCc = React.useMemo(() => {
+    if (!Array.isArray(agentCcEvents) || agentCcEvents.length === 0) return currentEvents;
+    const hasAgentActor = currentEvents.some(
+      (e) => e.id && (e.id.startsWith('agent-actor-token') || e.id === 'agent-cc-not-configured')
+    );
+    if (hasAgentActor) return currentEvents;
+    return [...agentCcEvents, ...currentEvents];
+  }, [currentEvents, agentCcEvents]);
   const isPlaceholder = !isLive && !isSessionPreview;
   const history = ctx ? ctx.history : [];
 
@@ -1008,7 +1037,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
     const payload = {
       copied_at: new Date().toISOString(),
       source: isLive ? 'live' : isSessionPreview ? 'session-preview' : 'placeholder',
-      current_events: currentEvents.map(ev => ({
+      current_events: currentEventsWithCc.map(ev => ({
         id: ev.id,
         label: ev.label,
         status: ev.status,
@@ -1055,7 +1084,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  }, [currentEvents, ctx, isLive, isSessionPreview]);
+  }, [currentEventsWithCc, ctx, isLive, isSessionPreview]);
 
   return (
     <>
@@ -1107,7 +1136,7 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
                   : 'Sign in and load the dashboard to see your user access token, or make a banking / AI Agent request to see the full chain after exchange.'}
               </div>
             )}
-            {isLive && <ExchangeModeBanner events={currentEvents} />}
+            {isLive && <ExchangeModeBanner events={currentEventsWithCc} />}
 {isPlaceholder && identityHints?.currentUser && (
               <div className="tcd-empty-state">
                 <span className="tcd-empty-state__icon">🔗</span>
@@ -1115,8 +1144,8 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
                 <p className="tcd-empty-state__hint">Interact with the AI Agent or make a banking action to see the full OAuth 2.0 token chain.</p>
               </div>
             )}
-            {(!isPlaceholder || !identityHints?.currentUser) && currentEvents.map((ev, i) => (
-              <EventRow key={ev.id} event={ev} isLast={i === currentEvents.length - 1} onInspect={handleInspect} hints={identityHints} />
+            {(!isPlaceholder || !identityHints?.currentUser) && currentEventsWithCc.map((ev, i) => (
+              <EventRow key={ev.id} event={ev} isLast={i === currentEventsWithCc.length - 1} onInspect={handleInspect} hints={identityHints} />
             ))}
           </div>
           </>
