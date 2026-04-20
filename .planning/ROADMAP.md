@@ -2145,6 +2145,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 204 to break down)
 
+### Phase 205: Missing Credentials Modal — prompt for missing OAuth/worker creds with PingOne setup guidance
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 204
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 205 to break down)
+
 ---
 
 ### Phase 197: Fix Phase 193 regression — sidebar missing on unauthenticated dashboard

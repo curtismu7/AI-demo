@@ -79,6 +79,7 @@ Next phase: 127+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 205 added: Missing Credentials Modal — prompt for missing OAuth/worker creds with PingOne setup guidance
 - Phase 204 added: /configure page needs explanations for each field/option; add Feature Flags as a tab on the configure page
 
 - Phase 203 added: /pingone-test config and resource cards: yellow background until tested, green if passed, light red if failed
