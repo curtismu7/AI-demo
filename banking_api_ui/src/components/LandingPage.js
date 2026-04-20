@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import './LandingPage.css';
-import EmbeddedAgentDock from './EmbeddedAgentDock';
 import * as bankingAgentService from '../services/bankingAgentService';
 
 export default function LandingPage({ user, onLogout }) {
@@ -233,10 +232,7 @@ export default function LandingPage({ user, onLogout }) {
         </section>
       )}
 
-      {/* Embedded Agent Dock - fixed bottom-right on desktop, static on mobile */}
-      <div className="landing-agent-dock-container">
-        <EmbeddedAgentDock variant="marketing" user={user} onLogout={onLogout} />
-      </div>
+
     </div>
   );
 }

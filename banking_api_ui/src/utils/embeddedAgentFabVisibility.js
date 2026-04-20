@@ -45,8 +45,9 @@ export function isPublicMarketingAgentPath(pathname) {
 export function isMarketingEmbeddedDockSurface(pathname, user) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
+  // Only guests on landing pages get the marketing embedded dock. Signed-in
+  // /marketing shows ONLY the float agent — no embedded dock, no inline column.
   if (!user && (p === '/' || p === '/marketing' || p === '/dashboard')) return true;
-  if (user && p === '/marketing') return true;
   return false;
 }
 

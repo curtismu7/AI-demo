@@ -471,7 +471,7 @@ function AppWithAuth() {
   // Marketing `/` + `/marketing`: always reserve bottom dock (float + bottom) regardless of agent UI toggle.
   const hasEmbeddedDockLayout =
     isMarketingEmbeddedDockSurface(pathname, user) ||
-    (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute);
+    (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute && pathNorm !== '/marketing');
 
   const showFloatingAgent =
     !isApiTrafficOnlyPage &&
@@ -592,12 +592,8 @@ function AppWithAuth() {
                 !user ? (
                   loading ? null : <LandingPage />
                 ) : (
-                  <>
-                    <AdminSideNav user={user} />
-                    <main className="main-content">
-                          <LandingPage user={user} onLogout={logout} />
-                    </main>
-                  </>
+                  // /marketing for signed-in users: ONLY the float agent — no sidebar, no dock
+                  <LandingPage user={user} onLogout={logout} />
                 )
               }
             />
@@ -716,7 +712,7 @@ function AppWithAuth() {
             </button>
           )}
           {/* Side dock — right-dock only on non-dashboard routes; UserDashboard handles inline column */}
-          {agentPlacement === 'right-dock' && !onUserDashboardRoute && (
+          {agentPlacement === 'right-dock' && !onUserDashboardRoute && pathNorm !== '/marketing' && (
             <SideAgentDock
               user={user}
               onLogout={logout}
@@ -725,7 +721,7 @@ function AppWithAuth() {
           )}
           {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
               order directly above the footer on marketing and other non-dashboard routes. */}
-          {!loading && !onUserDashboardRoute && (
+          {!loading && !onUserDashboardRoute && pathNorm !== '/marketing' && (
             <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
           )}
           {!isApiTrafficOnlyPage && <Footer user={user} />}
