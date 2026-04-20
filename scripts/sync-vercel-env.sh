@@ -107,8 +107,8 @@ echo ""
 echo "--- Section 6: LLM Keys ---"
 
 # Check: ANTHROPIC_API_KEY may already be on Production from earlier output
-# Uncomment if needed:
-# add_env "ANTHROPIC_API_KEY" "\[REDACTED_API_KEY\]"
+# Uncomment if needed (add your actual key as: sk-ant-v1-...)
+# add_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"
 
 echo ""
 echo "=== Done! ==="
