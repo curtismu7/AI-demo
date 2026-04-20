@@ -1,14 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
 import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
 import './LandingPage.css';
 import * as bankingAgentService from '../services/bankingAgentService';
 
 export default function LandingPage({ user, onLogout }) {
   const navigate = useNavigate();
-  const location = useLocation();
-
   const handleAdminLogin = (e) => {
     e.preventDefault();
     // Redirect to BFF OAuth login endpoint

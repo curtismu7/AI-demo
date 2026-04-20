@@ -31,7 +31,7 @@ export default function LlmConfigPanel() {
   // Load config on mount
   useEffect(() => {
     loadConfig();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load config from API
   const loadConfig = async () => {
