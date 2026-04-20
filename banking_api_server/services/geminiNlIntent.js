@@ -1,7 +1,9 @@
 // banking_api_server/services/geminiNlIntent.js
 /**
- * LLM intent parsing — priority: LM Studio → Groq → Anthropic → heuristic regex.
- * Set LM_STUDIO_BASE_URL for local inference; GROQ_API_KEY for cloud; ANTHROPIC_API_KEY as fallback; neither = free heuristic.
+ * Intent parsing — priority: HEURISTIC (instant) → LM Studio → Groq → Anthropic (fallback).
+ * Heuristic handles all known commands (accounts, balance, transfer, education topics) with zero latency.
+ * LLM is only called when heuristic returns kind:'none' (unrecognized input).
+ * Set LM_STUDIO_BASE_URL for local inference; GROQ_API_KEY for cloud; ANTHROPIC_API_KEY as fallback; neither = free heuristic only.
  */
 'use strict';
 
@@ -181,7 +183,16 @@ async function parseWithAnthropic(userMessage, context = {}) {
  * @returns {Promise<{ source: 'lmstudio'|'groq'|'anthropic'|'heuristic', result: object }>}
  */
 async function parseNaturalLanguage(message, context = {}) {
-  // 1. Try LM Studio (local, fastest when running)
+  // Heuristic-first routing: handles all recognized commands instantly (zero cost, zero latency).
+  // LLM is only attempted when heuristic returns kind:'none' (unrecognized input).
+  
+  // 1. Heuristic first — instant, zero-cost, handles all known intents
+  const heuristicResult = parseHeuristic(message);
+  if (heuristicResult && heuristicResult.kind !== 'none') {
+    return { source: 'heuristic', result: heuristicResult };
+  }
+
+  // 2. Try LM Studio (local, fastest when running) — only for unrecognized input
   const lmStudio = await parseWithLmStudio(message, context).catch((e) => {
     console.warn('[nlIntent] LM Studio error:', e.message);
     return null;
@@ -192,7 +203,7 @@ async function parseNaturalLanguage(message, context = {}) {
     return { source: rejected ? 'heuristic' : 'lmstudio', result };
   }
 
-  // 2. Try Groq (cloud, OpenAI-compatible)
+  // 3. Try Groq (cloud, OpenAI-compatible)
   const groq = await parseWithGroq(message, context).catch((e) => {
     console.warn('[nlIntent] Groq error:', e.message);
     return null;
@@ -203,7 +214,7 @@ async function parseNaturalLanguage(message, context = {}) {
     return { source: rejected ? 'heuristic' : 'groq', result };
   }
 
-  // 3. Try Anthropic (cloud fallback)
+  // 4. Try Anthropic (cloud fallback)
   const anthropic = await parseWithAnthropic(message, context).catch((e) => {
     console.warn('[nlIntent] Anthropic error:', e.message);
     return null;
@@ -214,8 +225,8 @@ async function parseNaturalLanguage(message, context = {}) {
     return { source: rejected ? 'heuristic' : 'anthropic', result };
   }
 
-  // 4. Heuristic regex (always available, zero cost)
-  return { source: 'heuristic', result: parseHeuristic(message) };
+  // 5. Final fallback: heuristic returns kind:'none' (unrecognized)
+  return { source: 'heuristic', result: heuristicResult };
 }
 
 module.exports = {

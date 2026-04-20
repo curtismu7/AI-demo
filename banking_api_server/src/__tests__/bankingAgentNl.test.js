@@ -224,6 +224,77 @@ describe('POST /api/banking-agent/nl — response relay', () => {
   });
 });
 
+// ── Heuristic-first routing verification ──────────────────────────────────────
+
+describe('POST /api/banking-agent/nl — heuristic-first routing', () => {
+  beforeEach(() => {
+    // Mock parseNaturalLanguage to track if it returns heuristic source quickly
+    parseNaturalLanguage.mockClear();
+  });
+
+  it('routes "show my accounts" via heuristic without LLM delay', async () => {
+    // Simulate heuristic match
+    parseNaturalLanguage.mockResolvedValueOnce({
+      source: 'heuristic',
+      result: { kind: 'banking', banking: { action: 'accounts', params: {} } },
+    });
+    const app = buildApp(CUSTOMER_USER);
+    const res = await request(app)
+      .post('/api/banking-agent/nl')
+      .send({ message: 'show my accounts' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.source).toBe('heuristic');
+    expect(res.body.result.kind).toBe('banking');
+    expect(res.body.result.banking.action).toBe('accounts');
+  });
+
+  it('routes "recent transactions" via heuristic', async () => {
+    parseNaturalLanguage.mockResolvedValueOnce({
+      source: 'heuristic',
+      result: { kind: 'banking', banking: { action: 'transactions', params: { period: 'recent' } } },
+    });
+    const app = buildApp(CUSTOMER_USER);
+    const res = await request(app)
+      .post('/api/banking-agent/nl')
+      .send({ message: 'recent transactions' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.source).toBe('heuristic');
+    expect(res.body.result.kind).toBe('banking');
+  });
+
+  it('routes "explain token exchange" via heuristic (education)', async () => {
+    parseNaturalLanguage.mockResolvedValueOnce({
+      source: 'heuristic',
+      result: { kind: 'education', education: { panel: 'token-chain', tab: 'concepts' } },
+    });
+    const app = buildApp(CUSTOMER_USER);
+    const res = await request(app)
+      .post('/api/banking-agent/nl')
+      .send({ message: 'explain token exchange' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.source).toBe('heuristic');
+    expect(res.body.result.kind).toBe('education');
+  });
+
+  it('routes "what is OAuth?" via heuristic (education)', async () => {
+    parseNaturalLanguage.mockResolvedValueOnce({
+      source: 'heuristic',
+      result: { kind: 'education', education: { panel: 'architecture', tab: 'overview' } },
+    });
+    const app = buildApp(null); // Allow anonymous
+    const res = await request(app)
+      .post('/api/banking-agent/nl')
+      .send({ message: 'what is OAuth?' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.source).toBe('heuristic');
+    expect(res.body.result.kind).toBe('education');
+  });
+});
+
 // ── Status endpoint ───────────────────────────────────────────────────────────
 
 describe('GET /api/banking-agent/nl/status', () => {
