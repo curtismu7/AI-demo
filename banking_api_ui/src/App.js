@@ -47,6 +47,7 @@ import Profile from './components/Profile';
 import SecurityCenter from './components/SecurityCenter';
 import UserAccounts from './components/UserAccounts';
 import UserTransactions from './components/UserTransactions';
+import QuickLoginModal from './components/QuickLoginModal';
 import SelfServicePage from './components/SelfServicePage';
 import LogoutPage from './components/LogoutPage';
 import PingOneTestPage from './components/PingOneTestPage';
@@ -628,7 +629,14 @@ function AppWithAuth() {
 
             <Route path="*" element={
               !user ? (
-                loading ? null : <LandingPage />
+                loading ? null : (
+                  <>
+                    <LandingPage />
+                    {['/accounts', '/transactions', '/users'].includes(fullLocation.pathname) && (
+                      <QuickLoginModal pathname={fullLocation.pathname} />
+                    )}
+                  </>
+                )
               ) : (
                 <>
                   {user && <AdminSideNav user={user} />}

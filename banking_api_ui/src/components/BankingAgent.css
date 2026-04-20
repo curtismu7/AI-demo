@@ -3130,3 +3130,18 @@ html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
   right: auto;
   left: 16px;
 }
+
+/* ── Float mode on customer dashboard: FAB pinned to LEFT above the sidenav ──
+   .user-dashboard--float-mode-fab-left is added by UserDashboard when
+   agentPlacement === 'none'. The sidenav is 280px wide so we place the FAB
+   at left: 20px so it sits visually above the sidenav column. */
+.user-dashboard--float-fab-left .banking-agent-fab {
+  right: auto;
+  left: 20px;
+  bottom: 28px;
+}
+
+.user-dashboard--float-fab-left .banking-agent-panel:not(.ba-mode-inline) {
+  right: auto;
+  left: 16px;
+}

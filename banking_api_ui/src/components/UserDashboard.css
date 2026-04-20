@@ -3185,8 +3185,9 @@ html[data-theme='dark'] .token-modal {
 
 /* ── Float mode: 2-column layout (token rail + content); no float-reserve column ── */
 /* The floating BankingAgent FAB is a fixed overlay from App.js — no reserved column needed */
+/* Float mode: token chain = 2× sidenav width (sidenav=280px → 560px), content fills rest */
 .ud-body.ud-body--2026.ud-body--float-mode {
-  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  grid-template-columns: 560px minmax(0, 1fr);
 }
 
 /* ── Right dock active: FAB on left side so it does not overlap the right inline column ── */

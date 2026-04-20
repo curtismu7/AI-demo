@@ -1733,7 +1733,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       className={`user-dashboard user-dashboard--2026${
         agentPlacement === 'bottom' && dashboardLayout === 'classic' ? ' user-dashboard--embed-agent' : ''
       }${(agentPlacement === 'middle' && middleAgentOpen) || (agentPlacement === 'right-dock' && rightAgentOpen) ? ' user-dashboard--split3' : ''
-      }${agentPlacement === 'right-dock' ? ' user-dashboard--right-dock-active' : ''}`}
+      }${agentPlacement === 'right-dock' ? ' user-dashboard--right-dock-active' : ''
+      }${agentPlacement === 'none' ? ' user-dashboard--float-fab-left' : ''}`}
     >
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
