@@ -477,7 +477,9 @@ function AppWithAuth() {
     !isApiTrafficOnlyPage &&
     !hasEmbeddedDockLayout &&
     (marketingAgentSurface ||
+      (Boolean(user) && agentPlacement === 'none') ||
       (Boolean(user) &&
+        agentPlacement !== 'none' &&
         onDashboardAgentRoute &&
         !(agentPlacement === 'middle' && onUserDashboardRoute) &&
         !(agentPlacement === 'right-dock' && !agentFab)));
