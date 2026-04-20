@@ -3116,3 +3116,17 @@ html[data-theme='dark'] .App--marketing-page .embedded-agent-dock[data-agent-the
 }
 
 /* End Phase 148 CSS */
+
+/* ── Right dock active (SideAgentDock on admin / non-dashboard pages): FAB on left ──
+   html.app-has-side-dock-right--open is set by SideAgentDock.js while the right
+   dock panel is expanded. Move the float FAB to the left edge so it does not
+   disappear behind the right dock. */
+html.app-has-side-dock-right--open .banking-agent-fab {
+  right: auto;
+  left: var(--float-edge, 28px);
+}
+
+html.app-has-side-dock-right--open .banking-agent-panel:not(.ba-mode-inline) {
+  right: auto;
+  left: 16px;
+}

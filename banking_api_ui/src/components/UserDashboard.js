@@ -1732,7 +1732,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     <div
       className={`user-dashboard user-dashboard--2026${
         agentPlacement === 'bottom' && dashboardLayout === 'classic' ? ' user-dashboard--embed-agent' : ''
-      }${(agentPlacement === 'middle' && middleAgentOpen) || (agentPlacement === 'right-dock' && rightAgentOpen) ? ' user-dashboard--split3' : ''}`}
+      }${(agentPlacement === 'middle' && middleAgentOpen) || (agentPlacement === 'right-dock' && rightAgentOpen) ? ' user-dashboard--split3' : ''
+      }${agentPlacement === 'right-dock' ? ' user-dashboard--right-dock-active' : ''}`}
     >
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
@@ -1812,8 +1813,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
       ) : (
         // Bottom-dock or float mode: 3-column grid + optional full-width agent row below
+        // Float mode ('none'): 2-column layout — token rail + content; FAB is a fixed overlay from App.js
         <div className={`ud-body-outer${agentPlacement === 'bottom' ? ' ud-body-outer--with-bottom-agent' : ''}`}>
-          <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--design-3col">
+          <div className={`dashboard-content ud-body ud-body--2026 ud-body--floating${agentPlacement === 'none' ? ' ud-body--float-mode' : ' ud-body--design-3col'}`}>
             <aside className="ud-token-rail" aria-label="Token chain">
               <div className="section ud-token-rail__inner">
                 <ExchangeModeToggle />
@@ -1825,10 +1827,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               {renderBankingMain()}
             </main>
 
-            {agentPlacement === 'bottom' ? (
-              // No float-reserve column needed — agent is below spanning all 3 cols
-              <aside className="ud-float-reserve ud-float-reserve--hidden" aria-hidden="true" />
-            ) : (
+            {/* Float-reserve column: hidden in bottom mode (agent spans full width) and float mode (FAB is fixed overlay) */}
+            {agentPlacement !== 'bottom' && agentPlacement !== 'none' && (
               <aside className="ud-float-reserve" aria-hidden="true">
                 <div className="ud-float-reserve__card">
                   <span className="ud-float-reserve__label">Floating assistant</span>

@@ -3182,3 +3182,24 @@ html[data-theme='dark'] .token-modal {
 .ud-action-btn:hover {
   background: var(--chase-navy-light, #005FA3);
 }
+
+/* ── Float mode: 2-column layout (token rail + content); no float-reserve column ── */
+/* The floating BankingAgent FAB is a fixed overlay from App.js — no reserved column needed */
+.ud-body.ud-body--2026.ud-body--float-mode {
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+}
+
+/* ── Right dock active: FAB on left side so it does not overlap the right inline column ── */
+/* Applied when user-dashboard--right-dock-active class is on the outer wrapper */
+.user-dashboard--right-dock-active .banking-agent-fab {
+  right: auto !important;
+  left: var(--float-edge, 28px);
+}
+
+.user-dashboard--right-dock-active .banking-agent-panel:not(.ba-mode-inline) {
+  right: auto !important;
+  left: 16px;
+}
+
+/* ── SideAgentDock (admin + non-dashboard pages) with right dock: FAB on left ── */
+/* html.app-has-side-dock-right--open is set by SideAgentDock.js */
