@@ -2,6 +2,8 @@
 
 
 Pending Todos:
+Make agent response text bolder, bigger, and more prominent with dramatic background styling — ensure responses cannot be missed (ui, 0d ago)
+Auto-scroll agent component to bottom on each response — bring response into immediate view without user scrolling (ui, 0d ago)
 Read PDF - OAuth 2.0 Token Exchange info for PingOne implementation help (auth, 2d ago)
 Surface sub claim as user ID and act/agent ID in token chain display and education panels (ui, 2d ago)
 Audit PingOne apps for missing apps including Super Banking Admin App (auth, 2d ago)
