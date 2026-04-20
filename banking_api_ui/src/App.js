@@ -54,6 +54,7 @@ import PingOneTestPage from './components/PingOneTestPage';
 import MFATestPage from './components/MFATestPage';
 import LlmConfigPage from './components/LlmConfigPage';
 import OAuthTokenDisplayPage from './components/OAuthTokenDisplayPage';
+import UnifiedTokenFlowInspector from './components/UnifiedTokenFlowInspector';
 import ResourceServerPage from './components/ResourceServerPage';
 import ClientCredentialsResourcePage from './components/ClientCredentialsResourcePage';
 import AdminLayout from './components/AdminLayout';
@@ -73,6 +74,7 @@ import { DemoTourProvider } from './context/DemoTourContext';
 import { ExchangeModeProvider } from './context/ExchangeModeContext';
 import DemoTourModal from './components/tour/DemoTourModal';
 import ServerRestartModal from './components/ServerRestartModal';
+import MissingCredentialsModal from './components/MissingCredentialsModal';
 import { monitorApiHealth } from './services/bankingRestartNotificationService';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
 import Footer from './components/Footer';
@@ -208,8 +210,8 @@ function AppWithAuth() {
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   /** On-page session prompt (replaces toast-only for “log in again” flows). */
-  const [sessionReauth, setSessionReauth] = useState(null);
-  const pendingUserEmailRef = useRef(null);
+  const [sessionReauth, setSessionReauth] = useState(null);  /** Missing credentials modal state */
+  const [credentialsModal, setCredentialsModal] = useState(null);  const pendingUserEmailRef = useRef(null);
   /** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
   const sessionEstablishedRef = useRef(null);
 
@@ -388,6 +390,21 @@ function AppWithAuth() {
     if (user) setSessionReauth(null);
   }, [user]);
 
+  // Listen for missing_credentials events (dispatched by API error handling)
+  useEffect(() => {
+    const onMissingCreds = (e) => {
+      const d = e.detail;
+      if (!d || !d.missingFields?.length) return;
+      setCredentialsModal({
+        missingFields: d.missingFields,
+        credentialType: d.credentialType,
+        message: d.message,
+      });
+    };
+    window.addEventListener('missing-credentials', onMissingCreds);
+    return () => window.removeEventListener('missing-credentials', onMissingCreds);
+  }, []);
+
   /** End-user OAuth BFF failures redirect to /marketing (not /login) so FAB/dock stay mounted — toast here. */
   useEffect(() => {
     if (showEndUserOAuthErrorToast(searchParams)) {
@@ -469,9 +486,8 @@ function AppWithAuth() {
   const marketingAgentSurface =
     isPublicMarketingAgentPath(pathname) && (!user || pathNorm === '/marketing');
 
-  // Marketing `/` + `/marketing`: always reserve bottom dock (float + bottom) regardless of agent UI toggle.
+  // Marketing `/` + `/marketing`: always show float agent, never bottom dock.
   const hasEmbeddedDockLayout =
-    isMarketingEmbeddedDockSurface(pathname, user) ||
     (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute && pathNorm !== '/marketing');
 
   const showFloatingAgent =
@@ -685,6 +701,7 @@ function AppWithAuth() {
                     <Route path="/scope-audit" element={<AdminRoute user={user}><ScopeAuditPage /></AdminRoute>} />
                     <Route path="/scope-reference" element={<AdminRoute user={user}><ScopeReferencePage /></AdminRoute>} />
                     <Route path="/oauth/token-display" element={user ? <OAuthTokenDisplayPage /> : <Navigate to="/" replace />} />
+                    <Route path="/agent-flow-inspector" element={user ? <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={true} /> : <Navigate to="/" replace />} />
                     <Route path="/resource-server" element={user ? <ResourceServerPage /> : <Navigate to="/" replace />} />
                     <Route path="/resource-server-cc" element={<AdminRoute user={user}><ClientCredentialsResourcePage /></AdminRoute>} />
                     {/* User-friendly self-service routes */}
@@ -728,13 +745,26 @@ function AppWithAuth() {
             />
           )}
           {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
-              order directly above the footer on marketing and other non-dashboard routes. */}
-          {!loading && !onUserDashboardRoute && pathNorm !== '/marketing' && (
+              order directly above the footer on marketing and other non-dashboard routes.
+              Marketing pages (guests) always use float agent — no bottom dock. */}
+          {!loading && !onUserDashboardRoute && pathNorm !== '/marketing' && !(!user && isPublicMarketingAgentPath(pathname)) && (
             <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
           )}
           {!isApiTrafficOnlyPage && <Footer user={user} />}
           <ServerRestartModal />
           {!isApiTrafficOnlyPage && <DemoTourModal />}
+          <MissingCredentialsModal
+            isOpen={!!credentialsModal}
+            missingFields={credentialsModal?.missingFields || []}
+            credentialType={credentialsModal?.credentialType}
+            message={credentialsModal?.message}
+            onSubmit={async (formData) => {
+              const { submitCredentials } = await import('./services/credentialsService');
+              await submitCredentials(credentialsModal.credentialType, formData);
+              setCredentialsModal(null);
+            }}
+            onCancel={() => setCredentialsModal(null)}
+          />
           <SpinnerHost />
         </div>
       </TokenChainProvider>

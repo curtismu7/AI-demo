@@ -1,50 +1,20 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
+import TokenChainDisplay from './TokenChainDisplay';
+import UnifiedTokenFlowInspector from './UnifiedTokenFlowInspector';
+import FloatingPanel from './FloatingPanel';
 import './LandingPage.css';
-import * as bankingAgentService from '../services/bankingAgentService';
 
 export default function LandingPage({ user, onLogout }) {
   const navigate = useNavigate();
-  const handleAdminLogin = (e) => {
+  const handleAdminDashboard = (e) => {
     e.preventDefault();
-    // Redirect to BFF OAuth login endpoint
-    window.location.href = '/api/auth/oauth/login';
+    navigate('/admin');
   };
 
-  const handleCustomerLogin = (e) => {
+  const handleCustomerDashboard = (e) => {
     e.preventDefault();
-    navigate("/dashboard");
-  };
-
-
-
-
-
-
-
-  const handleResourceAction = async (actionId) => {
-    try {
-      if (actionId === 'balance') {
-        const result = await bankingAgentService.getAccountBalance('primary');
-        notifySuccess(`Balance: ${result.balance || 'Loading...'}`);
-      } else if (actionId === 'transactions') {
-        const result = await bankingAgentService.getMyTransactions();
-        notifySuccess(`Found ${result?.length || 0} transactions`);
-      }
-    } catch (err) {
-      console.error(`[handleResourceAction] Error for ${actionId}:`, err);
-      
-      // Phase 187 pattern: Check for need_auth signal (401 - token expired or missing permission)
-      if (err?.need_auth) {
-        notifyInfo('🔐 Session expired — sign in again to view your data');
-        handleCustomerLogin({ preventDefault: () => {} });
-        return;
-      }
-      
-      // Other errors: display error message
-      notifyError(`Error fetching ${actionId}: ${err.message || 'Unknown error'}`);
-    }
+    navigate('/dashboard');
   };
 
   return (
@@ -79,27 +49,19 @@ export default function LandingPage({ user, onLogout }) {
             >
               MFA Test
             </button>
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="nav-link"
-              style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", font: "inherit" }}
-            >
-              Explore Demo
-            </button>
-
           </nav>
           <div className="landing-header-actions">
             <button
-              onClick={handleAdminLogin}
+              onClick={handleAdminDashboard}
               className="btn btn-primary"
             >
-              Log In as Admin
+              Admin Dashboard
             </button>
             <button
-              onClick={handleCustomerLogin}
+              onClick={handleCustomerDashboard}
               className="btn btn-secondary"
             >
-              Log In as Customer
+              Customer Dashboard
             </button>
           </div>
         </div>
@@ -115,25 +77,17 @@ export default function LandingPage({ user, onLogout }) {
           </p>
           <div className="landing-hero-actions">
             <button
-              onClick={handleAdminLogin}
+              onClick={handleAdminDashboard}
               className="hero-cta hero-cta-primary"
             >
-              Try as Admin
+              Admin Dashboard
             </button>
             <button
-              onClick={handleCustomerLogin}
+              onClick={handleCustomerDashboard}
               className="hero-cta hero-cta-secondary"
             >
-              Try as Customer
+              Customer Dashboard
             </button>
-            {!user && (
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="hero-cta hero-cta-explore"
-              >
-                Explore Demo
-              </button>
-            )}
           </div>
         </div>
       </section>
@@ -182,53 +136,21 @@ export default function LandingPage({ user, onLogout }) {
         </div>
       </section>
 
-      {/* Account Resources Section (Phase 189) - visible when logged in */}
-      {user && (
-        <section className="landing-account-resources">
-          <div className="landing-resources-heading">
-            <h2>Account Resources</h2>
-            <p className="landing-resources-subtitle">Explore your banking data directly from here</p>
-          </div>
-          <div className="landing-resources-grid" role="list">
-            {/* Resource 1: Check Balance */}
-            <article className="resource-card" role="listitem">
-              <div className="resource-card-icon">💰</div>
-              <h3 className="resource-card-title">Account Balance</h3>
-              <p className="resource-card-description">
-                View your current account balance and account details
-              </p>
-              <button
-                onClick={() => handleResourceAction('balance')}
-                className="resource-button"
-                disabled={!user}
-                aria-label="Check Account Balance"
-                title={!user ? 'Sign in to view balance' : 'Check your account balance'}
-              >
-                Check Balance
-              </button>
-            </article>
-
-            {/* Resource 2: View Transactions */}
-            <article className="resource-card" role="listitem">
-              <div className="resource-card-icon">📊</div>
-              <h3 className="resource-card-title">Recent Transactions</h3>
-              <p className="resource-card-description">
-                View your recent transactions and account activity
-              </p>
-              <button
-                onClick={() => handleResourceAction('transactions')}
-                className="resource-button"
-                disabled={!user}
-                aria-label="View Recent Transactions"
-                title={!user ? 'Sign in to view transactions' : 'View your recent transactions'}
-              >
-                View Transactions
-              </button>
-            </article>
-          </div>
-        </section>
-      )}
-
+      {/* Token Chain + Unified Flow Inspector — side by side, draggable/resizable */}
+      <section className="landing-token-chain" aria-label="Token chain visualization">
+        <div className="landing-token-chain-heading">
+          <h2>Live Token Chain &amp; Agent Flow Inspector</h2>
+          <p>See how OAuth tokens and agent requests flow through the system — from login through RFC 8693 delegation to MCP tool calls. Drag, resize, or toggle between fixed/floating modes.</p>
+        </div>
+        <div className="landing-panels-row">
+          <FloatingPanel title="Live Token Chain" defaultWidth={480} defaultHeight={520} className="fp-token-chain">
+            <TokenChainDisplay />
+          </FloatingPanel>
+          <FloatingPanel title="Agent & Token Flow Inspector" defaultWidth={880} defaultHeight={520} className="fp-unified-inspector">
+            <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={true} />
+          </FloatingPanel>
+        </div>
+      </section>
 
     </div>
   );
