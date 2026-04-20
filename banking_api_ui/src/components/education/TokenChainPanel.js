@@ -7,6 +7,7 @@ import './TokenChainPanel.css';
  * Illustrative RFC 8693 token chain: User token → agent → MCP / transaction tokens → resource.
  * Rows expand to show decoded JWT-shaped examples; copy is demo-only (no live secrets in the browser).
  */
+import { useAgentCCTokenPrefetch } from '../../hooks/useAgentCCTokenPrefetch';
 const TOKEN_CHAIN_STEPS = [
   {
     id: 'banking-app',
@@ -81,6 +82,7 @@ export default function TokenChainPanel() {
   const [expandedToolId, setExpandedToolId] = useState(null);
   const [copyFlash, setCopyFlash] = useState(null);
   const tokenChain = useTokenChainOptional();
+  useAgentCCTokenPrefetch();
   const mcpToolCalls = tokenChain?.mcpToolCalls || [];
   const resolvedIdentity = tokenChain?.resolvedIdentity ?? null;
 

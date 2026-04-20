@@ -245,6 +245,96 @@ router.get('/session-preview', (req, res) => {
   }
 });
 
+/**
+ * Prefetch agent CC token and return as decoded tokenEvent.
+ * GET /api/tokens/agent-cc-preview
+ *
+ * Silently fetches the MCP Token Exchanger's client-credentials token server-side.
+ * Returns only decoded claims (header + payload), never the raw JWT.
+ * If AGENT_OAUTH_CLIENT_ID is not configured, returns a "not configured" placeholder event.
+ */
+router.get('/agent-cc-preview', async (req, res) => {
+  try {
+    const clientId =
+      configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
+      process.env.AGENT_OAUTH_CLIENT_ID;
+
+    // If not configured, return a helpful placeholder event
+    if (!clientId) {
+      return res.json({
+        tokenEvents: [
+          agentMcpTokenService.buildTokenEvent(
+            'agent-cc-not-configured',
+            'Agent Actor Token (CC) — Not Configured',
+            'skipped',
+            null,
+            'AGENT_OAUTH_CLIENT_ID is not set. Configure PingOne MCP Token Exchanger credentials ' +
+            'in Admin → Config to enable dual-token exchange.',
+            { rfc: 'RFC 8693 §2.1' }
+          )
+        ]
+      });
+    }
+
+    // Fetch the CC token server-side
+    try {
+      const ccToken = await oauthService.getMcpExchangerToken();
+
+      // Decode without storing raw token
+      const decoded = agentMcpTokenService.decodeJwtClaims(ccToken);
+      if (!decoded) {
+        return res.json({
+          tokenEvents: [
+            agentMcpTokenService.buildTokenEvent(
+              'agent-actor-token-prefetch',
+              'Agent Actor Token (CC) — prefetch failed',
+              'failed',
+              null,
+              'CC token was fetched but could not be decoded. Check token format.',
+              { rfc: 'RFC 8693 §2.1' }
+            )
+          ]
+        });
+      }
+
+      // Return decoded token as event
+      return res.json({
+        tokenEvents: [
+          agentMcpTokenService.buildTokenEvent(
+            'agent-actor-token-prefetch',
+            'Agent Actor Token (CC) — prefetched',
+            'active',
+            decoded,
+            `Client-credentials token for the AI Agent (${clientId.substring(0, 8)}...). ` +
+            'This token is used as the actor_token in RFC 8693 Token Exchange when a banking tool is invoked via MCP. ' +
+            'It carries the agent\'s identity — the resulting MCP access token will have act.client_id proving which agent performed the delegation.',
+            { rfc: 'RFC 8693 §2.1' }
+          )
+        ]
+      });
+    } catch (fetchErr) {
+      console.warn('[agent-cc-preview] CC token fetch failed:', fetchErr.message);
+      return res.json({
+        tokenEvents: [
+          agentMcpTokenService.buildTokenEvent(
+            'agent-actor-token-prefetch',
+            'Agent Actor Token (CC) — fetch failed',
+            'failed',
+            null,
+            `Could not fetch agent CC token: ${fetchErr.message}. Check AGENT_OAUTH_CLIENT_SECRET and PingOne app config.`,
+            { rfc: 'RFC 8693 §2.1' }
+          )
+        ]
+      });
+    }
+  } catch (error) {
+    console.error('Token agent-cc-preview error:', error);
+    res.status(500).json({ error: 'Failed to load agent CC token preview' });
+  }
+});
+
+
+
  // IMPORTANT: /userinfo must be defined above /:tokenId wildcard
 /**
  * Fetch enriched user info from PingOne userinfo endpoint.
