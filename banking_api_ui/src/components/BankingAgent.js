@@ -991,8 +991,15 @@ export default function BankingAgent({
   const [hitlChallengeId, setHitlChallengeId] = useState(null);
   /** Pending action awaiting CIBA step-up approval (ref: read in event listener closure). */
   const pendingStepUpActionRef = useRef(null);
-  /** Pending action awaiting auth-challenge login (ref: read in event listener closure). */
-  const pendingAuthChallengeActionRef = useRef(null);
+  /** Pending action awaiting auth-challenge login (ref: read in event listener closure).
+   *  Also persisted to sessionStorage so it survives PingOne full-page redirect. */
+  const pendingAuthChallengeActionRef = useRef((() => {
+    try {
+      const stored = sessionStorage.getItem('_agent_pending_auth_action');
+      if (stored) { sessionStorage.removeItem('_agent_pending_auth_action'); return JSON.parse(stored); }
+    } catch { /* ignore */ }
+    return null;
+  })());
 
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -1357,6 +1364,7 @@ export default function BankingAgent({
       if (!pendingAuthChallengeActionRef.current) return;
       const { actionId, form } = pendingAuthChallengeActionRef.current;
       pendingAuthChallengeActionRef.current = null;
+      try { sessionStorage.removeItem('_agent_pending_auth_action'); } catch { /* best-effort */ }
       addMessage('assistant', '✅ Signed in — retrying your request…', actionId);
       runAction(actionId, form);
     };
@@ -1901,6 +1909,8 @@ export default function BankingAgent({
         } else if (normalized.authChallenge && normalized.authChallenge.authorizationUrl) {
           const loginUrl = (process.env.REACT_APP_API_URL || '') + '/api/auth/oauth/user/login';
           pendingAuthChallengeActionRef.current = { actionId, form };
+          // Persist to sessionStorage so it survives the PingOne full-page redirect
+          try { sessionStorage.setItem('_agent_pending_auth_action', JSON.stringify({ actionId, form })); } catch { /* best-effort */ }
           addMessage('assistant',
             `🔑 **Login required.**\n\nThis operation requires you to be signed in. Click the button below — your request will resume automatically after you authenticate.`,
             actionId

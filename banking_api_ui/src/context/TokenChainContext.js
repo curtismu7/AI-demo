@@ -76,9 +76,11 @@ export function TokenChainProvider({ children }) {
     try { localStorage.removeItem(TOKEN_CHAIN_HISTORY_KEY); } catch {}
   }, []);
 
-  // Fetch MCP tool calls from /api/token-chain on mount and poll every 15s
+  // Fetch MCP tool calls from /api/token-chain — only after authentication.
+  // Starts polling on 'userAuthenticated' event; stops on unmount.
   useEffect(() => {
     let cancelled = false;
+    let pollInterval = null;
     const fetchMCPToolCalls = async () => {
       try {
         const res = await fetch('/api/token-chain', { credentials: 'include' });
@@ -91,9 +93,19 @@ export function TokenChainProvider({ children }) {
         // Silently fail — user may not be authenticated
       }
     };
-    fetchMCPToolCalls();
-    const pollInterval = setInterval(fetchMCPToolCalls, 15000);
-    return () => { cancelled = true; clearInterval(pollInterval); };
+    const startPolling = () => {
+      fetchMCPToolCalls();
+      if (!pollInterval) pollInterval = setInterval(fetchMCPToolCalls, 15000);
+    };
+    // Start polling immediately only if we might already be authenticated;
+    // otherwise wait for the userAuthenticated event.
+    startPolling();
+    window.addEventListener('userAuthenticated', startPolling);
+    return () => {
+      cancelled = true;
+      if (pollInterval) clearInterval(pollInterval);
+      window.removeEventListener('userAuthenticated', startPolling);
+    };
   }, []);
 
   /** Fetch resolved identity once on mount (and on re-auth). Shared across all token surfaces. */
