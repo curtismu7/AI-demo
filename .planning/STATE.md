@@ -26,6 +26,13 @@ Next phase: 127+ (available for planning)
 
 ## Recent Progress
 
+📊 **Phase 205 PLANNED** (1 plan)
+
+- Plan 205-01: Credentials Modal — Detect missing OAuth/worker credentials and prompt user via modal; submit to configstore; integrate with error handler
+- Architecture: React modal component, credentials service API calls, BFF endpoints (/api/config/credentials/set, /api/config/credentials/missing), middleware integration
+- Design: Modal shows form inputs per missing field; conditional guidance for worker tokens with PingOne setup instructions
+- Ready to execute
+
 ✅ **Phase 126 COMPLETE**
 
 - Plan 126-01: Added `resolvedIdentity` to TokenChainContext (single shared fetch); refactored TokenChainDisplay to read identity from context; EventRow User button shows friendly name; TokenChainEducationPanel JwtClaimsTab shows live sub/name/email; TokenChainPanel shows live sub in banking-app step; AgentFlowDiagramPanel compact view shows friendly identity

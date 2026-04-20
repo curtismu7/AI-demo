@@ -1961,7 +1961,7 @@ Plans:
 
 ### Phase 188: Define AI token exchange taxonomy — user token (subject), agent token (actor), transaction token (MCP access) — validate naming against RFC 8693 and MCP spec
 
-**Goal:** [To be planned]
+**Goal:** Self-service credential provisioning — detect missing OAuth/worker credentials and prompt user via modal to fill them in and update PingOne app config
 **Requirements**: TBD
 **Depends on:** Phase 187
 **Plans:** 2/2 plans complete
@@ -2140,7 +2140,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 203
-**Plans:** 0 plans
+**Plans:** 1 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 204 to break down)
@@ -2153,7 +2153,7 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 205 to break down)
+- [x] 205-01-PLAN.md — Detect and prompt for missing credentials; submit via modal to configstore
 
 ---
 
