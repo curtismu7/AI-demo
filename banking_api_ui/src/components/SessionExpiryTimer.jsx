@@ -119,7 +119,7 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
           <div className="banking-header__left">
             <div className="banking-header__logo">
               <span className="banking-header__logo-icon">🏦</span>
-              <span className="banking-header__logo-text">BankCorp</span>
+              <span className="banking-header__logo-text">Super Bank</span>
             </div>
           </div>
           <div className="banking-header__right" />
@@ -140,7 +140,7 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
         <div className="banking-header__left">
           <div className="banking-header__logo">
             <span className="banking-header__logo-icon">🏦</span>
-            <span className="banking-header__logo-text">BankCorp</span>
+            <span className="banking-header__logo-text">Super Bank</span>
           </div>
           {userInfo && (
             <div className="banking-header__user-context">

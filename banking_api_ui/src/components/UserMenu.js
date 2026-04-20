@@ -31,7 +31,7 @@ export default function UserMenu({ user, onLogout }) {
         type="button"
       >
         <div className="user-menu-avatar">
-          {(user?.firstName?.[0] || '?').toUpperCase()}
+          {user?.firstName?.[0] ? user.firstName[0].toUpperCase() : <MdPerson size={18} />}
         </div>
         <MdArrowDropDown className="user-menu-dropdown-icon" />
       </button>
@@ -40,7 +40,7 @@ export default function UserMenu({ user, onLogout }) {
         <div className="user-menu-dropdown">
           <div className="user-menu-header">
             <div className="user-menu-avatar user-menu-avatar-large">
-              {(user?.firstName?.[0] || '?').toUpperCase()}
+              {user?.firstName?.[0] ? user.firstName[0].toUpperCase() : null}
             </div>
             <div className="user-menu-info">
               <div className="user-menu-name">
