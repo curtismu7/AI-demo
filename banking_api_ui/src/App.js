@@ -645,8 +645,8 @@ function AppWithAuth() {
                     <Route path="/activity" element={<AdminRoute user={user}><ActivityLogs user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/audit" element={<AdminRoute user={user}><AuditPage user={user} /></AdminRoute>} />
                     <Route path="/users" element={<AdminRoute user={user}><Users user={user} onLogout={logout} /></AdminRoute>} />
-                    <Route path="/accounts" element={<AdminRoute user={user}><Accounts user={user} onLogout={logout} /></AdminRoute>} />
-                    <Route path="/transactions" element={<AdminRoute user={user}><Transactions user={user} onLogout={logout} /></AdminRoute>} />
+                    <Route path="/accounts" element={user?.role === 'admin' ? <AdminRoute user={user}><Accounts user={user} onLogout={logout} /></AdminRoute> : <UserAccounts user={user} />} />
+                    <Route path="/transactions" element={user?.role === 'admin' ? <AdminRoute user={user}><Transactions user={user} onLogout={logout} /></AdminRoute> : <UserTransactions user={user} />} />
                     <Route
                       path="/admin/banking"
                       element={<AdminRoute user={user}><BankingAdminOps user={user} onLogout={logout} /></AdminRoute>}
@@ -680,8 +680,6 @@ function AppWithAuth() {
                     <Route path="/resource-server" element={user ? <ResourceServerPage /> : <Navigate to="/" replace />} />
                     <Route path="/resource-server-cc" element={<AdminRoute user={user}><ClientCredentialsResourcePage /></AdminRoute>} />
                     {/* User-friendly self-service routes */}
-                    <Route path="/accounts" element={<UserAccounts user={user} />} />
-                    <Route path="/transactions" element={<UserTransactions user={user} />} />
                     <Route path="/profile" element={<Profile user={user} />} />
                     <Route path="/security" element={<SecurityCenter user={user} />} />
                     {/* Catch-all: unknown routes redirect to dashboard instead of blank/404 */}
