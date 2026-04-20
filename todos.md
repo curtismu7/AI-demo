@@ -2,7 +2,6 @@
 
 
 Pending Todos:
-Update run.sh and run-bank.sh to display ports in header summary and show all logs by default (devops, 0d ago)
 Make agent response text bolder, bigger, and more prominent with dramatic background styling — ensure responses cannot be missed (ui, 0d ago)
 Auto-scroll agent component to bottom on each response — bring response into immediate view without user scrolling (ui, 0d ago)
 Read PDF - OAuth 2.0 Token Exchange info for PingOne implementation help (auth, 2d ago)
