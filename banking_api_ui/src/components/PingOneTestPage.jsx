@@ -189,10 +189,12 @@ export default function PingOneTestPage() {
   const [exchange401Error, setExchange401Error] = useState(null);
   const [exchange401Decoded, setExchange401Decoded] = useState(null);
   const [exchange401Steps, setExchange401Steps] = useState([]);
-  const [exchangeIdTokenStatus, setExchangeIdTokenStatus] = useState('pending');
-  const [exchangeIdTokenError, setExchangeIdTokenError] = useState(null);
-  const [exchangeIdTokenDecoded, setExchangeIdTokenDecoded] = useState(null);
-  const [exchangeIdTokenSubjectDecoded, setExchangeIdTokenSubjectDecoded] = useState(null);
+  /* eslint-disable no-unused-vars */
+  const [_exchangeIdTokenStatus, setExchangeIdTokenStatus] = useState('pending');
+  const [_exchangeIdTokenError, setExchangeIdTokenError] = useState(null);
+  const [_exchangeIdTokenDecoded, setExchangeIdTokenDecoded] = useState(null);
+  const [_exchangeIdTokenSubjectDecoded, setExchangeIdTokenSubjectDecoded] = useState(null);
+  /* eslint-enable no-unused-vars */
   const [exchange186Status, setExchange186Status] = useState('pending');
   const [exchange186Error, setExchange186Error] = useState(null);
   const [exchange186Decoded, setExchange186Decoded] = useState(null);
@@ -203,10 +205,14 @@ export default function PingOneTestPage() {
   // Decoded token claims from BFF (server-side decode — no raw JWT in browser)
   const [authzDecoded, setAuthzDecoded] = useState(null);
   const [agentDecoded, setAgentDecoded] = useState(null);
-  const [exchange1Decoded, setExchange1Decoded] = useState(null);
+  /* eslint-disable no-unused-vars */
+  const [_exchange1Decoded, setExchange1Decoded] = useState(null);
+  /* eslint-enable no-unused-vars */
   const [exchange2Decoded, setExchange2Decoded] = useState(null);
-  const [exchange1SubjectDecoded, setExchange1SubjectDecoded] = useState(null);
-  const [exchange1ActorDecoded, setExchange1ActorDecoded] = useState(null);
+  /* eslint-disable no-unused-vars */
+  const [_exchange1SubjectDecoded, setExchange1SubjectDecoded] = useState(null);
+  const [_exchange1ActorDecoded, setExchange1ActorDecoded] = useState(null);
+  /* eslint-enable no-unused-vars */
   const [exchange2SubjectDecoded, setExchange2SubjectDecoded] = useState(null);
   const [exchange2ActorDecoded, setExchange2ActorDecoded] = useState(null);
   const [exchange401AgentDecoded, setExchange401AgentDecoded] = useState(null);
@@ -260,26 +266,7 @@ export default function PingOneTestPage() {
     localStorage.setItem('pingoneTestResults', JSON.stringify(results));
   }, [authzTokenStatus, agentTokenStatus, authzTokenError, agentTokenError, exchange1Status, exchange2Status, exchange401Status, exchange1Error, exchange2Error, exchange401Error]);
 
-  // Load existing worker config from config endpoint on mount
-  useEffect(() => {
-    const loadWorkerConfig = async () => {
-      try {
-        const { data } = await apiClient.get('/api/pingone-test/config');
-        if (data.success && data.config) {
-          setWorkerConfig({
-            clientId: data.config.mgmtClientId || '',
-            clientSecret: data.config.mgmtClientSecret || '',
-            authMethod: data.config.mgmtTokenAuthMethod || 'basic',
-            tokenExchangeAuthMethod: data.config.tokenExchangeAuthMethod || 'post'
-          });
-          setFfIdTokenExchange(data.config.ffIdTokenExchange || false);
-        }
-      } catch (err) {
-        console.warn('Failed to load existing worker config:', err.message);
-      }
-    };
-    loadWorkerConfig();
-  }, []);
+  // Load existing worker config consolidated into main startup effect below
 
   const isTokenValid = (expiresAt) => {
     if (!expiresAt) return false;
@@ -636,6 +623,7 @@ export default function PingOneTestPage() {
     }
   }, []);
 
+  // eslint-disable-next-line no-unused-vars
   const testExchange1 = useCallback(async () => {
     setExchange1Status('running');
     setExchange1Error(null);
@@ -717,6 +705,7 @@ export default function PingOneTestPage() {
     }
   }, [tokenChainCtx]);
 
+  // eslint-disable-next-line no-unused-vars
   const testExchangeIdToken = useCallback(async () => {
     setExchangeIdTokenStatus('running');
     setExchangeIdTokenError(null);

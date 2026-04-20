@@ -99,11 +99,15 @@ export function TokenChainProvider({ children }) {
   /** Fetch resolved identity once on mount (and on re-auth). Shared across all token surfaces. */
   const loadResolvedIdentity = useCallback(async () => {
     try {
-      const [sessionRes, configRes] = await Promise.all([
-        fetch('/api/auth/session', { credentials: 'include' }),
-        fetch('/api/pingone-test/config', { credentials: 'include' }),
-      ]);
-      const sessionData = sessionRes.ok ? await sessionRes.json() : null;
+      // Check session first; only load config if authenticated to avoid 401 loop
+      const sessionRes = await fetch('/api/auth/session', { credentials: 'include' });
+      if (!sessionRes.ok) {
+        // Not authenticated — skip config to avoid 401 loop
+        setResolvedIdentity({ currentUser: null, knownClients: {} });
+        return;
+      }
+      const configRes = await fetch('/api/pingone-test/config', { credentials: 'include' });
+      const sessionData = await sessionRes.json();
       const configData  = configRes.ok  ? await configRes.json()  : null;
       const identity = { currentUser: null, knownClients: {} };
       if (sessionData?.authenticated && sessionData.user) {
