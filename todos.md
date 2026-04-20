@@ -19,7 +19,6 @@ Update Step by Step education panel with real aud may_act values and both exchan
 Study AI-IAM-CORE Webinar Postman collection to fix 2-token exchange path (auth, 2d ago)
 Add unauthenticated agent chip group with login prompt chip, keep existing chip groups (ui, 2d ago)
 Fix floating agent popout window to match agent height and width (ui, 2d ago)
-Add session expiry countdown timer to header (ui, 2d ago)
 Middle agent layout needs scrollbar when window height is short (ui, 2d ago)
 *Include PINGONE_MAY_ACT docs in Phase 5 user documentation (docs, 2d ago)
 *Merge config and demo-data into one unified configuration page (ui, 2d ago)

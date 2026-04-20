@@ -57,6 +57,7 @@ import ResourceServerPage from './components/ResourceServerPage';
 import ClientCredentialsResourcePage from './components/ClientCredentialsResourcePage';
 import AdminLayout from './components/AdminLayout';
 import AdminSideNav from './components/AdminSideNav';
+import SessionExpiryTimer from './components/SessionExpiryTimer';
 
 import { savePublicConfig } from './services/configService';
 import { getCachedJson } from './services/cachedStatusService';
@@ -506,6 +507,7 @@ function AppWithAuth() {
     <DemoTourProvider>
     <EducationUIProvider>
       <TokenChainProvider>
+        <SessionExpiryTimer hideOnPaths={['/configure', '/demo-data', '/self-service', '/onboarding']} />
         <div
           className={`App end-user-nano${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}${isMarketingEmbeddedDockSurface(pathname, user) ? ' App--marketing-page' : ''}`}
         >

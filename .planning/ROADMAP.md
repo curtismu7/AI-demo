@@ -2135,6 +2135,16 @@ Plans:
 Plans:
 - [ ] 203-01-PLAN.md — Switch 9 config/resource TestCards to pending-first status
 
+### Phase 204: configure page: add explanations for each field/option, add Feature Flags tab
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 203
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 204 to break down)
+
 ---
 
 ### Phase 197: Fix Phase 193 regression — sidebar missing on unauthenticated dashboard

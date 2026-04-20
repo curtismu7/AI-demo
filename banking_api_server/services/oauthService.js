@@ -150,7 +150,7 @@ class OAuthService {
   /**
    * Exchange authorization code for access token.
    * codeVerifier must match the code_challenge sent during /authorize (PKCE S256).
-   * Enhanced to support RFC 9728 resource indicators.
+   * Enhanced to support RFC 8707 resource indicators.
    */
   async exchangeCodeForToken(code, codeVerifier, redirectUri, resources = null) {
     try {
@@ -166,7 +166,7 @@ class OAuthService {
         body.set('code_verifier', codeVerifier);
       }
       
-      // Add RFC 9728 resource indicators if provided
+      // Add RFC 8707 resource indicators if provided
       if (resources && Array.isArray(resources) && resources.length > 0) {
         // Validate resource format
         const resourceIndicatorService = require('./resourceIndicatorService');
@@ -175,11 +175,11 @@ class OAuthService {
         );
         
         if (validResources.length > 0) {
-          // Add each resource as a separate parameter (RFC 9728)
+          // Add each resource as a separate parameter (RFC 8707)
           validResources.forEach(resource => {
             body.append('resource', resource);
           });
-          console.log('[exchangeCodeForToken] RFC 9728 resources:', validResources);
+          console.log('[exchangeCodeForToken] RFC 8707 resources:', validResources);
         }
       }
       

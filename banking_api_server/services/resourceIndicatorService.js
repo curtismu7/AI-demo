@@ -1,7 +1,7 @@
 /**
  * resourceIndicatorService.js
  *
- * RFC 9728 Resource Indicators Implementation
+ * RFC 8707 Resource Indicators Implementation
  * Provides resource indicator management, validation, and binding for OAuth 2.0 flows.
  */
 
@@ -69,7 +69,7 @@ const RESOURCE_CONFIG = {
 };
 
 /**
- * Validate resource URI format according to RFC 9728
+ * Validate resource URI format according to RFC 8707
  * @param {string} resourceUri - Resource URI to validate
  * @returns {boolean} - True if valid format
  */
@@ -78,7 +78,7 @@ function validateResourceFormat(resourceUri) {
     return false;
   }
 
-  // RFC 9728: Resource indicators must be absolute URIs
+  // RFC 8707: Resource indicators must be absolute URIs
   try {
     const url = new URL(resourceUri);
     
@@ -296,7 +296,7 @@ function createResourceBinding(token, resources) {
   return {
     ...token,
     resource: sortedResources,
-    aud: sortedResources, // RFC 9728: aud can be array of resource URIs
+    aud: sortedResources, // RFC 8707: aud can be array of resource URIs
     resource_binding: bindingHash
   };
 }

@@ -79,6 +79,12 @@ Next phase: 127+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 204 added: /configure page needs explanations for each field/option; add Feature Flags as a tab on the configure page
+
+- Phase 203 added: /pingone-test config and resource cards: yellow background until tested, green if passed, light red if failed
+
+- Phase 202 added: PingOne test page: show token events in acquisition order (top=first obtained, bottom=MCP token); add summary of changes section
+
 - Phase 201 added: PingOne test page: rename 'Verify Assets' to 'Verify Resources & Scopes' and filter to only show apps/resources used by this app
 
 - Phase 200 added: Heuristic command/chip routing — use LLM only when heuristic cannot understand
