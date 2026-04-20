@@ -205,6 +205,7 @@ Next phase: 127+ (available for planning)
 
 ### Pending Todos
 
-- 2 pending todos
-- Latest: Marketing pages should only show float agent, never bottom positioning
+- 3 pending todos
+- Latest: Resize dashboard columns - token chain, user data, and agent positioning
+- Other: Marketing pages should only show float agent, never bottom positioning
 - Other: Align UI with 2-token exchange
