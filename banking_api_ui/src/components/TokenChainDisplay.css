@@ -1264,3 +1264,112 @@
   font-weight: 700;
   margin-left: 2px;
 }
+
+/* ─── MCP Results Section ────────────────────────────────────────────────── */
+.tcd-mcp-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.tcd-mcp-result-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tcd-mcp-result-card:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.tcd-mcp-result-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.tcd-mcp-result-tool {
+  font-family: 'Courier New', monospace;
+  color: var(--chase-navy);
+  font-weight: 700;
+  padding: 2px 8px;
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 4px;
+}
+
+.tcd-mcp-result-status {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.tcd-mcp-result-status--success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.tcd-mcp-result-status--failure {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.tcd-mcp-result-duration {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.tcd-mcp-result-summary {
+  font-size: 0.85rem;
+  color: #475569;
+  padding: 0 4px;
+}
+
+.tcd-mcp-result-details {
+  margin-top: 8px;
+}
+
+.tcd-mcp-result-summary-toggle {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #0066cc;
+  font-weight: 600;
+  user-select: none;
+}
+
+.tcd-mcp-result-summary-toggle:hover {
+  text-decoration: underline;
+}
+
+.tcd-mcp-result-json {
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 0.75rem;
+  font-family: 'Courier New', monospace;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
+.tcd-mcp-result-note {
+  font-size: 0.75rem;
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.08);
+  border-left: 2px solid #14b8a6;
+  padding: 6px 8px;
+  border-radius: 3px;
+}

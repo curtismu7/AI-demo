@@ -1123,6 +1123,9 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
           <button type="button" className={`tcd-tab ${tab === 'current' ? 'active' : ''}`} onClick={() => setTab('current')}>
             Current call
           </button>
+          <button type="button" className={`tcd-tab ${tab === 'mcp-results' ? 'active' : ''}`} onClick={() => setTab('mcp-results')}>
+            MCP Results {(ctx?.mcpToolCalls?.length || 0) > 0 && <span className="tcd-hist-count">{ctx.mcpToolCalls.length}</span>}
+          </button>
           <button type="button" className={`tcd-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>
             History {history.length > 0 && <span className="tcd-hist-count">{history.length}</span>}
           </button>
@@ -1152,6 +1155,37 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
             ))}
           </div>
           </>
+        )}
+
+        {tab === 'mcp-results' && (
+          <div className="tcd-mcp-results">
+            {(!ctx?.mcpToolCalls || ctx.mcpToolCalls.length === 0)
+              ? <div className="tcd-placeholder-note">No MCP tool calls yet. Run a banking action through the AI Agent to see tool results.</div>
+              : ctx.mcpToolCalls.map((toolCall, i) => (
+                  <div key={`${toolCall.timestamp}-${toolCall.toolName}-${i}`} className="tcd-mcp-result-card">
+                    <div className="tcd-mcp-result-header">
+                      <span className="tcd-mcp-result-tool">{toolCall.toolName}</span>
+                      <span className={`tcd-mcp-result-status tcd-mcp-result-status--${toolCall.status}`}>
+                        {toolCall.status === 'success' ? '✓' : '✗'} {toolCall.status}
+                      </span>
+                      {toolCall.duration > 0 && <span className="tcd-mcp-result-duration">{toolCall.duration}ms</span>}
+                    </div>
+                    {toolCall.resultSummary && (
+                      <div className="tcd-mcp-result-summary">{toolCall.resultSummary}</div>
+                    )}
+                    {toolCall.resultJson && (
+                      <details className="tcd-mcp-result-details">
+                        <summary className="tcd-mcp-result-summary-toggle">View JSON Response</summary>
+                        <pre className="tcd-mcp-result-json">{JSON.stringify(toolCall.resultJson, null, 2)}</pre>
+                      </details>
+                    )}
+                    {toolCall.isDelegated && (
+                      <div className="tcd-mcp-result-note">🔐 Delegated (RFC 8693)</div>
+                    )}
+                  </div>
+                ))
+            }
+          </div>
         )}
 
         {tab === 'history' && (

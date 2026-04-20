@@ -210,7 +210,11 @@ export class BankingToolProvider {
             success: result.success || false,
             errorCode: result.error ? 'TOOL_ERROR' : undefined,
             duration: executionTime,
-            toolResultSummary
+            toolResultSummary,
+            toolResultJson: result.success ? {
+              text: result.text,
+              isError: result.isError
+            } : undefined
           }
         );
       } catch (auditError) {

@@ -4,7 +4,6 @@
  */
 
 import { Logger } from './Logger.js';
-import { Redis } from '@upstash/redis';
 
 export interface AuditEvent {
   eventId: string;
@@ -86,6 +85,7 @@ export interface TokenChainExecutionResult {
   errorCode?: string;
   duration: number;         // ms
   toolResultSummary?: string;  // e.g. "3 accounts returned", "transfer completed", etc.
+  toolResultJson?: Record<string, any>;  // Full MCP tool response JSON
 }
 
 /**
@@ -95,19 +95,8 @@ export class AuditLogger {
   private logger: Logger;
   private static instance: AuditLogger;
 
-  private redis: Redis | null = null;
-
   constructor(logger: Logger) {
     this.logger = logger;
-  }
-
-  private getRedis(): Redis | null {
-    if (this.redis) return this.redis;
-    const url = process.env['UPSTASH_REDIS_REST_URL'];
-    const token = process.env['UPSTASH_REDIS_REST_TOKEN'];
-    if (!url || !token) return null;
-    this.redis = new Redis({ url, token });
-    return this.redis;
   }
 
   private sanitizeParams(params: Record<string, unknown>): Record<string, unknown> {
@@ -120,17 +109,7 @@ export class AuditLogger {
   }
 
   private async writeToRedis(event: AuditEvent): Promise<void> {
-    const client = this.getRedis();
-    if (!client) return;
-    try {
-      const key = 'mcp:audit:events';
-      const entry = JSON.stringify(event);
-      await client.lpush(key, entry);
-      await client.ltrim(key, 0, 499);
-      await client.expire(key, 604800);
-    } catch (err) {
-      process.stderr.write('[AuditLogger] Redis write failed: ' + (err instanceof Error ? err.message : String(err)) + '\n');
-    }
+    // No-op — Redis/Upstash removed. Audit events are logged via Logger only.
   }
 
   static getInstance(logger?: Logger): AuditLogger {
@@ -422,7 +401,8 @@ export class AuditLogger {
           success: executionResult.success,
           errorCode: executionResult.errorCode,
           duration: executionResult.duration,
-          summary: executionResult.toolResultSummary
+          summary: executionResult.toolResultSummary,
+          resultJson: executionResult.toolResultJson
         }
       }
     };
@@ -489,36 +469,9 @@ export class AuditLogger {
     endTime?: Date;
     limit?: number;
   }): Promise<AuditEvent[]> {
-    const client = this.getRedis();
-    if (!client) {
-      await this.logger.debug('Audit log query: Redis not configured, returning empty', { filters, operation: 'audit_query' });
-      return [];
-    }
-
-    try {
-      const raw = await client.lrange('mcp:audit:events', 0, 499);
-      let events: AuditEvent[] = raw
-        .map((entry: unknown) => {
-          try { return JSON.parse(typeof entry === 'string' ? entry : JSON.stringify(entry)) as AuditEvent; }
-          catch { return null; }
-        })
-        .filter((e: AuditEvent | null): e is AuditEvent => e !== null);
-
-      if (filters.eventType) events = events.filter(e => e.eventType === filters.eventType);
-      if (filters.operation) events = events.filter(e => e.operation === filters.operation);
-      if (filters.userId) events = events.filter(e => e.userId === filters.userId);
-      if (filters.agentId) events = events.filter(e => e.agentId === filters.agentId);
-      if (filters.sessionId) events = events.filter(e => e.sessionId === filters.sessionId);
-      if (filters.outcome) events = events.filter(e => e.outcome === filters.outcome);
-      if (filters.startTime) events = events.filter(e => new Date(e.timestamp) >= filters.startTime!);
-      if (filters.endTime) events = events.filter(e => new Date(e.timestamp) <= filters.endTime!);
-
-      const limit = filters.limit ?? 100;
-      return events.slice(0, limit);
-    } catch (err) {
-      await this.logger.warn('Audit query failed', { err: err instanceof Error ? err.message : String(err), operation: 'audit_query' });
-      return [];
-    }
+    // Redis/Upstash removed — audit query returns empty
+    await this.logger.debug('Audit log query: Redis not configured, returning empty', { filters, operation: 'audit_query' });
+    return [];
   }
 
   /**

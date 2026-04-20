@@ -218,9 +218,11 @@ function synthesizeFromSession(accessToken) {
  */
 async function getMCPToolCalls(userId) {
   try {
-    const mcpPort = process.env.MCP_PORT || 3002;
+    // Derive MCP server HTTP origin from MCP_SERVER_URL (ws://host:port → http://host:port)
+    const mcpWsUrl = process.env.MCP_SERVER_URL || 'ws://localhost:8080';
+    const mcpHttpBase = mcpWsUrl.replace(/^ws(s?):/, 'http$1:');
     const agentToken = process.env.MCP_AGENT_TOKEN || '';
-    const url = `http://localhost:${mcpPort}/audit?eventType=token_chain`;
+    const url = `${mcpHttpBase}/audit?eventType=token_chain`;
     const response = await fetch(url, {
       headers: agentToken ? { 'Authorization': `Bearer ${agentToken}` } : {}
     });
@@ -244,7 +246,9 @@ async function getMCPToolCalls(userId) {
         duration: event.details?.result?.duration || 0,
         chainIndex: event.details?.chainIndex || 0,
         isDelegated: !!event.details?.exchangedToken,
-        scopes: event.details?.userToken?.scope || []
+        scopes: event.details?.userToken?.scope || [],
+        resultJson: event.details?.result?.resultJson || null,  // Full MCP tool response
+        resultSummary: event.details?.result?.summary || null
       }))
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   } catch (error) {
