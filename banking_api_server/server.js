@@ -1901,6 +1901,21 @@ if (require.main === module) {
     }
 }
 
+
+// ── Startup redirect-URI guard ──────────────────────────────────────────────
+// Silently checks (and if missing, patches) the OAuth apps' redirect_uri
+// allowlists in PingOne using the management worker token.
+// Non-blocking: runs after server is listening; never prevents startup.
+setImmediate(async () => {
+  try {
+    const { ensureAllRedirectUris } = require('./services/pingoneAppConfigService');
+    await ensureAllRedirectUris();
+  } catch (err) {
+    // Management credentials not configured, or PingOne unreachable — not fatal.
+    console.warn('[redirect-uri-guard] Skipped —', err.message);
+  }
+});
+
 // Export app as the default (for supertest / existing requires) and attach
 // named flags so other modules can do: require('./server').isReplit etc.
 module.exports = app;

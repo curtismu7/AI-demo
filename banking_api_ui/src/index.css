@@ -11,6 +11,8 @@
 
 /* App-wide primary actions: red fill, white label (floating FABs use their own classes). */
 :root {
+  /* TopNav height — used by SideAgentDock and other fixed-position elements */
+  --topnav-height: 56px;
   --app-primary-red: #b91c1c;
   --app-primary-red-hover: #991b1b;
   --app-primary-red-mid: #dc2626;

@@ -143,9 +143,121 @@ async function auditAppConfig(appId) {
   };
 }
 
+
+/**
+ * Ensure a redirect URI is registered on a PingOne application.
+ * If already present, returns alreadyPresent=true (no-op).
+ * If missing, PATCHes the app via PUT (full-replace merging existing + new) and returns added=true.
+ *
+ * Uses the existing management token from getManagementToken() — silent client_credentials grant.
+ *
+ * @param {string} appId - PingOne application ID (client_id of the OAuth app)
+ * @param {string} redirectUri - The redirect URI that must be registered (must include port if non-standard)
+ * @returns {Promise<{appId, redirectUri, alreadyPresent?, added?, error?, newUriCount?}>}
+ */
+async function ensureRedirectUri(appId, redirectUri) {
+  if (!appId || !redirectUri) {
+    return { appId, redirectUri, error: 'appId and redirectUri are required' };
+  }
+  let config;
+  try {
+    config = await getAppConfig(appId);
+  } catch (err) {
+    return { appId, redirectUri, error: `getAppConfig failed: ${err.message}` };
+  }
+
+  const existing = new Set(config.redirectUris || []);
+  if (existing.has(redirectUri)) {
+    return { appId, redirectUri, alreadyPresent: true, uriCount: existing.size };
+  }
+
+  existing.add(redirectUri);
+  const updated = { ...config, redirectUris: [...existing] };
+  try {
+    const after = await updateAppConfig(appId, updated);
+    return {
+      appId,
+      redirectUri,
+      added: true,
+      newUriCount: (after.redirectUris || []).length,
+      appName: config.name,
+    };
+  } catch (err) {
+    return { appId, redirectUri, error: `updateAppConfig failed: ${err.message}` };
+  }
+}
+
+/**
+ * Ensure both admin and user redirect URIs are registered in PingOne.
+ * Reads app IDs and redirect URIs from configStore / PUBLIC_APP_URL.
+ * Runs silently — logs results, never throws.
+ *
+ * @returns {Promise<{ admin: object, user: object }>}
+ */
+async function ensureAllRedirectUris() {
+  const configStore = require('./configStore');
+  const PORT = process.env.PORT || '3001';
+  const publicAppUrl = (
+    configStore.getEffective('public_app_url') ||
+    process.env.PUBLIC_APP_URL ||
+    ''
+  ).replace(/\/+$/, '').trim();
+
+  // Build redirect URIs — use PUBLIC_APP_URL if available, else fall back to localhost:PORT
+  const base = publicAppUrl || `http://localhost:${PORT}`;
+
+  // Enforce port in URI when not on standard port (HTTPS:443, HTTP:80)
+  function withPort(uri) {
+    try {
+      const u = new URL(uri);
+      const isStandard =
+        (u.protocol === 'https:' && (!u.port || u.port === '443')) ||
+        (u.protocol === 'http:' && (!u.port || u.port === '80'));
+      // Localhost or non-standard port: always include port
+      if (u.hostname === 'localhost' || !isStandard) {
+        if (!u.port) u.port = PORT;
+        return u.toString().replace(/\/+$/, '');
+      }
+      return uri.replace(/\/+$/, '');
+    } catch {
+      return uri;
+    }
+  }
+
+  const adminUri = withPort(`${base}/api/auth/oauth/callback`);
+  const userUri  = withPort(`${base}/api/auth/oauth/user/callback`);
+
+  const adminClientId = configStore.getEffective('admin_client_id') || null;
+  const userClientId  = configStore.getEffective('user_client_id')  || null;
+
+  const results = { admin: null, user: null };
+
+  if (adminClientId) {
+    results.admin = await ensureRedirectUri(adminClientId, adminUri);
+    const tag = results.admin.error ? 'WARN' : results.admin.added ? 'ADDED' : 'OK';
+    console.log(`[redirect-uri-guard] admin (${adminClientId.slice(0,8)}…) ${adminUri} → ${tag}${results.admin.error ? ': ' + results.admin.error : ''}`);
+  } else {
+    results.admin = { skipped: true, reason: 'admin_client_id not configured' };
+    console.log('[redirect-uri-guard] admin: skipped — admin_client_id not configured');
+  }
+
+  if (userClientId) {
+    results.user = await ensureRedirectUri(userClientId, userUri);
+    const tag = results.user.error ? 'WARN' : results.user.added ? 'ADDED' : 'OK';
+    console.log(`[redirect-uri-guard] user (${userClientId.slice(0,8)}…) ${userUri} → ${tag}${results.user.error ? ': ' + results.user.error : ''}`);
+  } else {
+    results.user = { skipped: true, reason: 'user_client_id not configured' };
+    console.log('[redirect-uri-guard] user: skipped — user_client_id not configured');
+  }
+
+  return results;
+}
+
 module.exports = {
   getAppConfig,
   updateAppConfig,
   fixLogoutUrls,
-  auditAppConfig
+  auditAppConfig,
+  ensureRedirectUri,
+  ensureAllRedirectUris,
 };

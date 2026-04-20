@@ -2,7 +2,7 @@
 
 .side-agent-dock {
   position: fixed;
-  top: 0;
+  top: var(--topnav-height, 56px);
   bottom: 0;
   z-index: 900;
   background: var(--chase-light-gray);
