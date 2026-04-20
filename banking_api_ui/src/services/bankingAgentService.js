@@ -246,6 +246,7 @@ export async function callMcpTool(tool, params = {}) {
         statusCode: response.status,
         code: errCode,
         need_auth: !!err.need_auth,
+        taskId: err.taskId || null,
       });
       throw e;
     }
@@ -496,6 +497,12 @@ export async function sendAgentMessage(message, consentId = null) {
     if (!isStubToken) {
       const refreshed = await refreshOAuthSession();
       if (refreshed.ok) {
+        res = await fetch('/api/banking-agent/message', opts);
+      } else {
+        // After server restart the session store is empty; background polls
+        // (status, token-chain) may rebuild it within a couple of seconds.
+        // Give them a moment and retry once before giving up.
+        await new Promise(r => setTimeout(r, 1500));
         res = await fetch('/api/banking-agent/message', opts);
       }
     }

@@ -86,6 +86,7 @@ const mcpInspectorRoutes = require('./routes/mcpInspector');
 const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const agentDelegationRoutes = require('./routes/agentDelegation');
+const mcpDecisionPollingRoutes = require('./routes/mcpDecisionPolling');
 const bankingAgentRoutes = require('./routes/bankingAgentRoutes');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const langchainConfigRoutes = require('./routes/langchainConfig');
@@ -625,6 +626,7 @@ app.use('/api/auth/mfa', mfaRoutes);
 app.use('/api/mfa/test', mfaTestRoutes);
 app.use('/api/agent', agentIdentityRoutes);
 app.use('/api/agent', agentDelegationRoutes);
+app.use('/api/mcp', mcpDecisionPollingRoutes);
 // NL/search routes: public LLM config + NL parsing. Must be mounted BEFORE bankingAgentRoutes
 // so /nl/status, /nl, and /search are handled without agentSessionMiddleware.
 app.use('/api/banking-agent', bankingAgentNlRoutes);
@@ -1223,8 +1225,24 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
                 phase: 'authorize_denied',
                 status: mcpAuthz.block.status
             });
+            // HITL: create pending decision so the agent UI can poll and approve/deny
+            let hitlTaskId = null;
+            if (mcpAuthz.block.body.error === 'mcp_hitl_required') {
+                const { createPendingDecision } = require('./routes/mcpDecisionPolling');
+                const hitl = createPendingDecision(
+                    userSub,
+                    {
+                        tool,
+                        decisionId: mcpAuthz.block.body.decisionId,
+                        decisionContext: mcpAuthz.block.body.decisionContext,
+                        reason: mcpAuthz.block.body.error_description,
+                    },
+                );
+                hitlTaskId = hitl.taskId;
+            }
             return res.status(mcpAuthz.block.status).json({
                 ...mcpAuthz.block.body,
+                ...(hitlTaskId ? { taskId: hitlTaskId } : {}),
                 tokenEvents,
                 mcpAuthorizeEvaluation: {
                     decisionContext: mcpAuthz.block.body.decisionContext,

@@ -64,6 +64,17 @@ function _simulatedMcpDenyToolSet() {
   );
 }
 
+/** Tools requiring HITL approval in simulated MCP first-tool policy (comma-separated env). */
+function _simulatedMcpHitlToolSet() {
+  const raw = process.env.SIMULATED_MCP_HITL_TOOLS || '';
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
 /**
  * Simulated PingOne Authorize for MCP first tool use (DecisionContext=McpFirstTool).
  * Default PERMIT; optional DENY when tool name is listed in SIMULATED_MCP_DENY_TOOLS.
@@ -101,6 +112,8 @@ async function evaluateMcpFirstTool({
 
   const denySet = _simulatedMcpDenyToolSet();
   const denied = toolName && denySet.has(toolName);
+  const hitlSet = _simulatedMcpHitlToolSet();
+  const hitlRequired = toolName && hitlSet.has(toolName);
 
   const rawBase = {
     engine: 'simulated',
@@ -108,7 +121,7 @@ async function evaluateMcpFirstTool({
     kind: 'mcp_first_tool',
     parameters,
     educationNote:
-      'Simulated MCP first-tool policy. Set SIMULATED_MCP_DENY_TOOLS=comma,separated,tool_names to force DENY for demos.',
+      'Simulated MCP first-tool policy. Set SIMULATED_MCP_DENY_TOOLS=comma,separated,tool_names to force DENY for demos. Set SIMULATED_MCP_HITL_TOOLS for HITL approval.',
   };
 
   let out;
@@ -116,6 +129,7 @@ async function evaluateMcpFirstTool({
     out = {
       decision: 'DENY',
       stepUpRequired: false,
+      hitlRequired: false,
       path: 'simulated',
       decisionId,
       raw: {
@@ -124,10 +138,25 @@ async function evaluateMcpFirstTool({
         reason: `Simulated policy DENY: tool "${toolName}" is in SIMULATED_MCP_DENY_TOOLS.`,
       },
     };
+  } else if (hitlRequired) {
+    out = {
+      decision: 'INDETERMINATE',
+      stepUpRequired: false,
+      hitlRequired: true,
+      path: 'simulated',
+      decisionId,
+      raw: {
+        ...rawBase,
+        decision: 'INDETERMINATE',
+        obligations: [{ type: 'HITL', detail: 'Simulated Authorize obligation — human approval required.' }],
+        reason: `Simulated policy HITL: tool "${toolName}" is in SIMULATED_MCP_HITL_TOOLS.`,
+      },
+    };
   } else {
     out = {
       decision: 'PERMIT',
       stepUpRequired: false,
+      hitlRequired: false,
       path: 'simulated',
       decisionId,
       raw: {
@@ -142,6 +171,7 @@ async function evaluateMcpFirstTool({
     decisionId: out.decisionId,
     decision: out.decision,
     stepUpRequired: out.stepUpRequired,
+    hitlRequired: out.hitlRequired,
     parameters,
     path: out.path,
     kind: 'mcp_first_tool',

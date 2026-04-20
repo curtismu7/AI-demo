@@ -38,6 +38,8 @@
 | **HITL OTP email flow** | **OTP never sent; `{ otpSent: false }` with no email; transaction blocked** | `emailService.js` — must use `admin_client_id` / `admin_client_secret` (not `pingone_client_id`). `transactionConsentChallenge.js` — returns `otpCodeFallback` in response when email throws so dev flow still works. |
 | **consentBlocked persists across logout** | **Agent fully disabled on fresh login after prior HITL decline** | `BankingAgent.js` — `useState` initializer always returns `false` (clears stale localStorage); `checkSelfAuth` calls `setAgentBlockedByConsentDecline(false)` on valid session. |
 | **Cross-Lambda exchange audit** | **Log Viewer always empty after token exchange failure on Vercel (Lambda isolation)** | `services/exchangeAuditStore.js` — Redis-backed LPUSH/LTRIM on `banking:exchange-audit`. `routes/logs.js` `GET /api/logs/console` merges Redis events. `GET /api/logs/exchange` endpoint must exist. Both success and failure paths call `writeExchangeEvent()` fire-and-forget. |
+| **Option D agent delegation endpoint** | **`POST /api/agent/delegate` — external agent platforms pre-fetch delegated token; rate-limited 10 req/user/min** | `banking_api_server/routes/agentDelegation.js`, `banking_api_server/server.js` (route registration). |
+| **MCP HITL decision polling** | **`GET /api/mcp/decision/:taskId` + approve/deny — in-memory store with 5min TTL; `mcp_hitl_required` error code triggers HITL consent flow in BankingAgent** | `banking_api_server/routes/mcpDecisionPolling.js`, `banking_api_server/server.js`, `banking_api_server/services/mcpToolAuthorizationService.js` (hitlRequired block), `banking_api_server/services/simulatedAuthorizeService.js` (SIMULATED_MCP_HITL_TOOLS), `banking_api_ui/src/components/BankingAgent.js` (mcp_hitl_required handler). |
 | **Token Chain blank on login** | **Token Chain shows placeholder instead of decoded user token after sign-in** | `TokenChainDisplay.js` — mount effect calls `fetchSessionPreview()` unconditionally (no `didAuthRef` guard). Function returns early on `!res.ok` (safe when unauthenticated). |
 | Split vs Classic dashboard + HITL consent | Duplicate FAB/dock with inline agent, or consent navigates away | `dashboardLayout.js`, `customerSplit3Dashboard.js`, `UserDashboard.js`, `TransactionConsentModal.js`, `App.js` |
 | **Bottom dock — tile strip direction** | **Re-adding `flex-direction: row-reverse` to `.ba-embedded-bottom-dock .ba-body` puts tiles back on the right sidebar, hiding the prompt input** | `banking_api_ui/src/components/BankingAgent.css` — `.ba-body` must be `column-reverse`; `.ba-left-col` must be `flex-direction: row; overflow-x: auto; border-top` (horizontal strip). `ba-chips-footer` and nav button are `display:none` in bottom dock to prevent input cut-off. |
@@ -79,6 +81,39 @@
 ---
 
 ## 4. Bug Fix Log (reverse-chronological)
+
+### 2026-04-20 — MCP server build error: `isError` property not found
+
+- **Root cause:** TypeScript compilation error in `BankingToolProvider.ts` line 216. The code tried to access `result.isError`, but the `BankingToolResult` interface only defines an `error?: string` property (not `isError`). This caused dist files to be built incorrectly, and at runtime when AuditLogger tried to require compiled modules, it would fail with MODULE_NOT_FOUND cascading from the broken build.
+- **Symptoms:** MCP server crashed on startup with `MODULE_NOT_FOUND` error chain starting from AuditLogger.js trying to require @upstash/redis (which existed but the broken dist prevented it from loading).
+- **Fix:**
+  1. `banking_mcp_server/src/tools/BankingToolProvider.ts` line 216 — Changed `isError: result.isError` to `isError: !!result.error` to derive the flag from the actual interface property
+  2. `npm run build` in banking_mcp_server to recompile TypeScript
+- **Files modified:** `banking_mcp_server/src/tools/BankingToolProvider.ts`
+- **Verification:** MCP server now starts successfully on port 8080 with no MODULE_NOT_FOUND errors; logs show "Server is ready to accept MCP connections"
+- **Do not break:** BankingToolResult interface usage, AuditLogger logging chain, token chain audit trail recording
+
+### 2026-04-20 — Step-up withdrawal threshold undefined error
+
+- **Root cause:** `checkLocalStepUp` function in `mcpLocalTools.js` declared the `threshold` variable inside an `else` block (line 52). When `stepUpWithdrawalsAlways` was enabled for a withdrawal transaction, the code skipped the `else` block, leaving `threshold` undefined. Later, the function tried to return `amount_threshold: threshold` (line 71), causing ReferenceError: `threshold is not defined`.
+- **Symptoms:** Withdrawal operation failed with "threshold is not defined" error in MCP Server when step-up withdrawal was configured with `stepUpWithdrawalsAlways: true`.
+- **Fix:**
+  1. `banking_api_server/services/mcpLocalTools.js` line 49 — Moved `const threshold = runtimeSettings.get('stepUpAmountThreshold') ?? 0;` outside the if/else block so it's always defined before the return statement
+  2. Simplified the conditional: only check threshold in the `else` branch; `if` branch (withdrawalsAlways withdrawal) now skips to step-up verification without threshold comparison
+- **Files modified:** `banking_api_server/services/mcpLocalTools.js`
+- **Regression check:** Threshold is now always in scope when `checkLocalStepUp` returns; existing amount threshold checks still work for transfers and below-threshold withdrawals
+- **Do not break:** `stepUpEnabled` guard (line 44), `stepUpTransactionTypes` type check, admin bypass, ACR verification, withdrawal-always branch behavior
+
+### 2026-04-20 — Marketing agent redirect-to-dashboard and missing PingOne login
+
+- **Root cause:** Two bugs: (1) `oauthUser.js` login route hardcoded `/dashboard` redirect for already-authenticated users, ignoring the `return_to` query param sent by the marketing agent. (2) `BankingAgent.js` NL handler treated 401 / `need_auth` responses from marketing guest chat as `session_not_hydrated` (showing a session-fix bubble and scroll-to-login) instead of triggering PingOne OAuth with the NL message saved for replay.
+- **Symptoms:** Agent on /marketing redirected users to /dashboard instead of staying on /marketing. Unauthenticated marketing guests asking banking questions (e.g. "show my accounts") never got redirected to PingOne login.
+- **Fix:**
+  1. `oauthUser.js` line 184 — Respect `return_to` query param in already-authenticated redirect (falls back to `/dashboard` if absent)
+  2. `BankingAgent.js` NL handler — Before generic `session_not_hydrated` path, check for `need_auth` / 401 on marketing pages; save NL to sessionStorage and trigger `handleLoginAction('login_user')` which sets `return_to=/marketing`
+- **Files modified:** `banking_api_server/routes/oauthUser.js`, `banking_api_ui/src/components/BankingAgent.js`
+- **Regression check:** `npm run build` → exit 0; no changes to OAuth callback, token exchange, or session persistence
+- **Do not break:** OAuth callback `postLoginReturnToPath` flow; `sanitizePostLoginReturnPath` validation; NL replay after auth (`BX_AGENT_PENDING_NL_KEY`); session-fix bubble for genuine cookie-only / Vercel sessions
 
 
 ### 2026-04-20 — OAuth challenge duplicate keys (Phase 199 regression)

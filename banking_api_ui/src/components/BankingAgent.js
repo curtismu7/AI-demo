@@ -2285,6 +2285,14 @@ export default function BankingAgent({
         // MCP Authorize gate: PingOne (or simulated) denied tool access
         const reason = err.message || 'MCP tool access was denied by authorization policy';
         addMessage('assistant', `🚫 **Access Denied**\n\n${reason}\n\nYour current session does not have sufficient authorization for this tool. Contact your administrator if you believe this is an error.`, actionId);
+      } else if (err?.code === 'mcp_hitl_required') {
+        // MCP Authorize gate: HITL approval needed before tool can execute
+        const reason = err.message || 'This action requires your approval before the agent can proceed';
+        // Extract taskId from the error (bankingAgentService puts response fields on the thrown error)
+        const taskId = err.taskId;
+        addMessage('assistant', `👤 **Approval Required**\n\n${reason}\n\nPlease review and approve or deny this action.`, actionId);
+        // Reuse existing HITL consent intent: actionId + form for retry, plus taskId for polling
+        setHitlPendingIntent({ actionId, form, taskId, reason, isMcpHitl: true, intentPayload: null });
       } else if (err?.code === 'agent_consent_required') {
         // Old server deployment still enforcing startup consent gate.
         // The consent gate has been removed — sign out and sign in to refresh the session,
@@ -3054,6 +3062,31 @@ export default function BankingAgent({
               const handleHitlConfirm = async () => {
                 const { actionId, intentPayload } = hitlPendingIntent;
 
+                // MCP Authorize HITL flow — approve via polling endpoint, then retry tool
+                if (hitlPendingIntent.isMcpHitl && hitlPendingIntent.taskId) {
+                  const taskId = hitlPendingIntent.taskId;
+                  const retryActionId = hitlPendingIntent.actionId;
+                  const retryForm = hitlPendingIntent.form;
+                  setHitlPendingIntent(null);
+                  try {
+                    const approveResp = await fetch(`/api/mcp/decision/${taskId}/approve`, {
+                      method: 'POST',
+                      credentials: 'include',
+                      headers: { 'Content-Type': 'application/json' },
+                    });
+                    if (!approveResp.ok) {
+                      const err = await approveResp.json().catch(() => ({}));
+                      throw new Error(err.message || `Approval failed: ${approveResp.status}`);
+                    }
+                    addMessage('assistant', '✅ Approved — retrying your request…', retryActionId);
+                    // Clear the mcpFirstToolAuthorizeDone block so the retry doesn't re-trigger the gate
+                    runAction(retryActionId, retryForm);
+                  } catch (err) {
+                    addMessage('error', `Failed to approve: ${err.message}`, retryActionId);
+                  }
+                  return;
+                }
+
                 // Agent HITL resume flow (LangChain agent)
                 if (actionId === 'agent-hitl' && intentPayload?.consentId) {
                   const { consentId: pendingId, originalMessage } = intentPayload;
@@ -3096,19 +3129,33 @@ export default function BankingAgent({
                   setHitlPendingIntent(null);
                 }
               };
+              const handleHitlCancel = async () => {
+                // MCP HITL: also POST deny to the polling endpoint
+                if (hitlPendingIntent.isMcpHitl && hitlPendingIntent.taskId) {
+                  try {
+                    await fetch(`/api/mcp/decision/${hitlPendingIntent.taskId}/deny`, {
+                      method: 'POST',
+                      credentials: 'include',
+                      headers: { 'Content-Type': 'application/json' },
+                    });
+                  } catch { /* best-effort */ }
+                  addMessage('assistant', '🚫 You denied the MCP tool authorization request.', hitlPendingIntent.actionId);
+                }
+                setHitlPendingIntent(null);
+              };
               return (isInline || isBottomDock) ? (
                 <HitlInlineCard
                   transaction={hitlPendingIntent.intentPayload}
                   threshold={hitlPendingIntent.threshold ?? 500}
                   onConfirm={handleHitlConfirm}
-                  onCancel={() => setHitlPendingIntent(null)}
+                  onCancel={handleHitlCancel}
                 />
               ) : (
                 <AgentConsentModal
                   transaction={hitlPendingIntent.intentPayload}
                   hitlThreshold={hitlPendingIntent.threshold ?? 500}
                   onAccept={handleHitlConfirm}
-                  onDismiss={() => setHitlPendingIntent(null)}
+                  onDismiss={handleHitlCancel}
                 />
               );
             })()}

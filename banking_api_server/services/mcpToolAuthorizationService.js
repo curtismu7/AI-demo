@@ -134,6 +134,23 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
         };
       }
 
+      if (r.hitlRequired) {
+        return {
+          ran: true,
+          block: {
+            status: 428,
+            body: {
+              error: 'mcp_hitl_required',
+              error_description:
+                'Simulated authorization policy requires human approval before MCP tools (education mode).',
+              authorize_engine: 'simulated',
+              decisionContext: 'McpFirstTool',
+              decisionId: r.decisionId,
+            },
+          },
+        };
+      }
+
       if (r.decision === 'DENY') {
         return {
           ran: true,
@@ -192,6 +209,23 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
             error: 'mcp_step_up_required',
             error_description:
               'PingOne Authorize requires additional authentication before MCP tools can run.',
+            authorize_engine: 'pingone',
+            decisionContext: 'McpFirstTool',
+            decisionId: r.decisionId,
+          },
+        },
+      };
+    }
+
+    if (r.hitlRequired) {
+      return {
+        ran: true,
+        block: {
+          status: 428,
+          body: {
+            error: 'mcp_hitl_required',
+            error_description:
+              'PingOne Authorize requires human approval before MCP tools can run.',
             authorize_engine: 'pingone',
             decisionContext: 'McpFirstTool',
             decisionId: r.decisionId,

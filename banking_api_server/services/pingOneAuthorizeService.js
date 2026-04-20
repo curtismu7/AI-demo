@@ -175,10 +175,11 @@ async function _postDecisionEndpoint(endpointId, parameters) {
   const raw = await response.json();
   const decision = raw.decision || raw.status || 'INDETERMINATE';
   const stepUpRequired = _extractStepUpRequired(raw);
+  const hitlRequired = _extractHitlRequired(raw);
 
   const decisionId = raw.id || raw.decisionId || null;
 
-  return { decision, stepUpRequired, raw, decisionId, path: 'decision-endpoint' };
+  return { decision, stepUpRequired, hitlRequired, raw, decisionId, path: 'decision-endpoint' };
 }
 
 /**
@@ -635,6 +636,22 @@ function _extractStepUpRequired(raw) {
   }
   const advice = raw.advice || raw.details?.advice || [];
   if (advice.some((a) => (a.type || a.id || '').toUpperCase().includes('STEP_UP'))) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Detect HITL (Human-in-the-Loop) approval requirement from PA obligations.
+ * PA policies can signal HITL via obligation type containing 'HITL' or 'HUMAN_APPROVAL'.
+ */
+function _extractHitlRequired(raw) {
+  const obligations = raw.obligations || raw.details?.obligations || [];
+  if (obligations.some((o) => /(HITL|HUMAN_APPROVAL)/i.test(o.type || o.id || ''))) {
+    return true;
+  }
+  const advice = raw.advice || raw.details?.advice || [];
+  if (advice.some((a) => /(HITL|HUMAN_APPROVAL)/i.test(a.type || a.id || ''))) {
     return true;
   }
   return false;
