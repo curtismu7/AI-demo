@@ -785,13 +785,13 @@ const UnifiedConfigurationPage: FC<{
       <div className="cfg-section">
         <p className="cfg-section-desc">Configure OAuth 2.0 client credentials for admin and customer user flows.</p>
         <h3 className="cfg-subsection-title">Admin App (Authorization Code)</h3>
-        <CfgField label="Admin Client ID" value={state.adminClientId} onChange={field('adminClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+        <CfgField label="Admin Client ID" value={state.adminClientId} onChange={field('adminClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="OAuth Client ID for admin portal access. Created in PingOne → Applications → Web App" />
         <CfgSecretField label="Admin Client Secret" fieldKey="adminClientSecret" value={state.adminClientSecret} showSecrets={state.showSecrets} onToggle={toggleSecret} onChange={field('adminClientSecret')} />
-        <CfgField label="Admin Redirect URI" value={state.adminRedirectUri} onChange={field('adminRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/admin/callback" />
+        <CfgField label="Admin Redirect URI" value={state.adminRedirectUri} onChange={field('adminRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/admin/callback" help="OAuth callback URL where PingOne redirects after admin login. Must match PingOne app settings" />
         <h3 className="cfg-subsection-title">User App (Authorization Code + PKCE)</h3>
-        <CfgField label="User Client ID" value={state.userClientId} onChange={field('userClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+        <CfgField label="User Client ID" value={state.userClientId} onChange={field('userClientId')} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" help="OAuth Client ID for end-user login flow. Created in PingOne → Applications → Single-Page App (SPA)" />
         <CfgSecretField label="User Client Secret" fieldKey="userClientSecret" value={state.userClientSecret} showSecrets={state.showSecrets} onToggle={toggleSecret} onChange={field('userClientSecret')} />
-        <CfgField label="User Redirect URI" value={state.userRedirectUri} onChange={field('userRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/user/callback" />
+        <CfgField label="User Redirect URI" value={state.userRedirectUri} onChange={field('userRedirectUri')} placeholder="https://yourdomain.com/api/auth/oauth/user/callback" help="OAuth callback URL where PingOne redirects after user login. Must match PingOne SPA app settings" />
       </div>
     );
 
