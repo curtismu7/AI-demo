@@ -1318,19 +1318,15 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
     }
     // Defensive re-parse: on Vercel serverless the global express.json() may not have
     // buffered the body by the time this route handler runs (cold-start / middleware race).
-    // Re-applying express.json() inline (already declared above) handles the route-level
-    // parse, but if req.body is still empty we attempt a raw Buffer read as a last resort.
+    // DO NOT attempt to re-read the request stream — this causes memory leaks when the stream
+    // doesn't end properly. The request stream has been fully consumed by middleware already.
     let parsedBody = req.body || {};
+    // If req.body is unavailable, it's likely a middleware parsing error — proceed with empty body.
+    // The 400 response below will catch this as missing tool and return an error to the client.
     if (!parsedBody.tool && req.readableLength > 0) {
-        try {
-            const rawChunks = [];
-            for await (const chunk of req) rawChunks.push(chunk);
-            if (rawChunks.length) {
-                parsedBody = JSON.parse(Buffer.concat(rawChunks).toString('utf8'));
-            }
-        } catch (_) {
-            /* leave parsedBody as-is */
-        }
+        // Stream already consumed by middleware. Attempting to re-read causes hangs and memory leaks.
+        // Log this rare condition and proceed with what middleware provided.
+        console.warn('[/api/mcp/tool] Middleware did not parse body, but stream claims data. Using middleware result.');
     }
     const {
         tool,
