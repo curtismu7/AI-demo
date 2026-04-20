@@ -112,6 +112,7 @@ git checkout <last-version-tag> -- <key-file>
 | Gemini NL backend | active | `banking_api_server/services/geminiNlIntent.js` | `s:nlIntentParser.test.js` |
 | Groq NL backend | active | `banking_api_server/services/groqNlIntent.js` | `s:nlIntentParser.test.js` |
 | Agent identity / impersonation (act-as) | active | `banking_api_server/routes/agentIdentity.js`, `banking_api_server/services/agentIdentityStore.js` | — |
+| Agent delegation endpoint (Option D) — external platforms pre-fetch delegated token via `POST /api/agent/delegate` | active | `banking_api_server/routes/agentDelegation.js` | — |
 | Cookie-only / stub-token session messaging + deep session debug link (`/api/auth/debug?deep=1`) | active | `banking_api_ui/src/components/BankingAgent.js` | — |
 | Session reconnecting banner — polls `/api/auth/session` every 2s while `cookieOnlyBffSession:true` | active | `banking_api_ui/src/components/BankingAgent.js` | — |
 | Always on-behalf-of — RFC 8693 actor_token always used when `AGENT_OAUTH_CLIENT_ID` set; `on-behalf-of-warning` Token Chain event when unset | active | `banking_api_server/services/agentMcpTokenService.js` | `s:agentMcpTokenService.test.js` |

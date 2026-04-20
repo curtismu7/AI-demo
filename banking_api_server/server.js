@@ -1,5 +1,4 @@
 // Load environment variables — local dev: root .env takes precedence over banking_api_server/.env
-// On Vercel, env vars are injected directly (both calls are no-ops)
 const path = require('path');
 require('dotenv').config({
     path: path.resolve(__dirname, '../.env'),
@@ -15,14 +14,8 @@ require('./scripts/check-env');
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
 const {
-    resolveRedisWireUrl
-} = require('./services/redisWireUrl');
-const {
     mcpNoBearerResponse
 } = require('./services/bffSessionGating');
-const {
-    createFaultTolerantStore
-} = require('./services/faultTolerantStore');
 
 const express = require('express');
 const cors = require('cors');
@@ -31,26 +24,12 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 
-const isVercel = !!process.env.VERCEL;
 const isReplit = !!process.env.REPL_ID || !!process.env.REPLIT_DEPLOYMENT;
-const isProduction = process.env.NODE_ENV === 'production' || isVercel || isReplit;
+const isProduction = process.env.NODE_ENV === 'production' || isReplit;
 
 // Log deployment context on startup
-if (isVercel) console.log('[platform] Vercel deployment detected');
 if (isReplit) console.log('[platform] Replit deployment detected');
-if (!isVercel && !isReplit && isProduction) console.log('[platform] Generic production deployment');
-
-// Log OAuth config so mismatches are visible in Vercel logs
-if (isVercel) {
-    const _mask = (v, n = 4) => v ? v.slice(0, n) + '...' : 'MISSING';
-    const _envId = process.env.PINGONE_ENVIRONMENT_ID || process.env.PINGONE_ENV_ID || '';
-    const _adminId = process.env.PINGONE_ADMIN_CLIENT_ID || process.env.PINGONE_AI_CORE_CLIENT_ID || process.env.PINGONE_CORE_CLIENT_ID || '';
-    const _adminSec = process.env.PINGONE_ADMIN_CLIENT_SECRET || process.env.PINGONE_AI_CORE_CLIENT_SECRET || process.env.PINGONE_CORE_CLIENT_SECRET || '';
-    const _userId = process.env.PINGONE_USER_CLIENT_ID || process.env.PINGONE_AI_CORE_USER_CLIENT_ID || process.env.PINGONE_CORE_USER_CLIENT_ID || '';
-    const _userSec = process.env.PINGONE_USER_CLIENT_SECRET || process.env.PINGONE_AI_CORE_USER_CLIENT_SECRET || process.env.PINGONE_CORE_USER_CLIENT_SECRET || '';
-    console.log('[oauth-config] env_id=%s  admin_client_id=%s  admin_secret=%s  user_client_id=%s  user_secret=%s',
-        _mask(_envId, 8), _mask(_adminId, 8), _mask(_adminSec, 4), _mask(_userId, 8), _mask(_userSec, 4));
-}
+if (!isReplit && isProduction) console.log('[platform] Production deployment');
 
 // Security guard: SKIP_TOKEN_SIGNATURE_VALIDATION must never be enabled in production.
 // Validates at startup (before any request is served) so misconfigurations are caught early.
@@ -59,122 +38,11 @@ if (process.env.SKIP_TOKEN_SIGNATURE_VALIDATION === 'true' && isProduction) {
     process.exit(1);
 }
 
-// ── Optional persistent session store (required for Vercel / multi-instance deployments) ──
-//
-// Priority order:
-//   1. Upstash REST (@upstash/redis, HTTP) — preferred for Vercel serverless.
-//      Uses UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (or KV_REST_API_*).
-//      HTTP is stateless — no TCP connection to manage, no cold-start race.
-//
-//   2. node-redis wire protocol (TCP/TLS) — for self-hosted Redis or explicit REDIS_URL / KV_URL.
-//      Requires an active connection; less reliable on Vercel due to cold starts.
-//
-//   3. SQLite store — local development fallback; sessions persist across restarts.
-//
-//   4. Memory store — last resort; sessions lost on restart.
-
-/** @type {import('./services/upstashSessionStore') | null} */
-let upstashSessionStoreInstance = null;
-/** @type {string | null} Which env keys supplied the Redis URL (for logs /api/auth/debug). */
-let sessionRedisEnvHint = null;
-/** node-redis client when wire-protocol store is used (exposed for /api/auth/debug only). */
-let sessionRedisClient = null;
-let sessionRedisInitError = null;
-let sessionRedisConnectError = null;
-let _redisConnectPromise = null;
-/** 'upstash-rest' | 'redis-wire' | 'sqlite' | 'memory' */
+// ── Session store ──
+// Priority: SQLite (persistent, local) → Memory (last resort).
+/** 'sqlite' | 'memory' */
 let sessionStoreType = 'memory';
 let sessionStore;
-
-// ── Priority 1: Upstash REST (HTTP — recommended for Vercel) ──────────────
-const _restUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-const _restToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-
-if (_restUrl && _restToken) {
-    try {
-        const UpstashSessionStore = require('./services/upstashSessionStore');
-        upstashSessionStoreInstance = new UpstashSessionStore({
-            prefix: 'banking:sess:'
-        });
-        sessionStore = upstashSessionStoreInstance;
-        sessionStoreType = 'upstash-rest';
-        sessionRedisEnvHint = process.env.UPSTASH_REDIS_REST_URL ? 'UPSTASH_REDIS_REST_*' : 'KV_REST_API_*';
-        console.log(`[session-store] Using Upstash REST store (${sessionRedisEnvHint}) — HTTP, no TCP connection`);
-    } catch (err) {
-        sessionRedisInitError = err.message || String(err);
-        console.warn('[session-store] Upstash REST store init failed, trying wire protocol:', err.message);
-    }
-}
-
-// ── Priority 2: node-redis wire protocol (self-hosted Redis / explicit REDIS_URL) ──
-if (!sessionStore) {
-    const _redisResolved = resolveRedisWireUrl(process.env);
-    const _redisUrl = _redisResolved.url;
-    if (_redisResolved.invalidRedisUrlIgnored) {
-        console.warn(
-            '[session-store] REDIS_URL is set but is not redis:// or rediss:// (wrong value or REST URL pasted). ' +
-            'Ignoring it; using KV_URL or REST-derived URL if available.',
-        );
-    }
-
-    if (_redisUrl) {
-        try {
-            const connectRedisPkg = require('connect-redis');
-            const RedisStore =
-                connectRedisPkg.RedisStore ||
-                connectRedisPkg.default ||
-                connectRedisPkg;
-            const {
-                createClient
-            } = require('redis');
-            const redisClient = createClient({
-                url: _redisUrl,
-                socket: {
-                    connectTimeout: 8000,
-                    reconnectStrategy: (retries) => {
-                        if (retries < 3) return Math.min(retries * 200, 1000);
-                        return new Error('[session-store] Redis reconnect exhausted');
-                    },
-                },
-            });
-            sessionRedisClient = redisClient;
-            sessionRedisEnvHint = _redisResolved.envHint;
-
-            redisClient.on('error', (err) => {
-                if (!redisClient._loggedError) {
-                    sessionRedisConnectError = err.message || String(err);
-                    console.error('[session-store] Redis wire error:', err.message);
-                    redisClient._loggedError = true;
-                }
-            });
-            redisClient.on('ready', () => {
-                console.log('[session-store] Redis wire connected and ready');
-                redisClient._loggedError = false;
-            });
-
-            _redisConnectPromise = redisClient.connect().catch((err) => {
-                sessionRedisConnectError = err.message || String(err);
-                console.error('[session-store] Redis wire initial connect failed:', err.message);
-            });
-
-            const rawStore = new RedisStore({
-                client: redisClient,
-                prefix: 'banking:sess:'
-            });
-            sessionStore = createFaultTolerantStore(rawStore, {
-                onError: (method, err) => {
-                    sessionRedisConnectError = err.message || String(err);
-                },
-            });
-            sessionStoreType = 'redis-wire';
-            console.log(`[session-store] Using Redis wire store (from ${sessionRedisEnvHint}), eager connect initiated`);
-        } catch (err) {
-            sessionRedisInitError = err.message || String(err);
-            sessionRedisClient = null;
-            console.warn('[session-store] connect-redis/redis not available, falling back to memory store:', err.message);
-        }
-    }
-}
 
 // ── Priority 3: SQLite store (local development fallback) ───────────────────
 if (!sessionStore) {
@@ -187,18 +55,8 @@ if (!sessionStore) {
         sessionStoreType = 'sqlite';
         console.log('[session-store] Using SQLite store for local development — sessions persist across restarts');
     } catch (err) {
-        sessionRedisInitError = err.message || String(err);
         console.warn('[session-store] SQLite store init failed, falling back to memory store:', err.message);
     }
-}
-
-if (!sessionStore && (process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT)) {
-    const platform = process.env.VERCEL ? 'Vercel' : 'Replit';
-    console.warn(
-        `[session-store] WARNING: Running on ${platform} without Redis. ` +
-        'Sessions use in-memory store — they will be lost on process restart. ' +
-        'Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN for persistent sessions (HTTP — no TCP required).',
-    );
 }
 
 // Import routes
@@ -224,10 +82,10 @@ const selfServiceUsersRoutes = require('./routes/selfServiceUsers');
 const {
     router: featureFlagsRoutes
 } = require('./routes/featureFlags');
-const vercelConfigRoutes = require('./routes/vercelConfig');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
 const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
+const agentDelegationRoutes = require('./routes/agentDelegation');
 const bankingAgentRoutes = require('./routes/bankingAgentRoutes');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const langchainConfigRoutes = require('./routes/langchainConfig');
@@ -257,6 +115,7 @@ const {
     migrateAccounts
 } = require('./services/demoDataService');
 const appConfigRoutes = require('./routes/appConfig');
+const configCredentialsRoutes = require('./routes/configCredentials');
 const verticalConfigRoutes = require('./routes/verticalConfig');
 const pingoneAuditRoutes = require('./routes/pingoneAudit');
 const pingoneTestRoutes = require('./routes/pingoneTestRoutes');
@@ -340,8 +199,6 @@ app.use('/api', (req, res, next) => {
     next();
 });
 // Allow credentials (session cookies) from the configured origin.
-// In development the React CRA proxy makes requests same-origin, so CORS is
-// essentially unused. On Vercel, React and API share the same domain.
 app.use(cors({
     // In production, CORS_ORIGIN should be set to the frontend URL.
     // Fallback to false (block all cross-origin) rather than reflecting any Origin.
@@ -351,14 +208,12 @@ app.use(cors({
     credentials: true
 }));
 
-// Trust proxy headers from Vercel / any load balancer in front of Express.
-// Required so that req.secure is true on Vercel HTTPS connections and
-// session cookies with sameSite:'none'/secure:true are set correctly.
+// Trust proxy headers from any load balancer in front of Express.
 app.set('trust proxy', 1);
 
-// Enforce HTTPS on Vercel and Replit — redirect any plain HTTP request.
-// Both platforms terminate TLS before Express and set x-forwarded-proto.
-if (isVercel || isReplit) {
+// Enforce HTTPS on Replit — redirect any plain HTTP request.
+// Replit terminates TLS before Express and sets x-forwarded-proto.
+if (isReplit) {
     app.use((req, res, next) => {
         if (req.secure) return next();
         return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
@@ -371,7 +226,7 @@ const rateLimitDisabled = ['1', 'true', 'yes'].includes(
 );
 const _rateLimitHandler = (req, res) => {
     // Auth routes are browser-driven redirects — send to login page with friendly error.
-    // Use an absolute URL so Vercel edge / serverless does not choke on relative redirects.
+    // Use an absolute URL so the redirect works behind a reverse proxy.
     if (req.path.startsWith('/api/auth')) {
         const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
         const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
@@ -450,30 +305,11 @@ app.use(morgan('combined', {
   skip: (req) => POLL_ROUTES.has(req.path),
 }));
 
-/**
- * Ensure the Redis wire-protocol client is ready before express-session runs.
- * Only relevant when sessionStoreType === 'redis-wire'.  The Upstash REST
- * store is HTTP — no connection to wait for.
- */
-function awaitSessionRedisReady(req, res, next) {
-    if (sessionStoreType !== 'redis-wire') return next(); // REST/memory need no warm-up
-    if (!sessionRedisClient) return next();
-    if (sessionRedisClient.isReady) return next();
-    if (_redisConnectPromise) {
-        _redisConnectPromise.then(() => next());
-        return;
-    }
-    next();
-}
-
-app.use(awaitSessionRedisReady);
-
-// Session middleware
 app.use(session({
     secret: (() => {
         const s = process.env.SESSION_SECRET;
         if (!s || s === 'dev-session-secret-change-in-production') {
-            if (process.env.NODE_ENV === 'production' || process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT) {
+            if (process.env.NODE_ENV === 'production' || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT) {
                 console.error('[FATAL] SESSION_SECRET env var is not set or is using the insecure default. Set a random 32+ character string in your deployment environment.');
                 process.exit(1);
             }
@@ -487,9 +323,6 @@ app.use(session({
         store: sessionStore
     } : {}),
     cookie: {
-        // On Vercel / production HTTPS, secure:true is required.
-        // SameSite:none is required on Vercel because the OAuth signoff redirect
-        // comes from an external domain (PingOne) → needs to send cookie.
         secure: isProduction,
         httpOnly: true,
         sameSite: isProduction ? 'none' : 'lax',
@@ -524,36 +357,7 @@ migrateAccounts().catch(err => {
 });
 
 // Restore session user from signed _auth cookie when in-memory session is empty.
-// This keeps auth working on Vercel serverless (no Redis) where each request may
-// land on a fresh instance with no in-memory session data.
 app.use(restoreSessionFromCookie);
-
-// P1 — Upstash re-fetch: when a _auth-cookie restore left us with no tokens
-// (Lambda B cold-start race), attempt one Upstash read with the session ID to
-// pull the tokens that Lambda A wrote. Non-fatal; no-op outside Upstash-REST deployments.
-app.use(async (req, _res, next) => {
-    if (!req.session?._restoredFromCookie) return next();
-    if (req.session.oauthTokens && req.session.oauthTokens.accessToken !== '_cookie_session') return next();
-    if (!sessionStore || typeof sessionStore.get !== 'function') return next();
-    const sid = req.sessionID;
-    if (!sid) return next();
-    try {
-        sessionStore.get(sid, (err, stored) => {
-            if (!err && stored ?.oauthTokens && stored.oauthTokens.accessToken !== '_cookie_session') {
-                Object.assign(req.session, stored);
-                req.session._restoredFromCookie = false;
-                req.session.save((saveErr) => {
-                    if (saveErr) console.warn('[session-refetch] save after Upstash re-fetch failed:', saveErr.message);
-                });
-                console.log('[session-refetch] Tokens recovered from Upstash for cookie-only session sid=' + sid.slice(0, 8) + '…');
-            }
-            next();
-        });
-    } catch (refetchErr) {
-        console.warn('[session-refetch] Non-fatal re-fetch error:', refetchErr.message);
-        next();
-    }
-});
 
 // RFC 6749 §6 — silently refresh near-expired end-user access tokens on
 // authenticated API routes so UIs never serve stale tokens to downstream services.
@@ -601,20 +405,6 @@ app.post('/api/auth/switch', (req, res) => {
             error: 'invalid_target',
             message: 'targetRole must be "admin" or "customer".'
         });
-    }
-
-    // Stash current tokens (non-fatal; best-effort)
-    const prevTokens = req.session ?.oauthTokens;
-    const prevUser = req.session ?.user;
-    if (prevTokens && upstashSessionStoreInstance && prevUser ?.id) {
-        const key = `sessions:prev:${prevUser.id}`;
-        upstashSessionStoreInstance.kv.set(key, JSON.stringify({
-                oauthTokens: prevTokens,
-                user: prevUser
-            }), {
-                ex: 60
-            })
-            .catch(e => console.warn('[auth/switch] Failed to stash previous session:', e.message));
     }
 
     // Clear current auth
@@ -727,13 +517,9 @@ function summarizeOAuthTokensForDebug(tokens) {
 }
 
 /**
- * High-signal hints for Vercel/session issues (compare with ?deep=1 Redis probe).
+ * High-signal hints for session issues.
  */
-function buildSessionDiagnosisHints(req, {
-    sessionStoreHealthy,
-    accessTokenStub,
-    redisPersist
-}) {
+function buildSessionDiagnosisHints(req, { accessTokenStub }) {
     const hints = [];
     const stub = accessTokenStub === true;
 
@@ -747,51 +533,13 @@ function buildSessionDiagnosisHints(req, {
             'accessToken is _cookie_session stub — no real OAuth token in req.session (cookie restore, or session save failed after OAuth).',
         );
     }
-    if (sessionStoreHealthy === false) {
-        hints.push('Session store ping failed or circuit open — see sessionStoreError and sessionCircuitState.');
-    }
-    if (redisPersist && typeof redisPersist === 'object') {
-        if (redisPersist.redisReadSkipped === 'circuit_open_reads_bypass_redis') {
-            hints.push(
-                'Circuit OPEN: store.get() does not read Redis — you can get an empty session + cookie stub even if Redis has rows for other sids.',
-            );
-        }
-        if (redisPersist.redisKeyPresent === false) {
-            hints.push(
-                'Redis has no session row for this connect.sid — never saved, expired, or sid changed after OAuth. Sign in again.',
-            );
-        }
-        if (
-            redisPersist.redisKeyPresent === true &&
-            redisPersist.redisAccessTokenStub === false &&
-            stub
-        ) {
-            hints.push(
-                'ANOMALY: Redis row has non-stub token for this sid but req.session has stub — investigate cache/session ordering.',
-            );
-        }
-        if (
-            redisPersist.redisKeyPresent === true &&
-            redisPersist.redisAccessTokenStub === true &&
-            stub
-        ) {
-            hints.push('Redis row for this sid also has stub token — persisted cookie-only state.');
-        }
-        if (
-            redisPersist.redisKeyPresent === true &&
-            redisPersist.redisAccessTokenStub === false &&
-            !stub
-        ) {
-            hints.push('Redis row and req.session both have real tokens — OK.');
-        }
-    }
     if (!stub && req.session ?.oauthTokens ?.accessToken && String(req.session.oauthTokens.accessToken).startsWith('eyJ')) {
         hints.push('req.session has JWT-shaped access token — OK for BFF-backed routes.');
     }
     return hints;
 }
 
-// Debug endpoint — shows auth state for the current request (Vercel debugging).
+// Debug endpoint — shows auth state for the current request.
 // Returns cookie presence, session state, and platform flags.
 // No secrets are exposed.
 app.get('/api/auth/debug', async (req, res) => {
@@ -800,40 +548,6 @@ app.get('/api/auth/debug', async (req, res) => {
             (req.headers.cookie || '').split(';').map(p => [p.split('=')[0].trim(), 1])
         )
     ).filter(Boolean);
-
-    const deepProbe =
-        req.query.deep === '1' ||
-        req.query.deep === 'true' ||
-        req.query.deep === '';
-
-    // Quick store health check — cached for 60 s to avoid burning Upstash request quota.
-    // Wire-protocol ping is skipped to avoid adding latency to the debug response.
-    let sessionStoreHealthy = null;
-    let sessionStoreError = null;
-    if (upstashSessionStoreInstance) {
-        const now = Date.now();
-        if (!upstashSessionStoreInstance._pingCache ||
-            now - upstashSessionStoreInstance._pingCache.ts > 300_000) { // 5-minute cache
-            const pingResult = await upstashSessionStoreInstance.ping();
-            upstashSessionStoreInstance._pingCache = {
-                ts: now,
-                result: pingResult
-            };
-            if (!pingResult.healthy) {
-                console.error('[session-store] Health check failed:', pingResult.error);
-            }
-        }
-        const {
-            result
-        } = upstashSessionStoreInstance._pingCache;
-        sessionStoreHealthy = result.healthy;
-        sessionStoreError = result.error;
-        // If circuit is currently open, override healthy to false without calling ping again
-        if (upstashSessionStoreInstance._circuit ?.isOpen) {
-            sessionStoreHealthy = false;
-            sessionStoreError = upstashSessionStoreInstance._circuit.lastError || 'circuit open — Upstash bypassed';
-        }
-    }
 
     const accessTokenStub = req.session ?.oauthTokens ?.accessToken === '_cookie_session';
     const cookieOnlyBffSession =
@@ -846,43 +560,16 @@ app.get('/api/auth/debug', async (req, res) => {
         req.session.oauthType === 'user'
     );
 
-    let redisPersist = null;
-    if (deepProbe && upstashSessionStoreInstance && typeof upstashSessionStoreInstance.getPersistenceDebug === 'function') {
-        redisPersist = await upstashSessionStoreInstance.getPersistenceDebug(req.session ?.id);
-    }
-
-    const sessionInMemoryCache =
-        upstashSessionStoreInstance &&
-        typeof upstashSessionStoreInstance.hasInMemorySessionCache === 'function' ?
-        upstashSessionStoreInstance.hasInMemorySessionCache(req.session ?.id) :
-        null;
-
     const oauthTokenSummary = summarizeOAuthTokensForDebug(req.session ?.oauthTokens);
-    const diagnosisHints = buildSessionDiagnosisHints(req, {
-        sessionStoreHealthy,
-        accessTokenStub,
-        redisPersist,
-    });
-    if (sessionInMemoryCache === true && accessTokenStub) {
-        diagnosisHints.push(
-            'sessionInMemoryCache: true — this instance cached the session blob; it still has stub tokens (not a simple cold-cache miss).',
-        );
-    }
+    const diagnosisHints = buildSessionDiagnosisHints(req, { accessTokenStub });
 
     res.json({
         platform: {
-            vercel: !!process.env.VERCEL,
             replit: !!process.env.REPL_ID,
             production: isProduction
         },
-        request: {
-            vercelId: req.get('x-vercel-id') || null,
-            vercelDeploymentId: req.get('x-vercel-deployment-id') || null,
-            forwardedFor: (req.get('x-forwarded-for') || '').split(',')[0] ?.trim() || null,
-        },
         sessionPresent: !!req.session,
         sessionId: req.session ?.id ? req.session.id.slice(0, 8) + '...' : null,
-        sessionIdLength: req.session ?.id ? String(req.session.id).length : null,
         sessionHasUser: !!req.session ?.user,
         sessionOauthType: req.session ?.oauthType || null,
         sessionClientType: req.session ?.clientType || null,
@@ -896,40 +583,12 @@ app.get('/api/auth/debug', async (req, res) => {
         hasAuthCookie: cookieNames.includes('_auth'),
         hasPkceCookie: cookieNames.includes('_pkce'),
         sessionCookieName: cookieNames.includes('connect.sid') ? 'connect.sid present' : 'connect.sid MISSING',
-        /** 'upstash-rest' (HTTP, recommended) | 'redis-wire' (TCP) | 'memory' (no persistence) */
         sessionStoreType,
-        /** Live health check result for the Upstash REST store (null if wire/memory store). */
-        sessionStoreHealthy,
-        /** Non-null when sessionStoreHealthy is false — the actual error message for debugging. */
-        sessionStoreError,
-        /** Circuit breaker state: CLOSED (normal) | OPEN (bypassing Redis) | HALF_OPEN (probing) */
-        sessionCircuitState: upstashSessionStoreInstance ?._circuit ?.state ?? null,
-        sessionCircuitLastError: upstashSessionStoreInstance ?._circuit ?.lastError ?? null,
-        /** Age of cached ping result (ms); null if not yet pinged. */
-        sessionPingCacheAgeMs: upstashSessionStoreInstance ?._pingCache ?
-            Date.now() - upstashSessionStoreInstance._pingCache.ts :
-            null,
-        /** Warm Lambda: session blob served from 45s in-process cache (Upstash only). */
-        sessionInMemoryCache,
-        /** Backward-compat: 'redis' when any persistent store is active, 'memory' otherwise. */
-        bffSessionStore: sessionStore ? 'redis' : 'memory',
-        /** Which env supplied the store credentials. */
-        sessionRedisEnv: sessionRedisEnvHint,
-        /** For wire-protocol store only — null when using Upstash REST. */
-        sessionRedisClientReady: sessionRedisClient ? !!sessionRedisClient.isReady : null,
-        sessionRedisInitError: sessionRedisInitError || null,
-        sessionRedisConnectError: sessionRedisConnectError || null,
         storageType: configStore.getStorageType(),
         isConfigured: configStore.isConfigured(),
         userEmail: req.session ?.user ?.email || null,
         userRole: req.session ?.user ?.role || null,
         diagnosisHints,
-        /** One Redis GET for current sid — pass ?deep=1. Omitted unless deep probe ran. */
-        redisPersist,
-        debugHelp: {
-            deepQuery: 'Add ?deep=1 to run one Upstash GET for this session id and compare redis row vs req.session (extra read quota).',
-            deepProbeUsed: !!(deepProbe && upstashSessionStoreInstance),
-        },
     });
 });
 
@@ -943,7 +602,6 @@ app.use('/api/admin/config', adminConfigRoutes);
 // so the route path is unambiguous.
 app.use('/api/admin/feature-flags', authenticateToken, featureFlagsRoutes);
 app.use('/api/admin/scope-audit', authenticateToken, require('./routes/scopeAudit'));
-app.use('/api/admin/vercel-config', authenticateToken, vercelConfigRoutes);
 app.use('/api/admin/token-compliance', authenticateToken, require('./routes/tokenCompliance'));
 
 // PingOne redirect URI allowlist (JSON). Registered here BEFORE /api/auth so the path is not
@@ -959,13 +617,6 @@ app.get('/api/auth/oauth/redirect-info', (req, res) => {
     }
 });
 
-// Attach cached session-store health to req so /api/auth/session can include it.
-app.use('/api/auth', (req, _res, next) => {
-    const ping = upstashSessionStoreInstance ?._pingCache ?.result;
-    req._sessionStoreError = ping ?.error ?? null;
-    req._sessionStoreHealthy = typeof ping ?.healthy === 'boolean' ? ping.healthy : null;
-    next();
-});
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes);
 app.use('/api/auth/oauth/user', oauthUserRoutes);
@@ -973,6 +624,7 @@ app.use('/api/auth/ciba', cibaRoutes);
 app.use('/api/auth/mfa', mfaRoutes);
 app.use('/api/mfa/test', mfaTestRoutes);
 app.use('/api/agent', agentIdentityRoutes);
+app.use('/api/agent', agentDelegationRoutes);
 // NL/search routes: public LLM config + NL parsing. Must be mounted BEFORE bankingAgentRoutes
 // so /nl/status, /nl, and /search are handled without agentSessionMiddleware.
 app.use('/api/banking-agent', bankingAgentNlRoutes);
@@ -995,8 +647,7 @@ app.use('/api/mcp/audit', (req, res, next) => {
     }
     next();
 }, mcpAuditRouter);
-// Session preview uses session data only — no full JWT validation so it works even
-// when the session has a _cookie_session stub (Vercel cold-start / Upstash restore).
+// Session preview uses session data only — no full JWT validation.
 // Must be registered BEFORE the auth-gated /api/tokens block.
 app.get('/api/tokens/session-preview', (req, res) => {
     try {
@@ -1070,6 +721,7 @@ app.use('/api/api-calls', apiCallTrackerRoutes);
 app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
 app.use('/api/config/vertical', verticalConfigRoutes);
 app.use('/api/config/verticals', verticalConfigRoutes);
+app.use('/api/config/credentials', configCredentialsRoutes);
 
 // Health check endpoints (unauthenticated — used by monitoring + demo config UI)
 const healthRoutes = require('./routes/health');
@@ -1316,8 +968,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
     } else {
         console.log('[/api/mcp/tool] REQUEST BODY: empty or undefined');
     }
-    // Defensive re-parse: on Vercel serverless the global express.json() may not have
-    // buffered the body by the time this route handler runs (cold-start / middleware race).
+    // Defensive re-parse: the global express.json() may not have
+    // buffered the body by the time this route handler runs.
     // DO NOT attempt to re-read the request stream — this causes memory leaks when the stream
     // doesn't end properly. The request stream has been fully consumed by middleware already.
     let parsedBody = req.body || {};
@@ -1675,16 +1327,6 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
     const useHttp2 = mcpUrl.startsWith("http://") || mcpUrl.startsWith("https://");
 
     try {
-        // Skip the WebSocket attempt entirely when running on Vercel with no MCP_SERVER_URL
-        // configured — localhost:8080 is guaranteed to be unreachable serverless.
-        if (isLocalDefault && process.env.VERCEL) {
-            emit({
-                phase: 'mcp_remote_skipped_vercel'
-            });
-            throw Object.assign(new Error('MCP_SERVER_URL not configured; using local tool handler'), {
-                useLocal: true
-            });
-        }
         emit({
             phase: 'mcp_remote_begin'
         });
@@ -1727,8 +1369,8 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
 
         // Get active LLM model for logging and client display
         const langchainConfig = req.session?.langchain_config || {};
-        const activeProvider = langchainConfig.provider || 'groq';
-        const activeModel = langchainConfig.model || 'llama-3.1-8b-instant';
+        const activeProvider = langchainConfig.provider || 'ollama';
+        const activeModel = langchainConfig.model || 'llama3.2';
         console.log(`[/api/mcp/tool] ${tool} — using LLM: ${activeProvider}/${activeModel}`);
 
         const out = {
@@ -1818,10 +1460,9 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
     }
 });
 
-// ── Static file serving (Replit, localhost, and any non-Vercel host) ──────────
-// On Vercel, static files are served by the CDN (vercel.json outputDirectory).
-// On Replit and localhost, Express serves the React build directly.
-if (!process.env.VERCEL) {
+// ── Static file serving ──────────────────────────────────────────────────────
+// Express serves the React build directly.
+{
     const buildPath = path.join(__dirname, '..', 'banking_api_ui', 'build');
     const docsPath = path.join(__dirname, '..', 'docs');
     const fs = require('fs');
@@ -1921,5 +1562,4 @@ setImmediate(async () => {
 module.exports = app;
 module.exports.app = app;
 module.exports.isProduction = isProduction;
-module.exports.isVercel = isVercel;
 module.exports.isReplit = isReplit;
