@@ -2110,10 +2110,10 @@ Plans:
 **Goal:** Rename "PingOne Asset Verification" section to "Verify Resources & Scopes" and filter AssetTable to only show apps/resources used by this Banking Demo.
 **Requirements**: TBD-201
 **Depends on:** Phase 200
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 201-01-PLAN.md — Rename section + filter apps/resources to EXPECTED_APP_NAMES
+- [x] 201-01-PLAN.md — Rename section + filter apps/resources to EXPECTED_APP_NAMES
 
 ### Phase 202: PingOne test page: show token events in acquisition order (top=first obtained, bottom=MCP token); add summary of changes section
 
