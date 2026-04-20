@@ -278,6 +278,23 @@ async function createBankingAgent({ userId, userToken, sessionId, tokenEvents = 
       throw new Error('No LLM provider available. Configure at least one provider in /llm-config or set GROQ_API_KEY/ANTHROPIC_API_KEY.');
     }
 
+    // Build fallback model for 429 rate-limit recovery (Anthropic if primary is not Anthropic)
+    let fallbackModel = null;
+    if (provider !== 'anthropic' && anthropicKey) {
+      try {
+        fallbackModel = new ChatAnthropic({
+          model: PROVIDER_DEFAULT_MODELS.anthropic,
+          temperature: 0.7,
+          maxTokens: 1024,
+          apiKey: anthropicKey,
+          timeout: 30000,
+        });
+        console.log('[agentBuilder] Fallback model ready: anthropic');
+      } catch (err) {
+        console.warn('[agentBuilder] Could not initialize fallback model:', err.message);
+      }
+    }
+
     // Define the agent node with tools
     const tools = createMcpToolRegistry();
     
