@@ -924,6 +924,62 @@ export default function BankingAgent({
     }));
   };
 
+  /** Token chain visibility and width — persisted to localStorage. */
+  const [showTokenChain, setShowTokenChain] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ba_token_chain_show');
+      if (saved !== null) return saved === 'true';
+    } catch {}
+    return false; // Default: hidden
+  });
+
+  const [tokenChainWidth, setTokenChainWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ba_token_chain_width');
+      if (saved !== null) return Math.max(50, Math.min(200, parseInt(saved, 10)));
+    } catch {}
+    return 80; // Default: 80px
+  });
+
+  /** Persist token chain visibility to localStorage. */
+  useEffect(() => {
+    try {
+      localStorage.setItem('ba_token_chain_show', String(showTokenChain));
+    } catch (e) {
+      console.warn('Failed to save ba_token_chain_show to localStorage:', e);
+    }
+  }, [showTokenChain]);
+
+  /** Persist token chain width to localStorage. */
+  useEffect(() => {
+    try {
+      localStorage.setItem('ba_token_chain_width', String(tokenChainWidth));
+    } catch (e) {
+      console.warn('Failed to save ba_token_chain_width to localStorage:', e);
+    }
+  }, [tokenChainWidth]);
+
+  /** Handle resizing token chain middle column. */
+  const handleTokenChainResize = useCallback((e) => {
+    if (e.button !== 0) return; // Only left mouse button
+    const startX = e.clientX;
+    const startWidth = tokenChainWidth;
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(50, Math.min(200, startWidth + deltaX));
+      setTokenChainWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [tokenChainWidth]);
+
 
   /** Render a single action button with optional emoji-only styling. */
   const renderChip = (action, groupName) => {
@@ -2201,6 +2257,34 @@ export default function BankingAgent({
           requiredScopes: err.requiredScopes || '',
           tokenEvents: err.tokenEvents || [],
         });
+      } else if (err?.code === 'mcp_step_up_required') {
+        // MCP Authorize gate: PingOne (or simulated) requires step-up MFA before tool access
+        const contextLine = err.message || 'MCP tool access requires identity verification (PingOne Authorize policy)';
+        setOtpContextLine(contextLine);
+        pendingOtpActionRef.current = { actionId, form };
+        // Attempt P1MFA challenge
+        try {
+          const apiBase = process.env.REACT_APP_API_URL || '';
+          const mfaResp = await fetch(`${apiBase}/api/auth/mfa/challenge`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (mfaResp.ok) {
+            const { daId, devices } = await mfaResp.json();
+            setP1mfaDaId(daId);
+            setP1mfaDevices(devices || []);
+            setP1mfaMode(true);
+          }
+        } catch (mfaErr) {
+          console.warn('[MCP Authorize] P1MFA challenge failed, using basic OTP modal:', mfaErr.message);
+        }
+        setShowOtpModal(true);
+        addMessage('assistant', `🔐 **Identity verification required**\n\n${contextLine}\n\nPlease complete the verification to continue.`, actionId);
+      } else if (err?.code === 'mcp_authorization_denied') {
+        // MCP Authorize gate: PingOne (or simulated) denied tool access
+        const reason = err.message || 'MCP tool access was denied by authorization policy';
+        addMessage('assistant', `🚫 **Access Denied**\n\n${reason}\n\nYour current session does not have sufficient authorization for this tool. Contact your administrator if you believe this is an error.`, actionId);
       } else if (err?.code === 'agent_consent_required') {
         // Old server deployment still enforcing startup consent gate.
         // The consent gate has been removed — sign out and sign in to refresh the session,
@@ -2916,6 +3000,17 @@ export default function BankingAgent({
                   </button>
                 )}
                 {/* Collapse to FAB only in float mode */}
+                {!isInline && isLoggedIn && (
+                  <button 
+                    type="button"
+                    className="ba-icon-btn" 
+                    onClick={() => setShowTokenChain(v => !v)} 
+                    aria-label={showTokenChain ? 'Hide token chain' : 'Show token chain'}
+                    title={showTokenChain ? 'Hide token chain' : 'Show token chain'}
+                  >
+                    {showTokenChain ? '🔗' : '⛓'}
+                  </button>
+                )}
                 {!isInline && (
                   <button 
                     type="button"
@@ -3357,6 +3452,23 @@ export default function BankingAgent({
                 </>
               )}
             </div>
+
+            {/* ── Middle column: token chain (collapsible + resizable) ── */}
+            {showTokenChain && isLoggedIn && tokenChain && (
+              <>
+                <div 
+                  className="ba-middle-col" 
+                  style={{ width: `${tokenChainWidth}px` }}
+                >
+                  {tokenChain.render()}
+                </div>
+                <div 
+                  className="ba-middle-col-resize-handle" 
+                  onMouseDown={handleTokenChainResize}
+                  title="Drag to resize token chain"
+                />
+              </>
+            )}
 
             {/* ── Right column: chat messages + input ── */}
             <div className="ba-right-col">
