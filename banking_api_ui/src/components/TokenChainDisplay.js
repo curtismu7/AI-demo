@@ -1014,14 +1014,17 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
     });
   }, [idTokenMode]);
   const currentEvents = isLive ? ctx.events : (isSessionPreview ? sessionPreviewEvents : effectivePlaceholders);
-  // Prepend agent CC token event if present and not already represented in the chain
+  // Prepend agent CC token event if present and not already represented in the chain.
+  // Dedup: filter agentCcEvents to only include events whose IDs don't exist in currentEvents.
   const currentEventsWithCc = React.useMemo(() => {
     if (!Array.isArray(agentCcEvents) || agentCcEvents.length === 0) return currentEvents;
-    const hasAgentActor = currentEvents.some(
-      (e) => e.id && (e.id.startsWith('agent-actor-token') || e.id === 'agent-cc-not-configured')
-    );
-    if (hasAgentActor) return currentEvents;
-    return [...agentCcEvents, ...currentEvents];
+    // Build a Set of all IDs already present in currentEvents for O(1) dedup
+    const currentEventIds = new Set(currentEvents.map((e) => e.id).filter(Boolean));
+    // Filter agentCcEvents: only keep events whose IDs are not already in currentEvents
+    const uniqueAgentCcEvents = agentCcEvents.filter((e) => !currentEventIds.has(e.id));
+    if (uniqueAgentCcEvents.length === 0) return currentEvents;
+    // Prepend unique agent CC events to currentEvents
+    return [...uniqueAgentCcEvents, ...currentEvents];
   }, [currentEvents, agentCcEvents]);
   const isPlaceholder = !isLive && !isSessionPreview;
   const history = ctx ? ctx.history : [];

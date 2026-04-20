@@ -81,6 +81,21 @@
 ## 4. Bug Fix Log (reverse-chronological)
 
 
+### 2026-04-20 — OAuth challenge duplicate keys (Phase 199 regression)
+
+- **Root cause:** Phase 199 prefetch work added `agentCcEvents` state and merged it with `currentEvents` in the `currentEventsWithCc` memo. The dedup check only verified if `currentEvents` had an agent-actor-token ID, but did NOT filter duplicate IDs between the two arrays. When both arrays contained events with the same ID (e.g., `mcp-agent-token-presented`, `mcp-tool-result`), React encountered duplicate keys in the rendered list. React reordered/skipped the duplicate, causing the OAuth challenge (first in the merged array from `agentCcEvents`) to appear instead of the account data result (from `currentEvents`).
+- **Symptoms:** After PingOne login, OAuth authorization challenge prompt appeared instead of account data. Console showed "Warning: Encountered two children with the same key, `mcp-agent-token-presented`" and similar for other event IDs.
+- **Fix:**
+  1. `TokenChainDisplay.js` line 1019-1031 — Replaced narrow dedup check with Set-based filter
+  2. Build a Set of all event IDs from `currentEvents` (O(1) lookup)
+  3. Filter `agentCcEvents` to only include events whose IDs don't already exist in the Set
+  4. Return early if no unique agent CC events remain
+- **Files modified:** `banking_api_ui/src/components/TokenChainDisplay.js`
+- **Regression check:** `npm run build` → exit 0 (462.42 kB); no server changes, no token-exchange logic affected
+- **Behavior:** Agent now displays account data (not OAuth challenge) after successful login; console shows no duplicate key warnings; TokenChainDisplay renders unique event list without React warnings
+- **Do not break:** Event rendering order (agentCcEvents prepended before currentEvents remains correct); mcp-agent-token-presented display timing; history tab event rendering
+
+
 ### 2026-04-19 — Phase 197: Fixed sidebar missing on unauthenticated /dashboard (Phase 193 regression)
 
 - **Root cause:** Phase 193 moved `/dashboard` route to an explicit outer Route. Authenticated branch had `<AdminSideNav>`, but unauthenticated branch omitted it, so guests saw only TopNav + dashboard content with no sidebar navigation.
