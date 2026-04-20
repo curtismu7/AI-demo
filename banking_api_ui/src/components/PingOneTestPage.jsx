@@ -1458,8 +1458,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="Environment ID"
               value={config?.environmentId}
-              status={config?.environmentId ? 'passed' : 'failed'}
-              onTest={() => runTest('environmentId', () => Promise.resolve(config?.environmentId))}
+              status={testResults['environmentId']?.status || 'pending'}
+              onTest={() => runTest('environmentId', () => {
+                if (!config?.environmentId) throw new Error('Missing PINGONE_ENVIRONMENT_ID');
+                return Promise.resolve(config.environmentId);
+              })}
               onFix={() => fixIssue('environmentId')}
               envVar={CONFIG_META.environmentId.envVar}
               format={CONFIG_META.environmentId.format}
@@ -1468,8 +1471,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="Region"
               value={config?.region}
-              status={config?.region ? 'passed' : 'failed'}
-              onTest={() => runTest('region', () => Promise.resolve(config?.region))}
+              status={testResults['region']?.status || 'pending'}
+              onTest={() => runTest('region', () => {
+                if (!config?.region) throw new Error('Missing PINGONE_REGION');
+                return Promise.resolve(config.region);
+              })}
               onFix={() => fixIssue('region')}
               envVar={CONFIG_META.region.envVar}
               format={CONFIG_META.region.format}
@@ -1478,8 +1484,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="Admin Client ID"
               value={config?.adminClientId}
-              status={config?.adminClientId ? 'passed' : 'failed'}
-              onTest={() => runTest('adminClientId', () => Promise.resolve(config?.adminClientId))}
+              status={testResults['adminClientId']?.status || 'pending'}
+              onTest={() => runTest('adminClientId', () => {
+                if (!config?.adminClientId) throw new Error('Missing PINGONE_ADMIN_CLIENT_ID');
+                return Promise.resolve(config.adminClientId);
+              })}
               onFix={() => fixIssue('adminClientId')}
               envVar={CONFIG_META.adminClientId.envVar}
               format={CONFIG_META.adminClientId.format}
@@ -1488,8 +1497,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="User Client ID"
               value={config?.userClientId}
-              status={config?.userClientId ? 'passed' : 'failed'}
-              onTest={() => runTest('userClientId', () => Promise.resolve(config?.userClientId))}
+              status={testResults['userClientId']?.status || 'pending'}
+              onTest={() => runTest('userClientId', () => {
+                if (!config?.userClientId) throw new Error('Missing PINGONE_USER_CLIENT_ID');
+                return Promise.resolve(config.userClientId);
+              })}
               onFix={() => fixIssue('userClientId')}
               envVar={CONFIG_META.userClientId.envVar}
               format={CONFIG_META.userClientId.format}
@@ -1498,8 +1510,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="MCP Token Exchanger Client ID"
               value={config?.mcpTokenExchangerClientId}
-              status={config?.mcpTokenExchangerClientId ? 'passed' : 'failed'}
-              onTest={() => runTest('mcpTokenExchangerClientId', () => Promise.resolve(config?.mcpTokenExchangerClientId))}
+              status={testResults['mcpTokenExchangerClientId']?.status || 'pending'}
+              onTest={() => runTest('mcpTokenExchangerClientId', () => {
+                if (!config?.mcpTokenExchangerClientId) throw new Error('Missing MCP_TOKEN_EXCHANGER_CLIENT_ID');
+                return Promise.resolve(config.mcpTokenExchangerClientId);
+              })}
               onFix={() => fixIssue('mcpTokenExchangerClientId')}
               envVar={CONFIG_META.mcpTokenExchangerClientId.envVar}
               format={CONFIG_META.mcpTokenExchangerClientId.format}
@@ -1508,8 +1523,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="AI Agent Client ID"
               value={config?.aiAgentClientId}
-              status={config?.aiAgentClientId ? 'passed' : 'failed'}
-              onTest={() => runTest('aiAgentClientId', () => Promise.resolve(config?.aiAgentClientId))}
+              status={testResults['aiAgentClientId']?.status || 'pending'}
+              onTest={() => runTest('aiAgentClientId', () => {
+                if (!config?.aiAgentClientId) throw new Error('Missing AI_AGENT_CLIENT_ID');
+                return Promise.resolve(config.aiAgentClientId);
+              })}
               onFix={() => fixIssue('aiAgentClientId')}
               envVar={CONFIG_META.aiAgentClientId.envVar}
               format={CONFIG_META.aiAgentClientId.format}
@@ -1526,8 +1544,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="MCP Server URI"
               value={config?.resourceMcpServerUri}
-              status={config?.resourceMcpServerUri ? 'passed' : 'failed'}
-              onTest={() => runTest('resourceMcpServerUri', () => Promise.resolve(config?.resourceMcpServerUri))}
+              status={testResults['resourceMcpServerUri']?.status || 'pending'}
+              onTest={() => runTest('resourceMcpServerUri', () => {
+                if (!config?.resourceMcpServerUri) throw new Error('Missing MCP_SERVER_URI');
+                return Promise.resolve(config.resourceMcpServerUri);
+              })}
               onFix={() => fixIssue('resourceMcpServerUri')}
               envVar={CONFIG_META.resourceMcpServerUri.envVar}
               format={CONFIG_META.resourceMcpServerUri.format}
@@ -1536,8 +1557,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="MCP Gateway URI"
               value={config?.resourceMcpGatewayUri}
-              status={config?.resourceMcpGatewayUri ? 'passed' : 'failed'}
-              onTest={() => runTest('resourceMcpGatewayUri', () => Promise.resolve(config?.resourceMcpGatewayUri))}
+              status={testResults['resourceMcpGatewayUri']?.status || 'pending'}
+              onTest={() => runTest('resourceMcpGatewayUri', () => {
+                if (!config?.resourceMcpGatewayUri) throw new Error('Missing MCP_GATEWAY_URI');
+                return Promise.resolve(config.resourceMcpGatewayUri);
+              })}
               onFix={() => fixIssue('resourceMcpGatewayUri')}
               envVar={CONFIG_META.resourceMcpGatewayUri.envVar}
               format={CONFIG_META.resourceMcpGatewayUri.format}
@@ -1546,8 +1570,11 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? '***
             <TestCard
               title="Agent Gateway URI"
               value={config?.resourceAgentGatewayUri}
-              status={config?.resourceAgentGatewayUri ? 'passed' : 'failed'}
-              onTest={() => runTest('resourceAgentGatewayUri', () => Promise.resolve(config?.resourceAgentGatewayUri))}
+              status={testResults['resourceAgentGatewayUri']?.status || 'pending'}
+              onTest={() => runTest('resourceAgentGatewayUri', () => {
+                if (!config?.resourceAgentGatewayUri) throw new Error('Missing AGENT_GATEWAY_URI');
+                return Promise.resolve(config.resourceAgentGatewayUri);
+              })}
               onFix={() => fixIssue('resourceAgentGatewayUri')}
               envVar={CONFIG_META.resourceAgentGatewayUri.envVar}
               format={CONFIG_META.resourceAgentGatewayUri.format}
