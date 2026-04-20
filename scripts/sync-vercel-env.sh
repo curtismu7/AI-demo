@@ -9,6 +9,16 @@
 # After running, redeploy:
 #   vercel --prod
 # ============================================================================
+#
+# ⚠️  SECURITY WARNING ⚠️
+# DO NOT COMMIT ACTUAL API KEYS, TOKENS, OR SECRETS TO THIS FILE!
+# This file is tracked in git. Only commit placeholder/template values like:
+#   - add_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"
+#   - add_env "PINGONE_ADMIN_TOKEN" "${PINGONE_ADMIN_TOKEN}"
+#
+# Never paste real secrets. Use environment variables or local-only .env.local instead.
+# GitHub's secret scanning will block commits with exposed keys.
+# ============================================================================
 set -euo pipefail
 
 # Helper: add env var to Vercel (Production scope) — skips if already set
