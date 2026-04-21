@@ -922,6 +922,10 @@ const {
 const {
     resolveMcpAccessTokenWithEvents
 } = require('./services/agentMcpTokenService');
+
+// Write tools that require a banking:write-scoped token obtained via scope upgrade.
+// Used by the mcpWriteToken session-cache fast-path (Phase 211).
+const WRITE_TOOLS_REQUIRING_CACHE = new Set(['create_transfer', 'create_deposit', 'create_withdrawal']);
 const mcpToolAuthorizationService = require('./services/mcpToolAuthorizationService');
 const {
     mcpCallTool,
@@ -946,6 +950,30 @@ app.get('/api/mcp/tool/events', (req, res) => {
     mcpFlowSseHub.handleSseGet(req, res);
 });
 
+
+// POST /api/mcp/scope-upgrade — RFC 8693 token exchange for banking:write scope.
+// Called by the UI consent modal after the user approves a scope upgrade.
+// Stores the resulting write-scoped token in session.mcpWriteToken for subsequent tool calls.
+app.post('/api/mcp/scope-upgrade', express.json(), requireSession, async (req, res) => {
+    try {
+        const { token, tokenEvents } = await resolveMcpAccessTokenWithEvents(req, 'create_transfer');
+        if (!token) {
+            return res.status(403).json({
+                error: 'scope_upgrade_failed',
+                message: 'Token exchange did not return a write-scoped token.',
+                tokenEvents,
+            });
+        }
+        req.session.mcpWriteToken = token;
+        await new Promise((resolve, reject) =>
+            req.session.save(err => err ? reject(err) : resolve())
+        );
+        return res.json({ ok: true, tokenEvents });
+    } catch (err) {
+        console.error('[/api/mcp/scope-upgrade] Exchange failed:', err.message);
+        return res.status(500).json({ error: 'scope_upgrade_failed', message: err.message });
+    }
+});
 // POST /api/mcp/tool — call a banking MCP tool
 app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
     // Log incoming request details for debugging 400 errors
@@ -1052,10 +1080,17 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         emit({
             phase: 'resolving_access_token'
         });
-        const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
-        mcpAccessToken = resolved.token;
-        tokenEvents = resolved.tokenEvents;
-        userSub = resolved.userSub || null;
+        if (req.session && req.session.mcpWriteToken && WRITE_TOOLS_REQUIRING_CACHE.has(tool)) {
+            console.log('[/api/mcp/tool] %s \u2014 using cached write token (scope upgrade path)', tool);
+            mcpAccessToken = req.session.mcpWriteToken;
+            tokenEvents = [];
+            userSub = (req.session.user && (req.session.user.oauthId || req.session.user.id)) || null;
+        } else {
+            const resolved = await resolveMcpAccessTokenWithEvents(req, tool);
+            mcpAccessToken = resolved.token;
+            tokenEvents = resolved.tokenEvents;
+            userSub = resolved.userSub || null;
+        }
         const evs = tokenEvents || [];
         emit({
             phase: 'access_token_ready',
