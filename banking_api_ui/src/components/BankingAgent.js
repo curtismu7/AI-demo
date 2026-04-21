@@ -722,6 +722,9 @@ function ResultsPanel({ panel, onClose, style }) {
             </div>
           </div>
         )}
+        {panel.type === 'text' && (
+          <div className="bar-rp-text">{panel.data}</div>
+        )}
       </div>
       {/* Resize handles */}
       <div className="bar-rp-resize-e"  onMouseDown={(e) => onResizeMouseDown(e, 'e')}  aria-hidden />
@@ -3135,12 +3138,14 @@ export default function BankingAgent({
 
       addMessage('assistant', response.reply || 'Done.');
 
-      // Show pop-out panel for structured responses (accounts/transactions/balance)
+      // Show pop-out panel for all agent responses (structured or text)
       const { resultType, resultData } = inferAgentResultTypeAndData(response);
       const _isNlWrite = resultType === 'confirm' || ['transfer','deposit','withdraw'].some(w => (response.toolsCalled||[]).some(t => t.includes(w)));
+      const titleMap = { accounts: '\uD83C\uDFE6 Accounts', transactions: '\uD83D\uDCCB Recent Transactions', balance: '\uD83D\uDCB0 Balance', confirm: '\u2705 Complete' };
       if (resultType) {
-        const titleMap = { accounts: '\uD83C\uDFE6 Accounts', transactions: '\uD83D\uDCCB Recent Transactions', balance: '\uD83D\uDCB0 Balance', confirm: '\u2705 Complete' };
         setResultPanel({ type: resultType, title: titleMap[resultType] || resultType, data: resultData });
+      } else if (response.reply) {
+        setResultPanel({ type: 'text', title: '\uD83D\uDCAC Response', data: response.reply });
       }
       // Always notify panels (token chain, inspector) that an NL agent request completed.
       // Write ops also send 'confirm' so dashboard/UserDashboard refreshes balances.

@@ -1532,6 +1532,15 @@ body > .banking-agent-float-root .banking-agent-panel {
   font-size: 12px;
 }
 
+.bar-rp-text {
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #161616;
+  white-space: pre-wrap;
+  overflow-y: auto;
+}
+
 /* ─── Resize handles ─────────────────────────────────────────── */
 .bar-rp-resize-e,
 .bar-rp-resize-s,
