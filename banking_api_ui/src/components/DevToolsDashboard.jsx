@@ -40,14 +40,15 @@ export default function DevToolsDashboard({
     >
       {/* Full-height flex wrapper — lets tab bar stay fixed while content scrolls */}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Tab bar — flex-shrink: 0 keeps it always visible */}
+      {/* Tab bar — light background so it clearly differs from the dark navy title bar */}
       <div style={{
         display: "flex",
-        background: "#1a1a2e",
+        background: "#e8edf3",
         flexShrink: 0,
-        gap: "2px",
-        padding: "6px 8px 0",
+        gap: "3px",
+        padding: "8px 10px 0",
         alignItems: "flex-end",
+        borderBottom: "2px solid #c5cdd8",
       }}>
         {TABS.map(tab => (
           <button
@@ -55,29 +56,32 @@ export default function DevToolsDashboard({
             type="button"
             onClick={() => setActiveTab(tab.id)}
             style={{
-              padding: "9px 22px 10px",
-              border: "none",
+              padding: "8px 20px 10px",
+              border: "1px solid",
+              borderColor: activeTab === tab.id ? "#c5cdd8" : "transparent",
+              borderBottom: activeTab === tab.id ? "2px solid #ffffff" : "1px solid transparent",
               borderRadius: "6px 6px 0 0",
-              background: activeTab === tab.id ? "#ffffff" : "rgba(255,255,255,0.1)",
+              background: activeTab === tab.id ? "#ffffff" : "rgba(0,0,0,0.06)",
               cursor: "pointer",
-              fontSize: "0.9rem",
+              fontSize: "0.88rem",
               fontWeight: activeTab === tab.id ? 700 : 500,
-              color: activeTab === tab.id ? "#1a1a2e" : "rgba(255,255,255,0.65)",
+              color: activeTab === tab.id ? "#1e3a5f" : "#5a6a7e",
               display: "flex",
               alignItems: "center",
               gap: "7px",
               transition: "background 0.15s, color 0.15s",
               whiteSpace: "nowrap",
-              boxShadow: activeTab === tab.id ? "inset 0 -3px 0 #3b82f6" : "none",
+              marginBottom: activeTab === tab.id ? "-2px" : "0",
+              boxShadow: activeTab === tab.id ? "0 -2px 0 #2563eb" : "none",
               letterSpacing: "0.01em",
             }}
           >
-            <span style={{ fontSize: "1.05rem" }}>{tab.icon}</span>
+            <span style={{ fontSize: "1rem" }}>{tab.icon}</span>
             <span>{tab.label}</span>
           </button>
         ))}
         <div style={{ flex: 1 }} />
-        <span style={{ alignSelf: "center", paddingBottom: 8, paddingRight: 10, fontSize: "0.7rem", color: "rgba(255,255,255,0.35)" }}>
+        <span style={{ alignSelf: "center", paddingBottom: 8, paddingRight: 10, fontSize: "0.7rem", color: "#8a9ab0" }}>
           drag · resize · ↗ pop out
         </span>
       </div>

@@ -134,6 +134,9 @@ export default function FloatingPanel({
 </html>`);
     win.document.close();
 
+    // Show a proper URL in the popup address bar instead of about:blank
+    try { win.history.pushState({}, '', '/dev-tools-popout'); } catch (_) {}
+
     win.addEventListener('beforeunload', () => {
       setPopoutWin(null);
     });
