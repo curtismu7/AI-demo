@@ -61,4 +61,9 @@ export const EDUCATION_COMMANDS = [
   { id: 'ai-primer-prompts', label: '📘 AI Primer: Prompts', panel: EDU.AI_PRIMER, tab: 'prompts' },
   { id: 'ai-primer-workflow', label: '📘 AI Primer: Workflow', panel: EDU.AI_PRIMER, tab: 'workflow' },
   { id: 'ai-primer-about', label: '📘 AI Primer: Prompts Used', panel: EDU.AI_PRIMER, tab: 'about' },
+  { id: 'id-jag', label: '🔀 ID-JAG / Cross-App Access (XAA)', panel: EDU.ID_JAG, tab: 'overview' },
+  { id: 'id-jag-how', label: '🔀 ID-JAG: How It Works', panel: EDU.ID_JAG, tab: 'how-it-works' },
+  { id: 'id-jag-pingone', label: '🔀 ID-JAG: PingOne SSO', panel: EDU.ID_JAG, tab: 'pingone' },
+  { id: 'id-jag-limitations', label: '⚠️ ID-JAG: Limitations', panel: EDU.ID_JAG, tab: 'limitations' },
+  { id: 'id-jag-vs-8693', label: '🔀 ID-JAG vs RFC 8693', panel: EDU.ID_JAG, tab: 'vs-rfc8693' },
 ];

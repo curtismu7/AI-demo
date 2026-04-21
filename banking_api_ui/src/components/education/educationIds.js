@@ -52,4 +52,6 @@ export const EDU = {
   TOKEN_FLOW: 'token-flow',
   /** AI Primer — Terminology, Foundations, Prompts, Workflow, and authoring background for the Technical Enablement Guide */
   AI_PRIMER: 'ai-primer',
+  /** ID-JAG / Cross-App Access (XAA) — Identity Assertion JWT Authorization Grant — IETF draft, PingOne SSO, limitations */
+  ID_JAG: 'id-jag',
 };

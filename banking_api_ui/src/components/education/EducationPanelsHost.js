@@ -33,6 +33,7 @@ import FlowDiagramsPanel from './FlowDiagramsPanel';
 import IETFStandardsPanel from './IETFStandardsPanel';
 import TokenFlowPanel from './TokenFlowPanel';
 import AiPrimerPanel from './AiPrimerPanel';
+import IdJagPanel from './IdJagPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -73,6 +74,7 @@ export default function EducationPanelsHost() {
       <IETFStandardsPanel isOpen={panel === EDU.IETF_STANDARDS} onClose={close} initialTabId={tab} />
       <TokenFlowPanel isOpen={panel === EDU.TOKEN_FLOW} onClose={close} initialTabId={tab} />
       <AiPrimerPanel isOpen={panel === EDU.AI_PRIMER} onClose={close} initialTabId={tab} />
+      <IdJagPanel isOpen={panel === EDU.ID_JAG} onClose={close} initialTabId={tab} />
     </>
   );
 }
