@@ -1803,6 +1803,14 @@ export default function BankingAgent({
   async function handleLoginAction(actionId) {
     const label = actionId === 'login_admin' ? 'Admin' : 'Customer';
     spinner.show(`Signing in as ${label}…`, 'Redirecting to PingOne');
+    // Save any pending prompt so it can be re-executed after OAuth return.
+    // nlInput holds the current typed/pre-filled text; capture it before navigation.
+    try {
+      const pendingText = (nlInput || '').trim();
+      if (pendingText) {
+        sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, pendingText);
+      }
+    } catch (_) {}
     const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
     if (actionId === 'login_admin') {
       setTimeout(() => {
@@ -3983,6 +3991,9 @@ export default function BankingAgent({
                     }
                     setNlInput(s);
                     if (isLoggedIn || marketingGuestChatEnabled) {
+                      // Save chip text before clearing input — if an auth error fires mid-flight
+                      // and triggers handleLoginAction (which reads sessionStorage), the prompt survives.
+                      try { sessionStorage.setItem(BX_AGENT_PENDING_NL_KEY, s.trim()); } catch (_) {}
                       setNlInput('');
                       addMessage('user', s);
                       setNlLoading(true);
@@ -3990,6 +4001,8 @@ export default function BankingAgent({
                         .then(res => {
                           if (res.error || !res.success) reportNlFailure(res);
                           else {
+                            // Chip completed successfully — clear the pending key
+                            try { sessionStorage.removeItem(BX_AGENT_PENDING_NL_KEY); } catch (_) {}
                             if (res.tokenEvents?.length) {
                               appendTokenEvents(res.tokenEvents);
                               if (tokenChain) {
