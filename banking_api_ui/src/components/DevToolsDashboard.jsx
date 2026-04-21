@@ -38,7 +38,9 @@ export default function DevToolsDashboard({
       minHeight={320}
       className={`devtools-panel ${className}`}
     >
-      {/* Tab bar */}
+      {/* Full-height flex wrapper — lets tab bar stay fixed while content scrolls */}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Tab bar — flex-shrink: 0 keeps it always visible */}
       <div style={{
         display: "flex",
         background: "#1a1a2e",
@@ -91,6 +93,7 @@ export default function DevToolsDashboard({
           <McpTrafficPage />
         </div>
       </div>
+      </div>{/* end full-height wrapper */}
     </FloatingPanel>
   );
 }
