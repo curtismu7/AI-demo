@@ -11,7 +11,7 @@ const STORAGE_KEY_V2 = 'banking_agent_ui_v2';
  */
 
 const defaultState = /** @type {AgentUiState} */ ({
-  placement: 'none',
+  placement: 'middle',
   fab: true,
 });
 
@@ -20,7 +20,7 @@ function readLegacyMode() {
     const m = localStorage.getItem(STORAGE_KEY_LEGACY);
     if (m === 'embedded') return { placement: 'bottom', fab: false };
     if (m === 'both') return { placement: 'bottom', fab: true };
-    return { placement: 'none', fab: true };
+    return { placement: 'middle', fab: true };
   } catch {
     return { ...defaultState };
   }
@@ -90,7 +90,7 @@ function readState() {
 }
 
 const AgentUiModeContext = createContext({
-  placement: 'none',
+  placement: 'middle',
   fab: true,
   setAgentUi: () => {},
   webMcpLastResult: null,
