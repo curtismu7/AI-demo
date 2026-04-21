@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # run-bank.sh — Primary startup script for the Banking Digital Assistant.
-# Runs on api.pingdemo.com (HTTPS) so it can coexist with MasterFlow
-# (OAuth Playground) on :3000 / :3001.
+# Runs on api.pingdemo.com (HTTPS).
 #
 # Port layout:
-#   Banking API Server  → https://api.pingdemo.com:3002
+#   Banking API Server  → https://api.pingdemo.com:3001
 #   Banking UI          → https://api.pingdemo.com:4000
 #   Banking MCP Server  → localhost:8080
 #   LangChain Agent     → localhost:8888
@@ -29,7 +28,7 @@ set -euo pipefail
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
 
 API_HOST="api.pingdemo.com"
-API_PORT=3002
+API_PORT=3001
 UI_PORT=4000
 API_URL="https://${API_HOST}:${API_PORT}"
 CLIENT_URL="https://${API_HOST}:${UI_PORT}"
@@ -74,6 +73,7 @@ LOG_API=/tmp/bank-api-server.log
 LOG_UI=/tmp/bank-ui.log
 LOG_MCP=/tmp/bank-mcp-server.log
 LOG_AGENT=/tmp/bank-langchain-agent.log
+LOG_MCP_TRAFFIC=/tmp/bank-mcp-traffic.log
 
 # Terminal colors (global — used by banner, status, and tail_bank_logs)
 BOLD='\033[1m'
@@ -147,26 +147,26 @@ preflight_checks() {
 tail_bank_logs() {
   local pre="${1:-}"
   [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
-  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent")
-  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}")
+  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic")
+  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}")
   local choice=""
 
   echo ""
   echo -e "${CYAN}Pick a log to follow (tail -f). Ctrl+C stops tail only.${RESET}"
-  for i in 0 1 2 3; do
+  for i in 0 1 2 3 4; do
     echo "  $((i + 1))) ${names[i]}"
     echo "      ${logs[i]}"
   done
-  echo "  5) All of the above (same terminal, interleaved with file headers)"
+  echo "  6) All of the above (same terminal, interleaved with file headers)"
   if [[ -n "${pre}" ]]; then
     choice="${pre}"
   else
-    read -r -p "Number [1-5] or 'all': " choice
+    read -r -p "Number [1-6] or 'all': " choice
   fi
   [[ "${choice}" == "ALL" || "${choice}" == "All" ]] && choice="all"
 
   case "${choice}" in
-    1|2|3|4)
+    1|2|3|4|5)
       local idx=$((choice - 1))
       local f="${logs[$idx]}"
       if [[ ! -f "${f}" ]]; then
@@ -177,7 +177,7 @@ tail_bank_logs() {
       echo "📜 Tailing ${names[$idx]} ..."
       tail -f "${f}"
       ;;
-    5|all)
+    6|all)
       local existing=()
       local f
       for f in "${logs[@]}"; do
@@ -195,7 +195,7 @@ tail_bank_logs() {
       tail -f "${existing[@]}"
       ;;
     *)
-      echo "Invalid choice (use 1–5, or 'all')."
+      echo "Invalid choice (use 1–6, or 'all')."
       exit 1
       ;;
   esac
@@ -222,7 +222,7 @@ kill_process_tree() {
 # Stop anything still listening on Banking ports (orphaned node/python after PID file lost).
 stop_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3002 4000 8080 8888; do
+  for port in 3001 4000 8080 8888; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -234,7 +234,7 @@ stop_listeners_on_banking_ports() {
 
 force_kill_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3002 4000 8080 8888; do
+  for port in 3001 4000 8080 8888; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -424,6 +424,12 @@ case "${COMMAND}" in
     echo ""
     exit 0
     ;;
+  mcp-traffic|mcp-watch)
+    if [[ ! -f "${LOG_MCP_TRAFFIC}" ]]; then echo "No MCP traffic log yet. Start services first." >&2; exit 1; fi
+    echo "📡 MCP Traffic Log — Ctrl+C to stop"
+    tail -f "${LOG_MCP_TRAFFIC}"
+    exit 0
+    ;;
   tail)
     tail_bank_logs "${2:-}"
     exit 0
@@ -486,7 +492,7 @@ for svc in banking_api_server banking_mcp_server banking_api_ui; do
   fi
 done
 
-# ── Banking API Server (Express) on :3002 ────────────────────────────────────
+# ── Banking API Server (Express) on :3001 ────────────────────────────────────
 echo "🚀 Starting Banking API Server on ${API_HOST}:${API_PORT}..."
 (
   cd "$BASEDIR/banking_api_server"
@@ -531,7 +537,7 @@ if [[ -f "$BASEDIR/langchain_agent/main.py" ]] || [[ -f "$BASEDIR/langchain_agen
 fi
 
 # ── Banking UI (CRA) on :4000 ────────────────────────────────────────────────
-# REACT_APP_API_PORT  → picked up by src/setupProxy.js to proxy /api/* to :3002
+# REACT_APP_API_PORT  → picked up by src/setupProxy.js to proxy /api/* to :3001
 # REACT_APP_API_URL   → used by apiClient.js for absolute axios calls
 # HOST                → binds CRA dev server to 0.0.0.0 so api.pingdemo.com resolves
 # DANGEROUSLY_DISABLE_HOST_CHECK → allows non-localhost hostnames in CRA dev

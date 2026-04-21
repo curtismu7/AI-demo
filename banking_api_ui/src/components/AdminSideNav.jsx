@@ -73,7 +73,7 @@ export default function AdminSideNav({ user }) {
   // Main navigation items (some with submenus) — ALL ROUTES VERIFIED
   // Items with adminOnly: true are hidden for non-admin users
   const allNavItems = [
-    { label: 'Home', path: '/marketing', icon: '🏠' },
+    { label: 'Home', path: '/', icon: '🏠' },
     { label: 'Dashboard', path: isAdmin ? '/admin' : '/dashboard', icon: '📊' },
     {
       label: 'Users & Accounts',
@@ -92,6 +92,7 @@ export default function AdminSideNav({ user }) {
         { label: 'Activity Logs', path: '/activity', icon: '📝' },
         { label: 'Audit Trail', path: '/audit', icon: '🔍' },
         { label: 'API Traffic', path: '/api-traffic', icon: '📡' },
+        { label: 'MCP Traffic', path: '/mcp-traffic', icon: '🔌' },
       ],
     },
     {

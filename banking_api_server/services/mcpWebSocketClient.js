@@ -7,6 +7,7 @@
  */
 const WebSocket = require('ws');
 const configStore = require('./configStore');
+const { writeMcpTrafficEntry } = require('./mcpTrafficLogger');
 
 /** Protocol version sent on initialize — runtime-configurable via Feature Flag 'mcp_use_legacy_protocol'.
  *  OFF (default) = 2025-11-25 (current spec).  ON = 2024-11-05 (previous spec).
@@ -132,6 +133,9 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
     const INIT_REQUEST_ID = 1;
     const FOLLOW_REQUEST_ID = 2;
 
+    // Phase 212: MCP traffic log
+    const _mcpTrafficT0 = Date.now();
+
     acquireMcpWsSlot()
       .then(() => {
         const ws = new WebSocket(getMcpServerUrl());
@@ -215,6 +219,15 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
             if (agentToken) callParams.agentToken = agentToken;
             if (userSub) callParams.userSub = userSub;
             if (correlationId) callParams.correlationId = correlationId;
+            writeMcpTrafficEntry({
+              dir: 'BFF→MCP',
+              type: 'rpc_request',
+              method: followMethod,
+              tool: followParams && followParams.name ? followParams.name : null,
+              ok: true,
+              summary: `RPC → ${followMethod}${followParams && followParams.name ? ' ' + followParams.name : ''}`,
+              correlationId: correlationId || null,
+            });
             ws.send(
               JSON.stringify({
                 jsonrpc: '2.0',
@@ -242,9 +255,29 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
                 mcpErr.code = 'mcp_insufficient_scope';
                 mcpErr.mcpErrorData = msg.error.data || {};
               }
+              writeMcpTrafficEntry({
+                dir: 'MCP→BFF',
+                type: 'error',
+                method: followMethod,
+                tool: followParams && followParams.name ? followParams.name : null,
+                durationMs: Date.now() - _mcpTrafficT0,
+                ok: false,
+                summary: `RPC ← ${followMethod} ERROR: ${mcpErr.message}`,
+                correlationId: correlationId || null,
+              });
               reject(mcpErr);
             } else {
               safeRelease();
+              writeMcpTrafficEntry({
+                dir: 'MCP→BFF',
+                type: 'rpc_response',
+                method: followMethod,
+                tool: followParams && followParams.name ? followParams.name : null,
+                durationMs: Date.now() - _mcpTrafficT0,
+                ok: true,
+                summary: `RPC ← ${followMethod}${followParams && followParams.name ? ' ' + followParams.name : ''} OK (${Date.now() - _mcpTrafficT0}ms)`,
+                correlationId: correlationId || null,
+              });
               resolve(msg.result);
             }
           }

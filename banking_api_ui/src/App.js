@@ -32,6 +32,7 @@ import LogViewerPage from './components/LogViewerPage';
 import DemoDataPage from './components/DemoDataPage';
 import UnifiedConfigurationPage from './components/Configuration/UnifiedConfigurationPage';
 import ApiTrafficPage from './components/ApiTrafficPage';
+import McpTrafficPage from './components/McpTrafficPage';
 import BankingAdminOps from './components/BankingAdminOps';
 import TransactionConsentPage from './components/TransactionConsentPage';
 import DelegatedAccessPage from './components/DelegatedAccessPage';
@@ -74,6 +75,7 @@ import { DemoTourProvider } from './context/DemoTourContext';
 import { ExchangeModeProvider } from './context/ExchangeModeContext';
 import DemoTourModal from './components/tour/DemoTourModal';
 import ServerRestartModal from './components/ServerRestartModal';
+import DemoServerCheckModal from './components/DemoServerCheckModal';
 import MissingCredentialsModal from './components/MissingCredentialsModal';
 import { monitorApiHealth } from './services/bankingRestartNotificationService';
 import EducationPanelsHost from './components/education/EducationPanelsHost';
@@ -84,7 +86,6 @@ import TopNav from './components/TopNav';
 import {
   isBankingAgentDashboardRoute,
   isEmbeddedAgentDockRoute,
-  isMarketingEmbeddedDockSurface,
   isPublicMarketingAgentPath,
 } from './utils/embeddedAgentFabVisibility';
 
@@ -134,7 +135,7 @@ const setupBrowserExtensionHandling = () => {
 /**
  * Renders children for admin users.
  * For non-admin logged-in users: shows a modal explaining why + fires a toast, then
- * renders a blank placeholder so the URL stays valid (no silent redirect to /marketing).
+ * renders a blank placeholder so the URL stays valid (no silent redirect to /).
  */
 function AdminRoute({ user, children }) {
   const navigate = useNavigate();
@@ -212,6 +213,8 @@ function AppWithAuth() {
   /** On-page session prompt (replaces toast-only for “log in again” flows). */
   const [sessionReauth, setSessionReauth] = useState(null);  /** Missing credentials modal state */
   const [credentialsModal, setCredentialsModal] = useState(null);  const pendingUserEmailRef = useRef(null);
+  /** Servers that were down on startup — null = not yet checked, [] = all ok */
+  const [downServers, setDownServers] = useState(null);
   /** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
   const sessionEstablishedRef = useRef(null);
 
@@ -224,6 +227,27 @@ function AppWithAuth() {
   // Initialize server restart notification monitoring
   useEffect(() => {
     monitorApiHealth();
+  }, []);
+
+  // Startup server health check — show blocking modal if any required server is down
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/health/demo-status', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        const down = (data.servers || []).filter(s => !s.up);
+        setDownServers(down);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // BFF itself unreachable — show both as down
+        setDownServers([
+          { name: 'Banking API Server', key: 'api_server', up: false, startCmd: 'cd banking_api_server && npm start', description: 'Express BFF', port: 3001 },
+          { name: 'Banking MCP Server',  key: 'mcp_server',  up: false, startCmd: 'cd banking_mcp_server && npm run dev',  description: 'MCP tool server', port: 8080 },
+        ]);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   // Clear old page content on route change — scroll to top before paint
@@ -405,7 +429,7 @@ function AppWithAuth() {
     return () => window.removeEventListener('missing-credentials', onMissingCreds);
   }, []);
 
-  /** End-user OAuth BFF failures redirect to /marketing (not /login) so FAB/dock stay mounted — toast here. */
+  /** End-user OAuth BFF failures redirect to / (not /login) so FAB/dock stay mounted — toast here. */
   useEffect(() => {
     if (showEndUserOAuthErrorToast(searchParams)) {
       stripEndUserOAuthErrorParamsFromUrl();
@@ -473,7 +497,6 @@ function AppWithAuth() {
     '/actor-token-education',
     '/error-audit',
     '/security-settings',
-    '/marketing',
     '/dashboard',
     '/pingone-test',
     '/mfa-test',
@@ -481,14 +504,14 @@ function AppWithAuth() {
   const isOnSidebarRoute = sidebarRoutePatterns.some(pattern => pathname.startsWith(pattern)) || 
                          (Boolean(user) && pathname === '/');
 
-  // Marketing home (/ or /marketing): show floating agent even when signed out; signed-in /marketing too.
+  // Landing home (/): show floating agent even when signed out.
   // Suppress float on signed-in / only when UserDashboard owns middle placement.
   const marketingAgentSurface =
-    isPublicMarketingAgentPath(pathname) && (!user || pathNorm === '/marketing');
+    isPublicMarketingAgentPath(pathname) && !user;
 
-  // Marketing `/` + `/marketing`: always show float agent, never bottom dock.
+  // Landing /: always show float agent, never bottom dock.
   const hasEmbeddedDockLayout =
-    (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute && pathNorm !== '/marketing');
+    (Boolean(user) && agentPlacement === 'bottom' && onEmbeddedDockRoute);
 
   const showFloatingAgent =
     !isApiTrafficOnlyPage &&
@@ -528,7 +551,7 @@ function AppWithAuth() {
       <TokenChainProvider>
         <SessionExpiryTimer hideOnPaths={['/configure', '/demo-data', '/self-service', '/onboarding']} />
         <div
-          className={`App end-user-nano${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}${isMarketingEmbeddedDockSurface(pathname, user) ? ' App--marketing-page' : ''}`}
+          className={`App end-user-nano${isOnDashboard ? ' App--on-dashboard' : ''}${hasEmbeddedDockLayout ? ' App--has-embedded-dock' : ''}${sessionReauth ? ' App--session-reauth' : ''}`}
         >
           <ToastContainer position="top-right" autoClose={toastContainerAutoCloseMs} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover draggable />
           {sessionReauth && (
@@ -602,18 +625,6 @@ function AppWithAuth() {
                 user && user.role !== 'admin' ? <Navigate to="/" replace /> : <Onboarding />
               }
             />
-            {/* Explicit /marketing so the SPA always resolves the real agents (float + dock), not only splat * */}
-            <Route
-              path="/marketing"
-              element={
-                !user ? (
-                  loading ? null : <LandingPage />
-                ) : (
-                  // /marketing for signed-in users: ONLY the float agent — no sidebar, no dock
-                  <LandingPage user={user} onLogout={logout} />
-                )
-              }
-            />
             {/* Explicit /dashboard so guests see UserDashboard with demo data, not LandingPage */}
             <Route
               path="/dashboard"
@@ -665,6 +676,7 @@ function AppWithAuth() {
                     <Route path="/config"      element={<Navigate to="/configure?tab=pingone-config" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
+                    <Route path="/mcp-traffic" element={user ? <McpTrafficPage /> : <Navigate to="/" replace />} />
                     <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />
                     <Route path="/activity" element={<AdminRoute user={user}><ActivityLogs user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/audit" element={<AdminRoute user={user}><AuditPage user={user} /></AdminRoute>} />
@@ -737,7 +749,7 @@ function AppWithAuth() {
             </button>
           )}
           {/* Side dock — right-dock only on non-dashboard routes; UserDashboard handles inline column */}
-          {agentPlacement === 'right-dock' && !onUserDashboardRoute && pathNorm !== '/marketing' && (
+          {agentPlacement === 'right-dock' && !onUserDashboardRoute && (
             <SideAgentDock
               user={user}
               onLogout={logout}
@@ -745,13 +757,19 @@ function AppWithAuth() {
             />
           )}
           {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
-              order directly above the footer on marketing and other non-dashboard routes.
-              Marketing pages (guests) always use float agent — no bottom dock. */}
-          {!loading && !onUserDashboardRoute && pathNorm !== '/marketing' && !(!user && isPublicMarketingAgentPath(pathname)) && (
+              order directly above the footer on non-dashboard routes.
+              Guest landing (/) always uses float agent — no bottom dock. */}
+          {!loading && !onUserDashboardRoute && !(!user && isPublicMarketingAgentPath(pathname)) && (
             <EmbeddedAgentDock user={user} onLogout={logout} agentPlacement={agentPlacement} />
           )}
           {!isApiTrafficOnlyPage && <Footer user={user} />}
           <ServerRestartModal />
+          {downServers && downServers.length > 0 && (
+            <DemoServerCheckModal
+              downServers={downServers}
+              onAllUp={() => setDownServers([])}
+            />
+          )}
           {!isApiTrafficOnlyPage && <DemoTourModal />}
           <MissingCredentialsModal
             isOpen={!!credentialsModal}

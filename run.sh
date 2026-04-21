@@ -5,11 +5,11 @@
 #
 # Default ports (for standalone use — no MasterFlow / OAuth Playground).
 # If you need to run alongside MasterFlow on :3000/:3001, use ./run-bank.sh
-# instead (which uses :3002/:4000).
+# instead (which uses :3002/:4000). Both scripts use UI on :4000.
 #
 # Port layout:
 #   Banking API Server  → https://api.pingdemo.com:3001
-#   Banking UI (React)  → https://api.pingdemo.com:3000
+#   Banking UI (React)  → https://api.pingdemo.com:4000
 #   Banking MCP Server  → localhost:8080
 #   LangChain Agent     → localhost:8888
 #
@@ -36,7 +36,7 @@ BASEDIR="$(cd "$(dirname "$0")" && pwd)"
 
 API_HOST="api.pingdemo.com"
 API_PORT=3001
-UI_PORT=3000
+UI_PORT=4000
 MCP_PORT=8080
 AGENT_PORT=8888
 NODE_MIN_VERSION=16
@@ -63,6 +63,7 @@ LOG_API="${LOGS_DIR}/banking-api.log"
 LOG_UI="${LOGS_DIR}/banking-ui.log"
 LOG_MCP="${LOGS_DIR}/banking-mcp.log"
 LOG_AGENT="${LOGS_DIR}/banking-agent.log"
+LOG_MCP_TRAFFIC="${LOGS_DIR}/mcp-traffic.log"
 
 # ── Colours ──────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
@@ -245,8 +246,8 @@ preflight_checks() {
 cmd_logs() {
   local pre="${1:-}"
   [[ "${pre}" == "ALL" || "${pre}" == "All" ]] && pre="all"
-  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent")
-  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}")
+  local names=("Banking API" "Banking UI" "MCP Server" "LangChain Agent" "MCP Traffic")
+  local logs=("${LOG_API}" "${LOG_UI}" "${LOG_MCP}" "${LOG_AGENT}" "${LOG_MCP_TRAFFIC}")
   local choice=""
 
   # If a specific log number was passed, use it directly
@@ -257,16 +258,16 @@ cmd_logs() {
   else
     echo ""
     echo -e "${CYAN}Pick a log to follow (tail -f). Ctrl+C stops tail only.${NC}"
-    for i in 0 1 2 3; do
+    for i in 0 1 2 3 4; do
       echo "  $((i + 1))) ${names[i]}  (${logs[i]})"
     done
-    echo "  5) All of the above (interleaved)"
-    read -r -p "Number [1-5] or 'all': " choice
+    echo "  6) All of the above (interleaved)"
+    read -r -p "Number [1-6] or 'all': " choice
   fi
   [[ "${choice}" == "ALL" || "${choice}" == "All" ]] && choice="all"
 
   case "${choice}" in
-    1|2|3|4)
+    1|2|3|4|5)
       local idx=$((choice - 1))
       local f="${logs[$idx]}"
       if [[ ! -f "${f}" ]]; then
@@ -276,7 +277,7 @@ cmd_logs() {
       echo "📜 Tailing ${names[$idx]} ..."
       tail -f "${f}"
       ;;
-    5|all)
+    6|all)
       local existing=()
       for f in "${logs[@]}"; do
         [[ -f "${f}" ]] && existing+=("${f}")
@@ -289,7 +290,7 @@ cmd_logs() {
       tail -f "${existing[@]}"
       ;;
     *)
-      echo "Invalid choice (use 1–5, or 'all')."
+      echo "Invalid choice (use 1–6, or 'all')."
       exit 1
       ;;
   esac
@@ -561,7 +562,8 @@ cmd_help() {
   echo "    LangChain Agent      :${AGENT_PORT}"
   echo ""
   echo -e "${WHITE}${BOLD}  Alternative:${NC}"
-  echo "    ./run-bank.sh  — Uses :3002/:4000 to coexist with MasterFlow on :3000/:3001"
+  echo "    ./run-bank.sh  — Uses :3002/:4000 to coexist with MasterFlow on :3000/:3001
+#                       (run.sh uses :3001/:4000 for standalone)"
   echo ""
   echo -e "${WHITE}${BOLD}  Files:${NC}"
   echo "    PIDs:  ${PIDS_DIR}/"
@@ -599,6 +601,7 @@ case "${COMMAND}" in
   restart)      cmd_stop; cmd_start ;;
   status)       cmd_status ;;
   logs)         cmd_logs "${2:-}" ;;
+  mcp-traffic|mcp-watch) [[ -f "${LOG_MCP_TRAFFIC}" ]] || { echo "No MCP traffic log yet. Start services first." >&2; exit 1; }; echo "📡 MCP Traffic Log — Ctrl+C to stop"; tail -f "${LOG_MCP_TRAFFIC}" ;;
   test)         cmd_test ;;
   help|--help|-h) cmd_help ;;
   *)

@@ -43,6 +43,7 @@ const {
 } = require('./agentMcpScopePolicy');
 const { MCP_TOOL_SCOPES, getSessionBearerForMcp } = require('./mcpWebSocketClient');
 const adminTokenService = require('./adminTokenService');
+const { writeMcpTrafficEntry } = require('./mcpTrafficLogger');
 const { trackTokenEvent } = require('./tokenChainService');
 const { trackToken } = require('./apiCallTrackerService');
 const tokenExchangeConfig = require('../config/tokenExchangeConfig');
@@ -216,15 +217,32 @@ function appendUserTokenEvent(tokenEvents, userToken, req = null) {
   const userSub = userAccessTokenClaims?.sub != null ? String(userAccessTokenClaims.sub) : null;
   const bffClientId = oauthService.config?.clientId || process.env.PINGONE_CLIENT_ID || null;
   const mayActInfo = describeMayAct(userAccessTokenClaims, bffClientId);
-  // Extract scopes for visibility
-  const tokenScopes = userAccessTokenClaims?.scope
-    ? String(userAccessTokenClaims.scope).split(/\s+/).filter(Boolean)
+
+  // Scope: prefer JWT claim, fall back to scope stored in session (PingOne may omit it from JWT)
+  const jwtScope = userAccessTokenClaims?.scope;
+  const sessionScope = req?.session?.oauthTokens?.scope;
+  const effectiveScopeStr = jwtScope || sessionScope || '';
+  const scopeSource = jwtScope ? 'jwt' : sessionScope ? 'session' : 'none';
+
+  const tokenScopes = effectiveScopeStr
+    ? String(effectiveScopeStr).split(/\s+/).filter(Boolean)
     : [];
-  const scopeDisplay = tokenScopes.length > 0 ? tokenScopes.join(' ') : '(no scopes)';
   const hasAgentScope = tokenScopes.some(s => s.includes('agent'));
   const agentScopesInToken = tokenScopes.filter(s => s.includes('agent'));
-  const scopeDetails = `Token carries ${tokenScopes.length} scope(s): ${scopeDisplay}` +
-    (hasAgentScope ? `\n✓ Agent scopes: ${agentScopesInToken.join(', ')}` : `\n⚠️ NO agent scopes found`);
+
+  let scopeDetails;
+  if (tokenScopes.length > 0) {
+    scopeDetails = `Token carries ${tokenScopes.length} scope(s): ${tokenScopes.join(' ')}` +
+      (scopeSource === 'session' ? ' (from OAuth token_response — not embedded in JWT)' : '') +
+      (hasAgentScope ? `\n✓ Agent scopes: ${agentScopesInToken.join(', ')}` : `\n⚠️ NO agent scopes found`);
+    // Patch scope back onto the decoded claims so the UI ScopesBadges renders them
+    if (scopeSource === 'session' && userAccessTokenDecoded?.claims) {
+      userAccessTokenDecoded.claims.scope = effectiveScopeStr;
+    }
+  } else {
+    scopeDetails = '⚠️ No scope claim in JWT and no scope in token response. ' +
+      'Configure the PingOne customer app to include banking:read and banking:write scopes.';
+  }
 
   tokenEvents.push(buildTokenEvent(
     'user-token',
@@ -362,6 +380,8 @@ function generateTransactionId() {
  */
 async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, finalScopes) {
   let exchangedToken = null;
+  const _exchangeT0 = Date.now();
+  writeMcpTrafficEntry({ dir: 'BFF→PingOne', type: 'exchange_request', method: 'token_exchange', tool: null, ok: true, summary: `RFC 8693 exchange → scopes: ${(finalScopes||[]).join(' ')} aud: ${mcpResourceUri||'(default)'}` });
   
   try {
     const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
@@ -382,9 +402,11 @@ async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, final
     }
   } catch (err) {
     errorLog('[RFC8693Exchange]', err.message);
+    writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'error', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: false, summary: `RFC 8693 exchange ← ERROR: ${err.message}` });
     return null;
   }
   
+  writeMcpTrafficEntry({ dir: 'PingOne→BFF', type: 'exchange_response', method: 'token_exchange', tool: null, durationMs: Date.now()-_exchangeT0, ok: !!exchangedToken, summary: `RFC 8693 exchange ← ${exchangedToken?'OK token received':'FAILED no token'} (${Date.now()-_exchangeT0}ms)` });
   return exchangedToken;
 }
 
