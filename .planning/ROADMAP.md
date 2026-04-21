@@ -2153,7 +2153,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 204
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [x] 205-01-PLAN.md — Detect and prompt for missing credentials; submit via modal to configstore
@@ -2163,7 +2163,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 205
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 206 to break down)
@@ -2262,7 +2262,7 @@ Core outcomes:
 
 **Depends on:** Phase 208
 
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 209 to break down)
@@ -2272,7 +2272,7 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 209
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 210 to break down)
@@ -2282,10 +2282,11 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** Phase 210
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 211 to break down)
+- [ ] 211-01-PLAN.md — BFF scope-upgrade endpoint + mcpWriteToken session cache
+- [ ] 211-02-PLAN.md — UI scopeErrorModal 4-state machine + auto-replay + token event narration
 
 ---
 
