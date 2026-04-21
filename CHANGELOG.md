@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 - **Phase 209 context — modular component architecture decisions** — Captured design decisions for standalone packaging, OIDCProviderAdapter shim, AuthorizationAdapter interface, and HTTP/SSE transport for PingGateway compatibility.
 - **AI Primer panel — technical enablement guide as education slide-out** — Added `AiPrimerPanel.js` with 5 tabs (Terminology, Foundations, Prompts, Workflow, Prompts Used) accessible from the education command palette. Covers AI/ML/LLM/MCP/IAM/RAG nomenclature, foundational concepts, prompt engineering, 6-step agentic workflow, and the authoring prompts used to create the guide.
@@ -227,6 +228,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [2026.03.26-V3]
 
 ### Added
+- **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 
 ### Fixed
@@ -243,6 +245,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [2026.03.26.v2]
 
 ### Added
+- **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 - `scripts/setup-vercel-env.js` — interactive Vercel environment wizard: detects conflicts, validates Upstash connectivity, generates SESSION_SECRET, and optionally pushes to Vercel CLI
 - `npm run setup:vercel` and `npm run setup:vercel:check` scripts
@@ -266,6 +269,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [2026.03.26]
 
 ### Added
+- **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 
 ### Fixed
@@ -282,6 +286,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [2026.03.25]
 
 ### Added
+- **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 - `services/faultTolerantStore.js` — extracted Redis store wrapper into a testable module
 - `services/redisWireUrl.js` — resolves Redis wire-protocol URLs from multiple env var formats

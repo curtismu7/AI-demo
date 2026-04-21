@@ -1133,6 +1133,8 @@ export default function BankingAgent({
   /** True when the user has accepted the in-app agent consent agreement. */
   /** Missing-scopes error from token exchange — shows config-fix modal. */
   const [scopeErrorModal, setScopeErrorModal] = useState(null);
+  /** Pending action awaiting scope-upgrade consent — replayed automatically after exchange. */
+  const pendingScopeUpgradeRef = useRef(null);
 
   /** Pending HITL intent — shows AgentConsentModal (transaction mode) before OTP. */
   const [hitlPendingIntent, setHitlPendingIntent] = useState(null);
@@ -2579,22 +2581,23 @@ export default function BankingAgent({
           tokenEvents: err.tokenEvents || [],
         });
       } else if (err?.code === 'mcp_scope_denied') {
-        // MCP server returned -32005: valid token but missing required scope
-        const missingList = (err.missingScopes || []).join(', ') || 'banking:sensitive:read';
+        // Phase 211: scope-upgrade flow — save pending action and show consent modal
+        // Phase 210 enforcement: MCP server returned JSON-RPC -32005 (INSUFFICIENT_SCOPE)
         addMessage('token-event', [
-          '❌ **OAuth 2.0 §3.3 — Insufficient Scope**',
-          `   Tool \`${err.tool || 'unknown'}\` requires: \`${(err.requiredScopes || []).join(', ') || missingList}\``,
-          `   Your token is missing: \`${missingList}\``,
-          '   The MCP server returned JSON-RPC error -32005 (INSUFFICIENT_SCOPE).',
-          '   RFC 6750 §3.1: resource servers MUST reject tokens that do not have the required scopes.',
-          '',
-          '**Fix:** Sign out → sign in with the PingOne app that requests the required scope.',
+          '⚠️ **OAuth 2.0 §3.3 — Scope Gate: `banking:write` required**',
+          `   Tool \`${err.tool || actionId}\` requires: \`${(err.requiredScopes || []).join(', ')}\``,
+          `   Your MCP token is missing: \`${(err.missingScopes || []).join(', ')}\``,
+          '   The MCP server returned JSON-RPC -32005 (INSUFFICIENT_SCOPE).',
+          '   Approve the scope upgrade below to exchange for a write-capable token (RFC 8693).',
         ].join('\n'), actionId);
+        // Phase 211: save pending action for auto-replay after scope upgrade
+        pendingScopeUpgradeRef.current = { actionId, form };
         setScopeErrorModal({
           missingScopes: err.missingScopes || [],
           userScopes: (err.availableScopes || []).join(' ') || '(none)',
           requiredScopes: (err.requiredScopes || []).join(' '),
           tokenEvents: err.tokenEvents || [],
+          scopeUpgradeState: 'error',  // Phase 211: 4-state machine
         });
       } else if (err?.code === 'mcp_step_up_required') {
         // MCP Authorize gate: PingOne (or simulated) requires step-up MFA before tool access
@@ -3027,14 +3030,20 @@ export default function BankingAgent({
       if (response.error || !response.success) {
         // MCP scope denial via NL path: show inline chat message
         if (response.error === 'mcp_scope_denied') {
-          const missingList = (response.missingScopes || []).join(', ') || 'banking:sensitive:read';
-          addMessage('assistant', [
-            `🔒 **Scope Required: \`${missingList}\`**`,
-            '',
-            `The \`${response.tool || 'requested'}\` tool requires the \`${missingList}\` scope, which your current session does not include.`,
-            '',
-            '**Fix:** Sign out and sign in again with the PingOne app that requests the required scope.',
-          ].join('\n'));
+          // Phase 211: show 4-state consent modal instead of dead-end message
+          addMessage('token-event', [
+            '⚠️ **OAuth 2.0 §3.3 — Scope Gate: `banking:write` required**',
+            `   Tool \`${response.tool || 'unknown'}\` requires write scope.`,
+            '   Approve the scope upgrade below to exchange for a write-capable token (RFC 8693).',
+          ].join('\n'), undefined);
+          pendingScopeUpgradeRef.current = { actionId: response.tool || 'create_transfer', form: {} };
+          setScopeErrorModal({
+            missingScopes: response.missingScopes || ['banking:write'],
+            userScopes: (response.availableScopes || []).join(' ') || '(none)',
+            requiredScopes: (response.requiredScopes || ['banking:write']).join(' '),
+            tokenEvents: response.tokenEvents || [],
+            scopeUpgradeState: 'error',
+          });
           return;
         }
         // Marketing guest: 401 / need_auth means "log in via PingOne", not session-hydration issue
@@ -3243,6 +3252,52 @@ export default function BankingAgent({
   const handleP1MfaError = (errorMsg) => {
     console.error('[BankingAgent] P1MFA error:', errorMsg);
   };
+
+  /** Phase 211: perform scope upgrade exchange and auto-replay the pending action. */
+  async function handleScopeUpgradeConfirm() {
+    setScopeErrorModal(prev => prev ? { ...prev, scopeUpgradeState: 'exchanging' } : prev);
+    addMessage('token-event', '🔐 Scope upgrade approved — exchanging token for `banking:write` access (RFC 8693)…', 'scope_upgrade');
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || '';
+      const res = await fetch(`${apiBase}/api/mcp/scope-upgrade`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setScopeErrorModal(prev => prev ? { ...prev, scopeUpgradeState: 'error', upgradeError: data.message || 'Exchange failed' } : prev);
+        addMessage('token-event', `❌ Scope upgrade failed: ${data.message || 'Exchange did not return a write-scoped token.'}`, 'scope_upgrade');
+        return;
+      }
+      // Push exchange token events to TokenChainContext for educational display
+      if (tokenChain && Array.isArray(data.tokenEvents) && data.tokenEvents.length > 0) {
+        tokenChain.setTokenEvents('scope_upgrade', data.tokenEvents);
+      }
+      addMessage('token-event', [
+        '🔄 **RFC 8693 Token Exchange — Scope Upgrade**',
+        '   Subject token: user access token (from BFF session)',
+        '   Requested scope: `banking:write` (added to MCP token)',
+        '   Result: write-scoped MCP access token stored in session',
+        '   RFC 8693 §2.1: token exchange cannot expand beyond subject token scopes.',
+        '   RFC 8693 §4.2: `act` claim on result identifies BFF as actor.',
+      ].join('\n'), 'scope_upgrade');
+      setScopeErrorModal(prev => prev ? { ...prev, scopeUpgradeState: 'done' } : prev);
+      addMessage('token-event', '🔄 Write-scoped token ready — replaying original request…', 'tool_replay');
+      // Auto-close and replay after brief delay
+      setTimeout(() => {
+        const pending = pendingScopeUpgradeRef.current;
+        setScopeErrorModal(null);
+        pendingScopeUpgradeRef.current = null;
+        if (pending && pending.actionId) {
+          runAction(pending.actionId, pending.form || {}, { skipUserLabel: true });
+        }
+      }, 500);
+    } catch (err) {
+      setScopeErrorModal(prev => prev ? { ...prev, scopeUpgradeState: 'error', upgradeError: err.message } : prev);
+      addMessage('token-event', `❌ Scope upgrade network error: ${err.message}`, 'scope_upgrade');
+    }
+  }
 
   const floatShell = (
     <div
@@ -3701,7 +3756,7 @@ export default function BankingAgent({
               );
             })()}
 
-            {/* ── Missing-scopes config-fix modal ── */}
+            {/* ── Scope-upgrade consent modal (Phase 211) ── */}
             {scopeErrorModal && (
               <div style={{
                 position: 'fixed', inset: 0, zIndex: 9999,
@@ -3720,75 +3775,105 @@ export default function BankingAgent({
                   color: 'var(--color-text, #e2e4ef)',
                   fontFamily: 'inherit',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                    <span style={{ fontSize: '22px' }}>⚠️</span>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>
-                      Token Exchange: Missing Required Scopes
-                    </h3>
-                  </div>
 
-                  <p style={{ margin: '0 0 12px', lineHeight: 1.6, fontSize: '14px' }}>
-                    The AI agent path requires the <code style={{ background: 'rgba(255,80,80,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:ai:agent</code> scope
-                    on your access token to authorise the agent to call the MCP server.
-                  </p>
-
-                  <div style={{
-                    background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.25)',
-                    borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px',
-                  }}>
-                    <div style={{ marginBottom: '6px' }}>
-                      <span style={{ opacity: 0.7 }}>Required scopes:</span>{' '}
-                      {(scopeErrorModal.missingScopes.length
-                        ? scopeErrorModal.missingScopes
-                        : scopeErrorModal.requiredScopes.split(' ').filter(Boolean)
-                      ).map(s => (
-                        <code key={s} style={{
-                          background: 'rgba(255,80,80,0.15)', borderRadius: '4px',
-                          padding: '1px 6px', marginLeft: '4px', fontSize: '12px',
-                        }}>{s}</code>
-                      ))}
+                  {/* ── error state ────────────────────────────────────────────────────────────────────────── */}
+                  {scopeErrorModal.scopeUpgradeState === 'error' && (<>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <span style={{ fontSize: '22px' }}>🔐</span>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>
+                        Scope Upgrade Required
+                      </h3>
                     </div>
-                    <div>
-                      <span style={{ opacity: 0.7 }}>Your token has:</span>{' '}
-                      {scopeErrorModal.userScopes.split(' ').filter(Boolean).map(s => (
-                        <code key={s} style={{
-                          background: 'rgba(100,100,200,0.15)', borderRadius: '4px',
-                          padding: '1px 6px', marginLeft: '4px', fontSize: '12px',
-                        }}>{s}</code>
-                      ))}
+                    <p style={{ margin: '0 0 12px', lineHeight: 1.6, fontSize: '14px' }}>
+                      This action requires{'  '}
+                      <code style={{ background: 'rgba(255,200,80,0.15)', padding: '1px 6px', borderRadius: '4px' }}>banking:write</code>
+                      {'  '}scope. Your current MCP token does not include it. You can approve a scope upgrade — the BFF will exchange your token for a write-capable version via{'  '}
+                      <strong>RFC 8693</strong>.
+                    </p>
+                    <div style={{ background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.25)', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px' }}>
+                      <div style={{ marginBottom: '6px' }}>
+                        <span style={{ opacity: 0.7 }}>Missing scopes:</span>{' '}
+                        {(scopeErrorModal.missingScopes && scopeErrorModal.missingScopes.length ? scopeErrorModal.missingScopes : ['banking:write']).map(s => (
+                          <code key={s} style={{ background: 'rgba(255,80,80,0.15)', borderRadius: '4px', padding: '1px 6px', marginLeft: '4px', fontSize: '12px' }}>{s}</code>
+                        ))}
+                      </div>
+                      <div>
+                        <span style={{ opacity: 0.7 }}>Your token has:</span>{' '}
+                        {(scopeErrorModal.userScopes || '').split(' ').filter(Boolean).map(s => (
+                          <code key={s} style={{ background: 'rgba(100,100,200,0.15)', borderRadius: '4px', padding: '1px 6px', marginLeft: '4px', fontSize: '12px' }}>{s}</code>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                    {scopeErrorModal.upgradeError && (
+                      <p style={{ color: 'var(--color-error, #f87171)', fontSize: '13px', marginBottom: '12px' }}>
+                        {scopeErrorModal.upgradeError}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button type="button" onClick={() => setScopeErrorModal(null)}
+                        style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--color-border, #2e3147)', background: 'transparent', color: 'var(--color-text, #e2e4ef)', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>
+                        Cancel
+                      </button>
+                      <button type="button"
+                        onClick={() => setScopeErrorModal(prev => prev ? { ...prev, scopeUpgradeState: 'confirm' } : prev)}
+                        style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: 'var(--color-primary, #4f7df3)', color: '#fff', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>
+                        Approve Scope Upgrade
+                      </button>
+                    </div>
+                  </>)}
 
-                  <p style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 600 }}>How to fix:</p>
-                  <ol style={{ margin: '0 0 20px', paddingLeft: '20px', fontSize: '13px', lineHeight: 1.8 }}>
-                    <li>
-                      Open your <strong>PingOne Admin Console</strong> and find your user-facing
-                      OAuth app (Super Banking User App).
-                    </li>
-                    <li>
-                      Add <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:ai:agent</code>{' '}
-                      to the app&apos;s allowed scopes (or enable <strong>ff_skip_token_exchange</strong> in
-                      Admin → Config to bypass the exchange entirely).
-                    </li>
-                    <li>
-                      <strong>Sign out and sign back in</strong> to obtain a new access token that
-                      carries the <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:ai:agent</code> scope.
-                    </li>
-                  </ol>
+                  {/* ── confirm state ────────────────────────────────────────────────────────────────────────── */}
+                  {scopeErrorModal.scopeUpgradeState === 'confirm' && (<>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                      <span style={{ fontSize: '22px' }}>🔏</span>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>Confirm Scope Upgrade</h3>
+                    </div>
+                    <p style={{ margin: '0 0 16px', lineHeight: 1.6, fontSize: '14px' }}>
+                      You are granting the AI agent{' '}
+                      <code style={{ background: 'rgba(100,200,100,0.12)', padding: '1px 6px', borderRadius: '4px' }}>banking:write</code>
+                      {' '}access for this session.
+                      This allows the agent to complete{'  '}<strong>transfers, deposits, and withdrawals</strong> on your behalf.
+                    </p>
+                    <p style={{ margin: '0 0 16px', lineHeight: 1.6, fontSize: '13px', opacity: 0.8 }}>
+                      The BFF will perform an{'  '}<strong>RFC 8693 Token Exchange</strong> — your user access token becomes the subject,
+                      the agent client is the actor, and the result is a narrowly-scoped MCP token valid for this session only.
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button type="button" onClick={() => setScopeErrorModal(prev => prev ? { ...prev, scopeUpgradeState: 'error' } : prev)}
+                        style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--color-border, #2e3147)', background: 'transparent', color: 'var(--color-text, #e2e4ef)', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>
+                        Back
+                      </button>
+                      <button type="button" onClick={handleScopeUpgradeConfirm}
+                        style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: 'var(--color-primary, #4f7df3)', color: '#fff', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>
+                        Confirm &amp; Exchange Token
+                      </button>
+                    </div>
+                  </>)}
 
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                    <button
-                      type="button"
-                      onClick={() => setScopeErrorModal(null)}
-                      style={{
-                        padding: '8px 20px', borderRadius: '8px', border: 'none',
-                        background: 'var(--color-primary, #4f7df3)', color: '#fff',
-                        fontWeight: 600, fontSize: '14px', cursor: 'pointer',
-                      }}
-                    >
-                      Got it
-                    </button>
-                  </div>
+                  {/* ── exchanging state ──────────────────────────────────────────────────────────────────────── */}
+                  {scopeErrorModal.scopeUpgradeState === 'exchanging' && (<>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <span style={{ fontSize: '22px' }}>🔄</span>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>Exchanging Token…</h3>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '14px', opacity: 0.8 }}>
+                      Performing RFC 8693 token exchange to obtain a{' '}
+                      <code style={{ padding: '1px 5px' }}>banking:write</code>
+                      {'-scoped MCP token.'}
+                    </p>
+                  </>)}
+
+                  {/* ── done state ───────────────────────────────────────────────────────────────────────────────── */}
+                  {scopeErrorModal.scopeUpgradeState === 'done' && (<>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <span style={{ fontSize: '22px' }}>✅</span>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>Scope Upgraded — Replaying Request</h3>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '14px', opacity: 0.8 }}>
+                      Write-scoped MCP token obtained. Retrying your original request automatically…
+                    </p>
+                  </>)}
+
                 </div>
               </div>
             )}

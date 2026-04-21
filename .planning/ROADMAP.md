@@ -2262,10 +2262,13 @@ Core outcomes:
 
 **Depends on:** Phase 208
 
-**Plans:** 2 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 209 to break down)
+- [ ] 209-01-PLAN.md — banking-core/ package extraction: configStore, demoDataService, exchangeAuditStore with re-export shims
+- [ ] 209-02-PLAN.md — OIDCProviderAdapter: OIDC endpoint normalization shim (JS for BFF, TS for MCP server)
+- [ ] 209-03-PLAN.md — AuthorizationAdapter interface: formalize evaluateTransaction + evaluateMcpTool with SimulatedAuthorizationAdapter + PingOneAuthorizeAdapter
+- [ ] 209-04-PLAN.md — Component documentation: README per component, MCP-CONTRACT.md, banking-core COMPONENT.md
 
 ### Phase 210: MCP scope enforcement — tools advertise required scopes, server returns 403 on missing scope, agent surfaces scope errors to client
 
