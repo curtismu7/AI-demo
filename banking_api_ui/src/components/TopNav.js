@@ -36,7 +36,6 @@ export default function TopNav({ user, onLogout }) {
 
   const handleLogout = () => {
     onLogout();
-    navigate('/login');
   };
 
   return (

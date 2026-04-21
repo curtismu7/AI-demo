@@ -652,6 +652,8 @@ function AppWithAuth() {
                 )
               }
             />
+            {/* /login is not a real route — redirect to home so stale links or misdirected post-logout URIs land cleanly */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/logout" element={<LogoutPage />} />
 
             <Route path="*" element={

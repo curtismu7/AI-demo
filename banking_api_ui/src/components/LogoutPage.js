@@ -51,7 +51,7 @@ export default function LogoutPage() {
         <div className="logout-actions">
           <button
             className="logout-button logout-button--primary"
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/')}
             title="Sign in again"
           >
             Sign In Again
