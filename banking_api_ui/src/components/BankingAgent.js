@@ -3106,12 +3106,26 @@ export default function BankingAgent({
 
       // Show pop-out panel for structured responses (accounts/transactions/balance)
       const { resultType, resultData } = inferAgentResultTypeAndData(response);
+      const _isNlWrite = resultType === 'confirm' || ['transfer','deposit','withdraw'].some(w => (response.toolsCalled||[]).some(t => t.includes(w)));
       if (resultType) {
         const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
         if (displayMode === 'panel') {
           const titleMap = { accounts: '\uD83C\uDFE6 Accounts', transactions: '\uD83D\uDCCB Recent Transactions', balance: '\uD83D\uDCB0 Balance', confirm: '\u2705 Complete' };
           setResultPanel({ type: resultType, title: titleMap[resultType] || resultType, data: resultData });
         }
+      }
+      // After a write via NL, fetch fresh transactions and refresh the panel
+      if (_isNlWrite) {
+        window.dispatchEvent(new CustomEvent('banking-agent-result', { detail: { type: 'confirm', data: resultData } }));
+        getMyTransactions(30).then(txRes => {
+          const txNorm = normalizeAgentToolResult(txRes.result);
+          if (Array.isArray(txNorm?.transactions)) {
+            const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
+            if (displayMode === 'panel') {
+              setResultPanel({ type: 'transactions', title: '\uD83D\uDCCB Recent Transactions', data: txNorm.transactions });
+            }
+          }
+        }).catch(() => {});
       }
     } catch (err) {
       reportNlFailure(err);
@@ -3157,6 +3171,26 @@ export default function BankingAgent({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot replay when nlResumeAfterAuth is set after OAuth
   }, [nlResumeAfterAuth, isLoggedIn]);
+
+  // When any agent write (confirm event) fires, refresh an open transactions result panel.
+  useEffect(() => {
+    const onAgentWrite = () => {
+      setResultPanel(prev => {
+        if (!prev || prev.type !== 'transactions') return prev;
+        // Fetch fresh transactions and update in-place
+        getMyTransactions(30).then(txRes => {
+          const txNorm = normalizeAgentToolResult(txRes.result);
+          if (Array.isArray(txNorm?.transactions)) {
+            setResultPanel({ type: 'transactions', title: '\uD83D\uDCCB Recent Transactions', data: txNorm.transactions });
+          }
+        }).catch(() => {});
+        return prev; // keep current while fetching
+      });
+    };
+    window.addEventListener('banking-agent-result', onAgentWrite);
+    return () => window.removeEventListener('banking-agent-result', onAgentWrite);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Float mode should return nothing when the dedicated /agent page is active
   if (!isInline && isAgentPage) return null;
