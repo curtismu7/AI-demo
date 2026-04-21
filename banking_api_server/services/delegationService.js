@@ -179,11 +179,18 @@ async function grantDelegation({ delegatorUserId, delegatorEmail, delegateEmail,
       );
       delegateUserId = userRes.data.id;
     } catch (err) {
-      return {
-        ok: false,
-        error: 'provisioning_failed',
-        message: err.response?.data?.message || err.message,
-      };
+      // When management credentials are not configured, store the delegation
+      // locally without a PingOne user ID so the demo still works.
+      if (err.message && err.message.includes('not configured')) {
+        console.warn('[delegationService] Management credentials not configured — storing delegation without PingOne user provisioning');
+        // delegateUserId remains null; delegation is stored locally
+      } else {
+        return {
+          ok: false,
+          error: 'provisioning_failed',
+          message: err.response?.data?.message || err.message,
+        };
+      }
     }
   }
 

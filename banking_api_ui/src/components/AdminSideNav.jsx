@@ -75,6 +75,7 @@ export default function AdminSideNav({ user }) {
   const allNavItems = [
     { label: 'Home', path: '/', icon: '🏠' },
     { label: 'Dashboard', path: isAdmin ? '/admin' : '/dashboard', icon: '📊' },
+    { label: 'Family Delegation', path: '/delegation', icon: '👥', customerOnly: true },
     {
       label: 'Users & Accounts',
       icon: '📑',
@@ -131,7 +132,7 @@ export default function AdminSideNav({ user }) {
   ];
 
   // Filter by role
-  const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin);
+  const navItems = allNavItems.filter(item => (!item.adminOnly || isAdmin) && (!item.customerOnly || !isAdmin));
 
   // Learn & education expandable section
   const learnItems = [

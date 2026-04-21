@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 
 const VALID_SCOPES = [
   { key: 'view_accounts',    label: 'View Accounts',    description: 'See account list and details' },
@@ -13,8 +12,8 @@ const VALID_SCOPES = [
 // Inline styles
 // ---------------------------------------------------------------------------
 const S = {
-  page: { background: '#f9fafb', minHeight: '100vh', padding: '24px 16px' },
-  inner: { maxWidth: 800, margin: '0 auto' },
+  page: { background: '#f9fafb', padding: '0 16px 32px 16px' },
+  inner: { maxWidth: 860, margin: '0 auto' },
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   h1: { fontSize: 22, fontWeight: 700, color: '#1e3a5f', margin: 0 },
   backLink: { fontSize: 13, color: 'var(--chase-navy)', textDecoration: 'none' },
@@ -180,12 +179,24 @@ export default function DelegationPage({ user }) {
 
   return (
     <div style={S.page}>
-      <div style={S.inner}>
-        {/* Header */}
-        <div style={S.headerRow}>
-          <h1 style={S.h1}>👥 Family Delegation</h1>
-          <Link to="/dashboard" style={S.backLink}>← Back to Dashboard</Link>
+      {/* Branded gradient page header — matches other customer sub-pages */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
+        padding: '28px 24px 20px',
+        marginBottom: 24,
+        borderRadius: '0 0 12px 12px',
+      }}>
+        <div style={{ maxWidth: 860, margin: '0 auto' }}>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+            Account Management
+          </p>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', margin: 0 }}>👥 Family Delegation</h1>
+          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, margin: '6px 0 0' }}>
+            Grant family members scoped access to your accounts
+          </p>
         </div>
+      </div>
+      <div style={S.inner}>
 
         {pageError && <div style={S.errorBanner}>{pageError}</div>}
 
