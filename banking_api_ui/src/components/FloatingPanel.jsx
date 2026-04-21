@@ -41,24 +41,38 @@ export default function FloatingPanel({
 
   const isPoppedOut = !!popoutWin;
 
-  // --- Drag logic ---
+  // --- Drag logic (pointer capture allows dragging onto a second monitor) ---
   const onDragStart = useCallback((e) => {
+    if (e.button !== 0) return;
     if (e.target.closest('.fp-btn') || e.target.closest('.fp-handle')) return;
     e.preventDefault();
     setIsDragging(true);
     dragStartRef.current = { mx: e.clientX, my: e.clientY, px: pos.x, py: pos.y };
+    const target = e.currentTarget;
+    // setPointerCapture keeps pointermove firing even when cursor leaves the browser
+    if (target.setPointerCapture && e.pointerId != null) {
+      try { target.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    const onMove = (ev) => {
+      const { mx, my, px, py } = dragStartRef.current;
+      setPos({ x: px + (ev.clientX - mx), y: py + (ev.clientY - my) });
+    };
+    const onUp = () => {
+      setIsDragging(false);
+      target.removeEventListener('pointermove', onMove);
+      target.removeEventListener('pointerup', onUp);
+      target.removeEventListener('pointercancel', onUp);
+      document.body.style.userSelect = '';
+    };
+    document.body.style.userSelect = 'none';
+    target.addEventListener('pointermove', onMove);
+    target.addEventListener('pointerup', onUp);
+    target.addEventListener('pointercancel', onUp);
   }, [pos]);
 
+  // (pointer capture approach above; no separate isDragging effect needed)
   useEffect(() => {
-    if (!isDragging) return;
-    const onMove = (e) => {
-      const { mx, my, px, py } = dragStartRef.current;
-      setPos({ x: px + (e.clientX - mx), y: py + (e.clientY - my) });
-    };
-    const onUp = () => setIsDragging(false);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    // Keep isDragging in sync but don't add global listeners — pointer capture handles it
   }, [isDragging]);
 
   // --- 8-direction resize logic ---
@@ -208,7 +222,7 @@ export default function FloatingPanel({
       )}
 
       {/* Title bar */}
-      <div className="fp-titlebar" onMouseDown={onDragStart}>
+      <div className="fp-titlebar" onPointerDown={onDragStart}>
         <span className="fp-title">{title}</span>
         <div className="fp-controls">
           <button className="fp-btn" onClick={() => setIsCollapsed((c) => !c)} title={isCollapsed ? 'Expand' : 'Collapse'}>
