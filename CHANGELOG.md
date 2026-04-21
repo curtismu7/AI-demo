@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **BankingAgent — fix `effectiveIsOpen` TDZ crash** — Moved `const effectiveIsOpen` declaration before the `useEffect` that references it in its dependency array, resolving `ReferenceError: Cannot access 'effectiveIsOpen' before initialization` on load.
 - **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 - **Phase 209 context — modular component architecture decisions** — Captured design decisions for standalone packaging, OIDCProviderAdapter shim, AuthorizationAdapter interface, and HTTP/SSE transport for PingGateway compatibility.
@@ -228,6 +229,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [2026.03.26-V3]
 
 ### Added
+- **BankingAgent — fix `effectiveIsOpen` TDZ crash** — Moved `const effectiveIsOpen` declaration before the `useEffect` that references it in its dependency array, resolving `ReferenceError: Cannot access 'effectiveIsOpen' before initialization` on load.
 - **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 
@@ -245,6 +247,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [2026.03.26.v2]
 
 ### Added
+- **BankingAgent — fix `effectiveIsOpen` TDZ crash** — Moved `const effectiveIsOpen` declaration before the `useEffect` that references it in its dependency array, resolving `ReferenceError: Cannot access 'effectiveIsOpen' before initialization` on load.
 - **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 - `scripts/setup-vercel-env.js` — interactive Vercel environment wizard: detects conflicts, validates Upstash connectivity, generates SESSION_SECRET, and optionally pushes to Vercel CLI
@@ -269,6 +272,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [2026.03.26]
 
 ### Added
+- **BankingAgent — fix `effectiveIsOpen` TDZ crash** — Moved `const effectiveIsOpen` declaration before the `useEffect` that references it in its dependency array, resolving `ReferenceError: Cannot access 'effectiveIsOpen' before initialization` on load.
 - **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 
@@ -286,6 +290,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [2026.03.25]
 
 ### Added
+- **BankingAgent — fix `effectiveIsOpen` TDZ crash** — Moved `const effectiveIsOpen` declaration before the `useEffect` that references it in its dependency array, resolving `ReferenceError: Cannot access 'effectiveIsOpen' before initialization` on load.
 - **Scope upgrade consent modal u2014 Phase 211 UI** u2014 Replaced static `scopeErrorModal` dead-end with 4-state machine (erroru2192confirmu2192exchangingu2192done). `handleScopeUpgradeConfirm` calls `POST /api/mcp/scope-upgrade`; on success caches write token and auto-replays the original transfer/deposit/withdraw action via `runAction` with `skipUserLabel: true`. Chat panel emits RFC-educational token-event messages at each state transition. TokenChainContext updated with exchange events.
 - **Scope upgrade redemption flow — Phase 211 BFF routes** — Added `POST /api/mcp/scope-upgrade` endpoint performing RFC 8693 token exchange for `banking:write` scope; caches resulting write token in `session.mcpWriteToken`. Added `WRITE_TOOLS_REQUIRING_CACHE` fast-path in `POST /api/mcp/tool` so cached write tokens bypass redundant exchange.
 - `services/faultTolerantStore.js` — extracted Redis store wrapper into a testable module

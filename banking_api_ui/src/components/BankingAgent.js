@@ -1712,6 +1712,9 @@ export default function BankingAgent({
   /** Results panel width (CSS) — keep gap in sync when dragging / expanded layout */
   const resultsPanelWidthPx = 340;
 
+  // In inline mode the panel is always visible; in float mode respect the open/closed state
+  const effectiveIsOpen = isInline || isOpen;
+
   // Keep agentBounds fresh whenever the panel resizes (chips expand/collapse, resize handle use)
   useEffect(() => {
     const update = () => {
@@ -1776,8 +1779,6 @@ export default function BankingAgent({
     }
     return undefined;
   }, [dragPos, isExpanded, isInline, resultsPanelWidthPx, agentBounds]);
-  // In inline mode the panel is always visible; in float mode respect the open/closed state
-  const effectiveIsOpen = isInline || isOpen;
 
   function addMessage(role, content, tool, extra = {}) {
     const { id: exId, ...rest } = extra;
