@@ -19,13 +19,13 @@ export default function DevToolsOverlay({ defaultOpen = false }) {
       title={open ? 'Hide Dev Tools' : 'Show Dev Tools'}
       style={{
         position: 'fixed',
-        bottom: 20,
+        bottom: 84,
         right: 20,
         zIndex: 9001,
         padding: '8px 16px',
         borderRadius: '999px',
         border: 'none',
-        background: open ? '#1a1a2e' : '#3b82f6',
+        background: open ? '#7f1d1d' : '#dc2626',
         color: '#fff',
         fontWeight: 700,
         fontSize: '0.82rem',
