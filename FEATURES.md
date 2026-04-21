@@ -148,6 +148,7 @@ git checkout <last-version-tag> -- <key-file>
 
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
+| AI Primer enablement guide | active | `banking_api_ui/src/components/education/AiPrimerPanel.js` | — |
 | Education bar (persistent guide launcher) | active | `banking_api_ui/src/components/EducationBar.js` | — |
 | Education drawer / modal shell | active | `banking_api_ui/src/components/shared/EducationDrawer.js`, `banking_api_ui/src/components/shared/EducationModal.js` | `u:components/shared/__tests__/EducationDrawer.test.js` |
 | Login flow guide | active | `banking_api_ui/src/components/education/LoginFlowPanel.js` | — |

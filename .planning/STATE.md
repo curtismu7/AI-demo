@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-20T12:50:15.020Z"
+last_updated: "2026-04-20T21:13:51.266Z"
 progress:
-  total_phases: 213
-  completed_phases: 185
-  total_plans: 379
-  completed_plans: 383
+  total_phases: 215
+  completed_phases: 189
+  total_plans: 382
+  completed_plans: 387
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,8 +20,8 @@ progress:
 
 ## Current Position
 
-Phase: 202
-Plan: Not started
+Phase: 207 (agent-ai-digital-assistant-login-flow-with-mcp-server-token-exchange-and-pingone-authorization) — EXECUTING
+Plan: 1 of 3
 Next phase: 127+ (available for planning)
 
 ## Recent Progress
@@ -86,6 +86,10 @@ Next phase: 127+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 210 added: MCP scope enforcement — tools advertise required scopes, server returns 403 on missing scope, agent surfaces scope errors to client
+- Phase 209 added: Modular component architecture — discrete deployable building blocks for Agent, MCP Server, Authorization Server, and OAuth/OIDC with plug-and-play adapter interfaces (PingGateway drop-in, PingOne Authorize swap, generic IDP abstraction, standalone GitHub-downloadable components)
+- Phase 208 added: Fix 36 failing test suites and NL agent heuristic path — test infrastructure + get_my_accounts display and token events (completed)
+- Phase 206 added: Document last-mile credential architecture — IBM Agentic Trust framework alignment
 - Phase 205 added: Missing Credentials Modal — prompt for missing OAuth/worker creds with PingOne setup guidance
 - Phase 204 added: /configure page needs explanations for each field/option; add Feature Flags as a tab on the configure page
 

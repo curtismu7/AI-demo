@@ -56,4 +56,9 @@ export const EDUCATION_COMMANDS = [
   { id: 'ietf-standards-wimse', label: '📖 WIMSE', panel: EDU.IETF_STANDARDS, tab: 'wimse' },
   { id: 'ietf-standards-sd-jwt-vc', label: '📖 SD-JWT VC', panel: EDU.IETF_STANDARDS, tab: 'sd-jwt-vc' },
   { id: 'ietf-standards-pq-jose', label: '📖 PQ/T JOSE', panel: EDU.IETF_STANDARDS, tab: 'pq-jose' },
+  { id: 'ai-primer', label: '📘 AI Primer', panel: EDU.AI_PRIMER, tab: 'terminology' },
+  { id: 'ai-primer-foundations', label: '📘 AI Primer: Foundations', panel: EDU.AI_PRIMER, tab: 'foundations' },
+  { id: 'ai-primer-prompts', label: '📘 AI Primer: Prompts', panel: EDU.AI_PRIMER, tab: 'prompts' },
+  { id: 'ai-primer-workflow', label: '📘 AI Primer: Workflow', panel: EDU.AI_PRIMER, tab: 'workflow' },
+  { id: 'ai-primer-about', label: '📘 AI Primer: Prompts Used', panel: EDU.AI_PRIMER, tab: 'about' },
 ];

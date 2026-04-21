@@ -32,6 +32,7 @@ import RFC8693Panel from './RFC8693Panel';
 import FlowDiagramsPanel from './FlowDiagramsPanel';
 import IETFStandardsPanel from './IETFStandardsPanel';
 import TokenFlowPanel from './TokenFlowPanel';
+import AiPrimerPanel from './AiPrimerPanel';
 
 /**
  * Mounts all education drawers/modals; visibility controlled by EducationUIContext.
@@ -71,6 +72,7 @@ export default function EducationPanelsHost() {
       <FlowDiagramsPanel isOpen={panel === EDU.FLOW_DIAGRAMS} onClose={close} initialTabId={tab} />
       <IETFStandardsPanel isOpen={panel === EDU.IETF_STANDARDS} onClose={close} initialTabId={tab} />
       <TokenFlowPanel isOpen={panel === EDU.TOKEN_FLOW} onClose={close} initialTabId={tab} />
+      <AiPrimerPanel isOpen={panel === EDU.AI_PRIMER} onClose={close} initialTabId={tab} />
     </>
   );
 }

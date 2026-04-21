@@ -50,4 +50,6 @@ export const EDU = {
   IETF_STANDARDS: 'ietf-standards',
   /** Token Flow — end-to-end 2-exchange RFC 8693 delegation: tokens, audiences, scopes, act chain */
   TOKEN_FLOW: 'token-flow',
+  /** AI Primer — Terminology, Foundations, Prompts, Workflow, and authoring background for the Technical Enablement Guide */
+  AI_PRIMER: 'ai-primer',
 };
