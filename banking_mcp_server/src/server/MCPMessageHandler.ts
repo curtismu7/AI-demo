@@ -204,10 +204,14 @@ export class MCPMessageHandler {
   /**
    * Handle tools/list message
    */
-  async handleListTools(message: ListToolsMessage, _context: MessageHandlerContext): Promise<ListToolsResponse> {
+  async handleListTools(message: ListToolsMessage, context: MessageHandlerContext): Promise<ListToolsResponse> {
     try {
-      // Get available banking tools
-      const bankingTools = this.toolProvider.getAvailableTools();
+      // Decode token scopes from agentToken (no signature verification — token was already
+      // validated at the transport boundary). Filter tool list client-side so the agent only
+      // sees tools it can actually call. No authz server call needed here.
+      const tokenScopes = this.decodeScopesFromToken(context.agentToken);
+      const bankingTools = this.toolProvider.getAvailableToolsForToken(tokenScopes);
+      console.log(`[MCPMessageHandler] tools/list: ${bankingTools.length} tools permitted for scopes [${tokenScopes.join(', ') || 'none'}]`);
       
       // Convert to MCP tool definitions.
       // NOTE: readOnly is preserved for backward compatibility with existing clients.
@@ -328,6 +332,24 @@ export class MCPMessageHandler {
       });
 
       if (!authResult.success) {
+        // Insufficient scope: valid token present but lacks required scope(s).
+        // Return JSON-RPC -32005 so the BFF can propagate a clean 403 — do NOT
+        // fall through to authChallenge/CIBA (which is for missing tokens).
+        if (authResult.insufficientScope) {
+          console.warn(`[MCPMessageHandler] Scope denied for tool '${toolName}': required [${requiredScopes.join(', ')}], missing [${(authResult.missingScopes || []).join(', ')}]`);
+          return this.createErrorResponse(
+            message.id,
+            -32005,
+            `Insufficient scope for tool '${toolName}'`,
+            {
+              tool: toolName,
+              requiredScopes,
+              missingScopes: authResult.missingScopes || [],
+              availableScopes: authResult.availableScopes || [],
+            }
+          ) as ToolCallResponse;
+        }
+
         if (authResult.authChallenge) {
           // --- CIBA: out-of-band approval (email or push per PingOne) when user email is available ---
           const userEmail = context.userEmail
@@ -593,6 +615,27 @@ export class MCPMessageHandler {
       isValid: true,
       requiresUserAuth: false
     };
+  }
+
+  /**
+   * Decode OAuth scopes from a JWT without verifying the signature.
+   * The token was already validated at the transport boundary — we only
+   * inspect the scope claim here to filter the tool list.
+   * Returns [] if token is absent, malformed, or has no scope claim.
+   */
+  private decodeScopesFromToken(token?: string): string[] {
+    if (!token) return [];
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) return [];
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as Record<string, unknown>;
+      const scope = payload['scope'];
+      if (typeof scope === 'string') return scope.split(' ').filter(Boolean);
+      if (Array.isArray(scope)) return (scope as unknown[]).filter((s): s is string => typeof s === 'string');
+      return [];
+    } catch {
+      return [];
+    }
   }
 
   /**

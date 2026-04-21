@@ -14,6 +14,9 @@ export interface AuthenticationResult {
   session?: BankingSession;
   error?: string;
   authChallenge?: AuthorizationRequest;
+  insufficientScope?: boolean;   // true = valid token present but lacks required scope
+  missingScopes?: string[];       // scopes required but not in token
+  availableScopes?: string[];     // scopes the token actually holds
 }
 
 export interface AuthorizationChallengeResponse {
@@ -175,18 +178,14 @@ export class AuthenticationIntegration {
         const availableScopes = this.sessionManager.getValidScopes(session);
         console.log(`[AuthenticationIntegration] User tokens scope validation - required: [${requiredScopes.join(', ')}], available: [${availableScopes.join(', ')}], hasScopes: false`);
         
-        console.log(`[AuthenticationIntegration] User tokens lack required scopes, requesting additional authorization`);
-        // Generate authorization challenge for additional scopes
-        const authRequest = this.authManager.generateAuthorizationRequest({
-          sessionId: session.sessionId,
-          scopes: requiredScopes,
-          redirectUri: process.env.OAUTH_REDIRECT_URI || `http://localhost:8080/auth/callback`
-        });
-
+        const missingScopes = requiredScopes.filter(s => !availableScopes.includes(s));
+        console.log(`[AuthenticationIntegration] Insufficient scope — tool requires [${requiredScopes.join(', ')}], token has [${availableScopes.join(', ')}], missing [${missingScopes.join(', ')}]`);
         return {
           success: false,
-          error: 'Insufficient permissions',
-          authChallenge: authRequest
+          error: 'Insufficient scope',
+          insufficientScope: true,
+          missingScopes,
+          availableScopes,
         };
       }
 
