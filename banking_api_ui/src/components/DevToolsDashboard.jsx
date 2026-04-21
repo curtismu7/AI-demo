@@ -12,9 +12,9 @@ import UnifiedTokenFlowInspector from './UnifiedTokenFlowInspector';
 import McpTrafficPage from './McpTrafficPage';
 
 const TABS = [
-  { id: 'chain',     icon: '\u{1f517}', label: 'Token Chain' },
-  { id: 'inspector', icon: '\u{1f52c}', label: 'Flow Inspector' },
-  { id: 'traffic',   icon: '\u{1f50c}', label: 'MCP Traffic' },
+  { id: 'chain',     icon: '🔗', label: 'Token Chain' },
+  { id: 'inspector', icon: '🔬', label: 'Flow Inspector' },
+  { id: 'traffic',   icon: '🔌', label: 'MCP Traffic' },
 ];
 
 export default function DevToolsDashboard({
@@ -29,7 +29,7 @@ export default function DevToolsDashboard({
 
   return (
     <FloatingPanel
-      title="\u{1f6e0} Dev Tools Dashboard"
+      title="🛠 Dev Tools Dashboard"
       defaultWidth={defaultWidth}
       defaultHeight={defaultHeight}
       defaultX={defaultX}

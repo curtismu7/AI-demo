@@ -10,12 +10,12 @@ const API_POLL_MS = 3000;
 const DEFAULT_LIMIT = 200;
 
 const DIR_COLORS = {
-  'BFF\u2192MCP':        { bg: '#dbeafe', color: '#1d4ed8' },
-  'MCP\u2192BFF':        { bg: '#dcfce7', color: '#15803d' },
-  'BFF\u2192PingOne':    { bg: '#fef9c3', color: '#854d0e' },
-  'PingOne\u2192BFF':    { bg: '#fce7f3', color: '#9d174d' },
-  'BFF\u2192Authorize':  { bg: '#ede9fe', color: '#6d28d9' },
-  'Authorize\u2192BFF':  { bg: '#f3e8ff', color: '#7c3aed' },
+  'BFF→MCP':        { bg: '#dbeafe', color: '#1d4ed8' },
+  'MCP→BFF':        { bg: '#dcfce7', color: '#15803d' },
+  'BFF→PingOne':    { bg: '#fef9c3', color: '#854d0e' },
+  'PingOne→BFF':    { bg: '#fce7f3', color: '#9d174d' },
+  'BFF→Authorize':  { bg: '#ede9fe', color: '#6d28d9' },
+  'Authorize→BFF':  { bg: '#f3e8ff', color: '#7c3aed' },
 };
 
 const TYPE_LABEL = {
@@ -72,14 +72,14 @@ function EntryRow({ entry, idx, isSelected, onClick }) {
       <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: 'var(--text-muted,#64748b)', whiteSpace: 'nowrap' }}>{ts}</td>
       <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}><DirBadge dir={entry.dir} /></td>
       <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}><TypeBadge type={entry.type} ok={entry.ok} /></td>
-      <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: 'var(--text-secondary,#475569)', whiteSpace: 'nowrap' }}>{entry.method || '\u2014'}</td>
-      <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: 'var(--text-secondary,#475569)', whiteSpace: 'nowrap' }}>{entry.tool || '\u2014'}</td>
-      <td style={{ padding: '5px 8px', color: 'var(--text-muted,#64748b)', whiteSpace: 'nowrap' }}>{entry.durationMs != null ? `${entry.durationMs}ms` : '\u2014'}</td>
+      <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: 'var(--text-secondary,#475569)', whiteSpace: 'nowrap' }}>{entry.method || '—'}</td>
+      <td style={{ padding: '5px 8px', fontFamily: 'monospace', color: 'var(--text-secondary,#475569)', whiteSpace: 'nowrap' }}>{entry.tool || '—'}</td>
+      <td style={{ padding: '5px 8px', color: 'var(--text-muted,#64748b)', whiteSpace: 'nowrap' }}>{entry.durationMs != null ? `${entry.durationMs}ms` : '—'}</td>
       <td style={{ padding: '5px 10px', color: isErr ? '#991b1b' : 'var(--text-primary,#1e293b)', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={entry.summary}>
-        {entry.summary || '\u2014'}
+        {entry.summary || '—'}
       </td>
       <td style={{ padding: '5px 8px', color: '#3b82f6', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
-        {entry.payload ? '\u25ba JSON' : ''}
+        {entry.payload ? '► JSON' : ''}
       </td>
     </tr>
   );
@@ -98,7 +98,7 @@ function JsonBlock({ obj }) {
         borderRadius: '4px', border: '1px solid #cbd5e1',
         background: copied ? '#dcfce7' : '#fff', color: copied ? '#15803d' : '#64748b',
         cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600, zIndex: 1,
-      }}>{copied ? '\u2713 Copied' : 'Copy'}</button>
+      }}>{copied ? '✓ Copied' : 'Copy'}</button>
       <pre style={{
         margin: 0, padding: '10px', background: '#f8fafc', borderRadius: '6px',
         border: '1px solid #e2e8f0', fontSize: '0.75rem', lineHeight: 1.6,
@@ -138,7 +138,7 @@ function Section({ title, data, raw }) {
         background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.73rem', fontWeight: 700,
         textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', textAlign: 'left',
       }}>
-        <span>{open ? '\u25be' : '\u25b8'}</span>{title}
+        <span>{open ? '▾' : '▸'}</span>{title}
       </button>
       {open && (
         <div style={{ padding: '0 14px 12px' }}>
@@ -184,12 +184,12 @@ function DetailPanel({ entry, onClose }) {
         <button type="button" onClick={onClose} style={{
           marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
           fontSize: '1.2rem', color: '#94a3b8', lineHeight: 1,
-        }} title="Close">\u00d7</button>
+        }} title="Close">×</button>
       </div>
       <div style={{
         padding: '8px 14px', borderBottom: '1px solid var(--border-light,#e2e8f0)',
         fontSize: '0.8rem', color: isErr ? '#991b1b' : 'var(--text-primary,#1e293b)', fontStyle: 'italic',
-      }}>{entry.summary || '\u2014'}</div>
+      }}>{entry.summary || '—'}</div>
       <div style={{ overflowY: 'auto', flex: 1 }}>
         <Section title="Metadata" data={meta} />
         {entry.payload && (
@@ -247,13 +247,13 @@ export default function McpTrafficPage() {
       <div style={{ padding: '16px 24px 10px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '8px' }}>
           <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary,#1e293b)' }}>
-            \uD83D\uDD0C MCP Traffic
+            🔌 MCP Traffic
           </h1>
           <span style={{ fontSize: '0.82rem', color: 'var(--text-muted,#64748b)', fontFamily: 'monospace' }}>
-            {entries.length} entries{logFile ? ` \u00b7 ${logFile}` : ''}
+            {entries.length} entries{logFile ? ` · ${logFile}` : ''}
           </span>
           {!selected && entries.length > 0 && (
-            <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>\u2014 click a row to inspect</span>
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>— click a row to inspect</span>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
             <button type="button" onClick={handleLiveToggle} style={{
@@ -261,23 +261,23 @@ export default function McpTrafficPage() {
               backgroundColor: live ? '#dcfce7' : 'var(--surface-1,#fff)',
               color: live ? '#15803d' : 'var(--text-secondary,#475569)',
               cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
-            }}>{live ? '\u23f8 Pause' : '\u25b6 Live'}</button>
+            }}>{live ? '⏸ Pause' : '▶ Live'}</button>
             <button type="button" onClick={() => { setEntries([]); setSelected(null); }} style={{
               padding: '6px 14px', borderRadius: '6px', border: '1px solid var(--border-light,#e2e8f0)',
               backgroundColor: 'var(--surface-1,#fff)', color: 'var(--text-secondary,#475569)',
               cursor: 'pointer', fontSize: '0.85rem',
-            }}>\uD83D\uDDD1 Clear</button>
+            }}>🗑 Clear</button>
           </div>
         </div>
         {live && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#15803d' }}>
             <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block', animation: 'mtp-blink 1.5s infinite' }} />
-            Live \u2014 polling every {API_POLL_MS / 1000}s
+            Live — polling every {API_POLL_MS / 1000}s
           </div>
         )}
         {error && (
           <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '0.85rem', marginTop: '8px' }}>
-            \u26a0\ufe0f {error}
+            ⚠️ {error}
           </div>
         )}
       </div>
@@ -286,7 +286,7 @@ export default function McpTrafficPage() {
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
           {entries.length === 0 ? (
             <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted,#94a3b8)' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '12px' }}>\uD83D\uDD0C</div>
+              <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔌</div>
               <div>No MCP traffic yet. Use the AI agent to generate tool calls.</div>
             </div>
           ) : (
