@@ -148,7 +148,7 @@ function generateFakeAccounts(_user) {
 const SUGGESTIONS_CUSTOMER = [
   'Show me my accounts',
   'Show me my full account details',
-  'Transfer $100 to savings',
+  'Transfer $100 from checking to savings',
   'Deposit $50 into checking',
 ];
 
@@ -2732,7 +2732,7 @@ export default function BankingAgent({
       runAction(actionId, {});
     } else if (actionId === 'transfer') {
       // Pre-fill prompt with a ready-to-use example so the user can send immediately
-      setNlInput('Transfer $100 to savings');
+      setNlInput('Transfer $100 from checking to savings');
     } else {
       setActiveAction(actionId);
     }
