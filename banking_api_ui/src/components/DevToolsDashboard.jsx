@@ -43,12 +43,12 @@ export default function DevToolsDashboard({
       {/* Tab bar — light background so it clearly differs from the dark navy title bar */}
       <div style={{
         display: "flex",
-        background: "#e8edf3",
+        background: "#b91c1c",
         flexShrink: 0,
         gap: "3px",
         padding: "8px 10px 0",
         alignItems: "flex-end",
-        borderBottom: "2px solid #c5cdd8",
+        borderBottom: "2px solid #991b1b",
       }}>
         {TABS.map(tab => (
           <button
@@ -61,7 +61,7 @@ export default function DevToolsDashboard({
               borderColor: activeTab === tab.id ? "#c5cdd8" : "transparent",
               borderBottom: activeTab === tab.id ? "2px solid #ffffff" : "1px solid transparent",
               borderRadius: "6px 6px 0 0",
-              background: activeTab === tab.id ? "#ffffff" : "rgba(0,0,0,0.06)",
+              background: activeTab === tab.id ? "#ffffff" : "rgba(0,0,0,0.15)",
               cursor: "pointer",
               fontSize: "0.88rem",
               fontWeight: activeTab === tab.id ? 700 : 500,
@@ -81,14 +81,14 @@ export default function DevToolsDashboard({
           </button>
         ))}
         <div style={{ flex: 1 }} />
-        <span style={{ alignSelf: "center", paddingBottom: 8, paddingRight: 10, fontSize: "0.7rem", color: "#8a9ab0" }}>
+        <span style={{ alignSelf: "center", paddingBottom: 8, paddingRight: 10, fontSize: "0.7rem", color: "rgba(255,255,255,0.5)" }}>
           drag · resize · ↗ pop out
         </span>
       </div>
       {/* Tab panels — all mounted to preserve polling/state */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
         <div style={{ display: activeTab === 'chain' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
-          <TokenChainDisplay />
+          <TokenChainDisplay hideHeader />
         </div>
         <div style={{ display: activeTab === 'inspector' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
           <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={false} />
