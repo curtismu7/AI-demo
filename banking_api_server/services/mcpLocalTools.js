@@ -46,10 +46,10 @@ function checkLocalStepUp(type, amount, req) {
   if (!Array.isArray(types) || !types.includes(type)) return null;
   // If stepUpWithdrawalsAlways is enabled, skip threshold for withdrawals
   const withdrawalsAlways = runtimeSettings.get('stepUpWithdrawalsAlways');
+  const threshold = runtimeSettings.get('stepUpAmountThreshold') ?? 0;
   if (type === 'withdrawal' && withdrawalsAlways) {
     // Do not skip based on amount — fall through to step-up check below
   } else {
-    const threshold = runtimeSettings.get('stepUpAmountThreshold') ?? 0;
     if (parseFloat(amount) < threshold) return null;
   }
   const sessionUser = req?.session?.user;
@@ -529,6 +529,14 @@ const LOCAL_INSPECTOR_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'get_sensitive_account_details',
+    description: 'Retrieve sensitive account details (full account number and routing number). Requires banking:sensitive:read scope and user consent.',
+    requiresUserAuth: true,
+    requiredScopes: ['banking:accounts:read', 'banking:sensitive:read'],
+    readOnly: false,
+    inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false },
+  },
 ];
 
 /**
@@ -594,27 +602,50 @@ async function callToolLocal(tool, params, userId, req) {
 
 
 async function get_sensitive_account_details(params, userId, req) {
-  const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue') || 'Multi_Factor';
-  const userAcr = String(req?.user?.acr || req?.user?.['pingone:acr'] || '');
-  const hasElevatedAcr = userAcr === STEP_UP_ACR || userAcr.split(' ').includes(STEP_UP_ACR);
+  // HITL-granted session consent (set by POST /api/accounts/sensitive-consent) takes highest priority.
+  const consent = req?.session?.sensitiveReadConsent;
+  if (consent && consent.expiresAt > Date.now()) {
+    if (req.session) delete req.session.sensitiveReadConsent; // consume — single-use
+    // fall through to data access
+  } else if (req?.session?.stepUpVerified > Date.now()) {
+    // Session step-up token (OTP / CIBA completion) takes priority over ACR claim.
+    req.session.stepUpVerified = 0; // consume — single-use
+    // fall through to data access
+  } else {
+    const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue') || 'Multi_Factor';
+    const userAcr = String(req?.user?.acr || req?.user?.['pingone:acr'] || '');
+    const hasElevatedAcr = userAcr === STEP_UP_ACR || userAcr.split(' ').includes(STEP_UP_ACR);
 
-  if (!hasElevatedAcr) {
-    // No elevated ACR — trigger step-up (same pattern as high-value transactions)
-    return {
-      ok: false,
-      step_up_required: true,
-      error: 'step_up_required',
-      step_up_method: runtimeSettings.get('stepUpMethod') || 'email',
-    };
+    if (!hasElevatedAcr) {
+      // No elevated ACR — trigger step-up (same pattern as high-value transactions)
+      return {
+        ok: false,
+        step_up_required: true,
+        error: 'step_up_required',
+        step_up_method: runtimeSettings.get('stepUpMethod') || 'email',
+      };
+    }
   }
 
-  // ACR elevated — return sensitive account data from local store
+  // ACR elevated — return sensitive account data + user profile info
+  const user = dataStore.getUserById(userId);
   const accounts = dataStore.getAccountsByUserId(userId);
   if (!accounts || accounts.length === 0) {
     return { ok: false, error: 'No accounts found for this user.' };
   }
+  
+  // Include user profile information for "full account details" context
   return {
     ok: true,
+    user: user ? {
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      fullName: `${(user.firstName || '')} ${(user.lastName || '')}`.trim() || user.username,
+      role: user.role,
+      accountCreatedAt: user.createdAt,
+    } : null,
     accounts: accounts.map(a => ({
       id: a.id,
       accountType: a.accountType,
@@ -624,6 +655,9 @@ async function get_sensitive_account_details(params, userId, req) {
       routingNumber: a.routingNumber || null,
       swiftCode: a.swiftCode || null,
       iban: a.iban || null,
+      balance: a.balance || 0,
+      currency: a.currency || 'USD',
+      status: a.status || 'active',
     })),
   };
 }

@@ -83,6 +83,7 @@ const {
     router: featureFlagsRoutes
 } = require('./routes/featureFlags');
 const mcpInspectorRoutes = require('./routes/mcpInspector');
+const mcpToolScopesRouter = require('./routes/mcpToolScopes');
 const mcpAuditRouter = require('./routes/mcpAudit');
 const agentIdentityRoutes = require('./routes/agentIdentity');
 const agentDelegationRoutes = require('./routes/agentDelegation');
@@ -638,6 +639,7 @@ app.use('/api/introspect', introspectRoutes);
 app.use('/api/setup', setupRoutes);
 // MCP Inspector: no auth gate at the router level — tools/list returns local catalog for
 // unauthenticated visitors; tools/call and context check auth inside each handler.
+app.use('/api/mcp', mcpToolScopesRouter);
 app.use('/api/mcp/inspector', mcpInspectorRoutes);
 // MCP Audit: admin-only route — proxies to MCP server /audit internal endpoint (D-11)
 app.use('/api/mcp/audit', (req, res, next) => {
