@@ -2463,15 +2463,16 @@ export default function BankingAgent({
 
       const { resultType, resultData } = inferAgentResultTypeAndData(displayNormalized);
 
-      if (resultType) {
-        // For write actions (transfer/deposit/withdraw), always dispatch 'confirm' so the
-        // UserDashboard onAgentResult listener triggers fetchUserData to refresh balances.
-        // The panel may display 'transactions' (history after the write), but the dashboard
-        // must know a write occurred.
-        const eventType = isWriteAction ? 'confirm' : resultType;
-                window.dispatchEvent(new CustomEvent('banking-agent-result', {
+      // Always dispatch so Flow Inspector (OAuthInspectorSection) refreshes token data
+      // regardless of whether we could infer a structured result type.
+      {
+        const eventType = isWriteAction ? 'confirm' : (resultType || 'tool_complete');
+        window.dispatchEvent(new CustomEvent('banking-agent-result', {
           detail: { type: eventType, data: resultData, label },
         }));
+      }
+
+      if (resultType) {
         const titleMap = {
           accounts: '🏦 Accounts',
           transactions: '📋 Recent Transactions',
