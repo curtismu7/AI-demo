@@ -65,7 +65,7 @@ export default function DevToolsDashboard({
               cursor: "pointer",
               fontSize: "0.88rem",
               fontWeight: activeTab === tab.id ? 700 : 400,
-              color: activeTab === tab.id ? "#1e3a5f" : "#5a6a7e",
+              color: "#ffffff",
               display: "flex",
               alignItems: "center",
               gap: "7px",
