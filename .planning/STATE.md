@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-20T21:13:51.266Z"
+last_updated: "2026-04-21T17:21:36.946Z"
 progress:
-  total_phases: 215
+  total_phases: 219
   completed_phases: 189
-  total_plans: 382
-  completed_plans: 387
+  total_plans: 385
+  completed_plans: 389
 ---
 
 # State — Super Banking AI Banking Demo
@@ -20,7 +20,7 @@ progress:
 
 ## Current Position
 
-Phase: 207 (agent-ai-digital-assistant-login-flow-with-mcp-server-token-exchange-and-pingone-authorization) — EXECUTING
+Phase: 210 (mcp-scope-enforcement) — EXECUTING
 Plan: 1 of 3
 Next phase: 127+ (available for planning)
 
@@ -86,6 +86,7 @@ Next phase: 127+ (available for planning)
 
 ## Roadmap Evolution
 
+- Phase 211 added: Scope-gated write tools: 403-to-HITL-to-token-exchange flow for transfer/deposit/withdraw with scope-upgrade and request replay
 - Phase 210 added: MCP scope enforcement — tools advertise required scopes, server returns 403 on missing scope, agent surfaces scope errors to client
 - Phase 209 added: Modular component architecture — discrete deployable building blocks for Agent, MCP Server, Authorization Server, and OAuth/OIDC with plug-and-play adapter interfaces (PingGateway drop-in, PingOne Authorize swap, generic IDP abstraction, standalone GitHub-downloadable components)
 - Phase 208 added: Fix 36 failing test suites and NL agent heuristic path — test infrastructure + get_my_accounts display and token events (completed)

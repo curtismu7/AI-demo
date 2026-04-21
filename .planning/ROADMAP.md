@@ -2277,6 +2277,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 210 to break down)
 
+### Phase 211: Scope-gated write tools: 403-to-HITL-to-token-exchange flow for transfer deposit withdraw with scope-upgrade and request replay
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 210
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 211 to break down)
+
 ---
 
 ### Phase 197: Fix Phase 193 regression — sidebar missing on unauthenticated dashboard
