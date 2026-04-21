@@ -54,6 +54,9 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 169 | multi-idp-oauth-abstraction | OAuth endpoints, callbacks, role claims configurable for any IDP | FEDERATE-01..06 | 4 plans |
 
 | 195 | security-hardening-act-delegation | RFC 8693 act claim validation, status codes, fallback removal | SEC-01..05 | 1 plan |
+| 207 | agent-ai-digital-assistant-login-flow | MCP token exchange + home-built authz gate + scope-based tool list filtering | Complete | 2026-04-20 |
+| 208 | mtls-mutual-tls-a2a-service-authentication | mTLS cert-bound tokens for BFF↔MCP↔PingOne A2A; RFC 8705; 5 waves | MTLS-01..06 | 0 plans |
+
 ---
 
 ## Phase Details
@@ -2120,7 +2123,7 @@ Plans:
 **Goal:** Reorder token panels to acquisition order (subject → actor → result) and add Session Summary section showing test pass/fail counts.
 **Requirements**: TBD-202
 **Depends on:** Phase 201
-**Plans:** 1 plan
+**Plans:** 0/1 plans complete
 
 Plans:
 - [ ] 202-01-PLAN.md — Token acquisition order + Session Summary section
@@ -2130,7 +2133,7 @@ Plans:
 **Goal:** Config and Resources TestCards start as pending (yellow) on load; turn green/red only after clicking Test.
 **Requirements**: TBD-203
 **Depends on:** Phase 202
-**Plans:** 1 plan
+**Plans:** 0/1 plans complete
 
 Plans:
 - [ ] 203-01-PLAN.md — Switch 9 config/resource TestCards to pending-first status
@@ -2154,6 +2157,125 @@ Plans:
 
 Plans:
 - [x] 205-01-PLAN.md — Detect and prompt for missing credentials; submit via modal to configstore
+
+### Phase 206: Document last-mile credential architecture — IBM Agentic Trust framework alignment
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 205
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 206 to break down)
+
+### Phase 207: Agent AI — Digital Assistant login flow with MCP server token exchange and PingOne authorization
+
+**Goal:** Close remaining gaps in the agent authorization + token exchange architecture: (1) Option D delegation endpoint for external agent platforms (N8N, Bedrock, Glean) that cannot perform RFC 8693, (2) agent-side decision handling UI for step-up and denied responses, (3) HITL async decision flow + session correlation for concurrent tool calls. Builds on top of the **already-implemented** BFF-centric RFC 8693 exchange, PingOne Authorize policy gate, and scope-based tools/list filtering.
+
+## ARCHITECTURE REALITY (2026-04-20 — corrected from earlier drafts)
+
+**BFF-centric exchange is the actual architecture:**
+- `banking_api_server/services/agentMcpTokenService.js` (1552L) — RFC 8693 exchange at BFF
+- `banking_api_server/services/mcpToolAuthorizationService.js` (246L) — PingOne Authorize gate on first MCP tool use
+- `banking_api_server/services/pingOneAuthorizeService.js` (654L) — PingOne Authorize API client
+- `banking_mcp_server/src/server/MCPMessageHandler.ts` — scope-based tools/list filtering (pre-work complete)
+- Decisions: `PERMIT`/`DENY` + `stepUpRequired: boolean` — NOT the APPROVED/DENIED/MFA_REQUIRED/HITL_REQUIRED vocabulary
+
+**What was NOT done (earlier docs said it would be):**
+- ❌ Token exchange was NOT moved to MCP server — remains at BFF (correct)
+- ❌ `mcpInstructions.js` was NOT created — not needed; decisions return inline
+- ❌ `policyEnforcementService.js` was NOT created in MCP — `mcpToolAuthorizationService.js` at BFF does this
+
+**Requirements (true gaps only)**:
+- **OPTD-01: Agent-Facing Delegation Endpoint** — `POST /api/agent/delegate` at BFF. External platforms (N8N, Bedrock, Glean) call this with a user Bearer token. BFF performs RFC 8693 exchange via existing `performTokenExchangeWithActor()`. Returns delegated token with `act` claim. Rate-limited, audit-logged. No session cookie required.
+- **OPTD-02: Delegation Endpoint Security** — Rate limit 10 req/user/min. Validate incoming user token via JWT decode + PingOne introspection. Delegated token TTL = min(user token TTL, 3600s). Audit log: sub, act.sub, scopes, X-Agent-Client-ID, timestamp.
+- **DECISION-UI-01: Agent Decision Handler** — `banking_api_ui/services/agentDecisionHandler.js`. Routes `error: 'mcp_step_up_required'` → MFA modal (reuse existing OtpStepUpModal). Routes `error: 'mcp_authorization_denied'` → error UI with `decisionId`.
+- **DECISION-UI-02: MFA Retry + Timeout** — Max 3 OTP retries. 60s timeout → abandons flow. 4th attempt → "locked 15min" message.
+- **HITL-01: HITL Async Decision Flow** — When PingOne Authorize signals HITL, need a mechanism for agent to wait for user approval. Options: polling endpoint `GET /api/mcp/decision/:taskId`, or server-sent events.
+- **CORR-01: Session Correlation (taskId)** — Concurrent tool calls across Vercel Lambda instances need stable correlation ID via Upstash session store.
+
+**Depends on:** Phase 206
+**Plans:** 0/3 plans executed
+
+Plans:
+- [ ] 207-01-PLAN.md — Option D delegation endpoint (Wave 1) ✅ Created
+- [ ] 207-02-PLAN.md — Agent decision handler UI for step-up + denied (Wave 2) ✅ Created
+- [ ] 207-03-PLAN.md — HITL async flow + session correlation (Wave 3) ✅ Created
+
+**Success criteria (ALL must pass):**
+1. Option D: `POST /api/agent/delegate` with valid user Bearer → returns `{ access_token, act: { sub: agent-id }, expires_in }` with `act` claim
+2. Option D: Invalid/expired user token → HTTP 401; rate limit exceeded → HTTP 429
+3. Option D: Delegated token works as Bearer to MCP → MCP validates, executes tool
+4. Decision handler: `mcp_step_up_required` response → MFA modal appears in agent UI
+5. Decision handler: `mcp_authorization_denied` response → error message with decisionId shown
+6. MFA retry: 3 wrong OTPs → locked message (not generic error)
+7. 401/403 preserved: Existing token validation unchanged (Phase 206 regression check)
+8. HITL: (Wave 3) Authorize HITL signal → polling or SSE mechanism → agent shows approval modal
+
+**Risk mitigation:**
+- **Option D reuses existing code**: `performTokenExchangeWithActor()` from `oauthService.js` — no new exchange logic
+- **Decision handler reuses existing component**: `OtpStepUpModal` from Phase 174
+- **Regression**: Add `routes/agentDelegation.js` and `services/agentDecisionHandler.js` to REGRESSION_PLAN.md §1
+- **HITL is Wave 3**: Don't block Wave 1+2 on HITL design
+
+### Phase 208: Fix 36 failing test suites and NL agent heuristic path — test infrastructure + get_my_accounts display and token events
+
+**Goal:** Restore full green test suite (36 failing → 0 failing across 94 suites, 1847 tests) and fix the NL agent heuristic path so "show my accounts" displays account numbers/currency and triggers correct token chain events.
+
+**Requirements**: TEST-INFRA, AGENT-NL-QUALITY
+**Depends on:** Phase 207
+**Plans:** 2/2 plans complete — all work done
+
+Plans:
+- [x] 208-01 — Fix 36 failing test suites: import path corrections, mock drift, auth middleware mocks, assertion updates across 36 test files (16 root cause categories)
+- [x] 208-02 — Fix NL heuristic path: enrich get_my_accounts display (accountNumber, currency), correct toolsCalled names to match MCP tool names for token event resolution
+
+**Success criteria:**
+1. `npm test` in banking_api_server → 94 passed, 0 failed, 1847 tests passing
+2. "show my accounts" NL response includes account numbers (****XXXX) and currency
+3. toolsCalled uses actual MCP tool names (`get_my_accounts`, `get_account_balance`, `get_my_transactions`) so token chain populates for NL path
+
+**Files changed:**
+- 36 test files in `banking_api_server/src/__tests__/` — import paths, mocks, assertions
+- `banking_api_server/services/bankingAgentLangGraphService.js` — heuristic display + toolsCalled names
+
+### Phase 209: Modular component architecture — discrete deployable building blocks for Agent, MCP Server, Authorization Server, and OAuth/OIDC with plug-and-play adapter interfaces
+
+**Goal:** Decompose the integrated demo into self-contained, independently deployable building blocks that engineers can mix, match, and extend. Each component — the AI Agent (chatbot + token chain UI), the MCP Server, the Authorization Server, and the OAuth/OIDC token flow — must be downloadable as a standalone unit from GitHub and functional when pointed at external replacements for the other components.
+
+Core outcomes:
+1. **Standalone Agent** — an engineer clones the agent folder, sets `MCP_SERVER_URL` (and optionally `OAUTH_ISSUER`), and gets a working chatbot + token chain UI connected to any MCP-protocol-compatible server.
+2. **Standalone MCP Server** — an engineer clones the MCP server folder, configures it against any OIDC-compliant IDP, and any MCP client (our UI, a custom client, PingGateway) can talk to it.
+3. **Pluggable Authorization Server** — the authorization-decision layer exposes an adapter interface aligned with PingOne Authorize's capability surface so customers can swap in PingOne Authorize (or another policy engine) without changing demo code elsewhere.
+4. **Generic IDP / OAuth adapter** — all OAuth/OIDC flows run through a provider-abstraction layer (env-configured issuer, client ID, scopes); the demo ships with a PingOne preset but works with any OIDC-compliant server.
+5. **PingGateway drop-in** — a customer can replace our MCP Server with PingGateway; the Agent and UI need zero changes because they talk to the published MCP contract, not our implementation.
+6. **Default integrated wiring preserved** — the existing `run-bank.sh` / local demo continues to work out-of-the-box using the default config values; modularity is additive, not breaking.
+
+**Pre-planning analysis required:**
+- Audit current hard-coded coupling points: cross-component URLs embedded in code, shared session/config state accessed across boundaries, direct `require()`/import paths that cross component folders.
+- Map the MCP protocol contract our server exposes today vs. what PingGateway expects (WebSocket vs HTTP, tool registration, auth header conventions).
+- Compare PingOne Authorize capability surface (policies, decisions, context passing) to our current authorization server logic to define the minimum adapter interface.
+- Identify shared services that need extraction: demo data service, session store, config store, token exchange service, exchange audit store.
+- Determine per-component config contract: what env vars / config file does each component need to declare its dependencies and how they are resolved.
+
+**Requirements**: Engineers need downloadable, independently runnable components; plug-and-play adapter interfaces for Authorization Server, MCP Server, and IDP; default wiring must continue to work unchanged.
+
+**Depends on:** Phase 208
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 209 to break down)
+
+### Phase 210: MCP scope enforcement — tools advertise required scopes, server returns 403 on missing scope, agent surfaces scope errors to client
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 209
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 210 to break down)
 
 ---
 
