@@ -39,6 +39,7 @@ import OtpStepUpModal from './OtpStepUpModal';
 import FidoStepUpModal from './FidoStepUpModal';
 import MCPToolsListModal from './MCPToolsListModal';
 import AccountDetailsPanel from './AccountDetailsPanel';
+import TokenChainDisplay from './TokenChainDisplay';
 import bffAxios from '../services/bffAxios';
 import './BankingAgent.css';
 
@@ -340,6 +341,28 @@ function isAgentToolErrorResult(normalized) {
   return Boolean(normalized.error);
 }
 
+/** Format HTTP trace entries (MCP server → banking API calls) for display in chat */
+function formatHttpTrace(trace) {
+  if (!trace || trace.length === 0) return '';
+  const lines = ['\n\n🌐 **Banking API calls:**'];
+  trace.forEach((entry, i) => {
+    const status = entry.status ? ` → ${entry.status} ${entry.ok ? '✅' : '❌'}` : (entry.ok ? ' ✅' : ' ❌');
+    lines.push(`\n**${i + 1}. ${entry.method} \`${entry.url}\`**${status} _(${entry.durationMs}ms)_`);
+    if (entry.requestBody) {
+      const body = JSON.stringify(entry.requestBody, null, 2).slice(0, 300);
+      lines.push(`\`\`\`json\n// Request body\n${body}\n\`\`\``);
+    }
+    if (entry.responseBody !== undefined) {
+      const resp = JSON.stringify(entry.responseBody, null, 2).slice(0, 400);
+      lines.push(`\`\`\`json\n// Response\n${resp}\n\`\`\``);
+    }
+    if (entry.error) {
+      lines.push(`_Error: ${entry.error}_`);
+    }
+  });
+  return lines.join('\n');
+}
+
 function formatResult(result) {
   const r = normalizeAgentToolResult(result);
   if (!r) return 'No data returned.';
@@ -348,7 +371,17 @@ function formatResult(result) {
     return `${r.message || 'Human approval is required for this amount.'}\n\nUse the main dashboard to complete the consent flow for amounts over $${t}. The assistant cannot supply a browser consent challenge.`;
   }
   if (isAgentToolErrorResult(r)) {
-    return `❌ ${typeof r.message === 'string' ? r.message : r.error}`;
+    let errorMsg = `❌ ${typeof r.message === 'string' ? r.message : r.error}`;
+    // Include original MCP request for debugging
+    if (r.originalRequest) {
+      const reqStr = JSON.stringify(r.originalRequest, null, 2).slice(0, 500);  // Truncate for display
+      errorMsg += `\n\n📋 **Original request:**\n\`\`\`json\n${reqStr}${Object.keys(r.originalRequest).length > 5 ? '\n...' : ''}\n\`\`\``;
+    }
+    // Include HTTP trace (request → response to banking API)
+    if (r.httpTrace && r.httpTrace.length > 0) {
+      errorMsg += formatHttpTrace(r.httpTrace);
+    }
+    return errorMsg;
   }
   // Accounts list
   if (r.accounts) {
@@ -565,7 +598,7 @@ function TransactionsTable({ transactions }) {
           <tr key={t.id || i}>
             <td><span className={`bar-rp-type bar-rp-type-${(t.type||'').toLowerCase()}`}>{t.type}</span></td>
             <td className="bar-rp-amount">{formatCurrency(t.amount)}</td>
-            <td>{t.description || '—'}</td>
+            <td className="bar-rp-desc" title={t.description || ''}>{t.description || '—'}</td>
             <td className="bar-rp-date">{new Date(t.created_at || t.createdAt || Date.now()).toLocaleDateString()}</td>
           </tr>
         ))}
@@ -630,9 +663,48 @@ function ToolProgressChips({ steps }) {
 }
 
 function ResultsPanel({ panel, onClose, style }) {
+  const [size, setSize] = useState({ width: 340, height: 420 });
+  const resizingRef = useRef(null);
+
+  const onResizeMouseDown = useCallback((e, dir) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = size.width;
+    const startH = size.height;
+    resizingRef.current = { startX, startY, startW, startH, dir };
+
+    const onMove = (ev) => {
+      const { startX: sx, startY: sy, startW: sw, startH: sh, dir: d } = resizingRef.current;
+      const dx = ev.clientX - sx;
+      const dy = ev.clientY - sy;
+      setSize({
+        width:  d === 'e' || d === 'se' ? Math.max(240, sw + dx) : sw,
+        height: d === 's' || d === 'se' ? Math.max(160, sh + dy) : sh,
+      });
+    };
+    const onUp = () => {
+      resizingRef.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = dir === 'se' ? 'nwse-resize' : dir === 'e' ? 'ew-resize' : 's-resize';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [size]);
+
   if (!panel) return null;
   return (
-    <aside className="banking-agent-results-panel" style={style} aria-label="Results">
+    <aside
+      className="banking-agent-results-panel"
+      style={{ ...style, width: size.width, maxHeight: size.height }}
+      aria-label="Results"
+    >
       <div className="bar-rp-header">
         <span className="bar-rp-title">{panel.title}</span>
         <button type="button" className="bar-rp-close" onClick={onClose} aria-label="Close results">✕</button>
@@ -657,6 +729,10 @@ function ResultsPanel({ panel, onClose, style }) {
           </div>
         )}
       </div>
+      {/* Resize handles */}
+      <div className="bar-rp-resize-e"  onMouseDown={(e) => onResizeMouseDown(e, 'e')}  aria-hidden />
+      <div className="bar-rp-resize-s"  onMouseDown={(e) => onResizeMouseDown(e, 's')}  aria-hidden />
+      <div className="bar-rp-resize-se" onMouseDown={(e) => onResizeMouseDown(e, 'se')} aria-label="Resize" title="Drag to resize" />
     </aside>
   );
 }
@@ -851,9 +927,11 @@ export default function BankingAgent({
   /** {x,y} when panel has been dragged; null = CSS-anchored default position */
   const [dragPos, setDragPos] = useState(null);
   /** Panel dimensions for resizing — floating default is large enough for header, chips, and two-column body */
-  const [panelSize, setPanelSize] = useState({ width: 400, height: 480 });
+  const [panelSize, setPanelSize] = useState({ width: 540, height: 540 });
   /** Side panel showing rich results next to the agent */
   const [resultPanel, setResultPanel] = useState(null);
+  /** Live bounding rect of the agent panel — used to anchor the results pop-out */
+  const [agentBounds, setAgentBounds] = useState(null);
   /** MCP server connection status for header display */
   const [mcpStatus, setMcpStatus] = useState({ toolCount: null, connected: false });
   /** Real accounts from /api/accounts/my — used for the balance/deposit/withdraw/transfer form
@@ -882,6 +960,8 @@ export default function BankingAgent({
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpContextLine, setOtpContextLine] = useState('');
   const pendingOtpActionRef = useRef(null);
+  // Callback to fire after OTP step-up completes (e.g. sensitive data fetch post-HITL)
+  const pendingStepUpCallbackRef = useRef(null);
   // MCP tools list modal state
   const [showMcpToolsModal, setShowMcpToolsModal] = useState(false);
   const [mcpToolsList, setMcpToolsList] = useState([]);
@@ -1084,7 +1164,7 @@ export default function BankingAgent({
   const [searchParams] = useSearchParams();
   // On the /agent route the inline/full-page instance is shown — hide duplicate float
   const isAgentPage = location.pathname === '/agent';
-  /** Landing `/` + `/marketing`: agent success/info/error toasts use longer autoClose (readable for guests). */
+  /** Landing `/`: agent success/info/error toasts use longer autoClose (readable for guests). */
   const agentToastMs = useMemo(() => {
     const slow = isPublicMarketingAgentPath(location.pathname);
     return {
@@ -1245,7 +1325,7 @@ export default function BankingAgent({
   // Effective user: prefer prop (App.js state), fall back to self-detected session
   const effectiveUser = user || sessionUser;
   const isLoggedIn = !!effectiveUser;
-  /** Marketing `/` + `/marketing` guests may chat (education / hints); banking triggers PingOne + return here. */
+  /** Marketing `/` guests may chat (education / hints); banking triggers PingOne + return here. */
   const marketingGuestChatEnabled = useMemo(() => {
     const p = (location.pathname || '').replace(/\/$/, '') || '/';
     return !isLoggedIn && isPublicMarketingAgentPath(p);
@@ -1628,10 +1708,48 @@ export default function BankingAgent({
           }
         : { width: panelSize.width, height: panelSize.height, transform: 'none' };
   /** Results panel width (CSS) — keep gap in sync when dragging / expanded layout */
-  const resultsPanelWidthPx = 220;
+  const resultsPanelWidthPx = 340;
+
+  // Keep agentBounds fresh whenever the panel resizes (chips expand/collapse, resize handle use)
+  useEffect(() => {
+    const update = () => {
+      const rect = panelRef.current?.getBoundingClientRect();
+      if (rect) setAgentBounds({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height });
+    };
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    if (ro && panelRef.current) ro.observe(panelRef.current);
+    update();
+    return () => ro?.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveIsOpen, panelSize, isExpanded]);
+
+  // Also update bounds on drag (ResizeObserver fires only on size changes, not position)
+  useEffect(() => {
+    const rect = panelRef.current?.getBoundingClientRect();
+    if (rect) setAgentBounds({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height });
+  }, [dragPos]);
+
   const resultsPanelStyle = useMemo(() => {
-    const gap = 16;
+    const gap = 12;
     const rpW = resultsPanelWidthPx;
+    // Anchor to actual agent panel bounds when available — works for all modes (inline, drag, expanded, default)
+    if (agentBounds) {
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
+      const topEdge = Math.max(8, agentBounds.top);
+      const maxH = Math.min((typeof window !== 'undefined' ? window.innerHeight : 800) - topEdge - 16, 520);
+      // Place the results panel to the LEFT of the agent, pushed right if it would overflow
+      const desiredLeft = Math.max(8, agentBounds.left - rpW - gap);
+      return {
+        position: 'fixed',
+        left: Math.min(desiredLeft, vw - rpW - 8),
+        top: topEdge,
+        bottom: 'auto',
+        right: 'auto',
+        maxHeight: maxH,
+        zIndex: 10058,
+      };
+    }
+    // Fallbacks when bounds not yet measured
     if (isInline) return undefined;
     if (dragPos) {
       return {
@@ -1643,7 +1761,6 @@ export default function BankingAgent({
         zIndex: 10058,
       };
     }
-    /* Expanded (⊞): agent is centered — anchor results to the left of it (matches min(94vw, 520px) expanded width). */
     if (isExpanded) {
       return {
         position: 'fixed',
@@ -1656,7 +1773,7 @@ export default function BankingAgent({
       };
     }
     return undefined;
-  }, [dragPos, isExpanded, isInline, resultsPanelWidthPx]);
+  }, [dragPos, isExpanded, isInline, resultsPanelWidthPx, agentBounds]);
   // In inline mode the panel is always visible; in float mode respect the open/closed state
   const effectiveIsOpen = isInline || isOpen;
 
@@ -1703,7 +1820,7 @@ export default function BankingAgent({
       setTimeout(() => {
         const p = (location.pathname || '').replace(/\/$/, '') || '/';
         const params = new URLSearchParams();
-        if (isPublicMarketingAgentPath(p)) params.set('return_to', p === '/dashboard' ? '/dashboard' : '/marketing');
+        if (isPublicMarketingAgentPath(p)) params.set('return_to', p === '/dashboard' ? '/dashboard' : '/');
         if (usePiFlow) params.set('use_pi_flow', '1');
         const q = params.toString();
         window.location.href = `${apiUrl}/api/auth/oauth/user/login${q ? `?${q}` : ''}`;
@@ -1723,7 +1840,7 @@ export default function BankingAgent({
     setTimeout(() => {
       const p = (location.pathname || '').replace(/\/$/, '') || '/';
       const params = new URLSearchParams();
-      if (isPublicMarketingAgentPath(p)) params.set('return_to', p === '/dashboard' ? '/dashboard' : '/marketing');
+      if (isPublicMarketingAgentPath(p)) params.set('return_to', p === '/dashboard' ? '/dashboard' : '/');
       if (usePiFlow) params.set('use_pi_flow', '1');
       const q = params.toString();
       window.location.href = `${apiUrl}/api/auth/oauth/user/login${q ? `?${q}` : ''}`;
@@ -1793,72 +1910,25 @@ export default function BankingAgent({
           response = await createTransfer(form.fromId, form.toId, parseFloat(form.amount), form.note);
           break;
         case 'sensitive-account-details': {
-          toast.update(toastId, { render: '🔒 Requesting sensitive account details…' });
-          // Route through agent NL path (session-authenticated + ACR step-up check)
-          const sensitiveRes = await sendAgentMessage('Show me my full account details with routing numbers');
-          if (sensitiveRes.stepUpRequired) {
-            toast.update(toastId, {
-              render: '🔐 MFA verification required — verify your identity below',
-              type: 'warning',
-              isLoading: false,
-              autoClose: 6000,
-            });
-            setLoading(false);
-            toolProgressIdRef.current = null;
-            window.dispatchEvent(new CustomEvent('agentStepUpRequested', {
-              detail: { step_up_method: sensitiveRes.stepUpMethod || 'email' },
-            }));
-            return;
-          }
-          if (sensitiveRes.error || !sensitiveRes.success) {
-            addMessage('assistant', `⚠️ ${sensitiveRes.error || sensitiveRes.reply || 'Could not retrieve sensitive account details.'}`, actionId);
-          } else {
-            // Format account details for display in chat
-            let detailsMessage = sensitiveRes.reply || 'Sensitive account details retrieved.';
-            
-            // Add structured display of account details if available
-            if (sensitiveRes.accountData && sensitiveRes.accountData.accounts) {
-              const { user, accounts } = sensitiveRes.accountData;
-              let formattedDetails = '## 📋 Account Details\n\n';
-
-              if (user) {
-                formattedDetails += `**Customer:** ${user.fullName || user.username}\n`;
-                if (user.email) formattedDetails += `**Email:** ${user.email}\n\n`;
-              }
-
-              formattedDetails += '### Your Accounts\n';
-              accounts.forEach(acc => {
-                formattedDetails += `\n**${acc.accountType.toUpperCase()}** (${acc.name || acc.accountType})\n`;
-                formattedDetails += `• Balance: $${(acc.balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} ${acc.currency || 'USD'}\n`;
-                // Use full account number if available, fall back to masked accountNumber
-                const displayAcctNum = acc.accountNumberFull || acc.accountNumber;
-                if (displayAcctNum) formattedDetails += `• Account #: \`${displayAcctNum}\`\n`;
-                if (acc.routingNumber) formattedDetails += `• Routing #: \`${acc.routingNumber}\`\n`;
-                if (acc.swiftCode) formattedDetails += `• SWIFT: \`${acc.swiftCode}\`\n`;
-                if (acc.iban) formattedDetails += `• IBAN: \`${acc.iban}\`\n`;
-                formattedDetails += `• Status: ${acc.status}\n`;
-              });
-
-              formattedDetails += '\n---\n_Protected by RFC 9470 Step-Up Authentication · scope: `banking:sensitive`_';
-              detailsMessage = formattedDetails;
-            }
-            
-            addMessage('assistant', detailsMessage, actionId);
-            // Show account details panel if data is available
-            if (sensitiveRes.accountData) {
-              setAccountDetailsPanel(sensitiveRes.accountData);
-              setAccountDetailsPanelPos({ x: 200, y: 100 });
-            }
-          }
-          setIsExpanded(true);
-          toast.update(toastId, {
-            render: sensitiveRes.success ? '✅ Account details loaded' : '⚠️ Step-up required',
-            type: sensitiveRes.success ? 'success' : 'warning',
-            isLoading: false,
-            autoClose: agentToastMs.toolsLoaded,
-          });
+          // Gate behind HITL — show consent card first, fetch data only after user confirms.
+          addMessage('assistant',
+            '🔒 **Sensitive Account Data Request**\n\nThis will reveal your **full account numbers, routing numbers, SWIFT, and IBAN**. Please confirm before proceeding.',
+            actionId
+          );
+          toast.dismiss(toastId);
           setLoading(false);
           toolProgressIdRef.current = null;
+          setHitlPendingIntent({
+            actionId: 'sensitive-account-details',
+            form,
+            intentPayload: {
+              type: 'Sensitive Data Access',
+              description: 'Full account numbers · Routing numbers · SWIFT / IBAN',
+              amount: 0,
+            },
+            threshold: 1, // 0 < 1 → not flagged as high-value
+            isSensitiveData: true,
+          });
           return;
         }
         case 'mcp_tools': {
@@ -1916,7 +1986,6 @@ export default function BankingAgent({
           setMcpToolsList(tools);
           setShowMcpToolsModal(true);
           addMessage('assistant', `🔧 MCP Banking Tools (${tools.length} available) — check the popup window`, 'tools/list');
-          setIsExpanded(true);
           toast.update(toastId, { render: `✅ ${tools.length} tools loaded`, type: 'success', isLoading: false, autoClose: agentToastMs.toolsLoaded });
           setLoading(false);
           toolProgressIdRef.current = null;
@@ -1950,7 +2019,6 @@ export default function BankingAgent({
             `\u{1F50D} Web search results for **"${srData.query || form.query || ''}"**:\n\n${srResults || 'No results found.'}`,
             actionId,
           );
-          setIsExpanded(true);
           toast.update(toastId, { render: '\u2705 Search complete', type: 'success', isLoading: false, autoClose: agentToastMs.toolsLoaded });
           setLoading(false);
           toolProgressIdRef.current = null;
@@ -1989,7 +2057,6 @@ export default function BankingAgent({
           if (scopeTestRes?.tokenEvents?.length) {
             tokenChain?.setTokenEvents(actionId, scopeTestRes.tokenEvents);
           }
-          setIsExpanded(true);
           toast.update(toastId, { render: scopeRejected ? '✅ Scope rejection confirmed' : 'ℹ️ Scope test sent', type: 'info', isLoading: false, autoClose: agentToastMs.toolsLoaded });
           setLoading(false);
           toolProgressIdRef.current = null;
@@ -2038,7 +2105,6 @@ export default function BankingAgent({
           if (audTestRes?.tokenEvents?.length) {
             tokenChain?.setTokenEvents(actionId, audTestRes.tokenEvents);
           }
-          setIsExpanded(true);
           toast.update(toastId, { render: audFailed ? '✅ Audience rejection confirmed' : 'ℹ️ Audience test sent', type: 'info', isLoading: false, autoClose: agentToastMs.toolsLoaded });
           setLoading(false);
           toolProgressIdRef.current = null;
@@ -2392,6 +2458,12 @@ export default function BankingAgent({
 
       addMessage('assistant', formatResult(response.result), actionId);
 
+      // Append HTTP trace (banking API call detail) after success result if present
+      const successTrace = response.result?.httpTrace;
+      if (successTrace && successTrace.length > 0) {
+        addMessage('assistant', formatHttpTrace(successTrace), actionId);
+      }
+
       // ── Post-result educational RFC annotation ──
       {
         const exchanged = tokenEvents.find(e => e.id === 'exchanged-token');
@@ -2504,6 +2576,24 @@ export default function BankingAgent({
           missingScopes: err.missingScopes || [],
           userScopes: err.userScopes || '(none)',
           requiredScopes: err.requiredScopes || '',
+          tokenEvents: err.tokenEvents || [],
+        });
+      } else if (err?.code === 'mcp_scope_denied') {
+        // MCP server returned -32005: valid token but missing required scope
+        const missingList = (err.missingScopes || []).join(', ') || 'banking:sensitive:read';
+        addMessage('token-event', [
+          '❌ **OAuth 2.0 §3.3 — Insufficient Scope**',
+          `   Tool \`${err.tool || 'unknown'}\` requires: \`${(err.requiredScopes || []).join(', ') || missingList}\``,
+          `   Your token is missing: \`${missingList}\``,
+          '   The MCP server returned JSON-RPC error -32005 (INSUFFICIENT_SCOPE).',
+          '   RFC 6750 §3.1: resource servers MUST reject tokens that do not have the required scopes.',
+          '',
+          '**Fix:** Sign out → sign in with the PingOne app that requests the required scope.',
+        ].join('\n'), actionId);
+        setScopeErrorModal({
+          missingScopes: err.missingScopes || [],
+          userScopes: (err.availableScopes || []).join(' ') || '(none)',
+          requiredScopes: (err.requiredScopes || []).join(' '),
           tokenEvents: err.tokenEvents || [],
         });
       } else if (err?.code === 'mcp_step_up_required') {
@@ -2636,6 +2726,9 @@ export default function BankingAgent({
     // No form needed for read-only queries
     if (actionId === 'accounts' || actionId === 'transactions' || actionId === 'mcp_tools') {
       runAction(actionId, {});
+    } else if (actionId === 'transfer') {
+      // Pre-fill prompt with a ready-to-use example so the user can send immediately
+      setNlInput('Transfer $100 to savings');
     } else {
       setActiveAction(actionId);
     }
@@ -2932,6 +3025,18 @@ export default function BankingAgent({
       }
 
       if (response.error || !response.success) {
+        // MCP scope denial via NL path: show inline chat message
+        if (response.error === 'mcp_scope_denied') {
+          const missingList = (response.missingScopes || []).join(', ') || 'banking:sensitive:read';
+          addMessage('assistant', [
+            `🔒 **Scope Required: \`${missingList}\`**`,
+            '',
+            `The \`${response.tool || 'requested'}\` tool requires the \`${missingList}\` scope, which your current session does not include.`,
+            '',
+            '**Fix:** Sign out and sign in again with the PingOne app that requests the required scope.',
+          ].join('\n'));
+          return;
+        }
         // Marketing guest: 401 / need_auth means "log in via PingOne", not session-hydration issue
         const pathNorm401 = (location.pathname || '').replace(/\/$/, '') || '/';
         if (
@@ -2980,6 +3085,16 @@ export default function BankingAgent({
       }
 
       addMessage('assistant', response.reply || 'Done.');
+
+      // Show pop-out panel for structured responses (accounts/transactions/balance)
+      const { resultType, resultData } = inferAgentResultTypeAndData(response);
+      if (resultType) {
+        const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
+        if (displayMode === 'panel') {
+          const titleMap = { accounts: '\uD83C\uDFE6 Accounts', transactions: '\uD83D\uDCCB Recent Transactions', balance: '\uD83D\uDCB0 Balance', confirm: '\u2705 Complete' };
+          setResultPanel({ type: resultType, title: titleMap[resultType] || resultType, data: resultData });
+        }
+      }
     } catch (err) {
       reportNlFailure(err);
     } finally {
@@ -3030,6 +3145,19 @@ export default function BankingAgent({
 
   // OTP modal handlers (Phase 174)
   const handleOtpSubmit = (otp) => {
+    // If a step-up callback was stored (e.g. sensitive data after HITL), fire it directly
+    if (pendingStepUpCallbackRef.current) {
+      const cb = pendingStepUpCallbackRef.current;
+      pendingStepUpCallbackRef.current = null;
+      setShowOtpModal(false);
+      setStepUpMethod('otp');
+      setP1mfaMode(false);
+      setP1mfaDaId(null);
+      setP1mfaDevices([]);
+      agentFlowDiagram.completeMfaChallenge(true);
+      cb();
+      return;
+    }
     if (pendingOtpActionRef.current) {
       const { actionId, form } = pendingOtpActionRef.current;
       pendingOtpActionRef.current = null;
@@ -3049,6 +3177,7 @@ export default function BankingAgent({
     setShowOtpModal(false);
     setOtpContextLine('');
     pendingOtpActionRef.current = null;
+    pendingStepUpCallbackRef.current = null;
     setP1mfaMode(false);
     setP1mfaDaId(null);
     setP1mfaDevices([]);
@@ -3059,6 +3188,15 @@ export default function BankingAgent({
 
   // FIDO submit handler (Phase 174-03)
   const handleFidoSubmit = (credentialResponse) => {
+    if (pendingStepUpCallbackRef.current) {
+      const cb = pendingStepUpCallbackRef.current;
+      pendingStepUpCallbackRef.current = null;
+      setShowOtpModal(false);
+      setStepUpMethod('otp');
+      agentFlowDiagram.completeMfaChallenge(true);
+      cb();
+      return;
+    }
     if (pendingOtpActionRef.current) {
       const { actionId, form } = pendingOtpActionRef.current;
       pendingOtpActionRef.current = null;
@@ -3079,6 +3217,17 @@ export default function BankingAgent({
 
   // P1MFA completion handler (Phase 174-04)
   const handleP1MfaComplete = () => {
+    if (pendingStepUpCallbackRef.current) {
+      const cb = pendingStepUpCallbackRef.current;
+      pendingStepUpCallbackRef.current = null;
+      setShowOtpModal(false);
+      setP1mfaMode(false);
+      setP1mfaDaId(null);
+      setP1mfaDevices([]);
+      agentFlowDiagram.completeMfaChallenge(true);
+      cb();
+      return;
+    }
     if (pendingOtpActionRef.current) {
       const { actionId, form } = pendingOtpActionRef.current;
       pendingOtpActionRef.current = null;
@@ -3114,8 +3263,8 @@ export default function BankingAgent({
         </button>
       )}
 
-      {/* Results panel — sits to the left of the agent (float mode only) */}
-      {!isInline && effectiveIsOpen && resultPanel && (
+      {/* Results panel — sits to the left of the agent (portal-renders over page; works in all modes) */}
+      {effectiveIsOpen && resultPanel && (
         <ResultsPanel
           panel={resultPanel}
           onClose={() => setResultPanel(null)}
@@ -3364,6 +3513,117 @@ export default function BankingAgent({
                     runAction(retryActionId, retryForm);
                   } catch (err) {
                     addMessage('error', `Failed to approve: ${err.message}`, retryActionId);
+                  }
+                  return;
+                }
+
+                // Sensitive data reveal — confirmed by user, now fetch and display
+                if (hitlPendingIntent.isSensitiveData) {
+                  setHitlPendingIntent(null);
+                  setNlLoading(true);
+                  const sensToastId = toast.loading('\uD83D\uDD12 Retrieving sensitive account details\u2026');
+                  try {
+                    // Grant session consent so get_sensitive_account_details bypasses step-up gate.
+                    // HITL approval IS the authorization — no separate MFA/OTP needed in demo mode.
+                    try {
+                      await fetch('/api/accounts/sensitive-consent', { method: 'POST', credentials: 'include' });
+                    } catch (_) { /* non-fatal; server will fall back to ACR check */ }
+
+                    const sensitiveRes = await sendAgentMessage('Show me my full account details with routing numbers');
+                    if (sensitiveRes.stepUpRequired) {
+                      // Consent fetch may have failed silently — fall back to OTP modal
+                      addMessage('assistant',
+                        '\uD83D\uDD10 **Identity verification required**\n\nViewing full account details requires step-up authentication. Please complete the verification to continue.',
+                        'sensitive-account-details'
+                      );
+                      pendingStepUpCallbackRef.current = async () => {
+                        setNlLoading(true);
+                        const retryToastId = toast.loading('\uD83D\uDD12 Retrieving sensitive account details\u2026');
+                        try {
+                          const retryRes = await sendAgentMessage('Show me my full account details with routing numbers');
+                          if (retryRes.error || !retryRes.success) {
+                            addMessage('assistant', `\u26A0\uFE0F ${retryRes.error || retryRes.reply || 'Could not retrieve sensitive account details.'}`, 'sensitive-account-details');
+                            toast.update(retryToastId, { render: '\u26A0\uFE0F Could not load details', type: 'error', isLoading: false, autoClose: 4000 });
+                          } else {
+                            let detailsMsg = retryRes.reply || 'Sensitive account details retrieved.';
+                            if (retryRes.accountData?.accounts) {
+                              const { user: u, accounts: accs } = retryRes.accountData;
+                              let fmt = '## \uD83D\uDCCB Account Details\n\n';
+                              if (u) {
+                                fmt += `**Customer:** ${u.fullName || u.username}\n`;
+                                if (u.email) fmt += `**Email:** ${u.email}\n\n`;
+                              }
+                              fmt += '### Your Accounts\n';
+                              accs.forEach(acc => {
+                                fmt += `\n**${acc.accountType.toUpperCase()}** (${acc.name || acc.accountType})\n`;
+                                fmt += `\u2022 Balance: $${(acc.balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} ${acc.currency || 'USD'}\n`;
+                                const num = acc.accountNumberFull || acc.accountNumber;
+                                if (num) fmt += `\u2022 Account #: \`${num}\`\n`;
+                                if (acc.routingNumber) fmt += `\u2022 Routing #: \`${acc.routingNumber}\`\n`;
+                                if (acc.swiftCode) fmt += `\u2022 SWIFT: \`${acc.swiftCode}\`\n`;
+                                if (acc.iban) fmt += `\u2022 IBAN: \`${acc.iban}\`\n`;
+                                fmt += `\u2022 Status: ${acc.status}\n`;
+                              });
+                              fmt += '\n---\n_Protected by HITL consent \u00B7 scope: \`banking:sensitive\`_';
+                              detailsMsg = fmt;
+                            }
+                            addMessage('assistant', detailsMsg, 'sensitive-account-details');
+                            if (retryRes.accountData) {
+                              setAccountDetailsPanel(retryRes.accountData);
+                              setAccountDetailsPanelPos({ x: 200, y: 100 });
+                            }
+                            toast.update(retryToastId, { render: '\u2705 Account details loaded', type: 'success', isLoading: false, autoClose: 3000 });
+                          }
+                        } catch (retryErr) {
+                          addMessage('error', `Failed to retrieve sensitive data: ${retryErr.message}`, 'sensitive-account-details');
+                          toast.update(retryToastId, { render: '\u274C Failed', type: 'error', isLoading: false, autoClose: 4000 });
+                        } finally {
+                          setNlLoading(false);
+                        }
+                      };
+                      setOtpContextLine('Sensitive account details require identity verification (RFC 9470)');
+                      setShowOtpModal(true);
+                      toast.update(sensToastId, { render: '\uD83D\uDD10 MFA required', type: 'warning', isLoading: false, autoClose: 4000 });
+                      return;
+                    }
+                    if (sensitiveRes.error || !sensitiveRes.success) {
+                      addMessage('assistant', `\u26A0\uFE0F ${sensitiveRes.error || sensitiveRes.reply || 'Could not retrieve sensitive account details.'}`, 'sensitive-account-details');
+                      toast.update(sensToastId, { render: '\u26A0\uFE0F Could not load details', type: 'error', isLoading: false, autoClose: 4000 });
+                    } else {
+                      let detailsMessage = sensitiveRes.reply || 'Sensitive account details retrieved.';
+                      if (sensitiveRes.accountData && sensitiveRes.accountData.accounts) {
+                        const { user, accounts } = sensitiveRes.accountData;
+                        let formattedDetails = '## \uD83D\uDCCB Account Details\n\n';
+                        if (user) {
+                          formattedDetails += `**Customer:** ${user.fullName || user.username}\n`;
+                          if (user.email) formattedDetails += `**Email:** ${user.email}\n\n`;
+                        }
+                        formattedDetails += '### Your Accounts\n';
+                        accounts.forEach(acc => {
+                          formattedDetails += `\n**${acc.accountType.toUpperCase()}** (${acc.name || acc.accountType})\n`;
+                          formattedDetails += `\u2022 Balance: $${(acc.balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} ${acc.currency || 'USD'}\n`;
+                          const displayAcctNum = acc.accountNumberFull || acc.accountNumber;
+                          if (displayAcctNum) formattedDetails += `\u2022 Account #: \`${displayAcctNum}\`\n`;
+                          if (acc.routingNumber) formattedDetails += `\u2022 Routing #: \`${acc.routingNumber}\`\n`;
+                          if (acc.swiftCode) formattedDetails += `\u2022 SWIFT: \`${acc.swiftCode}\`\n`;
+                          if (acc.iban) formattedDetails += `\u2022 IBAN: \`${acc.iban}\`\n`;
+                          formattedDetails += `\u2022 Status: ${acc.status}\n`;
+                        });
+                        formattedDetails += '\n---\n_Protected by HITL consent \u00B7 scope: \`banking:sensitive\`_';
+                        detailsMessage = formattedDetails;
+                      }
+                      addMessage('assistant', detailsMessage, 'sensitive-account-details');
+                      if (sensitiveRes.accountData) {
+                        setAccountDetailsPanel(sensitiveRes.accountData);
+                        setAccountDetailsPanelPos({ x: 200, y: 100 });
+                      }
+                      toast.update(sensToastId, { render: '\u2705 Account details loaded', type: 'success', isLoading: false, autoClose: 3000 });
+                    }
+                  } catch (err) {
+                    addMessage('error', `Failed to retrieve sensitive data: ${err.message}`, 'sensitive-account-details');
+                    toast.update(sensToastId, { render: '\u274C Failed', type: 'error', isLoading: false, autoClose: 4000 });
+                  } finally {
+                    setNlLoading(false);
                   }
                   return;
                 }
@@ -3718,10 +3978,10 @@ export default function BankingAgent({
                     {/* Educational chips */}
                     <div className="ba-guest-chips-grid">
                       {[
-                        { id: 'guest_oauth', label: 'What is OAuth?', icon: '&#128273;' },
-                        { id: 'guest_pkce',  label: 'Explain PKCE', icon: '&#128271;' },
-                        { id: 'guest_mcp',   label: 'Explain MCP', icon: '&#129504;' },
-                        { id: 'guest_agent', label: 'How AI agents work', icon: '&#129302;' },
+                        { id: 'guest_oauth', label: 'What is OAuth?', icon: '🔑' },
+                        { id: 'guest_pkce',  label: 'Explain PKCE', icon: '🔏' },
+                        { id: 'guest_mcp',   label: 'Explain MCP', icon: '🧠' },
+                        { id: 'guest_agent', label: 'How AI agents work', icon: '🤖' },
                       ].map(chip => (
                         <button
                           key={chip.id}
@@ -3797,7 +4057,7 @@ export default function BankingAgent({
                   className="ba-middle-col" 
                   style={{ width: `${tokenChainWidth}px` }}
                 >
-                  {tokenChain.render()}
+                  <TokenChainDisplay />
                 </div>
                 <div 
                   className="ba-middle-col-resize-handle" 

@@ -237,7 +237,12 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
             ws.close();
             if (msg.error) {
               safeRelease();
-              reject(new Error(msg.error.message || JSON.stringify(msg.error)));
+              const mcpErr = new Error(msg.error.message || JSON.stringify(msg.error));
+              if (msg.error.code === -32005) {
+                mcpErr.code = 'mcp_insufficient_scope';
+                mcpErr.mcpErrorData = msg.error.data || {};
+              }
+              reject(mcpErr);
             } else {
               safeRelease();
               resolve(msg.result);

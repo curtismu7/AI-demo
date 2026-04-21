@@ -237,6 +237,18 @@ export async function callMcpTool(tool, params = {}) {
           tokenEvents,
         });
       }
+      // MCP scope denial: valid token but wrong scope — surface scope details for the UI modal
+      if (err.error === 'mcp_scope_denied') {
+        throw Object.assign(new Error(err.message || 'MCP tool access denied: insufficient scope'), {
+          code: 'mcp_scope_denied',
+          statusCode: 403,
+          tool: err.tool || '',
+          requiredScopes: err.requiredScopes || [],
+          missingScopes: err.missingScopes || [],
+          availableScopes: err.availableScopes || [],
+          tokenEvents,
+        });
+      }
       // Normalize stub-token error codes so BankingAgent shows the session-fix bubble
       const errCode = ['session_restore_required', 'oauth_session_required'].includes(err.error)
         ? 'session_not_hydrated'

@@ -1414,6 +1414,20 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res) => {
         }
         return res.json(out);
     } catch (err) {
+        // Scope denial: MCP server returned -32005 (valid token, wrong scope).
+        // Return 403 — do NOT fall back to the local tool handler.
+        if (err.code === 'mcp_insufficient_scope') {
+            const d = err.mcpErrorData || {};
+            console.warn(`[/api/mcp/tool] Scope denied for tool '${tool}': missing [${(d.missingScopes || []).join(', ')}]`);
+            return res.status(403).json({
+                error: 'mcp_scope_denied',
+                tool,
+                requiredScopes: d.requiredScopes || [],
+                missingScopes: d.missingScopes || [],
+                availableScopes: d.availableScopes || [],
+            });
+        }
+
         const isConnErr =
             err.useLocal ||
             err.message.includes('ECONNREFUSED') ||
