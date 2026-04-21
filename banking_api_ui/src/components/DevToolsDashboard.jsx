@@ -90,7 +90,7 @@ export default function DevToolsDashboard({
         <div style={{ display: activeTab === 'chain' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
           <TokenChainDisplay hideHeader />
         </div>
-        <div style={{ display: activeTab === 'inspector' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <div style={{ display: activeTab === 'inspector' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
           <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={false} />
         </div>
         <div style={{ display: activeTab === 'traffic' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>

@@ -791,8 +791,10 @@ function OAuthInspectorSection({ selectedToken }) {
 // MAIN UNIFIED COMPONENT
 // ============================================================================
 
-export default function UnifiedTokenFlowInspector({ floatingByDefault = false, showToggle = true }) {
+export default function UnifiedTokenFlowInspector({ floatingByDefault = false, showToggle = true, showClose }) {
   const [isFloating, setIsFloating] = useState(floatingByDefault);
+  // showClose defaults true; hide when showToggle=false (embedded in tab — tab is the dismiss)
+  const effectiveShowClose = showClose !== false && showToggle !== false;
   const [snap, setSnap] = useState(() => agentFlowDiagram.getState());
   const [visible, setVisible] = useState(true);
   const [selectedToken, setSelectedToken] = useState(null);
@@ -839,10 +841,10 @@ export default function UnifiedTokenFlowInspector({ floatingByDefault = false, s
   }, [isFloating]);
 
   const handleEsc = useCallback((e) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && effectiveShowClose) {
       handleClose();
     }
-  }, [handleClose]);
+  }, [handleClose, effectiveShowClose]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleEsc);
@@ -869,14 +871,16 @@ export default function UnifiedTokenFlowInspector({ floatingByDefault = false, s
               {isFloating ? '📌' : '⛓'}
             </button>
           )}
-          <button
-            className="utfi-btn utfi-btn-close"
-            onClick={handleClose}
-            title="Close (Esc)"
-            aria-label="Close"
-          >
-            ×
-          </button>
+          {effectiveShowClose && (
+            <button
+              className="utfi-btn utfi-btn-close"
+              onClick={handleClose}
+              title="Close (Esc)"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 

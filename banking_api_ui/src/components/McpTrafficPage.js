@@ -217,6 +217,7 @@ export default function McpTrafficPage() {
     if (!liveRef.current) return;
     try {
       const res = await fetch(`/api/mcp/traffic?limit=${DEFAULT_LIMIT}`, { credentials: 'include' });
+      if (res.status === 401) { setError('unauthenticated'); return; }
       if (!res.ok) { setError(`HTTP ${res.status}`); return; }
       const data = await res.json();
       setEntries(data.entries || []);
@@ -275,11 +276,17 @@ export default function McpTrafficPage() {
             Live — polling every {API_POLL_MS / 1000}s
           </div>
         )}
-        {error && (
+        {error === 'unauthenticated' ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+            <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔒</div>
+            <div style={{ fontWeight: 600, marginBottom: '4px' }}>Sign in to view MCP traffic</div>
+            <div style={{ fontSize: '0.82rem' }}>MCP traffic is only available in authenticated sessions.</div>
+          </div>
+        ) : error ? (
           <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '0.85rem', marginTop: '8px' }}>
             ⚠️ {error}
           </div>
-        )}
+        ) : null}
       </div>
 
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', borderTop: '1px solid var(--border-light,#e2e8f0)' }}>
