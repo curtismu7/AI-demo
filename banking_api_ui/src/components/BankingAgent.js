@@ -386,33 +386,27 @@ function formatResult(result) {
   // Accounts list
   if (r.accounts) {
     return r.accounts.map(a => {
-      // Generate friendly account name
-      const getFriendlyAccountName = (account) => {
-        if (account.name && account.name !== account.id) {
-          return account.name;
-        }
-        
-        const accountType = (account.account_type || account.type || '').toLowerCase();
-        const accountNumber = account.account_number || account.id || '';
-        
-        // Create friendly name based on type and number
-        if (accountType === 'checking' || accountType.includes('chk')) {
-          return accountNumber ? `Checking Account (${accountNumber.slice(-4)})` : 'Checking Account';
-        } else if (accountType === 'savings' || accountType.includes('sav')) {
-          return accountNumber ? `Savings Account (${accountNumber.slice(-4)})` : 'Savings Account';
-        } else if (accountType === 'credit' || accountType.includes('crd')) {
-          return accountNumber ? `Credit Card (${accountNumber.slice(-4)})` : 'Credit Card';
-        } else if (accountType === 'investment' || accountType.includes('inv')) {
-          return accountNumber ? `Investment Account (${accountNumber.slice(-4)})` : 'Investment Account';
-        } else {
-          return accountNumber ? `Account (${accountNumber.slice(-4)})` : 'Account';
-        }
-      };
-      
-      const friendlyName = getFriendlyAccountName(a);
-      const balance = formatCurrency(a.balance);
-      
-      return `${friendlyName}\n  Balance: ${balance}`;
+      // Normalise field names — MCP server uses camelCase, local tools may use snake_case
+      const type = (a.accountType || a.account_type || a.type || '').toLowerCase();
+      const num  = a.accountNumber || a.account_number || '';
+      const name = (a.name && a.name !== a.id) ? a.name
+                 : type.includes('check') ? 'Checking Account'
+                 : type.includes('sav')   ? 'Savings Account'
+                 : type.includes('loan')  ? 'Loan Account'
+                 : (type.includes('crd') || type.includes('credit')) ? 'Credit Card'
+                 : 'Account';
+
+      const lines = [];
+      lines.push('\u{1f3e6} **' + name + '** (' + (num || a.id || '') + ')');
+      lines.push('  Balance:    ' + formatCurrency(a.balance) + ' ' + (a.currency || 'USD'));
+      if (a.status)            lines.push('  Status:     ' + a.status);
+      if (a.accountHolderName) lines.push('  Holder:     ' + a.accountHolderName);
+      if (a.iban)              lines.push('  IBAN:       ' + a.iban);
+      if (a.swiftCode)         lines.push('  SWIFT/BIC:  ' + a.swiftCode);
+      if (a.branchName)        lines.push('  Branch:     ' + a.branchName + (a.branchCode ? ' (' + a.branchCode + ')' : ''));
+      if (a.openedDate)        lines.push('  Opened:     ' + new Date(a.openedDate).toLocaleDateString());
+      lines.push('  Account ID: ' + (a.id || ''));
+      return lines.join('\n');
     }).join('\n\n');
   }
   // Transactions list
