@@ -364,35 +364,59 @@ function ExchangeCheckList({ event }) {
 function EventDetail({ event }) {
   return (
     <>
-      {/* Full JWT JSON first — most comprehensive view */}
+      {/* Full JWT JSON — collapsible, closed by default */}
       {event.jwtFullDecode && (
-        <div className="tcd-full-jwt">
-          <div className="tcd-section-title">🔓 Full Decoded Token (JSON)</div>
-          <pre className="tcd-jwt-dump">{JSON.stringify(event.jwtFullDecode, null, 2)}</pre>
-        </div>
+        <details className="tcd-collapsible">
+          <summary className="tcd-collapsible-header">🔓 Full Decoded Token (JSON)</summary>
+          <div className="tcd-collapsible-body">
+            <pre className="tcd-jwt-dump">{JSON.stringify(event.jwtFullDecode, null, 2)}</pre>
+          </div>
+        </details>
       )}
-      {/* Claims table — quick reference */}
+      {/* Claims table — open by default */}
       {event.claims && (
-        <>
-          <div className="tcd-section-title">JWT Claims (Quick Reference)</div>
-          <ClaimsPanel claims={event.claims} alg={event.alg} />
-        </>
+        <details className="tcd-collapsible" open>
+          <summary className="tcd-collapsible-header">JWT Claims (Quick Reference)</summary>
+          <div className="tcd-collapsible-body">
+            <ClaimsPanel claims={event.claims} alg={event.alg} />
+          </div>
+        </details>
       )}
       {event.exchangeRequest && (
-        <div className="tcd-exchange-req">
-          <div className="tcd-exchange-req-title">Exchange request (RFC 8693)</div>
-          <pre>{JSON.stringify(event.exchangeRequest, null, 2)}</pre>
-        </div>
+        <details className="tcd-collapsible">
+          <summary className="tcd-collapsible-header">Exchange Request (RFC 8693)</summary>
+          <div className="tcd-collapsible-body">
+            <pre className="tcd-exchange-req-pre">{JSON.stringify(event.exchangeRequest, null, 2)}</pre>
+          </div>
+        </details>
       )}
-      {/* Educational sections — aud, may_act, act, exchange validation */}
-      <AudienceEduBox event={event} />
-      <MayActEduBox event={event} />
-      <ActEduBox event={event} />
-      <ExchangeCheckList event={event} />
+      {/* Educational sections — each in a collapsible, open by default */}
+      <CollapsibleEdu title="🎯 Audience (aud)" event={event} Component={AudienceEduBox} />
+      <CollapsibleEdu title="✅ may_act — Delegation Permission" event={event} Component={MayActEduBox} />
+      <CollapsibleEdu title="🔗 act — Actor Claim" event={event} Component={ActEduBox} />
+      <CollapsibleEdu title="📋 Exchange Validation" event={event} Component={ExchangeCheckList} />
       {event.explanation && (
         <p className="tcd-explanation">{event.explanation}</p>
       )}
     </>
+  );
+}
+
+/** Wraps an edu box component in a collapsible if it renders content. */
+function CollapsibleEdu({ title, event, Component }) {
+  // Render to check if the component outputs anything
+  const content = <Component event={event} />;
+  // The edu boxes return null when not applicable — React will just skip them.
+  // We wrap in a details only if the component is expected to render.
+  // Since we can't pre-check without rendering, we always wrap but the component
+  // itself returns null when not applicable, which collapses the details gracefully.
+  return (
+    <details className="tcd-collapsible" open>
+      <summary className="tcd-collapsible-header">{title}</summary>
+      <div className="tcd-collapsible-body">
+        {content}
+      </div>
+    </details>
   );
 }
 
@@ -438,29 +462,29 @@ function openInNewWindow(event) {
   <title>Token Inspector — ${event.label}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#0f172a;color:#e2e8f0;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:0}
-    .header{background:linear-gradient(135deg,var(--chase-navy),var(--chase-navy));padding:14px 18px;display:flex;flex-direction:column;gap:2px}
-    .title{font-size:1rem;font-weight:800;color:#fff}
-    .subtitle{font-size:0.78rem;color:#93c5fd}
+    body{background:#ffffff;color:#1e293b;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:0}
+    .header{background:#f8fafc;padding:14px 18px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #e2e8f0}
+    .title{font-size:1rem;font-weight:800;color:#0f172a}
+    .subtitle{font-size:0.78rem;color:#475569}
     .body{padding:16px;display:flex;flex-direction:column;gap:14px;overflow:auto;height:calc(100vh - 70px)}
-    .section-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;margin-top:12px;margin-bottom:6px;border-bottom:1px solid #1e293b;padding-bottom:4px}
-    .full-jwt{background:linear-gradient(135deg,#0f172a,#1e293b);border:2px solid #2dd4bf;border-radius:10px;padding:14px;margin-bottom:8px}
+    .section-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#475569;margin-top:12px;margin-bottom:6px;border-bottom:1px solid #e5e7eb;padding-bottom:4px}
+    .full-jwt{background:#f0fdfa;border:2px solid #99f6e4;border-radius:10px;padding:14px;margin-bottom:8px}
     .full-jwt .section-title{margin-top:0}
-    .claims{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:2px}
+    .claims{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:2px}
     .claim{display:flex;gap:8px;padding:4px 8px;border-radius:5px;font-size:.79rem}
-    .key{color:#93c5fd;font-weight:700;font-family:monospace;white-space:nowrap;min-width:100px}
-    .sep{color:#475569}
-    .val{color:#e2e8f0;font-family:'Courier New',monospace;word-break:break-word;flex:1;white-space:pre-wrap}
-    .pre{background:#080f1e;border:1px solid #1e293b;border-radius:8px;padding:12px;font-size:.76rem;color:#86efac;white-space:pre-wrap;word-break:break-all;font-family:'Courier New',monospace;max-height:700px;overflow:auto;line-height:1.5}
+    .key{color:#1e40af;font-weight:700;font-family:monospace;white-space:nowrap;min-width:100px}
+    .sep{color:#94a3b8}
+    .val{color:#1e293b;font-family:'Courier New',monospace;word-break:break-word;flex:1;white-space:pre-wrap}
+    .pre{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:12px;font-size:.76rem;color:#065f46;white-space:pre-wrap;word-break:break-all;font-family:'Courier New',monospace;max-height:700px;overflow:auto;line-height:1.5}
     .pill{font-size:.75rem;font-weight:600;padding:5px 12px;border-radius:8px;width:fit-content}
-    .pill-may{background:rgba(37,99,235,.2);color:#bfdbfe;border:1px solid rgba(37,99,235,.4)}
-    .pill-act{background:rgba(20,184,166,.15);color:#99f6e4;border:1px solid rgba(20,184,166,.3)}
-    .pill-warn{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
-    .explanation{font-size:.82rem;color:#94a3b8;line-height:1.6;margin-top:8px}
-    .alg{font-size:.7rem;color:#475569;margin-bottom:4px}
+    .pill-may{background:rgba(37,99,235,.08);color:#1e40af;border:1px solid rgba(37,99,235,.25)}
+    .pill-act{background:rgba(20,184,166,.08);color:#0f766e;border:1px solid rgba(20,184,166,.25)}
+    .pill-warn{background:rgba(239,68,68,.08);color:#b91c1c;border:1px solid rgba(239,68,68,.25)}
+    .explanation{font-size:.82rem;color:#475569;line-height:1.6;margin-top:8px}
+    .alg{font-size:.7rem;color:#64748b;margin-bottom:4px}
     ::-webkit-scrollbar{width:6px;height:6px}
-    ::-webkit-scrollbar-track{background:#1e293b}
-    ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+    ::-webkit-scrollbar-track{background:#f8fafc}
+    ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
   </style>
 </head>
 <body>
@@ -501,7 +525,7 @@ function openInNewWindow(event) {
  * Rendered via createPortal into document.body so it can go off-screen.
  */
 function TokenInspectorPanel({ event, initialPos, onClose }) {
-  const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
+  const { pos, size, handleDragStart, handleResizeStart, createResizeHandler } = useDraggablePanel(
     initialPos,
     { w: 800, h: 960 },
     { minW: 400, minH: 320, storageKey: 'tci-inspector-panel' }
@@ -567,12 +591,19 @@ function TokenInspectorPanel({ event, initialPos, onClose }) {
 
       {/* Resize grip — bottom-right corner */}
       {!collapsed && (
-        <div
-          className="tci-resize-grip"
-          onMouseDown={handleResizeStart}
-          aria-hidden
-          title="Drag to resize"
-        />
+        <div className="drp-resize-handles">
+          {/* Corner handles */}
+          <div className="drp-resize-handle drp-resize-handle--nw" onMouseDown={createResizeHandler('nw')} aria-hidden title="Resize from top-left" />
+          <div className="drp-resize-handle drp-resize-handle--ne" onMouseDown={createResizeHandler('ne')} aria-hidden title="Resize from top-right" />
+          <div className="drp-resize-handle drp-resize-handle--sw" onMouseDown={createResizeHandler('sw')} aria-hidden title="Resize from bottom-left" />
+          <div className="drp-resize-handle drp-resize-handle--se" onMouseDown={createResizeHandler('se')} aria-hidden title="Resize from bottom-right" />
+          
+          {/* Edge handles */}
+          <div className="drp-resize-handle drp-resize-handle--n" onMouseDown={createResizeHandler('n')} aria-hidden title="Resize from top" />
+          <div className="drp-resize-handle drp-resize-handle--s" onMouseDown={createResizeHandler('s')} aria-hidden title="Resize from bottom" />
+          <div className="drp-resize-handle drp-resize-handle--e" onMouseDown={createResizeHandler('e')} aria-hidden title="Resize from right" />
+          <div className="drp-resize-handle drp-resize-handle--w" onMouseDown={createResizeHandler('w')} aria-hidden title="Resize from left" />
+        </div>
       )}
     </div>
   );
@@ -982,6 +1013,17 @@ const TokenChainDisplay = ({ idTokenMode = false }) => {
     };
     window.addEventListener('userAuthenticated', onAuth);
     return () => window.removeEventListener('userAuthenticated', onAuth);
+  }, [fetchSessionPreview]);
+
+  /** Refresh token chain after every agent request (chip/button or NL path). */
+  React.useEffect(() => {
+    const onAgentResult = () => {
+      // Reset cooldown so this forced refresh is never skipped.
+      lastFetchTime = 0;
+      void fetchSessionPreview();
+    };
+    window.addEventListener('banking-agent-result', onAgentResult);
+    return () => window.removeEventListener('banking-agent-result', onAgentResult);
   }, [fetchSessionPreview]);
 
   /** Silently prefetch agent CC token on mount — shows agent actor identity before first MCP call. */

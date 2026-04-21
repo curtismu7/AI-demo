@@ -3114,7 +3114,9 @@ export default function BankingAgent({
           setResultPanel({ type: resultType, title: titleMap[resultType] || resultType, data: resultData });
         }
       }
-      // After a write via NL, fetch fresh transactions and refresh the panel
+      // Always notify panels (token chain, inspector) that an NL agent request completed.
+      // Write ops also send 'confirm' so dashboard/UserDashboard refreshes balances.
+      window.dispatchEvent(new CustomEvent('banking-agent-result', { detail: { type: resultType || 'nl_complete', data: resultData } }));
       if (_isNlWrite) {
         window.dispatchEvent(new CustomEvent('banking-agent-result', { detail: { type: 'confirm', data: resultData } }));
         getMyTransactions(30).then(txRes => {
