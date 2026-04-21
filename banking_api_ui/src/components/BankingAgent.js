@@ -1750,7 +1750,26 @@ export default function BankingAgent({
       };
     }
     // Fallbacks when bounds not yet measured
-    if (isInline) return undefined;
+    if (isInline) {
+      // Try to read panel bounds synchronously from the ref (avoids CSS flash at wrong position)
+      const rect = panelRef.current?.getBoundingClientRect();
+      if (rect) {
+        const topEdge = Math.max(8, rect.top);
+        const maxH = Math.min(window.innerHeight - topEdge - 16, 520);
+        const desiredLeft = Math.max(8, rect.left - rpW - gap);
+        return {
+          position: 'fixed',
+          left: Math.min(desiredLeft, window.innerWidth - rpW - 8),
+          top: topEdge,
+          bottom: 'auto',
+          right: 'auto',
+          maxHeight: maxH,
+          zIndex: 10058,
+        };
+      }
+      // Ref not yet mounted — use off-screen coords to prevent CSS flash at wrong edge
+      return { position: 'fixed', left: -9999, top: -9999, zIndex: -1 };
+    }
     if (dragPos) {
       return {
         position: 'fixed',
@@ -2439,7 +2458,6 @@ export default function BankingAgent({
           .catch(() => {});
       }
 
-      const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
       const { resultType, resultData } = inferAgentResultTypeAndData(displayNormalized);
 
       if (resultType) {
@@ -2451,15 +2469,13 @@ export default function BankingAgent({
                 window.dispatchEvent(new CustomEvent('banking-agent-result', {
           detail: { type: eventType, data: resultData, label },
         }));
-        if (displayMode === 'panel') {
-          const titleMap = {
-            accounts: '🏦 Accounts',
-            transactions: '📋 Recent Transactions',
-            balance: '💰 Balance',
-            confirm: `✅ ${label} confirmed`,
-          };
-          setResultPanel({ type: resultType, title: titleMap[resultType], data: resultData });
-        }
+        const titleMap = {
+          accounts: '🏦 Accounts',
+          transactions: '📋 Recent Transactions',
+          balance: '💰 Balance',
+          confirm: `✅ ${label} confirmed`,
+        };
+        setResultPanel({ type: resultType, title: titleMap[resultType], data: resultData });
       }
 
       addMessage('assistant', formatResult(response.result), actionId);
@@ -3123,11 +3139,8 @@ export default function BankingAgent({
       const { resultType, resultData } = inferAgentResultTypeAndData(response);
       const _isNlWrite = resultType === 'confirm' || ['transfer','deposit','withdraw'].some(w => (response.toolsCalled||[]).some(t => t.includes(w)));
       if (resultType) {
-        const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
-        if (displayMode === 'panel') {
-          const titleMap = { accounts: '\uD83C\uDFE6 Accounts', transactions: '\uD83D\uDCCB Recent Transactions', balance: '\uD83D\uDCB0 Balance', confirm: '\u2705 Complete' };
-          setResultPanel({ type: resultType, title: titleMap[resultType] || resultType, data: resultData });
-        }
+        const titleMap = { accounts: '\uD83C\uDFE6 Accounts', transactions: '\uD83D\uDCCB Recent Transactions', balance: '\uD83D\uDCB0 Balance', confirm: '\u2705 Complete' };
+        setResultPanel({ type: resultType, title: titleMap[resultType] || resultType, data: resultData });
       }
       // Always notify panels (token chain, inspector) that an NL agent request completed.
       // Write ops also send 'confirm' so dashboard/UserDashboard refreshes balances.
@@ -3137,10 +3150,7 @@ export default function BankingAgent({
         getMyTransactions(30).then(txRes => {
           const txNorm = normalizeAgentToolResult(txRes.result);
           if (Array.isArray(txNorm?.transactions)) {
-            const displayMode = localStorage.getItem('agentDisplayMode') || 'panel';
-            if (displayMode === 'panel') {
-              setResultPanel({ type: 'transactions', title: '\uD83D\uDCCB Recent Transactions', data: txNorm.transactions });
-            }
+            setResultPanel({ type: 'transactions', title: '\uD83D\uDCCB Recent Transactions', data: txNorm.transactions });
           }
         }).catch(() => {});
       }
