@@ -2146,7 +2146,7 @@
 /* 2026 layout — token left · customer center · reserve for floating agent (right) */
 .ud-body.ud-body--2026 {
   display: grid;
-  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr) minmax(360px, 420px);
+  grid-template-columns: minmax(360px, 420px) minmax(0, 1fr) minmax(260px, 340px);
   gap: 0;
   align-items: stretch;
   overflow: visible;
@@ -2170,7 +2170,7 @@
 
 /* Legacy: single split without right reserve — not applicable to split3 or 3col */
 .ud-body.ud-body--2026:not(.ud-body--design-3col):not(.ud-body--dashboard-split3) {
-  grid-template-columns: minmax(0, 1fr) min(360px, min(40vw, 480px));
+  grid-template-columns: min(360px, min(40vw, 480px)) minmax(0, 1fr);
 }
 
 /* Token Chain + future sidebar widgets — wide enough for RFC labels and flow text */
