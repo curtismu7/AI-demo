@@ -11,6 +11,7 @@ import useChatWidget from '../hooks/useChatWidget';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import DevToolsOverlay from './DevToolsOverlay';
 import ExchangeModeToggle from './ExchangeModeToggle';
 import TransactionConsentModal from './TransactionConsentModal';
 import BankingAgent from './BankingAgent';
@@ -1290,6 +1291,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <Link to="/pingone-test" className="ud-super-pill" aria-label="PingOne integration test page">PingOne Test</Link>
           <Link to="/mfa-test" className="ud-super-pill" aria-label="MFA test page">MFA Test</Link>
           <Link to="/mcp-traffic" className="ud-super-pill" aria-label="MCP traffic viewer">MCP Traffic</Link>
+          <Link to="/dev-tools" className="ud-super-pill" aria-label="Dev Tools Dashboard">🛠 Dev Tools</Link>
         </div>
 
         {/* Customer Profile */}
@@ -2245,6 +2247,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
       )}
 
+      <DevToolsOverlay />
     </div>
   );
 };

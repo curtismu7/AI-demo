@@ -1,9 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import TokenChainDisplay from './TokenChainDisplay';
-import UnifiedTokenFlowInspector from './UnifiedTokenFlowInspector';
-import McpTrafficPage from './McpTrafficPage';
-import FloatingPanel from './FloatingPanel';
+import DevToolsDashboard from './DevToolsDashboard';
 import './LandingPage.css';
 
 export default function LandingPage({ user, onLogout }) {
@@ -137,22 +134,14 @@ export default function LandingPage({ user, onLogout }) {
         </div>
       </section>
 
-      {/* Live Token Chain — draggable/resizable */}
-      <section className="landing-token-chain" aria-label="Token chain visualization">
+      {/* Dev Tools Dashboard — single draggable/resizable/poppable panel */}
+      <section className="landing-token-chain" aria-label="Dev tools dashboard">
         <div className="landing-token-chain-heading">
-          <h2>Live Token Chain &amp; Agent Flow Inspector</h2>
-          <p>See how OAuth tokens and agent requests flow through the system — from login through RFC 8693 delegation to MCP tool calls. Drag, resize, or toggle between fixed/floating modes.</p>
+          <h2>🛠 Dev Tools Dashboard</h2>
+          <p>Live Token Chain, Agent &amp; Token Flow Inspector, and MCP Traffic — all in one draggable, resizable panel. Hit ↗ to pop out to a second screen.</p>
         </div>
         <div className="landing-panels-row">
-          <FloatingPanel title="Live Token Chain" defaultWidth={480} defaultHeight={520} className="fp-token-chain">
-            <TokenChainDisplay />
-          </FloatingPanel>
-          <FloatingPanel title="Agent &amp; Token Flow Inspector" defaultWidth={880} defaultHeight={520} className="fp-unified-inspector">
-            <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={true} />
-          </FloatingPanel>
-          <FloatingPanel title="🔌 MCP Traffic" defaultWidth={900} defaultHeight={520} className="fp-mcp-traffic">
-            <McpTrafficPage />
-          </FloatingPanel>
+          <DevToolsDashboard defaultWidth={1100} defaultHeight={580} />
         </div>
       </section>
 

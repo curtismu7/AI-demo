@@ -93,6 +93,7 @@ export default function AdminSideNav({ user }) {
         { label: 'Audit Trail', path: '/audit', icon: '🔍' },
         { label: 'API Traffic', path: '/api-traffic', icon: '📡' },
         { label: 'MCP Traffic', path: '/mcp-traffic', icon: '🔌' },
+        { label: 'Dev Tools', path: '/dev-tools', icon: '🛠' },
       ],
     },
     {

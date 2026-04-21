@@ -8,6 +8,7 @@ import { resolveSessionUser } from '../services/sessionResolver';
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import TokenChainDisplay from './TokenChainDisplay';
+import DevToolsOverlay from './DevToolsOverlay';
 import { useCurrentUserTokenEvent } from '../hooks/useCurrentUserTokenEvent';
 import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import { toastAdminSessionError } from '../utils/dashboardToast';
@@ -766,6 +767,7 @@ const Dashboard = ({ user, onLogout }) => {
           >
             📡 MCP Traffic
           </Link>
+          <Link to='/dev-tools' className='btn btn-secondary' title='Dev Tools Dashboard'>🛠 Dev Tools</Link>
         </div>
       </div>
 
@@ -1024,6 +1026,7 @@ const Dashboard = ({ user, onLogout }) => {
       )}
 
       <ApiCallsModal open={apiCallsModalOpen} onClose={() => setApiCallsModalOpen(false)} />
+      <DevToolsOverlay />
 
       </div>
     </div>
