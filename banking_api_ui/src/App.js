@@ -719,7 +719,7 @@ function AppWithAuth() {
                     <Route path="/oauth/token-display" element={user ? <OAuthTokenDisplayPage /> : <Navigate to="/" replace />} />
                     <Route path="/agent-flow-inspector" element={user ? <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={true} /> : <Navigate to="/" replace />} />
                     <Route path="/resource-server" element={user ? <ResourceServerPage /> : <Navigate to="/" replace />} />
-                    <Route path="/resource-server-cc" element={<AdminRoute user={user}><ClientCredentialsResourcePage /></AdminRoute>} />
+                    <Route path="/resource-server-cc" element={user ? <ClientCredentialsResourcePage /> : <Navigate to="/" replace />} />
                     {/* User-friendly self-service routes */}
                     <Route path="/profile" element={<Profile user={user} />} />
                     <Route path="/security" element={<SecurityCenter user={user} />} />
