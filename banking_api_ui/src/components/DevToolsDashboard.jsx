@@ -40,10 +40,12 @@ export default function DevToolsDashboard({
     >
       {/* Tab bar */}
       <div style={{
-        display: 'flex',
-        borderBottom: '1px solid #e2e8f0',
-        background: '#f8fafc',
+        display: "flex",
+        background: "#1a1a2e",
         flexShrink: 0,
+        gap: "2px",
+        padding: "6px 8px 0",
+        alignItems: "flex-end",
       }}>
         {TABS.map(tab => (
           <button
@@ -51,31 +53,32 @@ export default function DevToolsDashboard({
             type="button"
             onClick={() => setActiveTab(tab.id)}
             style={{
-              padding: '8px 20px',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
-              background: 'none',
-              cursor: 'pointer',
-              fontSize: '0.85rem',
-              fontWeight: activeTab === tab.id ? 700 : 400,
-              color: activeTab === tab.id ? '#2563eb' : '#64748b',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'color 0.15s',
-              whiteSpace: 'nowrap',
+              padding: "9px 22px 10px",
+              border: "none",
+              borderRadius: "6px 6px 0 0",
+              background: activeTab === tab.id ? "#ffffff" : "rgba(255,255,255,0.1)",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              fontWeight: activeTab === tab.id ? 700 : 500,
+              color: activeTab === tab.id ? "#1a1a2e" : "rgba(255,255,255,0.65)",
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
+              transition: "background 0.15s, color 0.15s",
+              whiteSpace: "nowrap",
+              boxShadow: activeTab === tab.id ? "inset 0 -3px 0 #3b82f6" : "none",
+              letterSpacing: "0.01em",
             }}
           >
-            <span>{tab.icon}</span>
+            <span style={{ fontSize: "1.05rem" }}>{tab.icon}</span>
             <span>{tab.label}</span>
           </button>
         ))}
         <div style={{ flex: 1 }} />
-        <span style={{ alignSelf: 'center', paddingRight: 12, fontSize: '0.72rem', color: '#94a3b8' }}>
-          drag \u00b7 resize \u00b7 \u2197 pop out
+        <span style={{ alignSelf: "center", paddingBottom: 8, paddingRight: 10, fontSize: "0.7rem", color: "rgba(255,255,255,0.35)" }}>
+          drag · resize · ↗ pop out
         </span>
       </div>
-
       {/* Tab panels — all mounted to preserve polling/state */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
         <div style={{ display: activeTab === 'chain' ? 'flex' : 'none', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
