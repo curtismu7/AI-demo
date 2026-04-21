@@ -7,9 +7,6 @@ import './TokenChainDisplay.css';
 import { deriveTokenCategory, TokenColorDot, TokenColorLegend, getTokenColor } from './TokenColorSystem';
 
 
-// Module-level request deduplication
-let sessionPreviewPromise = null;
-let lastFetchTime = 0;
 const FETCH_COOLDOWN_MS = 5000; // Don't fetch more than once per 5 seconds
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -1001,20 +998,25 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
   // Identity hints sourced from TokenChainContext (fetched once, shared across surfaces)
   const identityHints = ctx?.resolvedIdentity ?? null;
 
+  // Per-instance request deduplication (avoids cross-instance interference when
+  // multiple TokenChainDisplay instances share the same window event listeners).
+  const sessionPreviewPromiseRef = useRef(null);
+  const lastFetchTimeRef = useRef(0);
+
   /** Fetch session preview (called on mount, on login, and when live events reset). */
   const fetchSessionPreview = useCallback(async () => {
     const now = Date.now();
-    // Skip if another fetch is in flight
-    if (sessionPreviewPromise) {
-      return sessionPreviewPromise;
+    // Skip if another fetch is in flight (per-instance, not shared across instances)
+    if (sessionPreviewPromiseRef.current) {
+      return sessionPreviewPromiseRef.current;
     }
     // Skip if we just fetched recently (cooldown)
-    if (now - lastFetchTime < FETCH_COOLDOWN_MS) {
+    if (now - lastFetchTimeRef.current < FETCH_COOLDOWN_MS) {
       return;
     }
-    
-    lastFetchTime = now;
-    sessionPreviewPromise = (async () => {
+
+    lastFetchTimeRef.current = now;
+    sessionPreviewPromiseRef.current = (async () => {
       try {
         const res = await fetch('/api/tokens/session-preview', { credentials: 'include', _silent: true });
         if (!res.ok) return;
@@ -1025,10 +1027,10 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
       } catch (_err) {
         /* non-fatal — keep placeholder */
       } finally {
-        sessionPreviewPromise = null;
+        sessionPreviewPromiseRef.current = null;
       }
     })();
-    return sessionPreviewPromise;
+    return sessionPreviewPromiseRef.current;
   }, []);
 
   /**
@@ -1054,7 +1056,7 @@ const TokenChainDisplay = ({ idTokenMode = false, hideHeader = false }) => {
   React.useEffect(() => {
     const onAgentResult = () => {
       // Reset cooldown so this forced refresh is never skipped.
-      lastFetchTime = 0;
+      lastFetchTimeRef.current = 0;
       void fetchSessionPreview();
     };
     window.addEventListener('banking-agent-result', onAgentResult);
