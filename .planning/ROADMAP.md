@@ -2312,8 +2312,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 213-01-PLAN.md — UTFI embedded close bug fix + McpTrafficPage 401 state + DevToolsDashboard overflow audit
-- [ ] 213-02-PLAN.md — Banking Agent ResultsPanel restoration (remove displayMode guard, fix inline positioning)
+- [x] 213-01-PLAN.md — UTFI embedded close bug fix + McpTrafficPage 401 state + DevToolsDashboard overflow audit
+- [x] 213-02-PLAN.md — Banking Agent ResultsPanel restoration (remove displayMode guard, fix inline positioning)
 
 ---
 
