@@ -57,7 +57,14 @@ export function useDraggablePanel(initialPos, initialSize, options = {}) {
     if (target.setPointerCapture && e.pointerId != null) {
       target.setPointerCapture(e.pointerId);
     }
-    const onMove = (ev) => setPos({ x: ev.clientX - offX, y: ev.clientY - offY });
+    const onMove = (ev) => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Clamp so at least the header bar (40px) stays on screen
+      const clampedX = Math.min(Math.max(-(sizeRef.current.w - 80), ev.clientX - offX), vw - 80);
+      const clampedY = Math.min(Math.max(0, ev.clientY - offY), vh - 40);
+      setPos({ x: clampedX, y: clampedY });
+    };
     const onUp   = () => {
       target.removeEventListener('pointermove', onMove);
       target.removeEventListener('pointerup',   onUp);

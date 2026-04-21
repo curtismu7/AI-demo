@@ -248,25 +248,36 @@
   color: #991b1b;
 }
 
-.afd-resize-grip {
+/* ─── 8-direction resize handles ──────────────────────────────── */
+.afd-rh {
   position: absolute;
+  z-index: 10;
+}
+/* Edges */
+.afd-rh--n  { top: 0;    left: 8px;  right: 8px; height: 5px; cursor: n-resize; }
+.afd-rh--s  { bottom: 0; left: 8px;  right: 8px; height: 5px; cursor: s-resize; }
+.afd-rh--e  { top: 8px;  right: 0;   bottom: 8px; width: 5px; cursor: e-resize; }
+.afd-rh--w  { top: 8px;  left: 0;    bottom: 8px; width: 5px; cursor: w-resize; }
+/* Corners */
+.afd-rh--nw { top: 0;    left: 0;    width: 12px; height: 12px; cursor: nw-resize; border-top-left-radius: 12px; }
+.afd-rh--ne { top: 0;    right: 0;   width: 12px; height: 12px; cursor: ne-resize; border-top-right-radius: 12px; }
+.afd-rh--sw { bottom: 0; left: 0;    width: 12px; height: 12px; cursor: sw-resize; border-bottom-left-radius: 12px; }
+.afd-rh--se {
   bottom: 0;
   right: 0;
   width: 18px;
   height: 18px;
   cursor: se-resize;
-  z-index: 2;
   border-bottom-right-radius: 12px;
   background: linear-gradient(
     135deg,
     transparent 40%,
-    rgba(148, 163, 184, 0.5) 40%,
-    rgba(148, 163, 184, 0.5) 55%,
+    rgba(148, 163, 184, 0.45) 40%,
+    rgba(148, 163, 184, 0.45) 55%,
     transparent 55%
   );
 }
-
-.afd-resize-grip:hover {
+.afd-rh--se:hover {
   background: linear-gradient(
     135deg,
     transparent 40%,

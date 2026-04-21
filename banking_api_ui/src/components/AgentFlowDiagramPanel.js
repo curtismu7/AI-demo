@@ -111,7 +111,7 @@ export default function AgentFlowDiagramPanel() {
   const tokenChainCtx = useTokenChainOptional();
   const resolvedIdentity = tokenChainCtx?.resolvedIdentity ?? null;
 
-  const { pos, size, handleDragStart, handleResizeStart } = useDraggablePanel(
+  const { pos, size, handleDragStart, createResizeHandler } = useDraggablePanel(
     () => ({
       x: Math.max(16, window.innerWidth - 420),
       y: Math.max(72, (window.innerHeight - 480) / 2),
@@ -319,7 +319,15 @@ export default function AgentFlowDiagramPanel() {
         </div>
       </div>
 
-      <div className="afd-resize-grip" onMouseDown={handleResizeStart} title="Resize" aria-hidden />
+      {/* 8-direction resize handles */}
+      <div className="afd-rh afd-rh--n"   onMouseDown={createResizeHandler('n')}  aria-hidden />
+      <div className="afd-rh afd-rh--ne"  onMouseDown={createResizeHandler('ne')} aria-hidden />
+      <div className="afd-rh afd-rh--e"   onMouseDown={createResizeHandler('e')}  aria-hidden />
+      <div className="afd-rh afd-rh--se"  onMouseDown={createResizeHandler('se')} aria-label="Resize" title="Drag to resize" />
+      <div className="afd-rh afd-rh--s"   onMouseDown={createResizeHandler('s')}  aria-hidden />
+      <div className="afd-rh afd-rh--sw"  onMouseDown={createResizeHandler('sw')} aria-hidden />
+      <div className="afd-rh afd-rh--w"   onMouseDown={createResizeHandler('w')}  aria-hidden />
+      <div className="afd-rh afd-rh--nw"  onMouseDown={createResizeHandler('nw')} aria-hidden />
     </div>
   );
 
