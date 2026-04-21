@@ -2293,6 +2293,19 @@ Plans:
 
 ---
 
+### Phase 212: MCP traffic log and watch UI — dedicated log for BFF↔MCP and BFF↔PingOne traffic with terminal watch command and browser viewer
+
+**Goal:** Capture only MCP-protocol traffic (BFF→MCP server JSON-RPC, RFC 8693 token exchange, PingOne Authorize decisions) in a dedicated NDJSON log file. Add mcp-traffic watch command to run.sh / run-bank.sh. Add a /mcp-traffic page in the UI showing live entries with color-coded direction badges.
+**Requirements**: TBD
+**Depends on:** Phase 211
+**Plans:** 2 plans
+
+Plans:
+- [ ] 212-01-PLAN.md — mcpTrafficLogger service + hooks in mcpWebSocketClient + agentMcpTokenService + GET /api/mcp/traffic route + run script mcp-traffic command
+- [ ] 212-02-PLAN.md — McpTrafficPage React component + App.js route + AdminSideNav link
+
+---
+
 ### Phase 197: Fix Phase 193 regression — sidebar missing on unauthenticated dashboard
 
 **Goal:** Fix regression where unauthenticated guests on `/dashboard` route had no sidebar navigation.
