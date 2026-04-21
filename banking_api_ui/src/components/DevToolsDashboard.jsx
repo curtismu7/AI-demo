@@ -43,12 +43,12 @@ export default function DevToolsDashboard({
       {/* Tab bar — light background so it clearly differs from the dark navy title bar */}
       <div style={{
         display: "flex",
-        background: "#b91c1c",
+        background: "#2d3748",
         flexShrink: 0,
         gap: "3px",
         padding: "8px 10px 0",
         alignItems: "flex-end",
-        borderBottom: "2px solid #991b1b",
+        borderBottom: "2px solid #1a202c",
       }}>
         {TABS.map(tab => (
           <button
@@ -61,10 +61,10 @@ export default function DevToolsDashboard({
               borderColor: activeTab === tab.id ? "#c5cdd8" : "transparent",
               borderBottom: activeTab === tab.id ? "2px solid #ffffff" : "1px solid transparent",
               borderRadius: "6px 6px 0 0",
-              background: activeTab === tab.id ? "#ffffff" : "rgba(0,0,0,0.15)",
+              background: activeTab === tab.id ? "#dc2626" : "#991b1b",
               cursor: "pointer",
               fontSize: "0.88rem",
-              fontWeight: activeTab === tab.id ? 700 : 500,
+              fontWeight: activeTab === tab.id ? 700 : 400,
               color: activeTab === tab.id ? "#1e3a5f" : "#5a6a7e",
               display: "flex",
               alignItems: "center",
