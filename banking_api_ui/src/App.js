@@ -678,7 +678,7 @@ function AppWithAuth() {
                     <Route path="/config"      element={<Navigate to="/configure?tab=pingone-config" replace />} />
                     <Route path="/logs"        element={user ? <LogViewerPage /> : <Navigate to="/" replace />} />
                     <Route path="/api-traffic" element={user ? <ApiTrafficPage /> : <Navigate to="/" replace />} />
-                    <Route path="/mcp-traffic" element={user ? <McpTrafficPage /> : <Navigate to="/" replace />} />
+                    <Route path="/mcp-traffic" element={<McpTrafficPage />} />
                     <Route path="/agent"       element={<BankingAgent user={user} onLogout={logout} mode="inline" />} />
                     <Route path="/activity" element={<AdminRoute user={user}><ActivityLogs user={user} onLogout={logout} /></AdminRoute>} />
                     <Route path="/audit" element={<AdminRoute user={user}><AuditPage user={user} /></AdminRoute>} />

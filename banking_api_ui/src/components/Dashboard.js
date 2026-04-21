@@ -759,6 +759,13 @@ const Dashboard = ({ user, onLogout }) => {
           >
             🔌 MCP Inspector
           </Link>
+          <Link
+            to="/mcp-traffic"
+            className="btn btn-secondary"
+            title="Live BFF↔MCP request/response traffic log"
+          >
+            📡 MCP Traffic
+          </Link>
         </div>
       </div>
 

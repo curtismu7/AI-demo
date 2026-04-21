@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import TokenChainDisplay from './TokenChainDisplay';
 import UnifiedTokenFlowInspector from './UnifiedTokenFlowInspector';
+import McpTrafficPage from './McpTrafficPage';
 import FloatingPanel from './FloatingPanel';
 import './LandingPage.css';
 
@@ -148,6 +149,9 @@ export default function LandingPage({ user, onLogout }) {
           </FloatingPanel>
           <FloatingPanel title="Agent &amp; Token Flow Inspector" defaultWidth={880} defaultHeight={520} className="fp-unified-inspector">
             <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={true} />
+          </FloatingPanel>
+          <FloatingPanel title="🔌 MCP Traffic" defaultWidth={900} defaultHeight={520} className="fp-mcp-traffic">
+            <McpTrafficPage />
           </FloatingPanel>
         </div>
       </section>

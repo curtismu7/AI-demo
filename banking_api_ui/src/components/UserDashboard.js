@@ -1289,6 +1289,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <Link to="/transactions" className="ud-super-pill" aria-label="Payments and Transfers">Payments hub</Link>
           <Link to="/pingone-test" className="ud-super-pill" aria-label="PingOne integration test page">PingOne Test</Link>
           <Link to="/mfa-test" className="ud-super-pill" aria-label="MFA test page">MFA Test</Link>
+          <Link to="/mcp-traffic" className="ud-super-pill" aria-label="MCP traffic viewer">MCP Traffic</Link>
         </div>
 
         {/* Customer Profile */}
