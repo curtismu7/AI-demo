@@ -2304,6 +2304,16 @@ Plans:
 - [ ] 212-01-PLAN.md — mcpTrafficLogger service + hooks in mcpWebSocketClient + agentMcpTokenService + GET /api/mcp/traffic route + run script mcp-traffic command
 - [ ] 212-02-PLAN.md — McpTrafficPage React component + App.js route + AdminSideNav link
 
+### Phase 213: Dev Tools Dashboard — complete data wiring, deduplication, and panel polish
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 212
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 213 to break down)
+
 ---
 
 ### Phase 197: Fix Phase 193 regression — sidebar missing on unauthenticated dashboard

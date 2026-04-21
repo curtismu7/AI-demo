@@ -85,6 +85,7 @@ Next phase: 127+ (available for planning)
 ---
 
 ## Roadmap Evolution
+- Phase 213 added: Dev Tools Dashboard — complete data wiring, deduplication, and panel polish
 
 - Phase 211 added: Scope-gated write tools: 403-to-HITL-to-token-exchange flow for transfer/deposit/withdraw with scope-upgrade and request replay
 - Phase 210 added: MCP scope enforcement — tools advertise required scopes, server returns 403 on missing scope, agent surfaces scope errors to client
